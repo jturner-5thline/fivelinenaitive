@@ -156,12 +156,24 @@ function SimpleFilters({
     [lenders]
   );
 
-  const cashBurnOptions = useMemo(() => 
-    Array.from(new Set(lenders.map(l => l.cash_burn).filter(Boolean)))
+  const cashBurnOptions = useMemo(() => {
+    // Normalize any legacy "OK" variants to "Yes" and drop them as options
+    const normalize = (v: string) => {
+      const t = v.trim();
+      if (/^ok\b/i.test(t)) return 'Yes';
+      return t;
+    };
+    return Array.from(
+      new Set(
+        lenders
+          .map(l => l.cash_burn)
+          .filter(Boolean)
+          .map(v => normalize(v as string))
+      )
+    )
       .sort()
-      .map(v => ({ value: v!, label: v! })),
-    [lenders]
-  );
+      .map(v => ({ value: v, label: v }));
+  }, [lenders]);
 
   const labelCls = "text-[11px] font-normal text-muted-foreground/80";
   return (
