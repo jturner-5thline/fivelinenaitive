@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -248,8 +248,8 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
               </thead>
               <tbody>
                 {groups.map((group) => (
-                  <>
-                    <tr key={`h-${group.key}`} className="bg-muted/40">
+                  <Fragment key={group.key}>
+                    <tr className="bg-muted/40">
                       <td
                         colSpan={1 + periods.length}
                         className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sticky left-0 bg-muted/40"
@@ -288,7 +288,7 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
                         </tr>
                       );
                     })}
-                  </>
+                  </Fragment>
                 ))}
                 {groups.length === 0 && (
                   <tr>
