@@ -630,6 +630,34 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
       if (!silent) {
         toast.success(`Master plan saved — ${editedCells} cell${editedCells === 1 ? '' : 's'} updated`);
       }
+      // Build history entry: one row per unique cellKey (dedupe across dashboards
+      // that share the same widget). Uses the pre-save `initialValues` as the
+      // "from" so linked-widget edits still show a single logical change.
+      const periodLabelByKey = new Map(periods.map((p) => [p.key, p.label] as const));
+      const seen = new Set<string>();
+      const changes: HistoryChange[] = [];
+      for (const [cellKey, raw] of Object.entries(values)) {
+        const initial = initialValues[cellKey] ?? '';
+        if ((raw ?? '') === initial) continue;
+        if (seen.has(cellKey)) continue;
+        seen.add(cellKey);
+        const [widgetKey, periodKey] = cellKey.split('|');
+        const meta = widgetMetaByKey.get(widgetKey);
+        changes.push({
+          cellKey,
+          dashboards: meta?.dashboards ?? [],
+          widget: meta?.label ?? widgetKey,
+          period: periodLabelByKey.get(periodKey) ?? periodKey,
+          from: initial,
+          to: raw ?? '',
+        });
+      }
+      if (changes.length > 0) {
+        setHistory((h) => [
+          { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, at: new Date(), kind: silent ? 'auto' : 'manual', changes },
+          ...h,
+        ].slice(0, 50));
+      }
       setInitialValues(values);
       setLastSavedAt(new Date());
       if (!silent && !keepOpen) onOpenChange(false);
