@@ -23,6 +23,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   PLANNABLE_DASHBOARDS,
+  MASTER_PLAN_TAB_ORDER,
   buildPlanMetricKey,
   type PlannableDashboardKey,
 } from './plannableWidgetsRegistry';
