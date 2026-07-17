@@ -1428,6 +1428,18 @@ export function VdrThreeColumnWorkspace({
               </Badge>
             )}
             <div className="ml-auto flex items-center gap-1">
+              {canLinkDrive && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 px-2 text-[10px] gap-1"
+                  onClick={() => setDriveDialogOpen(true)}
+                  title="Import files from a Google Drive folder into Internal"
+                >
+                  <FolderOpen className="h-3 w-3" />
+                  Link Drive Folder
+                </Button>
+              )}
               <Button
                 variant="ghost" size="icon" className="h-6 w-6"
                 onClick={() => internalFileInput.current?.click()}
