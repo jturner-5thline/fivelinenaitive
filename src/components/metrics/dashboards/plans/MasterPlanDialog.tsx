@@ -705,6 +705,9 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
       }
       setInitialValues(values);
       setLastSavedAt(new Date());
+      // Each save establishes a new baseline; pre-save edits are no longer
+      // meaningfully "undoable" without re-writing the DB, so clear the stack.
+      setUndoStack([]);
       if (!silent && !keepOpen) onOpenChange(false);
     } catch (e: any) {
       if (!silent) toast.error('Save failed', { description: e?.message });
