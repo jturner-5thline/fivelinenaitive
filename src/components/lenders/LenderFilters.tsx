@@ -498,9 +498,10 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
       const size = parseFloat(safeFilters.dealSize);
       if (!isNaN(size)) {
         result = result.filter((lender) => {
-          const minOk = lender.min_deal == null || lender.min_deal <= size;
-          const maxOk = lender.max_deal == null || lender.max_deal >= size;
-          return minOk && maxOk;
+          // Both bounds must be known and cover the requested size:
+          // min_deal <= size <= max_deal.
+          if (lender.min_deal == null || lender.max_deal == null) return false;
+          return lender.min_deal <= size && lender.max_deal >= size;
         });
       }
     }
