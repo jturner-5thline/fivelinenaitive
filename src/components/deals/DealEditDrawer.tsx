@@ -596,6 +596,10 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                     }
                     placeholder="Pick a contact from the database…"
                   />
+                  <ClientContactPreview
+                    email={formData.contactEmail}
+                    name={formData.contact}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="referralSource">Referral Source</Label>
