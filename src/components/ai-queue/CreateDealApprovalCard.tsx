@@ -196,8 +196,8 @@ export function CreateDealApprovalCard({ item }: Props) {
 
       <div className="flex gap-2">
         <Button
+          variant="gradient"
           onClick={() => setOpen(true)}
-          className="bg-gradient-to-r from-[#5ecdf5] to-[#9b6fd4] text-black hover:opacity-90"
         >
           Review &amp; Create Deal
         </Button>
