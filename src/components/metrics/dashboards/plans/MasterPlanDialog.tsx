@@ -656,6 +656,24 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
               />
               Autosave
             </label>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={handleSaveNow}
+              disabled={saving || loading || hasErrors || dirtyCount === 0}
+              className="h-8"
+              title={
+                hasErrors
+                  ? `Fix ${errorCount} invalid ${errorCount === 1 ? 'cell' : 'cells'} first`
+                  : dirtyCount === 0
+                    ? 'No unsaved changes'
+                    : 'Save now — bypasses the autosave delay and keeps this dialog open'
+              }
+            >
+              {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+              Save now{dirtyCount > 0 ? ` (${dirtyCount})` : ''}
+            </Button>
             <div
               className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${statusToneClass[saveStatus.tone]}`}
               title={
