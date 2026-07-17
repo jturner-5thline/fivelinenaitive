@@ -37,6 +37,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
+import { ContactPickerField } from '@/components/contacts/ContactPickerField';
 
 interface DealEditDrawerProps {
   deal: Deal;
@@ -575,12 +576,23 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="contactEmail">Client Contact</Label>
-                  <Input
+                  <ContactPickerField
                     id="contactEmail"
-                    type="email"
-                    value={formData.contactEmail}
-                    onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
-                    placeholder="client@company.com"
+                    value={
+                      formData.contactEmail || deal.contact
+                        ? { name: deal.contact || '', email: formData.contactEmail || '' }
+                        : null
+                    }
+                    onChange={(c) => {
+                      setFormData({ ...formData, contactEmail: c.email || '' });
+                      // Mirror the picked contact's name into the deal.contact
+                      // field so downstream views (memo, briefings, emails)
+                      // show the human-readable name from the contacts DB.
+                      // deal.contact is persisted via a separate updateDeal
+                      // call on save below.
+                      (deal as any).contact = c.name || '';
+                    }}
+                    placeholder="Pick a contact from the database…"
                   />
                 </div>
                 <div className="space-y-2">
