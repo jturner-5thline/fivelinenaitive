@@ -96,13 +96,16 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
   const groups = useMemo(() => {
     const q = search.trim().toLowerCase();
     const entries = (Object.entries(PLANNABLE_DASHBOARDS) as [PlannableDashboardKey, typeof PLANNABLE_DASHBOARDS[PlannableDashboardKey]][])
-      .filter(([key]) => activeTab === 'all' || key === activeTab);
+      // When searching, always scan every dashboard so hits aren't hidden
+      // by the active tab filter.
+      .filter(([key]) => q !== '' || activeTab === 'all' || key === activeTab);
     return entries
       .map(([key, def]) => {
         const widgets = q
           ? def.widgets.filter(
               (w) =>
                 w.label.toLowerCase().includes(q) ||
+                (w.hint?.toLowerCase().includes(q) ?? false) ||
                 def.label.toLowerCase().includes(q),
             )
           : def.widgets;
@@ -259,7 +262,7 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search dashboards or widgets…"
+              placeholder="Search all metrics across dashboards…"
               className="h-8 pl-8"
             />
           </div>
