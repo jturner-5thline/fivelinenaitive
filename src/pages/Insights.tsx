@@ -2218,6 +2218,8 @@ function MetricsInner() {
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
+                  {/* Master Plan editor: monthly plan/target values for every widget across every dashboard. */}
+                  {/* Rendered as a sibling so it stays inside the header row next to the dashboard title. */}
                   <DropdownMenuContent
                     align="start"
                     sideOffset={8}
