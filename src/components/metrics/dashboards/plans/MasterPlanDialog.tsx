@@ -928,7 +928,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                                 widgetKey={w.key}
                                 periods={periods}
                                 values={values}
-                                setValues={setValues}
+                                setValues={setValuesWithUndo}
                               />
                             </div>
                             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -953,7 +953,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                                   inputMode="decimal"
                                   value={values[k] ?? ''}
                                   onChange={(e) =>
-                                    setValues((v) => ({ ...v, [k]: e.target.value }))
+                                    setValuesWithUndo((v) => ({ ...v, [k]: e.target.value }))
                                   }
                                   className={`h-8 text-right tabular-nums px-2 ${
                                     err
