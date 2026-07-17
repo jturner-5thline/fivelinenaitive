@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({} as any));
-    const action = body.action as 'list' | 'download';
+    const action = body.action as 'list' | 'browse' | 'search' | 'download';
 
     if (action === 'list') {
       const folderId = parseFolderId(String(body.folder ?? ''));
@@ -76,6 +76,62 @@ Deno.serve(async (req) => {
         console.error(`Drive list failed [${res.status}]: ${text}`);
         return new Response(
           JSON.stringify({ error: 'Drive list failed', status: res.status, details: text }),
+          { status: res.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      return new Response(text, {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'browse') {
+      const folderId = String(body.folderId ?? 'root').trim() || 'root';
+      const q = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
+      const fields = encodeURIComponent('files(id,name,mimeType,size,modifiedTime,parents)');
+      const res = await gatewayFetch(
+        `/drive/v3/files?q=${q}&fields=${fields}&pageSize=1000&orderBy=folder,name&supportsAllDrives=true&includeItemsFromAllDrives=true`,
+      );
+      const text = await res.text();
+      if (!res.ok) {
+        console.error(`Drive browse failed [${res.status}]: ${text}`);
+        return new Response(
+          JSON.stringify({ error: 'Drive browse failed', status: res.status, details: text }),
+          { status: res.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      // Also fetch folder metadata for breadcrumb (skip for root)
+      let folderMeta: any = { id: 'root', name: 'My Drive' };
+      if (folderId !== 'root') {
+        const metaRes = await gatewayFetch(
+          `/drive/v3/files/${encodeURIComponent(folderId)}?fields=${encodeURIComponent('id,name,parents')}&supportsAllDrives=true`,
+        );
+        if (metaRes.ok) folderMeta = await metaRes.json();
+      }
+      return new Response(JSON.stringify({ folder: folderMeta, ...JSON.parse(text) }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'search') {
+      const query = String(body.query ?? '').trim().replace(/'/g, "\\'");
+      if (!query) {
+        return new Response(JSON.stringify({ files: [] }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const q = encodeURIComponent(`name contains '${query}' and trashed = false`);
+      const fields = encodeURIComponent('files(id,name,mimeType,size,modifiedTime,parents)');
+      const res = await gatewayFetch(
+        `/drive/v3/files?q=${q}&fields=${fields}&pageSize=200&orderBy=modifiedTime desc&supportsAllDrives=true&includeItemsFromAllDrives=true`,
+      );
+      const text = await res.text();
+      if (!res.ok) {
+        console.error(`Drive search failed [${res.status}]: ${text}`);
+        return new Response(
+          JSON.stringify({ error: 'Drive search failed', status: res.status, details: text }),
           { status: res.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
