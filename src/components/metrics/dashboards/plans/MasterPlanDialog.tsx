@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ChevronLeft, ChevronRight, Search, MoreHorizontal, AlertCircle, Check } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Search, MoreHorizontal, AlertCircle, Check, CircleDot, PauseCircle, CloudOff } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -226,6 +226,13 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
   const [autosave, setAutosave] = useState(true);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ticker so the "Saved Xs ago" label refreshes without extra re-renders elsewhere.
+  const [nowTick, setNowTick] = useState(0);
+  useEffect(() => {
+    if (!open) return;
+    const id = setInterval(() => setNowTick((n) => n + 1), 15_000);
+    return () => clearInterval(id);
+  }, [open]);
 
   const periods = useMemo(() => monthPeriodKeys(year), [year]);
 
@@ -251,6 +258,82 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
   }, [values, widgetFormatByKey]);
   const errorCount = Object.keys(cellErrors).length;
   const hasErrors = errorCount > 0;
+
+  const dirtyCount = useMemo(
+    () => Object.keys(values).filter((k) => (values[k] ?? '') !== (initialValues[k] ?? '')).length,
+    [values, initialValues],
+  );
+
+  // Human-friendly "saved X ago" using nowTick as the refresh trigger.
+  const savedAgoLabel = useMemo(() => {
+    if (!lastSavedAt) return null;
+    void nowTick; // subscribe to ticker
+    const secs = Math.max(0, Math.round((Date.now() - lastSavedAt.getTime()) / 1000));
+    if (secs < 5) return 'just now';
+    if (secs < 60) return `${secs}s ago`;
+    const mins = Math.floor(secs / 60);
+    if (mins < 60) return `${mins}m ago`;
+    return lastSavedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }, [lastSavedAt, nowTick]);
+
+  // Consolidated autosave status. Renders as a single pill in the header.
+  type SaveStatus = {
+    tone: 'saving' | 'error' | 'dirty' | 'off' | 'saved' | 'idle';
+    icon: React.ReactNode;
+    label: string;
+    detail?: string;
+  };
+  const saveStatus: SaveStatus = useMemo(() => {
+    if (saving) {
+      return { tone: 'saving', icon: <Loader2 className="h-3 w-3 animate-spin" />, label: 'Saving…' };
+    }
+    if (hasErrors) {
+      return {
+        tone: 'error',
+        icon: <AlertCircle className="h-3 w-3" />,
+        label: 'Autosave blocked',
+        detail: `${errorCount} invalid ${errorCount === 1 ? 'cell' : 'cells'}`,
+      };
+    }
+    if (!autosave && dirtyCount > 0) {
+      return {
+        tone: 'off',
+        icon: <CloudOff className="h-3 w-3" />,
+        label: 'Autosave off',
+        detail: `${dirtyCount} unsaved ${dirtyCount === 1 ? 'change' : 'changes'}`,
+      };
+    }
+    if (dirtyCount > 0) {
+      return {
+        tone: 'dirty',
+        icon: <CircleDot className="h-3 w-3" />,
+        label: 'Unsaved changes',
+        detail: `${dirtyCount} pending · autosaving…`,
+      };
+    }
+    if (lastSavedAt && savedAgoLabel) {
+      return {
+        tone: 'saved',
+        icon: <Check className="h-3 w-3" />,
+        label: `Saved ${savedAgoLabel}`,
+        detail: lastSavedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+      };
+    }
+    return {
+      tone: 'idle',
+      icon: <PauseCircle className="h-3 w-3" />,
+      label: autosave ? 'Autosave on' : 'Autosave off',
+    };
+  }, [saving, hasErrors, errorCount, autosave, dirtyCount, lastSavedAt, savedAgoLabel]);
+
+  const statusToneClass: Record<SaveStatus['tone'], string> = {
+    saving: 'border-primary/40 bg-primary/10 text-primary',
+    error: 'border-destructive/50 bg-destructive/10 text-destructive',
+    dirty: 'border-amber-500/50 bg-amber-500/10 text-amber-500',
+    off: 'border-muted-foreground/40 bg-muted text-muted-foreground',
+    saved: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500',
+    idle: 'border-border bg-muted/40 text-muted-foreground',
+  };
 
   // Map widgetKey -> list of dashboards where it appears. Widgets that share
   // the same key across multiple dashboards are treated as the SAME metric —
@@ -478,16 +561,22 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
               />
               Autosave
             </label>
-            {saving ? (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" /> Saving…
-              </span>
-            ) : lastSavedAt ? (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Check className="h-3 w-3 text-primary" />
-                Saved {lastSavedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-              </span>
-            ) : null}
+            <div
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${statusToneClass[saveStatus.tone]}`}
+              title={
+                lastSavedAt
+                  ? `Last saved ${lastSavedAt.toLocaleString()}`
+                  : 'No changes saved yet in this session'
+              }
+              role="status"
+              aria-live="polite"
+            >
+              {saveStatus.icon}
+              <span>{saveStatus.label}</span>
+              {saveStatus.detail && (
+                <span className="opacity-70 font-normal">· {saveStatus.detail}</span>
+              )}
+            </div>
             <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" onClick={() => setYear((y) => y - 1)} aria-label="Previous year">
               <ChevronLeft className="h-4 w-4" />
