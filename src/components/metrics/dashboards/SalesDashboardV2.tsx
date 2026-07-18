@@ -4015,6 +4015,11 @@ export function SalesDashboardV2() {
             onOpenChange={setOnBoardToProposalOpen}
             anchorEnd={rangeEnd}
           />
+          <CallToDealDrilldown
+            open={callToDealOpen}
+            onOpenChange={setCallToDealOpen}
+            ttmRanges={ttmRanges}
+          />
 
           {/* Cumulative pace */}
           <div className="mb-6 sales-model-scroll overflow-x-auto">
