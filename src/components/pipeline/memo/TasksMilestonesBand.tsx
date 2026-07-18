@@ -1184,9 +1184,15 @@ function TasksMilestonesDetailDialog({
   };
 
   const filteredTasks = useMemo(
-    () => sortedTasks.filter((t) => matchesQuery([t.title, t.assignedToName, t.requestedByName])),
+    () => sortedTasks.filter((t) => t.kind === 'task' && matchesQuery([t.title, t.assignedToName, t.requestedByName])),
     [sortedTasks, normalizedQuery]
   );
+  const filteredOutstanding = useMemo(
+    () => sortedTasks.filter((t) => t.kind === 'outstanding' && matchesQuery([t.title, t.requestedByName])),
+    [sortedTasks, normalizedQuery]
+  );
+  const totalTasks = sortedTasks.filter((t) => t.kind === 'task').length;
+  const totalOutstanding = sortedTasks.filter((t) => t.kind === 'outstanding').length;
   const filteredMilestones = useMemo(
     () => sortedMilestones.filter((m) => matchesQuery([m.title])),
     [sortedMilestones, normalizedQuery]
