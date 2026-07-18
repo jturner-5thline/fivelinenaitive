@@ -1732,6 +1732,28 @@ function CompactFundedBarChart({
                       <div style={{ color: 'hsl(0 0% 100% / 0.82)', marginBottom: bucket.deals.length ? 6 : 0 }}>
                         {bucket.count} deal{bucket.count !== 1 ? 's' : ''} · {formatCurrency(bucket.dollarVolume)}
                       </div>
+                      {showPlanOverlay && (() => {
+                        const planVal = planLookup.values.get(bucket.key);
+                        if (planVal == null) {
+                          return (
+                            <div style={{ color: 'hsl(45 93% 70% / 0.75)', fontSize: 11, marginBottom: 4 }}>
+                              Plan: — (no value entered)
+                            </div>
+                          );
+                        }
+                        const d = value - planVal;
+                        const p = planVal !== 0 ? (d / Math.abs(planVal)) * 100 : null;
+                        const pos = d >= 0;
+                        return (
+                          <div style={{ color: 'hsl(45 93% 70%)', fontSize: 11, marginBottom: 4 }}>
+                            Plan: {valueFormatter(planVal)}{' · '}
+                            <span style={{ color: pos ? '#5EEAD4' : '#FB7185' }}>
+                              {pos ? '▲ +' : '▼ '}{valueFormatter(Math.abs(d))}
+                              {p != null ? ` (${pos ? '+' : '−'}${Math.abs(p).toFixed(1)}%)` : ''}
+                            </span>
+                          </div>
+                        );
+                      })()}
                       {bucket.deals.length > 0 ? (
                         <ul style={{ margin: 0, paddingLeft: 14, lineHeight: 1.4 }}>
                           {bucket.deals.slice(0, 8).map((deal) => (
