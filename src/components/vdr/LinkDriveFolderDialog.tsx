@@ -639,13 +639,40 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
                           <Folder className="h-3.5 w-3.5 text-primary" />
                           <span className="truncate hover:underline">{f.name}</span>
                         </button>
-                        <span className="text-[10px] text-muted-foreground shrink-0">
+                        <span className="hidden sm:inline text-[10px] text-muted-foreground shrink-0">
                           Folder · {formatModified(f.modifiedTime)}
                         </span>
-                        {isChecked && (
-                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">
-                            all contents
-                          </span>
+                        {isChecked && internalFolders.length > 0 && (
+                          <>
+                            <span className="text-[10px] text-muted-foreground shrink-0">→</span>
+                            <Select
+                              value={mapping[f.id] ?? ''}
+                              onValueChange={(v) => {
+                                setMapping(prev => ({ ...prev, [f.id]: v }));
+                                setAutoMatched(prev => { const n = new Set(prev); n.delete(f.id); return n; });
+                              }}
+                              disabled={importing}
+                            >
+                              <SelectTrigger
+                                className={`h-6 text-[11px] w-[170px] shrink-0 ${mapping[f.id] ? '' : 'border-destructive text-destructive'}`}
+                              >
+                                <SelectValue placeholder="Pick target…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {internalFolders.map(name => (
+                                  <SelectItem key={name} value={name} className="text-xs">{name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {mapping[f.id] && autoMatched.has(f.id) && (
+                              <span
+                                className="text-[9px] uppercase tracking-wide text-emerald-600 shrink-0"
+                                title={`Auto-matched to "${mapping[f.id]}" by folder name`}
+                              >
+                                auto
+                              </span>
+                            )}
+                          </>
                         )}
                       </>
                     ) : (
