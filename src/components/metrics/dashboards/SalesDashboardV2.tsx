@@ -3556,14 +3556,8 @@ export function SalesDashboardV2() {
             <TopSourcedViaWidget />
           </div>
 
-          {/* Cumulative pace */}
           <div className="mb-6">
             <SalesTeamBoardKpiGrid quarter={selectedQuarter} />
-          </div>
-          <div className="mb-6 sales-model-scroll overflow-x-auto">
-            <div style={{ minWidth: 600 }}>
-              <CumulativePace />
-            </div>
           </div>
 
           {/* Conversion metric cards (trailing 3 months) */}
@@ -3629,6 +3623,13 @@ export function SalesDashboardV2() {
             onOpenChange={setOnBoardToProposalOpen}
             anchorEnd={rangeEnd}
           />
+
+          {/* Cumulative pace */}
+          <div className="mb-6 sales-model-scroll overflow-x-auto">
+            <div style={{ minWidth: 600 }}>
+              <CumulativePace />
+            </div>
+          </div>
 
           {/* Sales model sheet */}
           <SalesModelSheet />
