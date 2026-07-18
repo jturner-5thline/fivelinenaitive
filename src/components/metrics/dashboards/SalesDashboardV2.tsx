@@ -3285,19 +3285,7 @@ export function SalesDashboardV2() {
         const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
         const idx = fullDraft.columns.findIndex((c) => c.key === key);
         const override = idx >= 0 ? fullDraft.data[k]?.[idx] : undefined;
-        if (override !== undefined) return override;
-        // Master Plan monthly overrides for FinServ Proposals rows —
-        // sourced from the Master Plan popup, same widget keys as the
-        // FinServ Deals-on-Board rows above.
-        const ymKey = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
-        if (k === 'finservProposalsIssued') {
-          const mp = masterPlanMonthly.values['finserv-proposals-issued']?.[ymKey];
-          if (mp !== undefined) return mp;
-        } else if (k === 'finservDollarsProposed') {
-          const mp = masterPlanMonthly.values['finserv-dollars-proposed']?.[ymKey];
-          if (mp !== undefined) return mp / 1_000_000; // dashboard renders $MM
-        }
-        return base;
+        return override === undefined ? base : override;
       });
     });
     return {
@@ -3310,21 +3298,9 @@ export function SalesDashboardV2() {
         dealsOnBoard: liveDealsOnBoardActual,
         proposalsIssued: liveProposalsIssuedActual,
         dollarsSigned: liveDollarsSignedActual,
-        finservProposalsIssued: liveProposalsIssuedActualFinserv,
-        finservDollarsProposed: liveDollarsProposedActualFinserv,
       },
     };
-  }, [
-    baseView,
-    fullDraft,
-    liveSalesCallsActual,
-    liveDealsOnBoardActual,
-    liveProposalsIssuedActual,
-    liveDollarsSignedActual,
-    liveProposalsIssuedActualFinserv,
-    liveDollarsProposedActualFinserv,
-    masterPlanMonthly.values,
-  ]);
+  }, [baseView, fullDraft, liveSalesCallsActual, liveDealsOnBoardActual, liveProposalsIssuedActual, liveDollarsSignedActual]);
 
   // FinServ-scoped actuals for the top three KPI cards, indexed to the
   // active timeframe months just like the Debt actuals above.
