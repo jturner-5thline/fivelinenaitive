@@ -1533,17 +1533,22 @@ function ConversionCard({
   subtitle,
   onClick,
   info,
+  displayValue,
 }: {
   title: string;
   value: number | null;
   subtitle?: string;
   onClick?: () => void;
   info?: React.ReactNode;
+  /** Overrides the default percentage rendering (e.g. currency). */
+  displayValue?: string;
 }) {
   const display =
-    value == null
-      ? '—'
-      : `${(value * 100).toFixed(value >= 1 ? 0 : 1)}%`;
+    displayValue !== undefined
+      ? displayValue
+      : value == null
+        ? '—'
+        : `${(value * 100).toFixed(value >= 1 ? 0 : 1)}%`;
   const clickable = !!onClick;
   return (
     <div
@@ -3956,7 +3961,50 @@ export function SalesDashboardV2() {
 
           {/* Conversion metric cards (trailing 3 months) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <ConversionCard title="TBD" value={null} subtitle="—" />
+            {(() => {
+              const currDeals = ndaEnteredInRange.deals;
+              const priorDeals = ndaEnteredPrior.deals;
+              const avg = (arr: typeof currDeals) =>
+                arr.length ? arr.reduce((s, d) => s + (Number(d.value) || 0), 0) / arr.length : null;
+              const currAvg = avg(currDeals);
+              const priorAvg = avg(priorDeals);
+              const fmt = (n: number | null) =>
+                n == null
+                  ? '—'
+                  : n >= 1_000_000
+                    ? `$${(n / 1_000_000).toFixed(2)}MM`
+                    : `$${Math.round(n / 1000).toLocaleString()}K`;
+              const loading = ndaEnteredInRange.isLoading || ndaEnteredPrior.isLoading;
+              const delta =
+                currAvg != null && priorAvg != null && priorAvg !== 0
+                  ? (currAvg - priorAvg) / priorAvg
+                  : null;
+              const subtitle = loading
+                ? 'Loading…'
+                : currAvg == null
+                  ? 'No deals in period'
+                  : delta == null
+                    ? `Prior period: ${fmt(priorAvg)}`
+                    : `${delta >= 0 ? '+' : ''}${(delta * 100).toFixed(1)}% vs prior (${fmt(priorAvg)})`;
+              return (
+                <ConversionCard
+                  title="Avg. New Deal on Board"
+                  value={null}
+                  displayValue={fmt(currAvg)}
+                  subtitle={subtitle}
+                  info={
+                    <div className="space-y-1.5">
+                      <div>
+                        <span className="font-semibold">Metric:</span> average deal value for deals that entered the “NDA / Needs List Sent” stage during the selected timeframe.
+                      </div>
+                      <div>
+                        <span className="font-semibold">Variance:</span> % change vs. the prior period of equal length.
+                      </div>
+                    </div>
+                  }
+                />
+              );
+            })()}
             <ConversionCard
               title="Call-to-Deal Conversion"
               onClick={() => setCallToDealOpen(true)}
