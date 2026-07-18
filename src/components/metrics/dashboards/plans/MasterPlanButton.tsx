@@ -4,6 +4,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MasterPlanDialog } from './MasterPlanDialog';
+import { useCanEditMasterPlan } from '@/hooks/useCanEditMasterPlan';
 
 interface Props {
   className?: string;
@@ -15,6 +16,8 @@ interface Props {
  */
 export function MasterPlanButton({ className }: Props) {
   const [open, setOpen] = useState(false);
+  const { canEditMasterPlan } = useCanEditMasterPlan();
+  if (!canEditMasterPlan) return null;
   return (
     <>
       <TooltipProvider>
