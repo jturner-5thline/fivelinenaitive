@@ -1539,6 +1539,8 @@ function ConversionCard({
   deltaPct,
   deltaLabel,
   higherIsBetter = true,
+  sparkData,
+  sparkFormatter,
 }: {
   title: string;
   value: number | null;
@@ -1555,6 +1557,10 @@ function ConversionCard({
   deltaLabel?: string | null;
   /** When false, negative deltas render green and positive red. */
   higherIsBetter?: boolean;
+  /** Per-month spark values plotted underneath the big number, matching KpiCard. */
+  sparkData?: { month: string; value: number | null }[];
+  /** Tooltip value formatter for the sparkline. */
+  sparkFormatter?: (v: number) => string;
 }) {
   const display =
     displayValue !== undefined
@@ -1649,6 +1655,52 @@ function ConversionCard({
           style={{ color: C.textMuted, fontVariantNumeric: 'tabular-nums' }}
         >
           {subtitle}
+        </div>
+      )}
+      {sparkData && sparkData.length > 0 && (
+        <div style={{ height: 160 }} className="mt-2">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={sparkData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke={C.hairline} vertical={false} />
+              <XAxis
+                dataKey="month"
+                tick={{ fill: C.textFaint, fontSize: 10 }}
+                axisLine={{ stroke: C.hairline }}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: C.textFaint, fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+                width={32}
+                tickFormatter={(v: number) =>
+                  sparkFormatter ? sparkFormatter(v) : String(v)
+                }
+              />
+              <Tooltip
+                contentStyle={{
+                  background: 'rgba(8,8,12,0.95)',
+                  border: `1px solid ${C.surfaceBorder}`,
+                  borderRadius: 8,
+                  color: C.textPrimary,
+                  fontSize: 12,
+                }}
+                formatter={(v: number) =>
+                  sparkFormatter ? sparkFormatter(v) : String(v)
+                }
+              />
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke={C.cyan}
+                strokeWidth={2}
+                dot={{ r: 2.5, fill: C.cyan }}
+                activeDot={{ r: 5, fill: C.cyan, stroke: C.cyan }}
+                connectNulls={false}
+                isAnimationActive={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       )}
     </div>
