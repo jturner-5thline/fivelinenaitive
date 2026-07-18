@@ -4171,6 +4171,8 @@ export function SalesDashboardV2() {
                   subtitle={subtitle}
                   Icon={TrendingUp}
                   deltaPct={delta}
+                  sparkData={avgNewDealSpark}
+                  sparkFormatter={(v) => fmt(v)}
                   info={
                     <div className="space-y-1.5">
                       <div>
