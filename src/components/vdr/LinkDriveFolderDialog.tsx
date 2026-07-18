@@ -133,6 +133,30 @@ function friendlyType(mime: string): string {
   return map[mime] ?? mime.split('/').pop() ?? 'File';
 }
 
+/** Normalize a folder name for fuzzy matching: lowercase, strip punctuation, collapse whitespace. */
+function normalizeFolderName(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[_\-–—/\\|.]+/g, ' ')
+    .replace(/[^a-z0-9\s&]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Pick the best internal-folder match for a Drive folder name.
+ * Priority: exact normalized equality > one contains the other (min length ≥ 3). Returns null when no match. */
+function autoMatchTarget(driveFolderName: string, internalFolders: string[]): string | null {
+  const q = normalizeFolderName(driveFolderName);
+  if (!q) return null;
+  const normalized = internalFolders.map(name => ({ name, norm: normalizeFolderName(name) }));
+  const exact = normalized.find(f => f.norm === q);
+  if (exact) return exact.name;
+  const contains = normalized
+    .filter(f => f.norm.length >= 3 && (f.norm.includes(q) || q.includes(f.norm)))
+    .sort((a, b) => Math.abs(a.norm.length - q.length) - Math.abs(b.norm.length - q.length));
+  return contains[0]?.name ?? null;
+}
+
 export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFolderPath = '/', internalFolders = [] }: Props) {
   const [mode, setMode] = useState<'browse' | 'url'>('browse');
   const [url, setUrl] = useState('');
@@ -154,6 +178,8 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const [showResults, setShowResults] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
+  // Track which folder IDs were auto-matched (vs user-overridden) for the badge.
+  const [autoMatched, setAutoMatched] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!defaultTarget && internalFolders.length) setDefaultTarget(internalFolders[0]);
@@ -163,7 +189,26 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     setUrl(''); setFiles([]); setSelected(new Set()); setSearch(''); setMapping({});
     setCrumbs([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]); setMode('browse');
     setProgress([]); setShowResults(false); setUrlError(null); setPreviewingId(null);
+    setAutoMatched(new Set());
   };
+
+  // Auto-match Drive subfolder names to Internal data-room folders whenever the file list changes.
+  useEffect(() => {
+    if (!internalFolders.length || !files.length) return;
+    setMapping(prev => {
+      const next = { ...prev };
+      const auto = new Set<string>();
+      for (const f of files) {
+        if (f.mimeType !== FOLDER_MIME) continue;
+        // Respect any explicit user override already present.
+        if (next[f.id]) continue;
+        const match = autoMatchTarget(f.name, internalFolders);
+        if (match) { next[f.id] = match; auto.add(f.id); }
+      }
+      setAutoMatched(auto);
+      return next;
+    });
+  }, [files, internalFolders]);
 
   const browse = useCallback(async (folderId: string, name?: string, replace?: boolean) => {
     setLoading(true); setSelected(new Set()); setSearch(''); setMapping({});
@@ -418,6 +463,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const selectedFileRows = selectedFiles.filter(f => f.mimeType !== FOLDER_MIME);
   const selectedFolderRows = selectedFiles.filter(f => f.mimeType === FOLDER_MIME);
   const selectedTotalBytes = selectedFileRows.reduce((sum, f) => sum + (Number(f.size) || 0), 0);
+  const unmatchedSelected = selectedFolderRows.filter(f => !mapping[f.id]);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
