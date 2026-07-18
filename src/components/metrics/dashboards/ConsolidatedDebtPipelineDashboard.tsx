@@ -1606,6 +1606,38 @@ function CompactFundedBarChart({
               <span className="text-muted-foreground font-normal"> vs start of period</span>
             </p>
           )}
+          {showPlanOverlay && planCoverage > 0 && (() => {
+            const diff = total - planTotal;
+            const pct = planTotal !== 0 ? (diff / Math.abs(planTotal)) * 100 : null;
+            const positive = diff >= 0;
+            return (
+              <p className="text-[11px] font-medium mt-1 text-amber-300/90">
+                Plan: {valueFormatter(planTotal)}
+                {' · '}
+                <span className={positive ? 'text-emerald-400' : 'text-rose-400'}>
+                  {positive ? '▲ +' : '▼ '}{valueFormatter(Math.abs(diff))}
+                  {pct != null ? ` (${positive ? '+' : '−'}${Math.abs(pct).toFixed(1)}%)` : ''}
+                </span>
+                <span className="text-muted-foreground font-normal"> vs plan</span>
+                {planCoverage < buckets.length && (
+                  <span
+                    className="text-muted-foreground/70 font-normal"
+                    title="Some periods have no Master Plan value entered"
+                  >
+                    {' '}· {planCoverage}/{buckets.length} periods
+                  </span>
+                )}
+              </p>
+            );
+          })()}
+          {showPlanOverlay && planCoverage === 0 && !planLookup.isLoading && (
+            <p
+              className="text-[11px] font-medium mt-1 text-muted-foreground/70"
+              title="Enter values in the Master Plan popup to see a plan line here."
+            >
+              No plan values entered for this period
+            </p>
+          )}
         </div>
         <div className="flex items-start gap-2">
           <div className="text-right">
