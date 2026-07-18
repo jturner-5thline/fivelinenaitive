@@ -61,8 +61,8 @@ export const PLAN_SECTIONS: PlanSectionDef[] = [
       { key: 'clientsReceivingTerms', label: 'Clients Receiving Terms', unit: 'count' },
       { key: 'termsSigned',           label: 'Terms Signed',            unit: 'count' },
       { key: 'volumeTermsSigned',     label: 'Volume of Terms Signed',  unit: 'currency' },
-      { key: 'dealsClosed',           label: 'Deals Closed',            unit: 'count' },
-      { key: 'dollarsFunded',         label: 'Dollars Funded',          unit: 'currency' },
+      { key: 'dealsClosed',           label: 'FinServ: Deals on the Board', unit: 'count' },
+      { key: 'dollarsFunded',         label: 'FinServ $ on the Board',      unit: 'currency' },
     ],
   },
   {
@@ -115,8 +115,11 @@ export const NIKI_DEFAULT_PLAN_2026: Record<PlanMetricKey, QuarterlyTargets> = {
   clientsReceivingTerms: { Q1: 3,         Q2: 3,         Q3: 3,         Q4: 3 },
   termsSigned:           { Q1: 3,         Q2: 3,         Q3: 3,         Q4: 3 },
   volumeTermsSigned:     { Q1: 12 * MM,   Q2: 13.4 * MM, Q3: 18 * MM,   Q4: 18 * MM },
-  dealsClosed:           { Q1: 3,         Q2: 3,         Q3: 3,         Q4: 3 },
-  dollarsFunded:         { Q1: 12 * MM,   Q2: 13.4 * MM, Q3: 18 * MM,   Q4: 18 * MM },
+  // FinServ: Deals on the Board / FinServ $ on the Board — plan authored in
+  // Master Plan (Insights → Master Plan). Defaults are 0 so the scorecard
+  // shows a clear "plan not set" state until targets are entered there.
+  dealsClosed:           { Q1: 0,         Q2: 0,         Q3: 0,         Q4: 0 },
+  dollarsFunded:         { Q1: 0,         Q2: 0,         Q3: 0,         Q4: 0 },
   // Pipeline Snapshot — stock measures (end-of-quarter snapshot, not a flow)
   dealsInDevelopment:    { Q1: 16,           Q2: 22,           Q3: 28,           Q4: 34 },
   dollarsInDevelopment:  { Q1: 162.9 * MM,   Q2: 172.1 * MM,   Q3: 181.4 * MM,   Q4: 190.7 * MM },
