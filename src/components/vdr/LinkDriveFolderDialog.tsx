@@ -220,6 +220,16 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     if (!defaultTarget && internalFolders.length) setDefaultTarget(internalFolders[0]);
   }, [internalFolders, defaultTarget]);
 
+  // Persist user-confirmed mappings whenever they change. Auto-matched-only entries
+  // are excluded so they don't pollute stored preferences.
+  useEffect(() => {
+    const persisted: Record<string, string> = {};
+    for (const id of userMapped) {
+      if (mapping[id]) persisted[id] = mapping[id];
+    }
+    savePersistedMapping(persisted);
+  }, [mapping, userMapped]);
+
   const reset = () => {
     setUrl(''); setFiles([]); setSelected(new Set()); setSearch('');
     // Re-hydrate persisted mappings on close so they're available next open.
