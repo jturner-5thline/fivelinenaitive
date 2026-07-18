@@ -741,7 +741,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
           ) : (
             <>
               <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={importing}>Cancel</Button>
-              <Button onClick={handleImport} disabled={selected.size === 0 || importing || unmatchedSelected.length > 0}>
+              <Button onClick={() => handleImport()} disabled={selected.size === 0 || importing || unmatchedSelected.length > 0}>
                 {importing && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
                 Import {selected.size > 0 ? `${selected.size} ` : ''}to Internal
               </Button>
