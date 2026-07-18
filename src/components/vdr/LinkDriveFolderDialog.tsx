@@ -702,6 +702,30 @@ function ImportProgressPanel({ items, importing }: { items: ImportItem[]; import
   const inflight = items.filter(i => i.status === 'importing').length;
   const queued = items.filter(i => i.status === 'queued').length;
   const pct = total === 0 ? 0 : Math.round(((completed + failed) / total) * 100);
+  const [filter, setFilter] = useState<'all' | 'completed' | 'failed' | 'importing' | 'queued'>('all');
+  const visible = filter === 'all' ? items : items.filter(i => i.status === filter);
+
+  const copyErrors = () => {
+    const lines = items
+      .filter(i => i.status === 'failed')
+      .map(i => `${i.name}\t${i.error ?? 'Upload failed'}`);
+    if (lines.length === 0) return;
+    navigator.clipboard.writeText(lines.join('\n'));
+    toast.success(`Copied ${lines.length} error${lines.length === 1 ? '' : 's'} to clipboard`);
+  };
+
+  const Tab = ({ id, label, count, tone }: { id: typeof filter; label: string; count: number; tone?: string }) => (
+    <button
+      type="button"
+      onClick={() => setFilter(id)}
+      className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wide border transition-colors ${
+        filter === id ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/40 text-muted-foreground border-transparent hover:bg-muted'
+      } ${tone ?? ''}`}
+    >
+      {label} <span className="ml-1 opacity-80">{count}</span>
+    </button>
+  );
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-xs">
@@ -716,12 +740,30 @@ function ImportProgressPanel({ items, importing }: { items: ImportItem[]; import
         </span>
       </div>
       <Progress value={pct} className="h-1.5" />
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-1 flex-wrap">
+          <Tab id="all" label="All" count={total} />
+          <Tab id="completed" label="Succeeded" count={completed} />
+          <Tab id="failed" label="Failed" count={failed} />
+          <Tab id="importing" label="In progress" count={inflight} />
+          <Tab id="queued" label="Queued" count={queued} />
+        </div>
+        {failed > 0 && (
+          <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={copyErrors}>
+            Copy errors
+          </Button>
+        )}
+      </div>
       <div className="min-h-[240px] max-h-[380px] overflow-y-auto border rounded-md divide-y">
         {items.length === 0 ? (
           <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
             Preparing import…
           </div>
-        ) : items.map(item => (
+        ) : visible.length === 0 ? (
+          <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
+            No files in this view.
+          </div>
+        ) : visible.map(item => (
           <div key={item.key} className="flex items-center gap-2 px-3 py-2 text-sm">
             {item.status === 'completed' && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />}
             {item.status === 'failed' && <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />}
