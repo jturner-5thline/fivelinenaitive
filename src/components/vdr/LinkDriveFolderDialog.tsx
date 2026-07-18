@@ -173,7 +173,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
 
   const handleListFromUrl = async () => {
     const check = validateFolderInput(url);
-    if (!check.ok) { setUrlError(check.message); return; }
+    if (check.ok === false) { setUrlError(check.message); return; }
     setUrlError(null);
     setLoading(true); setSelected(new Set()); setMapping({});
     try {
