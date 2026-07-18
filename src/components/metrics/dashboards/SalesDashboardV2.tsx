@@ -125,7 +125,7 @@ const ROW_ORDER: RowDef[] = [
 
 const PLAN: Record<MetricKey, number[]> = {
   salesCalls: [44, 46, 48, 48, 50, 50, 52, 52, 54],
-  dealsOnBoard: [11, 11, 11, 11, 11, 11, 11, 11, 11],
+  dealsOnBoard: [2, 2, 2, 2, 2, 2, 2, 2, 2],
   dollarsOnBoard: [30.3, 30.3, 30.3, 30.3, 30.3, 30.3, 30.3, 30.3, 30.3],
   proposalsIssued: [7, 7, 7, 7, 7, 7, 7, 7, 7],
   dollarsProposed: [20, 20, 20, 20, 20, 20, 20, 20, 20],
