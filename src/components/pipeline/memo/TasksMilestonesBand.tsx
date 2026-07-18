@@ -1104,6 +1104,37 @@ function TasksMilestonesDetailDialog({
   const [editingAssigneeId, setEditingAssigneeId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const taskOrderKey = `tm-order-tasks-${deal.id}`;
+  const milestoneOrderKey = `tm-order-milestones-${deal.id}`;
+  const [taskOrder, setTaskOrder] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(taskOrderKey) || '[]'); } catch { return []; }
+  });
+  const [milestoneOrder, setMilestoneOrder] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(milestoneOrderKey) || '[]'); } catch { return []; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(taskOrderKey, JSON.stringify(taskOrder)); } catch {}
+  }, [taskOrder, taskOrderKey]);
+  useEffect(() => {
+    try { localStorage.setItem(milestoneOrderKey, JSON.stringify(milestoneOrder)); } catch {}
+  }, [milestoneOrder, milestoneOrderKey]);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const applyManualOrder = <T extends { id?: string | null }>(list: T[], order: string[]): T[] => {
+    if (order.length === 0) return list;
+    const byId = new Map(list.map((item) => [item.id ?? '', item] as const));
+    const seen = new Set<string>();
+    const ordered: T[] = [];
+    for (const id of order) {
+      const item = byId.get(id);
+      if (item) { ordered.push(item); seen.add(id); }
+    }
+    for (const item of list) {
+      const id = item.id ?? '';
+      if (!seen.has(id)) ordered.push(item);
+    }
+    return ordered;
+  };
+
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const matchesQuery = (haystack: (string | null | undefined)[]) => {
     if (!normalizedQuery) return true;
@@ -1117,8 +1148,8 @@ function TasksMilestonesDetailDialog({
       const tb = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
       return ta - tb;
     });
-    return list;
-  }, [tasks]);
+    return applyManualOrder(list, taskOrder);
+  }, [tasks, taskOrder]);
 
   const sortedMilestones = useMemo(() => {
     const list = [...(milestones || [])];
@@ -1128,10 +1159,28 @@ function TasksMilestonesDetailDialog({
       const tb = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
       return ta - tb;
     });
-    // Always include completed milestones so the user can see the full
-    // history of what's been achieved on the deal.
-    return list;
-  }, [milestones]);
+    return applyManualOrder(list, milestoneOrder);
+  }, [milestones, milestoneOrder]);
+
+  const dndDisabled = normalizedQuery.length > 0;
+  const handleTaskDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = sortedTasks.map((t) => t.id);
+    const oldIdx = ids.indexOf(String(active.id));
+    const newIdx = ids.indexOf(String(over.id));
+    if (oldIdx < 0 || newIdx < 0) return;
+    setTaskOrder(arrayMove(ids, oldIdx, newIdx));
+  };
+  const handleMilestoneDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = sortedMilestones.map((m) => m.id || m.title);
+    const oldIdx = ids.indexOf(String(active.id));
+    const newIdx = ids.indexOf(String(over.id));
+    if (oldIdx < 0 || newIdx < 0) return;
+    setMilestoneOrder(arrayMove(ids, oldIdx, newIdx));
+  };
 
   const filteredTasks = useMemo(
     () => sortedTasks.filter((t) => matchesQuery([t.title, t.assignedToName, t.requestedByName])),
