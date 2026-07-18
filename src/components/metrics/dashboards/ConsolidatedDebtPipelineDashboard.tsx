@@ -222,6 +222,90 @@ function MetricKPICard({
   onClick: () => void;
   onSecondaryClick?: () => void;
 }) {
+  const { mode, planValues, periodLabel, isPlanLoading } = useComparisonMode();
+  const planMap = DEBT_ADVISORY_KPI_TO_PLAN[config.id];
+  const primaryPlanKey = planMap?.primary;
+  const secondaryPlanKey = planMap?.secondary;
+
+  const buildPlanChipProps = (
+    planKey: string | undefined,
+    currentValue: number | undefined,
+    formatDiff: (v: number) => string,
+  ) => {
+    if (!planKey) return { missing: true as const, reason: 'unmapped' };
+    if (currentValue == null) return { missing: true as const, reason: 'loading' };
+    const planValue = planValues.get(planKey);
+    if (planValue == null) return { missing: true as const, reason: 'no-plan' };
+    const diff = currentValue - planValue;
+    const pct = planValue !== 0 ? (diff / Math.abs(planValue)) * 100 : null;
+    return {
+      missing: false as const,
+      diff,
+      formatDiff,
+      pct,
+      planValue,
+      priorLabel: `Plan · ${periodLabel}`,
+    };
+  };
+
+  const renderPlanChip = (
+    chip: ReturnType<typeof buildPlanChipProps>,
+    size: 'primary' | 'secondary' = 'primary',
+  ) => {
+    const textSize = size === 'primary' ? 'text-[13px]' : 'text-[13px]';
+    if (chip.missing) {
+      if (isPlanLoading) {
+        return (
+          <span className={cn('text-muted-foreground/60 font-mono tabular-nums', textSize)}>
+            …
+          </span>
+        );
+      }
+      const label =
+        chip.reason === 'no-plan'
+          ? `— No plan for ${periodLabel}`
+          : chip.reason === 'unmapped'
+            ? '— No plan'
+            : '—';
+      return (
+        <span
+          className={cn('text-muted-foreground/70 font-mono tabular-nums', textSize)}
+          title={
+            chip.reason === 'no-plan'
+              ? `No Master Plan value entered for ${periodLabel}. Open the master plan dialog to enter one.`
+              : chip.reason === 'unmapped'
+                ? 'This KPI is not tracked in the Master Plan.'
+                : 'Waiting for data'
+          }
+        >
+          {label}
+        </span>
+      );
+    }
+    const { diff, formatDiff, pct, priorLabel } = chip;
+    const neutral = diff === 0;
+    const improved = diff > 0;
+    const arrow = neutral ? '–' : improved ? '▲' : '▼';
+    const toneClass = neutral
+      ? 'text-muted-foreground'
+      : improved
+        ? 'text-emerald-400'
+        : 'text-rose-400';
+    const sign = neutral ? '' : improved ? '+' : '−';
+    const signedDiff = `${sign}${formatDiff(Math.abs(diff))}`;
+    const pctText = pct == null ? '—' : `${sign}${Math.abs(pct).toFixed(1)}%`;
+    return (
+      <span
+        className={cn('inline-flex items-baseline gap-1 font-mono tabular-nums', textSize, toneClass)}
+        title={`vs ${priorLabel}`}
+      >
+        <span>{arrow}</span>
+        <span className="font-semibold">{signedDiff}</span>
+        <span className="opacity-80">({pctText})</span>
+      </span>
+    );
+  };
+
   return (
     <Card
       className={cn(
@@ -250,7 +334,7 @@ function MetricKPICard({
                 {config.value}
               </button>
             )}
-            {!config.isLoading && config.changePct && (() => {
+            {!config.isLoading && mode === 'variance' && config.changePct && (() => {
               const { delta, prevPct, latestLabel, prevLabel } = config.changePct;
               const relPct = prevPct > 0 ? (delta / prevPct) * 100 : null;
               if (relPct == null || !Number.isFinite(relPct)) return null;
@@ -275,7 +359,7 @@ function MetricKPICard({
                 </span>
               );
             })()}
-            {!config.isLoading && config.delta && (() => {
+            {!config.isLoading && mode === 'variance' && config.delta && (() => {
               const { diff, formatDiff, pct, priorLabel } = config.delta;
               const neutral = diff === 0;
               const improved = diff > 0;
@@ -301,6 +385,14 @@ function MetricKPICard({
                 </span>
               );
             })()}
+            {!config.isLoading && mode === 'plan' && renderPlanChip(
+              buildPlanChipProps(
+                primaryPlanKey,
+                config.delta?.currentValue,
+                config.delta?.formatDiff ?? ((v: number) => `${Math.round(v)}`),
+              ),
+              'primary',
+            )}
           </div>
           {config.secondary && (
             <div className="mt-1 pt-1 border-t border-border/40">
@@ -316,7 +408,7 @@ function MetricKPICard({
                   {config.secondary.value}
                 </button>
               )}
-              {!config.secondary.isLoading && config.secondary.delta && (() => {
+              {!config.secondary.isLoading && mode === 'variance' && config.secondary.delta && (() => {
                 const { diff, formatDiff, pct, priorLabel } = config.secondary.delta;
                 const neutral = diff === 0;
                 const improved = diff > 0;
@@ -338,6 +430,14 @@ function MetricKPICard({
                   </span>
                 );
               })()}
+              {!config.secondary.isLoading && mode === 'plan' && renderPlanChip(
+                buildPlanChipProps(
+                  secondaryPlanKey,
+                  config.secondary.delta?.currentValue,
+                  config.secondary.delta?.formatDiff ?? ((v: number) => `${Math.round(v)}`),
+                ),
+                'secondary',
+              )}
               </div>
             </div>
           )}
