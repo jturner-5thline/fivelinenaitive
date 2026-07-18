@@ -33,6 +33,28 @@ const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const ROOT_FOLDER_ID = '1J1U31M05ZmQe6ekNpQWQ-DL9g7BdGEv2';
 const ROOT_FOLDER_NAME = '5th Line Shared Drive';
 
+const DRIVE_FOLDER_URL_RE = /^https?:\/\/(?:drive|docs)\.google\.com\/.*(?:\/folders\/[a-zA-Z0-9_-]{10,}|[?&]id=[a-zA-Z0-9_-]{10,})/i;
+const RAW_ID_RE = /^[a-zA-Z0-9_-]{20,}$/;
+
+function validateFolderInput(raw: string): { ok: true } | { ok: false; message: string } {
+  const v = raw.trim();
+  if (!v) return { ok: false, message: 'Paste a Google Drive folder link to continue.' };
+  if (RAW_ID_RE.test(v)) return { ok: true };
+  let parsed: URL;
+  try { parsed = new URL(v); } catch { return { ok: false, message: 'That isn\'t a valid URL. Paste a link like https://drive.google.com/drive/folders/…' }; }
+  const host = parsed.hostname.toLowerCase();
+  if (host !== 'drive.google.com' && host !== 'docs.google.com') {
+    return { ok: false, message: 'Only Google Drive links are supported (drive.google.com).' };
+  }
+  if (/\/file\/d\//i.test(parsed.pathname)) {
+    return { ok: false, message: 'That link points to a file, not a folder. Open the folder in Drive and copy its URL.' };
+  }
+  if (!DRIVE_FOLDER_URL_RE.test(v)) {
+    return { ok: false, message: 'Couldn\'t find a folder ID in that URL. It should look like https://drive.google.com/drive/folders/…' };
+  }
+  return { ok: true };
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -82,6 +104,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   });
   const [progress, setProgress] = useState<ImportItem[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [urlError, setUrlError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!defaultTarget && internalFolders.length) setDefaultTarget(internalFolders[0]);
@@ -90,7 +113,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const reset = () => {
     setUrl(''); setFiles([]); setSelected(new Set()); setSearch(''); setMapping({});
     setCrumbs([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]); setMode('browse');
-    setProgress([]); setShowResults(false);
+    setProgress([]); setShowResults(false); setUrlError(null);
   };
 
   const browse = useCallback(async (folderId: string, name?: string, replace?: boolean) => {
@@ -149,22 +172,28 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   };
 
   const handleListFromUrl = async () => {
-    if (!url.trim()) return;
+    const check = validateFolderInput(url);
+    if (!check.ok) { setUrlError(check.message); return; }
+    setUrlError(null);
     setLoading(true); setSelected(new Set()); setMapping({});
     try {
       const { data, error } = await supabase.functions.invoke('drive-folder-import', {
         body: { action: 'list', folder: url.trim() },
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      // Prefer the server's human-readable `message` over the raw error code.
+      const serverMessage = (data && (data.message || (typeof data.error === 'string' ? data.error : null))) as string | null;
+      if (error) throw new Error(serverMessage || error.message || 'Failed to list folder');
+      if (data?.error) throw new Error(serverMessage || 'Failed to list folder');
       const list: DriveFile[] = data?.files ?? [];
       setFiles(list);
       setSelected(new Set(list.filter(f => f.mimeType !== FOLDER_MIME).map(f => f.id)));
-      setCrumbs([{ id: 'root', name: 'My Drive' }, { id: '__url', name: 'Linked folder' }]);
+      setCrumbs([{ id: 'root', name: 'My Drive' }, { id: '__url', name: data?.folder?.name ?? 'Linked folder' }]);
       if (list.length === 0) toast.info('No files in that folder');
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to list folder';
       console.error(err);
-      toast.error(err instanceof Error ? err.message : 'Failed to list folder');
+      setUrlError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
