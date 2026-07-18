@@ -1,0 +1,126 @@
+/**
+ * Fetches Master Plan values for the Debt Advisory Metrics dashboard so KPI
+ * tiles can render a "Performance to Plan" chip alongside the default
+ * period-over-period variance chip.
+ *
+ * Plan values are entered in the Master Plan popup and live in
+ * `insights_metric_targets` keyed by
+ *   metric_key   = `plan:{dashboardKey}:{widgetKey}`
+ *   period_month = `YYYY-MM`
+ *
+ * A quarter's plan value = sum of the plan values entered for the 3 months
+ * that make up the quarter. Where a widget is "linked" between the
+ * consolidated-debt-pipeline and sales-dashboard-v2 dashboards, we prefer the
+ * consolidated-debt-pipeline entry and fall back to sales-dashboard-v2.
+ */
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
+import type { QuarterOption } from '@/hooks/useQBQuarterlyRevenue';
+
+/**
+ * KPI card id → Master Plan widget keys.
+ * `primary` maps the main tile value; `secondary` maps the tile's optional
+ * secondary value (typically the $ counterpart of a # metric).
+ */
+export const DEBT_ADVISORY_KPI_TO_PLAN: Record<
+  string,
+  { primary?: string; secondary?: string }
+> = {
+  'deals-on-board': { primary: 'deals-on-board', secondary: 'deals-on-board-value' },
+  'proposals-issued': { primary: 'proposals-issued', secondary: 'dollars-proposed' },
+  'debt-deals-signed': { primary: 'deals-signed', secondary: 'dollars-signed' },
+  'terms-issued': { primary: 'terms-issued' },
+  'terms-signed': { primary: 'terms-signed', secondary: 'volume-of-terms-signed' },
+  'deals-closed': { primary: 'deals-closed', secondary: 'dollars-funded' },
+  'total-revenue-opportunity': { primary: 'total-revenue-opportunity' },
+};
+
+const ALL_WIDGET_KEYS = Array.from(
+  new Set(
+    Object.values(DEBT_ADVISORY_KPI_TO_PLAN)
+      .flatMap((m) => [m.primary, m.secondary])
+      .filter((k): k is string => !!k),
+  ),
+);
+
+const DASHBOARD_KEYS = ['consolidated-debt-pipeline', 'sales-dashboard-v2'] as const;
+
+function buildMetricKeys(): string[] {
+  const keys: string[] = [];
+  for (const dash of DASHBOARD_KEYS) {
+    for (const w of ALL_WIDGET_KEYS) keys.push(`plan:${dash}:${w}`);
+  }
+  return keys;
+}
+
+export interface DebtAdvisoryPlanValues {
+  /** Widget key → summed plan value for the resolved period. */
+  values: Map<string, number>;
+  /** Human label for the resolved period (e.g. "Q3 2026"). */
+  periodLabel: string;
+  isLoading: boolean;
+}
+
+export function useDebtAdvisoryPlanValues(
+  selectedQuarter: QuarterOption | undefined,
+): DebtAdvisoryPlanValues {
+  const { company } = useCompany();
+
+  const periodKeys = useMemo(
+    () => (selectedQuarter?.months ?? []).map((m) => m.key),
+    [selectedQuarter],
+  );
+
+  const query = useQuery({
+    queryKey: [
+      'debt-advisory-plan-values',
+      company?.id ?? null,
+      selectedQuarter?.value ?? null,
+    ],
+    enabled: !!selectedQuarter,
+    staleTime: 30_000,
+    queryFn: async () => {
+      if (!selectedQuarter || periodKeys.length === 0) return new Map<string, number>();
+      const metricKeys = buildMetricKeys();
+      let q = supabase
+        .from('insights_metric_targets' as any)
+        .select('metric_key, period_month, target_value')
+        .in('metric_key', metricKeys)
+        .in('period_month', periodKeys);
+      q = company?.id ? q.eq('company_id', company.id) : q.is('company_id', null);
+      const { data, error } = await q;
+      if (error) throw error;
+
+      // Sum by (dashboard, widget). Prefer consolidated-debt-pipeline if both
+      // dashboards have entries for the same widget.
+      type Row = { metric_key: string; period_month: string; target_value: number | null };
+      const byDashWidget = new Map<string, number>();
+      for (const raw of ((data ?? []) as unknown as Row[])) {
+        const parts = raw.metric_key.split(':');
+        if (parts.length < 3 || parts[0] !== 'plan') continue;
+        const dash = parts[1];
+        const widget = parts.slice(2).join(':');
+        const key = `${dash}::${widget}`;
+        const cur = byDashWidget.get(key) ?? 0;
+        byDashWidget.set(key, cur + Number(raw.target_value ?? 0));
+      }
+
+      const result = new Map<string, number>();
+      for (const widget of ALL_WIDGET_KEYS) {
+        const primary = byDashWidget.get(`consolidated-debt-pipeline::${widget}`);
+        const fallback = byDashWidget.get(`sales-dashboard-v2::${widget}`);
+        const value = primary ?? fallback;
+        if (value != null) result.set(widget, value);
+      }
+      return result;
+    },
+  });
+
+  return {
+    values: query.data ?? new Map<string, number>(),
+    periodLabel: selectedQuarter?.label ?? '',
+    isLoading: query.isLoading,
+  };
+}
