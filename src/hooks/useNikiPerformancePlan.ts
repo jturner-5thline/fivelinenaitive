@@ -2,6 +2,7 @@ import { createContext, createElement, useCallback, useContext, useEffect, useMe
 import { canEditPerformanceModel } from '@/lib/performanceModelAccess';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MetricRowKey, QuarterKey } from '@/hooks/useNikiPerformanceMetrics';
+import { useMasterPlanQuarterly } from '@/hooks/useMasterPlanQuarterly';
 
 /**
  * Quarter-driven Performance Plan for Niki Heikali — 2026.
@@ -187,6 +188,11 @@ function useNikiPerformancePlanState(): UseNikiPerformancePlan {
     () => structuredCloneDefault(),
   );
   const [isLoaded, setIsLoaded] = useState(false);
+  // Master Plan (Insights → Master Plan) is the source of truth for plan
+  // values. Any quarter with a Master Plan target overrides the localStorage
+  // rawPlan so the scorecard "Plan" column reflects what jturner/jmoffitt
+  // authored in the Master Plan dialog.
+  const { plan: masterPlanQ } = useMasterPlanQuarterly();
 
   useEffect(() => {
     try {
@@ -241,7 +247,20 @@ function useNikiPerformancePlanState(): UseNikiPerformancePlan {
     setRawPlan(structuredCloneDefault());
   }, [canEdit]);
 
-  const plan = useMemo(() => resolveTotals(rawPlan), [rawPlan]);
+  const plan = useMemo(() => {
+    // Overlay Master Plan quarterly targets on top of local rawPlan so any
+    // quarter authored in Master Plan wins over the localStorage defaults.
+    const merged: Record<PlanMetricKey, QuarterlyTargets> = {} as Record<
+      PlanMetricKey,
+      QuarterlyTargets
+    >;
+    for (const m of PLAN_METRICS) {
+      const local = rawPlan[m.key];
+      const mp = masterPlanQ[m.key];
+      merged[m.key] = mp ? { ...local, ...mp } : local;
+    }
+    return resolveTotals(merged);
+  }, [rawPlan, masterPlanQ]);
 
   return { plan, rawPlan, isLoaded, setTarget, resetAll };
 }
