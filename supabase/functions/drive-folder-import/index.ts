@@ -61,10 +61,43 @@ Deno.serve(async (req) => {
     if (action === 'list') {
       const folderId = parseFolderId(String(body.folder ?? ''));
       if (!folderId) {
-        return new Response(JSON.stringify({ error: 'Invalid folder URL or ID' }), {
+        return new Response(JSON.stringify({
+          error: 'invalid_url',
+          message: "That doesn't look like a Google Drive folder link. Paste a URL like https://drive.google.com/drive/folders/…",
+        }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
+      }
+      // Verify the target exists, is accessible, and is actually a folder.
+      const metaRes = await gatewayFetch(
+        `/drive/v3/files/${encodeURIComponent(folderId)}?fields=${encodeURIComponent('id,name,mimeType,trashed')}&supportsAllDrives=true`,
+      );
+      if (!metaRes.ok) {
+        const errText = await metaRes.text();
+        console.error(`Drive metadata failed [${metaRes.status}]: ${errText}`);
+        const message = metaRes.status === 404
+          ? "That folder doesn't exist or hasn't been shared with the connected Drive account."
+          : metaRes.status === 403
+            ? "The connected Drive account doesn't have access to that folder. Share it with the account and try again."
+            : `Google Drive rejected the request (${metaRes.status}).`;
+        return new Response(JSON.stringify({ error: 'inaccessible', status: metaRes.status, message, details: errText }), {
+          status: metaRes.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const meta = await metaRes.json();
+      if (meta?.trashed) {
+        return new Response(JSON.stringify({
+          error: 'trashed',
+          message: `"${meta.name ?? 'That folder'}" is in the Drive trash. Restore it and try again.`,
+        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      if (meta?.mimeType !== 'application/vnd.google-apps.folder') {
+        return new Response(JSON.stringify({
+          error: 'not_a_folder',
+          message: `"${meta?.name ?? 'That link'}" points to a file, not a folder. Paste a folder URL instead.`,
+        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       const q = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
       const fields = encodeURIComponent('files(id,name,mimeType,size,modifiedTime)');
@@ -75,11 +108,12 @@ Deno.serve(async (req) => {
       if (!res.ok) {
         console.error(`Drive list failed [${res.status}]: ${text}`);
         return new Response(
-          JSON.stringify({ error: 'Drive list failed', status: res.status, details: text }),
+          JSON.stringify({ error: 'list_failed', status: res.status, message: 'Failed to list folder contents.', details: text }),
           { status: res.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
-      return new Response(text, {
+      const parsed = JSON.parse(text);
+      return new Response(JSON.stringify({ folder: { id: meta.id, name: meta.name }, ...parsed }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
