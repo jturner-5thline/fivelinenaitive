@@ -3022,7 +3022,7 @@ function MetricDrilldownDialog({
     const start = view.rangeStart;
     const end = view.rangeEnd;
     dealsInPeriod = dealsOnBoard.filter((d) => {
-      const c = new Date('created_at' in d ? d.created_at : d.entered_at);
+      const c = new Date('created_at' in d ? d.created_at : d.changed_at);
       return c >= start && c <= end;
     });
     if (focus.monthIndex !== undefined && focus.monthIndex >= 0) {
@@ -3031,7 +3031,7 @@ function MetricDrilldownDialog({
       const fy = f.getUTCFullYear();
       const fm = f.getUTCMonth();
       dealsInPeriod = dealsInPeriod.filter((d) => {
-        const c = new Date('created_at' in d ? d.created_at : d.entered_at);
+        const c = new Date('created_at' in d ? d.created_at : d.changed_at);
         return c.getUTCFullYear() === fy && c.getUTCMonth() === fm;
       });
     }
@@ -3049,7 +3049,7 @@ function MetricDrilldownDialog({
     const start = view.rangeStart;
     const end = view.rangeEnd;
     proposalsInPeriod = proposalsIssued.filter((d) => {
-      const c = new Date(d.entered_at);
+      const c = new Date(d.changed_at);
       return c >= start && c <= end;
     });
     if (focus.monthIndex !== undefined && focus.monthIndex >= 0) {
@@ -3058,7 +3058,7 @@ function MetricDrilldownDialog({
       const fy = f.getUTCFullYear();
       const fm = f.getUTCMonth();
       proposalsInPeriod = proposalsInPeriod.filter((d) => {
-        const c = new Date(d.entered_at);
+        const c = new Date(d.changed_at);
         return c.getUTCFullYear() === fy && c.getUTCMonth() === fm;
       });
     }
@@ -3301,7 +3301,7 @@ function MetricDrilldownDialog({
                   </thead>
                   <tbody>
                     {dealsInPeriod.map((d) => {
-                      const eventDate = 'created_at' in d ? d.created_at : d.entered_at;
+                      const eventDate = 'created_at' in d ? d.created_at : d.changed_at;
                       const when = new Date(eventDate).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
@@ -3362,7 +3362,7 @@ function MetricDrilldownDialog({
                   </thead>
                   <tbody>
                     {proposalsInPeriod.map((d) => {
-                      const when = new Date(d.entered_at).toLocaleDateString('en-US', {
+                      const when = new Date(d.changed_at).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
@@ -3707,7 +3707,7 @@ export function SalesDashboardV2() {
       cursor.setUTCMonth(cursor.getUTCMonth() + 1);
     }
     for (const d of ndaEnteredInRange.deals) {
-      const dt = new Date(d.entered_at);
+      const dt = new Date(d.changed_at);
       const k = monthKey(dt);
       const bucket = buckets.get(k);
       if (!bucket) continue;
@@ -3744,7 +3744,7 @@ export function SalesDashboardV2() {
       if (b) b.calls += 1;
     }
     for (const ev of ndaTtmEvents.events) {
-      const k = monthKey(new Date(ev.entered_at));
+      const k = monthKey(new Date(ev.changed_at));
       const b = buckets.get(k);
       if (b) b.deals.add(ev.deal_id);
     }
@@ -3766,7 +3766,7 @@ export function SalesDashboardV2() {
       cursor.setUTCMonth(cursor.getUTCMonth() + 1);
     }
     for (const ev of ndaTtmEvents.events) {
-      const k = monthKey(new Date(ev.entered_at));
+      const k = monthKey(new Date(ev.changed_at));
       const b = buckets.get(k);
       if (!b || b.total.has(ev.deal_id)) continue;
       b.total.add(ev.deal_id);
