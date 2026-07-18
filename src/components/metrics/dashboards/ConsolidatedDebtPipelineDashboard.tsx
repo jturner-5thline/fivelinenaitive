@@ -3054,6 +3054,7 @@ export function ConsolidatedDebtPipelineDashboard({
         onStageChange={() => { /* stage changes handled inside embedded deal detail */ }}
       />
       </OpenDealContext.Provider>
+      </ComparisonModeContext.Provider>
     </div>
   );
 }
