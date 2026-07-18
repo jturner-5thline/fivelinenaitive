@@ -1537,6 +1537,10 @@ function ConversionCard({
   onClick,
   info,
   displayValue,
+  Icon,
+  deltaPct,
+  deltaLabel,
+  higherIsBetter = true,
 }: {
   title: string;
   value: number | null;
@@ -1545,6 +1549,14 @@ function ConversionCard({
   info?: React.ReactNode;
   /** Overrides the default percentage rendering (e.g. currency). */
   displayValue?: string;
+  /** Optional icon rendered in the header square to match KpiCard. */
+  Icon?: LucideIcon;
+  /** Signed delta as a fraction (0.12 = +12%). Rendered as a chip like KpiCard. */
+  deltaPct?: number | null;
+  /** Optional custom label for the delta chip (e.g. "+3.4 pts"). Overrides percent formatting. */
+  deltaLabel?: string | null;
+  /** When false, negative deltas render green and positive red. */
+  higherIsBetter?: boolean;
 }) {
   const display =
     displayValue !== undefined
@@ -1553,10 +1565,13 @@ function ConversionCard({
         ? '—'
         : `${(value * 100).toFixed(value >= 1 ? 0 : 1)}%`;
   const clickable = !!onClick;
+  const hasDelta = deltaPct != null && Number.isFinite(deltaPct);
+  const positive = hasDelta ? (deltaPct as number) >= 0 : true;
+  const good = higherIsBetter ? positive : !positive;
   return (
     <div
       style={glassStyle}
-      className={`p-4 flex flex-col gap-2 ${clickable ? 'cursor-pointer transition-colors hover:bg-white/[0.04]' : ''}`}
+      className={`relative p-4 flex flex-col gap-2 overflow-hidden ${clickable ? 'cursor-pointer transition-transform hover:-translate-y-[1px] hover:brightness-110' : ''}`}
       onClick={onClick}
       role={clickable ? 'button' : undefined}
       tabIndex={clickable ? 0 : undefined}
@@ -1571,7 +1586,20 @@ function ConversionCard({
           : undefined
       }
     >
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
+        {Icon && (
+          <div
+            className="flex items-center justify-center rounded-lg"
+            style={{
+              width: 28,
+              height: 28,
+              background: 'rgba(157,162,245,0.14)',
+              color: C.periwinkle,
+            }}
+          >
+            <Icon size={14} />
+          </div>
+        )}
         <div
           className="text-[10px] font-medium uppercase"
           style={{ color: C.textMuted, letterSpacing: '0.08em' }}
@@ -1598,11 +1626,24 @@ function ConversionCard({
           </TooltipProvider>
         )}
       </div>
-      <div
-        className="text-3xl font-semibold leading-none"
-        style={{ color: C.textPrimary, fontVariantNumeric: 'tabular-nums' }}
-      >
-        {display}
+      <div className="flex items-baseline gap-2 mt-1">
+        <div
+          className="text-3xl font-semibold leading-none"
+          style={{ color: C.textPrimary, fontVariantNumeric: 'tabular-nums' }}
+        >
+          {display}
+        </div>
+        {(hasDelta || deltaLabel) && (
+          <div
+            className="flex items-center gap-0.5 text-xs font-medium"
+            style={{ color: good ? C.cyan : C.rose, fontVariantNumeric: 'tabular-nums' }}
+          >
+            {positive ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+            {deltaLabel != null
+              ? deltaLabel
+              : `${positive ? '+' : '−'}${Math.abs(Math.round((deltaPct as number) * 100))}%`}
+          </div>
+        )}
       </div>
       {subtitle && (
         <div
