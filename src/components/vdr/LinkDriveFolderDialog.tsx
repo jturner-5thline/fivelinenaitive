@@ -3,8 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, FolderOpen, FileText, Folder, ChevronRight, Search, Home, ArrowLeft, Link2 } from 'lucide-react';
+import { Loader2, FolderOpen, FileText, Folder, ChevronRight, Search, Home, ArrowLeft, Link2, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -18,6 +19,15 @@ interface DriveFile {
 }
 
 interface Crumb { id: string; name: string; }
+
+type ImportStatus = 'queued' | 'importing' | 'completed' | 'failed';
+interface ImportItem {
+  key: string;
+  name: string;
+  target: string;
+  status: ImportStatus;
+  error?: string;
+}
 
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const ROOT_FOLDER_ID = '1J1U31M05ZmQe6ekNpQWQ-DL9g7BdGEv2';
@@ -70,6 +80,8 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     const cleaned = (defaultFolderPath || '/').replace(/^\/+|\/+$/g, '');
     return cleaned || (internalFolders[0] ?? '');
   });
+  const [progress, setProgress] = useState<ImportItem[]>([]);
+  const [showResults, setShowResults] = useState(false);
 
   useEffect(() => {
     if (!defaultTarget && internalFolders.length) setDefaultTarget(internalFolders[0]);
@@ -78,6 +90,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const reset = () => {
     setUrl(''); setFiles([]); setSelected(new Set()); setSearch(''); setMapping({});
     setCrumbs([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]); setMode('browse');
+    setProgress([]); setShowResults(false);
   };
 
   const browse = useCallback(async (folderId: string, name?: string, replace?: boolean) => {
@@ -160,6 +173,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const handleImport = async () => {
     if (selected.size === 0) return;
     setImporting(true);
+    setShowResults(true);
     let ok = 0; let fail = 0;
 
     const uploadOne = async (df: DriveFile, targetName: string) => {
@@ -173,6 +187,13 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
       const file = new File([blob], finalName, { type: data.mimeType });
       const clean = (targetName || '').replace(/^\/+|\/+$/g, '');
       await onImport(file, clean ? `/${clean}` : '/');
+    };
+
+    const updateItem = (key: string, patch: Partial<ImportItem>) => {
+      setProgress(prev => prev.map(it => it.key === key ? { ...it, ...patch } : it));
+    };
+    const addItems = (items: ImportItem[]) => {
+      setProgress(prev => [...prev, ...items]);
     };
 
     // Recursively collect every file inside a Drive folder.
@@ -195,35 +216,77 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
       return out;
     };
 
+    // Seed queue with top-level selected items (folders shown as placeholders until expanded).
+    const seed: ImportItem[] = files
+      .filter(f => selected.has(f.id))
+      .map(f => ({
+        key: `top:${f.id}`,
+        name: f.mimeType === FOLDER_MIME ? `${f.name} (folder)` : f.name,
+        target: defaultTarget,
+        status: 'queued' as ImportStatus,
+      }));
+    setProgress(seed);
+
     for (const f of files) {
       if (!selected.has(f.id)) continue;
       const target = defaultTarget;
-      if (!target) { fail++; continue; }
+      if (!target) {
+        updateItem(`top:${f.id}`, { status: 'failed', error: 'No target folder' });
+        fail++; continue;
+      }
 
       if (f.mimeType === FOLDER_MIME) {
+        updateItem(`top:${f.id}`, { status: 'importing' });
         try {
           const children = await collectFiles(f.id);
-          if (children.length === 0) fail++;
-          for (const child of children) {
-            try { await uploadOne(child, target); ok++; }
-            catch (err) { console.error(`Failed to import ${child.name}`, err); fail++; }
+          if (children.length === 0) {
+            updateItem(`top:${f.id}`, { status: 'failed', error: 'Folder is empty' });
+            fail++;
+          } else {
+            // Replace folder placeholder with its child items.
+            const childItems: ImportItem[] = children.map((c, i) => ({
+              key: `${f.id}:${c.id}:${i}`,
+              name: `${f.name}/${c.name}`,
+              target,
+              status: 'queued' as ImportStatus,
+            }));
+            setProgress(prev => prev.flatMap(it => it.key === `top:${f.id}` ? childItems : [it]));
+            for (const child of children) {
+              const key = childItems.find(ci => ci.name === `${f.name}/${child.name}`)?.key;
+              if (key) updateItem(key, { status: 'importing' });
+              try {
+                await uploadOne(child, target);
+                if (key) updateItem(key, { status: 'completed' });
+                ok++;
+              } catch (err) {
+                console.error(`Failed to import ${child.name}`, err);
+                if (key) updateItem(key, { status: 'failed', error: err instanceof Error ? err.message : 'Upload failed' });
+                fail++;
+              }
+            }
           }
         } catch (err) {
           console.error(`Failed to list folder ${f.name}`, err);
+          updateItem(`top:${f.id}`, { status: 'failed', error: err instanceof Error ? err.message : 'Failed to list folder' });
           fail++;
         }
       } else {
-        try { await uploadOne(f, target); ok++; }
-        catch (err) { console.error(`Failed to import ${f.name}`, err); fail++; }
+        updateItem(`top:${f.id}`, { status: 'importing' });
+        try {
+          await uploadOne(f, target);
+          updateItem(`top:${f.id}`, { status: 'completed' });
+          ok++;
+        } catch (err) {
+          console.error(`Failed to import ${f.name}`, err);
+          updateItem(`top:${f.id}`, { status: 'failed', error: err instanceof Error ? err.message : 'Upload failed' });
+          fail++;
+        }
       }
     }
     setImporting(false);
     if (ok) toast.success(`Imported ${ok} file${ok === 1 ? '' : 's'} from Drive`);
     if (fail) toast.error(`${fail} file${fail === 1 ? '' : 's'} failed to import`);
-    if (ok && !fail) {
-      reset();
-      onOpenChange(false);
-    }
+    // Keep dialog open so user can review per-file results; they close manually.
   };
 
   const toggle = (id: string) => {
