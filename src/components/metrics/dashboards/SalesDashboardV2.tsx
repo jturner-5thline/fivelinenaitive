@@ -119,8 +119,8 @@ const ROW_ORDER: RowDef[] = [
   { key: 'clientsReceivingTerms', label: 'Clients Receiving Terms', type: 'count' },
   { key: 'termsSigned', label: 'Terms Signed', type: 'count' },
   { key: 'volumeOfTermsSigned', label: 'Volume of Terms Signed', type: 'money' },
-  { key: 'dealsClosed', label: 'Deals Closed', type: 'count' },
-  { key: 'dollarsFunded', label: 'Dollars Funded', type: 'money', bold: true },
+  { key: 'dealsClosed', label: 'FinServ: Deals on the Board', type: 'count' },
+  { key: 'dollarsFunded', label: 'FinServ $ on the Board', type: 'money', bold: true },
 ];
 
 const PLAN: Record<MetricKey, number[]> = {
@@ -758,8 +758,8 @@ function PerformancePanel() {
     { label: 'Proposals Issued', metricKey: 'proposalsIssued', actual: sum(view.actual.proposalsIssued, E), plan: view.plan.proposalsIssued.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
     { label: 'Deals on Board', metricKey: 'dealsOnBoard', note: '· current', actual: view.actual.dealsOnBoard[E - 1] ?? 0, plan: view.plan.dealsOnBoard[E - 1] ?? 0, type: 'count' },
     { label: 'Dollars Signed', metricKey: 'dollarsSigned', actual: sum(view.actual.dollarsSigned, E), plan: view.plan.dollarsSigned.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
-    { label: 'Deals Closed', metricKey: 'dealsClosed', actual: sum(view.actual.dealsClosed, E), plan: view.plan.dealsClosed.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
-    { label: 'Dollars Funded', metricKey: 'dollarsFunded', actual: sum(view.actual.dollarsFunded, E), plan: view.plan.dollarsFunded.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
+    { label: 'FinServ: Deals on the Board', metricKey: 'dealsClosed', actual: sum(view.actual.dealsClosed, E), plan: view.plan.dealsClosed.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
+    { label: 'FinServ $ on the Board', metricKey: 'dollarsFunded', actual: sum(view.actual.dollarsFunded, E), plan: view.plan.dollarsFunded.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
   ];
 
   const activeDriver = drivers.find((d) => d.metricKey === selectedDriver) ?? drivers[drivers.length - 1];
@@ -1305,7 +1305,7 @@ function CumulativePace() {
             Cumulative pace
           </div>
           <div className="text-[11px]" style={{ color: C.textFaint }}>
-            Dollars Funded · running total
+            FinServ $ on the Board · running total
           </div>
           <button
             type="button"
