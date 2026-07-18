@@ -65,7 +65,7 @@ const TEAM_PERFORMANCE_DATA = [
 ];
 
 const formatCurrency = (value: number) => {
-  if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}MM`;
   if (Math.abs(value) >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
   return `$${value.toFixed(0)}`;
 };
