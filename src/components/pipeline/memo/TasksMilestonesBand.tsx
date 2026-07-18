@@ -1209,7 +1209,7 @@ function TasksMilestonesDetailDialog({
             )}
             {addKind === 'followup' && (
               <div className="mb-2">
-                <AddFollowupInlineForm deal={deal} onClose={() => setAddKind(null)} />
+                <AddFollowupInlineForm deal={deal} defaultTitle="" onClose={() => setAddKind(null)} />
               </div>
             )}
             {sortedTasks.length === 0 ? (
