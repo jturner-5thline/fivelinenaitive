@@ -345,14 +345,16 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
       .map(f => ({
         key: `top:${f.id}`,
         name: f.mimeType === FOLDER_MIME ? `${f.name} (folder)` : f.name,
-        target: defaultTarget,
+        target: f.mimeType === FOLDER_MIME ? (mapping[f.id] || defaultTarget) : defaultTarget,
         status: 'queued' as ImportStatus,
       }));
     setProgress(seed);
 
     for (const f of files) {
       if (!selected.has(f.id)) continue;
-      const target = defaultTarget;
+      const target = f.mimeType === FOLDER_MIME
+        ? (mapping[f.id] || defaultTarget)
+        : defaultTarget;
       if (!target) {
         updateItem(`top:${f.id}`, { status: 'failed', error: 'No target folder' });
         fail++; continue;
