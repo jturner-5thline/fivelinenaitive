@@ -597,64 +597,17 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
                         <span className="hidden sm:inline text-[10px] text-muted-foreground shrink-0">
                           Folder · {formatModified(f.modifiedTime)}
                         </span>
-                        {isChecked && internalFolders.length > 0 && (
-                          <>
-                            <span className="text-[10px] text-muted-foreground shrink-0">→</span>
-                            <Select
-                              value={mapping[f.id] ?? ''}
-                              onValueChange={(v) => {
-                                setMapping(prev => ({ ...prev, [f.id]: v }));
-                                setAutoMatched(prev => { const n = new Set(prev); n.delete(f.id); return n; });
-                                setUserMapped(prev => { const n = new Set(prev); n.add(f.id); return n; });
-                              }}
-                              disabled={importing}
-                            >
-                              <SelectTrigger
-                                className={`h-6 text-[11px] w-[170px] shrink-0 ${mapping[f.id] ? '' : 'border-destructive text-destructive'}`}
-                              >
-                                <SelectValue placeholder="Pick target…" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {internalFolders.map(name => (
-                                  <SelectItem key={name} value={name} className="text-xs">{name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {mapping[f.id] && autoMatched.has(f.id) && (
-                              <span
-                                className="text-[9px] uppercase tracking-wide text-emerald-600 shrink-0"
-                                title={`Auto-matched to "${mapping[f.id]}" by folder name`}
-                              >
-                                auto
-                              </span>
-                            )}
-                          </>
-                        )}
-                        {internalFolders.length > 0 && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-6 px-2 text-[11px] shrink-0"
-                            disabled={importing}
-                            title={`Link this folder to ${mapping[f.id] || autoMatchTarget(f.name, internalFolders) || defaultTarget || 'the default target'}`}
-                            onClick={() => {
-                              const target =
-                                mapping[f.id] ||
-                                autoMatchTarget(f.name, internalFolders) ||
-                                defaultTarget;
-                              if (!target) {
-                                toast.error('Pick a target Internal folder first.');
-                                return;
-                              }
-                              setMapping(prev => ({ ...prev, [f.id]: target }));
-                              setUserMapped(prev => { const n = new Set(prev); n.add(f.id); return n; });
-                              handleImport([f]);
-                            }}
-                          >
-                            <Link2 className="h-3 w-3 mr-1" />
-                            Link Folder
-                          </Button>
-                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[11px] shrink-0"
+                          disabled={importing}
+                          title={`Upload "${f.name}" and all of its contents into Internal`}
+                          onClick={() => handleImport([f])}
+                        >
+                          <Link2 className="h-3 w-3 mr-1" />
+                          Upload Folder
+                        </Button>
                       </>
                     ) : (
                       <>
@@ -703,13 +656,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
             {selectedFileRows.length > 0 && (
               <span>· ~{formatSize(selectedTotalBytes)}</span>
             )}
-            {unmatchedSelected.length > 0 ? (
-              <span className="ml-auto text-destructive">
-                {unmatchedSelected.length} folder{unmatchedSelected.length === 1 ? '' : 's'} need a target
-              </span>
-            ) : (
-              <span className="ml-auto">files → {defaultTarget || 'no target'}</span>
-            )}
+            <span className="ml-auto">Folders keep their name in Internal · files → Internal root</span>
           </div>
         )}
 
@@ -722,7 +669,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
           ) : (
             <>
               <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={importing}>Cancel</Button>
-              <Button onClick={() => handleImport()} disabled={selected.size === 0 || importing || unmatchedSelected.length > 0}>
+              <Button onClick={() => handleImport()} disabled={selected.size === 0 || importing}>
                 {importing && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
                 Import {selected.size > 0 ? `${selected.size} ` : ''}to Internal
               </Button>
