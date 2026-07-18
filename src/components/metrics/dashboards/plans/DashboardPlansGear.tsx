@@ -5,6 +5,7 @@ import { Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MasterPlanDialog } from './MasterPlanDialog';
 import type { PlannableDashboardKey } from './plannableWidgetsRegistry';
+import { useCanEditMasterPlan } from '@/hooks/useCanEditMasterPlan';
 
 interface Props {
   dashboardKey: PlannableDashboardKey;
@@ -19,6 +20,8 @@ interface Props {
  */
 export function DashboardPlansGear({ dashboardKey, className }: Props) {
   const [open, setOpen] = useState(false);
+  const { canEditMasterPlan } = useCanEditMasterPlan();
+  if (!canEditMasterPlan) return null;
   return (
     <>
       <TooltipProvider>
