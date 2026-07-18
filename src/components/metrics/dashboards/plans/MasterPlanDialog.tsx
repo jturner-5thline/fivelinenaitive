@@ -16,6 +16,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
@@ -969,12 +976,40 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                                   {w.label}
                                 </div>
                                 {isShared && (
-                                  <div
-                                    className="text-[8px] uppercase tracking-wider text-primary/80 mt-0.5 inline-block cursor-help"
-                                    title={`Linked across: ${linkedLabels.join(', ')}. Editing here syncs to all of them.`}
-                                  >
-                                    Linked
-                                  </div>
+                                  <TooltipProvider delayDuration={100}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          type="button"
+                                          className="mt-1 inline-flex items-center gap-1 rounded bg-primary/10 hover:bg-primary/20 text-primary px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider cursor-help focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 transition-colors"
+                                          aria-label={`Linked across ${linkedLabels.length} dashboards`}
+                                        >
+                                          <Link2 className="h-2.5 w-2.5" />
+                                          Linked
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="right" align="start" className="max-w-xs p-3">
+                                        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                                          Synced across {linkedLabels.length} dashboards
+                                        </div>
+                                        <ul className="space-y-1">
+                                          {linkedLabels.map((l) => (
+                                            <li
+                                              key={l}
+                                              className={`text-xs flex items-center gap-1.5 ${l === group.label ? 'text-primary font-medium' : 'text-foreground/80'}`}
+                                            >
+                                              <span className={`h-1.5 w-1.5 rounded-full ${l === group.label ? 'bg-primary' : 'bg-muted-foreground/50'}`} />
+                                              {l}
+                                              {l === group.label && <span className="text-[10px] text-muted-foreground">(current)</span>}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                        <div className="text-[10px] text-muted-foreground mt-2 pt-2 border-t border-border">
+                                          Editing here syncs to every listed dashboard.
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
                                 )}
                                 {w.hint && (
                                   <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
