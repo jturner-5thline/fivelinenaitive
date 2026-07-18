@@ -1345,8 +1345,10 @@ function TasksMilestonesDetailDialog({
             {filteredTasks.length === 0 ? (
               <p className="text-xs italic text-muted-foreground">{normalizedQuery ? 'No tasks match your search.' : 'No tasks.'}</p>
             ) : (
-              <div className="space-y-1.5">
-                {filteredTasks.map((task) => {
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleTaskDragEnd}>
+                <SortableContext items={filteredTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-1.5">
+                    {filteredTasks.map((task) => {
                   const isCompleting = completingTaskIds.has(task.id);
                   const dueDate = parseStoredDate(task.dueDate);
                   const isOverdue = !!dueDate && differenceInCalendarDays(dueDate, new Date()) < 0;
@@ -1354,11 +1356,19 @@ function TasksMilestonesDetailDialog({
                   const isSavingField = task.kind === 'task' && savingFieldIds.has(task.id);
                   const selectedAssigneeId = task.kind === 'task' ? (task.assignedToId ?? null) : null;
                   return (
-                    <div
-                      key={task.id}
-                      className="group flex items-center gap-2.5 rounded-md border border-border bg-card px-2.5 py-1.5 hover:border-primary/40 transition-colors"
-                    >
-                      <button
+                    <SortableRow key={task.id} id={task.id} disabled={dndDisabled}>
+                      {(handleProps) => (
+                        <div className="group flex items-center gap-2.5 rounded-md border border-border bg-card px-2.5 py-1.5 hover:border-primary/40 transition-colors">
+                          <button
+                            type="button"
+                            {...handleProps}
+                            className="shrink-0 -ml-1 p-0.5 text-muted-foreground/50 hover:text-foreground cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity disabled:hidden"
+                            disabled={dndDisabled}
+                            title="Drag to reorder"
+                          >
+                            <GripVertical className="h-3.5 w-3.5" />
+                          </button>
+                          <button
                         type="button"
                         disabled={isCompleting}
                         onClick={() => void onCompleteTask(task)}
