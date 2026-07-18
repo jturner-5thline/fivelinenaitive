@@ -12,6 +12,7 @@ import {
 } from '@/hooks/useFinservStageEntryByMonth';
 import { useDollarsSignedByMonth } from '@/hooks/useDollarsSignedByMonth';
 import { useStageEntryCount, useStageEntryEvents } from '@/hooks/useStageEntryCounts';
+import { useMasterPlanMonthly } from '@/hooks/useMasterPlanMonthly';
 import {
   buildQuarterOptions,
   getCurrentQuarter,
@@ -99,7 +100,9 @@ type MetricKey =
   | 'termsSigned'
   | 'volumeOfTermsSigned'
   | 'dealsClosed'
-  | 'dollarsFunded';
+  | 'dollarsFunded'
+  | 'finservProposalsIssued'
+  | 'finservDollarsProposed';
 
 interface RowDef {
   key: MetricKey;
@@ -121,6 +124,8 @@ const ROW_ORDER: RowDef[] = [
   { key: 'volumeOfTermsSigned', label: 'Volume of Terms Signed', type: 'money' },
   { key: 'dealsClosed', label: 'FinServ: Deals on the Board', type: 'count' },
   { key: 'dollarsFunded', label: 'FinServ $ on the Board', type: 'money', bold: true },
+  { key: 'finservProposalsIssued', label: 'FinServ: Proposals Issued', type: 'count' },
+  { key: 'finservDollarsProposed', label: 'FinServ Proposals Issued $', type: 'money' },
 ];
 
 const PLAN: Record<MetricKey, number[]> = {
@@ -136,6 +141,8 @@ const PLAN: Record<MetricKey, number[]> = {
   volumeOfTermsSigned: [6.4, 6.4, 6.4, 6.4, 3.5, 7.2, 8.0, 8.0, 8.0],
   dealsClosed: [2, 2, 2, 2, 2, 2, 2, 1, 2],
   dollarsFunded: [6.4, 6.4, 6.4, 6.4, 6.7, 7.2, 8.0, 4.8, 8.0],
+  finservProposalsIssued: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+  finservDollarsProposed: [0, 0, 0, 0, 0, 0, 0, 0, 0],
 };
 
 const ACTUAL: Record<MetricKey, (number | null)[]> = {
@@ -151,6 +158,8 @@ const ACTUAL: Record<MetricKey, (number | null)[]> = {
   volumeOfTermsSigned: pad([]),
   dealsClosed: pad([]),
   dollarsFunded: pad([]),
+  finservProposalsIssued: pad([]),
+  finservDollarsProposed: pad([]),
 };
 
 function pad(actuals: number[]): (number | null)[] {
