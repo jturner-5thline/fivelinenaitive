@@ -1041,6 +1041,10 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
         onCompleteTask={completeTaskItem}
         onCompleteMilestone={completeMilestone}
         onOpenTask={(id) => setOpenTaskId(id)}
+        members={members}
+        savingFieldIds={savingFieldIds}
+        onSaveDueDate={saveDueDate}
+        onSaveAssignee={saveAssignee}
       />
     </div>
   );
@@ -1057,6 +1061,10 @@ interface TasksMilestonesDetailDialogProps {
   onCompleteTask: (task: DealTaskItem) => void | Promise<void>;
   onCompleteMilestone: (m: DealMilestone) => void | Promise<void>;
   onOpenTask: (taskId: string) => void;
+  members: CompanyMemberOption[];
+  savingFieldIds: Set<string>;
+  onSaveDueDate: (taskId: string, date: Date | null) => Promise<void>;
+  onSaveAssignee: (taskId: string, userId: string | null) => Promise<void>;
 }
 
 function TasksMilestonesDetailDialog({
@@ -1070,9 +1078,15 @@ function TasksMilestonesDetailDialog({
   onCompleteTask,
   onCompleteMilestone,
   onOpenTask,
+  members,
+  savingFieldIds,
+  onSaveDueDate,
+  onSaveAssignee,
 }: TasksMilestonesDetailDialogProps) {
   const [showCompleted, setShowCompleted] = useState(false);
   const [addKind, setAddKind] = useState<'task' | 'milestone' | 'followup' | null>(null);
+  const [editingDateId, setEditingDateId] = useState<string | null>(null);
+  const [editingAssigneeId, setEditingAssigneeId] = useState<string | null>(null);
 
   const sortedTasks = useMemo(() => {
     const list = [...tasks];
@@ -1223,6 +1237,8 @@ function TasksMilestonesDetailDialog({
                   const dueDate = parseStoredDate(task.dueDate);
                   const isOverdue = !!dueDate && differenceInCalendarDays(dueDate, new Date()) < 0;
                   const assigneeLabel = task.kind === 'task' ? task.assignedToName : task.requestedByName;
+                  const isSavingField = task.kind === 'task' && savingFieldIds.has(task.id);
+                  const selectedAssigneeId = task.kind === 'task' ? (task.assignedToId ?? null) : null;
                   return (
                     <div
                       key={task.id}
@@ -1258,15 +1274,107 @@ function TasksMilestonesDetailDialog({
                       >
                         {task.title}
                       </button>
-                      {assigneeLabel && (
+                      {task.kind === 'task' ? (
+                        <Popover
+                          open={editingAssigneeId === task.id}
+                          onOpenChange={(open) => setEditingAssigneeId(open ? task.id : null)}
+                        >
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              disabled={isSavingField}
+                              onClick={(e) => e.stopPropagation()}
+                              className="group/assignee flex items-center gap-1 rounded-full border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:border-primary/50 whitespace-nowrap shrink-0 disabled:opacity-60"
+                              title={assigneeLabel || 'No assignee'}
+                            >
+                              <span className="inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-muted text-[8px] font-semibold">
+                                {initialsOf(assigneeLabel) || '?'}
+                              </span>
+                              <span className="truncate max-w-[100px]">{assigneeLabel || 'No assignee'}</span>
+                              <Pencil className="h-2.5 w-2.5 opacity-0 group-hover/assignee:opacity-100 transition-opacity" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-60 p-0 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                            <Command className="bg-popover">
+                              <CommandInput placeholder="Search members..." />
+                              <CommandList>
+                                <CommandEmpty>No members found.</CommandEmpty>
+                                <CommandGroup>
+                                  <CommandItem onSelect={() => void onSaveAssignee(task.id, null)} className="gap-2">
+                                    <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-muted text-[9px] font-semibold text-muted-foreground">?</span>
+                                    <span>No assignee</span>
+                                    {!selectedAssigneeId && <Check className="ml-auto h-3.5 w-3.5 text-primary" />}
+                                  </CommandItem>
+                                  {members.map((member) => (
+                                    <CommandItem
+                                      key={member.id}
+                                      value={`${member.name} ${member.id}`}
+                                      onSelect={() => void onSaveAssignee(task.id, member.id)}
+                                      className="gap-2"
+                                    >
+                                      <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-muted text-[9px] font-semibold text-muted-foreground">
+                                        {initialsOf(member.name)}
+                                      </span>
+                                      <span className="truncate">{member.name}</span>
+                                      {selectedAssigneeId === member.id && <Check className="ml-auto h-3.5 w-3.5 text-primary" />}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      ) : assigneeLabel ? (
                         <span className="flex items-center gap-1 rounded-full border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
                           <span className="inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-muted text-[8px] font-semibold">
                             {initialsOf(assigneeLabel) || '?'}
                           </span>
                           <span className="truncate max-w-[100px]">{assigneeLabel}</span>
                         </span>
-                      )}
-                      {dueDate && (
+                      ) : null}
+                      {task.kind === 'task' ? (
+                        <Popover
+                          open={editingDateId === task.id}
+                          onOpenChange={(open) => setEditingDateId(open ? task.id : null)}
+                        >
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              disabled={isSavingField}
+                              onClick={(e) => e.stopPropagation()}
+                              className={cn(
+                                'group/date inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] whitespace-nowrap shrink-0 hover:border-primary/50 disabled:opacity-60',
+                                isOverdue ? 'text-destructive font-medium border-destructive/40' : 'text-muted-foreground'
+                              )}
+                              title={dueDate ? format(dueDate, 'MMM d, yyyy') : 'No due date'}
+                            >
+                              <span>{dueDate ? format(dueDate, 'MMM d') : 'No due date'}</span>
+                              <Pencil className="h-2.5 w-2.5 opacity-0 group-hover/date:opacity-100 transition-opacity" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-auto p-0 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                            <Calendar
+                              mode="single"
+                              selected={dueDate || undefined}
+                              onSelect={(date) => void onSaveDueDate(task.id, date ?? null)}
+                              initialFocus
+                              className="p-3 pointer-events-auto"
+                            />
+                            {dueDate && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void onSaveDueDate(task.id, null);
+                                }}
+                                className="w-full border-t border-border py-2 text-xs text-muted-foreground hover:text-destructive"
+                              >
+                                Clear date
+                              </button>
+                            )}
+                          </PopoverContent>
+                        </Popover>
+                      ) : dueDate ? (
                         <span
                           className={cn(
                             'rounded-full border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] whitespace-nowrap shrink-0',
@@ -1276,7 +1384,7 @@ function TasksMilestonesDetailDialog({
                         >
                           {format(dueDate, 'MMM d')}
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   );
                 })}
