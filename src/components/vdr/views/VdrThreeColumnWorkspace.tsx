@@ -1871,7 +1871,10 @@ export function VdrThreeColumnWorkspace({
       <LinkDriveFolderDialog
         open={driveDialogOpen}
         onOpenChange={setDriveDialogOpen}
-        onImport={(file, folderPath) => vdrDocs.uploadFile(file, folderPath, 'internal')}
+        onImport={async (file, folderPath) => {
+          const ok = await vdrDocs.uploadFile(file, folderPath, 'dataroom');
+          if (ok === false) throw new Error(`Failed to save ${file.name}`);
+        }}
         internalFolders={internalCategoryNames}
       />
     )}
