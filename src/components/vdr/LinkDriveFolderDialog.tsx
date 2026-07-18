@@ -268,7 +268,9 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     setShowResults(true);
     let ok = 0; let fail = 0;
 
-    const uploadOne = async (df: DriveFile, targetName: string) => {
+    // Upload one Drive file. `targetPath` is the absolute Internal path (leading slash,
+    // no trailing slash except root). Root is "/".
+    const uploadOne = async (df: DriveFile, targetPath: string) => {
       const { data, error } = await supabase.functions.invoke('drive-folder-import', {
         body: { action: 'download', fileId: df.id, mimeType: df.mimeType },
       });
@@ -277,8 +279,8 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
       const blob = base64ToBlob(data.base64, data.mimeType);
       const finalName = extNameFromMime(df.name, df.mimeType);
       const file = new File([blob], finalName, { type: data.mimeType });
-      const clean = (targetName || '').replace(/^\/+|\/+$/g, '');
-      await onImport(file, clean ? `/${clean}` : '/');
+      const clean = (targetPath || '/').replace(/\/+$/g, '') || '/';
+      await onImport(file, clean.startsWith('/') ? clean : `/${clean}`);
     };
 
     const updateItem = (key: string, patch: Partial<ImportItem>) => {
@@ -288,70 +290,71 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
       setProgress(prev => [...prev, ...items]);
     };
 
-    // Recursively collect every file inside a Drive folder.
-    const collectFiles = async (folderId: string): Promise<DriveFile[]> => {
+    // Recursively collect every file inside a Drive folder, preserving the relative
+    // subfolder path so Internal upload mirrors the Drive structure.
+    const collectFiles = async (
+      folderId: string,
+      relPath = '',
+    ): Promise<{ file: DriveFile; relPath: string }[]> => {
       const { data, error } = await supabase.functions.invoke('drive-folder-import', {
         body: { action: 'browse', folderId },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       const children: DriveFile[] = data?.files ?? [];
-      const out: DriveFile[] = [];
+      const out: { file: DriveFile; relPath: string }[] = [];
       for (const c of children) {
         if (c.mimeType === FOLDER_MIME) {
-          const nested = await collectFiles(c.id);
+          const nested = await collectFiles(c.id, relPath ? `${relPath}/${c.name}` : c.name);
           out.push(...nested);
         } else {
-          out.push(c);
+          out.push({ file: c, relPath });
         }
       }
       return out;
     };
 
     // Seed queue with top-level selected items (folders shown as placeholders until expanded).
+    // Folders upload their whole tree; files upload to Internal root.
     const seed: ImportItem[] = importFiles.map(f => ({
         key: `top:${f.id}`,
         name: f.mimeType === FOLDER_MIME ? `${f.name} (folder)` : f.name,
-        target: f.mimeType === FOLDER_MIME ? (mapping[f.id] || defaultTarget) : defaultTarget,
+        target: f.mimeType === FOLDER_MIME ? `/${f.name}` : '/',
         status: 'queued' as ImportStatus,
       }));
     setProgress(seed);
 
     for (const f of importFiles) {
-      const target = f.mimeType === FOLDER_MIME
-        ? (mapping[f.id] || defaultTarget)
-        : defaultTarget;
-      if (!target) {
-        updateItem(`top:${f.id}`, { status: 'failed', error: 'No target folder' });
-        fail++; continue;
-      }
-
       if (f.mimeType === FOLDER_MIME) {
+        // Preserve the Drive folder name (and subfolder structure) inside Internal.
+        const rootTarget = `/${f.name}`;
         updateItem(`top:${f.id}`, { status: 'importing' });
         try {
-          const children = await collectFiles(f.id);
+          const children = await collectFiles(f.id, '');
           if (children.length === 0) {
             updateItem(`top:${f.id}`, { status: 'failed', error: 'Folder is empty' });
             fail++;
           } else {
             // Replace folder placeholder with its child items.
             const childItems: ImportItem[] = children.map((c, i) => ({
-              key: `${f.id}:${c.id}:${i}`,
-              name: `${f.name}/${c.name}`,
-              target,
+              key: `${f.id}:${c.file.id}:${i}`,
+              name: c.relPath ? `${f.name}/${c.relPath}/${c.file.name}` : `${f.name}/${c.file.name}`,
+              target: c.relPath ? `${rootTarget}/${c.relPath}` : rootTarget,
               status: 'queued' as ImportStatus,
             }));
             setProgress(prev => prev.flatMap(it => it.key === `top:${f.id}` ? childItems : [it]));
-            for (const child of children) {
-              const key = childItems.find(ci => ci.name === `${f.name}/${child.name}`)?.key;
-              if (key) updateItem(key, { status: 'importing' });
+            for (let i = 0; i < children.length; i++) {
+              const child = children[i];
+              const item = childItems[i];
+              const key = item.key;
+              updateItem(key, { status: 'importing' });
               try {
-                await uploadOne(child, target);
-                if (key) updateItem(key, { status: 'completed' });
+                await uploadOne(child.file, item.target);
+                updateItem(key, { status: 'completed' });
                 ok++;
               } catch (err) {
-                console.error(`Failed to import ${child.name}`, err);
-                if (key) updateItem(key, { status: 'failed', error: err instanceof Error ? err.message : 'Upload failed' });
+                console.error(`Failed to import ${child.file.name}`, err);
+                updateItem(key, { status: 'failed', error: err instanceof Error ? err.message : 'Upload failed' });
                 fail++;
               }
             }
@@ -364,7 +367,8 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
       } else {
         updateItem(`top:${f.id}`, { status: 'importing' });
         try {
-          await uploadOne(f, target);
+          // Top-level files land in Internal root.
+          await uploadOne(f, '/');
           updateItem(`top:${f.id}`, { status: 'completed' });
           ok++;
         } catch (err) {
