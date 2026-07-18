@@ -935,10 +935,10 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
             className="max-h-[65vh] overflow-auto border border-border rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             <table className="w-full text-sm border-collapse">
-              <thead className="sticky top-0 bg-background z-10">
+              <thead className="sticky top-0 z-10" style={{ background: 'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)' }}>
                 <tr className="border-b border-border">
                   <th
-                    style={{ backgroundColor: 'hsl(var(--background))' }}
+                    style={{ background: 'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)' }}
                     className="text-left px-2 py-2 font-medium text-xs uppercase tracking-wider text-muted-foreground sticky left-0 border-r border-border whitespace-nowrap w-auto z-30 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.4)]"
                   >
                     Widget
@@ -956,10 +956,10 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
               <tbody>
                 {groups.map((group) => (
                   <Fragment key={group.key}>
-                    <tr className="bg-background">
+                    <tr style={{ background: 'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)' }}>
                       <td
                         colSpan={1 + periods.length}
-                        style={{ backgroundColor: 'hsl(var(--background))' }}
+                        style={{ background: 'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)' }}
                         className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sticky left-0 z-20"
                       >
                         {group.label}
@@ -974,7 +974,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                       return (
                         <tr key={`${group.key}-${w.key}`} className="border-b border-border/50 last:border-0 hover:bg-muted/20">
                           <td
-                            style={{ backgroundColor: 'hsl(var(--background))' }}
+                            style={{ background: 'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)' }}
                             className="px-2 py-1.5 sticky left-0 z-20 border-r border-border whitespace-nowrap w-auto shadow-[2px_0_4px_-2px_rgba(0,0,0,0.4)]"
                           >
                             <div className="flex items-start justify-between gap-2">
