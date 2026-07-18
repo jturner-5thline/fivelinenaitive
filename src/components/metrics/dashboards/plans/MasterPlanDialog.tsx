@@ -928,9 +928,9 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
             className="max-h-[65vh] overflow-auto border border-border rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             <table className="w-full text-sm border-collapse">
-              <thead className="sticky top-0 bg-card z-10">
+              <thead className="sticky top-0 bg-background z-10">
                 <tr className="border-b border-border">
-                  <th className="text-left px-3 py-2 font-medium text-xs uppercase tracking-wider text-muted-foreground sticky left-0 bg-card min-w-64 z-10">
+                  <th className="text-left px-3 py-2 font-medium text-xs uppercase tracking-wider text-muted-foreground sticky left-0 bg-background border-r border-border min-w-64 z-10">
                     Widget
                   </th>
                   {periods.map((p) => (
