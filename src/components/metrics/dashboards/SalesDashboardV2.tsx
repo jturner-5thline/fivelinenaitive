@@ -1532,11 +1532,13 @@ function ConversionCard({
   value,
   subtitle,
   onClick,
+  info,
 }: {
   title: string;
   value: number | null;
   subtitle?: string;
   onClick?: () => void;
+  info?: React.ReactNode;
 }) {
   const display =
     value == null
@@ -1561,11 +1563,32 @@ function ConversionCard({
           : undefined
       }
     >
-      <div
-        className="text-[10px] font-medium uppercase"
-        style={{ color: C.textMuted, letterSpacing: '0.08em' }}
-      >
-        {title}
+      <div className="flex items-center gap-1.5">
+        <div
+          className="text-[10px] font-medium uppercase"
+          style={{ color: C.textMuted, letterSpacing: '0.08em' }}
+        >
+          {title}
+        </div>
+        {info && (
+          <TooltipProvider delayDuration={100}>
+            <UITooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center justify-center rounded-sm p-0.5 text-white/40 hover:text-white/80 focus:outline-none focus-visible:ring-1 focus-visible:ring-white/40"
+                  aria-label={`${title} definition`}
+                >
+                  <Info className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
+                {info}
+              </TooltipContent>
+            </UITooltip>
+          </TooltipProvider>
+        )}
       </div>
       <div
         className="text-3xl font-semibold leading-none"
