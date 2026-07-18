@@ -1200,7 +1200,7 @@ function TasksMilestonesDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl w-[42rem] h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between gap-3 pr-6">
             <span className="truncate">Tasks & milestones — {deal.name}</span>
