@@ -1252,7 +1252,7 @@ function TasksMilestonesDetailDialog({
 
           <TabsContent value="tasks" className="flex-1 overflow-y-auto mt-3">
           <section>
-            <div className="flex items-center justify-between mb-2">
+            <div className="sticky top-0 z-10 -mx-1 px-1 py-2 mb-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-white/5">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Tasks & follow-ups ({filteredTasks.length}{normalizedQuery && filteredTasks.length !== sortedTasks.length ? ` of ${sortedTasks.length}` : ''})
               </h3>
@@ -1464,7 +1464,7 @@ function TasksMilestonesDetailDialog({
 
           <TabsContent value="outstanding" className="flex-1 overflow-y-auto mt-3">
             <section>
-              <div className="flex items-center justify-between mb-2">
+              <div className="sticky top-0 z-10 -mx-1 px-1 py-2 mb-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-white/5">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Outstanding items ({filteredOutstanding.length}{normalizedQuery && filteredOutstanding.length !== totalOutstanding ? ` of ${totalOutstanding}` : ''})
                 </h3>
@@ -1536,7 +1536,7 @@ function TasksMilestonesDetailDialog({
 
           <TabsContent value="milestones" className="flex-1 overflow-y-auto mt-3">
           <section>
-            <div className="flex items-center justify-between mb-2">
+            <div className="sticky top-0 z-10 -mx-1 px-1 py-2 mb-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-white/5">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Milestones ({filteredMilestones.length}{normalizedQuery && filteredMilestones.length !== sortedMilestones.length ? ` of ${sortedMilestones.length}` : ''})
               </h3>
