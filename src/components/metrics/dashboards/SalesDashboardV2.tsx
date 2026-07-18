@@ -3422,6 +3422,45 @@ export function SalesDashboardV2() {
   // Backwards-compatible active view for the KPI cards themselves (outside dialog).
   const kpiView = kpiValueMode === 'value' ? kpiValueView : kpiCountView;
 
+  // Master Plan monthly targets for FinServ Proposals rows — authored in
+  // the Master Plan popup and overlaid onto the hardcoded PLAN so the
+  // gap/performance-to-plan panel compares against the same values users
+  // enter there. Uses the same widget-key convention as the other FinServ
+  // rows and matches both `sales-dashboard-v2` and
+  // `consolidated-debt-pipeline` namespaces.
+  const masterPlanMonthly = useMasterPlanMonthly([
+    'finserv-proposals-issued',
+    'finserv-dollars-proposed',
+  ]);
+
+  // Overlay live FinServ Proposals actuals + Master Plan monthly targets
+  // onto the view consumed by the PerformancePanel drivers list.
+  const viewWithFinserv = React.useMemo<DashboardView>(() => {
+    const startY = view.rangeStart.getUTCFullYear();
+    const startM = view.rangeStart.getUTCMonth();
+    const overlayPlan = (widgetKey: string, base: number[], divisor = 1): number[] =>
+      base.map((b, i) => {
+        const d = new Date(Date.UTC(startY, startM + i, 1));
+        const ym = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+        const mp = masterPlanMonthly.values[widgetKey]?.[ym];
+        return mp !== undefined ? mp / divisor : b;
+      });
+    return {
+      ...view,
+      actual: {
+        ...view.actual,
+        finservProposalsIssued: liveProposalsIssuedActualFinserv,
+        finservDollarsProposed: liveDollarsProposedActualFinserv,
+      },
+      plan: {
+        ...view.plan,
+        finservProposalsIssued: overlayPlan('finserv-proposals-issued', view.plan.finservProposalsIssued),
+        // Dashboard renders $ in $MM; Master Plan stores raw USD.
+        finservDollarsProposed: overlayPlan('finserv-dollars-proposed', view.plan.finservDollarsProposed, 1_000_000),
+      },
+    };
+  }, [view, liveProposalsIssuedActualFinserv, liveDollarsProposedActualFinserv, masterPlanMonthly.values]);
+
   // Drilldown state
   const [drillFocus, setDrillFocus] = React.useState<DrilldownFocus | null>(null);
   const drillApi = React.useMemo<DrilldownApi>(
