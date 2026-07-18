@@ -1462,6 +1462,78 @@ function TasksMilestonesDetailDialog({
           </section>
           </TabsContent>
 
+          <TabsContent value="outstanding" className="flex-1 overflow-y-auto mt-3">
+            <section>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Outstanding items ({filteredOutstanding.length}{normalizedQuery && filteredOutstanding.length !== totalOutstanding ? ` of ${totalOutstanding}` : ''})
+                </h3>
+              </div>
+              {filteredOutstanding.length === 0 ? (
+                <p className="text-xs italic text-muted-foreground">
+                  {normalizedQuery ? 'No outstanding items match your search.' : 'No outstanding items.'}
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  {filteredOutstanding.map((item) => {
+                    const dueDate = parseStoredDate(item.dueDate);
+                    const isOverdue = !!dueDate && differenceInCalendarDays(dueDate, new Date()) < 0;
+                    const isCompleting = completingTaskIds.has(item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        className="group flex items-center gap-2.5 rounded-md border border-border bg-card px-2.5 py-1.5 hover:border-primary/40 transition-colors"
+                      >
+                        <button
+                          type="button"
+                          disabled={isCompleting}
+                          onClick={() => void onCompleteTask(item)}
+                          className={cn(
+                            'shrink-0 inline-flex items-center justify-center h-5 w-5 rounded-full border transition-all',
+                            isCompleting
+                              ? 'border-primary bg-primary/25'
+                              : 'border-muted-foreground/50 hover:border-primary hover:bg-primary/20'
+                          )}
+                          title="Mark resolved"
+                        >
+                          <Check
+                            className={cn(
+                              'h-3.5 w-3.5 text-primary transition-opacity',
+                              isCompleting ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                            )}
+                            strokeWidth={3}
+                          />
+                        </button>
+                        <span className="flex-1 min-w-0 text-xs font-medium text-foreground truncate" title={item.title}>
+                          {item.title}
+                        </span>
+                        {item.requestedByName && (
+                          <span className="flex items-center gap-1 rounded-full border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
+                            <span className="inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-muted text-[8px] font-semibold">
+                              {initialsOf(item.requestedByName) || '?'}
+                            </span>
+                            <span className="truncate max-w-[100px]">{item.requestedByName}</span>
+                          </span>
+                        )}
+                        {dueDate && (
+                          <span
+                            className={cn(
+                              'rounded-full border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] whitespace-nowrap shrink-0',
+                              isOverdue ? 'text-destructive font-medium border-destructive/40' : 'text-muted-foreground'
+                            )}
+                            title={format(dueDate, 'MMM d, yyyy')}
+                          >
+                            {format(dueDate, 'MMM d')}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          </TabsContent>
+
           <TabsContent value="milestones" className="flex-1 overflow-y-auto mt-3">
           <section>
             <div className="flex items-center justify-between mb-2">
