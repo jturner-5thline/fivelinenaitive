@@ -3562,6 +3562,7 @@ export function SalesDashboardV2() {
     };
   }, [ndaTtmEvents.events, ndaTtmEvents.isLoading, ndaPriorTtmEvents.events, ndaPriorTtmEvents.isLoading, proposalLookupEvents.events, proposalLookupEvents.isLoading]);
   const [onBoardToProposalOpen, setOnBoardToProposalOpen] = React.useState(false);
+  const [callToDealOpen, setCallToDealOpen] = React.useState(false);
   const dealsOnBoardByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching) return {};
     const out: Record<string, number> = {};
