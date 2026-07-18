@@ -1295,31 +1295,17 @@ function TasksMilestonesDetailDialog({
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Tasks & follow-ups ({filteredTasks.length}{normalizedQuery && filteredTasks.length !== sortedTasks.length ? ` of ${sortedTasks.length}` : ''})
               </h3>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAddKind(addKind === 'followup' ? null : 'followup')}
-                  className="text-[11px] text-primary hover:underline inline-flex items-center gap-1"
-                >
-                  <Plus className="h-3 w-3" /> Follow-up
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAddKind(addKind === 'task' ? null : 'task')}
-                  className="text-[11px] text-primary hover:underline inline-flex items-center gap-1"
-                >
-                  <Plus className="h-3 w-3" /> Task
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setAddKind(addKind === 'task' ? null : 'task')}
+                className="text-[11px] text-primary hover:underline inline-flex items-center gap-1"
+              >
+                <Plus className="h-3 w-3" /> Add Task
+              </button>
             </div>
             {addKind === 'task' && (
               <div className="mb-2">
                 <AddTaskInlineForm deal={deal} onClose={() => setAddKind(null)} />
-              </div>
-            )}
-            {addKind === 'followup' && (
-              <div className="mb-2">
-                <AddFollowupInlineForm deal={deal} defaultTitle="" onClose={() => setAddKind(null)} />
               </div>
             )}
             {filteredTasks.length === 0 ? (
@@ -1331,22 +1317,13 @@ function TasksMilestonesDetailDialog({
                   {normalizedQuery ? 'Try a different search term.' : 'Create the first item to keep this deal moving.'}
                 </p>
                 {!normalizedQuery && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setAddKind('task')}
-                      className="inline-flex items-center gap-1 rounded-md bg-primary/15 hover:bg-primary/25 text-primary text-xs font-medium px-3 py-1.5"
-                    >
-                      <Plus className="h-3.5 w-3.5" /> Create task
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAddKind('followup')}
-                      className="inline-flex items-center gap-1 rounded-md border border-white/10 hover:border-primary/40 text-foreground text-xs font-medium px-3 py-1.5"
-                    >
-                      <Plus className="h-3.5 w-3.5" /> Create follow-up
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAddKind('task')}
+                    className="inline-flex items-center gap-1 rounded-md bg-primary/15 hover:bg-primary/25 text-primary text-xs font-medium px-3 py-1.5"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Add Task
+                  </button>
                 )}
               </div>
             ) : (
