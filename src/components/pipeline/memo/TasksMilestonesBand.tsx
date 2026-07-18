@@ -1208,14 +1208,15 @@ function TasksMilestonesDetailDialog({
             </label>
           </DialogTitle>
         </DialogHeader>
-        <div className="relative">
+        <div className="relative mt-2">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search tasks, milestones, assignees..."
-            className="w-full rounded-md border border-border bg-background pl-8 pr-8 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            autoFocus
+            className="w-full rounded-md border border-white/15 bg-white/[0.04] pl-8 pr-8 py-2 text-xs text-white placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           />
           {searchQuery && (
             <button
