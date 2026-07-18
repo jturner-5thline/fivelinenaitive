@@ -12,6 +12,7 @@ import {
 } from '@/hooks/useFinservStageEntryByMonth';
 import { useDollarsSignedByMonth } from '@/hooks/useDollarsSignedByMonth';
 import { useStageEntryCount, useStageEntryEvents } from '@/hooks/useStageEntryCounts';
+import { useMasterPlanMonthly } from '@/hooks/useMasterPlanMonthly';
 import {
   buildQuarterOptions,
   getCurrentQuarter,
@@ -99,7 +100,9 @@ type MetricKey =
   | 'termsSigned'
   | 'volumeOfTermsSigned'
   | 'dealsClosed'
-  | 'dollarsFunded';
+  | 'dollarsFunded'
+  | 'finservProposalsIssued'
+  | 'finservDollarsProposed';
 
 interface RowDef {
   key: MetricKey;
@@ -121,6 +124,8 @@ const ROW_ORDER: RowDef[] = [
   { key: 'volumeOfTermsSigned', label: 'Volume of Terms Signed', type: 'money' },
   { key: 'dealsClosed', label: 'FinServ: Deals on the Board', type: 'count' },
   { key: 'dollarsFunded', label: 'FinServ $ on the Board', type: 'money', bold: true },
+  { key: 'finservProposalsIssued', label: 'FinServ: Proposals Issued', type: 'count' },
+  { key: 'finservDollarsProposed', label: 'FinServ Proposals Issued $', type: 'money' },
 ];
 
 const PLAN: Record<MetricKey, number[]> = {
@@ -136,6 +141,8 @@ const PLAN: Record<MetricKey, number[]> = {
   volumeOfTermsSigned: [6.4, 6.4, 6.4, 6.4, 3.5, 7.2, 8.0, 8.0, 8.0],
   dealsClosed: [2, 2, 2, 2, 2, 2, 2, 1, 2],
   dollarsFunded: [6.4, 6.4, 6.4, 6.4, 6.7, 7.2, 8.0, 4.8, 8.0],
+  finservProposalsIssued: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+  finservDollarsProposed: [0, 0, 0, 0, 0, 0, 0, 0, 0],
 };
 
 const ACTUAL: Record<MetricKey, (number | null)[]> = {
@@ -151,6 +158,8 @@ const ACTUAL: Record<MetricKey, (number | null)[]> = {
   volumeOfTermsSigned: pad([]),
   dealsClosed: pad([]),
   dollarsFunded: pad([]),
+  finservProposalsIssued: pad([]),
+  finservDollarsProposed: pad([]),
 };
 
 function pad(actuals: number[]): (number | null)[] {
@@ -760,6 +769,8 @@ function PerformancePanel() {
     { label: 'Dollars Signed', metricKey: 'dollarsSigned', actual: sum(view.actual.dollarsSigned, E), plan: view.plan.dollarsSigned.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
     { label: 'FinServ: Deals on the Board', metricKey: 'dealsClosed', actual: sum(view.actual.dealsClosed, E), plan: view.plan.dealsClosed.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
     { label: 'FinServ $ on the Board', metricKey: 'dollarsFunded', actual: sum(view.actual.dollarsFunded, E), plan: view.plan.dollarsFunded.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
+    { label: 'FinServ: Proposals Issued', metricKey: 'finservProposalsIssued', actual: sum(view.actual.finservProposalsIssued, E), plan: view.plan.finservProposalsIssued.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
+    { label: 'FinServ Proposals Issued $', metricKey: 'finservDollarsProposed', actual: sum(view.actual.finservDollarsProposed, E), plan: view.plan.finservDollarsProposed.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
   ];
 
   const activeDriver = drivers.find((d) => d.metricKey === selectedDriver) ?? drivers[drivers.length - 1];
@@ -3411,6 +3422,45 @@ export function SalesDashboardV2() {
   // Backwards-compatible active view for the KPI cards themselves (outside dialog).
   const kpiView = kpiValueMode === 'value' ? kpiValueView : kpiCountView;
 
+  // Master Plan monthly targets for FinServ Proposals rows — authored in
+  // the Master Plan popup and overlaid onto the hardcoded PLAN so the
+  // gap/performance-to-plan panel compares against the same values users
+  // enter there. Uses the same widget-key convention as the other FinServ
+  // rows and matches both `sales-dashboard-v2` and
+  // `consolidated-debt-pipeline` namespaces.
+  const masterPlanMonthly = useMasterPlanMonthly([
+    'finserv-proposals-issued',
+    'finserv-dollars-proposed',
+  ]);
+
+  // Overlay live FinServ Proposals actuals + Master Plan monthly targets
+  // onto the view consumed by the PerformancePanel drivers list.
+  const viewWithFinserv = React.useMemo<DashboardView>(() => {
+    const startY = view.rangeStart.getUTCFullYear();
+    const startM = view.rangeStart.getUTCMonth();
+    const overlayPlan = (widgetKey: string, base: number[], divisor = 1): number[] =>
+      base.map((b, i) => {
+        const d = new Date(Date.UTC(startY, startM + i, 1));
+        const ym = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+        const mp = masterPlanMonthly.values[widgetKey]?.[ym];
+        return mp !== undefined ? mp / divisor : b;
+      });
+    return {
+      ...view,
+      actual: {
+        ...view.actual,
+        finservProposalsIssued: liveProposalsIssuedActualFinserv,
+        finservDollarsProposed: liveDollarsProposedActualFinserv,
+      },
+      plan: {
+        ...view.plan,
+        finservProposalsIssued: overlayPlan('finserv-proposals-issued', view.plan.finservProposalsIssued),
+        // Dashboard renders $ in $MM; Master Plan stores raw USD.
+        finservDollarsProposed: overlayPlan('finserv-dollars-proposed', view.plan.finservDollarsProposed, 1_000_000),
+      },
+    };
+  }, [view, liveProposalsIssuedActualFinserv, liveDollarsProposedActualFinserv, masterPlanMonthly.values]);
+
   // Drilldown state
   const [drillFocus, setDrillFocus] = React.useState<DrilldownFocus | null>(null);
   const drillApi = React.useMemo<DrilldownApi>(
@@ -3419,7 +3469,7 @@ export function SalesDashboardV2() {
   );
 
   return (
-    <ViewCtx.Provider value={view}>
+    <ViewCtx.Provider value={viewWithFinserv}>
     <ForecastCtx.Provider value={forecastCtxValue}>
     <DrilldownCtx.Provider value={drillApi}>
     <div
