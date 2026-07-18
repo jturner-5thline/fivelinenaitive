@@ -124,3 +124,103 @@ export function useDebtAdvisoryPlanValues(
     isLoading: query.isLoading,
   };
 }
+
+/**
+ * Fetches Master Plan values keyed by trend-chart bucket, so the debt advisory
+ * bar charts can overlay a plan line in "Performance to Plan" mode.
+ *
+ * Bucket keys are either monthly (`YYYY-MM`) or quarterly (`YYYY-QN`). For
+ * quarterly buckets the plan value is the sum of the 3 constituent months.
+ */
+export function useDebtAdvisoryPlanForBuckets(
+  widgetKey: string | undefined,
+  buckets: ReadonlyArray<{ key: string }>,
+): { values: Map<string, number>; isLoading: boolean } {
+  const { company } = useCompany();
+
+  const { monthKeys, bucketMonths } = useMemo(() => {
+    const bm = new Map<string, string[]>();
+    const all = new Set<string>();
+    for (const b of buckets) {
+      const months = expandBucketKey(b.key);
+      bm.set(b.key, months);
+      months.forEach((m) => all.add(m));
+    }
+    return { monthKeys: Array.from(all), bucketMonths: bm };
+  }, [buckets]);
+
+  const query = useQuery({
+    queryKey: [
+      'debt-advisory-plan-buckets',
+      company?.id ?? null,
+      widgetKey ?? null,
+      monthKeys.join(','),
+    ],
+    enabled: !!widgetKey && monthKeys.length > 0,
+    staleTime: 30_000,
+    queryFn: async () => {
+      if (!widgetKey || monthKeys.length === 0) return new Map<string, number>();
+      const metricKeys = DASHBOARD_KEYS.map((d) => `plan:${d}:${widgetKey}`);
+      let q = supabase
+        .from('insights_metric_targets' as any)
+        .select('metric_key, period_month, target_value')
+        .in('metric_key', metricKeys)
+        .in('period_month', monthKeys);
+      q = company?.id ? q.eq('company_id', company.id) : q.is('company_id', null);
+      const { data, error } = await q;
+      if (error) throw error;
+
+      // Prefer consolidated-debt-pipeline, fall back to sales-dashboard-v2.
+      type Row = { metric_key: string; period_month: string; target_value: number | null };
+      const byDashMonth = new Map<string, number>();
+      for (const raw of ((data ?? []) as unknown as Row[])) {
+        const parts = raw.metric_key.split(':');
+        if (parts.length < 3) continue;
+        const dash = parts[1];
+        const key = `${dash}::${raw.period_month}`;
+        byDashMonth.set(key, Number(raw.target_value ?? 0));
+      }
+      const monthValue = (m: string): number | null => {
+        const primary = byDashMonth.get(`consolidated-debt-pipeline::${m}`);
+        if (primary != null) return primary;
+        const fallback = byDashMonth.get(`sales-dashboard-v2::${m}`);
+        return fallback ?? null;
+      };
+
+      const out = new Map<string, number>();
+      bucketMonths.forEach((months, bucketKey) => {
+        let sum = 0;
+        let any = false;
+        for (const m of months) {
+          const v = monthValue(m);
+          if (v != null) {
+            sum += v;
+            any = true;
+          }
+        }
+        if (any) out.set(bucketKey, sum);
+      });
+      return out;
+    },
+  });
+
+  return {
+    values: query.data ?? new Map<string, number>(),
+    isLoading: query.isLoading,
+  };
+}
+
+/** Expand a bucket key ("YYYY-MM" or "YYYY-QN") into its month keys. */
+function expandBucketKey(key: string): string[] {
+  const quarterMatch = key.match(/^(\d{4})-Q([1-4])$/);
+  if (quarterMatch) {
+    const year = Number(quarterMatch[1]);
+    const q = Number(quarterMatch[2]);
+    const startMonth = (q - 1) * 3 + 1;
+    return [0, 1, 2].map(
+      (i) => `${year}-${String(startMonth + i).padStart(2, '0')}`,
+    );
+  }
+  if (/^\d{4}-\d{2}$/.test(key)) return [key];
+  return [];
+}
