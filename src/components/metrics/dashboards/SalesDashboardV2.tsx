@@ -3159,16 +3159,34 @@ export function SalesDashboardV2() {
   // Live Deals on Board — mirrors Consolidated Debt Pipeline Board logic
   const dealsOnBoardQuery = useDealsOnBoardByMonth(activeYears);
   // Stage-entry counts (from deal_stage_history) driving the
-  // "Deals-on-Board to Proposal" conversion card. Always trailing 12 months
-  // ending at the selected timeframe's end date so the ratio stays comparable
-  // regardless of how narrow the header timeframe is.
+  // "Deals-on-Board to Proposal" conversion card, scoped to the selected
+  // timeframe so the ratio matches the header period label.
   const stageEntryRange = React.useMemo(() => {
     const end = firstDayOfMonthAfterUtc(rangeEnd);
-    const start = addMonthsClampedUtc(end, -12);
+    const start = new Date(Date.UTC(
+      rangeStart.getUTCFullYear(),
+      rangeStart.getUTCMonth(),
+      1,
+    ));
     return { start, end };
-  }, [rangeEnd]);
+  }, [rangeStart, rangeEnd]);
+  // Prior period of equal length (in whole months) for variance comparison.
+  const priorStageEntryRange = React.useMemo(() => {
+    const months =
+      (stageEntryRange.end.getUTCFullYear() - stageEntryRange.start.getUTCFullYear()) * 12 +
+      (stageEntryRange.end.getUTCMonth() - stageEntryRange.start.getUTCMonth());
+    const priorEnd = stageEntryRange.start;
+    const priorStart = new Date(Date.UTC(
+      priorEnd.getUTCFullYear(),
+      priorEnd.getUTCMonth() - months,
+      1,
+    ));
+    return { start: priorStart, end: priorEnd };
+  }, [stageEntryRange]);
   const ndaEnteredInRange = useStageEntryCount('ndaneeds-list-sent', stageEntryRange);
   const proposalEnteredInRange = useStageEntryCount('proposal-issued', stageEntryRange);
+  const ndaEnteredPrior = useStageEntryCount('ndaneeds-list-sent', priorStageEntryRange);
+  const proposalEnteredPrior = useStageEntryCount('proposal-issued', priorStageEntryRange);
   const [onBoardToProposalOpen, setOnBoardToProposalOpen] = React.useState(false);
   const dealsOnBoardByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching) return {};
