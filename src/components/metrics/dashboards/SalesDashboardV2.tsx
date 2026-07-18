@@ -3641,11 +3641,22 @@ export function SalesDashboardV2() {
                 if (!ndaCount) return `No NDAs entered · TTM`;
                 const cur = converted / ndaCount;
                 const prev = ndaPriorCount ? convertedPrior / ndaPriorCount : null;
-                if (prev == null) return `${base} · no prior TTM baseline`;
+                // Label the prior period based on where the prior TTM ends
+                // (one full timeframe-length back from the current end).
+                const priorLabel = (() => {
+                  const e = new Date(ttmRanges.priorEnd.getTime() - 1);
+                  if (ttmRanges.periodMonths === 3) {
+                    const q = Math.floor(e.getUTCMonth() / 3) + 1;
+                    return `Q${q} ${e.getUTCFullYear()}`;
+                  }
+                  if (ttmRanges.periodMonths === 12) return `${e.getUTCFullYear()}`;
+                  return e.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+                })();
+                if (prev == null) return `${base} · no ${priorLabel} baseline`;
                 const deltaPts = (cur - prev) * 100;
                 const arrow = deltaPts > 0 ? '▲' : deltaPts < 0 ? '▼' : '■';
                 const sign = deltaPts > 0 ? '+' : '';
-                return `${base} · ${arrow} ${sign}${deltaPts.toFixed(1)} pts vs prior TTM (${(prev * 100).toFixed(1)}%)`;
+                return `${base} · ${arrow} ${sign}${deltaPts.toFixed(1)} pts vs ${priorLabel} TTM (${(prev * 100).toFixed(1)}%)`;
               })()}
               onClick={() => setOnBoardToProposalOpen(true)}
             />
