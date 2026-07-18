@@ -2628,10 +2628,34 @@ export function ConsolidatedDebtPipelineDashboard({
 
   return (
     <div className="space-y-6">
+      <ComparisonModeContext.Provider value={comparisonCtx}>
       <OpenDealContext.Provider value={setOpenDealId}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div />
-        <DashboardPlansGear dashboardKey="consolidated-debt-pipeline" />
+        <div className="flex items-center gap-2 flex-wrap">
+          <Tabs
+            value={comparisonMode}
+            onValueChange={(v) => setComparisonMode(v as ComparisonMode)}
+          >
+            <TabsList className="bg-muted/40 border border-border/40">
+              <TabsTrigger
+                value="variance"
+                className="gap-1.5 text-xs"
+                title="Period-over-period change vs the equal-length prior window"
+              >
+                Variance
+              </TabsTrigger>
+              <TabsTrigger
+                value="plan"
+                className="gap-1.5 text-xs"
+                title={`Actual vs Master Plan for ${debtPlan.periodLabel || 'the selected period'}`}
+              >
+                Performance to Plan
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <DashboardPlansGear dashboardKey="consolidated-debt-pipeline" />
+        </div>
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'cards' | 'table')}>
           <TabsList className="bg-muted/40 border border-border/40">
             <TabsTrigger value="cards" className="gap-1.5">
