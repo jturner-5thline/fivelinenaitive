@@ -2965,6 +2965,7 @@ export function ConsolidatedDebtPipelineDashboard({
             dataKey="count"
             valueFormatter={(value) => `${Math.round(value)}`}
             totalFormatter={(value) => `${Math.round(value)}`}
+            planWidgetKey="deals-on-board"
             onBarClick={(bucket) =>
               setDrilldown({
                 title: `Deals on Board${ttmSuffix} — ${bucket.label}`,
@@ -2982,6 +2983,7 @@ export function ConsolidatedDebtPipelineDashboard({
             dataKey="count"
             valueFormatter={(value) => `${Math.round(value)}`}
             totalFormatter={(value) => `${Math.round(value)}`}
+            planWidgetKey="deals-signed"
             onBarClick={(bucket) =>
               setDrilldown({
                 title: `Deals Signed${ttmSuffix} — ${bucket.label}`,
@@ -3004,6 +3006,7 @@ export function ConsolidatedDebtPipelineDashboard({
             dataKey="count"
             valueFormatter={(value) => `${Math.round(value)}`}
             totalFormatter={(value) => `${Math.round(value)}`}
+            planWidgetKey="deals-closed"
             onBarClick={(bucket) =>
               setDrilldown({
                 title: `Deals Closed${ttmSuffix} — ${bucket.label}`,
@@ -3021,6 +3024,7 @@ export function ConsolidatedDebtPipelineDashboard({
             dataKey="dollarVolume"
             valueFormatter={formatCurrency}
             totalFormatter={formatCurrency}
+            planWidgetKey="dollars-funded"
             onBarClick={(bucket) =>
               setDrilldown({
                 title: `Dollars Funded${ttmSuffix} — ${bucket.label}`,
