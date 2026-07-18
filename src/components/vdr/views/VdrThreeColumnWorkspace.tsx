@@ -1871,7 +1871,7 @@ export function VdrThreeColumnWorkspace({
       <LinkDriveFolderDialog
         open={driveDialogOpen}
         onOpenChange={setDriveDialogOpen}
-        onImport={(file, folderPath) => vdrDocs.uploadFile(file, folderPath, 'internal')}
+        onImport={(file, folderPath) => vdrDocs.uploadFile(file, folderPath, 'dataroom')}
         internalFolders={internalCategoryNames}
       />
     )}

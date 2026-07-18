@@ -210,10 +210,18 @@ export function useVdrDocuments(dealId: string) {
     }
   }, [dealId, fetchDocuments, documents]);
 
-  const uploadFile = useCallback(async (file: File, folderPath: string, source: VdrDocument['source'] = 'dataroom') => {
+  const uploadFile = useCallback(async (file: File, folderPath: string, source: VdrDocument['source'] | string = 'dataroom') => {
     if (!dealId || !company?.id || !user?.id) return;
 
-    const storagePath = `${dealId}${folderPath}${file.name}`;
+    const normalizedFolderPath = (() => {
+      const clean = (folderPath || '/').trim();
+      if (!clean || clean === '/') return '/';
+      return `/${clean.replace(/^\/+|\/+$/g, '')}/`;
+    })();
+    const normalizedSource: VdrDocument['source'] = ['dataroom', 'incoming', 'team_comms'].includes(String(source))
+      ? source as VdrDocument['source']
+      : 'dataroom';
+    const storagePath = `${dealId}${normalizedFolderPath}${file.name}`;
     const { error: uploadError } = await supabase.storage
       .from('vdr-files')
       .upload(storagePath, file, { upsert: true });
@@ -231,9 +239,9 @@ export function useVdrDocuments(dealId: string) {
       file_path: storagePath,
       file_size: file.size,
       file_type: file.type || file.name.split('.').pop(),
-      folder_path: folderPath,
+      folder_path: normalizedFolderPath,
       is_folder: false,
-      source,
+      source: normalizedSource,
       uploaded_by: user.id,
       ingestion_status: 'pending',
     }).select('id').single();
@@ -252,7 +260,7 @@ export function useVdrDocuments(dealId: string) {
     toast.success(`Uploaded ${file.name}`);
 
     logAudit('file_uploaded', 'file', inserted?.id, file.name, {
-      folder: folderPath, file_size: file.size, file_type: file.type,
+      folder: normalizedFolderPath, file_size: file.size, file_type: file.type,
     });
     logActivity({
       event_type: 'feature_used',
@@ -267,7 +275,7 @@ export function useVdrDocuments(dealId: string) {
     logUsage({
       feature_type: 'DATA_ROOM_UPLOAD',
       deal_id: dealId,
-      metadata: { filename: file.name, file_size: file.size, source },
+      metadata: { filename: file.name, file_size: file.size, source: normalizedSource },
     });
 
     if (inserted?.id) {
