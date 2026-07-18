@@ -133,6 +133,30 @@ function friendlyType(mime: string): string {
   return map[mime] ?? mime.split('/').pop() ?? 'File';
 }
 
+/** Normalize a folder name for fuzzy matching: lowercase, strip punctuation, collapse whitespace. */
+function normalizeFolderName(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[_\-–—/\\|.]+/g, ' ')
+    .replace(/[^a-z0-9\s&]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Pick the best internal-folder match for a Drive folder name.
+ * Priority: exact normalized equality > one contains the other (min length ≥ 3). Returns null when no match. */
+function autoMatchTarget(driveFolderName: string, internalFolders: string[]): string | null {
+  const q = normalizeFolderName(driveFolderName);
+  if (!q) return null;
+  const normalized = internalFolders.map(name => ({ name, norm: normalizeFolderName(name) }));
+  const exact = normalized.find(f => f.norm === q);
+  if (exact) return exact.name;
+  const contains = normalized
+    .filter(f => f.norm.length >= 3 && (f.norm.includes(q) || q.includes(f.norm)))
+    .sort((a, b) => Math.abs(a.norm.length - q.length) - Math.abs(b.norm.length - q.length));
+  return contains[0]?.name ?? null;
+}
+
 export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFolderPath = '/', internalFolders = [] }: Props) {
   const [mode, setMode] = useState<'browse' | 'url'>('browse');
   const [url, setUrl] = useState('');
@@ -154,6 +178,8 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const [showResults, setShowResults] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
+  // Track which folder IDs were auto-matched (vs user-overridden) for the badge.
+  const [autoMatched, setAutoMatched] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!defaultTarget && internalFolders.length) setDefaultTarget(internalFolders[0]);
@@ -163,7 +189,26 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     setUrl(''); setFiles([]); setSelected(new Set()); setSearch(''); setMapping({});
     setCrumbs([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]); setMode('browse');
     setProgress([]); setShowResults(false); setUrlError(null); setPreviewingId(null);
+    setAutoMatched(new Set());
   };
+
+  // Auto-match Drive subfolder names to Internal data-room folders whenever the file list changes.
+  useEffect(() => {
+    if (!internalFolders.length || !files.length) return;
+    setMapping(prev => {
+      const next = { ...prev };
+      const auto = new Set<string>();
+      for (const f of files) {
+        if (f.mimeType !== FOLDER_MIME) continue;
+        // Respect any explicit user override already present.
+        if (next[f.id]) continue;
+        const match = autoMatchTarget(f.name, internalFolders);
+        if (match) { next[f.id] = match; auto.add(f.id); }
+      }
+      setAutoMatched(auto);
+      return next;
+    });
+  }, [files, internalFolders]);
 
   const browse = useCallback(async (folderId: string, name?: string, replace?: boolean) => {
     setLoading(true); setSelected(new Set()); setSearch(''); setMapping({});
@@ -300,14 +345,16 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
       .map(f => ({
         key: `top:${f.id}`,
         name: f.mimeType === FOLDER_MIME ? `${f.name} (folder)` : f.name,
-        target: defaultTarget,
+        target: f.mimeType === FOLDER_MIME ? (mapping[f.id] || defaultTarget) : defaultTarget,
         status: 'queued' as ImportStatus,
       }));
     setProgress(seed);
 
     for (const f of files) {
       if (!selected.has(f.id)) continue;
-      const target = defaultTarget;
+      const target = f.mimeType === FOLDER_MIME
+        ? (mapping[f.id] || defaultTarget)
+        : defaultTarget;
       if (!target) {
         updateItem(`top:${f.id}`, { status: 'failed', error: 'No target folder' });
         fail++; continue;
@@ -418,6 +465,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const selectedFileRows = selectedFiles.filter(f => f.mimeType !== FOLDER_MIME);
   const selectedFolderRows = selectedFiles.filter(f => f.mimeType === FOLDER_MIME);
   const selectedTotalBytes = selectedFileRows.reduce((sum, f) => sum + (Number(f.size) || 0), 0);
+  const unmatchedSelected = selectedFolderRows.filter(f => !mapping[f.id]);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
@@ -593,13 +641,40 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
                           <Folder className="h-3.5 w-3.5 text-primary" />
                           <span className="truncate hover:underline">{f.name}</span>
                         </button>
-                        <span className="text-[10px] text-muted-foreground shrink-0">
+                        <span className="hidden sm:inline text-[10px] text-muted-foreground shrink-0">
                           Folder · {formatModified(f.modifiedTime)}
                         </span>
-                        {isChecked && (
-                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">
-                            all contents
-                          </span>
+                        {isChecked && internalFolders.length > 0 && (
+                          <>
+                            <span className="text-[10px] text-muted-foreground shrink-0">→</span>
+                            <Select
+                              value={mapping[f.id] ?? ''}
+                              onValueChange={(v) => {
+                                setMapping(prev => ({ ...prev, [f.id]: v }));
+                                setAutoMatched(prev => { const n = new Set(prev); n.delete(f.id); return n; });
+                              }}
+                              disabled={importing}
+                            >
+                              <SelectTrigger
+                                className={`h-6 text-[11px] w-[170px] shrink-0 ${mapping[f.id] ? '' : 'border-destructive text-destructive'}`}
+                              >
+                                <SelectValue placeholder="Pick target…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {internalFolders.map(name => (
+                                  <SelectItem key={name} value={name} className="text-xs">{name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {mapping[f.id] && autoMatched.has(f.id) && (
+                              <span
+                                className="text-[9px] uppercase tracking-wide text-emerald-600 shrink-0"
+                                title={`Auto-matched to "${mapping[f.id]}" by folder name`}
+                              >
+                                auto
+                              </span>
+                            )}
+                          </>
                         )}
                       </>
                     ) : (
@@ -649,7 +724,13 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
             {selectedFileRows.length > 0 && (
               <span>· ~{formatSize(selectedTotalBytes)}</span>
             )}
-            <span className="ml-auto">→ {defaultTarget || 'no target'}</span>
+            {unmatchedSelected.length > 0 ? (
+              <span className="ml-auto text-destructive">
+                {unmatchedSelected.length} folder{unmatchedSelected.length === 1 ? '' : 's'} need a target
+              </span>
+            ) : (
+              <span className="ml-auto">files → {defaultTarget || 'no target'}</span>
+            )}
           </div>
         )}
 
@@ -662,7 +743,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
           ) : (
             <>
               <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={importing}>Cancel</Button>
-              <Button onClick={handleImport} disabled={selected.size === 0 || importing}>
+              <Button onClick={handleImport} disabled={selected.size === 0 || importing || unmatchedSelected.length > 0}>
                 {importing && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
                 Import {selected.size > 0 ? `${selected.size} ` : ''}to Internal
               </Button>
