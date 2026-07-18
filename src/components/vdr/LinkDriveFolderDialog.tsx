@@ -293,8 +293,9 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     }
   };
 
-  const handleImport = async () => {
-    if (selected.size === 0) return;
+  const handleImport = async (overrideFiles?: DriveFile[]) => {
+    const importFiles = overrideFiles ?? files.filter(f => selected.has(f.id));
+    if (importFiles.length === 0) return;
     setImporting(true);
     setShowResults(true);
     let ok = 0; let fail = 0;
@@ -340,9 +341,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     };
 
     // Seed queue with top-level selected items (folders shown as placeholders until expanded).
-    const seed: ImportItem[] = files
-      .filter(f => selected.has(f.id))
-      .map(f => ({
+    const seed: ImportItem[] = importFiles.map(f => ({
         key: `top:${f.id}`,
         name: f.mimeType === FOLDER_MIME ? `${f.name} (folder)` : f.name,
         target: f.mimeType === FOLDER_MIME ? (mapping[f.id] || defaultTarget) : defaultTarget,
@@ -350,8 +349,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
       }));
     setProgress(seed);
 
-    for (const f of files) {
-      if (!selected.has(f.id)) continue;
+    for (const f of importFiles) {
       const target = f.mimeType === FOLDER_MIME
         ? (mapping[f.id] || defaultTarget)
         : defaultTarget;
