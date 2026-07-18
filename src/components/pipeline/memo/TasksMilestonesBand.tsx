@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Deal, DealMilestone } from '@/types/deal';
 import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
 import type { PipelineDigestRaw } from '@/hooks/usePipelineDigests';
-import { Diamond, Pencil, Check, Plus, Maximize2, X, Search, GripVertical } from 'lucide-react';
+import { Diamond, Pencil, Check, Plus, Maximize2, X, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -1191,6 +1191,29 @@ function TasksMilestonesDetailDialog({
     () => sortedTasks.filter((t) => t.kind === 'outstanding' && matchesQuery([t.title, t.requestedByName])),
     [sortedTasks, normalizedQuery]
   );
+  const [outstandingSort, setOutstandingSort] = useState<{ key: 'due' | 'requester'; dir: 'asc' | 'desc' }>({ key: 'due', dir: 'asc' });
+  const toggleOutstandingSort = (key: 'due' | 'requester') => {
+    setOutstandingSort((prev) =>
+      prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
+    );
+  };
+  const sortedOutstanding = useMemo(() => {
+    const list = [...filteredOutstanding];
+    const dirMul = outstandingSort.dir === 'asc' ? 1 : -1;
+    list.sort((a, b) => {
+      if (outstandingSort.key === 'due') {
+        const ta = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+        const tb = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+        return (ta - tb) * dirMul;
+      }
+      const ra = (a.requestedByName || '').toLowerCase();
+      const rb = (b.requestedByName || '').toLowerCase();
+      if (!ra && rb) return 1;
+      if (ra && !rb) return -1;
+      return ra.localeCompare(rb) * dirMul;
+    });
+    return list;
+  }, [filteredOutstanding, outstandingSort]);
   const totalTasks = sortedTasks.filter((t) => t.kind === 'task').length;
   const totalOutstanding = sortedTasks.filter((t) => t.kind === 'outstanding').length;
   const filteredMilestones = useMemo(
