@@ -773,7 +773,7 @@ function PerformancePanel() {
   const drivers: Driver[] = [
     { label: 'Sales Calls', metricKey: 'salesCalls', actual: sum(view.actual.salesCalls, E), plan: view.plan.salesCalls.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
     { label: 'Proposals Issued', metricKey: 'proposalsIssued', actual: sum(view.actual.proposalsIssued, E), plan: view.plan.proposalsIssued.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
-    { label: 'Deals on Board', metricKey: 'dealsOnBoard', note: '· current', actual: view.actual.dealsOnBoard[E - 1] ?? 0, plan: view.plan.dealsOnBoard[E - 1] ?? 0, type: 'count' },
+    { label: 'Deals on Board', metricKey: 'dealsOnBoard', actual: view.actual.dealsOnBoard[E - 1] ?? 0, plan: view.plan.dealsOnBoard[E - 1] ?? 0, type: 'count' },
     { label: 'Dollars Signed', metricKey: 'dollarsSigned', actual: sum(view.actual.dollarsSigned, E), plan: view.plan.dollarsSigned.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
     { label: 'FinServ: Deals on the Board', metricKey: 'dealsClosed', actual: sum(view.actual.dealsClosed, E), plan: view.plan.dealsClosed.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
     { label: 'FinServ $ on the Board', metricKey: 'dollarsFunded', actual: sum(view.actual.dollarsFunded, E), plan: view.plan.dollarsFunded.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
