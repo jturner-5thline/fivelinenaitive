@@ -1259,32 +1259,32 @@ function TasksMilestonesDetailDialog({
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="flex-1 min-h-0 flex flex-col overflow-hidden -mx-1 px-1 mt-2">
-          <TabsList className="grid grid-cols-3 w-full h-auto min-h-10 gap-1 p-1">
+          <TabsList className="grid grid-cols-3 w-full h-10 gap-1 p-1">
             <TabsTrigger
               value="tasks"
-              className="flex flex-col items-center justify-center gap-0.5 text-xs sm:text-sm font-medium leading-tight py-1.5 px-2 whitespace-normal text-center"
+              className="inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium py-1.5 px-2 whitespace-nowrap"
             >
-              <span className="truncate max-w-full">Tasks &amp; follow-ups</span>
-              <span className="text-[10px] font-normal text-muted-foreground">
-                {filteredTasks.length}{normalizedQuery && filteredTasks.length !== totalTasks ? ` of ${totalTasks}` : ''}
+              <span className="truncate">Tasks &amp; follow-ups</span>
+              <span className="inline-flex items-center justify-center rounded-full bg-white/10 text-[10px] font-medium text-muted-foreground min-w-[1.25rem] h-4 px-1">
+                {filteredTasks.length}
               </span>
             </TabsTrigger>
             <TabsTrigger
               value="outstanding"
-              className="flex flex-col items-center justify-center gap-0.5 text-xs sm:text-sm font-medium leading-tight py-1.5 px-2 whitespace-normal text-center"
+              className="inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium py-1.5 px-2 whitespace-nowrap"
             >
-              <span className="truncate max-w-full">Outstanding items</span>
-              <span className="text-[10px] font-normal text-muted-foreground">
-                {filteredOutstanding.length}{normalizedQuery && filteredOutstanding.length !== totalOutstanding ? ` of ${totalOutstanding}` : ''}
+              <span className="truncate">Outstanding items</span>
+              <span className="inline-flex items-center justify-center rounded-full bg-white/10 text-[10px] font-medium text-muted-foreground min-w-[1.25rem] h-4 px-1">
+                {filteredOutstanding.length}
               </span>
             </TabsTrigger>
             <TabsTrigger
               value="milestones"
-              className="flex flex-col items-center justify-center gap-0.5 text-xs sm:text-sm font-medium leading-tight py-1.5 px-2 whitespace-normal text-center"
+              className="inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium py-1.5 px-2 whitespace-nowrap"
             >
-              <span className="truncate max-w-full">Milestones</span>
-              <span className="text-[10px] font-normal text-muted-foreground">
-                {filteredMilestones.length}{normalizedQuery && filteredMilestones.length !== sortedMilestones.length ? ` of ${sortedMilestones.length}` : ''}
+              <span className="truncate">Milestones</span>
+              <span className="inline-flex items-center justify-center rounded-full bg-white/10 text-[10px] font-medium text-muted-foreground min-w-[1.25rem] h-4 px-1">
+                {filteredMilestones.length}
               </span>
             </TabsTrigger>
           </TabsList>
