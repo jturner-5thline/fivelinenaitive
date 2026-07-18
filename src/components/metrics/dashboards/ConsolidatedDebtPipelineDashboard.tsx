@@ -1744,6 +1744,20 @@ function CompactFundedBarChart({
                   isAnimationActive={false}
                 />
               )}
+              {showPlanOverlay && planCoverage > 0 && (
+                <Line
+                  type="monotone"
+                  dataKey="plan"
+                  stroke="hsl(45 93% 58%)"
+                  strokeWidth={2}
+                  strokeDasharray="5 4"
+                  dot={{ r: 3, fill: 'hsl(45 93% 58%)', stroke: 'hsl(45 93% 58%)' }}
+                  activeDot={{ r: 4 }}
+                  isAnimationActive={false}
+                  connectNulls
+                  name="Plan"
+                />
+              )}
             </ComposedChart>
           </ResponsiveContainer>
         </div>
