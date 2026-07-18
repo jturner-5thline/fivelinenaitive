@@ -4257,6 +4257,8 @@ export function SalesDashboardV2() {
             <ConversionCard
               title="Deals-on-Board to Proposal"
               Icon={FileText}
+              sparkData={onBoardToProposalSpark}
+              sparkFormatter={(v) => `${(v * 100).toFixed(0)}%`}
               value={(() => {
                 if (ttmConversion.loading) return null;
                 if (!ttmConversion.ndaCount) return null;
