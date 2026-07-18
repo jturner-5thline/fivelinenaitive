@@ -435,8 +435,6 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const selectedFileRows = selectedFiles.filter(f => f.mimeType !== FOLDER_MIME);
   const selectedFolderRows = selectedFiles.filter(f => f.mimeType === FOLDER_MIME);
   const selectedTotalBytes = selectedFileRows.reduce((sum, f) => sum + (Number(f.size) || 0), 0);
-  const unmatchedSelected = selectedFolderRows.filter(f => !mapping[f.id]);
-
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
       <DialogContent className="max-w-3xl">
@@ -445,24 +443,9 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
             <FolderOpen className="h-4 w-4" /> Google Drive
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Browse the shared 5th Line Drive. Check any folder (uploads all contents, recursively) or file, then import into the Default target.
+            Browse the shared 5th Line Drive. Check a folder to upload it (and its full contents) into Internal — the folder's own name is preserved. Files upload to Internal root.
           </DialogDescription>
         </DialogHeader>
-
-        {/* Default mapping target — applied to any selected row without its own mapping */}
-        {internalFolders.length > 0 && (
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground shrink-0">Default target:</span>
-            <Select value={defaultTarget} onValueChange={setDefaultTarget} disabled={importing}>
-              <SelectTrigger className="h-7 w-[220px] text-xs"><SelectValue placeholder="Choose folder…" /></SelectTrigger>
-              <SelectContent>
-                {internalFolders.map(name => (
-                  <SelectItem key={name} value={name} className="text-xs">{name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
 
         {/* Mode toggle */}
         <div className="flex items-center gap-1 border-b pb-2">
