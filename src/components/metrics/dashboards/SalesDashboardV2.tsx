@@ -3198,6 +3198,45 @@ export function SalesDashboardV2() {
   const proposalEnteredInRange = useStageEntryCount('proposal-issued', stageEntryRange);
   const ndaEnteredPrior = useStageEntryCount('ndaneeds-list-sent', priorStageEntryRange);
   const proposalEnteredPrior = useStageEntryCount('proposal-issued', priorStageEntryRange);
+  // TTM funnel conversion for "Deals-on-Board to Proposal":
+  // Denominator = distinct deals that entered NDA / Needs List Sent in the
+  // trailing 12 months (anchored on the dashboard's rangeEnd).
+  // Numerator   = of those same deals, how many ever entered Proposal Issued
+  // (at any time from the TTM window start through today).
+  const ttmRanges = React.useMemo(() => {
+    const end = firstDayOfMonthAfterUtc(rangeEnd);
+    const ttmStart = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - 12, 1));
+    const priorEnd = ttmStart;
+    const priorStart = new Date(Date.UTC(priorEnd.getUTCFullYear(), priorEnd.getUTCMonth() - 12, 1));
+    // Proposal lookup window covers both TTM windows through today so we can
+    // check any downstream conversion regardless of when it occurred.
+    const now = new Date();
+    const propEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    return { ttmStart, ttmEnd: end, priorStart, priorEnd, propStart: priorStart, propEnd };
+  }, [rangeEnd]);
+  const ndaTtmEvents = useStageEntryEvents('ndaneeds-list-sent', { start: ttmRanges.ttmStart, end: ttmRanges.ttmEnd });
+  const ndaPriorTtmEvents = useStageEntryEvents('ndaneeds-list-sent', { start: ttmRanges.priorStart, end: ttmRanges.priorEnd });
+  const proposalLookupEvents = useStageEntryEvents('proposal-issued', { start: ttmRanges.propStart, end: ttmRanges.propEnd });
+  const ttmConversion = React.useMemo(() => {
+    const loading = ndaTtmEvents.isLoading || ndaPriorTtmEvents.isLoading || proposalLookupEvents.isLoading;
+    const proposalDeals = new Set<string>();
+    for (const ev of proposalLookupEvents.events) proposalDeals.add(ev.deal_id);
+    const ndaSet = new Set<string>();
+    for (const ev of ndaTtmEvents.events) ndaSet.add(ev.deal_id);
+    const ndaPriorSet = new Set<string>();
+    for (const ev of ndaPriorTtmEvents.events) ndaPriorSet.add(ev.deal_id);
+    let converted = 0;
+    ndaSet.forEach((id) => { if (proposalDeals.has(id)) converted += 1; });
+    let convertedPrior = 0;
+    ndaPriorSet.forEach((id) => { if (proposalDeals.has(id)) convertedPrior += 1; });
+    return {
+      loading,
+      ndaCount: ndaSet.size,
+      converted,
+      ndaPriorCount: ndaPriorSet.size,
+      convertedPrior,
+    };
+  }, [ndaTtmEvents.events, ndaTtmEvents.isLoading, ndaPriorTtmEvents.events, ndaPriorTtmEvents.isLoading, proposalLookupEvents.events, proposalLookupEvents.isLoading]);
   const [onBoardToProposalOpen, setOnBoardToProposalOpen] = React.useState(false);
   const dealsOnBoardByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching) return {};
