@@ -969,7 +969,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                         : [];
                       return (
                         <tr key={`${group.key}-${w.key}`} className="border-b border-border/50 last:border-0 hover:bg-muted/20">
-                          <td className="px-2 py-1.5 sticky left-0 bg-background border-r border-border whitespace-nowrap w-auto">
+                          <td className="px-2 py-1.5 sticky left-0 z-20 bg-background border-r border-border whitespace-nowrap w-auto shadow-[2px_0_4px_-2px_rgba(0,0,0,0.4)]">
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1">
                                 <div className="font-medium text-foreground/90 whitespace-nowrap">
