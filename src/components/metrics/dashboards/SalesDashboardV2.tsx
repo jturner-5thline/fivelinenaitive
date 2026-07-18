@@ -3629,16 +3629,36 @@ export function SalesDashboardV2() {
             <ConversionCard
               title="Call-to-Deal Conversion"
               value={(() => {
-                const calls = trailing3(liveSalesCallsActual);
-                const deals = trailing3(liveDealsOnBoardActual);
-                if (calls == null || deals == null || calls === 0) return null;
+                if (ttmConversion.loading || ttmSalesCallsCount == null) return null;
+                const deals = ttmConversion.ndaCount;
+                const calls = ttmSalesCallsCount;
+                if (!calls) return null;
                 return deals / calls;
               })()}
               subtitle={(() => {
-                const calls = trailing3(liveSalesCallsActual);
-                const deals = trailing3(liveDealsOnBoardActual);
-                if (calls == null || deals == null) return 'Loading…';
-                return `${deals} deals ÷ ${calls} calls · last 3 months`;
+                if (ttmConversion.loading || ttmSalesCallsCount == null) return 'Loading…';
+                const deals = ttmConversion.ndaCount;
+                const calls = ttmSalesCallsCount;
+                const base = `${deals} deals ÷ ${calls} calls · TTM`;
+                if (!calls) return `No debt sales calls · TTM`;
+                const priorLabel = (() => {
+                  const e = new Date(ttmRanges.priorEnd.getTime() - 1);
+                  if (ttmRanges.periodMonths === 3) {
+                    const q = Math.floor(e.getUTCMonth() / 3) + 1;
+                    return `Q${q} ${e.getUTCFullYear()}`;
+                  }
+                  if (ttmRanges.periodMonths === 12) return `${e.getUTCFullYear()}`;
+                  return e.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+                })();
+                const cur = deals / calls;
+                const prevCalls = ttmSalesCallsPriorCount;
+                const prevDeals = ttmConversion.ndaPriorCount;
+                if (prevCalls == null || !prevCalls) return `${base} · no ${priorLabel} baseline`;
+                const prev = prevDeals / prevCalls;
+                const deltaPts = (cur - prev) * 100;
+                const arrow = deltaPts > 0 ? '▲' : deltaPts < 0 ? '▼' : '■';
+                const sign = deltaPts > 0 ? '+' : '';
+                return `${base} · ${arrow} ${sign}${deltaPts.toFixed(1)} pts vs ${priorLabel} TTM (${(prev * 100).toFixed(1)}%)`;
               })()}
             />
             <ConversionCard
