@@ -3469,7 +3469,7 @@ export function SalesDashboardV2() {
   );
 
   return (
-    <ViewCtx.Provider value={view}>
+    <ViewCtx.Provider value={viewWithFinserv}>
     <ForecastCtx.Provider value={forecastCtxValue}>
     <DrilldownCtx.Provider value={drillApi}>
     <div
