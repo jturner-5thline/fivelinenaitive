@@ -259,28 +259,6 @@ export function SalesTeamBoardKpiGrid({ quarter }: { quarter: QuarterOption }) {
 
   const cards: MetricCardConfig[] = [
     {
-      id: 'ioi-count',
-      title: 'Indication of Interest Count',
-      subtitle: 'Entered "Indication of Interest" · In Development',
-      icon: Sparkles,
-      value: m.inDevIndication.count,
-      isLoading: m.inDevIndication.isLoading,
-      deals: m.inDevIndication.deals,
-      color: 'hsl(var(--primary))',
-      drilldownTitle: 'Indication of Interest — In Development',
-    },
-    {
-      id: 'ioi-dollars',
-      title: 'Indication of Interest $',
-      subtitle: 'Sum of deal value · In Development',
-      icon: DollarSign,
-      value: formatCurrency(m.inDevIndication.dollarVolume),
-      isLoading: m.inDevIndication.isLoading,
-      deals: m.inDevIndication.deals,
-      color: 'hsl(var(--chart-2))',
-      drilldownTitle: 'Indication of Interest $ — In Development',
-    },
-    {
       id: 'fs-on-board',
       title: 'FinServ: Deals on the Board',
       subtitle: 'Added to FinServ Pipeline',
