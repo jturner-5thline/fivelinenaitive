@@ -3929,6 +3929,7 @@ export function SalesDashboardV2() {
             <ConversionCard title="TBD" value={null} subtitle="—" />
             <ConversionCard
               title="Call-to-Deal Conversion"
+              onClick={() => setCallToDealOpen(true)}
               info={
                 <div className="space-y-1.5">
                   <div>
