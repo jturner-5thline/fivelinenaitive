@@ -2748,7 +2748,6 @@ export function ConsolidatedDebtPipelineDashboard({
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          <DashboardPlansGear dashboardKey="consolidated-debt-pipeline" />
         </div>
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'cards' | 'table')}>
           <TabsList className="bg-muted/40 border border-border/40">
