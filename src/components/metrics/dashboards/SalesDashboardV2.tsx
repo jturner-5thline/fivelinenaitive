@@ -1533,17 +1533,22 @@ function ConversionCard({
   subtitle,
   onClick,
   info,
+  displayValue,
 }: {
   title: string;
   value: number | null;
   subtitle?: string;
   onClick?: () => void;
   info?: React.ReactNode;
+  /** Overrides the default percentage rendering (e.g. currency). */
+  displayValue?: string;
 }) {
   const display =
-    value == null
-      ? '—'
-      : `${(value * 100).toFixed(value >= 1 ? 0 : 1)}%`;
+    displayValue !== undefined
+      ? displayValue
+      : value == null
+        ? '—'
+        : `${(value * 100).toFixed(value >= 1 ? 0 : 1)}%`;
   const clickable = !!onClick;
   return (
     <div
