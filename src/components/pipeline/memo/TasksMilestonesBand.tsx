@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import type { Deal, DealMilestone } from '@/types/deal';
 import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
 import type { PipelineDigestRaw } from '@/hooks/usePipelineDigests';
-import { Diamond, Pencil, Check, Plus } from 'lucide-react';
+import { Diamond, Pencil, Check, Plus, Maximize2, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -200,6 +201,7 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
   const [titleDraft, setTitleDraft] = useState('');
   const [addFormOpen, setAddFormOpen] = useState(false);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const navigate = useNavigate();
   const prefillTitle = prefillFollowupTitle(deal, tasks, rawDigest);
 
@@ -613,9 +615,20 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
     <div className="px-5 py-3 bg-gradient-to-br from-[hsl(220,30%,9%)] to-[hsl(260,15%,5%)] border-b border-white/10">
       <div className="w-full min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-2 min-w-0">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white shrink-0 truncate">
-          Tasks & milestones
-        </div>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setDetailOpen(true);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="group flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-white shrink-0 truncate hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+          title="Open all tasks & milestones"
+        >
+          <span className="truncate">Tasks & milestones</span>
+          <Maximize2 className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </button>
         <div
           className="flex flex-wrap items-center gap-1 min-w-0"
           onClick={(e) => e.stopPropagation()}
@@ -1017,6 +1030,259 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
       ) : null}
       </div>
       <SharedTaskDrawer taskId={openTaskId} onClose={() => setOpenTaskId(null)} />
+      <TasksMilestonesDetailDialog
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        deal={deal}
+        tasks={tasks}
+        milestones={effectiveMilestones}
+        completingTaskIds={completingIds}
+        completingMilestoneIds={completingMilestoneIds}
+        onCompleteTask={completeTaskItem}
+        onCompleteMilestone={completeMilestone}
+        onOpenTask={(id) => setOpenTaskId(id)}
+      />
     </div>
+  );
+}
+
+interface TasksMilestonesDetailDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  deal: Deal;
+  tasks: DealTaskItem[];
+  milestones?: DealMilestone[];
+  completingTaskIds: Set<string>;
+  completingMilestoneIds: Set<string>;
+  onCompleteTask: (task: DealTaskItem) => void | Promise<void>;
+  onCompleteMilestone: (m: DealMilestone) => void | Promise<void>;
+  onOpenTask: (taskId: string) => void;
+}
+
+function TasksMilestonesDetailDialog({
+  open,
+  onOpenChange,
+  deal,
+  tasks,
+  milestones,
+  completingTaskIds,
+  completingMilestoneIds,
+  onCompleteTask,
+  onCompleteMilestone,
+  onOpenTask,
+}: TasksMilestonesDetailDialogProps) {
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [addKind, setAddKind] = useState<'task' | 'milestone' | 'followup' | null>(null);
+
+  const sortedTasks = useMemo(() => {
+    const list = [...tasks];
+    list.sort((a, b) => {
+      const ta = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+      const tb = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+      return ta - tb;
+    });
+    return list;
+  }, [tasks]);
+
+  const sortedMilestones = useMemo(() => {
+    const list = [...(milestones || [])];
+    list.sort((a, b) => {
+      if (a.completed !== b.completed) return a.completed ? 1 : -1;
+      const ta = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+      const tb = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+      return ta - tb;
+    });
+    return showCompleted ? list : list.filter((m) => !m.completed);
+  }, [milestones, showCompleted]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center justify-between gap-3 pr-6">
+            <span className="truncate">Tasks & milestones — {deal.name}</span>
+            <label className="flex items-center gap-1.5 text-[11px] font-normal text-muted-foreground normal-case tracking-normal cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                checked={showCompleted}
+                onChange={(e) => setShowCompleted(e.target.checked)}
+                className="h-3 w-3"
+              />
+              Show completed
+            </label>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto space-y-5 -mx-1 px-1">
+          {/* Milestones section */}
+          <section>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Milestones ({sortedMilestones.length})
+              </h3>
+              <button
+                type="button"
+                onClick={() => setAddKind(addKind === 'milestone' ? null : 'milestone')}
+                className="text-[11px] text-primary hover:underline inline-flex items-center gap-1"
+              >
+                <Plus className="h-3 w-3" /> Add milestone
+              </button>
+            </div>
+            {addKind === 'milestone' && (
+              <div className="mb-2">
+                <AddMilestoneInlineForm deal={deal} onClose={() => setAddKind(null)} />
+              </div>
+            )}
+            {sortedMilestones.length === 0 ? (
+              <p className="text-xs italic text-muted-foreground">No milestones.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {sortedMilestones.map((m) => {
+                  const isCompleting = completingMilestoneIds.has(m.id || '');
+                  const done = m.completed || isCompleting;
+                  return (
+                    <div
+                      key={m.id || m.title}
+                      className={cn(
+                        'flex items-center gap-2.5 rounded-md border px-2.5 py-1.5',
+                        done
+                          ? 'bg-muted/40 border-border opacity-70'
+                          : 'bg-primary/10 border-primary/30'
+                      )}
+                    >
+                      <button
+                        type="button"
+                        disabled={done}
+                        onClick={() => void onCompleteMilestone(m)}
+                        className="shrink-0 inline-flex items-center justify-center h-4 w-4 rounded-sm border border-primary/60 bg-transparent hover:bg-primary/20 transition-colors disabled:opacity-60"
+                        title={done ? 'Completed' : 'Mark milestone complete'}
+                      >
+                        {done ? (
+                          <Check className="h-3 w-3 text-primary" strokeWidth={3} />
+                        ) : (
+                          <Diamond className="h-3 w-3 text-primary fill-primary" />
+                        )}
+                      </button>
+                      <span className={cn('flex-1 text-xs font-medium truncate', done && 'line-through')}>
+                        {m.title}
+                      </span>
+                      {m.dueDate && (
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                          {format(new Date(m.dueDate), 'MMM d, yyyy')}
+                          {!done && ` · ${relativeDays(m.dueDate)}`}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* Tasks section */}
+          <section>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Tasks & follow-ups ({sortedTasks.length})
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAddKind(addKind === 'followup' ? null : 'followup')}
+                  className="text-[11px] text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  <Plus className="h-3 w-3" /> Follow-up
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddKind(addKind === 'task' ? null : 'task')}
+                  className="text-[11px] text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  <Plus className="h-3 w-3" /> Task
+                </button>
+              </div>
+            </div>
+            {addKind === 'task' && (
+              <div className="mb-2">
+                <AddTaskInlineForm deal={deal} onClose={() => setAddKind(null)} />
+              </div>
+            )}
+            {addKind === 'followup' && (
+              <div className="mb-2">
+                <AddFollowupInlineForm deal={deal} defaultTitle="" onClose={() => setAddKind(null)} />
+              </div>
+            )}
+            {sortedTasks.length === 0 ? (
+              <p className="text-xs italic text-muted-foreground">No tasks.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {sortedTasks.map((task) => {
+                  const isCompleting = completingTaskIds.has(task.id);
+                  const dueDate = parseStoredDate(task.dueDate);
+                  const isOverdue = !!dueDate && differenceInCalendarDays(dueDate, new Date()) < 0;
+                  const assigneeLabel = task.kind === 'task' ? task.assignedToName : task.requestedByName;
+                  return (
+                    <div
+                      key={task.id}
+                      className="group flex items-center gap-2.5 rounded-md border border-border bg-card px-2.5 py-1.5 hover:border-primary/40 transition-colors"
+                    >
+                      <button
+                        type="button"
+                        disabled={isCompleting}
+                        onClick={() => void onCompleteTask(task)}
+                        className={cn(
+                          'shrink-0 inline-flex items-center justify-center h-5 w-5 rounded-full border transition-all',
+                          isCompleting
+                            ? 'border-primary bg-primary/25'
+                            : 'border-muted-foreground/50 hover:border-primary hover:bg-primary/20'
+                        )}
+                        title="Mark complete"
+                      >
+                        <Check
+                          className={cn(
+                            'h-3.5 w-3.5 text-primary transition-opacity',
+                            isCompleting ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                          )}
+                          strokeWidth={3}
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (task.kind === 'task') onOpenTask(task.id);
+                        }}
+                        className="flex-1 min-w-0 text-left text-xs font-medium text-foreground truncate hover:text-primary hover:underline underline-offset-4"
+                        title={task.kind === 'task' ? 'Open task' : task.title}
+                      >
+                        {task.title}
+                      </button>
+                      {assigneeLabel && (
+                        <span className="flex items-center gap-1 rounded-full border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
+                          <span className="inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-muted text-[8px] font-semibold">
+                            {initialsOf(assigneeLabel) || '?'}
+                          </span>
+                          <span className="truncate max-w-[100px]">{assigneeLabel}</span>
+                        </span>
+                      )}
+                      {dueDate && (
+                        <span
+                          className={cn(
+                            'rounded-full border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] whitespace-nowrap shrink-0',
+                            isOverdue ? 'text-destructive font-medium border-destructive/40' : 'text-muted-foreground'
+                          )}
+                          title={format(dueDate, 'MMM d, yyyy')}
+                        >
+                          {format(dueDate, 'MMM d')}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
