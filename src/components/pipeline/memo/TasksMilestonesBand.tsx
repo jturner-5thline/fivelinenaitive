@@ -1237,7 +1237,7 @@ function TasksMilestonesDetailDialog({
           )}
         </div>
 
-        <Tabs defaultValue="tasks" className="flex-1 flex flex-col overflow-hidden -mx-1 px-1 mt-2">
+        <Tabs defaultValue="tasks" className="flex-1 min-h-0 flex flex-col overflow-hidden -mx-1 px-1 mt-2">
           <TabsList className="grid grid-cols-3 w-full h-10">
             <TabsTrigger value="tasks" className="text-sm font-medium py-2">
               Tasks &amp; follow-ups ({filteredTasks.length}{normalizedQuery && filteredTasks.length !== totalTasks ? ` of ${totalTasks}` : ''})
@@ -1250,7 +1250,7 @@ function TasksMilestonesDetailDialog({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="tasks" className="flex-1 overflow-y-auto mt-3">
+          <TabsContent value="tasks" className="flex-1 min-h-0 overflow-y-auto mt-3 pr-1">
           <section>
             <div className="sticky top-0 z-10 -mx-1 px-1 py-2 mb-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-white/5">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1462,7 +1462,7 @@ function TasksMilestonesDetailDialog({
           </section>
           </TabsContent>
 
-          <TabsContent value="outstanding" className="flex-1 overflow-y-auto mt-3">
+          <TabsContent value="outstanding" className="flex-1 min-h-0 overflow-y-auto mt-3 pr-1">
             <section>
               <div className="sticky top-0 z-10 -mx-1 px-1 py-2 mb-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-white/5">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1534,7 +1534,7 @@ function TasksMilestonesDetailDialog({
             </section>
           </TabsContent>
 
-          <TabsContent value="milestones" className="flex-1 overflow-y-auto mt-3">
+          <TabsContent value="milestones" className="flex-1 min-h-0 overflow-y-auto mt-3 pr-1">
           <section>
             <div className="sticky top-0 z-10 -mx-1 px-1 py-2 mb-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-white/5">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
