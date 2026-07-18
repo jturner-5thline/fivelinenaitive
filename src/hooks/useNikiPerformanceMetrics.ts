@@ -511,6 +511,7 @@ export function useNikiPerformanceMetrics(): NikiPerformanceMetrics {
   const added = usePipelineAddedDeals();
   const pipelineData = useNikiPipelineData();
   const revenue = useNikiRevenueActuals();
+  const finservAdded = useFinServAddedDeals();
 
   // Render the scorecard immediately with plan values / zeroed actuals, then
   // hydrate actuals as each query completes. Blocking the whole tab on these
@@ -522,7 +523,6 @@ export function useNikiPerformanceMetrics(): NikiPerformanceMetrics {
     const finalCredit  = entriesForStage(pipelineData.data, 'final-credit-items');
     const termsIssued  = entriesForStage(pipelineData.data, 'terms-issued');
     const inDueDil     = entriesForStage(pipelineData.data, 'in-due-diligence');
-    const funded       = entriesForStage(pipelineData.data, 'funded-invoiced');
     return [
       aggregate('dealsOnBoard',         'Deals on Board',           'count',    added.data ?? []),
       aggregate('dollarsOnBoard',       'Dollars on Board',         'currency', added.data ?? []),
@@ -533,14 +533,14 @@ export function useNikiPerformanceMetrics(): NikiPerformanceMetrics {
       aggregate('clientsReceivingTerms','Clients Receiving Terms',  'count',    termsIssued),
       aggregate('termsSigned',          'Terms Signed',             'count',    inDueDil),
       aggregate('volumeTermsSigned',    'Volume of Terms Signed',   'currency', inDueDil),
-      aggregate('dealsClosed',          'Deals Closed',             'count',    funded),
-      aggregate('dollarsFunded',        'Dollars Funded',           'currency', funded),
+      aggregate('dealsClosed',          'FinServ: Deals on the Board', 'count',    finservAdded.data ?? []),
+      aggregate('dollarsFunded',        'FinServ $ on the Board',      'currency', finservAdded.data ?? []),
       aggregate('retainerRevenue',            'Retainer Revenue',  'currency', revenue.data?.retainer ?? []),
       aggregate('consultingMilestoneRevenue', 'Milestone Revenue', 'currency', revenue.data?.milestone ?? []),
       aggregate('feeRevenue',                 'Closing Fee',       'currency', revenue.data?.closing ?? []),
       aggregate('totalRevenue',               'Total Revenue',     'currency', revenue.data?.total ?? []),
     ];
-  }, [added.data, pipelineData.data, revenue.data]);
+  }, [added.data, pipelineData.data, revenue.data, finservAdded.data]);
 
   return { isLoading, rows };
 }
