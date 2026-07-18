@@ -3206,14 +3206,24 @@ export function SalesDashboardV2() {
   const ttmRanges = React.useMemo(() => {
     const end = firstDayOfMonthAfterUtc(rangeEnd);
     const ttmStart = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - 12, 1));
-    const priorEnd = ttmStart;
+    // Prior TTM ends at the end of the PRIOR reporting period (not 12 months
+    // back). Period length = current timeframe length in whole months
+    // (Q = 3, month = 1, year = 12, etc.). So if Q2 2026 is selected, the
+    // comparison window is the TTM ending Q1 2026.
+    const rsStart = new Date(Date.UTC(rangeStart.getUTCFullYear(), rangeStart.getUTCMonth(), 1));
+    const periodMonths = Math.max(
+      1,
+      (end.getUTCFullYear() - rsStart.getUTCFullYear()) * 12 +
+        (end.getUTCMonth() - rsStart.getUTCMonth()),
+    );
+    const priorEnd = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - periodMonths, 1));
     const priorStart = new Date(Date.UTC(priorEnd.getUTCFullYear(), priorEnd.getUTCMonth() - 12, 1));
     // Proposal lookup window covers both TTM windows through today so we can
     // check any downstream conversion regardless of when it occurred.
     const now = new Date();
     const propEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-    return { ttmStart, ttmEnd: end, priorStart, priorEnd, propStart: priorStart, propEnd };
-  }, [rangeEnd]);
+    return { ttmStart, ttmEnd: end, priorStart, priorEnd, propStart: priorStart, propEnd, periodMonths };
+  }, [rangeStart, rangeEnd]);
   const ndaTtmEvents = useStageEntryEvents('ndaneeds-list-sent', { start: ttmRanges.ttmStart, end: ttmRanges.ttmEnd });
   const ndaPriorTtmEvents = useStageEntryEvents('ndaneeds-list-sent', { start: ttmRanges.priorStart, end: ttmRanges.priorEnd });
   const proposalLookupEvents = useStageEntryEvents('proposal-issued', { start: ttmRanges.propStart, end: ttmRanges.propEnd });
