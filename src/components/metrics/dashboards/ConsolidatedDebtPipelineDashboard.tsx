@@ -31,6 +31,15 @@ import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 import type { Deal } from '@/types/deal';
 import { DashboardPlansGear } from './plans/DashboardPlansGear';
+import {
+  ComparisonModeContext,
+  useComparisonMode,
+  type ComparisonMode,
+} from './qir/ComparisonModeContext';
+import {
+  DEBT_ADVISORY_KPI_TO_PLAN,
+  useDebtAdvisoryPlanValues,
+} from './qir/useDebtAdvisoryPlanValues';
 
 // ------------------------------------------------------------------
 // Deal drilldown open context — lets any nested drilldown table row
@@ -173,6 +182,8 @@ interface MetricCardConfig {
       formatDiff: (value: number) => string;
       pct: number | null;
       priorLabel?: string;
+      /** Raw current-period value (used by "Performance to Plan" mode). */
+      currentValue?: number;
     };
   };
   /** Period-over-period delta shown below the primary value ($ change and %
@@ -186,6 +197,8 @@ interface MetricCardConfig {
     pct: number | null;
     /** Short prior-period label used for the hover tooltip. */
     priorLabel?: string;
+    /** Raw current-period value (used by "Performance to Plan" mode). */
+    currentValue?: number;
   };
 }
 
@@ -209,6 +222,90 @@ function MetricKPICard({
   onClick: () => void;
   onSecondaryClick?: () => void;
 }) {
+  const { mode, planValues, periodLabel, isPlanLoading } = useComparisonMode();
+  const planMap = DEBT_ADVISORY_KPI_TO_PLAN[config.id];
+  const primaryPlanKey = planMap?.primary;
+  const secondaryPlanKey = planMap?.secondary;
+
+  const buildPlanChipProps = (
+    planKey: string | undefined,
+    currentValue: number | undefined,
+    formatDiff: (v: number) => string,
+  ) => {
+    if (!planKey) return { missing: true as const, reason: 'unmapped' };
+    if (currentValue == null) return { missing: true as const, reason: 'loading' };
+    const planValue = planValues.get(planKey);
+    if (planValue == null) return { missing: true as const, reason: 'no-plan' };
+    const diff = currentValue - planValue;
+    const pct = planValue !== 0 ? (diff / Math.abs(planValue)) * 100 : null;
+    return {
+      missing: false as const,
+      diff,
+      formatDiff,
+      pct,
+      planValue,
+      priorLabel: `Plan · ${periodLabel}`,
+    };
+  };
+
+  const renderPlanChip = (
+    chip: ReturnType<typeof buildPlanChipProps>,
+    size: 'primary' | 'secondary' = 'primary',
+  ) => {
+    const textSize = size === 'primary' ? 'text-[13px]' : 'text-[13px]';
+    if (chip.missing) {
+      if (isPlanLoading) {
+        return (
+          <span className={cn('text-muted-foreground/60 font-mono tabular-nums', textSize)}>
+            …
+          </span>
+        );
+      }
+      const label =
+        chip.reason === 'no-plan'
+          ? `— No plan for ${periodLabel}`
+          : chip.reason === 'unmapped'
+            ? '— No plan'
+            : '—';
+      return (
+        <span
+          className={cn('text-muted-foreground/70 font-mono tabular-nums', textSize)}
+          title={
+            chip.reason === 'no-plan'
+              ? `No Master Plan value entered for ${periodLabel}. Open the master plan dialog to enter one.`
+              : chip.reason === 'unmapped'
+                ? 'This KPI is not tracked in the Master Plan.'
+                : 'Waiting for data'
+          }
+        >
+          {label}
+        </span>
+      );
+    }
+    const { diff, formatDiff, pct, priorLabel } = chip;
+    const neutral = diff === 0;
+    const improved = diff > 0;
+    const arrow = neutral ? '–' : improved ? '▲' : '▼';
+    const toneClass = neutral
+      ? 'text-muted-foreground'
+      : improved
+        ? 'text-emerald-400'
+        : 'text-rose-400';
+    const sign = neutral ? '' : improved ? '+' : '−';
+    const signedDiff = `${sign}${formatDiff(Math.abs(diff))}`;
+    const pctText = pct == null ? '—' : `${sign}${Math.abs(pct).toFixed(1)}%`;
+    return (
+      <span
+        className={cn('inline-flex items-baseline gap-1 font-mono tabular-nums', textSize, toneClass)}
+        title={`vs ${priorLabel}`}
+      >
+        <span>{arrow}</span>
+        <span className="font-semibold">{signedDiff}</span>
+        <span className="opacity-80">({pctText})</span>
+      </span>
+    );
+  };
+
   return (
     <Card
       className={cn(
@@ -237,7 +334,7 @@ function MetricKPICard({
                 {config.value}
               </button>
             )}
-            {!config.isLoading && config.changePct && (() => {
+            {!config.isLoading && mode === 'variance' && config.changePct && (() => {
               const { delta, prevPct, latestLabel, prevLabel } = config.changePct;
               const relPct = prevPct > 0 ? (delta / prevPct) * 100 : null;
               if (relPct == null || !Number.isFinite(relPct)) return null;
@@ -262,7 +359,7 @@ function MetricKPICard({
                 </span>
               );
             })()}
-            {!config.isLoading && config.delta && (() => {
+            {!config.isLoading && mode === 'variance' && config.delta && (() => {
               const { diff, formatDiff, pct, priorLabel } = config.delta;
               const neutral = diff === 0;
               const improved = diff > 0;
@@ -288,6 +385,14 @@ function MetricKPICard({
                 </span>
               );
             })()}
+            {!config.isLoading && mode === 'plan' && renderPlanChip(
+              buildPlanChipProps(
+                primaryPlanKey,
+                config.delta?.currentValue,
+                config.delta?.formatDiff ?? ((v: number) => `${Math.round(v)}`),
+              ),
+              'primary',
+            )}
           </div>
           {config.secondary && (
             <div className="mt-1 pt-1 border-t border-border/40">
@@ -303,7 +408,7 @@ function MetricKPICard({
                   {config.secondary.value}
                 </button>
               )}
-              {!config.secondary.isLoading && config.secondary.delta && (() => {
+              {!config.secondary.isLoading && mode === 'variance' && config.secondary.delta && (() => {
                 const { diff, formatDiff, pct, priorLabel } = config.secondary.delta;
                 const neutral = diff === 0;
                 const improved = diff > 0;
@@ -325,6 +430,14 @@ function MetricKPICard({
                   </span>
                 );
               })()}
+              {!config.secondary.isLoading && mode === 'plan' && renderPlanChip(
+                buildPlanChipProps(
+                  secondaryPlanKey,
+                  config.secondary.delta?.currentValue,
+                  config.secondary.delta?.formatDiff ?? ((v: number) => `${Math.round(v)}`),
+                ),
+                'secondary',
+              )}
               </div>
             </div>
           )}
@@ -1917,6 +2030,26 @@ export function ConsolidatedDebtPipelineDashboard({
   // ending at that bucket's period end, instead of the bucket's own period.
   const [ttmCharts, setTtmCharts] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [comparisonMode, setComparisonMode] = useState<ComparisonMode>(() => {
+    if (typeof window === 'undefined') return 'variance';
+    const saved = window.localStorage.getItem('debt-advisory-comparison-mode');
+    return saved === 'plan' ? 'plan' : 'variance';
+  });
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('debt-advisory-comparison-mode', comparisonMode);
+    }
+  }, [comparisonMode]);
+  const debtPlan = useDebtAdvisoryPlanValues(selectedQuarter);
+  const comparisonCtx = useMemo(
+    () => ({
+      mode: comparisonMode,
+      planValues: debtPlan.values,
+      periodLabel: debtPlan.periodLabel,
+      isPlanLoading: debtPlan.isLoading,
+    }),
+    [comparisonMode, debtPlan.values, debtPlan.periodLabel, debtPlan.isLoading],
+  );
   // Conversion filter mode for the Pipeline Conversion section:
   //   'off'      → count every stage-entry event in the TTM window (raw)
   //   'ttm'      → downstream stages must ALSO have entered FCI inside TTM
@@ -2022,7 +2155,7 @@ export function ConsolidatedDebtPipelineDashboard({
     if (metric.value == null || metric.previousValue == null) return undefined;
     const diff = metric.value - metric.previousValue;
     const pct = metric.previousValue !== 0 ? (diff / metric.previousValue) * 100 : null;
-    return { diff, formatDiff, pct, priorLabel };
+    return { diff, formatDiff, pct, priorLabel, currentValue: metric.value };
   };
   /** Signed delta of a StageMetric field (`count` or `dollarVolume`) vs its
    *  prior-period counterpart. Returns undefined while either side is loading
@@ -2039,7 +2172,7 @@ export function ConsolidatedDebtPipelineDashboard({
     const prev = prior[field] ?? 0;
     const diff = cur - prev;
     const pct = prev !== 0 ? (diff / Math.abs(prev)) * 100 : null;
-    return { diff, formatDiff, pct, priorLabel };
+    return { diff, formatDiff, pct, priorLabel, currentValue: cur };
   };
   const formatCountDiff = (v: number) => `${Math.round(v)}`;
   const formatHourlyRate = (value: number) => {
@@ -2495,10 +2628,34 @@ export function ConsolidatedDebtPipelineDashboard({
 
   return (
     <div className="space-y-6">
+      <ComparisonModeContext.Provider value={comparisonCtx}>
       <OpenDealContext.Provider value={setOpenDealId}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div />
-        <DashboardPlansGear dashboardKey="consolidated-debt-pipeline" />
+        <div className="flex items-center gap-2 flex-wrap">
+          <Tabs
+            value={comparisonMode}
+            onValueChange={(v) => setComparisonMode(v as ComparisonMode)}
+          >
+            <TabsList className="bg-muted/40 border border-border/40">
+              <TabsTrigger
+                value="variance"
+                className="gap-1.5 text-xs"
+                title="Period-over-period change vs the equal-length prior window"
+              >
+                Variance
+              </TabsTrigger>
+              <TabsTrigger
+                value="plan"
+                className="gap-1.5 text-xs"
+                title={`Actual vs Master Plan for ${debtPlan.periodLabel || 'the selected period'}`}
+              >
+                Performance to Plan
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <DashboardPlansGear dashboardKey="consolidated-debt-pipeline" />
+        </div>
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'cards' | 'table')}>
           <TabsList className="bg-muted/40 border border-border/40">
             <TabsTrigger value="cards" className="gap-1.5">
@@ -2897,6 +3054,7 @@ export function ConsolidatedDebtPipelineDashboard({
         onStageChange={() => { /* stage changes handled inside embedded deal detail */ }}
       />
       </OpenDealContext.Provider>
+      </ComparisonModeContext.Provider>
     </div>
   );
 }
