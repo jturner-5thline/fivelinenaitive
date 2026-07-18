@@ -674,6 +674,32 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
                             )}
                           </>
                         )}
+                        {internalFolders.length > 0 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-[11px] shrink-0"
+                            disabled={importing}
+                            title={`Link this folder to ${mapping[f.id] || autoMatchTarget(f.name, internalFolders) || defaultTarget || 'the default target'}`}
+                            onClick={() => {
+                              const target =
+                                mapping[f.id] ||
+                                autoMatchTarget(f.name, internalFolders) ||
+                                defaultTarget;
+                              if (!target) {
+                                toast.error('Pick a target Internal folder first.');
+                                return;
+                              }
+                              if (!mapping[f.id]) {
+                                setMapping(prev => ({ ...prev, [f.id]: target }));
+                              }
+                              handleImport([f]);
+                            }}
+                          >
+                            <Link2 className="h-3 w-3 mr-1" />
+                            Link Folder
+                          </Button>
+                        )}
                       </>
                     ) : (
                       <>
