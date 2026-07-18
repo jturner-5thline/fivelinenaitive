@@ -1509,14 +1509,43 @@ function TasksMilestonesDetailDialog({
                           {format(dueDate, 'MMM d')}
                         </span>
                       ) : null}
-                    </div>
+                        </div>
+                      )}
+                    </SortableRow>
                   );
                 })}
-              </div>
+                  </div>
+                </SortableContext>
+              </DndContext>
             )}
           </section>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function SortableRow({
+  id,
+  disabled,
+  children,
+}: {
+  id: string;
+  disabled?: boolean;
+  children: (handleProps: {
+    ref: (el: HTMLElement | null) => void;
+    [key: string]: any;
+  }) => React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({ ...(listeners as any), ...(attributes as any) } as any)}
+    </div>
   );
 }
