@@ -69,7 +69,14 @@ import {
   Table2,
   X,
   Save,
+  Info,
 } from 'lucide-react';
+import {
+  Tooltip as UITooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 /**
  * Sales Dashboard-V2 — faithful build of the 5th Line approved prototype.
@@ -1525,11 +1532,13 @@ function ConversionCard({
   value,
   subtitle,
   onClick,
+  info,
 }: {
   title: string;
   value: number | null;
   subtitle?: string;
   onClick?: () => void;
+  info?: React.ReactNode;
 }) {
   const display =
     value == null
@@ -1554,11 +1563,32 @@ function ConversionCard({
           : undefined
       }
     >
-      <div
-        className="text-[10px] font-medium uppercase"
-        style={{ color: C.textMuted, letterSpacing: '0.08em' }}
-      >
-        {title}
+      <div className="flex items-center gap-1.5">
+        <div
+          className="text-[10px] font-medium uppercase"
+          style={{ color: C.textMuted, letterSpacing: '0.08em' }}
+        >
+          {title}
+        </div>
+        {info && (
+          <TooltipProvider delayDuration={100}>
+            <UITooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center justify-center rounded-sm p-0.5 text-white/40 hover:text-white/80 focus:outline-none focus-visible:ring-1 focus-visible:ring-white/40"
+                  aria-label={`${title} definition`}
+                >
+                  <Info className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
+                {info}
+              </TooltipContent>
+            </UITooltip>
+          </TooltipProvider>
+        )}
       </div>
       <div
         className="text-3xl font-semibold leading-none"
@@ -3628,6 +3658,19 @@ export function SalesDashboardV2() {
             <ConversionCard title="TBD" value={null} subtitle="—" />
             <ConversionCard
               title="Call-to-Deal Conversion"
+              info={
+                <div className="space-y-1.5">
+                  <div>
+                    <span className="font-semibold">Numerator:</span> distinct deals that entered the “NDA / Needs List Sent” stage in the trailing 12 months (TTM) ending at the selected period.
+                  </div>
+                  <div>
+                    <span className="font-semibold">Denominator:</span> debt sales calls in the same TTM window — calendar events titled “[Company] &lt;&gt; 5th Line Financing Review”.
+                  </div>
+                  <div>
+                    <span className="font-semibold">Variance:</span> percentage-point delta vs. the prior TTM (shifted back one full selected timeframe — e.g. one quarter when a quarter is selected, one month when a month is selected).
+                  </div>
+                </div>
+              }
               value={(() => {
                 if (ttmConversion.loading || ttmSalesCallsCount == null) return null;
                 const deals = ttmConversion.ndaCount;
