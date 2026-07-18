@@ -994,12 +994,20 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                             const isDirty = (values[k] ?? '') !== (initialValues[k] ?? '');
                             const err = cellErrors[k];
                             const remoteHits = remoteUpdates[k] ?? 0;
+                            const isFocused = focusedCell === k;
+                            const rawVal = values[k] ?? '';
+                            const displayVal =
+                              w.format === 'currency' && !isFocused && rawVal.trim() !== '' && !err
+                                ? formatCurrencyDisplay(rawVal)
+                                : rawVal;
                             return (
                               <td key={p.key} className="px-1 py-1">
                                 <Input
                                   type="text"
                                   inputMode="decimal"
-                                  value={values[k] ?? ''}
+                                  value={displayVal}
+                                  onFocus={() => setFocusedCell(k)}
+                                  onBlur={() => setFocusedCell((cur) => (cur === k ? null : cur))}
                                   onChange={(e) =>
                                     setValuesWithUndo((v) => ({ ...v, [k]: e.target.value }))
                                   }
