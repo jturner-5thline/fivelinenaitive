@@ -3544,10 +3544,32 @@ export function SalesDashboardV2() {
                 return props / nda;
               })()}
               subtitle={(() => {
-                if (ndaEnteredInRange.isLoading || proposalEnteredInRange.isLoading) return 'Loading…';
+                if (
+                  ndaEnteredInRange.isLoading || proposalEnteredInRange.isLoading ||
+                  ndaEnteredPrior.isLoading || proposalEnteredPrior.isLoading
+                ) return 'Loading…';
                 const nda = ndaEnteredInRange.count;
                 const props = proposalEnteredInRange.count;
-                return `${props} entered Proposal Issued ÷ ${nda} entered NDA/Needs List Sent · ${selectedQuarter.label}`;
+                const priorNda = ndaEnteredPrior.count;
+                const priorProps = proposalEnteredPrior.count;
+                const cur = nda ? props / nda : null;
+                const prev = priorNda ? priorProps / priorNda : null;
+                // Derive prior-period label from selectedQuarter (e.g. "Q3 2026" → "Q2 2026")
+                const priorLabel = (() => {
+                  const m = /^Q([1-4])\s+(\d{4})$/.exec(selectedQuarter.label ?? '');
+                  if (!m) return 'prior period';
+                  let q = parseInt(m[1], 10);
+                  let y = parseInt(m[2], 10);
+                  q -= 1;
+                  if (q < 1) { q = 4; y -= 1; }
+                  return `Q${q} ${y}`;
+                })();
+                if (cur == null) return `No data · vs ${priorLabel}`;
+                if (prev == null) return `— no ${priorLabel} baseline`;
+                const deltaPts = (cur - prev) * 100;
+                const arrow = deltaPts > 0 ? '▲' : deltaPts < 0 ? '▼' : '■';
+                const sign = deltaPts > 0 ? '+' : '';
+                return `${arrow} ${sign}${deltaPts.toFixed(1)} pts vs ${priorLabel} (${(prev * 100).toFixed(1)}%)`;
               })()}
               onClick={() => setOnBoardToProposalOpen(true)}
             />
