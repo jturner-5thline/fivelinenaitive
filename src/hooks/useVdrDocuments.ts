@@ -224,7 +224,7 @@ export function useVdrDocuments(dealId: string) {
       return;
     }
 
-    const { data: inserted } = await (supabase as any).from('vdr_documents').insert({
+    const { data: inserted, error: insertError } = await (supabase as any).from('vdr_documents').insert({
       deal_id: dealId,
       company_id: company.id,
       filename: file.name,
@@ -237,6 +237,16 @@ export function useVdrDocuments(dealId: string) {
       uploaded_by: user.id,
       ingestion_status: 'pending',
     }).select('id').single();
+
+    if (insertError || !inserted) {
+      console.error('[vdr] insert failed for', file.name, insertError);
+      // Clean up orphaned storage object so retries don't collide.
+      await supabase.storage.from('vdr-files').remove([storagePath]).catch(() => {});
+      toast.error(`Failed to save ${file.name}`, {
+        description: insertError?.message ?? 'Database insert returned no row',
+      });
+      return;
+    }
 
     await fetchDocuments();
     toast.success(`Uploaded ${file.name}`);
