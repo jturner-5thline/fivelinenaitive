@@ -1528,10 +1528,36 @@ function TasksMilestonesDetailDialog({
 
           <TabsContent value="outstanding" ref={scrollRefs.outstanding} onScroll={handleTabScroll('outstanding')} className="flex-1 min-h-0 overflow-y-auto mt-3 pr-1">
             <section>
-              <div className="sticky top-0 z-10 -mx-1 px-1 py-2 mb-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-white/5">
+              <div className="sticky top-0 z-10 -mx-1 px-1 py-2 mb-2 flex items-center justify-between gap-3 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-white/5">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Outstanding items ({filteredOutstanding.length}{normalizedQuery && filteredOutstanding.length !== totalOutstanding ? ` of ${totalOutstanding}` : ''})
                 </h3>
+                {filteredOutstanding.length > 0 && (
+                  <div className="flex items-center gap-1 text-[11px]">
+                    <span className="text-muted-foreground mr-1">Sort:</span>
+                    {(['due', 'requester'] as const).map((key) => {
+                      const active = outstandingSort.key === key;
+                      const Icon = active ? (outstandingSort.dir === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => toggleOutstandingSort(key)}
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-1 border transition-colors ${
+                            active
+                              ? 'bg-primary/15 border-primary/30 text-primary'
+                              : 'bg-white/[0.03] border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/[0.06]'
+                          }`}
+                          aria-pressed={active}
+                          title={key === 'due' ? 'Sort by due date' : 'Sort by requester'}
+                        >
+                          {key === 'due' ? 'Due date' : 'Requester'}
+                          <Icon className="h-3 w-3" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               {filteredOutstanding.length === 0 ? (
                 <div className="flex flex-col items-center justify-center text-center py-10 px-4 rounded-md border border-dashed border-white/10 bg-white/[0.02]">
@@ -1555,7 +1581,7 @@ function TasksMilestonesDetailDialog({
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  {filteredOutstanding.map((item) => {
+                  {sortedOutstanding.map((item) => {
                     const dueDate = parseStoredDate(item.dueDate);
                     const isOverdue = !!dueDate && differenceInCalendarDays(dueDate, new Date()) < 0;
                     const isCompleting = completingTaskIds.has(item.id);
