@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, FolderOpen, FileText, Folder, ChevronRight, Search, Home, ArrowLeft, Link2, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Loader2, FolderOpen, FileText, Folder, ChevronRight, Search, Home, ArrowLeft, Link2, CheckCircle2, XCircle, Clock, Eye } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
@@ -85,6 +85,54 @@ function base64ToBlob(b64: string, mime: string): Blob {
   return new Blob([bytes], { type: mime });
 }
 
+function formatSize(bytes?: string | number): string {
+  if (bytes === undefined || bytes === null || bytes === '') return '—';
+  const n = typeof bytes === 'string' ? Number(bytes) : bytes;
+  if (!Number.isFinite(n) || n <= 0) return '—';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let i = 0; let v = n;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return `${v < 10 && i > 0 ? v.toFixed(1) : Math.round(v)} ${units[i]}`;
+}
+
+function formatModified(iso?: string): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  const diffMs = Date.now() - d.getTime();
+  const day = 24 * 60 * 60 * 1000;
+  if (diffMs < 60 * 1000) return 'just now';
+  if (diffMs < 60 * 60 * 1000) return `${Math.round(diffMs / (60 * 1000))}m ago`;
+  if (diffMs < day) return `${Math.round(diffMs / (60 * 60 * 1000))}h ago`;
+  if (diffMs < 7 * day) return `${Math.round(diffMs / day)}d ago`;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
+}
+
+function friendlyType(mime: string): string {
+  if (mime === FOLDER_MIME) return 'Folder';
+  const map: Record<string, string> = {
+    'application/vnd.google-apps.document': 'Google Doc',
+    'application/vnd.google-apps.spreadsheet': 'Google Sheet',
+    'application/vnd.google-apps.presentation': 'Google Slides',
+    'application/vnd.google-apps.drawing': 'Google Drawing',
+    'application/vnd.google-apps.form': 'Google Form',
+    'application/pdf': 'PDF',
+    'text/plain': 'Text',
+    'text/csv': 'CSV',
+    'image/png': 'PNG',
+    'image/jpeg': 'JPEG',
+    'image/gif': 'GIF',
+    'application/zip': 'ZIP',
+    'application/msword': 'Word',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'Word',
+    'application/vnd.ms-excel': 'Excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'Excel',
+    'application/vnd.ms-powerpoint': 'PowerPoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PowerPoint',
+  };
+  return map[mime] ?? mime.split('/').pop() ?? 'File';
+}
+
 export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFolderPath = '/', internalFolders = [] }: Props) {
   const [mode, setMode] = useState<'browse' | 'url'>('browse');
   const [url, setUrl] = useState('');
@@ -105,6 +153,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const [progress, setProgress] = useState<ImportItem[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
+  const [previewingId, setPreviewingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!defaultTarget && internalFolders.length) setDefaultTarget(internalFolders[0]);
@@ -113,7 +162,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const reset = () => {
     setUrl(''); setFiles([]); setSelected(new Set()); setSearch(''); setMapping({});
     setCrumbs([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]); setMode('browse');
-    setProgress([]); setShowResults(false); setUrlError(null);
+    setProgress([]); setShowResults(false); setUrlError(null); setPreviewingId(null);
   };
 
   const browse = useCallback(async (folderId: string, name?: string, replace?: boolean) => {
@@ -333,6 +382,43 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     else setSelected(new Set(selectableIds));
   };
 
+  // Download a Drive file and open it in a new tab for preview.
+  const handlePreview = async (f: DriveFile) => {
+    if (f.mimeType === FOLDER_MIME) return;
+    setPreviewingId(f.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('drive-folder-import', {
+        body: { action: 'download', fileId: f.id, mimeType: f.mimeType },
+      });
+      const serverMessage = (data && (data.message || (typeof data.error === 'string' ? data.error : null))) as string | null;
+      if (error) throw new Error(serverMessage || error.message || 'Preview failed');
+      if (data?.error) throw new Error(serverMessage || 'Preview failed');
+      const blob = base64ToBlob(data.base64, data.mimeType);
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, '_blank', 'noopener,noreferrer');
+      if (!win) {
+        toast.info('Preview blocked by pop-up blocker — downloading instead');
+        const a = document.createElement('a');
+        a.href = url; a.download = extNameFromMime(f.name, f.mimeType);
+        document.body.appendChild(a); a.click(); a.remove();
+      }
+      // Revoke after a delay so the new tab has time to load.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Preview failed';
+      console.error(err);
+      toast.error(msg);
+    } finally {
+      setPreviewingId(null);
+    }
+  };
+
+  // Selection summary (top-level; folders count as 1 item, not expanded).
+  const selectedFiles = files.filter(f => selected.has(f.id));
+  const selectedFileRows = selectedFiles.filter(f => f.mimeType !== FOLDER_MIME);
+  const selectedFolderRows = selectedFiles.filter(f => f.mimeType === FOLDER_MIME);
+  const selectedTotalBytes = selectedFileRows.reduce((sum, f) => sum + (Number(f.size) || 0), 0);
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
       <DialogContent className="max-w-3xl">
@@ -500,16 +586,19 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
                       <>
                         <button
                           onClick={() => browse(f.id, f.name)}
-                          className="flex items-center gap-2 flex-1 min-w-0 text-left hover:underline"
+                          className="flex items-center gap-2 flex-1 min-w-0 text-left"
                           disabled={loading || importing}
                           title="Open folder"
                         >
                           <Folder className="h-3.5 w-3.5 text-primary" />
-                          <span className="flex-1 truncate">{f.name}</span>
+                          <span className="truncate hover:underline">{f.name}</span>
                         </button>
+                        <span className="text-[10px] text-muted-foreground shrink-0">
+                          Folder · {formatModified(f.modifiedTime)}
+                        </span>
                         {isChecked && (
                           <span className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">
-                            Folder · all contents
+                            all contents
                           </span>
                         )}
                       </>
@@ -517,8 +606,28 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
                       <>
                         <label className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
                           <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="flex-1 truncate">{f.name}</span>
+                          <span className="truncate">{f.name}</span>
                         </label>
+                        <span className="hidden sm:inline text-[10px] text-muted-foreground shrink-0 w-24 truncate text-right" title={f.mimeType}>
+                          {friendlyType(f.mimeType)}
+                        </span>
+                        <span className="hidden sm:inline text-[10px] text-muted-foreground shrink-0 w-20 text-right" title={f.modifiedTime}>
+                          {formatModified(f.modifiedTime)}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground shrink-0 w-14 text-right tabular-nums">
+                          {formatSize(f.size)}
+                        </span>
+                        <Button
+                          size="sm" variant="ghost" className="h-6 w-6 p-0 shrink-0"
+                          onClick={() => handlePreview(f)}
+                          disabled={importing || previewingId === f.id}
+                          title="Preview / download"
+                          aria-label={`Preview ${f.name}`}
+                        >
+                          {previewingId === f.id
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <Eye className="h-3.5 w-3.5" />}
+                        </Button>
                       </>
                     )}
                   </div>
@@ -527,6 +636,21 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
             </>
           )}
         </div>
+        )}
+
+        {/* Selection summary — shown when the user has checked any items pre-import */}
+        {!showResults && selectedFiles.length > 0 && (
+          <div className="text-xs text-muted-foreground border rounded-md px-3 py-2 flex items-center gap-3 flex-wrap">
+            <span className="font-medium text-foreground">{selectedFiles.length} selected</span>
+            <span>
+              {selectedFileRows.length} file{selectedFileRows.length === 1 ? '' : 's'}
+              {selectedFolderRows.length > 0 && ` · ${selectedFolderRows.length} folder${selectedFolderRows.length === 1 ? '' : 's'} (contents expanded on import)`}
+            </span>
+            {selectedFileRows.length > 0 && (
+              <span>· ~{formatSize(selectedTotalBytes)}</span>
+            )}
+            <span className="ml-auto">→ {defaultTarget || 'no target'}</span>
+          </div>
         )}
 
         <DialogFooter>
