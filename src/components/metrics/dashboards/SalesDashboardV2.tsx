@@ -1305,7 +1305,7 @@ function CumulativePace() {
             Cumulative pace
           </div>
           <div className="text-[11px]" style={{ color: C.textFaint }}>
-            Dollars Funded · running total
+            FinServ $ on the Board · running total
           </div>
           <button
             type="button"
