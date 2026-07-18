@@ -928,9 +928,9 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
             className="max-h-[65vh] overflow-auto border border-border rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             <table className="w-full text-sm border-collapse">
-              <thead className="sticky top-0 bg-card z-10">
+              <thead className="sticky top-0 bg-background z-10">
                 <tr className="border-b border-border">
-                  <th className="text-left px-3 py-2 font-medium text-xs uppercase tracking-wider text-muted-foreground sticky left-0 bg-card min-w-64 z-10">
+                  <th className="text-left px-3 py-2 font-medium text-xs uppercase tracking-wider text-muted-foreground sticky left-0 bg-background border-r border-border min-w-64 z-10">
                     Widget
                   </th>
                   {periods.map((p) => (
@@ -946,10 +946,10 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
               <tbody>
                 {groups.map((group) => (
                   <Fragment key={group.key}>
-                    <tr className="bg-muted/40">
+                    <tr className="bg-background">
                       <td
                         colSpan={1 + periods.length}
-                        className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sticky left-0 bg-muted/40"
+                        className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sticky left-0 bg-background"
                       >
                         {group.label}
                       </td>
@@ -962,33 +962,38 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                         : [];
                       return (
                         <tr key={`${group.key}-${w.key}`} className="border-b border-border/50 last:border-0 hover:bg-muted/20">
-                          <td className="px-3 py-1.5 sticky left-0 bg-card">
-                            <div className="font-medium text-foreground/90 flex items-center gap-2">
-                              {w.label}
-                              {isShared && (
-                                <span
-                                  className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/15 text-primary"
-                                  title={`Linked across: ${linkedLabels.join(', ')}. Editing here syncs to all of them.`}
-                                >
-                                  Linked · {linkedLabels.length}
-                                </span>
-                              )}
-                              <RowBulkMenu
-                                widgetKey={w.key}
-                                periods={periods}
-                                values={values}
-                                setValues={setValuesWithUndo}
-                              />
-                            </div>
-                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                              {w.format === 'currency' ? '$' : w.format === 'percent' ? '%' : '#'}
-                              {w.hint ? ` · ${w.hint}` : ''}
-                            </div>
-                            {isShared && (
-                              <div className="text-[10px] text-primary/80 mt-0.5">
-                                Syncs with: {linkedLabels.filter((l) => l !== group.label).join(', ')}
+                          <td className="px-3 py-1.5 sticky left-0 bg-background border-r border-border">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="font-medium text-foreground/90 truncate">
+                                  {w.label}
+                                </div>
+                                {isShared && (
+                                  <div
+                                    className="text-[8px] uppercase tracking-wider text-primary/80 mt-0.5 truncate"
+                                    title={`Linked across: ${linkedLabels.join(', ')}. Editing here syncs to all of them.`}
+                                  >
+                                    Linked · {linkedLabels.filter((l) => l !== group.label).join(', ')}
+                                  </div>
+                                )}
+                                {w.hint && (
+                                  <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                                    {w.hint}
+                                  </div>
+                                )}
                               </div>
-                            )}
+                              <div className="flex items-center gap-1 shrink-0">
+                                <span className="text-[10px] font-semibold text-muted-foreground w-4 text-center">
+                                  {w.format === 'currency' ? '$' : w.format === 'percent' ? '%' : '#'}
+                                </span>
+                                <RowBulkMenu
+                                  widgetKey={w.key}
+                                  periods={periods}
+                                  values={values}
+                                  setValues={setValuesWithUndo}
+                                />
+                              </div>
+                            </div>
                           </td>
                           {periods.map((p) => {
                             const k = `${w.key}|${p.key}`;
