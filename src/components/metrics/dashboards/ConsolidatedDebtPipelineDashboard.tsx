@@ -1500,6 +1500,7 @@ function CompactFundedBarChart({
   valueFormatter,
   totalFormatter,
   onBarClick,
+  planWidgetKey,
 }: {
   title: string;
   subtitle: string;
@@ -1510,9 +1511,28 @@ function CompactFundedBarChart({
   valueFormatter: (value: number) => string;
   totalFormatter: (value: number) => string;
   onBarClick: (bucket: StageTrendBucket) => void;
+  /** Master Plan widget key. When set and comparison mode = "plan", a plan
+   *  overlay line is drawn on the bar chart. */
+  planWidgetKey?: string;
 }) {
   const total = buckets.reduce((sum, bucket) => sum + bucket[dataKey], 0);
   const [showTrend, setShowTrend] = useState(false);
+  const { mode: comparisonMode } = useComparisonMode();
+  const planLookup = useDebtAdvisoryPlanForBuckets(
+    comparisonMode === 'plan' ? planWidgetKey : undefined,
+    buckets,
+  );
+  const showPlanOverlay = comparisonMode === 'plan' && !!planWidgetKey;
+  const planTotal = useMemo(
+    () =>
+      showPlanOverlay
+        ? buckets.reduce((sum, b) => sum + (planLookup.values.get(b.key) ?? 0), 0)
+        : 0,
+    [buckets, planLookup.values, showPlanOverlay],
+  );
+  const planCoverage = showPlanOverlay
+    ? buckets.filter((b) => planLookup.values.has(b.key)).length
+    : 0;
 
   // Linear regression trend line over the visible buckets.
   const trendValues = useMemo(() => {
@@ -1532,8 +1552,13 @@ function CompactFundedBarChart({
   }, [buckets, dataKey]);
 
   const chartData = useMemo(
-    () => buckets.map((b, i) => ({ ...b, trend: trendValues[i] })),
-    [buckets, trendValues],
+    () =>
+      buckets.map((b, i) => ({
+        ...b,
+        trend: trendValues[i],
+        plan: showPlanOverlay ? planLookup.values.get(b.key) ?? null : null,
+      })),
+    [buckets, trendValues, showPlanOverlay, planLookup.values],
   );
 
   // Period-over-period change: latest bucket vs prior bucket.
