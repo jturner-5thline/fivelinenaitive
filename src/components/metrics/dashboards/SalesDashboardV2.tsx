@@ -4190,6 +4190,8 @@ export function SalesDashboardV2() {
               title="Call-to-Deal Conversion"
               onClick={() => setCallToDealOpen(true)}
               Icon={Phone}
+              sparkData={callToDealSpark}
+              sparkFormatter={(v) => `${(v * 100).toFixed(0)}%`}
               info={
                 <div className="space-y-1.5">
                   <div>
