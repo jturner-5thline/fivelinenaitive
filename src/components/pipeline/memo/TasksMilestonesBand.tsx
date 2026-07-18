@@ -1092,8 +1092,10 @@ function TasksMilestonesDetailDialog({
       const tb = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
       return ta - tb;
     });
-    return showCompleted ? list : list.filter((m) => !m.completed);
-  }, [milestones, showCompleted]);
+    // Always include completed milestones so the user can see the full
+    // history of what's been achieved on the deal.
+    return list;
+  }, [milestones]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
