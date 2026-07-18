@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Deal, DealMilestone } from '@/types/deal';
 import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
