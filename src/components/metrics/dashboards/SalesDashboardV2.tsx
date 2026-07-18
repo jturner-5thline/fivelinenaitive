@@ -3620,39 +3620,22 @@ export function SalesDashboardV2() {
             <ConversionCard
               title="Deals-on-Board to Proposal"
               value={(() => {
-                if (ndaEnteredInRange.isLoading || proposalEnteredInRange.isLoading) return null;
-                const nda = ndaEnteredInRange.count;
-                const props = proposalEnteredInRange.count;
-                if (!nda) return null;
-                return props / nda;
+                if (ttmConversion.loading) return null;
+                if (!ttmConversion.ndaCount) return null;
+                return ttmConversion.converted / ttmConversion.ndaCount;
               })()}
               subtitle={(() => {
-                if (
-                  ndaEnteredInRange.isLoading || proposalEnteredInRange.isLoading ||
-                  ndaEnteredPrior.isLoading || proposalEnteredPrior.isLoading
-                ) return 'Loading…';
-                const nda = ndaEnteredInRange.count;
-                const props = proposalEnteredInRange.count;
-                const priorNda = ndaEnteredPrior.count;
-                const priorProps = proposalEnteredPrior.count;
-                const cur = nda ? props / nda : null;
-                const prev = priorNda ? priorProps / priorNda : null;
-                // Derive prior-period label from selectedQuarter (e.g. "Q3 2026" → "Q2 2026")
-                const priorLabel = (() => {
-                  const m = /^Q([1-4])\s+(\d{4})$/.exec(selectedQuarter.label ?? '');
-                  if (!m) return 'prior period';
-                  let q = parseInt(m[1], 10);
-                  let y = parseInt(m[2], 10);
-                  q -= 1;
-                  if (q < 1) { q = 4; y -= 1; }
-                  return `Q${q} ${y}`;
-                })();
-                if (cur == null) return `No data · vs ${priorLabel}`;
-                if (prev == null) return `— no ${priorLabel} baseline`;
+                if (ttmConversion.loading) return 'Loading…';
+                const { ndaCount, converted, ndaPriorCount, convertedPrior } = ttmConversion;
+                const base = `${converted} of ${ndaCount} deals · TTM`;
+                if (!ndaCount) return `No NDAs entered · TTM`;
+                const cur = converted / ndaCount;
+                const prev = ndaPriorCount ? convertedPrior / ndaPriorCount : null;
+                if (prev == null) return `${base} · no prior TTM baseline`;
                 const deltaPts = (cur - prev) * 100;
                 const arrow = deltaPts > 0 ? '▲' : deltaPts < 0 ? '▼' : '■';
                 const sign = deltaPts > 0 ? '+' : '';
-                return `${arrow} ${sign}${deltaPts.toFixed(1)} pts vs ${priorLabel} (${(prev * 100).toFixed(1)}%)`;
+                return `${base} · ${arrow} ${sign}${deltaPts.toFixed(1)} pts vs prior TTM (${(prev * 100).toFixed(1)}%)`;
               })()}
               onClick={() => setOnBoardToProposalOpen(true)}
             />
