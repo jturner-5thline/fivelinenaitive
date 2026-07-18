@@ -167,8 +167,12 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const [crumbs, setCrumbs] = useState<Crumb[]>([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]);
   const [search, setSearch] = useState('');
   const [searching, setSearching] = useState(false);
-  // Per-row mapping: driveId -> internal folder name (target).
-  const [mapping, setMapping] = useState<Record<string, string>>({});
+  // Per-row mapping: driveId -> internal folder name (target). Persisted to localStorage
+  // so user-chosen mappings stay selected across sessions and re-opens.
+  const [mapping, setMapping] = useState<Record<string, string>>(() => loadPersistedMapping());
+  // Track which mappings were explicitly set/confirmed by the user (vs auto-matched only)
+  // — only user-confirmed entries are persisted.
+  const [userMapped, setUserMapped] = useState<Set<string>>(() => new Set(Object.keys(loadPersistedMapping())));
   // Default target used when a row has no explicit mapping.
   const [defaultTarget, setDefaultTarget] = useState<string>(() => {
     const cleaned = (defaultFolderPath || '/').replace(/^\/+|\/+$/g, '');
@@ -186,7 +190,11 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   }, [internalFolders, defaultTarget]);
 
   const reset = () => {
-    setUrl(''); setFiles([]); setSelected(new Set()); setSearch(''); setMapping({});
+    setUrl(''); setFiles([]); setSelected(new Set()); setSearch('');
+    // Re-hydrate persisted mappings on close so they're available next open.
+    const persisted = loadPersistedMapping();
+    setMapping(persisted);
+    setUserMapped(new Set(Object.keys(persisted)));
     setCrumbs([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]); setMode('browse');
     setProgress([]); setShowResults(false); setUrlError(null); setPreviewingId(null);
     setAutoMatched(new Set());
@@ -211,7 +219,15 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   }, [files, internalFolders]);
 
   const browse = useCallback(async (folderId: string, name?: string, replace?: boolean) => {
-    setLoading(true); setSelected(new Set()); setSearch(''); setMapping({});
+    setLoading(true); setSelected(new Set()); setSearch('');
+    // Keep persisted user mappings; drop only non-user (auto-only) entries so the new
+    // folder list gets a fresh auto-match pass but user overrides survive navigation.
+    setMapping(prev => {
+      const next: Record<string, string> = {};
+      for (const id of userMapped) if (prev[id]) next[id] = prev[id];
+      return next;
+    });
+    setAutoMatched(new Set());
     try {
       const { data, error } = await supabase.functions.invoke('drive-folder-import', {
         body: { action: 'browse', folderId },
