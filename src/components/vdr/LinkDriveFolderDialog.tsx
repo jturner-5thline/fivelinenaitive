@@ -157,37 +157,6 @@ function autoMatchTarget(driveFolderName: string, internalFolders: string[]): st
   return contains[0]?.name ?? null;
 }
 
-/** localStorage key for the persisted driveFolderId -> internalFolderName map. */
-const MAPPING_STORAGE_KEY = 'vdr:driveFolderMapping:v1';
-
-function loadPersistedMapping(): Record<string, string> {
-  if (typeof window === 'undefined') return {};
-  try {
-    const raw = window.localStorage.getItem(MAPPING_STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      const out: Record<string, string> = {};
-      for (const [k, v] of Object.entries(parsed)) {
-        if (typeof v === 'string' && v) out[k] = v;
-      }
-      return out;
-    }
-  } catch {
-    /* ignore corrupt storage */
-  }
-  return {};
-}
-
-function savePersistedMapping(m: Record<string, string>) {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(MAPPING_STORAGE_KEY, JSON.stringify(m));
-  } catch {
-    /* storage may be full or blocked — non-fatal */
-  }
-}
-
 export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFolderPath = '/', internalFolders = [] }: Props) {
   const [mode, setMode] = useState<'browse' | 'url'>('browse');
   const [url, setUrl] = useState('');
@@ -198,77 +167,19 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const [crumbs, setCrumbs] = useState<Crumb[]>([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]);
   const [search, setSearch] = useState('');
   const [searching, setSearching] = useState(false);
-  // Per-row mapping: driveId -> internal folder name (target). Persisted to localStorage
-  // so user-chosen mappings stay selected across sessions and re-opens.
-  const [mapping, setMapping] = useState<Record<string, string>>(() => loadPersistedMapping());
-  // Track which mappings were explicitly set/confirmed by the user (vs auto-matched only)
-  // — only user-confirmed entries are persisted.
-  const [userMapped, setUserMapped] = useState<Set<string>>(() => new Set(Object.keys(loadPersistedMapping())));
-  // Default target used when a row has no explicit mapping.
-  const [defaultTarget, setDefaultTarget] = useState<string>(() => {
-    const cleaned = (defaultFolderPath || '/').replace(/^\/+|\/+$/g, '');
-    return cleaned || (internalFolders[0] ?? '');
-  });
   const [progress, setProgress] = useState<ImportItem[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
-  // Track which folder IDs were auto-matched (vs user-overridden) for the badge.
-  const [autoMatched, setAutoMatched] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!defaultTarget && internalFolders.length) setDefaultTarget(internalFolders[0]);
-  }, [internalFolders, defaultTarget]);
-
-  // Persist user-confirmed mappings whenever they change. Auto-matched-only entries
-  // are excluded so they don't pollute stored preferences.
-  useEffect(() => {
-    const persisted: Record<string, string> = {};
-    for (const id of userMapped) {
-      if (mapping[id]) persisted[id] = mapping[id];
-    }
-    savePersistedMapping(persisted);
-  }, [mapping, userMapped]);
 
   const reset = () => {
     setUrl(''); setFiles([]); setSelected(new Set()); setSearch('');
-    // Re-hydrate persisted mappings on close so they're available next open.
-    const persisted = loadPersistedMapping();
-    setMapping(persisted);
-    setUserMapped(new Set(Object.keys(persisted)));
     setCrumbs([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]); setMode('browse');
     setProgress([]); setShowResults(false); setUrlError(null); setPreviewingId(null);
-    setAutoMatched(new Set());
   };
-
-  // Auto-match Drive subfolder names to Internal data-room folders whenever the file list changes.
-  useEffect(() => {
-    if (!internalFolders.length || !files.length) return;
-    setMapping(prev => {
-      const next = { ...prev };
-      const auto = new Set<string>();
-      for (const f of files) {
-        if (f.mimeType !== FOLDER_MIME) continue;
-        // Respect any explicit user override already present.
-        if (next[f.id]) continue;
-        const match = autoMatchTarget(f.name, internalFolders);
-        if (match) { next[f.id] = match; auto.add(f.id); }
-      }
-      setAutoMatched(auto);
-      return next;
-    });
-  }, [files, internalFolders]);
 
   const browse = useCallback(async (folderId: string, name?: string, replace?: boolean) => {
     setLoading(true); setSelected(new Set()); setSearch('');
-    // Keep persisted user mappings; drop only non-user (auto-only) entries so the new
-    // folder list gets a fresh auto-match pass but user overrides survive navigation.
-    setMapping(prev => {
-      const next: Record<string, string> = {};
-      for (const id of userMapped) if (prev[id]) next[id] = prev[id];
-      return next;
-    });
-    setAutoMatched(new Set());
     try {
       const { data, error } = await supabase.functions.invoke('drive-folder-import', {
         body: { action: 'browse', folderId },
@@ -305,7 +216,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const handleSearch = async () => {
     const q = search.trim();
     if (!q) { browse(ROOT_FOLDER_ID, ROOT_FOLDER_NAME, true); return; }
-    setSearching(true); setSelected(new Set()); setMapping({});
+    setSearching(true); setSelected(new Set());
     try {
       const { data, error } = await supabase.functions.invoke('drive-folder-import', {
         body: { action: 'search', query: q, folderId: ROOT_FOLDER_ID },
@@ -326,7 +237,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     const check = validateFolderInput(url);
     if (check.ok === false) { setUrlError(check.message); return; }
     setUrlError(null);
-    setLoading(true); setSelected(new Set()); setMapping({});
+    setLoading(true); setSelected(new Set());
     try {
       const { data, error } = await supabase.functions.invoke('drive-folder-import', {
         body: { action: 'list', folder: url.trim() },
@@ -357,7 +268,9 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     setShowResults(true);
     let ok = 0; let fail = 0;
 
-    const uploadOne = async (df: DriveFile, targetName: string) => {
+    // Upload one Drive file. `targetPath` is the absolute Internal path (leading slash,
+    // no trailing slash except root). Root is "/".
+    const uploadOne = async (df: DriveFile, targetPath: string) => {
       const { data, error } = await supabase.functions.invoke('drive-folder-import', {
         body: { action: 'download', fileId: df.id, mimeType: df.mimeType },
       });
@@ -366,8 +279,8 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
       const blob = base64ToBlob(data.base64, data.mimeType);
       const finalName = extNameFromMime(df.name, df.mimeType);
       const file = new File([blob], finalName, { type: data.mimeType });
-      const clean = (targetName || '').replace(/^\/+|\/+$/g, '');
-      await onImport(file, clean ? `/${clean}` : '/');
+      const clean = (targetPath || '/').replace(/\/+$/g, '') || '/';
+      await onImport(file, clean.startsWith('/') ? clean : `/${clean}`);
     };
 
     const updateItem = (key: string, patch: Partial<ImportItem>) => {
@@ -377,70 +290,71 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
       setProgress(prev => [...prev, ...items]);
     };
 
-    // Recursively collect every file inside a Drive folder.
-    const collectFiles = async (folderId: string): Promise<DriveFile[]> => {
+    // Recursively collect every file inside a Drive folder, preserving the relative
+    // subfolder path so Internal upload mirrors the Drive structure.
+    const collectFiles = async (
+      folderId: string,
+      relPath = '',
+    ): Promise<{ file: DriveFile; relPath: string }[]> => {
       const { data, error } = await supabase.functions.invoke('drive-folder-import', {
         body: { action: 'browse', folderId },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       const children: DriveFile[] = data?.files ?? [];
-      const out: DriveFile[] = [];
+      const out: { file: DriveFile; relPath: string }[] = [];
       for (const c of children) {
         if (c.mimeType === FOLDER_MIME) {
-          const nested = await collectFiles(c.id);
+          const nested = await collectFiles(c.id, relPath ? `${relPath}/${c.name}` : c.name);
           out.push(...nested);
         } else {
-          out.push(c);
+          out.push({ file: c, relPath });
         }
       }
       return out;
     };
 
     // Seed queue with top-level selected items (folders shown as placeholders until expanded).
+    // Folders upload their whole tree; files upload to Internal root.
     const seed: ImportItem[] = importFiles.map(f => ({
         key: `top:${f.id}`,
         name: f.mimeType === FOLDER_MIME ? `${f.name} (folder)` : f.name,
-        target: f.mimeType === FOLDER_MIME ? (mapping[f.id] || defaultTarget) : defaultTarget,
+        target: f.mimeType === FOLDER_MIME ? `/${f.name}` : '/',
         status: 'queued' as ImportStatus,
       }));
     setProgress(seed);
 
     for (const f of importFiles) {
-      const target = f.mimeType === FOLDER_MIME
-        ? (mapping[f.id] || defaultTarget)
-        : defaultTarget;
-      if (!target) {
-        updateItem(`top:${f.id}`, { status: 'failed', error: 'No target folder' });
-        fail++; continue;
-      }
-
       if (f.mimeType === FOLDER_MIME) {
+        // Preserve the Drive folder name (and subfolder structure) inside Internal.
+        const rootTarget = `/${f.name}`;
         updateItem(`top:${f.id}`, { status: 'importing' });
         try {
-          const children = await collectFiles(f.id);
+          const children = await collectFiles(f.id, '');
           if (children.length === 0) {
             updateItem(`top:${f.id}`, { status: 'failed', error: 'Folder is empty' });
             fail++;
           } else {
             // Replace folder placeholder with its child items.
             const childItems: ImportItem[] = children.map((c, i) => ({
-              key: `${f.id}:${c.id}:${i}`,
-              name: `${f.name}/${c.name}`,
-              target,
+              key: `${f.id}:${c.file.id}:${i}`,
+              name: c.relPath ? `${f.name}/${c.relPath}/${c.file.name}` : `${f.name}/${c.file.name}`,
+              target: c.relPath ? `${rootTarget}/${c.relPath}` : rootTarget,
               status: 'queued' as ImportStatus,
             }));
             setProgress(prev => prev.flatMap(it => it.key === `top:${f.id}` ? childItems : [it]));
-            for (const child of children) {
-              const key = childItems.find(ci => ci.name === `${f.name}/${child.name}`)?.key;
-              if (key) updateItem(key, { status: 'importing' });
+            for (let i = 0; i < children.length; i++) {
+              const child = children[i];
+              const item = childItems[i];
+              const key = item.key;
+              updateItem(key, { status: 'importing' });
               try {
-                await uploadOne(child, target);
-                if (key) updateItem(key, { status: 'completed' });
+                await uploadOne(child.file, item.target);
+                updateItem(key, { status: 'completed' });
                 ok++;
               } catch (err) {
-                console.error(`Failed to import ${child.name}`, err);
-                if (key) updateItem(key, { status: 'failed', error: err instanceof Error ? err.message : 'Upload failed' });
+                console.error(`Failed to import ${child.file.name}`, err);
+                updateItem(key, { status: 'failed', error: err instanceof Error ? err.message : 'Upload failed' });
                 fail++;
               }
             }
@@ -453,7 +367,8 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
       } else {
         updateItem(`top:${f.id}`, { status: 'importing' });
         try {
-          await uploadOne(f, target);
+          // Top-level files land in Internal root.
+          await uploadOne(f, '/');
           updateItem(`top:${f.id}`, { status: 'completed' });
           ok++;
         } catch (err) {
@@ -520,8 +435,6 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const selectedFileRows = selectedFiles.filter(f => f.mimeType !== FOLDER_MIME);
   const selectedFolderRows = selectedFiles.filter(f => f.mimeType === FOLDER_MIME);
   const selectedTotalBytes = selectedFileRows.reduce((sum, f) => sum + (Number(f.size) || 0), 0);
-  const unmatchedSelected = selectedFolderRows.filter(f => !mapping[f.id]);
-
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
       <DialogContent className="max-w-3xl">
@@ -530,24 +443,9 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
             <FolderOpen className="h-4 w-4" /> Google Drive
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Browse the shared 5th Line Drive. Check any folder (uploads all contents, recursively) or file, then import into the Default target.
+            Browse the shared 5th Line Drive. Check a folder to upload it (and its full contents) into Internal — the folder's own name is preserved. Files upload to Internal root.
           </DialogDescription>
         </DialogHeader>
-
-        {/* Default mapping target — applied to any selected row without its own mapping */}
-        {internalFolders.length > 0 && (
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground shrink-0">Default target:</span>
-            <Select value={defaultTarget} onValueChange={setDefaultTarget} disabled={importing}>
-              <SelectTrigger className="h-7 w-[220px] text-xs"><SelectValue placeholder="Choose folder…" /></SelectTrigger>
-              <SelectContent>
-                {internalFolders.map(name => (
-                  <SelectItem key={name} value={name} className="text-xs">{name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
 
         {/* Mode toggle */}
         <div className="flex items-center gap-1 border-b pb-2">
@@ -699,64 +597,17 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
                         <span className="hidden sm:inline text-[10px] text-muted-foreground shrink-0">
                           Folder · {formatModified(f.modifiedTime)}
                         </span>
-                        {isChecked && internalFolders.length > 0 && (
-                          <>
-                            <span className="text-[10px] text-muted-foreground shrink-0">→</span>
-                            <Select
-                              value={mapping[f.id] ?? ''}
-                              onValueChange={(v) => {
-                                setMapping(prev => ({ ...prev, [f.id]: v }));
-                                setAutoMatched(prev => { const n = new Set(prev); n.delete(f.id); return n; });
-                                setUserMapped(prev => { const n = new Set(prev); n.add(f.id); return n; });
-                              }}
-                              disabled={importing}
-                            >
-                              <SelectTrigger
-                                className={`h-6 text-[11px] w-[170px] shrink-0 ${mapping[f.id] ? '' : 'border-destructive text-destructive'}`}
-                              >
-                                <SelectValue placeholder="Pick target…" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {internalFolders.map(name => (
-                                  <SelectItem key={name} value={name} className="text-xs">{name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {mapping[f.id] && autoMatched.has(f.id) && (
-                              <span
-                                className="text-[9px] uppercase tracking-wide text-emerald-600 shrink-0"
-                                title={`Auto-matched to "${mapping[f.id]}" by folder name`}
-                              >
-                                auto
-                              </span>
-                            )}
-                          </>
-                        )}
-                        {internalFolders.length > 0 && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-6 px-2 text-[11px] shrink-0"
-                            disabled={importing}
-                            title={`Link this folder to ${mapping[f.id] || autoMatchTarget(f.name, internalFolders) || defaultTarget || 'the default target'}`}
-                            onClick={() => {
-                              const target =
-                                mapping[f.id] ||
-                                autoMatchTarget(f.name, internalFolders) ||
-                                defaultTarget;
-                              if (!target) {
-                                toast.error('Pick a target Internal folder first.');
-                                return;
-                              }
-                              setMapping(prev => ({ ...prev, [f.id]: target }));
-                              setUserMapped(prev => { const n = new Set(prev); n.add(f.id); return n; });
-                              handleImport([f]);
-                            }}
-                          >
-                            <Link2 className="h-3 w-3 mr-1" />
-                            Link Folder
-                          </Button>
-                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[11px] shrink-0"
+                          disabled={importing}
+                          title={`Upload "${f.name}" and all of its contents into Internal`}
+                          onClick={() => handleImport([f])}
+                        >
+                          <Link2 className="h-3 w-3 mr-1" />
+                          Upload Folder
+                        </Button>
                       </>
                     ) : (
                       <>
@@ -805,13 +656,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
             {selectedFileRows.length > 0 && (
               <span>· ~{formatSize(selectedTotalBytes)}</span>
             )}
-            {unmatchedSelected.length > 0 ? (
-              <span className="ml-auto text-destructive">
-                {unmatchedSelected.length} folder{unmatchedSelected.length === 1 ? '' : 's'} need a target
-              </span>
-            ) : (
-              <span className="ml-auto">files → {defaultTarget || 'no target'}</span>
-            )}
+            <span className="ml-auto">Folders keep their name in Internal · files → Internal root</span>
           </div>
         )}
 
@@ -824,7 +669,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
           ) : (
             <>
               <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={importing}>Cancel</Button>
-              <Button onClick={() => handleImport()} disabled={selected.size === 0 || importing || unmatchedSelected.length > 0}>
+              <Button onClick={() => handleImport()} disabled={selected.size === 0 || importing}>
                 {importing && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
                 Import {selected.size > 0 ? `${selected.size} ` : ''}to Internal
               </Button>
