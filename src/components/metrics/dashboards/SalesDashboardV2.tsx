@@ -3227,6 +3227,20 @@ export function SalesDashboardV2() {
   const ndaTtmEvents = useStageEntryEvents('ndaneeds-list-sent', { start: ttmRanges.ttmStart, end: ttmRanges.ttmEnd });
   const ndaPriorTtmEvents = useStageEntryEvents('ndaneeds-list-sent', { start: ttmRanges.priorStart, end: ttmRanges.priorEnd });
   const proposalLookupEvents = useStageEntryEvents('proposal-issued', { start: ttmRanges.propStart, end: ttmRanges.propEnd });
+  // TTM debt sales calls (denominator of the Call-to-Deal Conversion card).
+  // Titled like "[COMPANY] <> 5th Line Financing Review". Uses the same
+  // TTM windows as the deals-on-board conversion so the two cards stay
+  // consistent, plus a prior-period TTM window for variance.
+  const ttmSalesCallsQuery = useSalesCallsCount(ttmRanges.ttmStart, ttmRanges.ttmEnd, true, 'debt');
+  const ttmSalesCallsPriorQuery = useSalesCallsCount(ttmRanges.priorStart, ttmRanges.priorEnd, true, 'debt');
+  const ttmSalesCallsCount = React.useMemo(() => {
+    if (ttmSalesCallsQuery.isLoading || ttmSalesCallsQuery.isFetching) return null;
+    return filterSalesCallEventsForVariant(ttmSalesCallsQuery.data?.events ?? [], 'debt').length;
+  }, [ttmSalesCallsQuery.isLoading, ttmSalesCallsQuery.isFetching, ttmSalesCallsQuery.data]);
+  const ttmSalesCallsPriorCount = React.useMemo(() => {
+    if (ttmSalesCallsPriorQuery.isLoading || ttmSalesCallsPriorQuery.isFetching) return null;
+    return filterSalesCallEventsForVariant(ttmSalesCallsPriorQuery.data?.events ?? [], 'debt').length;
+  }, [ttmSalesCallsPriorQuery.isLoading, ttmSalesCallsPriorQuery.isFetching, ttmSalesCallsPriorQuery.data]);
   const ttmConversion = React.useMemo(() => {
     const loading = ndaTtmEvents.isLoading || ndaPriorTtmEvents.isLoading || proposalLookupEvents.isLoading;
     const proposalDeals = new Set<string>();
