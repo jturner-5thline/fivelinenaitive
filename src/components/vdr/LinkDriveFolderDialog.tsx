@@ -722,7 +722,13 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
             {selectedFileRows.length > 0 && (
               <span>· ~{formatSize(selectedTotalBytes)}</span>
             )}
-            <span className="ml-auto">→ {defaultTarget || 'no target'}</span>
+            {unmatchedSelected.length > 0 ? (
+              <span className="ml-auto text-destructive">
+                {unmatchedSelected.length} folder{unmatchedSelected.length === 1 ? '' : 's'} need a target
+              </span>
+            ) : (
+              <span className="ml-auto">files → {defaultTarget || 'no target'}</span>
+            )}
           </div>
         )}
 
@@ -735,7 +741,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
           ) : (
             <>
               <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={importing}>Cancel</Button>
-              <Button onClick={handleImport} disabled={selected.size === 0 || importing}>
+              <Button onClick={handleImport} disabled={selected.size === 0 || importing || unmatchedSelected.length > 0}>
                 {importing && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
                 Import {selected.size > 0 ? `${selected.size} ` : ''}to Internal
               </Button>
