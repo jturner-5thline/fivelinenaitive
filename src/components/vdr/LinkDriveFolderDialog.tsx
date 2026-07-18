@@ -157,37 +157,6 @@ function autoMatchTarget(driveFolderName: string, internalFolders: string[]): st
   return contains[0]?.name ?? null;
 }
 
-/** localStorage key for the persisted driveFolderId -> internalFolderName map. */
-const MAPPING_STORAGE_KEY = 'vdr:driveFolderMapping:v1';
-
-function loadPersistedMapping(): Record<string, string> {
-  if (typeof window === 'undefined') return {};
-  try {
-    const raw = window.localStorage.getItem(MAPPING_STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      const out: Record<string, string> = {};
-      for (const [k, v] of Object.entries(parsed)) {
-        if (typeof v === 'string' && v) out[k] = v;
-      }
-      return out;
-    }
-  } catch {
-    /* ignore corrupt storage */
-  }
-  return {};
-}
-
-function savePersistedMapping(m: Record<string, string>) {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(MAPPING_STORAGE_KEY, JSON.stringify(m));
-  } catch {
-    /* storage may be full or blocked — non-fatal */
-  }
-}
-
 export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFolderPath = '/', internalFolders = [] }: Props) {
   const [mode, setMode] = useState<'browse' | 'url'>('browse');
   const [url, setUrl] = useState('');
@@ -198,77 +167,19 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const [crumbs, setCrumbs] = useState<Crumb[]>([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]);
   const [search, setSearch] = useState('');
   const [searching, setSearching] = useState(false);
-  // Per-row mapping: driveId -> internal folder name (target). Persisted to localStorage
-  // so user-chosen mappings stay selected across sessions and re-opens.
-  const [mapping, setMapping] = useState<Record<string, string>>(() => loadPersistedMapping());
-  // Track which mappings were explicitly set/confirmed by the user (vs auto-matched only)
-  // — only user-confirmed entries are persisted.
-  const [userMapped, setUserMapped] = useState<Set<string>>(() => new Set(Object.keys(loadPersistedMapping())));
-  // Default target used when a row has no explicit mapping.
-  const [defaultTarget, setDefaultTarget] = useState<string>(() => {
-    const cleaned = (defaultFolderPath || '/').replace(/^\/+|\/+$/g, '');
-    return cleaned || (internalFolders[0] ?? '');
-  });
   const [progress, setProgress] = useState<ImportItem[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
-  // Track which folder IDs were auto-matched (vs user-overridden) for the badge.
-  const [autoMatched, setAutoMatched] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!defaultTarget && internalFolders.length) setDefaultTarget(internalFolders[0]);
-  }, [internalFolders, defaultTarget]);
-
-  // Persist user-confirmed mappings whenever they change. Auto-matched-only entries
-  // are excluded so they don't pollute stored preferences.
-  useEffect(() => {
-    const persisted: Record<string, string> = {};
-    for (const id of userMapped) {
-      if (mapping[id]) persisted[id] = mapping[id];
-    }
-    savePersistedMapping(persisted);
-  }, [mapping, userMapped]);
 
   const reset = () => {
     setUrl(''); setFiles([]); setSelected(new Set()); setSearch('');
-    // Re-hydrate persisted mappings on close so they're available next open.
-    const persisted = loadPersistedMapping();
-    setMapping(persisted);
-    setUserMapped(new Set(Object.keys(persisted)));
     setCrumbs([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]); setMode('browse');
     setProgress([]); setShowResults(false); setUrlError(null); setPreviewingId(null);
-    setAutoMatched(new Set());
   };
-
-  // Auto-match Drive subfolder names to Internal data-room folders whenever the file list changes.
-  useEffect(() => {
-    if (!internalFolders.length || !files.length) return;
-    setMapping(prev => {
-      const next = { ...prev };
-      const auto = new Set<string>();
-      for (const f of files) {
-        if (f.mimeType !== FOLDER_MIME) continue;
-        // Respect any explicit user override already present.
-        if (next[f.id]) continue;
-        const match = autoMatchTarget(f.name, internalFolders);
-        if (match) { next[f.id] = match; auto.add(f.id); }
-      }
-      setAutoMatched(auto);
-      return next;
-    });
-  }, [files, internalFolders]);
 
   const browse = useCallback(async (folderId: string, name?: string, replace?: boolean) => {
     setLoading(true); setSelected(new Set()); setSearch('');
-    // Keep persisted user mappings; drop only non-user (auto-only) entries so the new
-    // folder list gets a fresh auto-match pass but user overrides survive navigation.
-    setMapping(prev => {
-      const next: Record<string, string> = {};
-      for (const id of userMapped) if (prev[id]) next[id] = prev[id];
-      return next;
-    });
-    setAutoMatched(new Set());
     try {
       const { data, error } = await supabase.functions.invoke('drive-folder-import', {
         body: { action: 'browse', folderId },
