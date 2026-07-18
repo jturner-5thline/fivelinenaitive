@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Deal, DealMilestone } from '@/types/deal';
 import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
 import type { PipelineDigestRaw } from '@/hooks/usePipelineDigests';
-import { Diamond, Pencil, Check, Plus, Maximize2, X } from 'lucide-react';
+import { Diamond, Pencil, Check, Plus, Maximize2, X, Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -1087,6 +1087,13 @@ function TasksMilestonesDetailDialog({
   const [addKind, setAddKind] = useState<'task' | 'milestone' | 'followup' | null>(null);
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
   const [editingAssigneeId, setEditingAssigneeId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const matchesQuery = (haystack: (string | null | undefined)[]) => {
+    if (!normalizedQuery) return true;
+    return haystack.some((s) => (s || '').toLowerCase().includes(normalizedQuery));
+  };
 
   const sortedTasks = useMemo(() => {
     const list = [...tasks];
@@ -1111,6 +1118,15 @@ function TasksMilestonesDetailDialog({
     return list;
   }, [milestones]);
 
+  const filteredTasks = useMemo(
+    () => sortedTasks.filter((t) => matchesQuery([t.title, t.assignedToName, t.requestedByName])),
+    [sortedTasks, normalizedQuery]
+  );
+  const filteredMilestones = useMemo(
+    () => sortedMilestones.filter((m) => matchesQuery([m.title])),
+    [sortedMilestones, normalizedQuery]
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
@@ -1128,13 +1144,33 @@ function TasksMilestonesDetailDialog({
             </label>
           </DialogTitle>
         </DialogHeader>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search tasks, milestones, assignees..."
+            className="w-full rounded-md border border-border bg-background pl-8 pr-8 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              title="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
 
         <div className="flex-1 overflow-y-auto space-y-5 -mx-1 px-1">
           {/* Milestones section */}
           <section>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Milestones ({sortedMilestones.length})
+                Milestones ({filteredMilestones.length}{normalizedQuery && filteredMilestones.length !== sortedMilestones.length ? ` of ${sortedMilestones.length}` : ''})
               </h3>
               <button
                 type="button"
@@ -1149,11 +1185,11 @@ function TasksMilestonesDetailDialog({
                 <AddMilestoneInlineForm deal={deal} onClose={() => setAddKind(null)} />
               </div>
             )}
-            {sortedMilestones.length === 0 ? (
-              <p className="text-xs italic text-muted-foreground">No milestones.</p>
+            {filteredMilestones.length === 0 ? (
+              <p className="text-xs italic text-muted-foreground">{normalizedQuery ? 'No milestones match your search.' : 'No milestones.'}</p>
             ) : (
               <div className="space-y-1.5">
-                {sortedMilestones.map((m) => {
+                {filteredMilestones.map((m) => {
                   const isCompleting = completingMilestoneIds.has(m.id || '');
                   const done = m.completed || isCompleting;
                   return (
@@ -1199,7 +1235,7 @@ function TasksMilestonesDetailDialog({
           <section>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Tasks & follow-ups ({sortedTasks.length})
+                Tasks & follow-ups ({filteredTasks.length}{normalizedQuery && filteredTasks.length !== sortedTasks.length ? ` of ${sortedTasks.length}` : ''})
               </h3>
               <div className="flex items-center gap-2">
                 <button
@@ -1228,11 +1264,11 @@ function TasksMilestonesDetailDialog({
                 <AddFollowupInlineForm deal={deal} defaultTitle="" onClose={() => setAddKind(null)} />
               </div>
             )}
-            {sortedTasks.length === 0 ? (
-              <p className="text-xs italic text-muted-foreground">No tasks.</p>
+            {filteredTasks.length === 0 ? (
+              <p className="text-xs italic text-muted-foreground">{normalizedQuery ? 'No tasks match your search.' : 'No tasks.'}</p>
             ) : (
               <div className="space-y-1.5">
-                {sortedTasks.map((task) => {
+                {filteredTasks.map((task) => {
                   const isCompleting = completingTaskIds.has(task.id);
                   const dueDate = parseStoredDate(task.dueDate);
                   const isOverdue = !!dueDate && differenceInCalendarDays(dueDate, new Date()) < 0;
