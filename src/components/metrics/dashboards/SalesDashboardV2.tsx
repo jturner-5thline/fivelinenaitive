@@ -1988,6 +1988,276 @@ function OnBoardToProposalDrilldown({
   );
 }
 
+// ============================================================
+// Drilldown: Call-to-Deal Conversion
+// ============================================================
+function CallToDealDrilldown({
+  open,
+  onOpenChange,
+  ttmRanges,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  ttmRanges: {
+    ttmStart: Date;
+    ttmEnd: Date;
+    priorStart: Date;
+    priorEnd: Date;
+    periodMonths: number;
+  };
+}) {
+  const [period, setPeriod] = React.useState<'current' | 'prior'>('current');
+  const [tab, setTab] = React.useState<'deals' | 'calls'>('deals');
+
+  const ndaCurrent = useStageEntryEvents('ndaneeds-list-sent', {
+    start: ttmRanges.ttmStart,
+    end: ttmRanges.ttmEnd,
+  });
+  const ndaPrior = useStageEntryEvents('ndaneeds-list-sent', {
+    start: ttmRanges.priorStart,
+    end: ttmRanges.priorEnd,
+  });
+  const callsCurrent = useSalesCallsCount(ttmRanges.ttmStart, ttmRanges.ttmEnd, open, 'debt');
+  const callsPrior = useSalesCallsCount(ttmRanges.priorStart, ttmRanges.priorEnd, open, 'debt');
+
+  const fmtRangeLabel = (end: Date): string => {
+    const e = new Date(end.getTime() - 1);
+    if (ttmRanges.periodMonths === 3) {
+      const q = Math.floor(e.getUTCMonth() / 3) + 1;
+      return `Q${q} ${e.getUTCFullYear()}`;
+    }
+    if (ttmRanges.periodMonths === 12) return `${e.getUTCFullYear()}`;
+    return e.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  };
+  const currentLabel = fmtRangeLabel(ttmRanges.ttmEnd);
+  const priorLabel = fmtRangeLabel(ttmRanges.priorEnd);
+
+  const activeStart = period === 'current' ? ttmRanges.ttmStart : ttmRanges.priorStart;
+  const activeEnd = period === 'current' ? ttmRanges.ttmEnd : ttmRanges.priorEnd;
+
+  const distinctDeals = React.useMemo(() => {
+    const evts = period === 'current' ? ndaCurrent.events : ndaPrior.events;
+    const seen = new Set<string>();
+    const out: typeof evts = [];
+    for (const ev of evts) {
+      if (seen.has(ev.deal_id)) continue;
+      seen.add(ev.deal_id);
+      out.push(ev);
+    }
+    return out;
+  }, [period, ndaCurrent.events, ndaPrior.events]);
+
+  const callEvents = React.useMemo(() => {
+    const q = period === 'current' ? callsCurrent : callsPrior;
+    const raw = filterSalesCallEventsForVariant(q.data?.events ?? [], 'debt');
+    // Dedupe by dedupe_key (same meeting across teammate calendars).
+    const seen = new Set<string>();
+    const out: typeof raw = [];
+    for (const ev of raw) {
+      const key = ev.dedupe_key || ev.id;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(ev);
+    }
+    // Sort newest first.
+    out.sort((a, b) => {
+      const ta = a.start ? new Date(a.start).getTime() : 0;
+      const tb = b.start ? new Date(b.start).getTime() : 0;
+      return tb - ta;
+    });
+    return out;
+  }, [period, callsCurrent.data, callsPrior.data]);
+
+  const dealsCount = distinctDeals.length;
+  const callsCount = callEvents.length;
+  const ratio = callsCount > 0 ? dealsCount / callsCount : null;
+  const pct = (v: number | null) => (v == null ? '—' : `${(v * 100).toFixed(1)}%`);
+
+  const fmtUsd = (n: number) =>
+    n >= 1_000_000
+      ? `$${(n / 1_000_000).toFixed(2)}MM`
+      : n > 0
+      ? `$${Math.round(n / 1000).toLocaleString()}K`
+      : '—';
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const fmtDateTime = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  const fmtWindow = (s: Date, e: Date) => {
+    const eDate = new Date(e.getTime() - 1);
+    const opts: Intl.DateTimeFormatOptions = { month: 'short', year: 'numeric', timeZone: 'UTC' };
+    return `${s.toLocaleDateString('en-US', opts)} – ${eDate.toLocaleDateString('en-US', opts)}`;
+  };
+
+  const dealsLoading = period === 'current' ? ndaCurrent.isLoading : ndaPrior.isLoading;
+  const callsLoading = period === 'current' ? callsCurrent.isLoading : callsPrior.isLoading;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto p-4 sm:p-6">
+        <DialogHeader>
+          <DialogTitle>Call-to-Deal Conversion</DialogTitle>
+          <DialogDescription>
+            Distinct deals entering “NDA / Needs List Sent” ÷ debt sales calls
+            (titled “[Company] &lt;&gt; 5th Line Financing Review”) over the
+            trailing 12 months.
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Period toggle */}
+        <div className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.02] px-3 py-2">
+          <div className="flex items-center gap-1">
+            {(['current', 'prior'] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`px-2.5 py-1 rounded text-xs capitalize transition-colors ${
+                  period === p
+                    ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                    : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                }`}
+              >
+                {p === 'current' ? `Current TTM · ${currentLabel}` : `Prior TTM · ${priorLabel}`}
+              </button>
+            ))}
+          </div>
+          <div className="text-[11px] text-slate-400 tabular-nums">
+            {fmtWindow(activeStart, activeEnd)}
+          </div>
+        </div>
+
+        {/* KPI row */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-md border border-white/10 bg-white/[0.02] p-3">
+            <div className="text-[10px] uppercase tracking-wider text-slate-400">Conversion</div>
+            <div className="text-2xl font-semibold text-slate-100 tabular-nums">{pct(ratio)}</div>
+            <div className="text-[11px] text-slate-400 tabular-nums">
+              {dealsCount} deals ÷ {callsCount} calls
+            </div>
+          </div>
+          <div className="rounded-md border border-white/10 bg-white/[0.02] p-3">
+            <div className="text-[10px] uppercase tracking-wider text-slate-400">
+              Deals · Numerator
+            </div>
+            <div className="text-2xl font-semibold text-slate-100 tabular-nums">{dealsCount}</div>
+            <div className="text-[11px] text-slate-400">Entered NDA / Needs List Sent</div>
+          </div>
+          <div className="rounded-md border border-white/10 bg-white/[0.02] p-3">
+            <div className="text-[10px] uppercase tracking-wider text-slate-400">
+              Calls · Denominator
+            </div>
+            <div className="text-2xl font-semibold text-slate-100 tabular-nums">{callsCount}</div>
+            <div className="text-[11px] text-slate-400">Debt Financing Review calls</div>
+          </div>
+        </div>
+
+        {/* Deal / Call lists */}
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'deals' | 'calls')}>
+          <TabsList>
+            <TabsTrigger value="deals">Deals ({dealsCount})</TabsTrigger>
+            <TabsTrigger value="calls">Calls ({callsCount})</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="deals" className="mt-3">
+            <div className="max-h-[40vh] overflow-y-auto rounded-md border border-white/10">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-slate-900/95 text-[11px] uppercase tracking-wider text-slate-400">
+                  <tr>
+                    <th className="text-left px-3 py-2">Deal</th>
+                    <th className="text-left px-3 py-2">Owner</th>
+                    <th className="text-right px-3 py-2">Value</th>
+                    <th className="text-right px-3 py-2">Entered NDA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dealsLoading ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-6 text-center text-slate-400">Loading…</td>
+                    </tr>
+                  ) : distinctDeals.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-6 text-center text-slate-400">No deals</td>
+                    </tr>
+                  ) : (
+                    distinctDeals.map((d) => (
+                      <tr key={d.deal_id} className="border-t border-white/5 hover:bg-white/[0.03]">
+                        <td className="px-3 py-2">
+                          <a href={`/deal/${d.deal_id}`} className="text-blue-400 hover:underline">
+                            {d.company}
+                          </a>
+                        </td>
+                        <td className="px-3 py-2 text-slate-300">{d.manager ?? '—'}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{fmtUsd(d.value)}</td>
+                        <td className="px-3 py-2 text-right text-slate-300 tabular-nums">{fmtDate(d.changed_at)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="calls" className="mt-3">
+            <div className="max-h-[40vh] overflow-y-auto rounded-md border border-white/10">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-slate-900/95 text-[11px] uppercase tracking-wider text-slate-400">
+                  <tr>
+                    <th className="text-left px-3 py-2">Call</th>
+                    <th className="text-left px-3 py-2">Company</th>
+                    <th className="text-left px-3 py-2">Host</th>
+                    <th className="text-right px-3 py-2">When</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {callsLoading ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-6 text-center text-slate-400">Loading…</td>
+                    </tr>
+                  ) : callEvents.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-6 text-center text-slate-400">No calls</td>
+                    </tr>
+                  ) : (
+                    callEvents.map((ev) => {
+                      const when = ev.start ? fmtDateTime(ev.start) : '—';
+                      const titleCell = ev.html_link ? (
+                        <a
+                          href={ev.html_link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-400 hover:underline"
+                        >
+                          {ev.title || '(untitled)'}
+                        </a>
+                      ) : (
+                        <span className="text-slate-200">{ev.title || '(untitled)'}</span>
+                      );
+                      return (
+                        <tr key={ev.id} className="border-t border-white/5 hover:bg-white/[0.03]">
+                          <td className="px-3 py-2">{titleCell}</td>
+                          <td className="px-3 py-2 text-slate-300">{ev.company || '—'}</td>
+                          <td className="px-3 py-2 text-slate-300">{ev.user_name || ev.user_email || '—'}</td>
+                          <td className="px-3 py-2 text-right text-slate-300 tabular-nums">{when}</td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Sum the trailing 3 buckets ending at the most recent month with data.
 // Returns null if any of those 3 buckets is null (still loading).
 function trailing3(buckets: (number | null)[]): number | null {
