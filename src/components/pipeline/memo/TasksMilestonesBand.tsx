@@ -1252,21 +1252,31 @@ function TasksMilestonesDetailDialog({
             {filteredMilestones.length === 0 ? (
               <p className="text-xs italic text-muted-foreground">{normalizedQuery ? 'No milestones match your search.' : 'No milestones.'}</p>
             ) : (
-              <div className="space-y-1.5">
-                {filteredMilestones.map((m) => {
-                  const isCompleting = completingMilestoneIds.has(m.id || '');
-                  const done = m.completed || isCompleting;
-                  return (
-                    <div
-                      key={m.id || m.title}
-                      className={cn(
-                        'flex items-center gap-2.5 rounded-md border px-2.5 py-1.5',
-                        done
-                          ? 'bg-muted/40 border-border opacity-70'
-                          : 'bg-primary/10 border-primary/30'
-                      )}
-                    >
-                      <button
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleMilestoneDragEnd}>
+                <SortableContext items={filteredMilestones.map((m) => m.id || m.title)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-1.5">
+                    {filteredMilestones.map((m) => {
+                      const isCompleting = completingMilestoneIds.has(m.id || '');
+                      const done = m.completed || isCompleting;
+                      return (
+                        <SortableRow key={m.id || m.title} id={m.id || m.title} disabled={dndDisabled}>
+                          {(handleProps) => (
+                            <div
+                              className={cn(
+                                'group flex items-center gap-2.5 rounded-md border px-2.5 py-1.5',
+                                done ? 'bg-muted/40 border-border opacity-70' : 'bg-primary/10 border-primary/30'
+                              )}
+                            >
+                              <button
+                                type="button"
+                                {...handleProps}
+                                className="shrink-0 -ml-1 p-0.5 text-muted-foreground/50 hover:text-foreground cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity disabled:hidden"
+                                disabled={dndDisabled}
+                                title="Drag to reorder"
+                              >
+                                <GripVertical className="h-3.5 w-3.5" />
+                              </button>
+                              <button
                         type="button"
                         disabled={done}
                         onClick={() => void onCompleteMilestone(m)}
@@ -1288,10 +1298,14 @@ function TasksMilestonesDetailDialog({
                           {!done && ` · ${relativeDays(m.dueDate)}`}
                         </span>
                       )}
-                    </div>
-                  );
-                })}
-              </div>
+                            </div>
+                          )}
+                        </SortableRow>
+                      );
+                    })}
+                  </div>
+                </SortableContext>
+              </DndContext>
             )}
           </section>
 
