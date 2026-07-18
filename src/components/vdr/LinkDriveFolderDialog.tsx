@@ -216,7 +216,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const handleSearch = async () => {
     const q = search.trim();
     if (!q) { browse(ROOT_FOLDER_ID, ROOT_FOLDER_NAME, true); return; }
-    setSearching(true); setSelected(new Set()); setMapping({});
+    setSearching(true); setSelected(new Set());
     try {
       const { data, error } = await supabase.functions.invoke('drive-folder-import', {
         body: { action: 'search', query: q, folderId: ROOT_FOLDER_ID },
@@ -237,7 +237,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     const check = validateFolderInput(url);
     if (check.ok === false) { setUrlError(check.message); return; }
     setUrlError(null);
-    setLoading(true); setSelected(new Set()); setMapping({});
+    setLoading(true); setSelected(new Set());
     try {
       const { data, error } = await supabase.functions.invoke('drive-folder-import', {
         body: { action: 'list', folder: url.trim() },
