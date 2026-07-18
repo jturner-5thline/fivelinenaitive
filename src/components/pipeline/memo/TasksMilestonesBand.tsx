@@ -1238,9 +1238,12 @@ function TasksMilestonesDetailDialog({
         </div>
 
         <Tabs defaultValue="tasks" className="flex-1 flex flex-col overflow-hidden -mx-1 px-1 mt-2">
-          <TabsList className="grid grid-cols-2 w-full h-10">
+          <TabsList className="grid grid-cols-3 w-full h-10">
             <TabsTrigger value="tasks" className="text-sm font-medium py-2">
-              Tasks &amp; follow-ups ({filteredTasks.length}{normalizedQuery && filteredTasks.length !== sortedTasks.length ? ` of ${sortedTasks.length}` : ''})
+              Tasks &amp; follow-ups ({filteredTasks.length}{normalizedQuery && filteredTasks.length !== totalTasks ? ` of ${totalTasks}` : ''})
+            </TabsTrigger>
+            <TabsTrigger value="outstanding" className="text-sm font-medium py-2">
+              Outstanding items ({filteredOutstanding.length}{normalizedQuery && filteredOutstanding.length !== totalOutstanding ? ` of ${totalOutstanding}` : ''})
             </TabsTrigger>
             <TabsTrigger value="milestones" className="text-sm font-medium py-2">
               Milestones ({filteredMilestones.length}{normalizedQuery && filteredMilestones.length !== sortedMilestones.length ? ` of ${sortedMilestones.length}` : ''})
