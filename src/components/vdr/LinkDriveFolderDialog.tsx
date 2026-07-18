@@ -29,6 +29,28 @@ interface ImportItem {
   error?: string;
 }
 
+const IMPORT_PROGRESS_STORAGE_KEY = 'vdr:drive-import:last';
+interface PersistedImport {
+  items: ImportItem[];
+  finishedAt: number | null;
+  startedAt: number;
+}
+function loadPersistedImport(): PersistedImport | null {
+  try {
+    const raw = localStorage.getItem(IMPORT_PROGRESS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedImport;
+    if (!parsed || !Array.isArray(parsed.items)) return null;
+    return parsed;
+  } catch { return null; }
+}
+function savePersistedImport(p: PersistedImport | null) {
+  try {
+    if (!p) localStorage.removeItem(IMPORT_PROGRESS_STORAGE_KEY);
+    else localStorage.setItem(IMPORT_PROGRESS_STORAGE_KEY, JSON.stringify(p));
+  } catch { /* ignore quota */ }
+}
+
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const ROOT_FOLDER_ID = '1J1U31M05ZmQe6ekNpQWQ-DL9g7BdGEv2';
 const ROOT_FOLDER_NAME = '5th Line Shared Drive';
@@ -171,11 +193,30 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const [showResults, setShowResults] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
+  const [lastFinishedAt, setLastFinishedAt] = useState<number | null>(null);
+
+  // Restore any prior import progress from localStorage when dialog opens.
+  useEffect(() => {
+    if (!open) return;
+    const persisted = loadPersistedImport();
+    if (persisted && persisted.items.length > 0) {
+      // Any items still marked in-flight from a previous session are stale — mark failed.
+      const items = persisted.items.map(it =>
+        it.status === 'importing' || it.status === 'queued'
+          ? { ...it, status: 'failed' as ImportStatus, error: it.error ?? 'Interrupted before completion' }
+          : it,
+      );
+      setProgress(items);
+      setShowResults(true);
+      setLastFinishedAt(persisted.finishedAt);
+    }
+  }, [open]);
 
   const reset = () => {
     setUrl(''); setFiles([]); setSelected(new Set()); setSearch('');
     setCrumbs([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]); setMode('browse');
     setProgress([]); setShowResults(false); setUrlError(null); setPreviewingId(null);
+    setLastFinishedAt(null);
   };
 
   const browse = useCallback(async (folderId: string, name?: string, replace?: boolean) => {
@@ -266,6 +307,8 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     if (importFiles.length === 0) return;
     setImporting(true);
     setShowResults(true);
+    setLastFinishedAt(null);
+    const startedAt = Date.now();
     let ok = 0; let fail = 0;
 
     // Build the current Drive browse path (e.g. "Deals/Acme") from crumbs so
@@ -294,10 +337,18 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     };
 
     const updateItem = (key: string, patch: Partial<ImportItem>) => {
-      setProgress(prev => prev.map(it => it.key === key ? { ...it, ...patch } : it));
+      setProgress(prev => {
+        const next = prev.map(it => it.key === key ? { ...it, ...patch } : it);
+        savePersistedImport({ items: next, startedAt, finishedAt: null });
+        return next;
+      });
     };
     const addItems = (items: ImportItem[]) => {
-      setProgress(prev => [...prev, ...items]);
+      setProgress(prev => {
+        const next = [...prev, ...items];
+        savePersistedImport({ items: next, startedAt, finishedAt: null });
+        return next;
+      });
     };
 
     // Recursively collect every file inside a Drive folder, preserving the relative
@@ -335,6 +386,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
         status: 'queued' as ImportStatus,
       }));
     setProgress(seed);
+    savePersistedImport({ items: seed, startedAt, finishedAt: null });
 
     for (const f of importFiles) {
       if (f.mimeType === FOLDER_MIME) {
@@ -355,7 +407,11 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
               target: c.relPath ? `${rootTarget}/${c.relPath}` : rootTarget,
               status: 'queued' as ImportStatus,
             }));
-            setProgress(prev => prev.flatMap(it => it.key === `top:${f.id}` ? childItems : [it]));
+            setProgress(prev => {
+              const next = prev.flatMap(it => it.key === `top:${f.id}` ? childItems : [it]);
+              savePersistedImport({ items: next, startedAt, finishedAt: null });
+              return next;
+            });
             for (let i = 0; i < children.length; i++) {
               const child = children[i];
               const item = childItems[i];
@@ -393,6 +449,12 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
       }
     }
     setImporting(false);
+    const finishedAt = Date.now();
+    setLastFinishedAt(finishedAt);
+    setProgress(prev => {
+      savePersistedImport({ items: prev, startedAt, finishedAt });
+      return prev;
+    });
     if (ok) toast.success(`Imported ${ok} file${ok === 1 ? '' : 's'} from Drive`);
     if (fail) toast.error(`${fail} file${fail === 1 ? '' : 's'} failed to import`);
     // Keep dialog open so user can review per-file results; they close manually.
@@ -568,7 +630,17 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
 
         {/* File list */}
         {showResults ? (
-          <ImportProgressPanel items={progress} importing={importing} />
+          <ImportProgressPanel
+            items={progress}
+            importing={importing}
+            finishedAt={lastFinishedAt}
+            onClear={() => {
+              savePersistedImport(null);
+              setProgress([]);
+              setShowResults(false);
+              setLastFinishedAt(null);
+            }}
+          />
         ) : (
         <div className="min-h-[240px] max-h-[380px] overflow-y-auto border rounded-md divide-y">
           {loading || searching ? (
@@ -695,7 +767,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   );
 }
 
-function ImportProgressPanel({ items, importing }: { items: ImportItem[]; importing: boolean }) {
+function ImportProgressPanel({ items, importing, finishedAt, onClear }: { items: ImportItem[]; importing: boolean; finishedAt?: number | null; onClear?: () => void }) {
   const total = items.length;
   const completed = items.filter(i => i.status === 'completed').length;
   const failed = items.filter(i => i.status === 'failed').length;
@@ -730,7 +802,11 @@ function ImportProgressPanel({ items, importing }: { items: ImportItem[]; import
     <div className="space-y-2">
       <div className="flex items-center justify-between text-xs">
         <span className="font-medium">
-          {importing ? 'Importing…' : 'Import complete'}
+          {importing
+            ? 'Importing…'
+            : finishedAt
+              ? `Last import · ${new Date(finishedAt).toLocaleString()}`
+              : 'Import complete'}
         </span>
         <span className="text-muted-foreground">
           {completed}/{total} completed
@@ -751,6 +827,11 @@ function ImportProgressPanel({ items, importing }: { items: ImportItem[]; import
         {failed > 0 && (
           <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={copyErrors}>
             Copy errors
+          </Button>
+        )}
+        {!importing && onClear && (
+          <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={onClear}>
+            Clear history
           </Button>
         )}
       </div>
