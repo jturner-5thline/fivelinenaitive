@@ -267,9 +267,6 @@ export function SalesTeamBoardKpiGrid({ quarter }: { quarter: QuarterOption }) {
 
   return (
     <>
-      <div className="flex items-center justify-end mb-2">
-        <DashboardPlansGear dashboardKey="sales-team-board" />
-      </div>
       <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-6 gap-3">
         {cards.map(card => (
           <MetricKPICard
