@@ -39,6 +39,7 @@ import {
 import {
   DEBT_ADVISORY_KPI_TO_PLAN,
   useDebtAdvisoryPlanValues,
+  useDebtAdvisoryPlanForBuckets,
 } from './qir/useDebtAdvisoryPlanValues';
 
 // ------------------------------------------------------------------
@@ -1499,6 +1500,7 @@ function CompactFundedBarChart({
   valueFormatter,
   totalFormatter,
   onBarClick,
+  planWidgetKey,
 }: {
   title: string;
   subtitle: string;
@@ -1509,9 +1511,28 @@ function CompactFundedBarChart({
   valueFormatter: (value: number) => string;
   totalFormatter: (value: number) => string;
   onBarClick: (bucket: StageTrendBucket) => void;
+  /** Master Plan widget key. When set and comparison mode = "plan", a plan
+   *  overlay line is drawn on the bar chart. */
+  planWidgetKey?: string;
 }) {
   const total = buckets.reduce((sum, bucket) => sum + bucket[dataKey], 0);
   const [showTrend, setShowTrend] = useState(false);
+  const { mode: comparisonMode } = useComparisonMode();
+  const planLookup = useDebtAdvisoryPlanForBuckets(
+    comparisonMode === 'plan' ? planWidgetKey : undefined,
+    buckets,
+  );
+  const showPlanOverlay = comparisonMode === 'plan' && !!planWidgetKey;
+  const planTotal = useMemo(
+    () =>
+      showPlanOverlay
+        ? buckets.reduce((sum, b) => sum + (planLookup.values.get(b.key) ?? 0), 0)
+        : 0,
+    [buckets, planLookup.values, showPlanOverlay],
+  );
+  const planCoverage = showPlanOverlay
+    ? buckets.filter((b) => planLookup.values.has(b.key)).length
+    : 0;
 
   // Linear regression trend line over the visible buckets.
   const trendValues = useMemo(() => {
@@ -1531,8 +1552,13 @@ function CompactFundedBarChart({
   }, [buckets, dataKey]);
 
   const chartData = useMemo(
-    () => buckets.map((b, i) => ({ ...b, trend: trendValues[i] })),
-    [buckets, trendValues],
+    () =>
+      buckets.map((b, i) => ({
+        ...b,
+        trend: trendValues[i],
+        plan: showPlanOverlay ? planLookup.values.get(b.key) ?? null : null,
+      })),
+    [buckets, trendValues, showPlanOverlay, planLookup.values],
   );
 
   // Period-over-period change: latest bucket vs prior bucket.
@@ -1578,6 +1604,38 @@ function CompactFundedBarChart({
               Trend: {trendPositive ? '+' : ''}{trendPct != null ? `${trendPct.toFixed(1)}%` : '—'}
               {' / '}{trendPositive ? '+' : ''}{valueFormatter(trendDelta)}
               <span className="text-muted-foreground font-normal"> vs start of period</span>
+            </p>
+          )}
+          {showPlanOverlay && planCoverage > 0 && (() => {
+            const diff = total - planTotal;
+            const pct = planTotal !== 0 ? (diff / Math.abs(planTotal)) * 100 : null;
+            const positive = diff >= 0;
+            return (
+              <p className="text-[11px] font-medium mt-1 text-amber-300/90">
+                Plan: {valueFormatter(planTotal)}
+                {' · '}
+                <span className={positive ? 'text-emerald-400' : 'text-rose-400'}>
+                  {positive ? '▲ +' : '▼ '}{valueFormatter(Math.abs(diff))}
+                  {pct != null ? ` (${positive ? '+' : '−'}${Math.abs(pct).toFixed(1)}%)` : ''}
+                </span>
+                <span className="text-muted-foreground font-normal"> vs plan</span>
+                {planCoverage < buckets.length && (
+                  <span
+                    className="text-muted-foreground/70 font-normal"
+                    title="Some periods have no Master Plan value entered"
+                  >
+                    {' '}· {planCoverage}/{buckets.length} periods
+                  </span>
+                )}
+              </p>
+            );
+          })()}
+          {showPlanOverlay && planCoverage === 0 && !planLookup.isLoading && (
+            <p
+              className="text-[11px] font-medium mt-1 text-muted-foreground/70"
+              title="Enter values in the Master Plan popup to see a plan line here."
+            >
+              No plan values entered for this period
             </p>
           )}
         </div>
@@ -1674,6 +1732,28 @@ function CompactFundedBarChart({
                       <div style={{ color: 'hsl(0 0% 100% / 0.82)', marginBottom: bucket.deals.length ? 6 : 0 }}>
                         {bucket.count} deal{bucket.count !== 1 ? 's' : ''} · {formatCurrency(bucket.dollarVolume)}
                       </div>
+                      {showPlanOverlay && (() => {
+                        const planVal = planLookup.values.get(bucket.key);
+                        if (planVal == null) {
+                          return (
+                            <div style={{ color: 'hsl(45 93% 70% / 0.75)', fontSize: 11, marginBottom: 4 }}>
+                              Plan: — (no value entered)
+                            </div>
+                          );
+                        }
+                        const d = value - planVal;
+                        const p = planVal !== 0 ? (d / Math.abs(planVal)) * 100 : null;
+                        const pos = d >= 0;
+                        return (
+                          <div style={{ color: 'hsl(45 93% 70%)', fontSize: 11, marginBottom: 4 }}>
+                            Plan: {valueFormatter(planVal)}{' · '}
+                            <span style={{ color: pos ? '#5EEAD4' : '#FB7185' }}>
+                              {pos ? '▲ +' : '▼ '}{valueFormatter(Math.abs(d))}
+                              {p != null ? ` (${pos ? '+' : '−'}${Math.abs(p).toFixed(1)}%)` : ''}
+                            </span>
+                          </div>
+                        );
+                      })()}
                       {bucket.deals.length > 0 ? (
                         <ul style={{ margin: 0, paddingLeft: 14, lineHeight: 1.4 }}>
                           {bucket.deals.slice(0, 8).map((deal) => (
@@ -1716,6 +1796,20 @@ function CompactFundedBarChart({
                   dot={false}
                   activeDot={false}
                   isAnimationActive={false}
+                />
+              )}
+              {showPlanOverlay && planCoverage > 0 && (
+                <Line
+                  type="monotone"
+                  dataKey="plan"
+                  stroke="hsl(45 93% 58%)"
+                  strokeWidth={2}
+                  strokeDasharray="5 4"
+                  dot={{ r: 3, fill: 'hsl(45 93% 58%)', stroke: 'hsl(45 93% 58%)' }}
+                  activeDot={{ r: 4 }}
+                  isAnimationActive={false}
+                  connectNulls
+                  name="Plan"
                 />
               )}
             </ComposedChart>
@@ -2871,6 +2965,7 @@ export function ConsolidatedDebtPipelineDashboard({
             dataKey="count"
             valueFormatter={(value) => `${Math.round(value)}`}
             totalFormatter={(value) => `${Math.round(value)}`}
+            planWidgetKey="deals-on-board"
             onBarClick={(bucket) =>
               setDrilldown({
                 title: `Deals on Board${ttmSuffix} — ${bucket.label}`,
@@ -2888,6 +2983,7 @@ export function ConsolidatedDebtPipelineDashboard({
             dataKey="count"
             valueFormatter={(value) => `${Math.round(value)}`}
             totalFormatter={(value) => `${Math.round(value)}`}
+            planWidgetKey="deals-signed"
             onBarClick={(bucket) =>
               setDrilldown({
                 title: `Deals Signed${ttmSuffix} — ${bucket.label}`,
@@ -2910,6 +3006,7 @@ export function ConsolidatedDebtPipelineDashboard({
             dataKey="count"
             valueFormatter={(value) => `${Math.round(value)}`}
             totalFormatter={(value) => `${Math.round(value)}`}
+            planWidgetKey="deals-closed"
             onBarClick={(bucket) =>
               setDrilldown({
                 title: `Deals Closed${ttmSuffix} — ${bucket.label}`,
@@ -2927,6 +3024,7 @@ export function ConsolidatedDebtPipelineDashboard({
             dataKey="dollarVolume"
             valueFormatter={formatCurrency}
             totalFormatter={formatCurrency}
+            planWidgetKey="dollars-funded"
             onBarClick={(bucket) =>
               setDrilldown({
                 title: `Dollars Funded${ttmSuffix} — ${bucket.label}`,
