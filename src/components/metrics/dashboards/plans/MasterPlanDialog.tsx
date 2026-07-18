@@ -970,10 +970,10 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                                 </div>
                                 {isShared && (
                                   <div
-                                    className="text-[8px] uppercase tracking-wider text-primary/80 mt-0.5 truncate"
+                                    className="text-[8px] uppercase tracking-wider text-primary/80 mt-0.5 inline-block cursor-help"
                                     title={`Linked across: ${linkedLabels.join(', ')}. Editing here syncs to all of them.`}
                                   >
-                                    Linked · {linkedLabels.filter((l) => l !== group.label).join(', ')}
+                                    Linked
                                   </div>
                                 )}
                                 {w.hint && (
