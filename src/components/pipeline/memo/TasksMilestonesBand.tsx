@@ -1302,7 +1302,32 @@ function TasksMilestonesDetailDialog({
               </div>
             )}
             {filteredTasks.length === 0 ? (
-              <p className="text-xs italic text-muted-foreground">{normalizedQuery ? 'No tasks match your search.' : 'No tasks.'}</p>
+              <div className="flex flex-col items-center justify-center text-center py-10 px-4 rounded-md border border-dashed border-white/10 bg-white/[0.02]">
+                <p className="text-sm font-medium text-foreground">
+                  {normalizedQuery ? 'No matching tasks or follow-ups' : 'No tasks or follow-ups yet'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 mb-3">
+                  {normalizedQuery ? 'Try a different search term.' : 'Create the first item to keep this deal moving.'}
+                </p>
+                {!normalizedQuery && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAddKind('task')}
+                      className="inline-flex items-center gap-1 rounded-md bg-primary/15 hover:bg-primary/25 text-primary text-xs font-medium px-3 py-1.5"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Create task
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAddKind('followup')}
+                      className="inline-flex items-center gap-1 rounded-md border border-white/10 hover:border-primary/40 text-foreground text-xs font-medium px-3 py-1.5"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Create follow-up
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleTaskDragEnd}>
                 <SortableContext items={filteredTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
@@ -1488,9 +1513,25 @@ function TasksMilestonesDetailDialog({
                 </h3>
               </div>
               {filteredOutstanding.length === 0 ? (
-                <p className="text-xs italic text-muted-foreground">
-                  {normalizedQuery ? 'No outstanding items match your search.' : 'No outstanding items.'}
-                </p>
+                <div className="flex flex-col items-center justify-center text-center py-10 px-4 rounded-md border border-dashed border-white/10 bg-white/[0.02]">
+                  <p className="text-sm font-medium text-foreground">
+                    {normalizedQuery ? 'No matching outstanding items' : "You're all caught up"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 mb-3">
+                    {normalizedQuery
+                      ? 'Try a different search term.'
+                      : 'Outstanding requests from lenders and reviewers will appear here.'}
+                  </p>
+                  {!normalizedQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setAddKind('followup')}
+                      className="inline-flex items-center gap-1 rounded-md bg-primary/15 hover:bg-primary/25 text-primary text-xs font-medium px-3 py-1.5"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Create follow-up
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className="space-y-1.5">
                   {filteredOutstanding.map((item) => {
@@ -1572,7 +1613,23 @@ function TasksMilestonesDetailDialog({
               </div>
             )}
             {filteredMilestones.length === 0 ? (
-              <p className="text-xs italic text-muted-foreground">{normalizedQuery ? 'No milestones match your search.' : 'No milestones.'}</p>
+              <div className="flex flex-col items-center justify-center text-center py-10 px-4 rounded-md border border-dashed border-white/10 bg-white/[0.02]">
+                <p className="text-sm font-medium text-foreground">
+                  {normalizedQuery ? 'No matching milestones' : 'No milestones yet'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 mb-3">
+                  {normalizedQuery ? 'Try a different search term.' : 'Add milestones to mark the key steps toward close.'}
+                </p>
+                {!normalizedQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setAddKind('milestone')}
+                    className="inline-flex items-center gap-1 rounded-md bg-primary/15 hover:bg-primary/25 text-primary text-xs font-medium px-3 py-1.5"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Create milestone
+                  </button>
+                )}
+              </div>
             ) : (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleMilestoneDragEnd}>
                 <SortableContext items={filteredMilestones.map((m) => m.id || m.title)} strategy={verticalListSortingStrategy}>
