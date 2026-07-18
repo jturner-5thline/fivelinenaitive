@@ -638,11 +638,9 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
       return;
     }
     if (dirtyCount === 0) {
-      if (autosave && lastSavedAt) {
-        toast.success(`All changes already saved${savedAgoLabel ? ` (${savedAgoLabel})` : ''}`);
-      } else {
-        toast.info('No changes to save');
-      }
+      // Nothing dirty (autosave already persisted). Still confirm success so
+      // the user's click feels acknowledged instead of showing an error.
+      toast.success(`All changes saved${savedAgoLabel ? ` (${savedAgoLabel})` : ''}`);
       return;
     }
     return handleSaveInternal({ silent: false, keepOpen: true });
@@ -834,7 +832,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
               size="sm"
               variant="secondary"
               onClick={handleSaveNow}
-              disabled={saving || loading || hasErrors || dirtyCount === 0}
+              disabled={saving || loading || hasErrors}
               className="h-8"
               title={
                 hasErrors
