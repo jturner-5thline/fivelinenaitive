@@ -31,6 +31,7 @@ import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 import type { Deal } from '@/types/deal';
 import { DashboardPlansGear } from './plans/DashboardPlansGear';
+import { useDebtAdvisoryComparisonMode } from '@/hooks/useDebtAdvisoryComparisonMode';
 import {
   ComparisonModeContext,
   useComparisonMode,
