@@ -263,55 +263,7 @@ export function SalesTeamBoardKpiGrid({ quarter }: { quarter: QuarterOption }) {
   const m = useSalesTeamBoardMetrics(quarter);
   const [drilldown, setDrilldown] = useState<{ title: string; subtitle?: string; deals: StageEntryDeal[] } | null>(null);
 
-  const cards: MetricCardConfig[] = [
-    {
-      id: 'fs-on-board',
-      title: 'FinServ: Deals / $ on the Board',
-      subtitle: 'Added to FinServ Pipeline',
-      icon: Building2,
-      value: m.finservOnBoard.count,
-      secondaryValue: formatCurrency(m.finservOnBoard.dollarVolume),
-      isLoading: m.finservOnBoard.isLoading,
-      deals: m.finservOnBoard.deals,
-      color: 'hsl(var(--chart-5))',
-      drilldownTitle: 'FinServ: Deals on the Board',
-    },
-    {
-      id: 'fs-clients-signed',
-      title: 'FinServ Clients / $ Signed',
-      subtitle: 'Entered "Active Client"',
-      icon: UserCheck,
-      value: m.finservSigned.count,
-      secondaryValue: formatCurrency(m.finservSigned.dollarVolume),
-      isLoading: m.finservSigned.isLoading,
-      deals: m.finservSigned.deals,
-      color: 'hsl(var(--success))',
-      drilldownTitle: 'FinServ Clients Signed — Active Client',
-    },
-    {
-      id: 'fs-proposals',
-      title: 'FinServ Proposals Issued / $',
-      subtitle: 'Entered "Proposal Issued"',
-      icon: FileSignature,
-      value: m.finservProposalsIssued.count,
-      secondaryValue: formatCurrency(m.finservProposalsIssued.dollarVolume),
-      isLoading: m.finservProposalsIssued.isLoading,
-      deals: m.finservProposalsIssued.deals,
-      color: 'hsl(var(--chart-3))',
-      drilldownTitle: 'FinServ Proposals Issued',
-    },
-    {
-      id: 'fs-avg-deal-size',
-      title: 'FinServ Avg. Deal Size Added to Board',
-      subtitle: 'Avg value of deals added (excludes $0)',
-      icon: Users,
-      value: formatCurrency(m.finservAvgDealSizeOnBoard.value),
-      isLoading: m.finservAvgDealSizeOnBoard.isLoading,
-      deals: m.finservAvgDealSizeOnBoard.deals,
-      color: 'hsl(var(--chart-1))',
-      drilldownTitle: 'FinServ Deals Added to Board (avg basis)',
-    },
-  ];
+  const cards: MetricCardConfig[] = [];
 
   return (
     <>
