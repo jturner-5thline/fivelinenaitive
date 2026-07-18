@@ -69,7 +69,14 @@ import {
   Table2,
   X,
   Save,
+  Info,
 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 /**
  * Sales Dashboard-V2 — faithful build of the 5th Line approved prototype.
