@@ -767,7 +767,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   );
 }
 
-function ImportProgressPanel({ items, importing }: { items: ImportItem[]; importing: boolean }) {
+function ImportProgressPanel({ items, importing, finishedAt, onClear }: { items: ImportItem[]; importing: boolean; finishedAt?: number | null; onClear?: () => void }) {
   const total = items.length;
   const completed = items.filter(i => i.status === 'completed').length;
   const failed = items.filter(i => i.status === 'failed').length;
@@ -802,7 +802,11 @@ function ImportProgressPanel({ items, importing }: { items: ImportItem[]; import
     <div className="space-y-2">
       <div className="flex items-center justify-between text-xs">
         <span className="font-medium">
-          {importing ? 'Importing…' : 'Import complete'}
+          {importing
+            ? 'Importing…'
+            : finishedAt
+              ? `Last import · ${new Date(finishedAt).toLocaleString()}`
+              : 'Import complete'}
         </span>
         <span className="text-muted-foreground">
           {completed}/{total} completed
@@ -823,6 +827,11 @@ function ImportProgressPanel({ items, importing }: { items: ImportItem[]; import
         {failed > 0 && (
           <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={copyErrors}>
             Copy errors
+          </Button>
+        )}
+        {!importing && onClear && (
+          <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={onClear}>
+            Clear history
           </Button>
         )}
       </div>
