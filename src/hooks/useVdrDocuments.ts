@@ -211,7 +211,7 @@ export function useVdrDocuments(dealId: string) {
   }, [dealId, fetchDocuments, documents]);
 
   const uploadFile = useCallback(async (file: File, folderPath: string, source: VdrDocument['source'] | string = 'dataroom') => {
-    if (!dealId || !company?.id || !user?.id) return;
+    if (!dealId || !company?.id || !user?.id) return false;
 
     const normalizedFolderPath = (() => {
       const clean = (folderPath || '/').trim();
@@ -229,7 +229,7 @@ export function useVdrDocuments(dealId: string) {
     if (uploadError) {
       toast.error(`Failed to upload ${file.name}`);
       console.error(uploadError);
-      return;
+      return false;
     }
 
     const { data: inserted, error: insertError } = await (supabase as any).from('vdr_documents').insert({
@@ -253,7 +253,7 @@ export function useVdrDocuments(dealId: string) {
       toast.error(`Failed to save ${file.name}`, {
         description: insertError?.message ?? 'Database insert returned no row',
       });
-      return;
+      return false;
     }
 
     await fetchDocuments();
@@ -290,6 +290,7 @@ export function useVdrDocuments(dealId: string) {
         console.warn('classify-file invoke failed (will surface in UI):', e);
       });
     }
+    return true;
   }, [dealId, company?.id, user?.id, fetchDocuments, triggerIngestion, logAudit]);
 
   const createFolder = useCallback(async (name: string, parentPath: string) => {
