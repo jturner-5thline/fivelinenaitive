@@ -3658,6 +3658,19 @@ export function SalesDashboardV2() {
             <ConversionCard title="TBD" value={null} subtitle="—" />
             <ConversionCard
               title="Call-to-Deal Conversion"
+              info={
+                <div className="space-y-1.5">
+                  <div>
+                    <span className="font-semibold">Numerator:</span> distinct deals that entered the “NDA / Needs List Sent” stage in the trailing 12 months (TTM) ending at the selected period.
+                  </div>
+                  <div>
+                    <span className="font-semibold">Denominator:</span> debt sales calls in the same TTM window — calendar events titled “[Company] &lt;&gt; 5th Line Financing Review”.
+                  </div>
+                  <div>
+                    <span className="font-semibold">Variance:</span> percentage-point delta vs. the prior TTM (shifted back one full selected timeframe — e.g. one quarter when a quarter is selected, one month when a month is selected).
+                  </div>
+                </div>
+              }
               value={(() => {
                 if (ttmConversion.loading || ttmSalesCallsCount == null) return null;
                 const deals = ttmConversion.ndaCount;
