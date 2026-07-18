@@ -445,16 +445,23 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
         )}
 
         {mode === 'url' && (
-          <div className="flex gap-2">
-            <Input
-              placeholder="https://drive.google.com/drive/folders/…"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              disabled={loading || importing}
-            />
-            <Button onClick={handleListFromUrl} disabled={!url.trim() || loading || importing}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'List files'}
-            </Button>
+          <div className="space-y-1.5">
+            <div className="flex gap-2">
+              <Input
+                placeholder="https://drive.google.com/drive/folders/…"
+                value={url}
+                onChange={(e) => { setUrl(e.target.value); if (urlError) setUrlError(null); }}
+                disabled={loading || importing}
+                aria-invalid={!!urlError}
+                className={urlError ? 'border-destructive focus-visible:ring-destructive' : ''}
+              />
+              <Button onClick={handleListFromUrl} disabled={!url.trim() || loading || importing}>
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'List files'}
+              </Button>
+            </div>
+            {urlError && (
+              <p className="text-xs text-destructive" role="alert">{urlError}</p>
+            )}
           </div>
         )}
 
