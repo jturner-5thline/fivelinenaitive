@@ -3692,6 +3692,91 @@ export function SalesDashboardV2() {
   }, [ndaTtmEvents.events, ndaTtmEvents.isLoading, ndaPriorTtmEvents.events, ndaPriorTtmEvents.isLoading, proposalLookupEvents.events, proposalLookupEvents.isLoading]);
   const [onBoardToProposalOpen, setOnBoardToProposalOpen] = React.useState(false);
   const [callToDealOpen, setCallToDealOpen] = React.useState(false);
+  // --- Sparkline data for the three conversion cards ---
+  const monthKey = (d: Date) =>
+    `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  const monthLabel = (d: Date) =>
+    d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+
+  // Avg. New Deal on Board — per-month avg value across the selected timeframe.
+  const avgNewDealSpark = React.useMemo(() => {
+    const buckets = new Map<string, { sum: number; n: number; label: string }>();
+    const cursor = new Date(stageEntryRange.start);
+    while (cursor < stageEntryRange.end) {
+      buckets.set(monthKey(cursor), { sum: 0, n: 0, label: monthLabel(cursor) });
+      cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+    }
+    for (const d of ndaEnteredInRange.deals) {
+      const dt = new Date(d.entered_at);
+      const k = monthKey(dt);
+      const bucket = buckets.get(k);
+      if (!bucket) continue;
+      const v = Number(d.value) || 0;
+      if (v <= 0) continue;
+      bucket.sum += v;
+      bucket.n += 1;
+    }
+    return Array.from(buckets.values()).map((b) => ({
+      month: b.label,
+      value: b.n === 0 ? null : b.sum / b.n,
+    }));
+  }, [stageEntryRange, ndaEnteredInRange.deals]);
+
+  // Call-to-Deal Conversion — per-month ratio across TTM (12 months).
+  const callToDealSpark = React.useMemo(() => {
+    if (ttmSalesCallsQuery.isLoading || ttmSalesCallsQuery.isFetching || ndaTtmEvents.isLoading) {
+      return [];
+    }
+    const callEvents = filterSalesCallEventsForVariant(
+      ttmSalesCallsQuery.data?.events ?? [],
+      'debt',
+    );
+    const buckets = new Map<string, { calls: number; deals: Set<string>; label: string }>();
+    const cursor = new Date(ttmRanges.ttmStart);
+    while (cursor < ttmRanges.ttmEnd) {
+      buckets.set(monthKey(cursor), { calls: 0, deals: new Set(), label: monthLabel(cursor) });
+      cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+    }
+    for (const c of callEvents) {
+      if (!c.start) continue;
+      const k = monthKey(new Date(c.start));
+      const b = buckets.get(k);
+      if (b) b.calls += 1;
+    }
+    for (const ev of ndaTtmEvents.events) {
+      const k = monthKey(new Date(ev.entered_at));
+      const b = buckets.get(k);
+      if (b) b.deals.add(ev.deal_id);
+    }
+    return Array.from(buckets.values()).map((b) => ({
+      month: b.label,
+      value: b.calls === 0 ? null : b.deals.size / b.calls,
+    }));
+  }, [ttmRanges, ttmSalesCallsQuery.isLoading, ttmSalesCallsQuery.isFetching, ttmSalesCallsQuery.data, ndaTtmEvents.events, ndaTtmEvents.isLoading]);
+
+  // Deals-on-Board to Proposal — per-month conversion across TTM.
+  const onBoardToProposalSpark = React.useMemo(() => {
+    if (ndaTtmEvents.isLoading || proposalLookupEvents.isLoading) return [];
+    const proposalDeals = new Set<string>();
+    for (const ev of proposalLookupEvents.events) proposalDeals.add(ev.deal_id);
+    const buckets = new Map<string, { total: Set<string>; converted: Set<string>; label: string }>();
+    const cursor = new Date(ttmRanges.ttmStart);
+    while (cursor < ttmRanges.ttmEnd) {
+      buckets.set(monthKey(cursor), { total: new Set(), converted: new Set(), label: monthLabel(cursor) });
+      cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+    }
+    for (const ev of ndaTtmEvents.events) {
+      const k = monthKey(new Date(ev.entered_at));
+      const b = buckets.get(k);
+      if (!b || b.total.has(ev.deal_id)) continue;
+      b.total.add(ev.deal_id);
+      if (proposalDeals.has(ev.deal_id)) b.converted.add(ev.deal_id);
+    }
+    return Array.from(buckets.values()).map((b) => ({
+      month: b.label,
+      value: b.total.size === 0 ? null : b.converted.size / b.total.size,
+    }));
+  }, [ttmRanges, ndaTtmEvents.events, ndaTtmEvents.isLoading, proposalLookupEvents.events, proposalLookupEvents.isLoading]);
   const dealsOnBoardByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching) return {};
     const out: Record<string, number> = {};
