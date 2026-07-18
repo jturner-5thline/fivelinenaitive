@@ -707,6 +707,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
                               onValueChange={(v) => {
                                 setMapping(prev => ({ ...prev, [f.id]: v }));
                                 setAutoMatched(prev => { const n = new Set(prev); n.delete(f.id); return n; });
+                                setUserMapped(prev => { const n = new Set(prev); n.add(f.id); return n; });
                               }}
                               disabled={importing}
                             >
@@ -747,9 +748,8 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
                                 toast.error('Pick a target Internal folder first.');
                                 return;
                               }
-                              if (!mapping[f.id]) {
-                                setMapping(prev => ({ ...prev, [f.id]: target }));
-                              }
+                              setMapping(prev => ({ ...prev, [f.id]: target }));
+                              setUserMapped(prev => { const n = new Set(prev); n.add(f.id); return n; });
                               handleImport([f]);
                             }}
                           >
