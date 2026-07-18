@@ -430,6 +430,9 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
         )}
 
         {/* File list */}
+        {showResults ? (
+          <ImportProgressPanel items={progress} importing={importing} />
+        ) : (
         <div className="min-h-[240px] max-h-[380px] overflow-y-auto border rounded-md divide-y">
           {loading || searching ? (
             <div className="flex items-center justify-center py-10 text-sm text-muted-foreground gap-2">
@@ -488,15 +491,71 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
             </>
           )}
         </div>
+        )}
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={importing}>Cancel</Button>
-          <Button onClick={handleImport} disabled={selected.size === 0 || importing}>
-            {importing && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
-            Import {selected.size > 0 ? `${selected.size} ` : ''}to Internal
-          </Button>
+          {showResults && !importing ? (
+            <>
+              <Button variant="ghost" onClick={() => { setShowResults(false); setProgress([]); }}>Back to browse</Button>
+              <Button onClick={() => { reset(); onOpenChange(false); }}>Done</Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={importing}>Cancel</Button>
+              <Button onClick={handleImport} disabled={selected.size === 0 || importing}>
+                {importing && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+                Import {selected.size > 0 ? `${selected.size} ` : ''}to Internal
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ImportProgressPanel({ items, importing }: { items: ImportItem[]; importing: boolean }) {
+  const total = items.length;
+  const completed = items.filter(i => i.status === 'completed').length;
+  const failed = items.filter(i => i.status === 'failed').length;
+  const inflight = items.filter(i => i.status === 'importing').length;
+  const queued = items.filter(i => i.status === 'queued').length;
+  const pct = total === 0 ? 0 : Math.round(((completed + failed) / total) * 100);
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-medium">
+          {importing ? 'Importing…' : 'Import complete'}
+        </span>
+        <span className="text-muted-foreground">
+          {completed}/{total} completed
+          {failed > 0 && <span className="text-destructive"> · {failed} failed</span>}
+          {inflight > 0 && <span> · {inflight} in progress</span>}
+          {queued > 0 && <span> · {queued} queued</span>}
+        </span>
+      </div>
+      <Progress value={pct} className="h-1.5" />
+      <div className="min-h-[240px] max-h-[380px] overflow-y-auto border rounded-md divide-y">
+        {items.length === 0 ? (
+          <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
+            Preparing import…
+          </div>
+        ) : items.map(item => (
+          <div key={item.key} className="flex items-center gap-2 px-3 py-2 text-sm">
+            {item.status === 'completed' && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />}
+            {item.status === 'failed' && <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />}
+            {item.status === 'importing' && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary shrink-0" />}
+            {item.status === 'queued' && <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+            <div className="flex-1 min-w-0">
+              <div className="truncate">{item.name}</div>
+              {item.error && <div className="text-[10px] text-destructive truncate">{item.error}</div>}
+            </div>
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">
+              {item.status === 'completed' ? `→ ${item.target}` : item.status}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
