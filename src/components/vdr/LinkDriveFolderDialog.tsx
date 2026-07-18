@@ -157,6 +157,37 @@ function autoMatchTarget(driveFolderName: string, internalFolders: string[]): st
   return contains[0]?.name ?? null;
 }
 
+/** localStorage key for the persisted driveFolderId -> internalFolderName map. */
+const MAPPING_STORAGE_KEY = 'vdr:driveFolderMapping:v1';
+
+function loadPersistedMapping(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(MAPPING_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const out: Record<string, string> = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        if (typeof v === 'string' && v) out[k] = v;
+      }
+      return out;
+    }
+  } catch {
+    /* ignore corrupt storage */
+  }
+  return {};
+}
+
+function savePersistedMapping(m: Record<string, string>) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(MAPPING_STORAGE_KEY, JSON.stringify(m));
+  } catch {
+    /* storage may be full or blocked — non-fatal */
+  }
+}
+
 export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFolderPath = '/', internalFolders = [] }: Props) {
   const [mode, setMode] = useState<'browse' | 'url'>('browse');
   const [url, setUrl] = useState('');
