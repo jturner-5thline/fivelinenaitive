@@ -1539,6 +1539,8 @@ function ConversionCard({
   deltaPct,
   deltaLabel,
   higherIsBetter = true,
+  sparkData,
+  sparkFormatter,
 }: {
   title: string;
   value: number | null;
@@ -1555,6 +1557,10 @@ function ConversionCard({
   deltaLabel?: string | null;
   /** When false, negative deltas render green and positive red. */
   higherIsBetter?: boolean;
+  /** Per-month spark values plotted underneath the big number, matching KpiCard. */
+  sparkData?: { month: string; value: number | null }[];
+  /** Tooltip value formatter for the sparkline. */
+  sparkFormatter?: (v: number) => string;
 }) {
   const display =
     displayValue !== undefined
@@ -1649,6 +1655,52 @@ function ConversionCard({
           style={{ color: C.textMuted, fontVariantNumeric: 'tabular-nums' }}
         >
           {subtitle}
+        </div>
+      )}
+      {sparkData && sparkData.length > 0 && (
+        <div style={{ height: 160 }} className="mt-2">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={sparkData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke={C.hairline} vertical={false} />
+              <XAxis
+                dataKey="month"
+                tick={{ fill: C.textFaint, fontSize: 10 }}
+                axisLine={{ stroke: C.hairline }}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: C.textFaint, fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+                width={32}
+                tickFormatter={(v: number) =>
+                  sparkFormatter ? sparkFormatter(v) : String(v)
+                }
+              />
+              <Tooltip
+                contentStyle={{
+                  background: 'rgba(8,8,12,0.95)',
+                  border: `1px solid ${C.surfaceBorder}`,
+                  borderRadius: 8,
+                  color: C.textPrimary,
+                  fontSize: 12,
+                }}
+                formatter={(v: number) =>
+                  sparkFormatter ? sparkFormatter(v) : String(v)
+                }
+              />
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke={C.cyan}
+                strokeWidth={2}
+                dot={{ r: 2.5, fill: C.cyan }}
+                activeDot={{ r: 5, fill: C.cyan, stroke: C.cyan }}
+                connectNulls={false}
+                isAnimationActive={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       )}
     </div>
@@ -3640,6 +3692,91 @@ export function SalesDashboardV2() {
   }, [ndaTtmEvents.events, ndaTtmEvents.isLoading, ndaPriorTtmEvents.events, ndaPriorTtmEvents.isLoading, proposalLookupEvents.events, proposalLookupEvents.isLoading]);
   const [onBoardToProposalOpen, setOnBoardToProposalOpen] = React.useState(false);
   const [callToDealOpen, setCallToDealOpen] = React.useState(false);
+  // --- Sparkline data for the three conversion cards ---
+  const monthKey = (d: Date) =>
+    `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  const monthLabel = (d: Date) =>
+    d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+
+  // Avg. New Deal on Board — per-month avg value across the selected timeframe.
+  const avgNewDealSpark = React.useMemo(() => {
+    const buckets = new Map<string, { sum: number; n: number; label: string }>();
+    const cursor = new Date(stageEntryRange.start);
+    while (cursor < stageEntryRange.end) {
+      buckets.set(monthKey(cursor), { sum: 0, n: 0, label: monthLabel(cursor) });
+      cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+    }
+    for (const d of ndaEnteredInRange.deals) {
+      const dt = new Date(d.changed_at);
+      const k = monthKey(dt);
+      const bucket = buckets.get(k);
+      if (!bucket) continue;
+      const v = Number(d.value) || 0;
+      if (v <= 0) continue;
+      bucket.sum += v;
+      bucket.n += 1;
+    }
+    return Array.from(buckets.values()).map((b) => ({
+      month: b.label,
+      value: b.n === 0 ? null : b.sum / b.n,
+    }));
+  }, [stageEntryRange, ndaEnteredInRange.deals]);
+
+  // Call-to-Deal Conversion — per-month ratio across TTM (12 months).
+  const callToDealSpark = React.useMemo(() => {
+    if (ttmSalesCallsQuery.isLoading || ttmSalesCallsQuery.isFetching || ndaTtmEvents.isLoading) {
+      return [];
+    }
+    const callEvents = filterSalesCallEventsForVariant(
+      ttmSalesCallsQuery.data?.events ?? [],
+      'debt',
+    );
+    const buckets = new Map<string, { calls: number; deals: Set<string>; label: string }>();
+    const cursor = new Date(ttmRanges.ttmStart);
+    while (cursor < ttmRanges.ttmEnd) {
+      buckets.set(monthKey(cursor), { calls: 0, deals: new Set(), label: monthLabel(cursor) });
+      cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+    }
+    for (const c of callEvents) {
+      if (!c.start) continue;
+      const k = monthKey(new Date(c.start));
+      const b = buckets.get(k);
+      if (b) b.calls += 1;
+    }
+    for (const ev of ndaTtmEvents.events) {
+      const k = monthKey(new Date(ev.changed_at));
+      const b = buckets.get(k);
+      if (b) b.deals.add(ev.deal_id);
+    }
+    return Array.from(buckets.values()).map((b) => ({
+      month: b.label,
+      value: b.calls === 0 ? null : b.deals.size / b.calls,
+    }));
+  }, [ttmRanges, ttmSalesCallsQuery.isLoading, ttmSalesCallsQuery.isFetching, ttmSalesCallsQuery.data, ndaTtmEvents.events, ndaTtmEvents.isLoading]);
+
+  // Deals-on-Board to Proposal — per-month conversion across TTM.
+  const onBoardToProposalSpark = React.useMemo(() => {
+    if (ndaTtmEvents.isLoading || proposalLookupEvents.isLoading) return [];
+    const proposalDeals = new Set<string>();
+    for (const ev of proposalLookupEvents.events) proposalDeals.add(ev.deal_id);
+    const buckets = new Map<string, { total: Set<string>; converted: Set<string>; label: string }>();
+    const cursor = new Date(ttmRanges.ttmStart);
+    while (cursor < ttmRanges.ttmEnd) {
+      buckets.set(monthKey(cursor), { total: new Set(), converted: new Set(), label: monthLabel(cursor) });
+      cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+    }
+    for (const ev of ndaTtmEvents.events) {
+      const k = monthKey(new Date(ev.changed_at));
+      const b = buckets.get(k);
+      if (!b || b.total.has(ev.deal_id)) continue;
+      b.total.add(ev.deal_id);
+      if (proposalDeals.has(ev.deal_id)) b.converted.add(ev.deal_id);
+    }
+    return Array.from(buckets.values()).map((b) => ({
+      month: b.label,
+      value: b.total.size === 0 ? null : b.converted.size / b.total.size,
+    }));
+  }, [ttmRanges, ndaTtmEvents.events, ndaTtmEvents.isLoading, proposalLookupEvents.events, proposalLookupEvents.isLoading]);
   const dealsOnBoardByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching) return {};
     const out: Record<string, number> = {};
@@ -4034,6 +4171,8 @@ export function SalesDashboardV2() {
                   subtitle={subtitle}
                   Icon={TrendingUp}
                   deltaPct={delta}
+                  sparkData={avgNewDealSpark}
+                  sparkFormatter={(v) => fmt(v)}
                   info={
                     <div className="space-y-1.5">
                       <div>
@@ -4051,6 +4190,8 @@ export function SalesDashboardV2() {
               title="Call-to-Deal Conversion"
               onClick={() => setCallToDealOpen(true)}
               Icon={Phone}
+              sparkData={callToDealSpark}
+              sparkFormatter={(v) => `${(v * 100).toFixed(0)}%`}
               info={
                 <div className="space-y-1.5">
                   <div>
@@ -4116,6 +4257,8 @@ export function SalesDashboardV2() {
             <ConversionCard
               title="Deals-on-Board to Proposal"
               Icon={FileText}
+              sparkData={onBoardToProposalSpark}
+              sparkFormatter={(v) => `${(v * 100).toFixed(0)}%`}
               value={(() => {
                 if (ttmConversion.loading) return null;
                 if (!ttmConversion.ndaCount) return null;
