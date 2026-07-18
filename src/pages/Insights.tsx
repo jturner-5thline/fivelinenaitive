@@ -31,6 +31,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, 
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
 import { DraggableGridLayout } from "@/components/metrics/DraggableGridLayout";
 import { InsightsTimeframePicker } from "@/components/metrics/InsightsTimeframePicker";
+import { DebtAdvisoryComparisonToggle } from "@/components/metrics/DebtAdvisoryComparisonToggle";
 import { InsightsTimeframeProvider, useInsightsTimeframe } from "@/contexts/InsightsTimeframeContext";
 import { StickyDashboardHeader } from "@/components/layout/StickyDashboardHeader";
 import { EditableDashboardWrapper } from "@/components/metrics/EditableDashboardWrapper";
@@ -2485,6 +2486,9 @@ function MetricsInner() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {effectiveSelectedDashboard === 'consolidated-debt-pipeline' && (
+                <DebtAdvisoryComparisonToggle />
+              )}
               {selectedDashboard !== 'management-review' && (
                 <InsightsTimeframePicker />
               )}

@@ -31,6 +31,7 @@ import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 import type { Deal } from '@/types/deal';
 import { DashboardPlansGear } from './plans/DashboardPlansGear';
+import { useDebtAdvisoryComparisonMode } from '@/hooks/useDebtAdvisoryComparisonMode';
 import {
   ComparisonModeContext,
   useComparisonMode,
@@ -2124,16 +2125,7 @@ export function ConsolidatedDebtPipelineDashboard({
   // ending at that bucket's period end, instead of the bucket's own period.
   const [ttmCharts, setTtmCharts] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-  const [comparisonMode, setComparisonMode] = useState<ComparisonMode>(() => {
-    if (typeof window === 'undefined') return 'variance';
-    const saved = window.localStorage.getItem('debt-advisory-comparison-mode');
-    return saved === 'plan' ? 'plan' : 'variance';
-  });
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('debt-advisory-comparison-mode', comparisonMode);
-    }
-  }, [comparisonMode]);
+  const [comparisonMode] = useDebtAdvisoryComparisonMode();
   const debtPlan = useDebtAdvisoryPlanValues(selectedQuarter);
   const comparisonCtx = useMemo(
     () => ({
@@ -2726,29 +2718,6 @@ export function ConsolidatedDebtPipelineDashboard({
       <OpenDealContext.Provider value={setOpenDealId}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div />
-        <div className="flex items-center gap-2 flex-wrap">
-          <Tabs
-            value={comparisonMode}
-            onValueChange={(v) => setComparisonMode(v as ComparisonMode)}
-          >
-            <TabsList className="bg-muted/40 border border-border/40">
-              <TabsTrigger
-                value="variance"
-                className="gap-1.5 text-xs"
-                title="Period-over-period change vs the equal-length prior window"
-              >
-                Variance
-              </TabsTrigger>
-              <TabsTrigger
-                value="plan"
-                className="gap-1.5 text-xs"
-                title={`Actual vs Master Plan for ${debtPlan.periodLabel || 'the selected period'}`}
-              >
-                Performance to Plan
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'cards' | 'table')}>
           <TabsList className="bg-muted/40 border border-border/40">
             <TabsTrigger value="cards" className="gap-1.5">
