@@ -72,7 +72,7 @@ import {
   Info,
 } from 'lucide-react';
 import {
-  Tooltip,
+  Tooltip as UITooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
