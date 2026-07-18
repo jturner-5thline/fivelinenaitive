@@ -203,6 +203,25 @@ function parseInput(raw: string): number | null {
   return n * mult;
 }
 
+/** Compact currency display, e.g. 12000 -> "$12K", 1500000 -> "$1.5M". */
+function formatCurrencyDisplay(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed === '') return '';
+  const n = parseInput(trimmed);
+  if (n == null || !Number.isFinite(n as number)) return raw;
+  const num = n as number;
+  const abs = Math.abs(num);
+  const sign = num < 0 ? '-' : '';
+  const fmt = (v: number, unit: string) => {
+    const s = v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2);
+    return `${sign}$${s.replace(/\.?0+$/, '')}${unit}`;
+  };
+  if (abs >= 1_000_000_000) return fmt(abs / 1_000_000_000, 'B');
+  if (abs >= 1_000_000) return fmt(abs / 1_000_000, 'M');
+  if (abs >= 1_000) return fmt(abs / 1_000, 'K');
+  return `${sign}$${abs.toLocaleString()}`;
+}
+
 /** Validate a single cell. Returns null if valid (or blank), or an error message. */
 function validateCell(raw: string, format: 'currency' | 'percent' | 'number' | undefined): string | null {
   const trimmed = raw.trim();
