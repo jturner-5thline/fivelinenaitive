@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Deal, DealMilestone } from '@/types/deal';
 import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
 import type { PipelineDigestRaw } from '@/hooks/usePipelineDigests';
-import { Diamond, Pencil, Check, Plus, Maximize2, X, Search } from 'lucide-react';
+import { Diamond, Pencil, Check, Plus, Maximize2, X, Search, GripVertical } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -14,6 +14,21 @@ import { Calendar } from '@/components/ui/calendar';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { AddFollowupInlineForm } from './AddFollowupInlineForm';
 import { AddTaskInlineForm } from './AddTaskInlineForm';
 import { AddMilestoneInlineForm } from './AddMilestoneInlineForm';
@@ -1089,6 +1104,37 @@ function TasksMilestonesDetailDialog({
   const [editingAssigneeId, setEditingAssigneeId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const taskOrderKey = `tm-order-tasks-${deal.id}`;
+  const milestoneOrderKey = `tm-order-milestones-${deal.id}`;
+  const [taskOrder, setTaskOrder] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(taskOrderKey) || '[]'); } catch { return []; }
+  });
+  const [milestoneOrder, setMilestoneOrder] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(milestoneOrderKey) || '[]'); } catch { return []; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(taskOrderKey, JSON.stringify(taskOrder)); } catch {}
+  }, [taskOrder, taskOrderKey]);
+  useEffect(() => {
+    try { localStorage.setItem(milestoneOrderKey, JSON.stringify(milestoneOrder)); } catch {}
+  }, [milestoneOrder, milestoneOrderKey]);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const applyManualOrder = <T extends { id?: string | null }>(list: T[], order: string[]): T[] => {
+    if (order.length === 0) return list;
+    const byId = new Map(list.map((item) => [item.id ?? '', item] as const));
+    const seen = new Set<string>();
+    const ordered: T[] = [];
+    for (const id of order) {
+      const item = byId.get(id);
+      if (item) { ordered.push(item); seen.add(id); }
+    }
+    for (const item of list) {
+      const id = item.id ?? '';
+      if (!seen.has(id)) ordered.push(item);
+    }
+    return ordered;
+  };
+
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const matchesQuery = (haystack: (string | null | undefined)[]) => {
     if (!normalizedQuery) return true;
@@ -1102,8 +1148,8 @@ function TasksMilestonesDetailDialog({
       const tb = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
       return ta - tb;
     });
-    return list;
-  }, [tasks]);
+    return applyManualOrder(list, taskOrder);
+  }, [tasks, taskOrder]);
 
   const sortedMilestones = useMemo(() => {
     const list = [...(milestones || [])];
@@ -1113,10 +1159,28 @@ function TasksMilestonesDetailDialog({
       const tb = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
       return ta - tb;
     });
-    // Always include completed milestones so the user can see the full
-    // history of what's been achieved on the deal.
-    return list;
-  }, [milestones]);
+    return applyManualOrder(list, milestoneOrder);
+  }, [milestones, milestoneOrder]);
+
+  const dndDisabled = normalizedQuery.length > 0;
+  const handleTaskDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = sortedTasks.map((t) => t.id);
+    const oldIdx = ids.indexOf(String(active.id));
+    const newIdx = ids.indexOf(String(over.id));
+    if (oldIdx < 0 || newIdx < 0) return;
+    setTaskOrder(arrayMove(ids, oldIdx, newIdx));
+  };
+  const handleMilestoneDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = sortedMilestones.map((m) => m.id || m.title);
+    const oldIdx = ids.indexOf(String(active.id));
+    const newIdx = ids.indexOf(String(over.id));
+    if (oldIdx < 0 || newIdx < 0) return;
+    setMilestoneOrder(arrayMove(ids, oldIdx, newIdx));
+  };
 
   const filteredTasks = useMemo(
     () => sortedTasks.filter((t) => matchesQuery([t.title, t.assignedToName, t.requestedByName])),
@@ -1188,21 +1252,31 @@ function TasksMilestonesDetailDialog({
             {filteredMilestones.length === 0 ? (
               <p className="text-xs italic text-muted-foreground">{normalizedQuery ? 'No milestones match your search.' : 'No milestones.'}</p>
             ) : (
-              <div className="space-y-1.5">
-                {filteredMilestones.map((m) => {
-                  const isCompleting = completingMilestoneIds.has(m.id || '');
-                  const done = m.completed || isCompleting;
-                  return (
-                    <div
-                      key={m.id || m.title}
-                      className={cn(
-                        'flex items-center gap-2.5 rounded-md border px-2.5 py-1.5',
-                        done
-                          ? 'bg-muted/40 border-border opacity-70'
-                          : 'bg-primary/10 border-primary/30'
-                      )}
-                    >
-                      <button
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleMilestoneDragEnd}>
+                <SortableContext items={filteredMilestones.map((m) => m.id || m.title)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-1.5">
+                    {filteredMilestones.map((m) => {
+                      const isCompleting = completingMilestoneIds.has(m.id || '');
+                      const done = m.completed || isCompleting;
+                      return (
+                        <SortableRow key={m.id || m.title} id={m.id || m.title} disabled={dndDisabled}>
+                          {(handleProps) => (
+                            <div
+                              className={cn(
+                                'group flex items-center gap-2.5 rounded-md border px-2.5 py-1.5',
+                                done ? 'bg-muted/40 border-border opacity-70' : 'bg-primary/10 border-primary/30'
+                              )}
+                            >
+                              <button
+                                type="button"
+                                {...handleProps}
+                                className="shrink-0 -ml-1 p-0.5 text-muted-foreground/50 hover:text-foreground cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity disabled:hidden"
+                                disabled={dndDisabled}
+                                title="Drag to reorder"
+                              >
+                                <GripVertical className="h-3.5 w-3.5" />
+                              </button>
+                              <button
                         type="button"
                         disabled={done}
                         onClick={() => void onCompleteMilestone(m)}
@@ -1224,10 +1298,14 @@ function TasksMilestonesDetailDialog({
                           {!done && ` · ${relativeDays(m.dueDate)}`}
                         </span>
                       )}
-                    </div>
-                  );
-                })}
-              </div>
+                            </div>
+                          )}
+                        </SortableRow>
+                      );
+                    })}
+                  </div>
+                </SortableContext>
+              </DndContext>
             )}
           </section>
 
@@ -1267,8 +1345,10 @@ function TasksMilestonesDetailDialog({
             {filteredTasks.length === 0 ? (
               <p className="text-xs italic text-muted-foreground">{normalizedQuery ? 'No tasks match your search.' : 'No tasks.'}</p>
             ) : (
-              <div className="space-y-1.5">
-                {filteredTasks.map((task) => {
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleTaskDragEnd}>
+                <SortableContext items={filteredTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-1.5">
+                    {filteredTasks.map((task) => {
                   const isCompleting = completingTaskIds.has(task.id);
                   const dueDate = parseStoredDate(task.dueDate);
                   const isOverdue = !!dueDate && differenceInCalendarDays(dueDate, new Date()) < 0;
@@ -1276,11 +1356,19 @@ function TasksMilestonesDetailDialog({
                   const isSavingField = task.kind === 'task' && savingFieldIds.has(task.id);
                   const selectedAssigneeId = task.kind === 'task' ? (task.assignedToId ?? null) : null;
                   return (
-                    <div
-                      key={task.id}
-                      className="group flex items-center gap-2.5 rounded-md border border-border bg-card px-2.5 py-1.5 hover:border-primary/40 transition-colors"
-                    >
-                      <button
+                    <SortableRow key={task.id} id={task.id} disabled={dndDisabled}>
+                      {(handleProps) => (
+                        <div className="group flex items-center gap-2.5 rounded-md border border-border bg-card px-2.5 py-1.5 hover:border-primary/40 transition-colors">
+                          <button
+                            type="button"
+                            {...handleProps}
+                            className="shrink-0 -ml-1 p-0.5 text-muted-foreground/50 hover:text-foreground cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity disabled:hidden"
+                            disabled={dndDisabled}
+                            title="Drag to reorder"
+                          >
+                            <GripVertical className="h-3.5 w-3.5" />
+                          </button>
+                          <button
                         type="button"
                         disabled={isCompleting}
                         onClick={() => void onCompleteTask(task)}
@@ -1421,14 +1509,43 @@ function TasksMilestonesDetailDialog({
                           {format(dueDate, 'MMM d')}
                         </span>
                       ) : null}
-                    </div>
+                        </div>
+                      )}
+                    </SortableRow>
                   );
                 })}
-              </div>
+                  </div>
+                </SortableContext>
+              </DndContext>
             )}
           </section>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function SortableRow({
+  id,
+  disabled,
+  children,
+}: {
+  id: string;
+  disabled?: boolean;
+  children: (handleProps: {
+    ref: (el: HTMLElement | null) => void;
+    [key: string]: any;
+  }) => React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({ ...(listeners as any), ...(attributes as any) } as any)}
+    </div>
   );
 }
