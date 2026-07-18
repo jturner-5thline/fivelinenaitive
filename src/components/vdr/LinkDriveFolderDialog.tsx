@@ -293,8 +293,9 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     }
   };
 
-  const handleImport = async () => {
-    if (selected.size === 0) return;
+  const handleImport = async (overrideFiles?: DriveFile[]) => {
+    const importFiles = overrideFiles ?? files.filter(f => selected.has(f.id));
+    if (importFiles.length === 0) return;
     setImporting(true);
     setShowResults(true);
     let ok = 0; let fail = 0;
@@ -340,9 +341,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     };
 
     // Seed queue with top-level selected items (folders shown as placeholders until expanded).
-    const seed: ImportItem[] = files
-      .filter(f => selected.has(f.id))
-      .map(f => ({
+    const seed: ImportItem[] = importFiles.map(f => ({
         key: `top:${f.id}`,
         name: f.mimeType === FOLDER_MIME ? `${f.name} (folder)` : f.name,
         target: f.mimeType === FOLDER_MIME ? (mapping[f.id] || defaultTarget) : defaultTarget,
@@ -350,8 +349,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
       }));
     setProgress(seed);
 
-    for (const f of files) {
-      if (!selected.has(f.id)) continue;
+    for (const f of importFiles) {
       const target = f.mimeType === FOLDER_MIME
         ? (mapping[f.id] || defaultTarget)
         : defaultTarget;
@@ -676,6 +674,32 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
                             )}
                           </>
                         )}
+                        {internalFolders.length > 0 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-[11px] shrink-0"
+                            disabled={importing}
+                            title={`Link this folder to ${mapping[f.id] || autoMatchTarget(f.name, internalFolders) || defaultTarget || 'the default target'}`}
+                            onClick={() => {
+                              const target =
+                                mapping[f.id] ||
+                                autoMatchTarget(f.name, internalFolders) ||
+                                defaultTarget;
+                              if (!target) {
+                                toast.error('Pick a target Internal folder first.');
+                                return;
+                              }
+                              if (!mapping[f.id]) {
+                                setMapping(prev => ({ ...prev, [f.id]: target }));
+                              }
+                              handleImport([f]);
+                            }}
+                          >
+                            <Link2 className="h-3 w-3 mr-1" />
+                            Link Folder
+                          </Button>
+                        )}
                       </>
                     ) : (
                       <>
@@ -743,7 +767,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
           ) : (
             <>
               <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={importing}>Cancel</Button>
-              <Button onClick={handleImport} disabled={selected.size === 0 || importing || unmatchedSelected.length > 0}>
+              <Button onClick={() => handleImport()} disabled={selected.size === 0 || importing || unmatchedSelected.length > 0}>
                 {importing && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
                 Import {selected.size > 0 ? `${selected.size} ` : ''}to Internal
               </Button>
