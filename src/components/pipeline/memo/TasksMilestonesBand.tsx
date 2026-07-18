@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Deal, DealMilestone } from '@/types/deal';
 import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
@@ -1198,6 +1198,27 @@ function TasksMilestonesDetailDialog({
     [sortedMilestones, normalizedQuery]
   );
 
+  const [activeTab, setActiveTab] = useState<'tasks' | 'outstanding' | 'milestones'>('tasks');
+  const scrollPositionsRef = useRef<Record<string, number>>({ tasks: 0, outstanding: 0, milestones: 0 });
+  const scrollRefs = {
+    tasks: useRef<HTMLDivElement | null>(null),
+    outstanding: useRef<HTMLDivElement | null>(null),
+    milestones: useRef<HTMLDivElement | null>(null),
+  } as const;
+  useEffect(() => {
+    if (!open) return;
+    const el = scrollRefs[activeTab].current;
+    if (!el) return;
+    // Restore after paint so the newly-mounted content has layout
+    const raf = requestAnimationFrame(() => {
+      el.scrollTop = scrollPositionsRef.current[activeTab] ?? 0;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [activeTab, open]);
+  const handleTabScroll = (key: 'tasks' | 'outstanding' | 'milestones') => (e: React.UIEvent<HTMLDivElement>) => {
+    scrollPositionsRef.current[key] = e.currentTarget.scrollTop;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl w-[42rem] h-[85vh] overflow-hidden flex flex-col">
@@ -1237,7 +1258,7 @@ function TasksMilestonesDetailDialog({
           )}
         </div>
 
-        <Tabs defaultValue="tasks" className="flex-1 min-h-0 flex flex-col overflow-hidden -mx-1 px-1 mt-2">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="flex-1 min-h-0 flex flex-col overflow-hidden -mx-1 px-1 mt-2">
           <TabsList className="grid grid-cols-3 w-full h-auto min-h-10 gap-1 p-1">
             <TabsTrigger
               value="tasks"
@@ -1268,7 +1289,7 @@ function TasksMilestonesDetailDialog({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="tasks" className="flex-1 min-h-0 overflow-y-auto mt-3 pr-1">
+          <TabsContent value="tasks" ref={scrollRefs.tasks} onScroll={handleTabScroll('tasks')} className="flex-1 min-h-0 overflow-y-auto mt-3 pr-1">
           <section>
             <div className="sticky top-0 z-10 -mx-1 px-1 py-2 mb-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-white/5">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1505,7 +1526,7 @@ function TasksMilestonesDetailDialog({
           </section>
           </TabsContent>
 
-          <TabsContent value="outstanding" className="flex-1 min-h-0 overflow-y-auto mt-3 pr-1">
+          <TabsContent value="outstanding" ref={scrollRefs.outstanding} onScroll={handleTabScroll('outstanding')} className="flex-1 min-h-0 overflow-y-auto mt-3 pr-1">
             <section>
               <div className="sticky top-0 z-10 -mx-1 px-1 py-2 mb-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-white/5">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1593,7 +1614,7 @@ function TasksMilestonesDetailDialog({
             </section>
           </TabsContent>
 
-          <TabsContent value="milestones" className="flex-1 min-h-0 overflow-y-auto mt-3 pr-1">
+          <TabsContent value="milestones" ref={scrollRefs.milestones} onScroll={handleTabScroll('milestones')} className="flex-1 min-h-0 overflow-y-auto mt-3 pr-1">
           <section>
             <div className="sticky top-0 z-10 -mx-1 px-1 py-2 mb-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-white/5">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
