@@ -638,7 +638,11 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
       return;
     }
     if (dirtyCount === 0) {
-      toast.info('No changes to save');
+      if (autosave && lastSavedAt) {
+        toast.success(`All changes already saved${savedAgoLabel ? ` (${savedAgoLabel})` : ''}`);
+      } else {
+        toast.info('No changes to save');
+      }
       return;
     }
     return handleSaveInternal({ silent: false, keepOpen: true });
