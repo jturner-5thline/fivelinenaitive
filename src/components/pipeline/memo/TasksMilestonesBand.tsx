@@ -1087,6 +1087,13 @@ function TasksMilestonesDetailDialog({
   const [addKind, setAddKind] = useState<'task' | 'milestone' | 'followup' | null>(null);
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
   const [editingAssigneeId, setEditingAssigneeId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const matchesQuery = (haystack: (string | null | undefined)[]) => {
+    if (!normalizedQuery) return true;
+    return haystack.some((s) => (s || '').toLowerCase().includes(normalizedQuery));
+  };
 
   const sortedTasks = useMemo(() => {
     const list = [...tasks];
@@ -1111,6 +1118,15 @@ function TasksMilestonesDetailDialog({
     return list;
   }, [milestones]);
 
+  const filteredTasks = useMemo(
+    () => sortedTasks.filter((t) => matchesQuery([t.title, t.assignedToName, t.requestedByName])),
+    [sortedTasks, normalizedQuery]
+  );
+  const filteredMilestones = useMemo(
+    () => sortedMilestones.filter((m) => matchesQuery([m.title])),
+    [sortedMilestones, normalizedQuery]
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
@@ -1128,6 +1144,26 @@ function TasksMilestonesDetailDialog({
             </label>
           </DialogTitle>
         </DialogHeader>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search tasks, milestones, assignees..."
+            className="w-full rounded-md border border-border bg-background pl-8 pr-8 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              title="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
 
         <div className="flex-1 overflow-y-auto space-y-5 -mx-1 px-1">
           {/* Milestones section */}
