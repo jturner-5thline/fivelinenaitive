@@ -2035,7 +2035,7 @@ export function ConsolidatedDebtPipelineDashboard({
     if (metric.value == null || metric.previousValue == null) return undefined;
     const diff = metric.value - metric.previousValue;
     const pct = metric.previousValue !== 0 ? (diff / metric.previousValue) * 100 : null;
-    return { diff, formatDiff, pct, priorLabel };
+    return { diff, formatDiff, pct, priorLabel, currentValue: metric.value };
   };
   /** Signed delta of a StageMetric field (`count` or `dollarVolume`) vs its
    *  prior-period counterpart. Returns undefined while either side is loading
@@ -2052,7 +2052,7 @@ export function ConsolidatedDebtPipelineDashboard({
     const prev = prior[field] ?? 0;
     const diff = cur - prev;
     const pct = prev !== 0 ? (diff / Math.abs(prev)) * 100 : null;
-    return { diff, formatDiff, pct, priorLabel };
+    return { diff, formatDiff, pct, priorLabel, currentValue: cur };
   };
   const formatCountDiff = (v: number) => `${Math.round(v)}`;
   const formatHourlyRate = (value: number) => {
