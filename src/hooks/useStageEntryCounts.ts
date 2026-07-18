@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { isExcludedDealName } from '@/utils/excludedDeals';
@@ -61,6 +61,14 @@ export function useStageEntryEvents(
       return rows ?? [];
     },
     enabled: !!user,
+    // TTM windows shift as the user changes the selected timeframe. Keep
+    // recent results warm and show them while the next window is fetched
+    // so the dashboard doesn't flash a spinner on every date change.
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
   });
 
   const events: StageEntryDeal[] = [];
@@ -123,6 +131,11 @@ export function useStageEntryCount(
       return rows ?? [];
     },
     enabled: !!user,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
   });
 
   const seen = new Set<string>();
