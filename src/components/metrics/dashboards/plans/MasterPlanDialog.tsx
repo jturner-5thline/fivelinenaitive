@@ -937,7 +937,10 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
             <table className="w-full text-sm border-collapse">
               <thead className="sticky top-0 bg-background z-10">
                 <tr className="border-b border-border">
-                  <th className="text-left px-2 py-2 font-medium text-xs uppercase tracking-wider text-muted-foreground sticky left-0 bg-background border-r border-border whitespace-nowrap w-auto z-30 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.4)]">
+                  <th
+                    style={{ backgroundColor: 'hsl(var(--background))' }}
+                    className="text-left px-2 py-2 font-medium text-xs uppercase tracking-wider text-muted-foreground sticky left-0 border-r border-border whitespace-nowrap w-auto z-30 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.4)]"
+                  >
                     Widget
                   </th>
                   {periods.map((p) => (
@@ -956,7 +959,8 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                     <tr className="bg-background">
                       <td
                         colSpan={1 + periods.length}
-                        className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sticky left-0 z-20 bg-background"
+                        style={{ backgroundColor: 'hsl(var(--background))' }}
+                        className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sticky left-0 z-20"
                       >
                         {group.label}
                       </td>
