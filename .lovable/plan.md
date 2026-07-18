@@ -1,41 +1,72 @@
-## Goal
+# Variance vs. Performance-to-Plan toggle — Debt Advisory Metrics
 
-Consolidate Term Sheet / IOI / LOI approval queue items into **one card per (deal, lender)**. The card's details pane exposes each sub-step (save PDF, move funding source to Terms Issued, add lender-specific status note, and — when applicable — advance the deal stage) so the user can review and approve them together.
+Add a header-level toggle on the **Debt Advisory Metrics** dashboard (`ConsolidatedDebtPipelineDashboard.tsx`) that switches every KPI tile's delta chip between two comparison bases:
 
-## Approach
+- **Variance** (default, existing behavior) — actual current period vs. actual prior period.
+- **Performance to Plan** — actual current period vs. the plan value saved for that same period in the Master Plan popup, shown as signed # and %.
 
-Rather than merging the underlying rows into a single database action, tag every item that the "Terms Issued bundle" rule emits with a shared `bundle_key`, then have the Approval Queue UI collapse items sharing that key into a single lender card with a multi-step detail panel — mirroring how `draft_email_bundle` and `update_funding_source_bundle` already work.
+## UX
 
-### 1. Deal Admin Agent protocol (`supabase/functions/_shared/dealAdminAgentIntelligence.ts`)
+Two-tab pill in the dashboard header (next to timeframe / signed-mode controls):
 
-- Extend `TERMS_ISSUED_RULES` so every one of the 4 proposals for a lender's Terms Issued event carries the same `bundle_key` in `proposed_values`, formatted as `terms_issued:{deal_id}:{funding_source_id_or_sender_domain}`:
-  - `update_funding_source` → funding_source_id known.
-  - `add_status_note` / `update_deal_stage` / `save_to_data_room` → same key so the UI can group them even though their `target_object_id` is the deal.
-- Server-side safety net in `normalizeCandidateTargets`: when the model omits `bundle_key`, infer it for a candidate by scanning `evidence_references` for a shared email/thread id + matching lender contact, and stamp `bundle_key` before persistence.
-- Persist `bundle_key` in the `ai_action_queue` payload (the field flows through the existing `on_approve_execution_payload.new_values` slot; no schema migration).
+```text
+[ Variance | Performance to Plan ]
+```
 
-### 2. UI grouping (`src/components/ai-queue/ActionQueuePanel.tsx`)
+- Selected tab is persisted per user via `user_ui_preferences` (key: `debt-advisory:comparison-mode`) so it survives reloads and matches the pattern used by other dashboard toggles.
+- When **Performance to Plan** is active:
+  - Each KPI card's delta chip renders `▲ +$X (+Y%)` / `▼ −$X (−Y%)` vs. plan for the current period, tooltip: `vs Plan · {period label}`.
+  - If no plan value exists for that widget/period, chip shows `— No plan` in muted tone and links (on click) to the Master Plan dialog with that widget row focused.
+  - Plan values are formatted using the same `formatDiff` helper already used by the Variance chip so currency / number / percent stay consistent.
 
-- Add a new bundler that runs **before** the existing draft / funding-source / claap bundlers:
-  - Collect items whose `payload.bundle_key` starts with `terms_issued:`.
-  - Group by that key; when 2+ items share it, emit one synthetic `terms_issued_bundle` card titled `"{Lender} — Term Sheet / IOI"` with the deal name and a description like `"Save PDF · Update funding source · Add status note"`.
-  - Attach the child items on `__bundle` so the existing detail-pane bundle renderer displays each sub-action with its own approve/reject.
-- Register `terms_issued_bundle` in `TYPE_META` (icon: `FileSignature` from `lucide-react`) and in `consolidatedAiQueueCount` so the badge count matches.
-- Detail pane: reuse the existing multi-item bundle renderer used by `update_funding_source_bundle` (each child keeps its own editable form) so no new UI surface is needed.
+## Data
 
-### 3. Refresh sweep + cleanup
+- New hook `useDebtAdvisoryPlanValues(period)` in `src/components/metrics/dashboards/qir/useDebtAdvisoryPlanValues.ts`.
+  - Reads `insights_metric_targets` filtered by `company_id`, `metric_key IN (plan:consolidated-debt-pipeline:*, plan:sales-dashboard-v2:*)` (linked widgets), and `period_month = {resolvedPeriodKey}`.
+  - Returns a `Map<widgetKey, { value: number; format: PlanWidgetFormat; source: 'consolidated-debt-pipeline' | 'sales-dashboard-v2' }>`.
+  - Period resolution: month (`YYYY-MM`) when timeframe is monthly, quarter (`YYYY-Qn`) otherwise — same convention already used by the Master Plan writer.
+  - React Query cache-key: `['debt-advisory-plan-values', companyId, periodKey]`, 30 s staleTime.
 
-- After deploy, invoke `deal-admin-agent-auto-sweep` for the Gabb Wireless workspace (Cloud edge function) so a fresh pass emits the newly tagged items.
-- Dismiss the currently-pending, un-tagged Terms Issued items for Gabb Wireless via an `UPDATE` on `ai_action_queue` with `status='dismissed', rejection_reason='auto_resolved_pre_bundle_key'`, scoped to `deal_id = <gabb_id>` AND `action_type IN ('update_funding_source','add_status_note','save_to_data_room','update_deal_stage')` AND `status='pending'` AND `created_at < now() - interval '1 minute'` (so we don't wipe the fresh sweep's output).
+- New KPI-to-plan-widget map in the same hook file:
 
-### Technical details
+  ```ts
+  export const DEBT_ADVISORY_KPI_TO_PLAN: Record<string, string> = {
+    'total-revenue-opportunity': 'total-revenue-opportunity',
+    'active-deals': 'active-deals',
+    'deals-on-board-count': 'deals-on-board',
+    'deals-on-board-value': 'deals-on-board-value',
+    'deals-signed': 'deals-signed',
+    'deals-closed': 'deals-closed',
+    'nda-sent': 'nda-sent',
+    'terms-issued': 'terms-issued',
+    'in-due-diligence': 'in-due-diligence',
+    'proposals-issued': 'proposals-issued',
+    'proposal-to-signed-conversion': 'proposal-to-signed-conversion',
+    'agreements-pending': 'agreements-pending',
+    'closed-won-fees': 'closed-won-fees',
+  };
+  ```
 
-- No schema migration required; `bundle_key` lives in the JSONB payload.
-- Dedupe: `queueSemanticKey` continues to key on `(deal, funding_source)` for the "funding_source_attention" group; the new `bundle_key` is purely for UI grouping and does not affect dedupe.
-- Backwards compat: items without `bundle_key` render exactly as today.
-- Redeploy `deal-admin-agent-analyze`, `deal-admin-agent-auto-sweep`, `deal-admin-agent-test-scan` so the new prompt/inference is live.
+  Any KPI tile without a mapping renders no plan chip (falls back to `— No plan`).
 
-### Out of scope
+## Rendering changes
 
-- No changes to the actual "on approve" execution — approving the lender bundle still runs each child action independently. The user experience is what consolidates.
-- No changes to other bundlers (drafts, claap, generic fs updates).
+- Extend `MetricCardConfig` with an optional `planKey?: string` and a `comparisonMode: 'variance' | 'plan'` prop threaded from the dashboard-level state.
+- `MetricKPICard` picks between the existing `delta` render (variance) and a new `planDelta` render (built from `actualNumericValue - planValue` and its `%` counterpart). No new visual primitives — reuses arrow / tone classes so both modes look identical.
+- Every existing `MetricKPICard` call site in `ConsolidatedDebtPipelineDashboard.tsx` gets a `planKey` prop referencing the map above; the mode + plan-values map are consumed from a single `ComparisonModeContext` created in the dashboard root so we don't drill props through every subtree.
+
+## Files touched
+
+```text
+src/components/metrics/dashboards/ConsolidatedDebtPipelineDashboard.tsx     (toggle, context, plan chip wiring on all MetricKPICard call sites)
+src/components/metrics/dashboards/qir/useDebtAdvisoryPlanValues.ts          (new hook + KPI→plan-widget map)
+src/components/metrics/dashboards/qir/ComparisonModeContext.tsx             (new context: mode + planValues map)
+```
+
+No schema changes — plan values already live in `insights_metric_targets` and are written by the existing Master Plan dialog.
+
+## Out of scope
+
+- No changes to trend charts (bar/line variance stays period-over-period only).
+- No changes to other dashboards — the toggle is local to Debt Advisory Metrics.
+- No plan editing UI changes — Master Plan popup remains the single place plans are entered.
