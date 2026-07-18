@@ -70,6 +70,7 @@ import {
   X,
   Save,
   Info,
+  TrendingUp,
 } from 'lucide-react';
 import {
   Tooltip as UITooltip,
@@ -1534,6 +1535,10 @@ function ConversionCard({
   onClick,
   info,
   displayValue,
+  Icon,
+  deltaPct,
+  deltaLabel,
+  higherIsBetter = true,
 }: {
   title: string;
   value: number | null;
@@ -1542,6 +1547,14 @@ function ConversionCard({
   info?: React.ReactNode;
   /** Overrides the default percentage rendering (e.g. currency). */
   displayValue?: string;
+  /** Optional icon rendered in the header square to match KpiCard. */
+  Icon?: LucideIcon;
+  /** Signed delta as a fraction (0.12 = +12%). Rendered as a chip like KpiCard. */
+  deltaPct?: number | null;
+  /** Optional custom label for the delta chip (e.g. "+3.4 pts"). Overrides percent formatting. */
+  deltaLabel?: string | null;
+  /** When false, negative deltas render green and positive red. */
+  higherIsBetter?: boolean;
 }) {
   const display =
     displayValue !== undefined
@@ -1550,10 +1563,13 @@ function ConversionCard({
         ? '—'
         : `${(value * 100).toFixed(value >= 1 ? 0 : 1)}%`;
   const clickable = !!onClick;
+  const hasDelta = deltaPct != null && Number.isFinite(deltaPct);
+  const positive = hasDelta ? (deltaPct as number) >= 0 : true;
+  const good = higherIsBetter ? positive : !positive;
   return (
     <div
       style={glassStyle}
-      className={`p-4 flex flex-col gap-2 ${clickable ? 'cursor-pointer transition-colors hover:bg-white/[0.04]' : ''}`}
+      className={`relative p-4 flex flex-col gap-2 overflow-hidden ${clickable ? 'cursor-pointer transition-transform hover:-translate-y-[1px] hover:brightness-110' : ''}`}
       onClick={onClick}
       role={clickable ? 'button' : undefined}
       tabIndex={clickable ? 0 : undefined}
@@ -1568,7 +1584,20 @@ function ConversionCard({
           : undefined
       }
     >
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
+        {Icon && (
+          <div
+            className="flex items-center justify-center rounded-lg"
+            style={{
+              width: 28,
+              height: 28,
+              background: 'rgba(157,162,245,0.14)',
+              color: C.periwinkle,
+            }}
+          >
+            <Icon size={14} />
+          </div>
+        )}
         <div
           className="text-[10px] font-medium uppercase"
           style={{ color: C.textMuted, letterSpacing: '0.08em' }}
@@ -1595,11 +1624,24 @@ function ConversionCard({
           </TooltipProvider>
         )}
       </div>
-      <div
-        className="text-3xl font-semibold leading-none"
-        style={{ color: C.textPrimary, fontVariantNumeric: 'tabular-nums' }}
-      >
-        {display}
+      <div className="flex items-baseline gap-2 mt-1">
+        <div
+          className="text-3xl font-semibold leading-none"
+          style={{ color: C.textPrimary, fontVariantNumeric: 'tabular-nums' }}
+        >
+          {display}
+        </div>
+        {(hasDelta || deltaLabel) && (
+          <div
+            className="flex items-center gap-0.5 text-xs font-medium"
+            style={{ color: good ? C.cyan : C.rose, fontVariantNumeric: 'tabular-nums' }}
+          >
+            {positive ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+            {deltaLabel != null
+              ? deltaLabel
+              : `${positive ? '+' : '−'}${Math.abs(Math.round((deltaPct as number) * 100))}%`}
+          </div>
+        )}
       </div>
       {subtitle && (
         <div
@@ -3983,15 +4025,15 @@ export function SalesDashboardV2() {
                 ? 'Loading…'
                 : currAvg == null
                   ? 'No deals in period'
-                  : delta == null
-                    ? `Prior period: ${fmt(priorAvg)}`
-                    : `${delta >= 0 ? '+' : ''}${(delta * 100).toFixed(1)}% vs prior (${fmt(priorAvg)})`;
+                  : `${currDeals.length} deals · prior ${fmt(priorAvg)}`;
               return (
                 <ConversionCard
                   title="Avg. New Deal on Board"
                   value={null}
                   displayValue={fmt(currAvg)}
                   subtitle={subtitle}
+                  Icon={TrendingUp}
+                  deltaPct={delta}
                   info={
                     <div className="space-y-1.5">
                       <div>
@@ -4008,6 +4050,7 @@ export function SalesDashboardV2() {
             <ConversionCard
               title="Call-to-Deal Conversion"
               onClick={() => setCallToDealOpen(true)}
+              Icon={Phone}
               info={
                 <div className="space-y-1.5">
                   <div>
@@ -4028,6 +4071,26 @@ export function SalesDashboardV2() {
                 if (!calls) return null;
                 return deals / calls;
               })()}
+              deltaLabel={(() => {
+                if (ttmConversion.loading || ttmSalesCallsCount == null) return null;
+                const calls = ttmSalesCallsCount;
+                const prevCalls = ttmSalesCallsPriorCount;
+                if (!calls || prevCalls == null || !prevCalls) return null;
+                const cur = ttmConversion.ndaCount / calls;
+                const prev = ttmConversion.ndaPriorCount / prevCalls;
+                const deltaPts = (cur - prev) * 100;
+                const sign = deltaPts > 0 ? '+' : deltaPts < 0 ? '−' : '';
+                return `${sign}${Math.abs(deltaPts).toFixed(1)} pts`;
+              })()}
+              deltaPct={(() => {
+                if (ttmConversion.loading || ttmSalesCallsCount == null) return null;
+                const calls = ttmSalesCallsCount;
+                const prevCalls = ttmSalesCallsPriorCount;
+                if (!calls || prevCalls == null || !prevCalls) return null;
+                const cur = ttmConversion.ndaCount / calls;
+                const prev = ttmConversion.ndaPriorCount / prevCalls;
+                return cur - prev; // sign only; label formatting via deltaLabel
+              })()}
               subtitle={(() => {
                 if (ttmConversion.loading || ttmSalesCallsCount == null) return 'Loading…';
                 const deals = ttmConversion.ndaCount;
@@ -4043,30 +4106,40 @@ export function SalesDashboardV2() {
                   if (ttmRanges.periodMonths === 12) return `${e.getUTCFullYear()}`;
                   return e.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
                 })();
-                const cur = deals / calls;
                 const prevCalls = ttmSalesCallsPriorCount;
                 const prevDeals = ttmConversion.ndaPriorCount;
                 if (prevCalls == null || !prevCalls) return `${base} · no ${priorLabel} baseline`;
                 const prev = prevDeals / prevCalls;
-                const deltaPts = (cur - prev) * 100;
-                const arrow = deltaPts > 0 ? '▲' : deltaPts < 0 ? '▼' : '■';
-                const sign = deltaPts > 0 ? '+' : '';
-                return `${base} · ${arrow} ${sign}${deltaPts.toFixed(1)} pts vs ${priorLabel} TTM (${(prev * 100).toFixed(1)}%)`;
+                return `${base} · vs ${priorLabel} TTM (${(prev * 100).toFixed(1)}%)`;
               })()}
             />
             <ConversionCard
               title="Deals-on-Board to Proposal"
+              Icon={FileText}
               value={(() => {
                 if (ttmConversion.loading) return null;
                 if (!ttmConversion.ndaCount) return null;
                 return ttmConversion.converted / ttmConversion.ndaCount;
+              })()}
+              deltaLabel={(() => {
+                if (ttmConversion.loading) return null;
+                const { ndaCount, converted, ndaPriorCount, convertedPrior } = ttmConversion;
+                if (!ndaCount || !ndaPriorCount) return null;
+                const deltaPts = (converted / ndaCount - convertedPrior / ndaPriorCount) * 100;
+                const sign = deltaPts > 0 ? '+' : deltaPts < 0 ? '−' : '';
+                return `${sign}${Math.abs(deltaPts).toFixed(1)} pts`;
+              })()}
+              deltaPct={(() => {
+                if (ttmConversion.loading) return null;
+                const { ndaCount, converted, ndaPriorCount, convertedPrior } = ttmConversion;
+                if (!ndaCount || !ndaPriorCount) return null;
+                return converted / ndaCount - convertedPrior / ndaPriorCount;
               })()}
               subtitle={(() => {
                 if (ttmConversion.loading) return 'Loading…';
                 const { ndaCount, converted, ndaPriorCount, convertedPrior } = ttmConversion;
                 const base = `${converted} of ${ndaCount} deals · TTM`;
                 if (!ndaCount) return `No NDAs entered · TTM`;
-                const cur = converted / ndaCount;
                 const prev = ndaPriorCount ? convertedPrior / ndaPriorCount : null;
                 // Label the prior period based on where the prior TTM ends
                 // (one full timeframe-length back from the current end).
@@ -4080,10 +4153,7 @@ export function SalesDashboardV2() {
                   return e.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
                 })();
                 if (prev == null) return `${base} · no ${priorLabel} baseline`;
-                const deltaPts = (cur - prev) * 100;
-                const arrow = deltaPts > 0 ? '▲' : deltaPts < 0 ? '▼' : '■';
-                const sign = deltaPts > 0 ? '+' : '';
-                return `${base} · ${arrow} ${sign}${deltaPts.toFixed(1)} pts vs ${priorLabel} TTM (${(prev * 100).toFixed(1)}%)`;
+                return `${base} · vs ${priorLabel} TTM (${(prev * 100).toFixed(1)}%)`;
               })()}
               onClick={() => setOnBoardToProposalOpen(true)}
             />
