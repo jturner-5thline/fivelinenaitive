@@ -71,8 +71,6 @@ import {
   Save,
   Info,
   TrendingUp,
-  Percent,
-  Handshake,
 } from 'lucide-react';
 import {
   Tooltip as UITooltip,
