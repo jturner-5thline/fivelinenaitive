@@ -79,6 +79,7 @@ interface MetricCardConfig {
   subtitle?: string;
   icon: typeof Users;
   value: string | number;
+  secondaryValue?: string;
   isLoading: boolean;
   deals: StageEntryDeal[];
   color: string;
@@ -122,6 +123,11 @@ function MetricKPICard({ config, onClick }: { config: MetricCardConfig; onClick:
               </span>
             )}
           </div>
+          {!config.isLoading && config.secondaryValue && (
+            <div className="mt-0.5 text-sm font-semibold font-mono tabular-nums text-muted-foreground">
+              {config.secondaryValue}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
