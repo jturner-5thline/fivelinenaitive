@@ -31,6 +31,15 @@ import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 import type { Deal } from '@/types/deal';
 import { DashboardPlansGear } from './plans/DashboardPlansGear';
+import {
+  ComparisonModeContext,
+  useComparisonMode,
+  type ComparisonMode,
+} from './qir/ComparisonModeContext';
+import {
+  DEBT_ADVISORY_KPI_TO_PLAN,
+  useDebtAdvisoryPlanValues,
+} from './qir/useDebtAdvisoryPlanValues';
 
 // ------------------------------------------------------------------
 // Deal drilldown open context — lets any nested drilldown table row
