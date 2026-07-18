@@ -1041,6 +1041,10 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
         onCompleteTask={completeTaskItem}
         onCompleteMilestone={completeMilestone}
         onOpenTask={(id) => setOpenTaskId(id)}
+        members={members}
+        savingFieldIds={savingFieldIds}
+        onSaveDueDate={saveDueDate}
+        onSaveAssignee={saveAssignee}
       />
     </div>
   );
@@ -1057,6 +1061,10 @@ interface TasksMilestonesDetailDialogProps {
   onCompleteTask: (task: DealTaskItem) => void | Promise<void>;
   onCompleteMilestone: (m: DealMilestone) => void | Promise<void>;
   onOpenTask: (taskId: string) => void;
+  members: CompanyMemberOption[];
+  savingFieldIds: Set<string>;
+  onSaveDueDate: (taskId: string, date: Date | null) => Promise<void>;
+  onSaveAssignee: (taskId: string, userId: string | null) => Promise<void>;
 }
 
 function TasksMilestonesDetailDialog({
@@ -1070,9 +1078,15 @@ function TasksMilestonesDetailDialog({
   onCompleteTask,
   onCompleteMilestone,
   onOpenTask,
+  members,
+  savingFieldIds,
+  onSaveDueDate,
+  onSaveAssignee,
 }: TasksMilestonesDetailDialogProps) {
   const [showCompleted, setShowCompleted] = useState(false);
   const [addKind, setAddKind] = useState<'task' | 'milestone' | 'followup' | null>(null);
+  const [editingDateId, setEditingDateId] = useState<string | null>(null);
+  const [editingAssigneeId, setEditingAssigneeId] = useState<string | null>(null);
 
   const sortedTasks = useMemo(() => {
     const list = [...tasks];
