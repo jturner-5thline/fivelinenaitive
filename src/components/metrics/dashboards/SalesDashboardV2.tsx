@@ -2125,8 +2125,8 @@ function CallToDealDrilldown({
     return `${s.toLocaleDateString('en-US', opts)} – ${eDate.toLocaleDateString('en-US', opts)}`;
   };
 
-  const dealsLoading = period === 'current' ? ndaCurrent.isLoading : ndaPrior.isLoading;
-  const callsLoading = period === 'current' ? callsCurrent.isLoading : callsPrior.isLoading;
+  const dealsLoading = wideNda.isLoading;
+  const callsLoading = wideCalls.isLoading;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
