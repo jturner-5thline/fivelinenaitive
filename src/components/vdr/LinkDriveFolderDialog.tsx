@@ -268,6 +268,16 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     setShowResults(true);
     let ok = 0; let fail = 0;
 
+    // Build the current Drive browse path (e.g. "Deals/Acme") from crumbs so
+    // individually selected files preserve their location inside Internal.
+    // Skip the synthetic root and any search/url pseudo-crumbs.
+    const browsePath = crumbs
+      .slice(1)
+      .filter(c => c.id !== '__search' && c.id !== '__url')
+      .map(c => c.name)
+      .join('/');
+    const baseForTopFiles = browsePath ? `/${browsePath}` : '/';
+
     // Upload one Drive file. `targetPath` is the absolute Internal path (leading slash,
     // no trailing slash except root). Root is "/".
     const uploadOne = async (df: DriveFile, targetPath: string) => {
@@ -319,15 +329,18 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     const seed: ImportItem[] = importFiles.map(f => ({
         key: `top:${f.id}`,
         name: f.mimeType === FOLDER_MIME ? `${f.name} (folder)` : f.name,
-        target: f.mimeType === FOLDER_MIME ? `/${f.name}` : '/',
+        target: f.mimeType === FOLDER_MIME
+          ? (browsePath ? `/${browsePath}/${f.name}` : `/${f.name}`)
+          : baseForTopFiles,
         status: 'queued' as ImportStatus,
       }));
     setProgress(seed);
 
     for (const f of importFiles) {
       if (f.mimeType === FOLDER_MIME) {
-        // Preserve the Drive folder name (and subfolder structure) inside Internal.
-        const rootTarget = `/${f.name}`;
+        // Preserve the Drive folder name (and subfolder structure) inside Internal,
+        // rooted at the current browse path so nested folders keep their parents.
+        const rootTarget = browsePath ? `/${browsePath}/${f.name}` : `/${f.name}`;
         updateItem(`top:${f.id}`, { status: 'importing' });
         try {
           const children = await collectFiles(f.id, '');
@@ -367,8 +380,9 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
       } else {
         updateItem(`top:${f.id}`, { status: 'importing' });
         try {
-          // Top-level files land in Internal root.
-          await uploadOne(f, '/');
+          // Individually selected files land in the current browse path so
+          // their folder context in Drive is preserved.
+          await uploadOne(f, baseForTopFiles);
           updateItem(`top:${f.id}`, { status: 'completed' });
           ok++;
         } catch (err) {
