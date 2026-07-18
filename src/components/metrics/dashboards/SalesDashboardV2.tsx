@@ -3227,6 +3227,20 @@ export function SalesDashboardV2() {
   const ndaTtmEvents = useStageEntryEvents('ndaneeds-list-sent', { start: ttmRanges.ttmStart, end: ttmRanges.ttmEnd });
   const ndaPriorTtmEvents = useStageEntryEvents('ndaneeds-list-sent', { start: ttmRanges.priorStart, end: ttmRanges.priorEnd });
   const proposalLookupEvents = useStageEntryEvents('proposal-issued', { start: ttmRanges.propStart, end: ttmRanges.propEnd });
+  // TTM debt sales calls (denominator of the Call-to-Deal Conversion card).
+  // Titled like "[COMPANY] <> 5th Line Financing Review". Uses the same
+  // TTM windows as the deals-on-board conversion so the two cards stay
+  // consistent, plus a prior-period TTM window for variance.
+  const ttmSalesCallsQuery = useSalesCallsCount(ttmRanges.ttmStart, ttmRanges.ttmEnd, true, 'debt');
+  const ttmSalesCallsPriorQuery = useSalesCallsCount(ttmRanges.priorStart, ttmRanges.priorEnd, true, 'debt');
+  const ttmSalesCallsCount = React.useMemo(() => {
+    if (ttmSalesCallsQuery.isLoading || ttmSalesCallsQuery.isFetching) return null;
+    return filterSalesCallEventsForVariant(ttmSalesCallsQuery.data?.events ?? [], 'debt').length;
+  }, [ttmSalesCallsQuery.isLoading, ttmSalesCallsQuery.isFetching, ttmSalesCallsQuery.data]);
+  const ttmSalesCallsPriorCount = React.useMemo(() => {
+    if (ttmSalesCallsPriorQuery.isLoading || ttmSalesCallsPriorQuery.isFetching) return null;
+    return filterSalesCallEventsForVariant(ttmSalesCallsPriorQuery.data?.events ?? [], 'debt').length;
+  }, [ttmSalesCallsPriorQuery.isLoading, ttmSalesCallsPriorQuery.isFetching, ttmSalesCallsPriorQuery.data]);
   const ttmConversion = React.useMemo(() => {
     const loading = ndaTtmEvents.isLoading || ndaPriorTtmEvents.isLoading || proposalLookupEvents.isLoading;
     const proposalDeals = new Set<string>();
@@ -3615,16 +3629,36 @@ export function SalesDashboardV2() {
             <ConversionCard
               title="Call-to-Deal Conversion"
               value={(() => {
-                const calls = trailing3(liveSalesCallsActual);
-                const deals = trailing3(liveDealsOnBoardActual);
-                if (calls == null || deals == null || calls === 0) return null;
+                if (ttmConversion.loading || ttmSalesCallsCount == null) return null;
+                const deals = ttmConversion.ndaCount;
+                const calls = ttmSalesCallsCount;
+                if (!calls) return null;
                 return deals / calls;
               })()}
               subtitle={(() => {
-                const calls = trailing3(liveSalesCallsActual);
-                const deals = trailing3(liveDealsOnBoardActual);
-                if (calls == null || deals == null) return 'Loading…';
-                return `${deals} deals ÷ ${calls} calls · last 3 months`;
+                if (ttmConversion.loading || ttmSalesCallsCount == null) return 'Loading…';
+                const deals = ttmConversion.ndaCount;
+                const calls = ttmSalesCallsCount;
+                const base = `${deals} deals ÷ ${calls} calls · TTM`;
+                if (!calls) return `No debt sales calls · TTM`;
+                const priorLabel = (() => {
+                  const e = new Date(ttmRanges.priorEnd.getTime() - 1);
+                  if (ttmRanges.periodMonths === 3) {
+                    const q = Math.floor(e.getUTCMonth() / 3) + 1;
+                    return `Q${q} ${e.getUTCFullYear()}`;
+                  }
+                  if (ttmRanges.periodMonths === 12) return `${e.getUTCFullYear()}`;
+                  return e.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+                })();
+                const cur = deals / calls;
+                const prevCalls = ttmSalesCallsPriorCount;
+                const prevDeals = ttmConversion.ndaPriorCount;
+                if (prevCalls == null || !prevCalls) return `${base} · no ${priorLabel} baseline`;
+                const prev = prevDeals / prevCalls;
+                const deltaPts = (cur - prev) * 100;
+                const arrow = deltaPts > 0 ? '▲' : deltaPts < 0 ? '▼' : '■';
+                const sign = deltaPts > 0 ? '+' : '';
+                return `${base} · ${arrow} ${sign}${deltaPts.toFixed(1)} pts vs ${priorLabel} TTM (${(prev * 100).toFixed(1)}%)`;
               })()}
             />
             <ConversionCard
