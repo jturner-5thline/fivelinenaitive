@@ -2009,16 +2009,44 @@ function CallToDealDrilldown({
   const [period, setPeriod] = React.useState<'current' | 'prior'>('current');
   const [tab, setTab] = React.useState<'deals' | 'calls'>('deals');
 
-  const ndaCurrent = useStageEntryEvents('ndaneeds-list-sent', {
-    start: ttmRanges.ttmStart,
+  // Fetch one wide window covering priorStart → ttmEnd and split client-side,
+  // so toggling Current ↔ Prior TTM never triggers a refetch and both windows
+  // are cached together. Same for the sales calls edge-function call.
+  const wideNda = useStageEntryEvents('ndaneeds-list-sent', {
+    start: ttmRanges.priorStart,
     end: ttmRanges.ttmEnd,
   });
-  const ndaPrior = useStageEntryEvents('ndaneeds-list-sent', {
-    start: ttmRanges.priorStart,
-    end: ttmRanges.priorEnd,
-  });
-  const callsCurrent = useSalesCallsCount(ttmRanges.ttmStart, ttmRanges.ttmEnd, open, 'debt');
-  const callsPrior = useSalesCallsCount(ttmRanges.priorStart, ttmRanges.priorEnd, open, 'debt');
+  const wideCalls = useSalesCallsCount(ttmRanges.priorStart, ttmRanges.ttmEnd, open, 'debt');
+
+  const ndaCurrentEvents = React.useMemo(
+    () => wideNda.events.filter((e) => {
+      const t = new Date(e.changed_at).getTime();
+      return t >= ttmRanges.ttmStart.getTime() && t < ttmRanges.ttmEnd.getTime();
+    }),
+    [wideNda.events, ttmRanges.ttmStart, ttmRanges.ttmEnd],
+  );
+  const ndaPriorEvents = React.useMemo(
+    () => wideNda.events.filter((e) => {
+      const t = new Date(e.changed_at).getTime();
+      return t >= ttmRanges.priorStart.getTime() && t < ttmRanges.priorEnd.getTime();
+    }),
+    [wideNda.events, ttmRanges.priorStart, ttmRanges.priorEnd],
+  );
+  const wideCallEvents = wideCalls.data?.events ?? [];
+  const callsCurrentEvents = React.useMemo(
+    () => wideCallEvents.filter((e) => {
+      const t = e.start ? new Date(e.start).getTime() : 0;
+      return t >= ttmRanges.ttmStart.getTime() && t < ttmRanges.ttmEnd.getTime();
+    }),
+    [wideCallEvents, ttmRanges.ttmStart, ttmRanges.ttmEnd],
+  );
+  const callsPriorEvents = React.useMemo(
+    () => wideCallEvents.filter((e) => {
+      const t = e.start ? new Date(e.start).getTime() : 0;
+      return t >= ttmRanges.priorStart.getTime() && t < ttmRanges.priorEnd.getTime();
+    }),
+    [wideCallEvents, ttmRanges.priorStart, ttmRanges.priorEnd],
+  );
 
   const fmtRangeLabel = (end: Date): string => {
     const e = new Date(end.getTime() - 1);
@@ -2036,7 +2064,7 @@ function CallToDealDrilldown({
   const activeEnd = period === 'current' ? ttmRanges.ttmEnd : ttmRanges.priorEnd;
 
   const distinctDeals = React.useMemo(() => {
-    const evts = period === 'current' ? ndaCurrent.events : ndaPrior.events;
+    const evts = period === 'current' ? ndaCurrentEvents : ndaPriorEvents;
     const seen = new Set<string>();
     const out: typeof evts = [];
     for (const ev of evts) {
@@ -2045,11 +2073,13 @@ function CallToDealDrilldown({
       out.push(ev);
     }
     return out;
-  }, [period, ndaCurrent.events, ndaPrior.events]);
+  }, [period, ndaCurrentEvents, ndaPriorEvents]);
 
   const callEvents = React.useMemo(() => {
-    const q = period === 'current' ? callsCurrent : callsPrior;
-    const raw = filterSalesCallEventsForVariant(q.data?.events ?? [], 'debt');
+    const raw = filterSalesCallEventsForVariant(
+      period === 'current' ? callsCurrentEvents : callsPriorEvents,
+      'debt',
+    );
     // Dedupe by dedupe_key (same meeting across teammate calendars).
     const seen = new Set<string>();
     const out: typeof raw = [];
@@ -2066,7 +2096,7 @@ function CallToDealDrilldown({
       return tb - ta;
     });
     return out;
-  }, [period, callsCurrent.data, callsPrior.data]);
+  }, [period, callsCurrentEvents, callsPriorEvents]);
 
   const dealsCount = distinctDeals.length;
   const callsCount = callEvents.length;
