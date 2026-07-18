@@ -2124,16 +2124,7 @@ export function ConsolidatedDebtPipelineDashboard({
   // ending at that bucket's period end, instead of the bucket's own period.
   const [ttmCharts, setTtmCharts] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-  const [comparisonMode, setComparisonMode] = useState<ComparisonMode>(() => {
-    if (typeof window === 'undefined') return 'variance';
-    const saved = window.localStorage.getItem('debt-advisory-comparison-mode');
-    return saved === 'plan' ? 'plan' : 'variance';
-  });
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('debt-advisory-comparison-mode', comparisonMode);
-    }
-  }, [comparisonMode]);
+  const [comparisonMode] = useDebtAdvisoryComparisonMode();
   const debtPlan = useDebtAdvisoryPlanValues(selectedQuarter);
   const comparisonCtx = useMemo(
     () => ({
