@@ -29,6 +29,13 @@ export const ACTIVE_PIPELINE_ID_5THLINE = 'b78ad452-b489-4c89-8a91-789347c05f79'
  * "current stage at-or-past target" fallback (see STAGE_ORDER_ACTIVE).
  */
 export const IN_DEVELOPMENT_PIPELINE_ID_5THLINE = '40b17dfb-9122-49e0-bf7c-5aa993d5d615';
+/**
+ * FinServ Pipeline for 5th Line. Used to source actuals for the
+ * "FinServ: Deals on the Board" / "FinServ $ on the Board" rows in the
+ * rep-performance scorecard. Every deal in this pipeline counts as
+ * "on the board" from its `created_at` date.
+ */
+export const FINSERV_PIPELINE_ID_5THLINE = '6907be5e-b17c-4a95-a7c2-fd977c94e179';
 const PIPELINE_IDS_5THLINE = [
   ACTIVE_PIPELINE_ID_5THLINE,
   IN_DEVELOPMENT_PIPELINE_ID_5THLINE,
@@ -407,6 +414,39 @@ function usePipelineAddedDeals() {
       if (error) throw error;
       return (data ?? [])
         .filter((d: any) => nikiFilter(d) && !isExcludedDealName(d.company))
+        .map((d: any) => ({
+          deal_id: d.id,
+          company: d.company ?? '—',
+          value: Number(d.value) || 0,
+          entered_at: d.created_at,
+        }));
+    },
+  });
+}
+
+/**
+ * Deals added to the FinServ Pipeline within the year. Not scoped by
+ * assignee — FinServ deals are tracked at the pipeline level, not per rep.
+ */
+function useFinServAddedDeals() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['niki-perf-finserv-added'],
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev,
+    queryFn: async (): Promise<PerfDeal[]> => {
+      const { data, error } = await supabase
+        .from('deals')
+        .select('id, company, value, created_at')
+        .eq('pipeline_id', FINSERV_PIPELINE_ID_5THLINE)
+        .gte('created_at', '2026-01-01')
+        .lte('created_at', '2026-12-31T23:59:59.999Z');
+      if (error) throw error;
+      return (data ?? [])
+        .filter((d: any) => !isExcludedDealName(d.company))
         .map((d: any) => ({
           deal_id: d.id,
           company: d.company ?? '—',
