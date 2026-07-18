@@ -769,6 +769,8 @@ function PerformancePanel() {
     { label: 'Dollars Signed', metricKey: 'dollarsSigned', actual: sum(view.actual.dollarsSigned, E), plan: view.plan.dollarsSigned.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
     { label: 'FinServ: Deals on the Board', metricKey: 'dealsClosed', actual: sum(view.actual.dealsClosed, E), plan: view.plan.dealsClosed.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
     { label: 'FinServ $ on the Board', metricKey: 'dollarsFunded', actual: sum(view.actual.dollarsFunded, E), plan: view.plan.dollarsFunded.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
+    { label: 'FinServ: Proposals Issued', metricKey: 'finservProposalsIssued', actual: sum(view.actual.finservProposalsIssued, E), plan: view.plan.finservProposalsIssued.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
+    { label: 'FinServ Proposals Issued $', metricKey: 'finservDollarsProposed', actual: sum(view.actual.finservDollarsProposed, E), plan: view.plan.finservDollarsProposed.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
   ];
 
   const activeDriver = drivers.find((d) => d.metricKey === selectedDriver) ?? drivers[drivers.length - 1];
