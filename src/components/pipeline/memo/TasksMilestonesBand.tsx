@@ -1238,15 +1238,33 @@ function TasksMilestonesDetailDialog({
         </div>
 
         <Tabs defaultValue="tasks" className="flex-1 min-h-0 flex flex-col overflow-hidden -mx-1 px-1 mt-2">
-          <TabsList className="grid grid-cols-3 w-full h-10">
-            <TabsTrigger value="tasks" className="text-sm font-medium py-2">
-              Tasks &amp; follow-ups ({filteredTasks.length}{normalizedQuery && filteredTasks.length !== totalTasks ? ` of ${totalTasks}` : ''})
+          <TabsList className="grid grid-cols-3 w-full h-auto min-h-10 gap-1 p-1">
+            <TabsTrigger
+              value="tasks"
+              className="flex flex-col items-center justify-center gap-0.5 text-xs sm:text-sm font-medium leading-tight py-1.5 px-2 whitespace-normal text-center"
+            >
+              <span className="truncate max-w-full">Tasks &amp; follow-ups</span>
+              <span className="text-[10px] font-normal text-muted-foreground">
+                {filteredTasks.length}{normalizedQuery && filteredTasks.length !== totalTasks ? ` of ${totalTasks}` : ''}
+              </span>
             </TabsTrigger>
-            <TabsTrigger value="outstanding" className="text-sm font-medium py-2">
-              Outstanding items ({filteredOutstanding.length}{normalizedQuery && filteredOutstanding.length !== totalOutstanding ? ` of ${totalOutstanding}` : ''})
+            <TabsTrigger
+              value="outstanding"
+              className="flex flex-col items-center justify-center gap-0.5 text-xs sm:text-sm font-medium leading-tight py-1.5 px-2 whitespace-normal text-center"
+            >
+              <span className="truncate max-w-full">Outstanding items</span>
+              <span className="text-[10px] font-normal text-muted-foreground">
+                {filteredOutstanding.length}{normalizedQuery && filteredOutstanding.length !== totalOutstanding ? ` of ${totalOutstanding}` : ''}
+              </span>
             </TabsTrigger>
-            <TabsTrigger value="milestones" className="text-sm font-medium py-2">
-              Milestones ({filteredMilestones.length}{normalizedQuery && filteredMilestones.length !== sortedMilestones.length ? ` of ${sortedMilestones.length}` : ''})
+            <TabsTrigger
+              value="milestones"
+              className="flex flex-col items-center justify-center gap-0.5 text-xs sm:text-sm font-medium leading-tight py-1.5 px-2 whitespace-normal text-center"
+            >
+              <span className="truncate max-w-full">Milestones</span>
+              <span className="text-[10px] font-normal text-muted-foreground">
+                {filteredMilestones.length}{normalizedQuery && filteredMilestones.length !== sortedMilestones.length ? ` of ${sortedMilestones.length}` : ''}
+              </span>
             </TabsTrigger>
           </TabsList>
 
