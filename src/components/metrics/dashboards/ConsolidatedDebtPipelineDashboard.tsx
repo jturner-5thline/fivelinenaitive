@@ -182,6 +182,8 @@ interface MetricCardConfig {
       formatDiff: (value: number) => string;
       pct: number | null;
       priorLabel?: string;
+      /** Raw current-period value (used by "Performance to Plan" mode). */
+      currentValue?: number;
     };
   };
   /** Period-over-period delta shown below the primary value ($ change and %
@@ -195,6 +197,8 @@ interface MetricCardConfig {
     pct: number | null;
     /** Short prior-period label used for the hover tooltip. */
     priorLabel?: string;
+    /** Raw current-period value (used by "Performance to Plan" mode). */
+    currentValue?: number;
   };
 }
 
