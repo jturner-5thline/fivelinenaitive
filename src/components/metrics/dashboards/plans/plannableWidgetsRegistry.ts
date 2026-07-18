@@ -185,7 +185,7 @@ const PLANNABLE_WIDGETS: Record<PlannableDashboardKey, PlannableWidget[]> = {
       { key: 'deals-on-board-value', label: 'Deals on the Board ($)', format: 'currency' },
       { key: 'proposals-issued', label: 'Proposals Issued', format: 'number' },
       { key: 'dollars-proposed', label: 'Dollars Proposed', format: 'currency' },
-      { key: 'clients-signed', label: 'Clients Signed', format: 'number' },
+      { key: 'deals-signed', label: 'Deals Signed', format: 'number' },
       { key: 'dollars-signed', label: 'Dollars Signed', format: 'currency' },
       { key: 'clients-receiving-terms', label: 'Clients Receiving Terms', format: 'number' },
       { key: 'terms-signed', label: 'Terms Signed', format: 'number' },
