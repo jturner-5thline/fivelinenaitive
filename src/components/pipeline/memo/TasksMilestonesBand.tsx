@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Deal, DealMilestone } from '@/types/deal';
 import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
 import type { PipelineDigestRaw } from '@/hooks/usePipelineDigests';
-import { Diamond, Pencil, Check, Plus, Maximize2, X } from 'lucide-react';
+import { Diamond, Pencil, Check, Plus, Maximize2, X, Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -1170,7 +1170,7 @@ function TasksMilestonesDetailDialog({
           <section>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Milestones ({sortedMilestones.length})
+                Milestones ({filteredMilestones.length}{normalizedQuery && filteredMilestones.length !== sortedMilestones.length ? ` of ${sortedMilestones.length}` : ''})
               </h3>
               <button
                 type="button"
@@ -1185,11 +1185,11 @@ function TasksMilestonesDetailDialog({
                 <AddMilestoneInlineForm deal={deal} onClose={() => setAddKind(null)} />
               </div>
             )}
-            {sortedMilestones.length === 0 ? (
-              <p className="text-xs italic text-muted-foreground">No milestones.</p>
+            {filteredMilestones.length === 0 ? (
+              <p className="text-xs italic text-muted-foreground">{normalizedQuery ? 'No milestones match your search.' : 'No milestones.'}</p>
             ) : (
               <div className="space-y-1.5">
-                {sortedMilestones.map((m) => {
+                {filteredMilestones.map((m) => {
                   const isCompleting = completingMilestoneIds.has(m.id || '');
                   const done = m.completed || isCompleting;
                   return (
@@ -1235,7 +1235,7 @@ function TasksMilestonesDetailDialog({
           <section>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Tasks & follow-ups ({sortedTasks.length})
+                Tasks & follow-ups ({filteredTasks.length}{normalizedQuery && filteredTasks.length !== sortedTasks.length ? ` of ${sortedTasks.length}` : ''})
               </h3>
               <div className="flex items-center gap-2">
                 <button
@@ -1264,11 +1264,11 @@ function TasksMilestonesDetailDialog({
                 <AddFollowupInlineForm deal={deal} defaultTitle="" onClose={() => setAddKind(null)} />
               </div>
             )}
-            {sortedTasks.length === 0 ? (
-              <p className="text-xs italic text-muted-foreground">No tasks.</p>
+            {filteredTasks.length === 0 ? (
+              <p className="text-xs italic text-muted-foreground">{normalizedQuery ? 'No tasks match your search.' : 'No tasks.'}</p>
             ) : (
               <div className="space-y-1.5">
-                {sortedTasks.map((task) => {
+                {filteredTasks.map((task) => {
                   const isCompleting = completingTaskIds.has(task.id);
                   const dueDate = parseStoredDate(task.dueDate);
                   const isOverdue = !!dueDate && differenceInCalendarDays(dueDate, new Date()) < 0;
