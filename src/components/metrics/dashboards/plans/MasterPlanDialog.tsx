@@ -203,6 +203,25 @@ function parseInput(raw: string): number | null {
   return n * mult;
 }
 
+/** Compact currency display, e.g. 12000 -> "$12K", 1500000 -> "$1.5M". */
+function formatCurrencyDisplay(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed === '') return '';
+  const n = parseInput(trimmed);
+  if (n == null || !Number.isFinite(n as number)) return raw;
+  const num = n as number;
+  const abs = Math.abs(num);
+  const sign = num < 0 ? '-' : '';
+  const fmt = (v: number, unit: string) => {
+    const s = v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2);
+    return `${sign}$${s.replace(/\.?0+$/, '')}${unit}`;
+  };
+  if (abs >= 1_000_000_000) return fmt(abs / 1_000_000_000, 'B');
+  if (abs >= 1_000_000) return fmt(abs / 1_000_000, 'M');
+  if (abs >= 1_000) return fmt(abs / 1_000, 'K');
+  return `${sign}$${abs.toLocaleString()}`;
+}
+
 /** Validate a single cell. Returns null if valid (or blank), or an error message. */
 function validateCell(raw: string, format: 'currency' | 'percent' | 'number' | undefined): string | null {
   const trimmed = raw.trim();
@@ -230,6 +249,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   const queryClient = useQueryClient();
   const [year, setYear] = useState<number>(() => new Date().getFullYear());
   const [values, setValues] = useState<Record<string, string>>({});
+  const [focusedCell, setFocusedCell] = useState<string | null>(null);
   // Snapshot of loaded values so we only persist cells the user actually
   // edited — untouched blanks never trigger deletes, and untouched numbers
   // never re-upsert. This prevents saves from clobbering unrelated fields.
@@ -975,12 +995,20 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                             const isDirty = (values[k] ?? '') !== (initialValues[k] ?? '');
                             const err = cellErrors[k];
                             const remoteHits = remoteUpdates[k] ?? 0;
+                            const isFocused = focusedCell === k;
+                            const rawVal = values[k] ?? '';
+                            const displayVal =
+                              w.format === 'currency' && !isFocused && rawVal.trim() !== '' && !err
+                                ? formatCurrencyDisplay(rawVal)
+                                : rawVal;
                             return (
                               <td key={p.key} className="px-1 py-1">
                                 <Input
                                   type="text"
                                   inputMode="decimal"
-                                  value={values[k] ?? ''}
+                                  value={displayVal}
+                                  onFocus={() => setFocusedCell(k)}
+                                  onBlur={() => setFocusedCell((cur) => (cur === k ? null : cur))}
                                   onChange={(e) =>
                                     setValuesWithUndo((v) => ({ ...v, [k]: e.target.value }))
                                   }
