@@ -249,6 +249,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   const queryClient = useQueryClient();
   const [year, setYear] = useState<number>(() => new Date().getFullYear());
   const [values, setValues] = useState<Record<string, string>>({});
+  const [focusedCell, setFocusedCell] = useState<string | null>(null);
   // Snapshot of loaded values so we only persist cells the user actually
   // edited — untouched blanks never trigger deletes, and untouched numbers
   // never re-upsert. This prevents saves from clobbering unrelated fields.
