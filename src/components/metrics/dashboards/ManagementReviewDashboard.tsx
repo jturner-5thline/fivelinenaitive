@@ -1112,7 +1112,7 @@ function CashflowForecastWidget() {
                 label: 'Ending Cash',
                 data: weeks.map((w) => w.endingCash),
                 backgroundColor: weeks.map((w) =>
-                  w.endingCash < 0 ? barBg('hsl(0,75%,60%)', { negative: true }) : barBg('hsl(213,90%,70%)'),
+                  w.endingCash < 0 ? barBg('hsl(0,75%,60%)', { negative: true }) : finservBarBg('hsl(213,90%,70%)'),
                 ),
                 borderColor: weeks.map((w) =>
                   w.endingCash < 0 ? barBorder('hsl(0,75%,60%)') : barBorder('hsl(213,90%,70%)'),
@@ -2845,7 +2845,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   );
 
   const ttmLabels = ttmTrendSeries.map(p => p.month);
-  const ttmCol = ttmTrendSeries.map((_p, i) => barBg('hsl(213,90%,70%)', { dim: i !== ttmTrendSeries.length - 1 }));
+  const ttmCol = ttmTrendSeries.map((_p, i) => finservBarBg('hsl(213,90%,70%)', { dim: i !== ttmTrendSeries.length - 1 }));
   const ttmBrd = ttmTrendSeries.map((_p, i) => barBorder('hsl(213,90%,70%)', { dim: i !== ttmTrendSeries.length - 1 }));
   const [trendMode, setTrendMode] = useState<'ttm' | 'monthly' | 'quarterly-yoy'>('ttm');
   const [showTrendDelta, setShowTrendDelta] = useState<boolean>(false);
@@ -2863,7 +2863,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         inv => inv.total_amt,
       ))
     : ttmSeries.map(p => p.revenue);
-  const monthlyCol = monthlyTrendLabels.map((_l, i) => barBg('hsl(213,90%,70%)', { dim: i !== monthlyTrendLabels.length - 1 }));
+  const monthlyCol = monthlyTrendLabels.map((_l, i) => finservBarBg('hsl(213,90%,70%)', { dim: i !== monthlyTrendLabels.length - 1 }));
   const monthlyBrd = monthlyTrendLabels.map((_l, i) => barBorder('hsl(213,90%,70%)', { dim: i !== monthlyTrendLabels.length - 1 }));
   const activeTrendValues = trendMode === 'ttm' ? ttmTrendValues : monthlyTrendValues;
   // Compute a "prior" value for the FIRST bucket so the trend line starts at
