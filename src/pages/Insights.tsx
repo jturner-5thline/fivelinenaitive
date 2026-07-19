@@ -138,6 +138,7 @@ import { InsightsLoadingSkeleton, InsightsErrorState } from "@/components/insigh
 import { InsightsAssistantSheet } from "@/components/insights/InsightsAssistantSheet";
 import { ReportingPeriodPicker, ActivePeriodLabel } from "@/components/insights/ReportingPeriodPicker";
 import { CoverPreviewDialog } from "@/components/insights/CoverPreviewDialog";
+import { ExportAllPagesDialog } from "@/components/insights/ExportAllPagesDialog";
 import { useInsightsComparison } from "@/hooks/useInsightsComparison";
 import { exportInsightsCsv, exportInsightsPdf, type InsightsExportContext } from "@/utils/insightsExport";
 import { FileSpreadsheet, FileText } from "lucide-react";
