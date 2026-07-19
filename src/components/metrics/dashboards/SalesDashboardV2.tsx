@@ -327,8 +327,8 @@ const C = {
   rose: '#FB7185',
   amber: '#FBBF24',
   surface: 'rgba(255,255,255,0.035)',
-  surfaceBorder: 'rgba(255,255,255,0.07)',
-  hairline: 'rgba(255,255,255,0.06)',
+  surfaceBorder: 'rgba(255,255,255,0.18)',
+  hairline: 'rgba(255,255,255,0.12)',
 };
 
 const glassStyle: React.CSSProperties = {
