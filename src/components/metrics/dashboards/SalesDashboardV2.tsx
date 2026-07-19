@@ -1358,6 +1358,60 @@ function TopSourcedViaWidget() {
                 </button>
               );
             })}
+            {analysis.extendedRows.length > 0 && (
+              <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${C.hairline}` }}>
+                <div
+                  className="text-[10px] font-medium uppercase mb-2"
+                  style={{ color: C.textFaint, letterSpacing: '0.08em' }}
+                >
+                  {periods.extended.label}
+                </div>
+                {analysis.extendedRows.map((r, idx) => {
+                  const widthPct = extMax === 0 ? 0 : (r.count / extMax) * 100;
+                  const share = analysis.extendedTotal === 0 ? 0 : r.count / analysis.extendedTotal;
+                  return (
+                    <button
+                      type="button"
+                      key={`ext-${r.label}`}
+                      onClick={() => setSelectedSource(r.label)}
+                      title={`View ${r.count} deal${r.count === 1 ? '' : 's'} sourced via ${r.label}`}
+                      className="grid grid-cols-[1fr_auto] items-center gap-3 py-1.5 text-left w-full cursor-pointer hover:bg-white/[0.03] rounded-md px-2 -mx-2 focus-visible:outline-none focus-visible:ring-1"
+                      style={{ borderTop: idx === 0 ? 'none' : `1px solid ${C.hairline}` }}
+                    >
+                      <div className="min-w-0">
+                        <div
+                          className="text-[11px] truncate mb-1"
+                          style={{ color: C.textPrimary }}
+                          title={r.label}
+                        >
+                          {r.label}
+                        </div>
+                        <div
+                          className="relative w-full"
+                          style={{ height: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 2, overflow: 'hidden' }}
+                        >
+                          <div
+                            style={{
+                              width: `${widthPct}%`,
+                              height: '100%',
+                              background: `linear-gradient(90deg, rgba(199,166,242,0.85), rgba(199,166,242,0.45))`,
+                              borderRadius: 2,
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div
+                        className="text-[10.5px] tabular-nums whitespace-nowrap"
+                        style={{ fontVariantNumeric: 'tabular-nums' }}
+                      >
+                        <span style={{ color: C.textPrimary }}>{r.count}</span>
+                        <span style={{ color: C.textFaint }}>{' · '}{Math.round(share * 100)}%</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* RIGHT — trend chart + current-period deal list */}
