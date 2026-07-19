@@ -2675,6 +2675,13 @@ function MetricsInner() {
             />
           )}
 
+          {effectiveSelectedDashboard === 'management-review' && (
+            <ExportAllPagesDialog
+              open={exportAllOpen}
+              onOpenChange={setExportAllOpen}
+            />
+          )}
+
           {/* Dashboard Content - always show pre-built dashboards */}
           <EditableDashboardWrapper isEditMode={isEditMode} onCardEdit={() => { /* edit only via explicit pencil button */ }}>
             {effectiveSelectedDashboard === 'management-snapshot' && (
