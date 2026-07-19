@@ -1025,6 +1025,16 @@ function isExcludedDeal(name: string | null | undefined): boolean {
 }
 
 function TopSourcedViaWidget() {
+  type DealRow = {
+    id: string;
+    company: string | null;
+    sourced_via: string | null;
+    referral_source: string | null;
+    referral_source_id: string | null;
+    referred_by: string | null;
+    lead_source: string | null;
+    created_at: string;
+  };
   const view = useView();
   const { company } = useCompany();
   const [selectedSource, setSelectedSource] = React.useState<string | null>(null);
