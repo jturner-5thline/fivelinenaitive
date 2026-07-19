@@ -5062,10 +5062,13 @@ export function SalesDashboardV2({ reportMode = false }: { reportMode?: boolean 
           </div>
 
           {/* Sales model sheet */}
-          <SalesModelSheet />
+          {!reportMode && <SalesModelSheet />}
         </div>
       </div>
     </div>
+    {!reportMode && (
+      <ShareReportDialog open={shareReportOpen} onOpenChange={setShareReportOpen} />
+    )}
     <MetricDrilldownDialog
       focus={drillFocus}
       onClose={() => setDrillFocus(null)}
