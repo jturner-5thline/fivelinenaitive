@@ -4102,10 +4102,6 @@ export function SalesDashboardV2() {
           {/* KPI strip */}
           <div className="mb-6">
             <div className="flex items-center justify-end gap-2 mb-2">
-              <PipelineVariantToggle
-                value={kpiVariant}
-                onChange={setKpiVariant}
-              />
               <ValueModeToggle
                 value={kpiValueMode}
                 onChange={setKpiValueMode}
@@ -4127,12 +4123,8 @@ export function SalesDashboardV2() {
                 <KpiCard
                   label={
                     kpiValueMode === 'value'
-                      ? kpiVariant === 'finserv'
-                        ? 'Dollars on Board (FinServ)'
-                        : 'Dollars on Board'
-                      : kpiVariant === 'finserv'
-                        ? 'Deals on Board (FinServ)'
-                        : 'Deals on Board'
+                      ? 'Dollars on Board'
+                      : 'Deals on Board'
                   }
                   Icon={Layers}
                   type={kpiValueMode === 'value' ? 'money' : 'count'}
@@ -4141,6 +4133,35 @@ export function SalesDashboardV2() {
                 />
                 <KpiCard
                   label={kpiValueMode === 'value' ? 'Dollars Proposed' : 'Proposals Issued'}
+                  Icon={FileText}
+                  type={kpiValueMode === 'value' ? 'money' : 'count'}
+                  metricKey="proposalsIssued"
+                  mode="sum"
+                />
+              </div>
+            </ViewCtx.Provider>
+            <ViewCtx.Provider value={finservKpiView}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                {kpiValueMode === 'value' ? (
+                  <BlankKpiCard label="FinServ Sales Calls" />
+                ) : (
+                  <KpiCard
+                    label="FinServ Sales Calls"
+                    Icon={Phone}
+                    type="count"
+                    metricKey="salesCalls"
+                    mode="sum"
+                  />
+                )}
+                <KpiCard
+                  label={kpiValueMode === 'value' ? 'FinServ Dollars on Board' : 'FinServ Deals on Board'}
+                  Icon={Layers}
+                  type={kpiValueMode === 'value' ? 'money' : 'count'}
+                  metricKey="dealsOnBoard"
+                  mode="sum"
+                />
+                <KpiCard
+                  label={kpiValueMode === 'value' ? 'FinServ Dollars Proposed' : 'FinServ Proposals Issued'}
                   Icon={FileText}
                   type={kpiValueMode === 'value' ? 'money' : 'count'}
                   metricKey="proposalsIssued"
