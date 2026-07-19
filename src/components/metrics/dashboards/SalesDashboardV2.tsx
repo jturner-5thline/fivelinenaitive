@@ -1025,6 +1025,29 @@ function isExcludedDeal(name: string | null | undefined): boolean {
   return /^test\s/i.test(name);
 }
 
+// ============================================================
+// BD CALLS & MEETINGS WIDGET (placeholder — data to be wired later)
+// ============================================================
+function BdCallsMeetingsWidget() {
+  return (
+    <div style={glassStyle} className="p-5 overflow-hidden">
+      <div
+        className="flex items-center gap-1.5 text-[10px] font-medium uppercase mb-3"
+        style={{ color: C.periwinkle, letterSpacing: '0.08em' }}
+      >
+        <Radio size={11} />
+        BD Calls &amp; Meetings
+      </div>
+      <div
+        className="flex items-center justify-center text-[12px] italic"
+        style={{ color: C.textMuted, minHeight: 180 }}
+      >
+        Data coming soon
+      </div>
+    </div>
+  );
+}
+
 function TopSourcedViaWidget() {
   type DealRow = {
     id: string;
@@ -4799,6 +4822,7 @@ export function SalesDashboardV2() {
           {/* Top "Sourced Via" for deals created in the selected timeframe */}
           <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
             <TopSourcedViaWidget />
+            <BdCallsMeetingsWidget />
           </div>
 
           {/* Cumulative pace */}
