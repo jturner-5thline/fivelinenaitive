@@ -4000,6 +4000,32 @@ export function SalesDashboardV2() {
   // Backwards-compatible active view for the KPI cards themselves (outside dialog).
   const kpiView = kpiValueMode === 'value' ? kpiValueView : kpiCountView;
 
+  // Dedicated FinServ KPI views so we can render a second row of FinServ
+  // cards below the Debt row (instead of a Debt/FinServ toggle).
+  const finservCountView = React.useMemo<DashboardView>(() => ({
+    ...view,
+    actual: {
+      ...view.actual,
+      salesCalls: liveSalesCallsActualFinserv,
+      dealsOnBoard: liveDealsOnBoardActualFinserv,
+      proposalsIssued: liveProposalsIssuedActualFinserv,
+    },
+  }), [view, liveSalesCallsActualFinserv, liveDealsOnBoardActualFinserv, liveProposalsIssuedActualFinserv]);
+  const finservValueView = React.useMemo<DashboardView>(() => ({
+    ...finservCountView,
+    actual: {
+      ...finservCountView.actual,
+      dealsOnBoard: liveDollarsOnBoardActualFinserv,
+      proposalsIssued: liveDollarsProposedActualFinserv,
+    },
+    plan: {
+      ...finservCountView.plan,
+      dealsOnBoard: finservCountView.plan.dollarsOnBoard,
+      proposalsIssued: finservCountView.plan.dollarsProposed,
+    },
+  }), [finservCountView, liveDollarsOnBoardActualFinserv, liveDollarsProposedActualFinserv]);
+  const finservKpiView = kpiValueMode === 'value' ? finservValueView : finservCountView;
+
   // Master Plan monthly targets for FinServ Proposals rows — authored in
   // the Master Plan popup and overlaid onto the hardcoded PLAN so the
   // gap/performance-to-plan panel compares against the same values users
