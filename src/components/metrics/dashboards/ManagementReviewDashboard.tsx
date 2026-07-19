@@ -1153,6 +1153,13 @@ function CashflowForecastWidget() {
           },
           options: {
             ...def,
+            layout: {
+              ...((def as any).layout || {}),
+              padding: {
+                ...(((def as any).layout || {}).padding || {}),
+                top: 24,
+              },
+            },
             plugins: {
               legend: { display: false },
               tooltip: {
@@ -3050,7 +3057,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             },
             scales: {
               x: { ...gx, ticks: { ...gx.ticks, color: '#ffffff' } },
-              y: { ...gy, ticks: { ...gy.ticks, color: '#ffffff', callback: (v: number) => fmtUSD(v) } },
+              y: { ...gy, grace: '10%', ticks: { ...gy.ticks, color: '#ffffff', callback: (v: number) => fmtUSD(v) } },
               ...(showTrendDelta ? {
                 y1: {
                   position: 'right' as const,
