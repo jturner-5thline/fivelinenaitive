@@ -1099,6 +1099,8 @@ function TopSourcedViaWidget() {
           sourced_via: string | null;
           referral_source: string | null;
           referral_source_id: string | null;
+          referred_by: string | null;
+          lead_source: string | null;
           created_at: string;
         }>;
       }
