@@ -1153,6 +1153,13 @@ function CashflowForecastWidget() {
           },
           options: {
             ...def,
+            layout: {
+              ...((def as any).layout || {}),
+              padding: {
+                ...(((def as any).layout || {}).padding || {}),
+                top: 24,
+              },
+            },
             plugins: {
               legend: { display: false },
               tooltip: {
@@ -2958,7 +2965,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 const positive = pct > 0;
                 const color = positive ? 'hsl(142, 71%, 45%)' : 'hsl(0, 84%, 60%)';
                 const txt = `${positive ? '+' : ''}${pct.toFixed(1)}%`;
-                const topY = Math.max(bar.y - 6, chartArea.top + 10);
+                const topY = Math.max(bar.y - 6, chartArea.top + 2);
                 ctx.font = '600 11px system-ui, -apple-system, sans-serif';
                 ctx.fillStyle = color;
                 ctx.fillText(txt, bar.x, topY);
@@ -3050,7 +3057,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             },
             scales: {
               x: { ...gx, ticks: { ...gx.ticks, color: '#ffffff' } },
-              y: { ...gy, ticks: { ...gy.ticks, color: '#ffffff', callback: (v: number) => fmtUSD(v) } },
+              y: { ...gy, grace: '10%', ticks: { ...gy.ticks, color: '#ffffff', callback: (v: number) => fmtUSD(v) } },
               ...(showTrendDelta ? {
                 y1: {
                   position: 'right' as const,
