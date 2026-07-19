@@ -1357,7 +1357,7 @@ function TopSourcedViaWidget() {
                     {analysis.topRows.map((r, i) => (
                       <Line
                         key={r.label}
-                        type="monotone"
+                        type="linear"
                         dataKey={r.label}
                         stroke={SERIES_COLORS[i % SERIES_COLORS.length]}
                         strokeWidth={2}
