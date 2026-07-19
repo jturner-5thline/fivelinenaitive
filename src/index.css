@@ -1090,6 +1090,22 @@
   .mgmt-widget .text-muted-foreground {
     color: rgba(255, 255, 255, 0.72) !important;
   }
+  .mgmt-widget [style*="rgba(255,255,255,0.45)"],
+  .mgmt-widget [style*="rgba(255,255,255,0.5)"],
+  .mgmt-widget [style*="rgba(255,255,255,0.55)"],
+  .mgmt-widget [style*="rgba(255,255,255,0.6)"],
+  .mgmt-widget [style*="rgba(255,255,255,0.7)"],
+  .mgmt-widget [style*="rgba(255,255,255,0.75)"] {
+    color: rgba(255, 255, 255, 0.96) !important;
+  }
+  .mgmt-widget th,
+  .mgmt-widget [role="columnheader"],
+  .mgmt-widget .recharts-cartesian-axis-tick text,
+  .mgmt-widget .recharts-text,
+  .mgmt-widget .recharts-label {
+    color: rgba(255, 255, 255, 0.96) !important;
+    fill: rgba(255, 255, 255, 0.96) !important;
+  }
 
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
