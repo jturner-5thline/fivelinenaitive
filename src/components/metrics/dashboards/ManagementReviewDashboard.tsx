@@ -3007,6 +3007,13 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             ...def,
             plugins: {
               ...((def as any).plugins || {}),
+              legend: {
+                ...(((def as any).plugins || {}).legend || {}),
+                labels: {
+                  ...((((def as any).plugins || {}).legend || {}).labels || {}),
+                  color: '#ffffff',
+                },
+              },
               tooltip: {
                 callbacks: {
                   title: (items: any[]) => {
@@ -3038,8 +3045,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               },
             },
             scales: {
-              x: gx,
-              y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } },
+              x: { ...gx, ticks: { ...gx.ticks, color: '#ffffff' } },
+              y: { ...gy, ticks: { ...gy.ticks, color: '#ffffff', callback: (v: number) => fmtUSD(v) } },
               ...(showTrendDelta ? {
                 y1: {
                   position: 'right' as const,
