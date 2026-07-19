@@ -2581,7 +2581,7 @@ function MetricsInner() {
                         variant="outline"
                         size="sm"
                         aria-label="Presets"
-                        className="h-9 w-9 p-0"
+                        className="h-9 w-9 p-0 hidden"
                       >
                         <FolderOpen className="h-4 w-4" />
                       </Button>
@@ -2619,7 +2619,7 @@ function MetricsInner() {
                       size="sm"
                       aria-label={isEditMode ? "Done Editing" : "Edit Layout"}
                       aria-pressed={isEditMode}
-                      className="h-9 w-9 p-0"
+                      className="h-9 w-9 p-0 hidden"
                       onClick={() => setIsEditMode(!isEditMode)}
                     >
                       <Pencil className="h-4 w-4" />
