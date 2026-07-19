@@ -210,6 +210,12 @@ export interface DashboardView {
   rangeStart: Date;
   rangeEnd: Date;
   label: string;
+  /** Jan-through-end-of-selected-range month labels for YTD-cumulative charts. */
+  ytdMonths?: string[];
+  ytdPlan?: Record<MetricKey, number[]>;
+  ytdActual?: Record<MetricKey, (number | null)[]>;
+  /** Count of YTD months already elapsed (Jan..today), clamped to ytdMonths.length. */
+  ytdElapsed?: number;
 }
 
 const ViewCtx = React.createContext<DashboardView | null>(null);
