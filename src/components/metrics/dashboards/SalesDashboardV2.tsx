@@ -737,7 +737,7 @@ function KpiCardInner({
             <Line
               type="monotone"
               dataKey="plan"
-              stroke={C.periwinkle}
+              stroke="#a855f7"
               strokeWidth={1.4}
               strokeDasharray="4 4"
               dot={false}
