@@ -978,9 +978,9 @@ function Card({ children, className = '', style }: { children: React.ReactNode; 
         // Premium dark indigo gradient — reduced purple saturation.
         background:
           'radial-gradient(120% 140% at 100% 100%, hsla(260, 40%, 40%, 0.14) 0%, transparent 55%), linear-gradient(160deg, hsl(228, 38%, 9%) 0%, hsl(232, 34%, 11%) 50%, hsl(238, 32%, 12%) 100%)',
-        border: '1px solid rgba(255,255,255,0.14)',
+        border: '1px solid rgba(255,255,255,0.32)',
         boxShadow:
-          '0 12px 32px -18px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.08)',
+          '0 12px 32px -18px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.12), 0 0 0 1px rgba(255,255,255,0.06)',
         ...style,
       }}>
       <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,hsla(213,95%,78%,0.55),hsla(268,90%,78%,0.55),transparent)' }} />
@@ -1677,8 +1677,8 @@ function GridShell({
       style={{
         background:
           'radial-gradient(120% 140% at 100% 100%, hsla(260, 40%, 40%, 0.14) 0%, transparent 55%), linear-gradient(160deg, hsl(228, 38%, 9%) 0%, hsl(232, 34%, 11%) 50%, hsl(238, 32%, 12%) 100%)',
-        border: '1px solid rgba(255,255,255,0.14)',
-        boxShadow: '0 12px 32px -18px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.08)',
+        border: '1px solid rgba(255,255,255,0.32)',
+        boxShadow: '0 12px 32px -18px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.12), 0 0 0 1px rgba(255,255,255,0.06)',
       }}>
       <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,hsla(213,95%,78%,0.55),hsla(268,90%,78%,0.55),transparent)' }} />
       <div
