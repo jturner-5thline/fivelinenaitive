@@ -1614,7 +1614,16 @@ function SourcedViaDrilldownDialog({
 function CumulativePace() {
   const view = useView();
   const drill = useDrilldown();
-  const [metric, setMetric] = React.useState<MetricKey>('dollarsFunded');
+  const [metric, setMetric] = React.useState<MetricKey>(() => {
+    if (typeof window === 'undefined') return 'dollarsFunded';
+    const saved = window.localStorage.getItem('sales-dashboard.cumulative-pace.metric');
+    return (saved as MetricKey) || 'dollarsFunded';
+  });
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem('sales-dashboard.cumulative-pace.metric', metric);
+    } catch {}
+  }, [metric]);
   const row = ROW_ORDER.find((r) => r.key === metric) ?? ROW_ORDER[0];
   const isMoney = row.type === 'money';
   const fmt = (v: number | null | undefined) => (isMoney ? fmtMoney(v) : fmtCount(v));
