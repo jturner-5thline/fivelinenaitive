@@ -2950,38 +2950,14 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 const w = bar.width ?? 0;
                 if (w < 26) return;
                 const pct = trendDeltasPct[i];
-                const abs = trendDeltasAbs[i];
-                // Value above the bar top.
-                const topY = Math.max(bar.y - 6, chartArea.top + 12);
-                ctx.fillStyle = 'rgba(255,255,255,0.92)';
-                ctx.strokeStyle = 'transparent';
-                ctx.font = '600 10px system-ui, -apple-system, sans-serif';
-                ctx.fillText(fmtUSD(v), bar.x, topY);
-                // Δ$ and Δ% stacked INSIDE the bar (Δ$ top, Δ% below),
-                // white text with dark stroke for contrast against any bar color.
-                const barBottom = bar.base ?? chartArea.bottom;
-                const barH = Math.abs(barBottom - bar.y);
-                if (barH < 28) return;
-                const midY = bar.y + barH / 2;
-                const absY = midY - 2;
-                const pctY = midY + 11;
-                const drawStroked = (txt: string, cx: number, cy: number, size: number, color: string) => {
-                  ctx.font = `700 ${size}px system-ui, -apple-system, sans-serif`;
-                  ctx.lineWidth = 3;
-                  ctx.lineJoin = 'round';
-                  ctx.strokeStyle = 'rgba(0,0,0,0.85)';
-                  ctx.strokeText(txt, cx, cy);
-                  ctx.fillStyle = color;
-                  ctx.fillText(txt, cx, cy);
-                };
-                if (abs != null && abs !== 0) {
-                  const s = abs > 0 ? '+' : '−';
-                  drawStroked(`${s}${fmtUSD(Math.abs(abs))}`, bar.x, absY, 10, abs > 0 ? 'hsl(150, 80%, 62%)' : 'hsl(0, 82%, 66%)');
-                }
-                if (pct != null && isFinite(pct) && pct !== 0) {
-                  const s = pct > 0 ? '+' : '−';
-                  drawStroked(`${s}${Math.abs(pct).toFixed(1)}%`, bar.x, pctY, 9, pct > 0 ? 'hsl(150, 80%, 62%)' : 'hsl(0, 82%, 66%)');
-                }
+                if (pct == null || !isFinite(pct) || pct === 0) return;
+                const positive = pct > 0;
+                const color = positive ? 'hsl(142, 71%, 45%)' : 'hsl(0, 84%, 60%)';
+                const txt = `${positive ? '+' : ''}${pct.toFixed(1)}%`;
+                const topY = Math.max(bar.y - 6, chartArea.top + 10);
+                ctx.font = '600 11px system-ui, -apple-system, sans-serif';
+                ctx.fillStyle = color;
+                ctx.fillText(txt, bar.x, topY);
               });
               ctx.restore();
             },
