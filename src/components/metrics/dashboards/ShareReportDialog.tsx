@@ -128,11 +128,11 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     s.split(/[,;\s]+/).map((e) => e.trim()).filter(Boolean);
 
   const generatePdfBase64 = async (): Promise<string> => {
-    // html-to-image uses SVG <foreignObject> so the browser natively renders
-    // modern CSS (linear/radial gradients, oklch, color-mix, backdrop-filter,
-    // box-shadow insets, etc.). html2canvas re-implements CSS and mangles
-    // gradients + oklch colors, which is why the widgets looked flat/whited
-    // out in the previous export.
+    // Capture the ON-SCREEN dashboard (snapshotRef) plus a small header
+    // (title + notes). Capturing the live, already-rendered node avoids the
+    // off-screen clone path that produced a blank JPEG (foreignObject
+    // silently fails when the cloned subtree is too tall / references
+    // absolute-positioned charts).
     const [htmlToImage, jsPDFmod] = await Promise.all([
       import('html-to-image'),
       import('jspdf'),
@@ -141,98 +141,90 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     const dashNode = snapshotRef.current;
     if (!dashNode) throw new Error('Nothing to capture');
 
-    // Build an off-screen print container that stacks: report title, editor
-    // HTML (as static markup), then a deep clone of the live dashboard.
-    // Rendering off-screen lets us set an exact width so html2canvas produces
-    // a faithful, print-style snapshot without cutting off widgets.
-    const PRINT_WIDTH = Math.max(1240, dashNode.scrollWidth);
-    const wrap = document.createElement('div');
-    wrap.style.cssText = [
+    await (document as any).fonts?.ready?.catch?.(() => {});
+    await new Promise((r) => setTimeout(r, 80));
+
+    // 1) Header block (title + date + optional notes) — small offscreen node.
+    const headerWidth = dashNode.getBoundingClientRect().width || 1240;
+    const header = document.createElement('div');
+    header.style.cssText = [
       'position:fixed',
       'left:-100000px',
       'top:0',
-      `width:${PRINT_WIDTH}px`,
+      `width:${headerWidth}px`,
       'background:#0b0b12',
       'color:#ffffff',
       'font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif',
-      'padding:32px 26px',
+      'padding:24px 26px 8px',
       'box-sizing:border-box',
     ].join(';');
-
-    // Header (subject)
     const title = document.createElement('div');
-    title.style.cssText =
-      'font-size:22px;font-weight:700;color:#fff;margin:0 0 6px 0;';
+    title.style.cssText = 'font-size:22px;font-weight:700;color:#fff;margin:0 0 6px 0;';
     title.textContent = subjectValue.trim() || defaultSubject();
-    wrap.appendChild(title);
-
+    header.appendChild(title);
     const meta = document.createElement('div');
-    meta.style.cssText = 'font-size:12px;color:rgba(255,255,255,0.6);margin:0 0 18px 0;';
+    meta.style.cssText = 'font-size:12px;color:rgba(255,255,255,0.6);margin:0 0 14px 0;';
     meta.textContent = new Date().toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric',
     });
-    wrap.appendChild(meta);
-
-    // Editor content (rich text) — rendered as static HTML.
+    header.appendChild(meta);
     const editorHtml = editor?.getHTML()?.trim() ?? '';
     if (editorHtml && editorHtml !== '<p></p>') {
       const notes = document.createElement('div');
-      notes.className =
-        'prose prose-invert prose-sm max-w-none ' +
-        '[&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:my-2 ' +
-        '[&_h2]:text-xl [&_h2]:font-semibold [&_h2]:my-2 ' +
-        '[&_h3]:text-base [&_h3]:font-semibold [&_h3]:my-1 ' +
-        '[&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 ' +
-        '[&_blockquote]:border-l-2 [&_blockquote]:border-white/30 [&_blockquote]:pl-3 [&_blockquote]:italic ' +
-        '[&_a]:text-cyan-300 [&_a]:underline ' +
-        '[&_mark]:bg-yellow-300/40 [&_mark]:rounded-sm [&_mark]:px-0.5';
       notes.style.cssText =
         'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.18);' +
-        'border-radius:10px;padding:16px 20px;margin:0 0 24px 0;color:#fff;font-size:14px;line-height:1.55;';
+        'border-radius:10px;padding:14px 18px;color:#fff;font-size:14px;line-height:1.55;';
       notes.innerHTML = editorHtml;
-      wrap.appendChild(notes);
+      header.appendChild(notes);
     }
+    document.body.appendChild(header);
 
-    // Deep-clone the live dashboard so its styles come from the same stylesheet.
-    const dashClone = dashNode.cloneNode(true) as HTMLElement;
-    dashClone.style.width = '100%';
-    wrap.appendChild(dashClone);
-
-    document.body.appendChild(wrap);
-
-    let dataUrl: string;
-    let capturedWidth = PRINT_WIDTH;
-    let capturedHeight = wrap.scrollHeight;
+    let headerUrl = '';
+    let headerH = 0;
     try {
-      // Let layout + web fonts settle before capture.
-      await (document as any).fonts?.ready?.catch?.(() => {});
-      await new Promise((r) => setTimeout(r, 120));
-      capturedHeight = wrap.scrollHeight;
-      dataUrl = await htmlToImage.toJpeg(wrap, {
-        quality: 0.95,
+      headerH = header.scrollHeight;
+      headerUrl = await htmlToImage.toPng(header, {
         pixelRatio: 2,
         backgroundColor: '#0b0b12',
-        width: capturedWidth,
-        height: capturedHeight,
+        width: headerWidth,
+        height: headerH,
         cacheBust: true,
-        // Skip elements that break foreignObject serialization (rare svgs,
-        // canvas-based recharts already serialize fine as SVG).
-        skipFonts: false,
       });
     } finally {
-      document.body.removeChild(wrap);
+      document.body.removeChild(header);
     }
 
-    // Single-page PDF sized exactly to captured content (no page breaks).
+    // 2) Dashboard — capture the live, on-screen node directly.
+    const dashRect = dashNode.getBoundingClientRect();
+    const dashW = Math.ceil(dashRect.width);
+    const dashH = Math.ceil(dashNode.scrollHeight);
+    const dashUrl = await htmlToImage.toPng(dashNode, {
+      pixelRatio: 2,
+      backgroundColor: '#0b0b12',
+      width: dashW,
+      height: dashH,
+      cacheBust: true,
+    });
+
+    if (!headerUrl || headerUrl.length < 200 || !dashUrl || dashUrl.length < 200) {
+      throw new Error('Snapshot rendering returned an empty image');
+    }
+
+    // 3) Single-page PDF sized to header + dashboard stacked.
     const pxToPt = 72 / 96;
-    const pageWpt = capturedWidth * pxToPt;
-    const pageHpt = capturedHeight * pxToPt;
+    const pageW = Math.max(headerWidth, dashW);
+    const pageH = headerH + dashH;
+    const pageWpt = pageW * pxToPt;
+    const pageHpt = pageH * pxToPt;
     const pdf = new jsPDF({
       orientation: pageWpt > pageHpt ? 'l' : 'p',
       unit: 'pt',
       format: [pageWpt, pageHpt],
     });
-    pdf.addImage(dataUrl, 'JPEG', 0, 0, pageWpt, pageHpt);
+    pdf.setFillColor(11, 11, 18);
+    pdf.rect(0, 0, pageWpt, pageHpt, 'F');
+    pdf.addImage(headerUrl, 'PNG', 0, 0, headerWidth * pxToPt, headerH * pxToPt);
+    pdf.addImage(dashUrl, 'PNG', 0, headerH * pxToPt, dashW * pxToPt, dashH * pxToPt);
     const dataUri = pdf.output('datauristring');
     return dataUri.split(',')[1] ?? '';
   };
