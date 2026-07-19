@@ -1084,7 +1084,9 @@ function TopSourcedViaWidget() {
   const { data, isLoading } = useQuery({
     queryKey: ['top-sourced-via-v3', company?.id, wideStartIso, wideEndIso],
     enabled: !!company?.id,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       // Pipeline IDs. Active pipeline: deals entering "NDA / Needs List Sent".
       // FinServ pipeline: deals created in-period. Naitive pipeline: deals
