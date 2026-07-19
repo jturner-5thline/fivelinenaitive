@@ -42,6 +42,7 @@ import { ensureFinServPnlSnapshots } from '@/hooks/useFinServFinancialMetrics';
 import { buildBuckets, type Granularity } from '@/lib/insightsTimeRange';
 import { QBO_ENTITIES } from '@/config/qboEntities';
 import { formatUSD } from '@/lib/formatters/currency';
+import { useMasterPlanMonthly } from '@/hooks/useMasterPlanMonthly';
 import { DashboardPlansGear } from './plans/DashboardPlansGear';
 
 const setChartDefaults = () => {
