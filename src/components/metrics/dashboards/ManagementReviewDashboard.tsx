@@ -56,6 +56,51 @@ const gy: any = { ticks: { color: 'rgba(255,255,255,0.35)', font: { size: 9 } },
 const def: any = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
 const NA_COLOR = 'rgba(255,255,255,0.35)';
 
+// ---------------------------------------------------------------------------
+// Unified bar-chart fill recipe.
+// Every Chart.js bar in this dashboard runs through `barBg(...)` so opacity
+// scale, gradient depth, highlight intensity, and edge definition stay
+// consistent across widgets. Callers pass their base color (hue is preserved).
+// `emphasis` lets an individual widget dim non-current bars without breaking
+// the shared recipe.
+// ---------------------------------------------------------------------------
+const BAR_RECIPE = {
+  positive: { top: 0.95, bottom: 0.35, dimTop: 0.65, dimBottom: 0.18 },
+  negative: { top: 0.95, bottom: 0.35, dimTop: 0.65, dimBottom: 0.18 },
+};
+const BAR_BORDER_ALPHA = 0.9;
+const BAR_BORDER_ALPHA_DIM = 0.35;
+
+function _stripToHsl(color: string): { h: number; s: number; l: number } | null {
+  const m = color.match(/hsla?\(\s*([\d.]+)[,\s]+([\d.]+)%[,\s]+([\d.]+)%/i);
+  if (!m) return null;
+  return { h: parseFloat(m[1]), s: parseFloat(m[2]), l: parseFloat(m[3]) };
+}
+function _hsla(h: number, s: number, l: number, a: number) {
+  return `hsla(${h}, ${s}%, ${l}%, ${a})`;
+}
+
+function barBg(color: string, opts: { negative?: boolean; dim?: boolean } = {}) {
+  return (ctx: any) => {
+    const area = ctx?.chart?.chartArea;
+    if (!area) return color;
+    const hsl = _stripToHsl(color);
+    if (!hsl) return color;
+    const recipe = opts.negative ? BAR_RECIPE.negative : BAR_RECIPE.positive;
+    const top = opts.dim ? recipe.dimTop : recipe.top;
+    const bot = opts.dim ? recipe.dimBottom : recipe.bottom;
+    const g = ctx.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+    g.addColorStop(0, _hsla(hsl.h, hsl.s, hsl.l, top));
+    g.addColorStop(1, _hsla(hsl.h, hsl.s, hsl.l, bot));
+    return g;
+  };
+}
+function barBorder(color: string, opts: { dim?: boolean } = {}) {
+  const hsl = _stripToHsl(color);
+  if (!hsl) return color;
+  return _hsla(hsl.h, hsl.s, hsl.l, opts.dim ? BAR_BORDER_ALPHA_DIM : BAR_BORDER_ALPHA);
+}
+
 // ============================================================================
 // Liabilities & Debt Service table — pulls live account balances from QBO
 // (5th Line Capital Advisors LLC realm) for the accounts we can wire today.
