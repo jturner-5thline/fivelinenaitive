@@ -2674,8 +2674,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             labels: debtPipelineChart.labels,
             datasets: [{
               data: debtPipelineChart.values,
-              backgroundColor: 'hsla(213,90%,70%,0.65)',
-              borderColor: 'hsl(213,90%,70%)',
+              backgroundColor: barBg('hsl(213,90%,70%)'),
+              borderColor: barBorder('hsl(213,90%,70%)'),
               borderWidth: 1,
               borderRadius: 4,
             }],
