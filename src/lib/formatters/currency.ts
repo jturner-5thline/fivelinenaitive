@@ -9,6 +9,12 @@ export function formatUSD(value: number | null | undefined): string {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}MM`;
+  } else if (abs >= 1_000) {
+    // Value expressed in thousands (e.g. 1296 → $1.30MM)
+    formatted = `$${(abs / 1_000).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}MM`;
   } else {
     // $XXX,XXXK with comma separators, no decimals
     formatted = `$${Math.round(abs).toLocaleString('en-US')}K`;
