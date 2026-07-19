@@ -1137,12 +1137,15 @@ function CashflowForecastWidget() {
               {
                 label: 'Ending Cash',
                 data: weeks.map((w) => w.endingCash),
-                backgroundColor: weeks.map((w) =>
-                  w.endingCash < 0 ? barBg('hsl(0,75%,60%)', { negative: true }) : premiumBlueBarBg(),
-                ),
-                borderColor: weeks.map((w) =>
-                  w.endingCash < 0 ? barBorder('hsl(0,75%,60%)') : barBorder('hsl(213,90%,70%)'),
-                ),
+                 backgroundColor: (ctx: any) => {
+                   const i = ctx?.dataIndex ?? 0;
+                   const w = weeks[i];
+                   const fn = w && w.endingCash < 0
+                     ? barBg('hsl(0,75%,60%)', { negative: true })
+                     : premiumBlueBarBg();
+                   return fn(ctx);
+                 },
+                 borderColor: 'rgba(0,0,0,0)',
                 borderWidth: 0,
                 borderRadius: BAR_RADIUS,
               },
