@@ -30,6 +30,7 @@ import {
 import { useDashboardPeriod } from '@/components/metrics/DashboardPeriodPicker';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import { SalesTeamBoardKpiGrid } from '@/components/metrics/dashboards/SalesTeamBoardDashboard';
+import { ShareReportDialog } from '@/components/metrics/dashboards/ShareReportDialog';
 import {
   Dialog,
   DialogContent,
@@ -72,6 +73,7 @@ import {
   Save,
   Info,
   TrendingUp,
+  Share2,
 } from 'lucide-react';
 import {
   Tooltip as UITooltip,
@@ -3886,7 +3888,8 @@ function SummaryTile({ label, value, color }: { label: string; value: string; co
 // ============================================================
 // MAIN
 // ============================================================
-export function SalesDashboardV2() {
+export function SalesDashboardV2({ reportMode = false }: { reportMode?: boolean } = {}) {
+  const [shareReportOpen, setShareReportOpen] = React.useState(false);
   // Timeframe is driven by the shared Insights header picker
   // (Quick Presets / Quarter / Month). Fall back to a local persisted
   // selection only if this dashboard is ever rendered outside the
@@ -4774,6 +4777,16 @@ export function SalesDashboardV2() {
           {/* KPI strip */}
           <div className="mb-6">
             <div className="flex items-center justify-end gap-2 mb-2">
+              {!reportMode && (
+                <button
+                  type="button"
+                  onClick={() => setShareReportOpen(true)}
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium text-white/85 hover:text-white bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 transition-colors"
+                >
+                  <Share2 size={13} />
+                  Share Report
+                </button>
+              )}
               <ValueModeToggle
                 value={kpiValueMode}
                 onChange={setKpiValueMode}
@@ -5049,10 +5062,13 @@ export function SalesDashboardV2() {
           </div>
 
           {/* Sales model sheet */}
-          <SalesModelSheet />
+          {!reportMode && <SalesModelSheet />}
         </div>
       </div>
     </div>
+    {!reportMode && (
+      <ShareReportDialog open={shareReportOpen} onOpenChange={setShareReportOpen} />
+    )}
     <MetricDrilldownDialog
       focus={drillFocus}
       onClose={() => setDrillFocus(null)}
