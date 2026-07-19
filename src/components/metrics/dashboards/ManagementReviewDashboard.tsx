@@ -64,12 +64,16 @@ const NA_COLOR = 'rgba(255,255,255,0.35)';
 // `emphasis` lets an individual widget dim non-current bars without breaking
 // the shared recipe.
 // ---------------------------------------------------------------------------
+// Matches the LiquidGlass bar recipe used in Controller "FinServ Revenue by
+// Client": restrained top→bottom gradient (0.88 → 0.68), 3px top-corner
+// radius, no stroke — just a faint drop shadow rendered by Chart.js's own
+// default. Dim variant retains the same shape at lower luminance so past
+// bars still read as glass.
 const BAR_RECIPE = {
-  positive: { top: 0.95, bottom: 0.35, dimTop: 0.65, dimBottom: 0.18 },
-  negative: { top: 0.95, bottom: 0.35, dimTop: 0.65, dimBottom: 0.18 },
+  positive: { top: 0.88, bottom: 0.68, dimTop: 0.55, dimBottom: 0.38 },
+  negative: { top: 0.88, bottom: 0.68, dimTop: 0.55, dimBottom: 0.38 },
 };
-const BAR_BORDER_ALPHA = 0.9;
-const BAR_BORDER_ALPHA_DIM = 0.35;
+const BAR_RADIUS = 3;
 
 function _stripToHsl(color: string): { h: number; s: number; l: number } | null {
   const m = color.match(/hsla?\(\s*([\d.]+)[,\s]+([\d.]+)%[,\s]+([\d.]+)%/i);
