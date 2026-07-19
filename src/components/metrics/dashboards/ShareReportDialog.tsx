@@ -67,7 +67,7 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
           {/* Rich text editor */}
           <div className="px-6 pt-4">
             <div
-              className="rounded-lg border border-white/10 bg-white/[0.03]"
+              className="rounded-lg border border-white/10 bg-white/[0.03] w-1/2"
               onClick={() => editor?.chain().focus().run()}
             >
               <div className="flex items-center gap-1 px-2 py-1.5 border-b border-white/10">
