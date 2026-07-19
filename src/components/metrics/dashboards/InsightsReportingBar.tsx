@@ -3,6 +3,7 @@ import { RefreshCw, Loader2 } from 'lucide-react';
 import { format, endOfDay, startOfDay, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { useInsightsTimeframe } from '@/contexts/InsightsTimeframeContext';
