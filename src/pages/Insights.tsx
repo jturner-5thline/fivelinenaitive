@@ -2526,7 +2526,7 @@ function MetricsInner() {
                       aria-label="Open Insights Assistant"
                       aria-haspopup="dialog"
                       aria-expanded={assistantOpen}
-                      className="h-9 w-9 p-0 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30 text-primary hover:from-primary/15 hover:to-primary/10"
+                      className="h-9 w-9 p-0 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30 text-primary hover:from-primary/15 hover:to-primary/10 hidden"
                       onClick={() => setAssistantOpen(true)}
                     >
                       <Sparkles className="h-4 w-4" />
