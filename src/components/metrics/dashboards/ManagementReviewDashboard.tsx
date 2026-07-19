@@ -1088,13 +1088,13 @@ function CashflowForecastWidget() {
                 label: 'Ending Cash',
                 data: weeks.map((w) => w.endingCash),
                 backgroundColor: weeks.map((w) =>
-                  w.endingCash < 0 ? 'hsla(0,75%,60%,0.55)' : 'hsla(213,90%,70%,0.55)',
+                  w.endingCash < 0 ? barBg('hsl(0,75%,60%)', { negative: true }) : barBg('hsl(213,90%,70%)'),
                 ),
                 borderColor: weeks.map((w) =>
-                  w.endingCash < 0 ? 'hsla(0,75%,60%,0.85)' : 'hsla(213,90%,70%,0.85)',
+                  w.endingCash < 0 ? barBorder('hsl(0,75%,60%)') : barBorder('hsl(213,90%,70%)'),
                 ),
-                borderWidth: 1,
-                borderRadius: 4,
+                borderWidth: 0,
+                borderRadius: BAR_RADIUS,
               },
             ],
           },
@@ -2681,8 +2681,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               data: debtPipelineChart.values,
               backgroundColor: barBg('hsl(213,90%,70%)'),
               borderColor: barBorder('hsl(213,90%,70%)'),
-              borderWidth: 1,
-              borderRadius: 4,
+              borderWidth: 0,
+              borderRadius: BAR_RADIUS,
             }],
           },
           options: {
@@ -3123,8 +3123,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 : b.bucket === '90+'   ? barBorder('hsl(355, 100%, 68%)')
                                        : barBorder('hsl(42, 100%, 56%)')
             ),
-            borderWidth: 1,
-            borderRadius: 4,
+            borderWidth: 0,
+            borderRadius: BAR_RADIUS,
           }] },
           options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } } } },
         }
