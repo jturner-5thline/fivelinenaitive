@@ -1708,16 +1708,58 @@ function CumulativePace() {
             />
             <Tooltip
               cursor={{ stroke: C.textFaint, strokeDasharray: '3 3' }}
-              contentStyle={{
-                background: 'rgba(8,8,12,0.95)',
-                border: `1px solid ${C.surfaceBorder}`,
-                borderRadius: 8,
-                color: C.textPrimary,
-                fontSize: 12,
+              content={({ active, payload, label }) => {
+                if (!active || !payload || !payload.length) return null;
+                const actual = Number(payload.find((p: any) => p.dataKey === 'actual')?.value ?? 0);
+                const plan = Number(payload.find((p: any) => p.dataKey === 'plan')?.value ?? 0);
+                const diff = actual - plan;
+                const pct = plan !== 0 ? (diff / plan) * 100 : null;
+                const positive = diff >= 0;
+                const varColor = positive ? C.cyan : C.rose;
+                const sign = positive ? '+' : '−';
+                return (
+                  <div
+                    style={{
+                      background: 'rgba(8,8,12,0.95)',
+                      border: `1px solid ${C.surfaceBorder}`,
+                      borderRadius: 8,
+                      color: C.textPrimary,
+                      fontSize: 12,
+                      padding: '8px 10px',
+                      minWidth: 160,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, marginBottom: 6 }}>{label}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                      <span style={{ color: C.cyan }}>YTD Actual</span>
+                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(actual)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                      <span style={{ color: '#a855f7' }}>YTD Plan</span>
+                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(plan)}</span>
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 6,
+                        paddingTop: 6,
+                        borderTop: `1px solid ${C.hairline}`,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        color: varColor,
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      <span>Variance</span>
+                      <span>
+                        {sign}
+                        {fmt(Math.abs(diff))}
+                        {pct !== null ? ` (${sign}${Math.abs(pct).toFixed(1)}%)` : ''}
+                      </span>
+                    </div>
+                  </div>
+                );
               }}
-              labelStyle={{ color: C.textPrimary, fontWeight: 600, marginBottom: 4 }}
-              itemStyle={{ color: C.textPrimary }}
-              formatter={(v: number, n: string) => [fmt(v), n === 'plan' ? 'YTD Plan' : 'YTD Actual']}
             />
             <ReferenceLine
               x={months[E - 1] ?? ''}
