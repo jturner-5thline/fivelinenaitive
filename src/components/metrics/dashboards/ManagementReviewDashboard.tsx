@@ -2776,8 +2776,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const arRef = useRef<HTMLCanvasElement>(null);
 
   const lastIdx = monthLabels.length - 1;
-  const bcol = monthLabels.map((_, i) => i === lastIdx ? 'hsla(213,90%,70%,0.85)' : 'hsla(213,90%,70%,0.55)');
-  const bbrd = monthLabels.map((_, i) => i === lastIdx ? 'hsl(213,90%,70%)' : 'rgba(255,255,255,0.08)');
+  const bcol = monthLabels.map((_, i) => barBg('hsl(213,90%,70%)', { dim: i !== lastIdx }));
+  const bbrd = monthLabels.map((_, i) => barBorder('hsl(213,90%,70%)', { dim: i !== lastIdx }));
 
   useChart(
     rcRef,
