@@ -4066,9 +4066,38 @@ export function SalesDashboardV2() {
   // rows and matches both `sales-dashboard-v2` and
   // `consolidated-debt-pipeline` namespaces.
   const masterPlanMonthly = useMasterPlanMonthly([
+    'deals-on-board',
+    'deals-on-board-value',
+    'proposals-issued',
+    'dollars-proposed',
+    'deals-signed',
+    'dollars-signed',
+    'clients-receiving-terms',
+    'terms-signed',
+    'volume-of-terms-signed',
+    'deals-closed',
+    'dollars-funded',
     'finserv-proposals-issued',
     'finserv-dollars-proposed',
   ]);
+
+  // Map dashboard MetricKey → Master Plan widget key + divisor.
+  // Currency metrics store raw USD in the Master Plan; dashboard renders $MM.
+  const PLAN_OVERLAY_MAP: Partial<Record<MetricKey, { widgetKey: string; divisor: number }>> = {
+    dealsOnBoard: { widgetKey: 'deals-on-board', divisor: 1 },
+    dollarsOnBoard: { widgetKey: 'deals-on-board-value', divisor: 1_000_000 },
+    proposalsIssued: { widgetKey: 'proposals-issued', divisor: 1 },
+    dollarsProposed: { widgetKey: 'dollars-proposed', divisor: 1_000_000 },
+    clientsSigned: { widgetKey: 'deals-signed', divisor: 1 },
+    dollarsSigned: { widgetKey: 'dollars-signed', divisor: 1_000_000 },
+    clientsReceivingTerms: { widgetKey: 'clients-receiving-terms', divisor: 1 },
+    termsSigned: { widgetKey: 'terms-signed', divisor: 1 },
+    volumeOfTermsSigned: { widgetKey: 'volume-of-terms-signed', divisor: 1_000_000 },
+    dealsClosed: { widgetKey: 'deals-closed', divisor: 1 },
+    dollarsFunded: { widgetKey: 'dollars-funded', divisor: 1_000_000 },
+    finservProposalsIssued: { widgetKey: 'finserv-proposals-issued', divisor: 1 },
+    finservDollarsProposed: { widgetKey: 'finserv-dollars-proposed', divisor: 1_000_000 },
+  };
 
   // Overlay live FinServ Proposals actuals + Master Plan monthly targets
   // onto the view consumed by the PerformancePanel drivers list.
@@ -4147,8 +4176,11 @@ export function SalesDashboardV2() {
         const mp = masterPlanMonthly.values[widgetKey]?.[ym];
         return mp !== undefined ? mp / divisor : base;
       });
-    ytdPlan.finservProposalsIssued = overlayYtdPlan('finserv-proposals-issued', ytdPlan.finservProposalsIssued);
-    ytdPlan.finservDollarsProposed = overlayYtdPlan('finserv-dollars-proposed', ytdPlan.finservDollarsProposed, 1_000_000);
+    // Overlay Master Plan monthly targets onto ALL mapped metrics for YTD.
+    (Object.keys(PLAN_OVERLAY_MAP) as MetricKey[]).forEach((mk) => {
+      const m = PLAN_OVERLAY_MAP[mk]!;
+      ytdPlan[mk] = overlayYtdPlan(m.widgetKey, ytdPlan[mk], m.divisor);
+    });
 
     return {
       ...view,
@@ -4157,12 +4189,14 @@ export function SalesDashboardV2() {
         finservProposalsIssued: liveProposalsIssuedActualFinserv,
         finservDollarsProposed: liveDollarsProposedActualFinserv,
       },
-      plan: {
-        ...view.plan,
-        finservProposalsIssued: overlayPlan('finserv-proposals-issued', view.plan.finservProposalsIssued),
-        // Dashboard renders $ in $MM; Master Plan stores raw USD.
-        finservDollarsProposed: overlayPlan('finserv-dollars-proposed', view.plan.finservDollarsProposed, 1_000_000),
-      },
+      plan: (() => {
+        const nextPlan = { ...view.plan };
+        (Object.keys(PLAN_OVERLAY_MAP) as MetricKey[]).forEach((mk) => {
+          const m = PLAN_OVERLAY_MAP[mk]!;
+          nextPlan[mk] = overlayPlan(m.widgetKey, view.plan[mk], m.divisor);
+        });
+        return nextPlan;
+      })(),
       ytdMonths,
       ytdPlan,
       ytdActual,
