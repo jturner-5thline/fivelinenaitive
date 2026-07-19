@@ -1039,6 +1039,7 @@ function TopSourcedViaWidget() {
   const view = useView();
   const { company } = useCompany();
   const [selectedSource, setSelectedSource] = React.useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Period math — derive period length in whole months from the selected
   // range, then compute two prior periods of the same length.
