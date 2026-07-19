@@ -1050,7 +1050,7 @@ function TopSourcedViaWidget() {
         .select('deal_id')
         .eq('pipeline_id', ACTIVE_PIPELINE_ID)
         .eq('event_type', 'stage_enter')
-        .eq('to_stage_id', 'ndaneeds-list-sent')
+        .or('to_stage_id.eq.ndaneeds-list-sent,to_stage.eq.ndaneeds-list-sent')
         .gte('changed_at', startIso)
         .lt('changed_at', endIso);
 
@@ -1071,7 +1071,7 @@ function TopSourcedViaWidget() {
             .select('deal_id')
             .eq('pipeline_id', naitivePipelineId)
             .eq('event_type', 'stage_enter')
-            .eq('to_stage_id', 'demo-access')
+            .or('to_stage_id.eq.demo-access,to_stage.eq.demo-access')
             .gte('changed_at', startIso)
             .lt('changed_at', endIso)
         : Promise.resolve({ data: [] as { deal_id: string }[], error: null });
