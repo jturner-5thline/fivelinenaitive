@@ -2834,8 +2834,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         inv => inv.total_amt,
       ))
     : ttmSeries.map(p => p.revenue);
-  const monthlyCol = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? 'hsla(213,90%,70%,0.85)' : 'hsla(213,90%,70%,0.55)');
-  const monthlyBrd = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? 'hsl(213,90%,70%)' : 'rgba(255,255,255,0.08)');
+  const monthlyCol = monthlyTrendLabels.map((_l, i) => barBg('hsl(213,90%,70%)', { dim: i !== monthlyTrendLabels.length - 1 }));
+  const monthlyBrd = monthlyTrendLabels.map((_l, i) => barBorder('hsl(213,90%,70%)', { dim: i !== monthlyTrendLabels.length - 1 }));
   const activeTrendValues = trendMode === 'ttm' ? ttmTrendValues : monthlyTrendValues;
   // Compute a "prior" value for the FIRST bucket so the trend line starts at
   // the first period rather than the second. Prior = the same-shape window
