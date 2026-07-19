@@ -4066,9 +4066,38 @@ export function SalesDashboardV2() {
   // rows and matches both `sales-dashboard-v2` and
   // `consolidated-debt-pipeline` namespaces.
   const masterPlanMonthly = useMasterPlanMonthly([
+    'deals-on-board',
+    'deals-on-board-value',
+    'proposals-issued',
+    'dollars-proposed',
+    'deals-signed',
+    'dollars-signed',
+    'clients-receiving-terms',
+    'terms-signed',
+    'volume-of-terms-signed',
+    'deals-closed',
+    'dollars-funded',
     'finserv-proposals-issued',
     'finserv-dollars-proposed',
   ]);
+
+  // Map dashboard MetricKey → Master Plan widget key + divisor.
+  // Currency metrics store raw USD in the Master Plan; dashboard renders $MM.
+  const PLAN_OVERLAY_MAP: Partial<Record<MetricKey, { widgetKey: string; divisor: number }>> = {
+    dealsOnBoard: { widgetKey: 'deals-on-board', divisor: 1 },
+    dollarsOnBoard: { widgetKey: 'deals-on-board-value', divisor: 1_000_000 },
+    proposalsIssued: { widgetKey: 'proposals-issued', divisor: 1 },
+    dollarsProposed: { widgetKey: 'dollars-proposed', divisor: 1_000_000 },
+    clientsSigned: { widgetKey: 'deals-signed', divisor: 1 },
+    dollarsSigned: { widgetKey: 'dollars-signed', divisor: 1_000_000 },
+    clientsReceivingTerms: { widgetKey: 'clients-receiving-terms', divisor: 1 },
+    termsSigned: { widgetKey: 'terms-signed', divisor: 1 },
+    volumeOfTermsSigned: { widgetKey: 'volume-of-terms-signed', divisor: 1_000_000 },
+    dealsClosed: { widgetKey: 'deals-closed', divisor: 1 },
+    dollarsFunded: { widgetKey: 'dollars-funded', divisor: 1_000_000 },
+    finservProposalsIssued: { widgetKey: 'finserv-proposals-issued', divisor: 1 },
+    finservDollarsProposed: { widgetKey: 'finserv-dollars-proposed', divisor: 1_000_000 },
+  };
 
   // Overlay live FinServ Proposals actuals + Master Plan monthly targets
   // onto the view consumed by the PerformancePanel drivers list.
