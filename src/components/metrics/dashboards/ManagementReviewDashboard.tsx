@@ -2874,7 +2874,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   );
 
   const ttmLabels = ttmTrendSeries.map(p => p.month);
-  const ttmCol = (ctx: any) => premiumBlueBarBg()(ctx);
+  const ttmCol = 'hsl(var(--primary))';
   const ttmBrd = 'rgba(0,0,0,0)';
   const [trendMode, setTrendMode] = useState<'ttm' | 'monthly' | 'quarterly-yoy'>('ttm');
   const [showTrendDelta, setShowTrendDelta] = useState<boolean>(false);
@@ -2892,7 +2892,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         inv => inv.total_amt,
       ))
     : ttmSeries.map(p => p.revenue);
-  const monthlyCol = (ctx: any) => premiumBlueBarBg()(ctx);
+  const monthlyCol = 'hsl(var(--primary))';
   const monthlyBrd = 'rgba(0,0,0,0)';
   const activeTrendValues = trendMode === 'ttm' ? ttmTrendValues : monthlyTrendValues;
   // Compute a "prior" value for the FIRST bucket so the trend line starts at
@@ -2966,7 +2966,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             ? {
                 labels: ttmLabels,
                 datasets: [
-                  { label: 'TTM Revenue', data: ttmTrendValues, backgroundColor: ttmCol, borderColor: ttmBrd, borderWidth: 0, borderRadius: 3, order: 2, yAxisID: 'y' },
+                  { label: 'TTM Revenue', data: ttmTrendValues, backgroundColor: ttmCol, borderColor: ttmBrd, borderWidth: 0, borderRadius: 4, order: 2, yAxisID: 'y' },
                   ...(showTrendDelta ? [{
                     type: 'line' as const,
                     label: '% Change vs Prior',
@@ -2986,7 +2986,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             : {
                 labels: monthlyTrendLabels,
                 datasets: [
-                  { label: 'Monthly Revenue', data: monthlyTrendValues, backgroundColor: monthlyCol, borderColor: monthlyBrd, borderWidth: 0, borderRadius: 3, order: 2, yAxisID: 'y' },
+                  { label: 'Monthly Revenue', data: monthlyTrendValues, backgroundColor: monthlyCol, borderColor: monthlyBrd, borderWidth: 0, borderRadius: 4, order: 2, yAxisID: 'y' },
                   ...(showTrendDelta ? [{
                     type: 'line' as const,
                     label: '% Change vs Prior',
