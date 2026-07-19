@@ -1105,9 +1105,8 @@ function TopSourcedViaWidget() {
 
       const { data: dealsData, error: dealsErr } = await supabase
         .from('deals')
-        .select('id, company, sourced_via, referral_source, referral_source_id, created_at')
-        .in('id', Array.from(dealIds))
-        .not('sourced_via', 'is', null);
+        .select('id, company, sourced_via, referral_source, referral_source_id, referred_by, lead_source, created_at')
+        .in('id', Array.from(dealIds));
       if (dealsErr) throw dealsErr;
       return (dealsData ?? []) as Array<{
         id: string;
@@ -1115,6 +1114,8 @@ function TopSourcedViaWidget() {
         sourced_via: string | null;
         referral_source: string | null;
         referral_source_id: string | null;
+        referred_by: string | null;
+        lead_source: string | null;
         created_at: string;
       }>;
     },
@@ -1125,8 +1126,12 @@ function TopSourcedViaWidget() {
     let total = 0;
     for (const d of data ?? []) {
       if (isExcludedDeal(d.company)) continue;
-      const key = (d.sourced_via || '').trim();
-      if (!key) continue;
+      const key =
+        (d.sourced_via || '').trim() ||
+        (d.referral_source || '').trim() ||
+        (d.referred_by || '').trim() ||
+        (d.lead_source || '').trim() ||
+        'Unattributed';
       counts.set(key, (counts.get(key) ?? 0) + 1);
       total += 1;
     }
@@ -1213,7 +1218,16 @@ function TopSourcedViaWidget() {
     <SourcedViaDrilldownDialog
       source={selectedSource}
       deals={(data ?? []).filter(
-        (d) => !isExcludedDeal(d.company) && (d.sourced_via || '').trim() === selectedSource,
+        (d) => {
+          if (isExcludedDeal(d.company)) return false;
+          const key =
+            (d.sourced_via || '').trim() ||
+            (d.referral_source || '').trim() ||
+            (d.referred_by || '').trim() ||
+            (d.lead_source || '').trim() ||
+            'Unattributed';
+          return key === selectedSource;
+        },
       )}
       viewLabel={view.label}
       onClose={() => setSelectedSource(null)}
