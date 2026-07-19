@@ -4040,7 +4040,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <div className="flex h-full flex-col">
               <div className="flex flex-col divide-y divide-border">
                 {[
-                  { label: "Next 3 Months' Revenue", value: next3Months.revenueSum > 0 ? formatUSD(next3Months.revenueSum / 1000) : '—' },
+                  { label: "Next 3 Months' Revenue", value: '—' },
                   { label: "Next 3 Months' Profit", value: '—' },
                   { label: 'Operating Cashflow', value: '—' },
                   { label: 'Client Signings', value: '—' },
