@@ -109,7 +109,7 @@ export function InsightsReportingBar({ tabsSlot }: Props) {
               Last updated {format(lastUpdated, 'MMM d, yyyy h:mm a')}
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, flexWrap: 'wrap' }}>
+          <div style={{ display: 'none', alignItems: 'center', gap: 12, fontSize: 11, flexWrap: 'wrap' }}>
             <span style={{ color: 'rgba(255,255,255,0.5)' }}>Period Rev</span>
             <span style={{ fontWeight: 700, color: '#e8f6ff' }}>{fmtUSD(totalRevCurr)}</span>
             <span style={{ color: 'rgba(255,255,255,0.5)' }}>YTD</span>
