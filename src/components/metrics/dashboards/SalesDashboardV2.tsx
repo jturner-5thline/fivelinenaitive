@@ -340,8 +340,8 @@ const C = {
 
 const glassStyle: React.CSSProperties = {
   background:
-    'linear-gradient(135deg, hsl(220, 55%, 20%) 0%, hsl(245, 45%, 13%) 50%, hsl(268, 40%, 7%) 100%)',
-  border: `1px solid rgba(255,255,255,0.22)`,
+    'linear-gradient(135deg, hsl(220, 45%, 17%) 0%, hsl(245, 38%, 12%) 50%, hsl(265, 32%, 8%) 100%)',
+  border: `1px solid rgba(255,255,255,0.20)`,
   backdropFilter: 'blur(10px)',
   WebkitBackdropFilter: 'blur(10px)',
   borderRadius: 8,
