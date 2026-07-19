@@ -1032,20 +1032,84 @@ function TopSourcedViaWidget() {
   const [selectedSource, setSelectedSource] = React.useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['top-sourced-via', company?.id, startIso, endIso],
+    queryKey: ['top-sourced-via-v2', company?.id, startIso, endIso],
     enabled: !!company?.id,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Pipeline IDs. Active pipeline: deals entering "NDA / Needs List Sent".
+      // FinServ pipeline: deals created in-period. Naitive pipeline: deals
+      // entering "Demo Access".
+      const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
+      const FINSERV_PIPELINE_ID = 'eb9db15a-62cc-4b99-adcf-24e57a2a46ce';
+      const { getNaitivePipelineId } = await import('@/utils/naitivePipelineExclusion');
+      const naitivePipelineId = await getNaitivePipelineId();
+
+      // 1) Active pipeline — NDA / Needs List Sent stage entries in-period.
+      const ndaQ = supabase
+        .from('deal_stage_history')
+        .select('deal_id')
+        .eq('pipeline_id', ACTIVE_PIPELINE_ID)
+        .eq('event_type', 'stage_enter')
+        .eq('to_stage_id', 'ndaneeds-list-sent')
+        .gte('changed_at', startIso)
+        .lt('changed_at', endIso);
+
+      // 2) FinServ pipeline — deals created in-period.
+      const finservQ = supabase
         .from('deals')
-        .select('id, company, sourced_via, created_at, referral_source, referral_source_id')
+        .select('id')
         .eq('company_id', company!.id)
+        .eq('pipeline_id', FINSERV_PIPELINE_ID)
         .neq('status', 'archived')
         .gte('created_at', startIso)
-        .lte('created_at', endIso)
+        .lte('created_at', endIso);
+
+      // 3) Naitive pipeline — Demo Access stage entries in-period.
+      const naitiveQ = naitivePipelineId
+        ? supabase
+            .from('deal_stage_history')
+            .select('deal_id')
+            .eq('pipeline_id', naitivePipelineId)
+            .eq('event_type', 'stage_enter')
+            .eq('to_stage_id', 'demo-access')
+            .gte('changed_at', startIso)
+            .lt('changed_at', endIso)
+        : Promise.resolve({ data: [] as { deal_id: string }[], error: null });
+
+      const [ndaRes, finservRes, naitiveRes] = await Promise.all([ndaQ, finservQ, naitiveQ]);
+      if ((ndaRes as any).error) throw (ndaRes as any).error;
+      if ((finservRes as any).error) throw (finservRes as any).error;
+      if ((naitiveRes as any).error) throw (naitiveRes as any).error;
+
+      const dealIds = new Set<string>();
+      for (const r of ((ndaRes as any).data ?? []) as { deal_id: string | null }[]) {
+        if (r.deal_id) dealIds.add(r.deal_id);
+      }
+      for (const r of ((finservRes as any).data ?? []) as { id: string }[]) {
+        if (r.id) dealIds.add(r.id);
+      }
+      for (const r of ((naitiveRes as any).data ?? []) as { deal_id: string | null }[]) {
+        if (r.deal_id) dealIds.add(r.deal_id);
+      }
+
+      if (dealIds.size === 0) {
+        return [] as Array<{
+          id: string;
+          company: string | null;
+          sourced_via: string | null;
+          referral_source: string | null;
+          referral_source_id: string | null;
+          created_at: string;
+        }>;
+      }
+
+      const { data: dealsData, error: dealsErr } = await supabase
+        .from('deals')
+        .select('id, company, sourced_via, referral_source, referral_source_id, created_at')
+        .in('id', Array.from(dealIds))
         .not('sourced_via', 'is', null);
-      if (error) throw error;
-      return (data || []) as Array<{
+      if (dealsErr) throw dealsErr;
+      return (dealsData ?? []) as Array<{
         id: string;
         company: string | null;
         sourced_via: string | null;
