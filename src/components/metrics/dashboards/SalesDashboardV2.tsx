@@ -1857,7 +1857,7 @@ function KeyStatCard({
         </button>
         <div className="flex items-center gap-3 text-[10px]" style={{ color: C.textMuted }}>
           <span className="flex items-center gap-1">
-            <span style={{ width: 12, height: 0, borderTop: `1.5px dashed ${C.periwinkle}`, display: 'inline-block' }} />
+            <span style={{ width: 12, height: 0, borderTop: `1.5px dashed #a855f7`, display: 'inline-block' }} />
             Plan
           </span>
           <span className="flex items-center gap-1">
@@ -1903,7 +1903,7 @@ function KeyStatCard({
             <Line
               type="monotone"
               dataKey="plan"
-              stroke={C.periwinkle}
+              stroke="#a855f7"
               strokeWidth={1.4}
               strokeDasharray="4 4"
               dot={false}
@@ -3541,7 +3541,7 @@ function MetricDrilldownDialog({
         {/* Summary tiles */}
         <div className="grid grid-cols-4 gap-3">
           <SummaryTile label="Actual" value={fmtRow(totalActual, effectiveRowType)} color={C.cyan} />
-          <SummaryTile label="Plan" value={fmtRow(totalPlan, effectiveRowType)} color={C.periwinkle} />
+          <SummaryTile label="Plan" value={fmtRow(totalPlan, effectiveRowType)} color="#a855f7" />
           <SummaryTile
             label="Variance"
             value={effectiveRowType === 'money' ? fmtSignedMoney(variance) : fmtSignedCount(variance)}
@@ -3805,7 +3805,7 @@ function MetricDrilldownDialog({
                 </div>
                 <div className="flex items-center gap-3 text-[10px]" style={{ color: C.textMuted }}>
                   <span className="flex items-center gap-1">
-                    <span style={{ width: 14, height: 0, borderTop: `1.5px dashed ${C.periwinkle}`, display: 'inline-block' }} />
+                    <span style={{ width: 14, height: 0, borderTop: `1.5px dashed #a855f7`, display: 'inline-block' }} />
                     Plan
                   </span>
                   <span className="flex items-center gap-1">
@@ -3835,14 +3835,14 @@ function MetricDrilldownDialog({
                     {E > 0 && E < view.months.length && (
                       <ReferenceLine x={view.months[E - 1]} stroke={C.periwinkle} strokeDasharray="2 3" strokeOpacity={0.5} />
                     )}
-                    <Line type="monotone" dataKey="plan" stroke={C.periwinkle} strokeWidth={1.6} strokeDasharray="4 4" dot={false} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="plan" stroke="#a855f7" strokeWidth={1.6} strokeDasharray="4 4" dot={false} isAnimationActive={false} />
                     <Line type="monotone" dataKey="actual" stroke={C.cyan} strokeWidth={2.4} dot={{ r: 3, fill: C.cyan }} connectNulls={false} isAnimationActive={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
               <div className="mt-3 grid grid-cols-4 gap-3">
                 <SummaryTile label="Actual" value={fmtRow(totalActual, effectiveRowType)} color={C.cyan} />
-                <SummaryTile label="Plan" value={fmtRow(totalPlan, effectiveRowType)} color={C.periwinkle} />
+                <SummaryTile label="Plan" value={fmtRow(totalPlan, effectiveRowType)} color="#a855f7" />
                 <SummaryTile
                   label="Variance"
                   value={effectiveRowType === 'money' ? fmtSignedMoney(variance) : fmtSignedCount(variance)}
