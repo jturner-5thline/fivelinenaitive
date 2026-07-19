@@ -99,6 +99,30 @@ function barBg(color: string, opts: { negative?: boolean; dim?: boolean } = {}) 
     return g;
   };
 }
+// Matches the Controller "FinServ Revenue by Client" SVG LiquidGlass bar
+// (restrained gradient + subtle white top-highlight). Chart.js can't stack
+// SVG overlays like the Recharts shape does, so we simulate the "lit edge"
+// by lifting the top gradient stop's lightness and layering a white sheen.
+function finservBarBg(color: string, opts: { negative?: boolean; dim?: boolean } = {}) {
+  return (ctx: any) => {
+    const area = ctx?.chart?.chartArea;
+    if (!area) return color;
+    const hsl = _stripToHsl(color);
+    if (!hsl) return color;
+    const litL = Math.min(96, hsl.l + 10);
+    const g = ctx.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+    if (opts.dim) {
+      g.addColorStop(0, _hsla(hsl.h, hsl.s, litL, 0.72));
+      g.addColorStop(0.22, _hsla(hsl.h, hsl.s, hsl.l, 0.55));
+      g.addColorStop(1, _hsla(hsl.h, hsl.s, hsl.l, 0.38));
+    } else {
+      g.addColorStop(0, _hsla(hsl.h, hsl.s, litL, 0.98));
+      g.addColorStop(0.22, _hsla(hsl.h, hsl.s, hsl.l, 0.88));
+      g.addColorStop(1, _hsla(hsl.h, hsl.s, hsl.l, 0.68));
+    }
+    return g;
+  };
+}
 // The LiquidGlass recipe used by Controller "FinServ Revenue by Client" has
 // no stroke — return transparent so callers can keep passing borderColor
 // without introducing an edge line.
