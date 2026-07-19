@@ -339,7 +339,8 @@ const C = {
 };
 
 const glassStyle: React.CSSProperties = {
-  background: C.surface,
+  background:
+    'linear-gradient(135deg, hsl(220, 30%, 10%) 0%, hsl(260, 15%, 5%) 100%)',
   border: `1px solid ${C.surfaceBorder}`,
   backdropFilter: 'blur(10px)',
   WebkitBackdropFilter: 'blur(10px)',
