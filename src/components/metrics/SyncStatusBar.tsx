@@ -63,13 +63,11 @@ export function SyncStatusBar() {
 
       {/* Auto-sync settings */}
       <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
-        {false && (
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-7 w-7">
+          <Button variant="ghost" size="icon" className="h-7 w-7 hidden">
             <Settings2 className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
         </PopoverTrigger>
-        )}
         <PopoverContent className="w-72" align="end">
           <div className="space-y-4">
             <div>
