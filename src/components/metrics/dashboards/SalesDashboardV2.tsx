@@ -4718,8 +4718,16 @@ export function SalesDashboardV2() {
             {(() => {
               const currDeals = ndaEnteredInRange.deals;
               const priorDeals = ndaEnteredPrior.deals;
-              const avg = (arr: typeof currDeals) =>
-                arr.length ? arr.reduce((s, d) => s + (Number(d.value) || 0), 0) / arr.length : null;
+              // Average deal size for deals entering "NDA / Needs List Sent" in
+              // the Active pipeline. Excludes deals with no value so the average
+              // is not dragged toward zero by unsized deals (matches sparkline).
+              const avg = (arr: typeof currDeals) => {
+                const sized = arr
+                  .map((d) => Number(d.value) || 0)
+                  .filter((v) => v > 0);
+                if (!sized.length) return null;
+                return sized.reduce((s, v) => s + v, 0) / sized.length;
+              };
               const currAvg = avg(currDeals);
               const priorAvg = avg(priorDeals);
               const fmt = (n: number | null) =>
@@ -4733,11 +4741,12 @@ export function SalesDashboardV2() {
                 currAvg != null && priorAvg != null && priorAvg !== 0
                   ? (currAvg - priorAvg) / priorAvg
                   : null;
+              const sizedCount = currDeals.filter((d) => (Number(d.value) || 0) > 0).length;
               const subtitle = loading
                 ? 'Loading…'
                 : currAvg == null
-                  ? 'No deals in period'
-                  : `${currDeals.length} deals · prior ${fmt(priorAvg)}`;
+                  ? 'No sized deals in period'
+                  : `${sizedCount} sized deals · prior ${fmt(priorAvg)}`;
               return (
                 <ConversionCard
                   title="Avg. New Deal on Board"
