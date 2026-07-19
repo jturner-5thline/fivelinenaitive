@@ -318,10 +318,10 @@ function buildView(quarter: QuarterOption): DashboardView {
 // ============================================================
 const C = {
   bg: '#08080C',
-  textPrimary: '#ECECF4',
-  textMuted: '#8A8AA6',
-  textFaint: '#5A5A72',
-  periwinkle: '#9DA2F5',
+  textPrimary: '#FFFFFF',
+  textMuted: '#FFFFFF',
+  textFaint: '#FFFFFF',
+  periwinkle: '#FFFFFF',
   cyan: '#5EEAD4',
   violet: '#A78BFA',
   rose: '#FB7185',
