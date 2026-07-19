@@ -64,12 +64,16 @@ const NA_COLOR = 'rgba(255,255,255,0.35)';
 // `emphasis` lets an individual widget dim non-current bars without breaking
 // the shared recipe.
 // ---------------------------------------------------------------------------
+// Matches the LiquidGlass bar recipe used in Controller "FinServ Revenue by
+// Client": restrained top→bottom gradient (0.88 → 0.68), 3px top-corner
+// radius, no stroke — just a faint drop shadow rendered by Chart.js's own
+// default. Dim variant retains the same shape at lower luminance so past
+// bars still read as glass.
 const BAR_RECIPE = {
-  positive: { top: 0.95, bottom: 0.35, dimTop: 0.65, dimBottom: 0.18 },
-  negative: { top: 0.95, bottom: 0.35, dimTop: 0.65, dimBottom: 0.18 },
+  positive: { top: 0.88, bottom: 0.68, dimTop: 0.55, dimBottom: 0.38 },
+  negative: { top: 0.88, bottom: 0.68, dimTop: 0.55, dimBottom: 0.38 },
 };
-const BAR_BORDER_ALPHA = 0.9;
-const BAR_BORDER_ALPHA_DIM = 0.35;
+const BAR_RADIUS = 3;
 
 function _stripToHsl(color: string): { h: number; s: number; l: number } | null {
   const m = color.match(/hsla?\(\s*([\d.]+)[,\s]+([\d.]+)%[,\s]+([\d.]+)%/i);
@@ -95,10 +99,11 @@ function barBg(color: string, opts: { negative?: boolean; dim?: boolean } = {}) 
     return g;
   };
 }
-function barBorder(color: string, opts: { dim?: boolean } = {}) {
-  const hsl = _stripToHsl(color);
-  if (!hsl) return color;
-  return _hsla(hsl.h, hsl.s, hsl.l, opts.dim ? BAR_BORDER_ALPHA_DIM : BAR_BORDER_ALPHA);
+// The LiquidGlass recipe used by Controller "FinServ Revenue by Client" has
+// no stroke — return transparent so callers can keep passing borderColor
+// without introducing an edge line.
+function barBorder(_color: string, _opts: { dim?: boolean } = {}) {
+  return 'rgba(0,0,0,0)';
 }
 
 // ============================================================================
@@ -1083,13 +1088,13 @@ function CashflowForecastWidget() {
                 label: 'Ending Cash',
                 data: weeks.map((w) => w.endingCash),
                 backgroundColor: weeks.map((w) =>
-                  w.endingCash < 0 ? 'hsla(0,75%,60%,0.55)' : 'hsla(213,90%,70%,0.55)',
+                  w.endingCash < 0 ? barBg('hsl(0,75%,60%)', { negative: true }) : barBg('hsl(213,90%,70%)'),
                 ),
                 borderColor: weeks.map((w) =>
-                  w.endingCash < 0 ? 'hsla(0,75%,60%,0.85)' : 'hsla(213,90%,70%,0.85)',
+                  w.endingCash < 0 ? barBorder('hsl(0,75%,60%)') : barBorder('hsl(213,90%,70%)'),
                 ),
-                borderWidth: 1,
-                borderRadius: 4,
+                borderWidth: 0,
+                borderRadius: BAR_RADIUS,
               },
             ],
           },
@@ -2676,8 +2681,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               data: debtPipelineChart.values,
               backgroundColor: barBg('hsl(213,90%,70%)'),
               borderColor: barBorder('hsl(213,90%,70%)'),
-              borderWidth: 1,
-              borderRadius: 4,
+              borderWidth: 0,
+              borderRadius: BAR_RADIUS,
             }],
           },
           options: {
@@ -2784,7 +2789,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     qbConnected && monthLabels.length > 0
       ? {
           type: 'bar',
-          data: { labels: monthLabels, datasets: [{ data: monthRevenue, backgroundColor: bcol, borderColor: bbrd, borderWidth: 1, borderRadius: 4 }] },
+          data: { labels: monthLabels, datasets: [{ data: monthRevenue, backgroundColor: bcol, borderColor: bbrd, borderWidth: 0, borderRadius: 3 }] },
           options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } } } },
         }
       : null,
@@ -2932,7 +2937,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             ? {
                 labels: ttmLabels,
                 datasets: [
-                  { label: 'TTM Revenue', data: ttmTrendValues, backgroundColor: ttmCol, borderColor: ttmBrd, borderWidth: 1, borderRadius: 4, order: 2, yAxisID: 'y' },
+                  { label: 'TTM Revenue', data: ttmTrendValues, backgroundColor: ttmCol, borderColor: ttmBrd, borderWidth: 0, borderRadius: 3, order: 2, yAxisID: 'y' },
                   ...(showTrendDelta ? [{
                     type: 'line' as const,
                     label: '% Change vs Prior',
@@ -2952,7 +2957,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             : {
                 labels: monthlyTrendLabels,
                 datasets: [
-                  { label: 'Monthly Revenue', data: monthlyTrendValues, backgroundColor: monthlyCol, borderColor: monthlyBrd, borderWidth: 1, borderRadius: 4, order: 2, yAxisID: 'y' },
+                  { label: 'Monthly Revenue', data: monthlyTrendValues, backgroundColor: monthlyCol, borderColor: monthlyBrd, borderWidth: 0, borderRadius: 3, order: 2, yAxisID: 'y' },
                   ...(showTrendDelta ? [{
                     type: 'line' as const,
                     label: '% Change vs Prior',
@@ -3071,7 +3076,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     stageBreakdown.length > 0
       ? {
           type: 'bar',
-          data: { labels: stageBreakdown.map(s => s.stage), datasets: [{ data: stageBreakdown.map(s => s.value), backgroundColor: barBg('hsl(213,90%,70%)'), borderColor: barBorder('hsl(213,90%,70%)'), borderWidth: 1, borderRadius: 4 }] },
+          data: { labels: stageBreakdown.map(s => s.stage), datasets: [{ data: stageBreakdown.map(s => s.value), backgroundColor: barBg('hsl(213,90%,70%)'), borderColor: barBorder('hsl(213,90%,70%)'), borderWidth: 0, borderRadius: 3 }] },
           options: { ...def, indexAxis: 'y' as const, scales: { x: { ...gx, ticks: { ...gx.ticks, callback: (v: number) => fmtUSD(v) } }, y: { ...gy } } },
         }
       : null,
@@ -3118,8 +3123,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 : b.bucket === '90+'   ? barBorder('hsl(355, 100%, 68%)')
                                        : barBorder('hsl(42, 100%, 56%)')
             ),
-            borderWidth: 1,
-            borderRadius: 4,
+            borderWidth: 0,
+            borderRadius: BAR_RADIUS,
           }] },
           options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } } } },
         }
