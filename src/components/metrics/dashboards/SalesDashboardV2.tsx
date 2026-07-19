@@ -4076,6 +4076,74 @@ export function SalesDashboardV2() {
         const mp = masterPlanMonthly.values[widgetKey]?.[ym];
         return mp !== undefined ? mp / divisor : b;
       });
+
+    // ---- YTD (Jan → end of selected range) arrays for CumulativePace ----
+    const ytdYear = view.rangeEnd.getUTCFullYear();
+    const endMonthIdx = view.rangeEnd.getUTCMonth(); // 0..11
+    const ytdMonths: string[] = [];
+    const ytdMonthKeys: string[] = [];
+    for (let m = 0; m <= endMonthIdx; m++) {
+      ytdMonths.push(MONTHS_ALL[m]);
+      ytdMonthKeys.push(`${ytdYear}-${String(m + 1).padStart(2, '0')}`);
+    }
+    const today = new Date();
+    let ytdElapsed = 0;
+    for (let m = 0; m <= endMonthIdx; m++) {
+      const start = new Date(ytdYear, m, 1);
+      if (start <= today) ytdElapsed += 1;
+      else break;
+    }
+    if (ytdElapsed < 1) ytdElapsed = Math.min(1, ytdMonths.length);
+
+    const liveMaps: Partial<Record<MetricKey, Record<string, number>>> = {
+      salesCalls: salesCallsByMonthKey,
+      dealsOnBoard: dealsOnBoardByMonthKey,
+      dollarsOnBoard: dollarsOnBoardByMonthKey,
+      proposalsIssued: proposalsIssuedByMonthKey,
+      dollarsProposed: dollarsProposedByMonthKey,
+      dollarsSigned: dollarsSignedByMonthKey,
+    };
+    const ytdPlan = {} as Record<MetricKey, number[]>;
+    const ytdActual = {} as Record<MetricKey, (number | null)[]>;
+    (Object.keys(PLAN) as MetricKey[]).forEach((k) => {
+      ytdPlan[k] = [];
+      ytdActual[k] = [];
+      for (let m = 0; m <= endMonthIdx; m++) {
+        // Plan — user forecast override wins, then seeded PLAN (SEED_YEAR only).
+        const draftKey = `${ytdYear}-${m}`;
+        const idx = fullDraft.columns.findIndex((c) => c.key === draftKey);
+        const override = idx >= 0 ? fullDraft.data[k]?.[idx] : undefined;
+        let planVal = 0;
+        if (override !== undefined) planVal = override;
+        else if (ytdYear === SEED_YEAR) {
+          const seedIdx = SEED_MONTH_INDEXES.indexOf(m);
+          planVal = seedIdx >= 0 ? PLAN[k][seedIdx] : 0;
+        }
+        ytdPlan[k].push(planVal);
+
+        // Actual — live monthKey map if we have one, else seeded ACTUAL (SEED_YEAR).
+        const map = liveMaps[k];
+        if (map) {
+          ytdActual[k].push(m < ytdElapsed ? (map[ytdMonthKeys[m]] ?? 0) : null);
+        } else if (ytdYear === SEED_YEAR) {
+          const seedIdx = SEED_MONTH_INDEXES.indexOf(m);
+          ytdActual[k].push(seedIdx >= 0 ? ACTUAL[k][seedIdx] : null);
+        } else {
+          ytdActual[k].push(null);
+        }
+      }
+    });
+
+    // Overlay Master Plan monthly targets onto FinServ plan rows for YTD too.
+    const overlayYtdPlan = (widgetKey: string, arr: number[], divisor = 1): number[] =>
+      arr.map((base, m) => {
+        const ym = ytdMonthKeys[m];
+        const mp = masterPlanMonthly.values[widgetKey]?.[ym];
+        return mp !== undefined ? mp / divisor : base;
+      });
+    ytdPlan.finservProposalsIssued = overlayYtdPlan('finserv-proposals-issued', ytdPlan.finservProposalsIssued);
+    ytdPlan.finservDollarsProposed = overlayYtdPlan('finserv-dollars-proposed', ytdPlan.finservDollarsProposed, 1_000_000);
+
     return {
       ...view,
       actual: {
@@ -4089,8 +4157,24 @@ export function SalesDashboardV2() {
         // Dashboard renders $ in $MM; Master Plan stores raw USD.
         finservDollarsProposed: overlayPlan('finserv-dollars-proposed', view.plan.finservDollarsProposed, 1_000_000),
       },
+      ytdMonths,
+      ytdPlan,
+      ytdActual,
+      ytdElapsed,
     };
-  }, [view, liveProposalsIssuedActualFinserv, liveDollarsProposedActualFinserv, masterPlanMonthly.values]);
+  }, [
+    view,
+    liveProposalsIssuedActualFinserv,
+    liveDollarsProposedActualFinserv,
+    masterPlanMonthly.values,
+    fullDraft,
+    salesCallsByMonthKey,
+    dealsOnBoardByMonthKey,
+    dollarsOnBoardByMonthKey,
+    proposalsIssuedByMonthKey,
+    dollarsProposedByMonthKey,
+    dollarsSignedByMonthKey,
+  ]);
 
   // Drilldown state
   const [drillFocus, setDrillFocus] = React.useState<DrilldownFocus | null>(null);
