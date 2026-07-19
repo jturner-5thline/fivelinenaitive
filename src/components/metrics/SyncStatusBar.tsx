@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,13 +7,17 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CheckCircle2, Settings2 } from 'lucide-react';
+import { CheckCircle2, RefreshCw, Settings2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useSyncSchedule } from '@/hooks/useSyncSchedule';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 export function SyncStatusBar() {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const { settings, updateSettings } = useSyncSchedule();
+  const queryClient = useQueryClient();
 
   const { data: syncStatuses } = useQuery({
     queryKey: ['sync-status-bar'],
@@ -41,6 +45,30 @@ export function SyncStatusBar() {
 
   const hasAnySyncs = syncStatuses && Object.values(syncStatuses).some(s => s.lastSync);
 
+  const handleManualRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const results = await Promise.allSettled([
+        supabase.functions.invoke('quickbooks-sync', { body: {} }),
+        supabase.functions.invoke('hubspot-sync', { body: {} }),
+      ]);
+      const failed = results.filter(r => r.status === 'rejected').length;
+      await queryClient.invalidateQueries({ queryKey: ['sync-status-bar'] });
+      if (failed === results.length) {
+        toast.error('Sync failed. Please try again.');
+      } else if (failed > 0) {
+        toast.warning('Partial sync completed.');
+      } else {
+        toast.success('Sync complete. Timestamps updated.');
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Sync failed');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <div className="flex items-center gap-2 flex-wrap">
       {syncStatuses?.qb?.lastSync && (
@@ -60,6 +88,18 @@ export function SyncStatusBar() {
           </span>
         </Badge>
       )}
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleManualRefresh}
+        disabled={refreshing}
+        className="h-7 px-2 gap-1.5 text-xs font-normal"
+        aria-label="Refresh sync"
+      >
+        <RefreshCw className={cn('h-3 w-3', refreshing && 'animate-spin')} />
+        {refreshing ? 'Syncing…' : 'Refresh'}
+      </Button>
 
       {/* Auto-sync settings */}
       <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
