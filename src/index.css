@@ -1418,6 +1418,34 @@ button[role="combobox"] {
   border-radius: 12px;
 }
 
+/* ─────────────────────────────────────────────────────────────────────
+   User request: make widget/chart text WHITE (not grey) across every
+   Insights dashboard. Scoped to `.insights-glass-skin` so it does not
+   leak into other pages. Uses !important to defeat inline `style={{color}}`
+   and utility classes like `text-muted-foreground`.
+   ───────────────────────────────────────────────────────────────────── */
+.dark .insights-glass-skin .text-muted-foreground,
+.dark .insights-glass-skin [class*="text-muted-foreground/"] {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+/* Chart axis ticks, legends, pie labels — bump to white for readability */
+.dark .insights-glass-skin .recharts-cartesian-axis-tick text,
+.dark .insights-glass-skin .recharts-text,
+.dark .insights-glass-skin .recharts-pie-label-text {
+  fill: rgba(255, 255, 255, 0.92) !important;
+}
+.dark .insights-glass-skin .recharts-legend-item-text {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+/* GlassCard header title/subtitle use inline style colors — override those */
+.dark .insights-glass-skin [data-slot="card-title"],
+.dark .insights-glass-skin [data-slot="card-header"] p,
+.dark .insights-glass-skin [data-slot="card-description"] {
+  color: rgba(255, 255, 255, 0.90) !important;
+}
+
 /* ── react-day-picker layout guardrails ───────────────────────────────────
    The DayPicker renders a real <table> for its day grid. The Insights /
    Weekly Rundown skin previously applied broad styles to descendant tables
