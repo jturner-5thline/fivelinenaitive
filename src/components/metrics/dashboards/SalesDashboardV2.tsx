@@ -1309,14 +1309,20 @@ function SourcedViaDrilldownDialog({
 function CumulativePace() {
   const view = useView();
   const drill = useDrilldown();
-  const E = view.elapsed;
   const [metric, setMetric] = React.useState<MetricKey>('dollarsFunded');
   const row = ROW_ORDER.find((r) => r.key === metric) ?? ROW_ORDER[0];
   const isMoney = row.type === 'money';
   const fmt = (v: number | null | undefined) => (isMoney ? fmtMoney(v) : fmtCount(v));
-  const planCum = cumulativePlan(view.plan[metric]);
-  const actualCum = cumulative(view.actual[metric]);
-  const data = view.months.map((m, i) => ({
+  // YTD-cumulative pace: sum January-through-end-of-selected-range so the
+  // "actual to date" and running totals reconcile to a true year-to-date
+  // number regardless of which quarter/month is selected.
+  const months = view.ytdMonths ?? view.months;
+  const planArr = view.ytdPlan?.[metric] ?? view.plan[metric];
+  const actualArr = view.ytdActual?.[metric] ?? view.actual[metric];
+  const E = view.ytdElapsed ?? view.elapsed;
+  const planCum = cumulativePlan(planArr);
+  const actualCum = cumulative(actualArr);
+  const data = months.map((m, i) => ({
     month: m,
     plan: planCum[i],
     actual: actualCum[i],
@@ -1402,7 +1408,7 @@ function CumulativePace() {
               formatter={(v: number, n: string) => [fmt(v), n === 'plan' ? 'Plan' : 'Actual']}
             />
             <ReferenceLine
-              x={view.months[E - 1] ?? ''}
+              x={months[E - 1] ?? ''}
               stroke={C.textFaint}
               strokeDasharray="3 3"
               label={{ value: 'today', position: 'top', fill: C.textFaint, fontSize: 10 }}
