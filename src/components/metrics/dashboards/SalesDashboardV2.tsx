@@ -1687,6 +1687,10 @@ function CumulativePace() {
                 <stop offset="0%" stopColor={C.cyan} stopOpacity={0.35} />
                 <stop offset="100%" stopColor={C.cyan} stopOpacity={0} />
               </linearGradient>
+              <linearGradient id="planGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#a855f7" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="#a855f7" stopOpacity={0} />
+              </linearGradient>
             </defs>
             <CartesianGrid stroke={C.hairline} vertical={false} />
             <XAxis
@@ -1728,13 +1732,15 @@ function CumulativePace() {
               connectNulls={false}
               isAnimationActive={false}
             />
-            <Line
+            <Area
               type="monotone"
               dataKey="plan"
               name="YTD Plan"
               stroke="#a855f7"
               strokeWidth={2}
+              fill="url(#planGrad)"
               dot={{ r: 2.5, fill: '#a855f7', stroke: '#a855f7' }}
+              connectNulls={false}
               isAnimationActive={false}
             />
           </AreaChart>
