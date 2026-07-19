@@ -46,7 +46,6 @@ export function SyncStatusBar() {
       {syncStatuses?.qb?.lastSync && (
         <Badge variant="outline" className="text-xs gap-1.5 font-normal">
           <CheckCircle2 className="h-3 w-3 text-success" />
-          <span className="font-medium">QuickBooks</span>
           <span className="text-muted-foreground">
             synced {formatDistanceToNow(new Date(syncStatuses.qb.lastSync), { addSuffix: true })}
           </span>
