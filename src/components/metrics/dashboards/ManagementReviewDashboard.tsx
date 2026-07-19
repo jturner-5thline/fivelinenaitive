@@ -1790,7 +1790,7 @@ function GridShell({
       >
         <div style={{
           fontSize: 9, fontWeight: 700, letterSpacing: '1.2px',
-          textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)',
+          textTransform: 'uppercase', color: '#ffffff',
           flex: titleAlign === 'center' ? 1 : undefined,
           textAlign: titleAlign === 'center' ? 'center' : 'left',
           cursor: titleTooltip ? 'help' : undefined,
@@ -1859,7 +1859,7 @@ function PeriodReadout({
             fontWeight: 700,
             letterSpacing: '1px',
             textTransform: 'uppercase',
-            color: 'rgba(255,255,255,0.55)',
+            color: '#ffffff',
           }}
         >
           {label}
@@ -3738,10 +3738,6 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         </div>
 
         <div key="monthly-revenue" data-grid-item-id="monthly-revenue" className="h-full">
-          <style>{`
-            [data-grid-item-id="monthly-revenue"] .mgmt-widget > div:nth-child(2) > div:first-child { color: #ffffff !important; }
-            [data-grid-item-id="monthly-revenue"] .mgmt-widget span[style*="text-transform: uppercase"] { color: #ffffff !important; }
-          `}</style>
           <GridShell
             isEditMode={isEditMode}
             title={
