@@ -1304,8 +1304,12 @@ function CumulativePace() {
   const view = useView();
   const drill = useDrilldown();
   const E = view.elapsed;
-  const planCum = cumulativePlan(view.plan.dollarsFunded);
-  const actualCum = cumulative(view.actual.dollarsFunded);
+  const [metric, setMetric] = React.useState<MetricKey>('dollarsFunded');
+  const row = ROW_ORDER.find((r) => r.key === metric) ?? ROW_ORDER[0];
+  const isMoney = row.type === 'money';
+  const fmt = (v: number | null | undefined) => (isMoney ? fmtMoney(v) : fmtCount(v));
+  const planCum = cumulativePlan(view.plan[metric]);
+  const actualCum = cumulative(view.actual[metric]);
   const data = view.months.map((m, i) => ({
     month: m,
     plan: planCum[i],
@@ -1323,12 +1327,29 @@ function CumulativePace() {
           <div className="text-sm font-semibold" style={{ color: C.textPrimary }}>
             Cumulative pace
           </div>
+          <select
+            value={metric}
+            onChange={(e) => setMetric(e.target.value as MetricKey)}
+            className="text-[11px] rounded-md px-2 py-1 focus:outline-none"
+            style={{
+              background: 'rgba(20,80,160,0.35)',
+              color: '#d0eaff',
+              border: `1px solid ${C.surfaceBorder}`,
+              colorScheme: 'dark',
+            }}
+          >
+            {ROW_ORDER.map((r) => (
+              <option key={r.key} value={r.key} style={{ background: '#0f1c34', color: '#d0eaff' }}>
+                {r.label}
+              </option>
+            ))}
+          </select>
           <div className="text-[11px]" style={{ color: C.textFaint }}>
-            FinServ $ on the Board · running total
+            · YTD running total
           </div>
           <button
             type="button"
-            onClick={() => drill.open('dollarsFunded')}
+            onClick={() => drill.open(metric)}
             className="ml-2 text-[10px] px-2 py-0.5 rounded-md hover:brightness-125 focus-visible:outline-none focus-visible:ring-1"
             style={{ background: 'rgba(157,162,245,0.10)', color: C.periwinkle, border: `1px solid ${C.surfaceBorder}` }}
           >
@@ -1336,9 +1357,9 @@ function CumulativePace() {
           </button>
         </div>
         <div className="flex items-center gap-5 text-[11px]" style={{ fontVariantNumeric: 'tabular-nums' }}>
-          <Readout label="ACTUAL TO DATE" value={fmtMoney(actualToDate)} color={C.cyan} />
-          <Readout label="PLAN TO DATE" value={fmtMoney(planToDate)} color={C.periwinkle} />
-          <Readout label="FY TARGET" value={fmtMoney(fyTarget)} color={C.textMuted} />
+          <Readout label="ACTUAL TO DATE" value={fmt(actualToDate)} color={C.cyan} />
+          <Readout label="PLAN TO DATE" value={fmt(planToDate)} color={C.periwinkle} />
+          <Readout label="FY TARGET" value={fmt(fyTarget)} color={C.textMuted} />
         </div>
       </div>
       <div style={{ height: 220 }}>
@@ -1358,7 +1379,7 @@ function CumulativePace() {
               tickLine={false}
             />
             <YAxis
-              tickFormatter={(v) => `$${Math.round(v)}`}
+              tickFormatter={(v) => (isMoney ? `$${Math.round(v)}` : `${Math.round(v)}`)}
               tick={{ fill: C.textFaint, fontSize: 11 }}
               axisLine={false}
               tickLine={false}
@@ -1372,7 +1393,7 @@ function CumulativePace() {
                 color: C.textPrimary,
                 fontSize: 12,
               }}
-              formatter={(v: number, n: string) => [`$${v.toFixed(1)}MM`, n === 'plan' ? 'Plan' : 'Actual']}
+              formatter={(v: number, n: string) => [fmt(v), n === 'plan' ? 'Plan' : 'Actual']}
             />
             <ReferenceLine
               x={view.months[E - 1] ?? ''}
