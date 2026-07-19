@@ -56,6 +56,51 @@ const gy: any = { ticks: { color: 'rgba(255,255,255,0.35)', font: { size: 9 } },
 const def: any = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
 const NA_COLOR = 'rgba(255,255,255,0.35)';
 
+// ---------------------------------------------------------------------------
+// Unified bar-chart fill recipe.
+// Every Chart.js bar in this dashboard runs through `barBg(...)` so opacity
+// scale, gradient depth, highlight intensity, and edge definition stay
+// consistent across widgets. Callers pass their base color (hue is preserved).
+// `emphasis` lets an individual widget dim non-current bars without breaking
+// the shared recipe.
+// ---------------------------------------------------------------------------
+const BAR_RECIPE = {
+  positive: { top: 0.95, bottom: 0.35, dimTop: 0.65, dimBottom: 0.18 },
+  negative: { top: 0.95, bottom: 0.35, dimTop: 0.65, dimBottom: 0.18 },
+};
+const BAR_BORDER_ALPHA = 0.9;
+const BAR_BORDER_ALPHA_DIM = 0.35;
+
+function _stripToHsl(color: string): { h: number; s: number; l: number } | null {
+  const m = color.match(/hsla?\(\s*([\d.]+)[,\s]+([\d.]+)%[,\s]+([\d.]+)%/i);
+  if (!m) return null;
+  return { h: parseFloat(m[1]), s: parseFloat(m[2]), l: parseFloat(m[3]) };
+}
+function _hsla(h: number, s: number, l: number, a: number) {
+  return `hsla(${h}, ${s}%, ${l}%, ${a})`;
+}
+
+function barBg(color: string, opts: { negative?: boolean; dim?: boolean } = {}) {
+  return (ctx: any) => {
+    const area = ctx?.chart?.chartArea;
+    if (!area) return color;
+    const hsl = _stripToHsl(color);
+    if (!hsl) return color;
+    const recipe = opts.negative ? BAR_RECIPE.negative : BAR_RECIPE.positive;
+    const top = opts.dim ? recipe.dimTop : recipe.top;
+    const bot = opts.dim ? recipe.dimBottom : recipe.bottom;
+    const g = ctx.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+    g.addColorStop(0, _hsla(hsl.h, hsl.s, hsl.l, top));
+    g.addColorStop(1, _hsla(hsl.h, hsl.s, hsl.l, bot));
+    return g;
+  };
+}
+function barBorder(color: string, opts: { dim?: boolean } = {}) {
+  const hsl = _stripToHsl(color);
+  if (!hsl) return color;
+  return _hsla(hsl.h, hsl.s, hsl.l, opts.dim ? BAR_BORDER_ALPHA_DIM : BAR_BORDER_ALPHA);
+}
+
 // ============================================================================
 // Liabilities & Debt Service table — pulls live account balances from QBO
 // (5th Line Capital Advisors LLC realm) for the accounts we can wire today.
@@ -2629,8 +2674,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             labels: debtPipelineChart.labels,
             datasets: [{
               data: debtPipelineChart.values,
-              backgroundColor: 'hsla(213,90%,70%,0.65)',
-              borderColor: 'hsl(213,90%,70%)',
+              backgroundColor: barBg('hsl(213,90%,70%)'),
+              borderColor: barBorder('hsl(213,90%,70%)'),
               borderWidth: 1,
               borderRadius: 4,
             }],
@@ -2731,8 +2776,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const arRef = useRef<HTMLCanvasElement>(null);
 
   const lastIdx = monthLabels.length - 1;
-  const bcol = monthLabels.map((_, i) => i === lastIdx ? 'hsla(213,90%,70%,0.85)' : 'hsla(213,90%,70%,0.55)');
-  const bbrd = monthLabels.map((_, i) => i === lastIdx ? 'hsl(213,90%,70%)' : 'rgba(255,255,255,0.08)');
+  const bcol = monthLabels.map((_, i) => barBg('hsl(213,90%,70%)', { dim: i !== lastIdx }));
+  const bbrd = monthLabels.map((_, i) => barBorder('hsl(213,90%,70%)', { dim: i !== lastIdx }));
 
   useChart(
     rcRef,
@@ -2771,8 +2816,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   );
 
   const ttmLabels = ttmTrendSeries.map(p => p.month);
-  const ttmCol = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? 'hsla(213,90%,70%,0.85)' : 'hsla(213,90%,70%,0.55)');
-  const ttmBrd = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? 'hsl(213,90%,70%)' : 'rgba(255,255,255,0.08)');
+  const ttmCol = ttmTrendSeries.map((_p, i) => barBg('hsl(213,90%,70%)', { dim: i !== ttmTrendSeries.length - 1 }));
+  const ttmBrd = ttmTrendSeries.map((_p, i) => barBorder('hsl(213,90%,70%)', { dim: i !== ttmTrendSeries.length - 1 }));
   const [trendMode, setTrendMode] = useState<'ttm' | 'monthly' | 'quarterly-yoy'>('ttm');
   const [showTrendDelta, setShowTrendDelta] = useState<boolean>(false);
   const isQuarterView = reportingPeriod?.view === 'quarter';
@@ -2789,8 +2834,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         inv => inv.total_amt,
       ))
     : ttmSeries.map(p => p.revenue);
-  const monthlyCol = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? 'hsla(213,90%,70%,0.85)' : 'hsla(213,90%,70%,0.55)');
-  const monthlyBrd = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? 'hsl(213,90%,70%)' : 'rgba(255,255,255,0.08)');
+  const monthlyCol = monthlyTrendLabels.map((_l, i) => barBg('hsl(213,90%,70%)', { dim: i !== monthlyTrendLabels.length - 1 }));
+  const monthlyBrd = monthlyTrendLabels.map((_l, i) => barBorder('hsl(213,90%,70%)', { dim: i !== monthlyTrendLabels.length - 1 }));
   const activeTrendValues = trendMode === 'ttm' ? ttmTrendValues : monthlyTrendValues;
   // Compute a "prior" value for the FIRST bucket so the trend line starts at
   // the first period rather than the second. Prior = the same-shape window
@@ -3026,7 +3071,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     stageBreakdown.length > 0
       ? {
           type: 'bar',
-          data: { labels: stageBreakdown.map(s => s.stage), datasets: [{ data: stageBreakdown.map(s => s.value), backgroundColor: 'hsla(213,90%,70%,0.7)', borderColor: 'hsl(213,90%,70%)', borderWidth: 1, borderRadius: 4 }] },
+          data: { labels: stageBreakdown.map(s => s.stage), datasets: [{ data: stageBreakdown.map(s => s.value), backgroundColor: barBg('hsl(213,90%,70%)'), borderColor: barBorder('hsl(213,90%,70%)'), borderWidth: 1, borderRadius: 4 }] },
           options: { ...def, indexAxis: 'y' as const, scales: { x: { ...gx, ticks: { ...gx.ticks, callback: (v: number) => fmtUSD(v) } }, y: { ...gy } } },
         }
       : null,
@@ -3061,7 +3106,21 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     arBuckets.length > 0
       ? {
           type: 'bar',
-          data: { labels: arBuckets.map(b => b.bucket), datasets: [{ data: arBuckets.map(b => b.value), backgroundColor: arBuckets.map(b => b.bucket === 'current' ? 'rgba(40,220,140,0.6)' : b.bucket === '90+' ? 'rgba(255,90,100,0.7)' : 'rgba(255,190,30,0.6)'), borderWidth: 1, borderRadius: 3 }] },
+          data: { labels: arBuckets.map(b => b.bucket), datasets: [{
+            data: arBuckets.map(b => b.value),
+            backgroundColor: arBuckets.map(b =>
+              b.bucket === 'current' ? barBg('hsl(150, 70%, 51%)')
+                : b.bucket === '90+'   ? barBg('hsl(355, 100%, 68%)', { negative: true })
+                                       : barBg('hsl(42, 100%, 56%)')
+            ),
+            borderColor: arBuckets.map(b =>
+              b.bucket === 'current' ? barBorder('hsl(150, 70%, 51%)')
+                : b.bucket === '90+'   ? barBorder('hsl(355, 100%, 68%)')
+                                       : barBorder('hsl(42, 100%, 56%)')
+            ),
+            borderWidth: 1,
+            borderRadius: 4,
+          }] },
           options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } } } },
         }
       : null,
