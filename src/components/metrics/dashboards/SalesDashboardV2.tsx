@@ -3912,9 +3912,24 @@ export function SalesDashboardV2() {
     };
   }, [selectedQuarter.startDate, selectedQuarter.endDate]);
 
+  // When a single month is selected, widen the KPI data fetch by 2 prior
+  // months so the top KPI sparklines render a trailing 3-month window.
+  const isSingleMonthTf = selectedQuarter.months.length === 1;
+  const dataRangeStart = React.useMemo(() => {
+    if (!isSingleMonthTf) return rangeStart;
+    return new Date(Date.UTC(rangeStart.getUTCFullYear(), rangeStart.getUTCMonth() - 2, 1));
+  }, [isSingleMonthTf, rangeStart]);
+  const dataYears = React.useMemo(() => {
+    const s = dataRangeStart.getUTCFullYear();
+    const e = rangeEnd.getUTCFullYear();
+    const arr: number[] = [];
+    for (let y = s; y <= e; y += 1) arr.push(y);
+    return arr.length ? arr : activeYears;
+  }, [dataRangeStart, rangeEnd, activeYears]);
+
   // Live Sales Calls — fetch for the active range so the per-month bucketing
   // below picks up every month in the selected timeframe.
-  const yearStart = rangeStart;
+  const yearStart = dataRangeStart;
   const yearEnd = rangeEnd;
   const salesCallsQuery = useSalesCallsCount(yearStart, yearEnd);
   const rawSalesCallEvents = salesCallsQuery.data?.events ?? [];
