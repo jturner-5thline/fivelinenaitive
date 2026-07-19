@@ -1355,12 +1355,15 @@ function TopSourcedViaWidget() {
                     />
                     <Legend wrapperStyle={{ fontSize: 10, color: 'rgba(255,255,255,0.75)' }} />
                     {analysis.topRows.map((r, i) => (
-                      <Bar
+                      <Line
                         key={r.label}
+                        type="monotone"
                         dataKey={r.label}
-                        stackId="src"
-                        fill={SERIES_COLORS[i % SERIES_COLORS.length]}
-                        radius={i === analysis.topRows.length - 1 ? [4, 4, 0, 0] : 0}
+                        stroke={SERIES_COLORS[i % SERIES_COLORS.length]}
+                        strokeWidth={2}
+                        dot={{ r: 3, fill: SERIES_COLORS[i % SERIES_COLORS.length], strokeWidth: 0 }}
+                        activeDot={{ r: 4 }}
+                        isAnimationActive={false}
                       />
                     ))}
                   </ComposedChart>
