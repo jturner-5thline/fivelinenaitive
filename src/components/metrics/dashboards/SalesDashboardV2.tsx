@@ -692,7 +692,7 @@ function KpiCardInner({
         </span>
         <span className="flex items-center gap-2 text-[10px]">
           <span className="flex items-center gap-1">
-            <span style={{ width: 12, height: 0, borderTop: `1.5px dashed ${C.periwinkle}`, display: 'inline-block' }} />
+            <span style={{ width: 12, height: 0, borderTop: `1.5px dashed #a855f7`, display: 'inline-block' }} />
             Plan
           </span>
           <span className="flex items-center gap-1">
@@ -737,7 +737,7 @@ function KpiCardInner({
             <Line
               type="monotone"
               dataKey="plan"
-              stroke={C.periwinkle}
+              stroke="#a855f7"
               strokeWidth={1.4}
               strokeDasharray="4 4"
               dot={false}
