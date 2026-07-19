@@ -1434,10 +1434,25 @@ function ConsolidatedOpexWidget() {
                 cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                 contentStyle={{ background: 'rgba(20,22,30,0.95)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, fontSize: 11 }}
                 labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
-                formatter={(v: number, name: string) => {
-                  if (name === 'Δ $') return [formatUSD((v as number) / 1000), 'Δ $'];
-                  if (name === 'Δ %') return [`${(v as number).toFixed(1)}%`, 'Δ %'];
-                  return [formatUSD((v as number) / 1000), 'OPEX'];
+                content={({ active, payload, label }: any) => {
+                  if (!active || !payload || !payload.length) return null;
+                  const row = payload[0]?.payload ?? {};
+                  const val = Number(row.value ?? 0);
+                  const dA = row.deltaAbs;
+                  const dP = row.deltaPct;
+                  const posBad = 'hsl(0, 84%, 65%)';   // increase in OPEX is bad
+                  const negGood = 'hsl(142, 71%, 55%)'; // decrease is good
+                  const dColor = dA == null ? 'rgba(255,255,255,0.7)' : (dA > 0 ? posBad : dA < 0 ? negGood : 'rgba(255,255,255,0.7)');
+                  return (
+                    <div style={{ background: 'rgba(20,22,30,0.95)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, fontSize: 11, padding: '6px 8px', color: 'rgba(255,255,255,0.9)' }}>
+                      <div style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>{label}</div>
+                      <div>OPEX: <span style={{ fontWeight: 600 }}>{formatUSD(val / 1000)}</span></div>
+                      <div style={{ color: dColor }}>
+                        Δ vs prior: {dA == null ? '—' : `${dA >= 0 ? '+' : ''}${formatUSD(dA / 1000)}`}
+                        {dP == null ? '' : ` (${dP >= 0 ? '+' : ''}${dP.toFixed(1)}%)`}
+                      </div>
+                    </div>
+                  );
                 }}
               />
               <Bar
