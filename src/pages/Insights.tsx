@@ -1490,6 +1490,7 @@ function MetricsInner() {
     }
   }, [allowedDashboardIds, selectedDashboard, selectDashboard, visibleDashboardOptions]);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [exportAllOpen, setExportAllOpen] = useState(false);
   const [coverPreviewOpen, setCoverPreviewOpen] = useState(false);
   const assistantTriggerRef = useRef<HTMLButtonElement>(null);
   const undoStackRef = useRef<Array<{ type: 'card' | 'section'; id: string; label: string; undo: () => void }>>([]);
