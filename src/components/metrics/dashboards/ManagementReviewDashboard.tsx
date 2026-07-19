@@ -2816,8 +2816,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   );
 
   const ttmLabels = ttmTrendSeries.map(p => p.month);
-  const ttmCol = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? 'hsla(213,90%,70%,0.85)' : 'hsla(213,90%,70%,0.55)');
-  const ttmBrd = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? 'hsl(213,90%,70%)' : 'rgba(255,255,255,0.08)');
+  const ttmCol = ttmTrendSeries.map((_p, i) => barBg('hsl(213,90%,70%)', { dim: i !== ttmTrendSeries.length - 1 }));
+  const ttmBrd = ttmTrendSeries.map((_p, i) => barBorder('hsl(213,90%,70%)', { dim: i !== ttmTrendSeries.length - 1 }));
   const [trendMode, setTrendMode] = useState<'ttm' | 'monthly' | 'quarterly-yoy'>('ttm');
   const [showTrendDelta, setShowTrendDelta] = useState<boolean>(false);
   const isQuarterView = reportingPeriod?.view === 'quarter';
