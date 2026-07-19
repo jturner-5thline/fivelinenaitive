@@ -1311,8 +1311,8 @@ function TopSourcedViaWidget() {
           No qualifying deals in this period.
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* LEFT — current-period top sources with bars */}
+        <div className="flex flex-col">
+          {/* Current-period top sources with bars */}
           <div className="flex flex-col">
             {analysis.topRows.map((r, idx) => {
               const widthPct = max === 0 ? 0 : (r.count / max) * 100;
@@ -1412,106 +1412,6 @@ function TopSourcedViaWidget() {
                 })}
               </div>
             )}
-          </div>
-
-          {/* RIGHT — trend chart + current-period deal list */}
-          <div className="flex flex-col gap-4 min-w-0">
-            <div>
-              <div
-                className="text-[10px] font-medium uppercase mb-2"
-                style={{ color: C.textFaint, letterSpacing: '0.08em' }}
-              >
-                Trend · current vs prior 2 periods
-              </div>
-              <div style={{ width: '100%', height: 180 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={analysis.chartData} margin={{ top: 6, right: 8, bottom: 0, left: -18 }}>
-                    <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-                    <XAxis dataKey="period" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip
-                      contentStyle={{
-                        background: 'rgba(20,20,30,0.95)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 8,
-                        fontSize: 11,
-                      }}
-                      labelStyle={{ color: 'rgba(255,255,255,0.9)' }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 10, color: 'rgba(255,255,255,0.75)' }} />
-                    {analysis.topRows.map((r, i) => (
-                      <Line
-                        key={r.label}
-                        type="linear"
-                        dataKey={r.label}
-                        stroke={SERIES_COLORS[i % SERIES_COLORS.length]}
-                        strokeWidth={2}
-                        dot={{ r: 3, fill: SERIES_COLORS[i % SERIES_COLORS.length], strokeWidth: 0 }}
-                        activeDot={{ r: 4 }}
-                        isAnimationActive={false}
-                      />
-                    ))}
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div>
-              <div
-                className="text-[10px] font-medium uppercase mb-2"
-                style={{ color: C.textFaint, letterSpacing: '0.08em' }}
-              >
-                Deals · {view.label}
-              </div>
-              <div className="max-h-[240px] overflow-y-auto pr-1 flex flex-col gap-3">
-                {analysis.topRows.map((r, i) => {
-                  const deals = analysis.groupedDeals.get(r.label) ?? [];
-                  if (deals.length === 0) return null;
-                  return (
-                    <div key={r.label}>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span
-                          style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: 2,
-                            background: SERIES_COLORS[i % SERIES_COLORS.length],
-                            display: 'inline-block',
-                          }}
-                        />
-                        <span className="text-[11px] font-medium" style={{ color: C.textPrimary }}>
-                          {r.label}
-                        </span>
-                        <span className="text-[10px]" style={{ color: C.textFaint }}>
-                          {deals.length}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 pl-4">
-                        {deals.map((d) => (
-                          <button
-                            type="button"
-                            key={d.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/deals?deal=${d.id}`);
-                            }}
-                            className="text-[10.5px] px-2 py-0.5 rounded cursor-pointer hover:border-white/30 hover:bg-white/[0.08] transition-colors"
-                            style={{
-                              background: 'rgba(255,255,255,0.04)',
-                              color: C.textPrimary,
-                              border: '1px solid rgba(255,255,255,0.06)',
-                            }}
-                            title={`Open ${d.company ?? 'deal'} details`}
-                          >
-                            {d.company ?? 'Unnamed deal'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           </div>
         </div>
       )}
@@ -4897,7 +4797,7 @@ export function SalesDashboardV2() {
           />
 
           {/* Top "Sourced Via" for deals created in the selected timeframe */}
-          <div className="mb-6">
+          <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
             <TopSourcedViaWidget />
           </div>
 
