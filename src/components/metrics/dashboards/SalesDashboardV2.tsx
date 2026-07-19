@@ -1369,9 +1369,9 @@ function CumulativePace() {
           </button>
         </div>
         <div className="flex items-center gap-5 text-[11px]" style={{ fontVariantNumeric: 'tabular-nums' }}>
-          <Readout label="ACTUAL TO DATE" value={fmt(actualToDate)} color={C.cyan} />
-          <Readout label="PLAN TO DATE" value={fmt(planToDate)} color={C.periwinkle} />
-          <Readout label="FY TARGET" value={fmt(fyTarget)} color={C.textMuted} />
+          <Readout label="YTD ACTUAL" value={fmt(actualToDate)} color={C.cyan} />
+          <Readout label="YTD PLAN" value={fmt(planToDate)} color={C.periwinkle} />
+          <Readout label="YTD TARGET" value={fmt(fyTarget)} color={C.textMuted} />
         </div>
       </div>
       <div style={{ height: 220 }}>
