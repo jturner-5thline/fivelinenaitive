@@ -2874,8 +2874,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   );
 
   const ttmLabels = ttmTrendSeries.map(p => p.month);
-  const ttmLastIdx = ttmTrendSeries.length - 1;
-  const ttmCol = (ctx: any) => premiumBlueBarBg({ dim: (ctx?.dataIndex ?? 0) !== ttmLastIdx })(ctx);
+  const ttmCol = (ctx: any) => premiumBlueBarBg()(ctx);
   const ttmBrd = 'rgba(0,0,0,0)';
   const [trendMode, setTrendMode] = useState<'ttm' | 'monthly' | 'quarterly-yoy'>('ttm');
   const [showTrendDelta, setShowTrendDelta] = useState<boolean>(false);
@@ -2893,8 +2892,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         inv => inv.total_amt,
       ))
     : ttmSeries.map(p => p.revenue);
-  const monthlyLastIdx = monthlyTrendLabels.length - 1;
-  const monthlyCol = (ctx: any) => premiumBlueBarBg({ dim: (ctx?.dataIndex ?? 0) !== monthlyLastIdx })(ctx);
+  const monthlyCol = (ctx: any) => premiumBlueBarBg()(ctx);
   const monthlyBrd = 'rgba(0,0,0,0)';
   const activeTrendValues = trendMode === 'ttm' ? ttmTrendValues : monthlyTrendValues;
   // Compute a "prior" value for the FIRST bucket so the trend line starts at
