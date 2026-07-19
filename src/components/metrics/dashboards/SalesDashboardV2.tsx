@@ -217,6 +217,11 @@ export interface DashboardView {
   ytdActual?: Record<MetricKey, (number | null)[]>;
   /** Count of YTD months already elapsed (Jan..today), clamped to ytdMonths.length. */
   ytdElapsed?: number;
+  /** When a single month is selected, render the sparkline with the trailing
+   *  3 months (current + prior 2) instead of just the selected month. */
+  sparkMonths?: string[];
+  sparkPlan?: Record<MetricKey, number[]>;
+  sparkActual?: Record<MetricKey, (number | null)[]>;
 }
 
 const ViewCtx = React.createContext<DashboardView | null>(null);
