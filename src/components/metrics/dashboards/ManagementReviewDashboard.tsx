@@ -1137,12 +1137,15 @@ function CashflowForecastWidget() {
               {
                 label: 'Ending Cash',
                 data: weeks.map((w) => w.endingCash),
-                backgroundColor: weeks.map((w) =>
-                  w.endingCash < 0 ? barBg('hsl(0,75%,60%)', { negative: true }) : premiumBlueBarBg(),
-                ),
-                borderColor: weeks.map((w) =>
-                  w.endingCash < 0 ? barBorder('hsl(0,75%,60%)') : barBorder('hsl(213,90%,70%)'),
-                ),
+                 backgroundColor: (ctx: any) => {
+                   const i = ctx?.dataIndex ?? 0;
+                   const w = weeks[i];
+                   const fn = w && w.endingCash < 0
+                     ? barBg('hsl(0,75%,60%)', { negative: true })
+                     : premiumBlueBarBg();
+                   return fn(ctx);
+                 },
+                 borderColor: 'rgba(0,0,0,0)',
                 borderWidth: 0,
                 borderRadius: BAR_RADIUS,
               },
@@ -2871,8 +2874,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   );
 
   const ttmLabels = ttmTrendSeries.map(p => p.month);
-  const ttmCol = ttmTrendSeries.map((_p, i) => premiumBlueBarBg({ dim: i !== ttmTrendSeries.length - 1 }));
-  const ttmBrd = ttmTrendSeries.map((_p, i) => barBorder('hsl(213,90%,70%)', { dim: i !== ttmTrendSeries.length - 1 }));
+  const ttmLastIdx = ttmTrendSeries.length - 1;
+  const ttmCol = (ctx: any) => premiumBlueBarBg({ dim: (ctx?.dataIndex ?? 0) !== ttmLastIdx })(ctx);
+  const ttmBrd = 'rgba(0,0,0,0)';
   const [trendMode, setTrendMode] = useState<'ttm' | 'monthly' | 'quarterly-yoy'>('ttm');
   const [showTrendDelta, setShowTrendDelta] = useState<boolean>(false);
   const isQuarterView = reportingPeriod?.view === 'quarter';
@@ -2889,8 +2893,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         inv => inv.total_amt,
       ))
     : ttmSeries.map(p => p.revenue);
-  const monthlyCol = monthlyTrendLabels.map((_l, i) => premiumBlueBarBg({ dim: i !== monthlyTrendLabels.length - 1 }));
-  const monthlyBrd = monthlyTrendLabels.map((_l, i) => barBorder('hsl(213,90%,70%)', { dim: i !== monthlyTrendLabels.length - 1 }));
+  const monthlyLastIdx = monthlyTrendLabels.length - 1;
+  const monthlyCol = (ctx: any) => premiumBlueBarBg({ dim: (ctx?.dataIndex ?? 0) !== monthlyLastIdx })(ctx);
+  const monthlyBrd = 'rgba(0,0,0,0)';
   const activeTrendValues = trendMode === 'ttm' ? ttmTrendValues : monthlyTrendValues;
   // Compute a "prior" value for the FIRST bucket so the trend line starts at
   // the first period rather than the second. Prior = the same-shape window
