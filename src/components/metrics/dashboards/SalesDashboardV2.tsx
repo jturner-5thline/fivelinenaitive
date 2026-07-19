@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -1040,6 +1040,26 @@ function TopSourcedViaWidget() {
   const { company } = useCompany();
   const [selectedSource, setSelectedSource] = React.useState<string | null>(null);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // Realtime: refetch when any deal's attribution fields change so edits to
+  // sourced_via / referral fields reflect immediately in this widget.
+  React.useEffect(() => {
+    if (!company?.id) return;
+    const channel = supabase
+      .channel(`top-sourced-via-deals-${company.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'deals', filter: `company_id=eq.${company.id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['top-sourced-via-v3'] });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [company?.id, queryClient]);
 
   // Period math — derive period length in whole months from the selected
   // range, then compute two prior periods of the same length.
@@ -1084,7 +1104,9 @@ function TopSourcedViaWidget() {
   const { data, isLoading } = useQuery({
     queryKey: ['top-sourced-via-v3', company?.id, wideStartIso, wideEndIso],
     enabled: !!company?.id,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       // Pipeline IDs. Active pipeline: deals entering "NDA / Needs List Sent".
       // FinServ pipeline: deals created in-period. Naitive pipeline: deals
