@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { filterSalesCallEventsForVariant, isSalesCallEventForVariant, useSalesCallsCount } from '@/hooks/useSalesCallsCount';
@@ -1038,6 +1039,7 @@ function TopSourcedViaWidget() {
   const view = useView();
   const { company } = useCompany();
   const [selectedSource, setSelectedSource] = React.useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Period math — derive period length in whole months from the selected
   // range, then compute two prior periods of the same length.
@@ -1376,18 +1378,23 @@ function TopSourcedViaWidget() {
                       </div>
                       <div className="flex flex-wrap gap-1.5 pl-4">
                         {deals.map((d) => (
-                          <span
+                          <button
+                            type="button"
                             key={d.id}
-                            className="text-[10.5px] px-2 py-0.5 rounded"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/deals?deal=${d.id}`);
+                            }}
+                            className="text-[10.5px] px-2 py-0.5 rounded cursor-pointer hover:border-white/30 hover:bg-white/[0.08] transition-colors"
                             style={{
                               background: 'rgba(255,255,255,0.04)',
                               color: C.textPrimary,
                               border: '1px solid rgba(255,255,255,0.06)',
                             }}
-                            title={d.company ?? ''}
+                            title={`Open ${d.company ?? 'deal'} details`}
                           >
                             {d.company ?? 'Unnamed deal'}
-                          </span>
+                          </button>
                         ))}
                       </div>
                     </div>
