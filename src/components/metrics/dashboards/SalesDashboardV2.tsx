@@ -341,12 +341,12 @@ const C = {
 const glassStyle: React.CSSProperties = {
   background:
     'linear-gradient(135deg, hsl(220, 45%, 17%) 0%, hsl(245, 38%, 12%) 50%, hsl(265, 32%, 8%) 100%)',
-  border: `1px solid rgba(255,255,255,0.20)`,
+  border: `1px solid rgba(255,255,255,0.38)`,
   backdropFilter: 'blur(10px)',
   WebkitBackdropFilter: 'blur(10px)',
   borderRadius: 8,
   boxShadow:
-    'inset 0 1px 0 0 rgba(255,255,255,0.09), 0 1px 2px rgba(0,0,0,0.45), 0 18px 40px -14px rgba(0,0,0,0.75)',
+    'inset 0 1px 0 0 rgba(255,255,255,0.12), 0 0 0 1px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.5), 0 18px 40px -14px rgba(0,0,0,0.8)',
 };
 
 // ============================================================
