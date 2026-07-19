@@ -2196,6 +2196,27 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const periodLabel = reportingPeriod?.label ?? timeframe.label;
   const periodToken = reportingPeriod?.period ?? `${timeframe.start}_${timeframe.end}`;
 
+  // Next-3-months revenue plan pulled from Master Plan (Total Revenue).
+  // Anchor is the last month of the selected period; we sum months anchor+1..+3.
+  const masterPlanNext3 = useMasterPlanMonthly(['total-revenue']);
+  const next3Months = useMemo(() => {
+    const endStr = reportingPeriod?.end ?? timeframe.end;
+    const [yStr, mStr] = String(endStr).split('-');
+    const y = Number(yStr); const m = Number(mStr);
+    const revMap = masterPlanNext3.values['total-revenue'] ?? {};
+    const rows = Array.from({ length: 3 }, (_, i) => {
+      const d = new Date(y, (m - 1) + (i + 1), 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      return {
+        month: d.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
+        revenue: Number(revMap[key] ?? 0),
+        profit: 0,
+      };
+    });
+    const revenueSum = rows.reduce((s, r) => s + r.revenue, 0);
+    return { rows, revenueSum };
+  }, [reportingPeriod?.end, timeframe.end, masterPlanNext3.values]);
+
   const isCurrentReportingPeriod = useMemo(() => {
     if (!reportingPeriod) return false;
     const now = new Date();
