@@ -3971,7 +3971,7 @@ export function SalesDashboardV2() {
 
   // FinServ Deals on Board — deals entering the "Qualification" stage on
   // the FinServ pipeline.
-  const dealsOnBoardFinservQuery = useFinservDealsOnBoardByMonth(activeYears);
+  const dealsOnBoardFinservQuery = useFinservDealsOnBoardByMonth(dataYears);
   const dealsOnBoardFinservByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (dealsOnBoardFinservQuery.isLoading || dealsOnBoardFinservQuery.isFetching) return {};
     const out: Record<string, number> = {};
@@ -3987,7 +3987,7 @@ export function SalesDashboardV2() {
 
   // FinServ Proposals Issued — deals entering the "Proposal Sent" stage on
   // the FinServ pipeline.
-  const proposalsIssuedFinservQuery = useFinservProposalsIssuedByMonth(activeYears);
+  const proposalsIssuedFinservQuery = useFinservProposalsIssuedByMonth(dataYears);
   const proposalsIssuedFinservByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (proposalsIssuedFinservQuery.isLoading || proposalsIssuedFinservQuery.isFetching) return {};
     const out: Record<string, number> = {};
@@ -4018,7 +4018,7 @@ export function SalesDashboardV2() {
   }, [salesCallsQuery.isFetching, salesCallsQuery.isLoading, salesCallEvents]);
 
   // Live Deals on Board — mirrors Consolidated Debt Pipeline Board logic
-  const dealsOnBoardQuery = useDealsOnBoardByMonth(activeYears);
+  const dealsOnBoardQuery = useDealsOnBoardByMonth(dataYears);
   // Stage-entry counts (from deal_stage_history) driving the
   // "Deals-on-Board to Proposal" conversion card, scoped to the selected
   // timeframe so the ratio matches the header period label.
@@ -4212,7 +4212,7 @@ export function SalesDashboardV2() {
   ]);
 
   // Live Proposals Issued — mirrors Consolidated Debt Pipeline Board logic
-  const proposalsIssuedQuery = useProposalsIssuedByMonth(activeYears);
+  const proposalsIssuedQuery = useProposalsIssuedByMonth(dataYears);
   const proposalsIssuedByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (proposalsIssuedQuery.isLoading || proposalsIssuedQuery.isFetching) return {};
     const out: Record<string, number> = {};
@@ -4227,7 +4227,7 @@ export function SalesDashboardV2() {
   ]);
 
   // Live Dollars Signed — mirrors Consolidated Debt Pipeline Board's
-  const dollarsSignedQuery = useDollarsSignedByMonth(activeYears);
+  const dollarsSignedQuery = useDollarsSignedByMonth(dataYears);
   const dollarsSignedByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (dollarsSignedQuery.isLoading || dollarsSignedQuery.isFetching) return {};
     return dollarsSignedQuery.dollarsByMonthKeyMM ?? {};
