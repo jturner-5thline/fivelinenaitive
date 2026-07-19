@@ -64,10 +64,15 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
           <DialogTitle className="text-white text-lg font-semibold">Share Report</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col h-full overflow-hidden">
-          {/* Rich text editor */}
-          <div className="px-6 pt-4">
+          {/* Rich text editor — aligned exactly to the 3-widget KPI row */}
+          <div style={{ maxWidth: 1240, margin: '0 auto', padding: '16px 26px 0' }} className="w-full">
             <div
-              className="rounded-lg border border-white/10 bg-white/[0.03] w-1/2"
+              className="rounded-lg border border-white/10 bg-white/[0.03]"
+              style={{
+                // Width of 3 KPI cards + 2 gaps (gap-4 = 16px) inside a 3-col grid.
+                // = (100% - 2*16px) * 3/3 = full inner width of the KPI row.
+                width: '100%',
+              }}
               onClick={() => editor?.chain().focus().run()}
             >
               <div className="flex items-center gap-1 px-2 py-1.5 border-b border-white/10">
