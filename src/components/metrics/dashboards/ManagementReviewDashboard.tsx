@@ -974,8 +974,16 @@ const formatRangeLabel = (range: DateRange) => `${format(range.start, 'yyyy-MM-d
 function Card({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
     <div className={`relative overflow-hidden rounded-[10px] ${className}`}
-      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', ...style }}>
-      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,hsla(213,90%,70%,0.4),transparent)' }} />
+      style={{
+        // Premium dark indigo → plum gradient to match Sales Dashboard aesthetic.
+        background:
+          'radial-gradient(120% 140% at 100% 100%, hsla(280, 60%, 45%, 0.28) 0%, transparent 55%), linear-gradient(160deg, hsl(232, 42%, 10%) 0%, hsl(240, 38%, 12%) 45%, hsl(258, 40%, 14%) 100%)',
+        border: '1px solid rgba(255,255,255,0.14)',
+        boxShadow:
+          '0 12px 32px -18px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.08)',
+        ...style,
+      }}>
+      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,hsla(213,95%,78%,0.55),hsla(268,90%,78%,0.55),transparent)' }} />
       {children}
     </div>
   );
@@ -1666,8 +1674,13 @@ function GridShell({
 }) {
   return (
     <div className="h-full w-full flex flex-col rounded-[10px] overflow-hidden relative"
-      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,hsla(213,90%,70%,0.4),transparent)' }} />
+      style={{
+        background:
+          'radial-gradient(120% 140% at 100% 100%, hsla(280, 60%, 45%, 0.28) 0%, transparent 55%), linear-gradient(160deg, hsl(232, 42%, 10%) 0%, hsl(240, 38%, 12%) 45%, hsl(258, 40%, 14%) 100%)',
+        border: '1px solid rgba(255,255,255,0.14)',
+        boxShadow: '0 12px 32px -18px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.08)',
+      }}>
+      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,hsla(213,95%,78%,0.55),hsla(268,90%,78%,0.55),transparent)' }} />
       <div
         className={`px-3 py-2 flex items-center justify-between ${dragHandleMode === 'header' && isEditMode ? 'widget-drag-handle cursor-grab active:cursor-grabbing' : ''}`}
         style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
