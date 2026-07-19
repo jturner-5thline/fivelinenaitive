@@ -3071,7 +3071,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     stageBreakdown.length > 0
       ? {
           type: 'bar',
-          data: { labels: stageBreakdown.map(s => s.stage), datasets: [{ data: stageBreakdown.map(s => s.value), backgroundColor: 'hsla(213,90%,70%,0.7)', borderColor: 'hsl(213,90%,70%)', borderWidth: 1, borderRadius: 4 }] },
+          data: { labels: stageBreakdown.map(s => s.stage), datasets: [{ data: stageBreakdown.map(s => s.value), backgroundColor: barBg('hsl(213,90%,70%)'), borderColor: barBorder('hsl(213,90%,70%)'), borderWidth: 1, borderRadius: 4 }] },
           options: { ...def, indexAxis: 'y' as const, scales: { x: { ...gx, ticks: { ...gx.ticks, callback: (v: number) => fmtUSD(v) } }, y: { ...gy } } },
         }
       : null,
@@ -3106,7 +3106,21 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     arBuckets.length > 0
       ? {
           type: 'bar',
-          data: { labels: arBuckets.map(b => b.bucket), datasets: [{ data: arBuckets.map(b => b.value), backgroundColor: arBuckets.map(b => b.bucket === 'current' ? 'rgba(40,220,140,0.6)' : b.bucket === '90+' ? 'rgba(255,90,100,0.7)' : 'rgba(255,190,30,0.6)'), borderWidth: 1, borderRadius: 3 }] },
+          data: { labels: arBuckets.map(b => b.bucket), datasets: [{
+            data: arBuckets.map(b => b.value),
+            backgroundColor: arBuckets.map(b =>
+              b.bucket === 'current' ? barBg('hsl(150, 70%, 51%)')
+                : b.bucket === '90+'   ? barBg('hsl(355, 100%, 68%)', { negative: true })
+                                       : barBg('hsl(42, 100%, 56%)')
+            ),
+            borderColor: arBuckets.map(b =>
+              b.bucket === 'current' ? barBorder('hsl(150, 70%, 51%)')
+                : b.bucket === '90+'   ? barBorder('hsl(355, 100%, 68%)')
+                                       : barBorder('hsl(42, 100%, 56%)')
+            ),
+            borderWidth: 1,
+            borderRadius: 4,
+          }] },
           options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } } } },
         }
       : null,
