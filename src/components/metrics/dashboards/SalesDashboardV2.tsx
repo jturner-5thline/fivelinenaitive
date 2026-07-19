@@ -4799,6 +4799,7 @@ export function SalesDashboardV2() {
           {/* Top "Sourced Via" for deals created in the selected timeframe */}
           <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
             <TopSourcedViaWidget />
+            <BdCallsMeetingsWidget />
           </div>
 
           {/* Cumulative pace */}
