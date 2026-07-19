@@ -1093,12 +1093,19 @@ function TopSourcedViaWidget() {
       }
 
       if (dealIds.size === 0) {
-        return [] as Array<{ id: string; company: string | null; sourced_via: string | null }>;
+        return [] as Array<{
+          id: string;
+          company: string | null;
+          sourced_via: string | null;
+          referral_source: string | null;
+          referral_source_id: string | null;
+          created_at: string;
+        }>;
       }
 
       const { data: dealsData, error: dealsErr } = await supabase
         .from('deals')
-        .select('id, company, sourced_via')
+        .select('id, company, sourced_via, referral_source, referral_source_id, created_at')
         .in('id', Array.from(dealIds))
         .not('sourced_via', 'is', null);
       if (dealsErr) throw dealsErr;
@@ -1106,6 +1113,9 @@ function TopSourcedViaWidget() {
         id: string;
         company: string | null;
         sourced_via: string | null;
+        referral_source: string | null;
+        referral_source_id: string | null;
+        created_at: string;
       }>;
     },
   });
