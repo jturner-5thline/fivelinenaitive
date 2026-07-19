@@ -4040,15 +4040,15 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <div className="flex h-full flex-col">
               <div className="flex flex-col divide-y divide-border">
                 {[
-                  "Next 3 Months' Revenue",
-                  "Next 3 Months' Profit",
-                  'Operating Cashflow',
-                  'Client Signings',
-                  'Current Run Rate',
-                ].map((label) => (
-                  <div key={label} className="flex items-center justify-between py-2 text-sm">
-                    <span className="text-muted-foreground">{label}</span>
-                    <span className="font-medium text-foreground">—</span>
+                  { label: "Next 3 Months' Revenue", value: next3Months.revenueSum > 0 ? formatUSD(next3Months.revenueSum / 1000) : '—' },
+                  { label: "Next 3 Months' Profit", value: '—' },
+                  { label: 'Operating Cashflow', value: '—' },
+                  { label: 'Client Signings', value: '—' },
+                  { label: 'Current Run Rate', value: '—' },
+                ].map((row) => (
+                  <div key={row.label} className="flex items-center justify-between py-2 text-sm">
+                    <span className="text-muted-foreground">{row.label}</span>
+                    <span className="font-medium text-foreground">{row.value}</span>
                   </div>
                 ))}
               </div>
@@ -4058,29 +4058,17 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 </div>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={(() => {
-                      const now = new Date();
-                      return Array.from({ length: 3 }, (_, i) => {
-                        const d = new Date(now.getFullYear(), now.getMonth() + 1 + i, 1);
-                        return {
-                          month: d.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
-                          revenue: 0,
-                          profit: 0,
-                        };
-                      });
-                    })()}
+                    data={next3Months.rows}
                     margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                     <YAxis
                       tick={{ fontSize: 11 }}
-                      tickFormatter={(v: number) =>
-                        v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`
-                      }
+                      tickFormatter={(v: number) => formatUSD((v as number) / 1000)}
                     />
                     <RTooltip
-                      formatter={(v: number, n: string) => [`$${Number(v).toLocaleString()}`, n]}
+                      formatter={(v: number, n: string) => [formatUSD(Number(v) / 1000), n]}
                       contentStyle={{
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
