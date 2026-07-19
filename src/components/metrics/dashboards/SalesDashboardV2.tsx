@@ -217,6 +217,11 @@ export interface DashboardView {
   ytdActual?: Record<MetricKey, (number | null)[]>;
   /** Count of YTD months already elapsed (Jan..today), clamped to ytdMonths.length. */
   ytdElapsed?: number;
+  /** When a single month is selected, render the sparkline with the trailing
+   *  3 months (current + prior 2) instead of just the selected month. */
+  sparkMonths?: string[];
+  sparkPlan?: Record<MetricKey, number[]>;
+  sparkActual?: Record<MetricKey, (number | null)[]>;
 }
 
 const ViewCtx = React.createContext<DashboardView | null>(null);
@@ -626,10 +631,13 @@ function KpiCardInner({
   const comparePlan = currentPlan;
   const gap = compareActual - comparePlan;
 
-  const sparkData = view.months.map((m, i) => ({
+  const sparkMonthsArr = view.sparkMonths ?? view.months;
+  const sparkPlanArr = view.sparkPlan?.[metricKey] ?? planArr;
+  const sparkActualArr = view.sparkActual?.[metricKey] ?? actualArr;
+  const sparkData = sparkMonthsArr.map((m, i) => ({
     month: m,
-    plan: planArr[i],
-    actual: actualArr[i],
+    plan: sparkPlanArr[i],
+    actual: sparkActualArr[i],
   }));
 
   return (
@@ -3904,9 +3912,24 @@ export function SalesDashboardV2() {
     };
   }, [selectedQuarter.startDate, selectedQuarter.endDate]);
 
+  // When a single month is selected, widen the KPI data fetch by 2 prior
+  // months so the top KPI sparklines render a trailing 3-month window.
+  const isSingleMonthTf = selectedQuarter.months.length === 1;
+  const dataRangeStart = React.useMemo(() => {
+    if (!isSingleMonthTf) return rangeStart;
+    return new Date(Date.UTC(rangeStart.getUTCFullYear(), rangeStart.getUTCMonth() - 2, 1));
+  }, [isSingleMonthTf, rangeStart]);
+  const dataYears = React.useMemo(() => {
+    const s = dataRangeStart.getUTCFullYear();
+    const e = rangeEnd.getUTCFullYear();
+    const arr: number[] = [];
+    for (let y = s; y <= e; y += 1) arr.push(y);
+    return arr.length ? arr : activeYears;
+  }, [dataRangeStart, rangeEnd, activeYears]);
+
   // Live Sales Calls — fetch for the active range so the per-month bucketing
   // below picks up every month in the selected timeframe.
-  const yearStart = rangeStart;
+  const yearStart = dataRangeStart;
   const yearEnd = rangeEnd;
   const salesCallsQuery = useSalesCallsCount(yearStart, yearEnd);
   const rawSalesCallEvents = salesCallsQuery.data?.events ?? [];
@@ -3948,7 +3971,7 @@ export function SalesDashboardV2() {
 
   // FinServ Deals on Board — deals entering the "Qualification" stage on
   // the FinServ pipeline.
-  const dealsOnBoardFinservQuery = useFinservDealsOnBoardByMonth(activeYears);
+  const dealsOnBoardFinservQuery = useFinservDealsOnBoardByMonth(dataYears);
   const dealsOnBoardFinservByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (dealsOnBoardFinservQuery.isLoading || dealsOnBoardFinservQuery.isFetching) return {};
     const out: Record<string, number> = {};
@@ -3964,7 +3987,7 @@ export function SalesDashboardV2() {
 
   // FinServ Proposals Issued — deals entering the "Proposal Sent" stage on
   // the FinServ pipeline.
-  const proposalsIssuedFinservQuery = useFinservProposalsIssuedByMonth(activeYears);
+  const proposalsIssuedFinservQuery = useFinservProposalsIssuedByMonth(dataYears);
   const proposalsIssuedFinservByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (proposalsIssuedFinservQuery.isLoading || proposalsIssuedFinservQuery.isFetching) return {};
     const out: Record<string, number> = {};
@@ -3995,7 +4018,7 @@ export function SalesDashboardV2() {
   }, [salesCallsQuery.isFetching, salesCallsQuery.isLoading, salesCallEvents]);
 
   // Live Deals on Board — mirrors Consolidated Debt Pipeline Board logic
-  const dealsOnBoardQuery = useDealsOnBoardByMonth(activeYears);
+  const dealsOnBoardQuery = useDealsOnBoardByMonth(dataYears);
   // Stage-entry counts (from deal_stage_history) driving the
   // "Deals-on-Board to Proposal" conversion card, scoped to the selected
   // timeframe so the ratio matches the header period label.
@@ -4189,7 +4212,7 @@ export function SalesDashboardV2() {
   ]);
 
   // Live Proposals Issued — mirrors Consolidated Debt Pipeline Board logic
-  const proposalsIssuedQuery = useProposalsIssuedByMonth(activeYears);
+  const proposalsIssuedQuery = useProposalsIssuedByMonth(dataYears);
   const proposalsIssuedByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (proposalsIssuedQuery.isLoading || proposalsIssuedQuery.isFetching) return {};
     const out: Record<string, number> = {};
@@ -4204,7 +4227,7 @@ export function SalesDashboardV2() {
   ]);
 
   // Live Dollars Signed — mirrors Consolidated Debt Pipeline Board's
-  const dollarsSignedQuery = useDollarsSignedByMonth(activeYears);
+  const dollarsSignedQuery = useDollarsSignedByMonth(dataYears);
   const dollarsSignedByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (dollarsSignedQuery.isLoading || dollarsSignedQuery.isFetching) return {};
     return dollarsSignedQuery.dollarsByMonthKeyMM ?? {};
@@ -4424,6 +4447,139 @@ export function SalesDashboardV2() {
   }), [finservCountView, liveDollarsOnBoardActualFinserv, liveDollarsProposedActualFinserv]);
   const finservKpiView = kpiValueMode === 'value' ? finservValueView : finservCountView;
 
+  // ---- Trailing 3-month spark window for the top KPI cards ---------------
+  // When a single month is selected, extend the sparkline to include the two
+  // prior months (current + prev 2). No effect when a quarter is selected.
+  const sparkMonthKeys = React.useMemo<string[]>(() => {
+    if (!isSingleMonthTf) return monthKeys;
+    const [yStr, mStr] = selectedQuarter.months[0].key.split('-');
+    const y = Number(yStr);
+    const m = Number(mStr) - 1;
+    const keys: string[] = [];
+    for (let off = -2; off <= 0; off += 1) {
+      const d = new Date(Date.UTC(y, m + off, 1));
+      keys.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`);
+    }
+    return keys;
+  }, [isSingleMonthTf, selectedQuarter.months, monthKeys]);
+  const sparkMonthLabels = React.useMemo<string[]>(() =>
+    sparkMonthKeys.map((k) => {
+      const [y, m] = k.split('-').map(Number);
+      return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'short' });
+    }),
+  [sparkMonthKeys]);
+
+  const sparkPlanLookup = React.useCallback((metric: MetricKey): number[] =>
+    sparkMonthKeys.map((k) => {
+      const [yStr, mStr] = k.split('-');
+      const y = Number(yStr);
+      const monIdx = Number(mStr) - 1;
+      const dk = `${y}-${monIdx}`;
+      const colIdx = fullDraft.columns.findIndex((c) => c.key === dk);
+      const override = colIdx >= 0 ? fullDraft.data[metric]?.[colIdx] : undefined;
+      if (override !== undefined) return override;
+      if (y !== SEED_YEAR) return 0;
+      const pos = SEED_MONTH_INDEXES.indexOf(monIdx);
+      return pos >= 0 ? (PLAN[metric][pos] ?? 0) : 0;
+    }),
+  [sparkMonthKeys, fullDraft]);
+
+  const sparkLookup = React.useCallback(
+    (map: Record<string, number>, isLoading: boolean): (number | null)[] =>
+      sparkMonthKeys.map((k) => (isLoading ? null : map[k] ?? 0)),
+    [sparkMonthKeys],
+  );
+
+  const buildSparkFields = React.useCallback(
+    (
+      salesMap: { map: Record<string, number>; loading: boolean },
+      dealsMap: { map: Record<string, number>; loading: boolean },
+      propsMap: { map: Record<string, number>; loading: boolean },
+      opts?: { dealsPlanMetric?: MetricKey; propsPlanMetric?: MetricKey },
+    ): Pick<DashboardView, 'sparkMonths' | 'sparkPlan' | 'sparkActual'> => {
+      const plan = {} as Record<MetricKey, number[]>;
+      (Object.keys(PLAN) as MetricKey[]).forEach((k) => {
+        plan[k] = sparkPlanLookup(k);
+      });
+      if (opts?.dealsPlanMetric) plan.dealsOnBoard = sparkPlanLookup(opts.dealsPlanMetric);
+      if (opts?.propsPlanMetric) plan.proposalsIssued = sparkPlanLookup(opts.propsPlanMetric);
+      const actual = {} as Record<MetricKey, (number | null)[]>;
+      (Object.keys(ACTUAL) as MetricKey[]).forEach((k) => {
+        actual[k] = sparkMonthKeys.map(() => null);
+      });
+      actual.salesCalls = sparkLookup(salesMap.map, salesMap.loading);
+      actual.dealsOnBoard = sparkLookup(dealsMap.map, dealsMap.loading);
+      actual.proposalsIssued = sparkLookup(propsMap.map, propsMap.loading);
+      return { sparkMonths: sparkMonthLabels, sparkPlan: plan, sparkActual: actual };
+    },
+    [sparkPlanLookup, sparkLookup, sparkMonthKeys, sparkMonthLabels],
+  );
+
+  // Counts-of-deals maps (arr.length) needed for spark actuals.
+  const dealsOnBoardCountByMonthKey = React.useMemo<Record<string, number>>(() => {
+    const out: Record<string, number> = {};
+    for (const [k, arr] of Object.entries(dealsOnBoardQuery.byMonthKey)) out[k] = arr.length;
+    return out;
+  }, [dealsOnBoardQuery.byMonthKey]);
+  const proposalsIssuedCountByMonthKey = React.useMemo<Record<string, number>>(() => {
+    const out: Record<string, number> = {};
+    for (const [k, arr] of Object.entries(proposalsIssuedQuery.byMonthKey)) out[k] = arr.length;
+    return out;
+  }, [proposalsIssuedQuery.byMonthKey]);
+
+  const kpiCountSpark = React.useMemo(() =>
+    buildSparkFields(
+      { map: salesCallsByMonthKey, loading: salesCallsQuery.isLoading || salesCallsQuery.isFetching },
+      { map: dealsOnBoardCountByMonthKey, loading: dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching },
+      { map: proposalsIssuedCountByMonthKey, loading: proposalsIssuedQuery.isLoading || proposalsIssuedQuery.isFetching },
+    ),
+  [buildSparkFields, salesCallsByMonthKey, salesCallsQuery.isLoading, salesCallsQuery.isFetching, dealsOnBoardCountByMonthKey, dealsOnBoardQuery.isLoading, dealsOnBoardQuery.isFetching, proposalsIssuedCountByMonthKey, proposalsIssuedQuery.isLoading, proposalsIssuedQuery.isFetching]);
+
+  const kpiValueSpark = React.useMemo(() =>
+    buildSparkFields(
+      { map: salesCallsByMonthKey, loading: salesCallsQuery.isLoading || salesCallsQuery.isFetching },
+      { map: dollarsOnBoardByMonthKey, loading: dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching },
+      { map: dollarsProposedByMonthKey, loading: proposalsIssuedQuery.isLoading || proposalsIssuedQuery.isFetching },
+      { dealsPlanMetric: 'dollarsOnBoard', propsPlanMetric: 'dollarsProposed' },
+    ),
+  [buildSparkFields, salesCallsByMonthKey, salesCallsQuery.isLoading, salesCallsQuery.isFetching, dollarsOnBoardByMonthKey, dollarsProposedByMonthKey, dealsOnBoardQuery.isLoading, dealsOnBoardQuery.isFetching, proposalsIssuedQuery.isLoading, proposalsIssuedQuery.isFetching]);
+
+  const finservCountSpark = React.useMemo(() =>
+    buildSparkFields(
+      { map: salesCallsFinservByMonthKey, loading: salesCallsFinservQuery.isLoading || salesCallsFinservQuery.isFetching },
+      { map: dealsOnBoardFinservByMonthKey, loading: dealsOnBoardFinservQuery.isLoading || dealsOnBoardFinservQuery.isFetching },
+      { map: proposalsIssuedFinservByMonthKey, loading: proposalsIssuedFinservQuery.isLoading || proposalsIssuedFinservQuery.isFetching },
+    ),
+  [buildSparkFields, salesCallsFinservByMonthKey, salesCallsFinservQuery.isLoading, salesCallsFinservQuery.isFetching, dealsOnBoardFinservByMonthKey, dealsOnBoardFinservQuery.isLoading, dealsOnBoardFinservQuery.isFetching, proposalsIssuedFinservByMonthKey, proposalsIssuedFinservQuery.isLoading, proposalsIssuedFinservQuery.isFetching]);
+
+  const finservValueSpark = React.useMemo(() =>
+    buildSparkFields(
+      { map: salesCallsFinservByMonthKey, loading: salesCallsFinservQuery.isLoading || salesCallsFinservQuery.isFetching },
+      { map: dollarsOnBoardFinservByMonthKey, loading: dealsOnBoardFinservQuery.isLoading || dealsOnBoardFinservQuery.isFetching },
+      { map: dollarsProposedFinservByMonthKey, loading: proposalsIssuedFinservQuery.isLoading || proposalsIssuedFinservQuery.isFetching },
+      { dealsPlanMetric: 'dollarsOnBoard', propsPlanMetric: 'dollarsProposed' },
+    ),
+  [buildSparkFields, salesCallsFinservByMonthKey, salesCallsFinservQuery.isLoading, salesCallsFinservQuery.isFetching, dollarsOnBoardFinservByMonthKey, dollarsProposedFinservByMonthKey, dealsOnBoardFinservQuery.isLoading, dealsOnBoardFinservQuery.isFetching, proposalsIssuedFinservQuery.isLoading, proposalsIssuedFinservQuery.isFetching]);
+
+  const kpiCountViewWithSpark = React.useMemo<DashboardView>(
+    () => ({ ...kpiCountView, ...kpiCountSpark }),
+    [kpiCountView, kpiCountSpark],
+  );
+  const kpiValueViewWithSpark = React.useMemo<DashboardView>(
+    () => ({ ...kpiValueView, ...kpiValueSpark }),
+    [kpiValueView, kpiValueSpark],
+  );
+  const finservCountViewWithSpark = React.useMemo<DashboardView>(
+    () => ({ ...finservCountView, ...finservCountSpark }),
+    [finservCountView, finservCountSpark],
+  );
+  const finservValueViewWithSpark = React.useMemo<DashboardView>(
+    () => ({ ...finservValueView, ...finservValueSpark }),
+    [finservValueView, finservValueSpark],
+  );
+  const kpiViewWithSpark = kpiValueMode === 'value' ? kpiValueViewWithSpark : kpiCountViewWithSpark;
+  const finservKpiViewWithSpark = kpiValueMode === 'value' ? finservValueViewWithSpark : finservCountViewWithSpark;
+
   // Master Plan monthly targets for FinServ Proposals rows — authored in
   // the Master Plan popup and overlaid onto the hardcoded PLAN so the
   // gap/performance-to-plan panel compares against the same values users
@@ -4623,7 +4779,7 @@ export function SalesDashboardV2() {
                 onChange={setKpiValueMode}
               />
             </div>
-            <ViewCtx.Provider value={kpiView}>
+            <ViewCtx.Provider value={kpiViewWithSpark}>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {kpiValueMode === 'value' ? (
                   <BlankKpiCard label="Sales Calls" />
@@ -4656,7 +4812,7 @@ export function SalesDashboardV2() {
                 />
               </div>
             </ViewCtx.Provider>
-            <ViewCtx.Provider value={finservKpiView}>
+            <ViewCtx.Provider value={finservKpiViewWithSpark}>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 {kpiValueMode === 'value' ? (
                   <BlankKpiCard label="FinServ Sales Calls" />
