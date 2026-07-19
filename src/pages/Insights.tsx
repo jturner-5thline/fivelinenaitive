@@ -2533,40 +2533,20 @@ function MetricsInner() {
               )}
 
               {effectiveSelectedDashboard === 'management-review' && (
-                <DropdownMenu>
-                  <UITooltip>
-                    <TooltipTrigger asChild>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          aria-label={`Export Insights for ${insightsExportContext.periodLabel}`}
-                          className="h-9 w-9 p-0"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent>Export {insightsExportContext.periodLabel}</TooltipContent>
-                  </UITooltip>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <div className="px-2 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
-                      {insightsExportContext.periodLabel}
-                      <div className="text-[10px] normal-case tracking-normal text-muted-foreground/70">
-                        {insightsExportContext.start} → {insightsExportContext.end}
-                      </div>
-                    </div>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleExportInsightsCsv}>
-                      <FileSpreadsheet className="h-4 w-4 mr-2" />
-                      Export CSV
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleExportInsightsPdf}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Export PDF
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <UITooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      aria-label={`Export report for ${insightsExportContext.periodLabel}`}
+                      className="h-9 w-9 p-0"
+                      onClick={() => setExportAllOpen(true)}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Export report — {insightsExportContext.periodLabel}</TooltipContent>
+                </UITooltip>
               )}
 
               <DropdownMenu>
