@@ -2789,7 +2789,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     qbConnected && monthLabels.length > 0
       ? {
           type: 'bar',
-          data: { labels: monthLabels, datasets: [{ data: monthRevenue, backgroundColor: bcol, borderColor: bbrd, borderWidth: 1, borderRadius: 4 }] },
+          data: { labels: monthLabels, datasets: [{ data: monthRevenue, backgroundColor: bcol, borderColor: bbrd, borderWidth: 0, borderRadius: 3 }] },
           options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } } } },
         }
       : null,
@@ -2937,7 +2937,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             ? {
                 labels: ttmLabels,
                 datasets: [
-                  { label: 'TTM Revenue', data: ttmTrendValues, backgroundColor: ttmCol, borderColor: ttmBrd, borderWidth: 1, borderRadius: 4, order: 2, yAxisID: 'y' },
+                  { label: 'TTM Revenue', data: ttmTrendValues, backgroundColor: ttmCol, borderColor: ttmBrd, borderWidth: 0, borderRadius: 3, order: 2, yAxisID: 'y' },
                   ...(showTrendDelta ? [{
                     type: 'line' as const,
                     label: '% Change vs Prior',
@@ -2957,7 +2957,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             : {
                 labels: monthlyTrendLabels,
                 datasets: [
-                  { label: 'Monthly Revenue', data: monthlyTrendValues, backgroundColor: monthlyCol, borderColor: monthlyBrd, borderWidth: 1, borderRadius: 4, order: 2, yAxisID: 'y' },
+                  { label: 'Monthly Revenue', data: monthlyTrendValues, backgroundColor: monthlyCol, borderColor: monthlyBrd, borderWidth: 0, borderRadius: 3, order: 2, yAxisID: 'y' },
                   ...(showTrendDelta ? [{
                     type: 'line' as const,
                     label: '% Change vs Prior',
@@ -3076,7 +3076,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     stageBreakdown.length > 0
       ? {
           type: 'bar',
-          data: { labels: stageBreakdown.map(s => s.stage), datasets: [{ data: stageBreakdown.map(s => s.value), backgroundColor: barBg('hsl(213,90%,70%)'), borderColor: barBorder('hsl(213,90%,70%)'), borderWidth: 1, borderRadius: 4 }] },
+          data: { labels: stageBreakdown.map(s => s.stage), datasets: [{ data: stageBreakdown.map(s => s.value), backgroundColor: barBg('hsl(213,90%,70%)'), borderColor: barBorder('hsl(213,90%,70%)'), borderWidth: 0, borderRadius: 3 }] },
           options: { ...def, indexAxis: 'y' as const, scales: { x: { ...gx, ticks: { ...gx.ticks, callback: (v: number) => fmtUSD(v) } }, y: { ...gy } } },
         }
       : null,
