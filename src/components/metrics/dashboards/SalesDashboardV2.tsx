@@ -340,13 +340,13 @@ const C = {
 
 const glassStyle: React.CSSProperties = {
   background:
-    'linear-gradient(135deg, hsl(220, 38%, 15%) 0%, hsl(245, 30%, 11%) 50%, hsl(265, 25%, 8%) 100%)',
-  border: `1px solid ${C.surfaceBorder}`,
+    'linear-gradient(135deg, hsl(220, 55%, 20%) 0%, hsl(245, 45%, 13%) 50%, hsl(268, 40%, 7%) 100%)',
+  border: `1px solid rgba(255,255,255,0.22)`,
   backdropFilter: 'blur(10px)',
   WebkitBackdropFilter: 'blur(10px)',
   borderRadius: 8,
   boxShadow:
-    'inset 0 1px 0 0 rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.35), 0 12px 32px -16px rgba(0,0,0,0.6)',
+    'inset 0 1px 0 0 rgba(255,255,255,0.09), 0 1px 2px rgba(0,0,0,0.45), 0 18px 40px -14px rgba(0,0,0,0.75)',
 };
 
 // ============================================================
