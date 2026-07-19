@@ -1194,9 +1194,6 @@ function CashflowForecastWidget() {
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <canvas ref={canvasRef} />
       </div>
-      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.4px' }}>
-        Source: Finance &gt; Cash Flow — ENDING CASH per week
-      </div>
     </div>
   );
 }
@@ -1461,9 +1458,6 @@ function ConsolidatedOpexWidget() {
             </ComposedChart>
           </ResponsiveContainer>
         )}
-      </div>
-      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.4px' }}>
-        Source: QuickBooks P&L (accrual) — Operating Expenses summed across Debt, FinServ, Tech, and Capital entities
       </div>
     </div>
   );
@@ -1750,9 +1744,6 @@ function ConsolidatedCashflowWidget() {
             </ComposedChart>
           </ResponsiveContainer>
         )}
-      </div>
-      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.4px' }}>
-        Source: QuickBooks Statement of Cash Flows (accrual) — "Net cash provided by operating activities" summed across Debt, FinServ, Tech, and Capital entities
       </div>
     </div>
   );
