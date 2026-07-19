@@ -1220,6 +1220,7 @@ function TopSourcedViaWidget() {
         if (!d) continue;
         if (isExcludedDeal(d.company)) continue;
         const key = sourceKey(d);
+        if (key === 'Unattributed') continue;
         counts.set(key, (counts.get(key) ?? 0) + 1);
         total += 1;
       }
@@ -1246,7 +1247,7 @@ function TopSourcedViaWidget() {
     // Deals in current period, grouped by source (for the right-side list).
     const currentDeals = Array.from(perPeriodDeals.p0)
       .map((id) => dealMap.get(id))
-      .filter((d): d is DealRow => !!d && !isExcludedDeal(d.company));
+      .filter((d): d is DealRow => !!d && !isExcludedDeal(d.company) && sourceKey(d) !== 'Unattributed');
     const groupedDeals = new Map<string, DealRow[]>();
     for (const d of currentDeals) {
       const k = sourceKey(d);
