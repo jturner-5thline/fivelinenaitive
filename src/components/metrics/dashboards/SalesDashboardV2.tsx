@@ -72,6 +72,7 @@ import {
   Save,
   Info,
   TrendingUp,
+  Share2,
 } from 'lucide-react';
 import {
   Tooltip as UITooltip,
