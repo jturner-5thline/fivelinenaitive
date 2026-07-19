@@ -52,7 +52,12 @@ function ToolbarBtn({
 export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps) {
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+        // Configured separately below to avoid duplicate-extension warnings.
+        link: false,
+        underline: false,
+      }),
       Placeholder.configure({ placeholder: 'Write your report here…' }),
       Underline,
       Highlight.configure({ multicolor: false }),
