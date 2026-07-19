@@ -128,8 +128,13 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     s.split(/[,;\s]+/).map((e) => e.trim()).filter(Boolean);
 
   const generatePdfBase64 = async (): Promise<string> => {
-    const [{ default: html2canvas }, jsPDFmod] = await Promise.all([
-      import('html2canvas'),
+    // html-to-image uses SVG <foreignObject> so the browser natively renders
+    // modern CSS (linear/radial gradients, oklch, color-mix, backdrop-filter,
+    // box-shadow insets, etc.). html2canvas re-implements CSS and mangles
+    // gradients + oklch colors, which is why the widgets looked flat/whited
+    // out in the previous export.
+    const [htmlToImage, jsPDFmod] = await Promise.all([
+      import('html-to-image'),
       import('jspdf'),
     ]);
     const jsPDF = (jsPDFmod as any).jsPDF || (jsPDFmod as any).default;
@@ -195,35 +200,39 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
 
     document.body.appendChild(wrap);
 
-    let canvas: HTMLCanvasElement;
+    let dataUrl: string;
+    let capturedWidth = PRINT_WIDTH;
+    let capturedHeight = wrap.scrollHeight;
     try {
-      // Give the browser a tick to lay out fonts/images.
-      await new Promise((r) => setTimeout(r, 60));
-      canvas = await html2canvas(wrap, {
+      // Let layout + web fonts settle before capture.
+      await (document as any).fonts?.ready?.catch?.(() => {});
+      await new Promise((r) => setTimeout(r, 120));
+      capturedHeight = wrap.scrollHeight;
+      dataUrl = await htmlToImage.toJpeg(wrap, {
+        quality: 0.95,
+        pixelRatio: 2,
         backgroundColor: '#0b0b12',
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        windowWidth: PRINT_WIDTH,
-        windowHeight: wrap.scrollHeight,
-        width: PRINT_WIDTH,
-        height: wrap.scrollHeight,
+        width: capturedWidth,
+        height: capturedHeight,
+        cacheBust: true,
+        // Skip elements that break foreignObject serialization (rare svgs,
+        // canvas-based recharts already serialize fine as SVG).
+        skipFonts: false,
       });
     } finally {
       document.body.removeChild(wrap);
     }
 
-    // Single-page PDF sized exactly to the captured content (no breaks).
-    const pxToPt = 72 / 96; // CSS px → PDF pt
-    const pageWpt = (canvas.width / 2) * pxToPt; // divide by scale
-    const pageHpt = (canvas.height / 2) * pxToPt;
+    // Single-page PDF sized exactly to captured content (no page breaks).
+    const pxToPt = 72 / 96;
+    const pageWpt = capturedWidth * pxToPt;
+    const pageHpt = capturedHeight * pxToPt;
     const pdf = new jsPDF({
       orientation: pageWpt > pageHpt ? 'l' : 'p',
       unit: 'pt',
       format: [pageWpt, pageHpt],
     });
-    const imgData = canvas.toDataURL('image/jpeg', 0.92);
-    pdf.addImage(imgData, 'JPEG', 0, 0, pageWpt, pageHpt);
+    pdf.addImage(dataUrl, 'JPEG', 0, 0, pageWpt, pageHpt);
     const dataUri = pdf.output('datauristring');
     return dataUri.split(',')[1] ?? '';
   };
