@@ -1040,6 +1040,26 @@ function TopSourcedViaWidget() {
   const { company } = useCompany();
   const [selectedSource, setSelectedSource] = React.useState<string | null>(null);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // Realtime: refetch when any deal's attribution fields change so edits to
+  // sourced_via / referral fields reflect immediately in this widget.
+  React.useEffect(() => {
+    if (!company?.id) return;
+    const channel = supabase
+      .channel(`top-sourced-via-deals-${company.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'deals', filter: `company_id=eq.${company.id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['top-sourced-via-v3'] });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [company?.id, queryClient]);
 
   // Period math — derive period length in whole months from the selected
   // range, then compute two prior periods of the same length.
