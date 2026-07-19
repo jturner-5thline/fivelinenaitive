@@ -3886,7 +3886,7 @@ function SummaryTile({ label, value, color }: { label: string; value: string; co
 // ============================================================
 // MAIN
 // ============================================================
-export function SalesDashboardV2() {
+export function SalesDashboardV2({ reportMode = false }: { reportMode?: boolean } = {}) {
   // Timeframe is driven by the shared Insights header picker
   // (Quick Presets / Quarter / Month). Fall back to a local persisted
   // selection only if this dashboard is ever rendered outside the
