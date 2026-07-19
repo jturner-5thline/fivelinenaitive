@@ -127,32 +127,97 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
       import('jspdf'),
     ]);
     const jsPDF = (jsPDFmod as any).jsPDF || (jsPDFmod as any).default;
-    const node = snapshotRef.current;
-    if (!node) throw new Error('Nothing to capture');
-    const canvas = await html2canvas(node, {
-      backgroundColor: '#0b0b12',
-      scale: 1.5,
-      useCORS: true,
-      windowWidth: node.scrollWidth,
-      windowHeight: node.scrollHeight,
+    const dashNode = snapshotRef.current;
+    if (!dashNode) throw new Error('Nothing to capture');
+
+    // Build an off-screen print container that stacks: report title, editor
+    // HTML (as static markup), then a deep clone of the live dashboard.
+    // Rendering off-screen lets us set an exact width so html2canvas produces
+    // a faithful, print-style snapshot without cutting off widgets.
+    const PRINT_WIDTH = Math.max(1240, dashNode.scrollWidth);
+    const wrap = document.createElement('div');
+    wrap.style.cssText = [
+      'position:fixed',
+      'left:-100000px',
+      'top:0',
+      `width:${PRINT_WIDTH}px`,
+      'background:#0b0b12',
+      'color:#ffffff',
+      'font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif',
+      'padding:32px 26px',
+      'box-sizing:border-box',
+    ].join(';');
+
+    // Header (subject)
+    const title = document.createElement('div');
+    title.style.cssText =
+      'font-size:22px;font-weight:700;color:#fff;margin:0 0 6px 0;';
+    title.textContent = subjectValue.trim() || 'Sales Dashboard Report';
+    wrap.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.style.cssText = 'font-size:12px;color:rgba(255,255,255,0.6);margin:0 0 18px 0;';
+    meta.textContent = new Date().toLocaleDateString('en-US', {
+      year: 'numeric', month: 'long', day: 'numeric',
     });
-    const imgData = canvas.toDataURL('image/jpeg', 0.9);
-    const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const imgW = pageW;
-    const imgH = (canvas.height * imgW) / canvas.width;
-    let heightLeft = imgH;
-    let position = 0;
-    pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
-    heightLeft -= pageH;
-    while (heightLeft > 0) {
-      position -= pageH;
-      pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
-      heightLeft -= pageH;
+    wrap.appendChild(meta);
+
+    // Editor content (rich text) — rendered as static HTML.
+    const editorHtml = editor?.getHTML()?.trim() ?? '';
+    if (editorHtml && editorHtml !== '<p></p>') {
+      const notes = document.createElement('div');
+      notes.className =
+        'prose prose-invert prose-sm max-w-none ' +
+        '[&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:my-2 ' +
+        '[&_h2]:text-xl [&_h2]:font-semibold [&_h2]:my-2 ' +
+        '[&_h3]:text-base [&_h3]:font-semibold [&_h3]:my-1 ' +
+        '[&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 ' +
+        '[&_blockquote]:border-l-2 [&_blockquote]:border-white/30 [&_blockquote]:pl-3 [&_blockquote]:italic ' +
+        '[&_a]:text-cyan-300 [&_a]:underline ' +
+        '[&_mark]:bg-yellow-300/40 [&_mark]:rounded-sm [&_mark]:px-0.5';
+      notes.style.cssText =
+        'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.18);' +
+        'border-radius:10px;padding:16px 20px;margin:0 0 24px 0;color:#fff;font-size:14px;line-height:1.55;';
+      notes.innerHTML = editorHtml;
+      wrap.appendChild(notes);
     }
-    // Return base64 without the data-URI prefix
+
+    // Deep-clone the live dashboard so its styles come from the same stylesheet.
+    const dashClone = dashNode.cloneNode(true) as HTMLElement;
+    dashClone.style.width = '100%';
+    wrap.appendChild(dashClone);
+
+    document.body.appendChild(wrap);
+
+    let canvas: HTMLCanvasElement;
+    try {
+      // Give the browser a tick to lay out fonts/images.
+      await new Promise((r) => setTimeout(r, 60));
+      canvas = await html2canvas(wrap, {
+        backgroundColor: '#0b0b12',
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        windowWidth: PRINT_WIDTH,
+        windowHeight: wrap.scrollHeight,
+        width: PRINT_WIDTH,
+        height: wrap.scrollHeight,
+      });
+    } finally {
+      document.body.removeChild(wrap);
+    }
+
+    // Single-page PDF sized exactly to the captured content (no breaks).
+    const pxToPt = 72 / 96; // CSS px → PDF pt
+    const pageWpt = (canvas.width / 2) * pxToPt; // divide by scale
+    const pageHpt = (canvas.height / 2) * pxToPt;
+    const pdf = new jsPDF({
+      orientation: pageWpt > pageHpt ? 'l' : 'p',
+      unit: 'pt',
+      format: [pageWpt, pageHpt],
+    });
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    pdf.addImage(imgData, 'JPEG', 0, 0, pageWpt, pageHpt);
     const dataUri = pdf.output('datauristring');
     return dataUri.split(',')[1] ?? '';
   };
