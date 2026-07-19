@@ -221,7 +221,10 @@ function formatCurrencyDisplay(raw: string): string {
   const sign = num < 0 ? '-' : '';
   const fmt = (v: number, unit: string) => {
     const s = v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2);
-    return `${sign}$${s.replace(/\.?0+$/, '')}${unit}`;
+    // Strip trailing zeros only after a decimal point (e.g. "1.50" -> "1.5",
+    // "2.00" -> "2"), never from whole numbers ("200" must not become "2").
+    const trimmed = s.includes('.') ? s.replace(/0+$/, '').replace(/\.$/, '') : s;
+    return `${sign}$${trimmed}${unit}`;
   };
   if (abs >= 1_000_000_000) return fmt(abs / 1_000_000_000, 'B');
   if (abs >= 1_000_000) return fmt(abs / 1_000_000, 'M');
