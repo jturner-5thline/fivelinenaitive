@@ -99,6 +99,30 @@ function barBg(color: string, opts: { negative?: boolean; dim?: boolean } = {}) 
     return g;
   };
 }
+// Matches the Controller "FinServ Revenue by Client" SVG LiquidGlass bar
+// (restrained gradient + subtle white top-highlight). Chart.js can't stack
+// SVG overlays like the Recharts shape does, so we simulate the "lit edge"
+// by lifting the top gradient stop's lightness and layering a white sheen.
+function finservBarBg(color: string, opts: { negative?: boolean; dim?: boolean } = {}) {
+  return (ctx: any) => {
+    const area = ctx?.chart?.chartArea;
+    if (!area) return color;
+    const hsl = _stripToHsl(color);
+    if (!hsl) return color;
+    const litL = Math.min(96, hsl.l + 10);
+    const g = ctx.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+    if (opts.dim) {
+      g.addColorStop(0, _hsla(hsl.h, hsl.s, litL, 0.72));
+      g.addColorStop(0.22, _hsla(hsl.h, hsl.s, hsl.l, 0.55));
+      g.addColorStop(1, _hsla(hsl.h, hsl.s, hsl.l, 0.38));
+    } else {
+      g.addColorStop(0, _hsla(hsl.h, hsl.s, litL, 0.98));
+      g.addColorStop(0.22, _hsla(hsl.h, hsl.s, hsl.l, 0.88));
+      g.addColorStop(1, _hsla(hsl.h, hsl.s, hsl.l, 0.68));
+    }
+    return g;
+  };
+}
 // The LiquidGlass recipe used by Controller "FinServ Revenue by Client" has
 // no stroke — return transparent so callers can keep passing borderColor
 // without introducing an edge line.
@@ -1088,7 +1112,7 @@ function CashflowForecastWidget() {
                 label: 'Ending Cash',
                 data: weeks.map((w) => w.endingCash),
                 backgroundColor: weeks.map((w) =>
-                  w.endingCash < 0 ? barBg('hsl(0,75%,60%)', { negative: true }) : barBg('hsl(213,90%,70%)'),
+                  w.endingCash < 0 ? barBg('hsl(0,75%,60%)', { negative: true }) : finservBarBg('hsl(213,90%,70%)'),
                 ),
                 borderColor: weeks.map((w) =>
                   w.endingCash < 0 ? barBorder('hsl(0,75%,60%)') : barBorder('hsl(213,90%,70%)'),
@@ -2821,7 +2845,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   );
 
   const ttmLabels = ttmTrendSeries.map(p => p.month);
-  const ttmCol = ttmTrendSeries.map((_p, i) => barBg('hsl(213,90%,70%)', { dim: i !== ttmTrendSeries.length - 1 }));
+  const ttmCol = ttmTrendSeries.map((_p, i) => finservBarBg('hsl(213,90%,70%)', { dim: i !== ttmTrendSeries.length - 1 }));
   const ttmBrd = ttmTrendSeries.map((_p, i) => barBorder('hsl(213,90%,70%)', { dim: i !== ttmTrendSeries.length - 1 }));
   const [trendMode, setTrendMode] = useState<'ttm' | 'monthly' | 'quarterly-yoy'>('ttm');
   const [showTrendDelta, setShowTrendDelta] = useState<boolean>(false);
@@ -2839,7 +2863,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         inv => inv.total_amt,
       ))
     : ttmSeries.map(p => p.revenue);
-  const monthlyCol = monthlyTrendLabels.map((_l, i) => barBg('hsl(213,90%,70%)', { dim: i !== monthlyTrendLabels.length - 1 }));
+  const monthlyCol = monthlyTrendLabels.map((_l, i) => finservBarBg('hsl(213,90%,70%)', { dim: i !== monthlyTrendLabels.length - 1 }));
   const monthlyBrd = monthlyTrendLabels.map((_l, i) => barBorder('hsl(213,90%,70%)', { dim: i !== monthlyTrendLabels.length - 1 }));
   const activeTrendValues = trendMode === 'ttm' ? ttmTrendValues : monthlyTrendValues;
   // Compute a "prior" value for the FIRST bucket so the trend line starts at
