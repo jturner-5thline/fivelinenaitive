@@ -4776,6 +4776,16 @@ export function SalesDashboardV2({ reportMode = false }: { reportMode?: boolean 
           {/* KPI strip */}
           <div className="mb-6">
             <div className="flex items-center justify-end gap-2 mb-2">
+              {!reportMode && (
+                <button
+                  type="button"
+                  onClick={() => setShareReportOpen(true)}
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium text-white/85 hover:text-white bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 transition-colors"
+                >
+                  <Share2 size={13} />
+                  Share Report
+                </button>
+              )}
               <ValueModeToggle
                 value={kpiValueMode}
                 onChange={setKpiValueMode}
