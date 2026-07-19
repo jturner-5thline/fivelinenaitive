@@ -61,7 +61,13 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
   const [sendOpen, setSendOpen] = useState(false);
   const [toValue, setToValue] = useState('');
   const [ccValue, setCcValue] = useState('');
-  const [subjectValue, setSubjectValue] = useState('Sales Dashboard Report');
+  const formatReportDate = (d = new Date()) => {
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${mm}-${dd}-${d.getFullYear()}`;
+  };
+  const defaultSubject = () => `Sales Report ${formatReportDate()}`;
+  const [subjectValue, setSubjectValue] = useState(defaultSubject());
   const [messageValue, setMessageValue] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -152,7 +158,7 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     const title = document.createElement('div');
     title.style.cssText =
       'font-size:22px;font-weight:700;color:#fff;margin:0 0 6px 0;';
-    title.textContent = subjectValue.trim() || 'Sales Dashboard Report';
+    title.textContent = subjectValue.trim() || defaultSubject();
     wrap.appendChild(title);
 
     const meta = document.createElement('div');
@@ -245,7 +251,7 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
           message: messageValue,
           messageHtml,
           attachment: {
-            filename: `sales-report-${new Date().toISOString().slice(0, 10)}.pdf`,
+            filename: `${(subjectValue.trim() || defaultSubject()).replace(/[^\w\-]+/g, '_')}.pdf`,
             contentBase64,
           },
         },
