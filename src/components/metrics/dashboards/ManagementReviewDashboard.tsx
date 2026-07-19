@@ -3875,12 +3875,12 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <TooltipProvider>
               <div style={{ height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {(() => {
-                  const leftMetrics = [
-                    "Next 3 Months' Revenue",
-                    "Next 3 Months' Profit",
-                    'Client Signings',
-                    'Deals Closing',
-                    'Dollars Funding',
+                  const leftMetrics: { label: string; value: string }[] = [
+                    { label: "Next 3 Months' Revenue", value: next3Months.revenueSum > 0 ? formatUSD(next3Months.revenueSum / 1000) : '—' },
+                    { label: "Next 3 Months' Profit", value: '—' },
+                    { label: 'Client Signings', value: '—' },
+                    { label: 'Deals Closing', value: '—' },
+                    { label: 'Dollars Funding', value: '—' },
                   ];
                   const rightMetrics = [
                     'Deal Count',
@@ -3896,8 +3896,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                       <tbody>
                         {Array.from({ length: rows }).map((_, i) => (
                           <tr key={i} style={{ borderBottom: i === rows - 1 ? 'none' : '1px solid rgba(255,255,255,0.04)' }}>
-                            <td style={labelStyle}>{leftMetrics[i] ?? ''}</td>
-                            <td style={valueStyle}>{leftMetrics[i] ? '—' : ''}</td>
+                            <td style={labelStyle}>{leftMetrics[i]?.label ?? ''}</td>
+                            <td style={valueStyle}>{leftMetrics[i]?.value ?? ''}</td>
                             <td style={{ ...labelStyle, borderLeft: '1px solid rgba(255,255,255,0.08)' }}>{rightMetrics[i] ?? ''}</td>
                             <td style={valueStyle}>{rightMetrics[i] ? '—' : ''}</td>
                           </tr>
@@ -4040,7 +4040,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <div className="flex h-full flex-col">
               <div className="flex flex-col divide-y divide-border">
                 {[
-                  { label: "Next 3 Months' Revenue", value: next3Months.revenueSum > 0 ? formatUSD(next3Months.revenueSum / 1000) : '—' },
+                  { label: "Next 3 Months' Revenue", value: '—' },
                   { label: "Next 3 Months' Profit", value: '—' },
                   { label: 'Operating Cashflow', value: '—' },
                   { label: 'Client Signings', value: '—' },
