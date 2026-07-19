@@ -3738,6 +3738,10 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         </div>
 
         <div key="monthly-revenue" data-grid-item-id="monthly-revenue" className="h-full">
+          <style>{`
+            [data-grid-item-id="monthly-revenue"] .mgmt-widget > div:nth-child(2) > div:first-child { color: #ffffff !important; }
+            [data-grid-item-id="monthly-revenue"] .mgmt-widget span[style*="text-transform: uppercase"] { color: #ffffff !important; }
+          `}</style>
           <GridShell
             isEditMode={isEditMode}
             title={
