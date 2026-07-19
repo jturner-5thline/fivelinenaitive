@@ -99,10 +99,11 @@ function barBg(color: string, opts: { negative?: boolean; dim?: boolean } = {}) 
     return g;
   };
 }
-function barBorder(color: string, opts: { dim?: boolean } = {}) {
-  const hsl = _stripToHsl(color);
-  if (!hsl) return color;
-  return _hsla(hsl.h, hsl.s, hsl.l, opts.dim ? BAR_BORDER_ALPHA_DIM : BAR_BORDER_ALPHA);
+// The LiquidGlass recipe used by Controller "FinServ Revenue by Client" has
+// no stroke — return transparent so callers can keep passing borderColor
+// without introducing an edge line.
+function barBorder(_color: string, _opts: { dim?: boolean } = {}) {
+  return 'rgba(0,0,0,0)';
 }
 
 // ============================================================================
