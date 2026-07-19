@@ -2477,8 +2477,6 @@ function MetricsInner() {
                   </DropdownMenuContent>
                 </DropdownMenu>
                 {selectedDashboard !== 'management-review' && <MasterPlanButton />}
-              </div>
-              <div className="flex items-center gap-3 mt-1">
                 <SyncStatusBar />
               </div>
             </div>
