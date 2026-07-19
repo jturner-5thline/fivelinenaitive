@@ -1737,10 +1737,23 @@ function ConsolidatedCashflowWidget() {
                 cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                 contentStyle={{ background: 'rgba(20,22,30,0.95)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, fontSize: 11 }}
                 labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
-                formatter={(v: number, name: string) => {
-                  if (name === 'Δ $') return [fmt(v as number), 'Δ $'];
-                  if (name === 'Δ %') return [`${(v as number).toFixed(1)}%`, 'Δ %'];
-                  return [fmt(v as number), 'Operating CF'];
+                content={({ active, payload, label }: any) => {
+                  if (!active || !payload || !payload.length) return null;
+                  const row: any = payload[0]?.payload ?? {};
+                  const dAbs = row.deltaAbs;
+                  const dPct = row.deltaPct;
+                  const posColor = 'hsl(142, 71%, 45%)';
+                  const negColor = 'hsl(0, 84%, 60%)';
+                  const dColor = dAbs == null ? 'rgba(255,255,255,0.6)' : (dAbs >= 0 ? posColor : negColor);
+                  return (
+                    <div style={{ background: 'rgba(20,22,30,0.95)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, fontSize: 11, padding: '6px 8px', color: '#fff' }}>
+                      <div style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>{label}</div>
+                      <div>Operating CF: <strong>{fmt(Number(row.value))}</strong></div>
+                      <div style={{ color: dColor }}>
+                        Δ vs prior: {dAbs == null ? '—' : `${dAbs >= 0 ? '+' : '−'}${fmt(Math.abs(dAbs))}`} {dPct == null ? '' : `(${dPct >= 0 ? '+' : ''}${dPct.toFixed(1)}%)`}
+                      </div>
+                    </div>
+                  );
                 }}
               />
               <Bar yAxisId="left" dataKey="value" name="Operating CF" radius={[4, 4, 0, 0]}
@@ -1754,7 +1767,20 @@ function ConsolidatedCashflowWidget() {
                   return <rect x={x} y={yy} width={width} height={h} fill={color} rx={4} ry={4} />;
                 }}
               >
-                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => fmt(v), { polarity: 'higher-is-better' })} />
+                <LabelList
+                  dataKey="value"
+                  content={(props: any) => {
+                    const { x, y, width, index } = props;
+                    const row = chartData[index];
+                    const pct = row?.deltaPct;
+                    if (pct == null) return null;
+                    const color = pct >= 0 ? 'hsl(142, 71%, 45%)' : 'hsl(0, 84%, 60%)';
+                    const text = `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`;
+                    return (
+                      <text x={Number(x) + Number(width) / 2} y={Number(y) - 6} textAnchor="middle" fill={color} fontSize={10} fontWeight={700}>{text}</text>
+                    );
+                  }}
+                />
               </Bar>
               {showDelta && (
                 <>
