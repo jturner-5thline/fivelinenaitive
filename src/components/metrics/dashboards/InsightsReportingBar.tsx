@@ -97,17 +97,36 @@ export function InsightsReportingBar({ tabsSlot }: Props) {
   };
 
   return (
-    <div style={{ marginTop: -12, marginBottom: 12 }}>
-      <Card
-        className="glass-module"
-        style={{
-          borderTopLeftRadius: 0,
-          borderTopRightRadius: 0,
-          borderTop: 'none',
-        }}
+    <div
+      style={{
+        // Pull upward to fully close the space-y-6 (24px) gap under the
+        // sticky header so the tabs row visually attaches as a continuation
+        // of the header instead of reading as a separate card.
+        marginTop: -24,
+        marginBottom: 12,
+      }}
+    >
+      <div
+        className={cn(
+          // Match the sticky header's dark card surface (see StickyDashboardHeader
+          // surface="module") so this row reads as the same container. No top
+          // border, no top radius — flush against the header above.
+          'bg-card dark:bg-[hsl(240,20%,8%)] dark:bg-[image:radial-gradient(circle_at_bottom_right,_hsl(280,60%,45%,0.25)_0%,_transparent_50%)]',
+          'border-x border-b border-border/50 dark:border-[hsl(263,45%,40%,0.5)]',
+          'rounded-b-xl px-5',
+        )}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '8px 0',
+            flexWrap: 'wrap',
+            gap: 8,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', minWidth: 0 }}>
             {tabsSlot}
             <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
               Reporting period {periodLabel}
@@ -139,7 +158,7 @@ export function InsightsReportingBar({ tabsSlot }: Props) {
             </button>
           </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
