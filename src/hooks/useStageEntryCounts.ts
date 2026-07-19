@@ -53,7 +53,7 @@ export function useStageEntryEvents(
         .select('deal_id, changed_at, deals!inner(company, value, manager)')
         .eq('pipeline_id', ACTIVE_PIPELINE_ID)
         .eq('event_type', 'stage_enter')
-        .eq('to_stage_id', stageId)
+        .or(`to_stage_id.eq.${stageId},to_stage.eq.${stageId}`)
         .gte('changed_at', startIso)
         .lt('changed_at', endIso)
         .order('changed_at', { ascending: false });
@@ -123,7 +123,7 @@ export function useStageEntryCount(
         .select('deal_id, changed_at, deals!inner(company, value, manager)')
         .eq('pipeline_id', ACTIVE_PIPELINE_ID)
         .eq('event_type', 'stage_enter')
-        .eq('to_stage_id', stageId)
+        .or(`to_stage_id.eq.${stageId},to_stage.eq.${stageId}`)
         .gte('changed_at', startIso)
         .lt('changed_at', endIso)
         .order('changed_at', { ascending: false });
