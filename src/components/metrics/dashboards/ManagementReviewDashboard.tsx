@@ -973,7 +973,7 @@ const formatRangeLabel = (range: DateRange) => `${format(range.start, 'yyyy-MM-d
 
 function Card({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
-    <div className={`relative overflow-hidden rounded-[10px] ${className}`}
+    <div className={`mgmt-widget relative overflow-hidden rounded-[10px] ${className}`}
       style={{
         // Premium dark indigo gradient — reduced purple saturation.
         background:
@@ -1673,7 +1673,7 @@ function GridShell({
   titleTooltip?: string;
 }) {
   return (
-    <div className="h-full w-full flex flex-col rounded-[10px] overflow-hidden relative"
+    <div className="mgmt-widget h-full w-full flex flex-col rounded-[10px] overflow-hidden relative"
       style={{
         background:
           'radial-gradient(120% 140% at 100% 100%, hsla(260, 40%, 40%, 0.14) 0%, transparent 55%), linear-gradient(160deg, hsl(228, 38%, 9%) 0%, hsl(232, 34%, 11%) 50%, hsl(238, 32%, 12%) 100%)',

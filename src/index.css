@@ -1079,6 +1079,18 @@
     opacity: 1;
   }
 
+  /* Force white/contrasting text inside Management Review dashboard widgets */
+  .mgmt-widget,
+  .mgmt-widget .text-foreground,
+  .mgmt-widget .text-foreground\/90,
+  .mgmt-widget .text-foreground\/80,
+  .mgmt-widget .text-foreground\/70 {
+    color: #ffffff !important;
+  }
+  .mgmt-widget .text-muted-foreground {
+    color: rgba(255, 255, 255, 0.72) !important;
+  }
+
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
       @keyframes naitive-reveal-fade {
