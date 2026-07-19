@@ -975,9 +975,9 @@ function Card({ children, className = '', style }: { children: React.ReactNode; 
   return (
     <div className={`relative overflow-hidden rounded-[10px] ${className}`}
       style={{
-        // Premium dark indigo → plum gradient to match Sales Dashboard aesthetic.
+        // Premium dark indigo gradient — reduced purple saturation.
         background:
-          'radial-gradient(120% 140% at 100% 100%, hsla(280, 60%, 45%, 0.28) 0%, transparent 55%), linear-gradient(160deg, hsl(232, 42%, 10%) 0%, hsl(240, 38%, 12%) 45%, hsl(258, 40%, 14%) 100%)',
+          'radial-gradient(120% 140% at 100% 100%, hsla(260, 40%, 40%, 0.14) 0%, transparent 55%), linear-gradient(160deg, hsl(228, 38%, 9%) 0%, hsl(232, 34%, 11%) 50%, hsl(238, 32%, 12%) 100%)',
         border: '1px solid rgba(255,255,255,0.14)',
         boxShadow:
           '0 12px 32px -18px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.08)',
@@ -1676,7 +1676,7 @@ function GridShell({
     <div className="h-full w-full flex flex-col rounded-[10px] overflow-hidden relative"
       style={{
         background:
-          'radial-gradient(120% 140% at 100% 100%, hsla(280, 60%, 45%, 0.28) 0%, transparent 55%), linear-gradient(160deg, hsl(232, 42%, 10%) 0%, hsl(240, 38%, 12%) 45%, hsl(258, 40%, 14%) 100%)',
+          'radial-gradient(120% 140% at 100% 100%, hsla(260, 40%, 40%, 0.14) 0%, transparent 55%), linear-gradient(160deg, hsl(228, 38%, 9%) 0%, hsl(232, 34%, 11%) 50%, hsl(238, 32%, 12%) 100%)',
         border: '1px solid rgba(255,255,255,0.14)',
         boxShadow: '0 12px 32px -18px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.08)',
       }}>
