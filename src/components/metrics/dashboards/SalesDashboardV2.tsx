@@ -1076,6 +1076,12 @@ function TopSourcedViaWidget() {
     const p0 = { start, end };
     const p1 = { start: shift(start, pm), end: start };
     const p2 = { start: shift(start, pm * 2), end: shift(start, pm) };
+    // Extended window: past 6 months when a month is selected, or past 2
+    // quarters (also 6 months) when a quarter is selected. Falls back to the
+    // current period for larger selections.
+    const extendedMonths = pm === 1 ? 6 : pm === 3 ? 6 : pm;
+    const extended = { start: shift(end, extendedMonths), end };
+    const extendedLabel = pm === 3 ? 'Past 2 quarters' : `Past ${extendedMonths} months`;
     const labelFor = (s: Date, e: Date) => {
       if (pm === 1) return s.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
       if (pm === 3) {
@@ -1087,9 +1093,11 @@ function TopSourcedViaWidget() {
       const b = new Date(e.getTime() - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
       return `${a}–${b}`;
     };
+    const wideStart = new Date(Math.min(p2.start.getTime(), extended.start.getTime()));
     return {
       periodMonths: pm,
-      wide: { start: p2.start, end: p0.end },
+      wide: { start: wideStart, end: p0.end },
+      extended: { ...extended, label: extendedLabel },
       buckets: [
         { key: 'p2', label: labelFor(p2.start, p2.end), start: p2.start, end: p2.end },
         { key: 'p1', label: labelFor(p1.start, p1.end), start: p1.start, end: p1.end },
@@ -1236,6 +1244,20 @@ function TopSourcedViaWidget() {
       .slice(0, 5)
       .map(([label, count]) => ({ label, count }));
 
+    // Extended window rollup — past 6 months / past 2 quarters.
+    const extendedDealIds = new Set<string>();
+    const extStart = periods.extended.start.getTime();
+    const extEnd = periods.extended.end.getTime();
+    for (const e of events) {
+      const t = new Date(e.at).getTime();
+      if (t >= extStart && t < extEnd) extendedDealIds.add(e.dealId);
+    }
+    const extended = bucketToCounts(extendedDealIds);
+    const extendedRows = Array.from(extended.counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([label, count]) => ({ label, count }));
+
     // Build chart data: one entry per period with a numeric field per top source.
     const chartData = periods.buckets.map((b) => {
       const src = b.key === 'p0' ? current.counts : b.key === 'p1' ? prior1.counts : prior2.counts;
@@ -1256,10 +1278,18 @@ function TopSourcedViaWidget() {
       groupedDeals.set(k, list);
     }
 
-    return { topRows, currentTotal: current.total, chartData, groupedDeals };
+    return {
+      topRows,
+      currentTotal: current.total,
+      chartData,
+      groupedDeals,
+      extendedRows,
+      extendedTotal: extended.total,
+    };
   }, [data, periods]);
 
   const max = analysis.topRows[0]?.count ?? 0;
+  const extMax = analysis.extendedRows[0]?.count ?? 0;
 
   const SERIES_COLORS = ['#9DA2F5', '#7EC8E3', '#C7A6F2', '#F5A97F', '#7FD4B0'];
 
@@ -1328,6 +1358,60 @@ function TopSourcedViaWidget() {
                 </button>
               );
             })}
+            {analysis.extendedRows.length > 0 && (
+              <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${C.hairline}` }}>
+                <div
+                  className="text-[10px] font-medium uppercase mb-2"
+                  style={{ color: C.textFaint, letterSpacing: '0.08em' }}
+                >
+                  {periods.extended.label}
+                </div>
+                {analysis.extendedRows.map((r, idx) => {
+                  const widthPct = extMax === 0 ? 0 : (r.count / extMax) * 100;
+                  const share = analysis.extendedTotal === 0 ? 0 : r.count / analysis.extendedTotal;
+                  return (
+                    <button
+                      type="button"
+                      key={`ext-${r.label}`}
+                      onClick={() => setSelectedSource(r.label)}
+                      title={`View ${r.count} deal${r.count === 1 ? '' : 's'} sourced via ${r.label}`}
+                      className="grid grid-cols-[1fr_auto] items-center gap-3 py-1.5 text-left w-full cursor-pointer hover:bg-white/[0.03] rounded-md px-2 -mx-2 focus-visible:outline-none focus-visible:ring-1"
+                      style={{ borderTop: idx === 0 ? 'none' : `1px solid ${C.hairline}` }}
+                    >
+                      <div className="min-w-0">
+                        <div
+                          className="text-[11px] truncate mb-1"
+                          style={{ color: C.textPrimary }}
+                          title={r.label}
+                        >
+                          {r.label}
+                        </div>
+                        <div
+                          className="relative w-full"
+                          style={{ height: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 2, overflow: 'hidden' }}
+                        >
+                          <div
+                            style={{
+                              width: `${widthPct}%`,
+                              height: '100%',
+                              background: `linear-gradient(90deg, rgba(199,166,242,0.85), rgba(199,166,242,0.45))`,
+                              borderRadius: 2,
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div
+                        className="text-[10.5px] tabular-nums whitespace-nowrap"
+                        style={{ fontVariantNumeric: 'tabular-nums' }}
+                      >
+                        <span style={{ color: C.textPrimary }}>{r.count}</span>
+                        <span style={{ color: C.textFaint }}>{' · '}{Math.round(share * 100)}%</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* RIGHT — trend chart + current-period deal list */}
