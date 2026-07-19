@@ -4176,8 +4176,11 @@ export function SalesDashboardV2() {
         const mp = masterPlanMonthly.values[widgetKey]?.[ym];
         return mp !== undefined ? mp / divisor : base;
       });
-    ytdPlan.finservProposalsIssued = overlayYtdPlan('finserv-proposals-issued', ytdPlan.finservProposalsIssued);
-    ytdPlan.finservDollarsProposed = overlayYtdPlan('finserv-dollars-proposed', ytdPlan.finservDollarsProposed, 1_000_000);
+    // Overlay Master Plan monthly targets onto ALL mapped metrics for YTD.
+    (Object.keys(PLAN_OVERLAY_MAP) as MetricKey[]).forEach((mk) => {
+      const m = PLAN_OVERLAY_MAP[mk]!;
+      ytdPlan[mk] = overlayYtdPlan(m.widgetKey, ytdPlan[mk], m.divisor);
+    });
 
     return {
       ...view,
@@ -4186,12 +4189,14 @@ export function SalesDashboardV2() {
         finservProposalsIssued: liveProposalsIssuedActualFinserv,
         finservDollarsProposed: liveDollarsProposedActualFinserv,
       },
-      plan: {
-        ...view.plan,
-        finservProposalsIssued: overlayPlan('finserv-proposals-issued', view.plan.finservProposalsIssued),
-        // Dashboard renders $ in $MM; Master Plan stores raw USD.
-        finservDollarsProposed: overlayPlan('finserv-dollars-proposed', view.plan.finservDollarsProposed, 1_000_000),
-      },
+      plan: (() => {
+        const nextPlan = { ...view.plan };
+        (Object.keys(PLAN_OVERLAY_MAP) as MetricKey[]).forEach((mk) => {
+          const m = PLAN_OVERLAY_MAP[mk]!;
+          nextPlan[mk] = overlayPlan(m.widgetKey, view.plan[mk], m.divisor);
+        });
+        return nextPlan;
+      })(),
       ytdMonths,
       ytdPlan,
       ytdActual,
