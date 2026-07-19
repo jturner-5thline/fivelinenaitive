@@ -1446,9 +1446,7 @@ function ConsolidatedOpexWidget() {
                 name="OPEX"
                 fill="hsl(35, 85%, 55%)"
                 radius={[4, 4, 0, 0]}
-              >
-                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => formatUSD(v / 1000), { polarity: 'lower-is-better' })} />
-              </Bar>
+              />
               {showDelta && (
                 <>
                   <Line yAxisId="right" type="monotone" dataKey="deltaAbs" name="Δ $" stroke="hsl(38, 92%, 62%)" strokeWidth={2} dot={{ r: 3, fill: 'hsl(38, 92%, 62%)' }} connectNulls />
