@@ -1707,6 +1707,7 @@ function CumulativePace() {
               width={42}
             />
             <Tooltip
+              cursor={{ stroke: C.textFaint, strokeDasharray: '3 3' }}
               contentStyle={{
                 background: 'rgba(8,8,12,0.95)',
                 border: `1px solid ${C.surfaceBorder}`,
@@ -1714,7 +1715,9 @@ function CumulativePace() {
                 color: C.textPrimary,
                 fontSize: 12,
               }}
-              formatter={(v: number, n: string) => [fmt(v), n === 'plan' ? 'YTD Plan' : 'Actual']}
+              labelStyle={{ color: C.textPrimary, fontWeight: 600, marginBottom: 4 }}
+              itemStyle={{ color: C.textPrimary }}
+              formatter={(v: number, n: string) => [fmt(v), n === 'plan' ? 'YTD Plan' : 'YTD Actual']}
             />
             <ReferenceLine
               x={months[E - 1] ?? ''}
