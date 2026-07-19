@@ -51,8 +51,8 @@ const setChartDefaults = () => {
   ChartJS.defaults.font.family = 'system-ui, sans-serif';
 };
 
-const gx: any = { ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 9 } }, grid: { display: false }, border: { display: false } };
-const gy: any = { ticks: { color: 'rgba(255,255,255,0.35)', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.08)' }, border: { display: false } };
+const gx: any = { ticks: { color: '#ffffff', font: { size: 9 } }, grid: { display: false }, border: { display: false } };
+const gy: any = { ticks: { color: '#ffffff', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.08)' }, border: { display: false } };
 const def: any = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
 const NA_COLOR = 'rgba(255,255,255,0.35)';
 
