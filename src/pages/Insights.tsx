@@ -2479,9 +2479,6 @@ function MetricsInner() {
                 {selectedDashboard !== 'management-review' && <MasterPlanButton />}
               </div>
               <div className="flex items-center gap-3 mt-1">
-                <p className="text-muted-foreground">
-                  Pipeline performance analytics powered by real deal data
-                </p>
                 <SyncStatusBar />
               </div>
             </div>
