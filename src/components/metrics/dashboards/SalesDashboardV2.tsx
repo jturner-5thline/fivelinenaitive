@@ -1128,10 +1128,13 @@ function TopSourcedViaWidget() {
     let total = 0;
     for (const d of data ?? []) {
       if (isExcludedDeal(d.company)) continue;
+      const hasReferral =
+        !!(d.referral_source_id) ||
+        !!(d.referral_source || '').trim() ||
+        !!(d.referred_by || '').trim();
       const key =
         (d.sourced_via || '').trim() ||
-        (d.referral_source || '').trim() ||
-        (d.referred_by || '').trim() ||
+        (hasReferral ? 'Referral' : '') ||
         (d.lead_source || '').trim() ||
         'Unattributed';
       counts.set(key, (counts.get(key) ?? 0) + 1);
@@ -1222,10 +1225,13 @@ function TopSourcedViaWidget() {
       deals={(data ?? []).filter(
         (d) => {
           if (isExcludedDeal(d.company)) return false;
+          const hasReferral =
+            !!(d.referral_source_id) ||
+            !!(d.referral_source || '').trim() ||
+            !!(d.referred_by || '').trim();
           const key =
             (d.sourced_via || '').trim() ||
-            (d.referral_source || '').trim() ||
-            (d.referred_by || '').trim() ||
+            (hasReferral ? 'Referral' : '') ||
             (d.lead_source || '').trim() ||
             'Unattributed';
           return key === selectedSource;
