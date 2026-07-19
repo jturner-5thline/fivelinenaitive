@@ -4779,7 +4779,7 @@ export function SalesDashboardV2() {
                 onChange={setKpiValueMode}
               />
             </div>
-            <ViewCtx.Provider value={kpiView}>
+            <ViewCtx.Provider value={kpiViewWithSpark}>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {kpiValueMode === 'value' ? (
                   <BlankKpiCard label="Sales Calls" />
@@ -4812,7 +4812,7 @@ export function SalesDashboardV2() {
                 />
               </div>
             </ViewCtx.Provider>
-            <ViewCtx.Provider value={finservKpiView}>
+            <ViewCtx.Provider value={finservKpiViewWithSpark}>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 {kpiValueMode === 'value' ? (
                   <BlankKpiCard label="FinServ Sales Calls" />
