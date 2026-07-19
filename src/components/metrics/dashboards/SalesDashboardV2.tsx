@@ -1724,22 +1724,22 @@ function CumulativePace() {
             />
             <Area
               type="monotone"
-              dataKey="actual"
-              stroke={C.cyan}
-              strokeWidth={2}
-              fill="url(#actualGrad)"
-              dot={{ r: 2.5, fill: C.cyan, stroke: C.cyan }}
-              connectNulls={false}
-              isAnimationActive={false}
-            />
-            <Area
-              type="monotone"
               dataKey="plan"
               name="YTD Plan"
               stroke="#a855f7"
               strokeWidth={2}
               fill="url(#planGrad)"
               dot={{ r: 2.5, fill: '#a855f7', stroke: '#a855f7' }}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+            <Area
+              type="monotone"
+              dataKey="actual"
+              stroke={C.cyan}
+              strokeWidth={2}
+              fill="url(#actualGrad)"
+              dot={{ r: 2.5, fill: C.cyan, stroke: C.cyan }}
               connectNulls={false}
               isAnimationActive={false}
             />
