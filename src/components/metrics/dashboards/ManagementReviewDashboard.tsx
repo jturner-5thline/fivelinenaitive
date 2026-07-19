@@ -123,6 +123,32 @@ function finservBarBg(color: string, opts: { negative?: boolean; dim?: boolean }
     return g;
   };
 }
+// Premium corporate-blue glass bar used by TTM Revenue and the 12-Week
+// Cashflow Forecast. Brighter medium blue at the top (~#2F80ED family) at
+// 0.88 alpha, deeper blue at the bottom (~#1F5FBF family) at 0.68 alpha,
+// with a whisper-thin luminous highlight along the upper edge. No stroke.
+function premiumBlueBarBg(opts: { dim?: boolean } = {}) {
+  return (ctx: any) => {
+    const area = ctx?.chart?.chartArea;
+    const topLit = 'hsl(213, 88%, 62%)';   // ~ #2F80ED, brighter
+    const topBlue = 'hsl(213, 82%, 55%)';  // core corporate blue
+    const botBlue = 'hsl(214, 74%, 43%)';  // ~ #1F5FBF, deeper
+    if (!area) return topBlue;
+    const g = ctx.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+    if (opts.dim) {
+      g.addColorStop(0, 'hsla(213, 88%, 62%, 0.55)');
+      g.addColorStop(0.14, 'hsla(213, 82%, 55%, 0.5)');
+      g.addColorStop(1, 'hsla(214, 74%, 43%, 0.32)');
+    } else {
+      // subtle luminous highlight at the very top, then main 0.88 → 0.68 body
+      g.addColorStop(0, 'hsla(210, 100%, 82%, 0.35)');
+      g.addColorStop(0.06, `${topLit.replace('hsl', 'hsla').replace(')', ', 0.88)')}`);
+      g.addColorStop(0.35, `${topBlue.replace('hsl', 'hsla').replace(')', ', 0.82)')}`);
+      g.addColorStop(1, `${botBlue.replace('hsl', 'hsla').replace(')', ', 0.68)')}`);
+    }
+    return g;
+  };
+}
 // The LiquidGlass recipe used by Controller "FinServ Revenue by Client" has
 // no stroke — return transparent so callers can keep passing borderColor
 // without introducing an edge line.
@@ -1112,7 +1138,7 @@ function CashflowForecastWidget() {
                 label: 'Ending Cash',
                 data: weeks.map((w) => w.endingCash),
                 backgroundColor: weeks.map((w) =>
-                  w.endingCash < 0 ? barBg('hsl(0,75%,60%)', { negative: true }) : finservBarBg('hsl(213,90%,70%)'),
+                  w.endingCash < 0 ? barBg('hsl(0,75%,60%)', { negative: true }) : premiumBlueBarBg(),
                 ),
                 borderColor: weeks.map((w) =>
                   w.endingCash < 0 ? barBorder('hsl(0,75%,60%)') : barBorder('hsl(213,90%,70%)'),
@@ -2845,7 +2871,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   );
 
   const ttmLabels = ttmTrendSeries.map(p => p.month);
-  const ttmCol = ttmTrendSeries.map((_p, i) => finservBarBg('hsl(213,90%,70%)', { dim: i !== ttmTrendSeries.length - 1 }));
+  const ttmCol = ttmTrendSeries.map((_p, i) => premiumBlueBarBg({ dim: i !== ttmTrendSeries.length - 1 }));
   const ttmBrd = ttmTrendSeries.map((_p, i) => barBorder('hsl(213,90%,70%)', { dim: i !== ttmTrendSeries.length - 1 }));
   const [trendMode, setTrendMode] = useState<'ttm' | 'monthly' | 'quarterly-yoy'>('ttm');
   const [showTrendDelta, setShowTrendDelta] = useState<boolean>(false);
@@ -2863,7 +2889,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         inv => inv.total_amt,
       ))
     : ttmSeries.map(p => p.revenue);
-  const monthlyCol = monthlyTrendLabels.map((_l, i) => finservBarBg('hsl(213,90%,70%)', { dim: i !== monthlyTrendLabels.length - 1 }));
+  const monthlyCol = monthlyTrendLabels.map((_l, i) => premiumBlueBarBg({ dim: i !== monthlyTrendLabels.length - 1 }));
   const monthlyBrd = monthlyTrendLabels.map((_l, i) => barBorder('hsl(213,90%,70%)', { dim: i !== monthlyTrendLabels.length - 1 }));
   const activeTrendValues = trendMode === 'ttm' ? ttmTrendValues : monthlyTrendValues;
   // Compute a "prior" value for the FIRST bucket so the trend line starts at
