@@ -1720,6 +1720,7 @@ function ConsolidatedCashflowWidget() {
                 tickLine={false}
                 width={64}
                 tickFormatter={(v: number) => fmt(v as number)}
+                padding={{ top: 24, bottom: 24 }}
               />
               {showDelta && (
                 <YAxis
@@ -1770,14 +1771,17 @@ function ConsolidatedCashflowWidget() {
                 <LabelList
                   dataKey="value"
                   content={(props: any) => {
-                    const { x, y, width, index } = props;
+                    const { x, y, width, height, index, value } = props;
                     const row = chartData[index];
                     const pct = row?.deltaPct;
                     if (pct == null) return null;
                     const color = pct >= 0 ? 'hsl(142, 71%, 45%)' : 'hsl(0, 84%, 60%)';
                     const text = `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`;
+                    const negative = Number(value) < 0;
+                    const cx = Number(x) + Number(width) / 2;
+                    const cy = negative ? Number(y) + Number(height) + 14 : Number(y) - 8;
                     return (
-                      <text x={Number(x) + Number(width) / 2} y={Number(y) - 6} textAnchor="middle" fill={color} fontSize={10} fontWeight={700}>{text}</text>
+                      <text x={cx} y={cy} textAnchor="middle" fill={color} fontSize={10} fontWeight={700}>{text}</text>
                     );
                   }}
                 />
