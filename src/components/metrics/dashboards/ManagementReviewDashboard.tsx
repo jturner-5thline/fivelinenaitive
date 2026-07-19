@@ -3272,7 +3272,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
   return (
     <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div className="flex items-center justify-end">
+      <div className="hidden">
         <DashboardPlansGear dashboardKey="management-review" />
       </div>
       {isEditMode && isLayoutEditor && (
