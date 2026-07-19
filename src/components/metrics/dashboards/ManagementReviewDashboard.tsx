@@ -1710,7 +1710,7 @@ function ConsolidatedCashflowWidget() {
           <NaPlaceholder height={160} label={loading ? 'Loading…' : 'No cash flow data for the selected period.'} />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 56, right: showDelta ? 48 : 8, left: 0, bottom: 18 }}>
+            <ComposedChart data={chartData} margin={{ top: 56, right: showDelta ? 48 : 8, left: 0, bottom: 36 }}>
               <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
               <XAxis dataKey="label" tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis
@@ -1720,7 +1720,7 @@ function ConsolidatedCashflowWidget() {
                 tickLine={false}
                 width={64}
                 tickFormatter={(v: number) => fmt(v as number)}
-                padding={{ top: 40, bottom: 24 }}
+                padding={{ top: 40, bottom: 56 }}
               />
               {showDelta && (
                 <YAxis
@@ -1779,7 +1779,9 @@ function ConsolidatedCashflowWidget() {
                     const text = `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`;
                     const negative = Number(value) < 0;
                     const cx = Number(x) + Number(width) / 2;
-                    const cy = negative ? Number(y) + Number(height) + 14 : Number(y) - 8;
+                    const barTop = Math.min(Number(y), Number(y) + Number(height));
+                    const barBottom = Math.max(Number(y), Number(y) + Number(height));
+                    const cy = negative ? barBottom + 28 : barTop - 12;
                     return (
                       <text x={cx} y={cy} textAnchor="middle" fill={color} fontSize={10} fontWeight={700}>{text}</text>
                     );
