@@ -151,6 +151,8 @@ project_id = "tgkksvazruzbghssnxde"
     verify_jwt = false
   [functions.send-weekly-summary]
     verify_jwt = false
+  [functions.send-share-report]
+    verify_jwt = true
   [functions.share-pipeline-report]
     verify_jwt = true
   [functions.slack-agent-gateway]

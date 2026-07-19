@@ -1,4 +1,11 @@
 import { useEditor, EditorContent } from '@tiptap/react';
+import { useRef, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Send, Loader2, Share2 } from 'lucide-react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Underline from '@tiptap/extension-underline';
@@ -50,6 +57,14 @@ function ToolbarBtn({
 }
 
 export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps) {
+  const snapshotRef = useRef<HTMLDivElement>(null);
+  const [sendOpen, setSendOpen] = useState(false);
+  const [toValue, setToValue] = useState('');
+  const [ccValue, setCcValue] = useState('');
+  const [subjectValue, setSubjectValue] = useState('Sales Dashboard Report');
+  const [messageValue, setMessageValue] = useState('');
+  const [sending, setSending] = useState(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -103,6 +118,88 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
 
   const Sep = () => <div className="w-px h-4 bg-white/10 mx-1" />;
 
+  const parseEmails = (s: string): string[] =>
+    s.split(/[,;\s]+/).map((e) => e.trim()).filter(Boolean);
+
+  const generatePdfBase64 = async (): Promise<string> => {
+    const [{ default: html2canvas }, jsPDFmod] = await Promise.all([
+      import('html2canvas'),
+      import('jspdf'),
+    ]);
+    const jsPDF = (jsPDFmod as any).jsPDF || (jsPDFmod as any).default;
+    const node = snapshotRef.current;
+    if (!node) throw new Error('Nothing to capture');
+    const canvas = await html2canvas(node, {
+      backgroundColor: '#0b0b12',
+      scale: 1.5,
+      useCORS: true,
+      windowWidth: node.scrollWidth,
+      windowHeight: node.scrollHeight,
+    });
+    const imgData = canvas.toDataURL('image/jpeg', 0.9);
+    const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgW = pageW;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    let heightLeft = imgH;
+    let position = 0;
+    pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
+    heightLeft -= pageH;
+    while (heightLeft > 0) {
+      position -= pageH;
+      pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
+      heightLeft -= pageH;
+    }
+    // Return base64 without the data-URI prefix
+    const dataUri = pdf.output('datauristring');
+    return dataUri.split(',')[1] ?? '';
+  };
+
+  const handleSend = async () => {
+    const to = parseEmails(toValue);
+    const cc = parseEmails(ccValue);
+    if (to.length === 0) {
+      toast.error('Add at least one recipient email');
+      return;
+    }
+    if (!subjectValue.trim()) {
+      toast.error('Add a subject line');
+      return;
+    }
+    setSending(true);
+    try {
+      const contentBase64 = await generatePdfBase64();
+      const messageHtml = editor?.getHTML() || '';
+      const { data, error } = await supabase.functions.invoke('send-share-report', {
+        body: {
+          to,
+          cc,
+          subject: subjectValue.trim(),
+          message: messageValue,
+          messageHtml,
+          attachment: {
+            filename: `sales-report-${new Date().toISOString().slice(0, 10)}.pdf`,
+            contentBase64,
+          },
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success(`Report sent to ${to.length} recipient${to.length === 1 ? '' : 's'}`);
+      setSendOpen(false);
+      setToValue('');
+      setCcValue('');
+      setMessageValue('');
+    } catch (err: any) {
+      console.error('send-share-report failed:', err);
+      toast.error(err?.message || 'Failed to send report');
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -110,7 +207,17 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
         style={{ background: '#0b0b12' }}
       >
         <DialogHeader className="px-6 pt-5 pb-3 border-b border-white/10">
-          <DialogTitle className="text-white text-lg font-semibold">Share Report</DialogTitle>
+          <div className="flex items-center justify-between gap-3 pr-10">
+            <DialogTitle className="text-white text-lg font-semibold">Share Report</DialogTitle>
+            <Button
+              size="sm"
+              onClick={() => setSendOpen(true)}
+              className="h-8 gap-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-semibold"
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              Share Report
+            </Button>
+          </div>
         </DialogHeader>
         <div className="flex flex-col h-full overflow-hidden">
           {/* Rich text editor — aligned exactly to the 3-widget KPI row */}
@@ -278,11 +385,81 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
             </div>
           </div>
 
-          {/* Dashboard snapshot (no Sales Model) */}
+          {/* Dashboard snapshot (no Sales Model) — wrapped in ref for PDF capture */}
           <div className="flex-1 min-h-0 overflow-y-auto mt-4 border-t border-white/10">
-            <SalesDashboardV2 reportMode />
+            <div ref={snapshotRef}>
+              <SalesDashboardV2 reportMode />
+            </div>
           </div>
         </div>
+
+        {/* Nested send-by-email dialog */}
+        <Dialog open={sendOpen} onOpenChange={setSendOpen}>
+          <DialogContent
+            className="max-w-lg border-white/15"
+            style={{ background: '#0f0f1a' }}
+          >
+            <DialogHeader>
+              <DialogTitle className="text-white text-base font-semibold">
+                Send report by email
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-white/70 text-xs">To</Label>
+                <Input
+                  value={toValue}
+                  onChange={(e) => setToValue(e.target.value)}
+                  placeholder="alice@company.com, bob@company.com"
+                  className="bg-white/5 border-white/15 text-white placeholder:text-white/30"
+                />
+              </div>
+              <div>
+                <Label className="text-white/70 text-xs">Cc (optional)</Label>
+                <Input
+                  value={ccValue}
+                  onChange={(e) => setCcValue(e.target.value)}
+                  placeholder="cc@company.com"
+                  className="bg-white/5 border-white/15 text-white placeholder:text-white/30"
+                />
+              </div>
+              <div>
+                <Label className="text-white/70 text-xs">Subject</Label>
+                <Input
+                  value={subjectValue}
+                  onChange={(e) => setSubjectValue(e.target.value)}
+                  className="bg-white/5 border-white/15 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-white/70 text-xs">Message (optional)</Label>
+                <Textarea
+                  value={messageValue}
+                  onChange={(e) => setMessageValue(e.target.value)}
+                  rows={4}
+                  placeholder="Add a note for the recipients…"
+                  className="bg-white/5 border-white/15 text-white placeholder:text-white/30"
+                />
+              </div>
+              <p className="text-[11px] text-white/50">
+                The full dashboard (including your written report) will be attached as a PDF.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" onClick={() => setSendOpen(false)} disabled={sending}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSend}
+                disabled={sending}
+                className="gap-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-semibold"
+              >
+                {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                {sending ? 'Sending…' : 'Send'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );
