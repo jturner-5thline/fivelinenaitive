@@ -1027,12 +1027,50 @@ function isExcludedDeal(name: string | null | undefined): boolean {
 function TopSourcedViaWidget() {
   const view = useView();
   const { company } = useCompany();
-  const startIso = view.rangeStart.toISOString();
-  const endIso = view.rangeEnd.toISOString();
   const [selectedSource, setSelectedSource] = React.useState<string | null>(null);
 
+  // Period math — derive period length in whole months from the selected
+  // range, then compute two prior periods of the same length.
+  const periods = React.useMemo(() => {
+    const start = view.rangeStart;
+    const end = view.rangeEnd;
+    const pm = Math.max(
+      1,
+      (end.getUTCFullYear() - start.getUTCFullYear()) * 12 +
+        (end.getUTCMonth() - start.getUTCMonth()),
+    );
+    const shift = (d: Date, months: number) =>
+      new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - months, d.getUTCDate()));
+    const p0 = { start, end };
+    const p1 = { start: shift(start, pm), end: start };
+    const p2 = { start: shift(start, pm * 2), end: shift(start, pm) };
+    const labelFor = (s: Date, e: Date) => {
+      if (pm === 1) return s.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+      if (pm === 3) {
+        const q = Math.floor(s.getUTCMonth() / 3) + 1;
+        return `Q${q} ${s.getUTCFullYear()}`;
+      }
+      if (pm === 12) return `${s.getUTCFullYear()}`;
+      const a = s.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+      const b = new Date(e.getTime() - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+      return `${a}–${b}`;
+    };
+    return {
+      periodMonths: pm,
+      wide: { start: p2.start, end: p0.end },
+      buckets: [
+        { key: 'p2', label: labelFor(p2.start, p2.end), start: p2.start, end: p2.end },
+        { key: 'p1', label: labelFor(p1.start, p1.end), start: p1.start, end: p1.end },
+        { key: 'p0', label: labelFor(p0.start, p0.end), start: p0.start, end: p0.end },
+      ] as const,
+    };
+  }, [view.rangeStart, view.rangeEnd]);
+
+  const wideStartIso = periods.wide.start.toISOString();
+  const wideEndIso = periods.wide.end.toISOString();
+
   const { data, isLoading } = useQuery({
-    queryKey: ['top-sourced-via-v2', company?.id, startIso, endIso],
+    queryKey: ['top-sourced-via-v3', company?.id, wideStartIso, wideEndIso],
     enabled: !!company?.id,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
@@ -1044,65 +1082,60 @@ function TopSourcedViaWidget() {
       const { getNaitivePipelineId } = await import('@/utils/naitivePipelineExclusion');
       const naitivePipelineId = await getNaitivePipelineId();
 
-      // 1) Active pipeline — NDA / Needs List Sent stage entries in-period.
+      // 1) Active pipeline — NDA / Needs List Sent stage entries across the
+      // wide window covering current + two prior periods.
       const ndaQ = supabase
         .from('deal_stage_history')
-        .select('deal_id')
+        .select('deal_id, changed_at')
         .eq('pipeline_id', ACTIVE_PIPELINE_ID)
         .eq('event_type', 'stage_enter')
         .or('to_stage_id.eq.ndaneeds-list-sent,to_stage.eq.ndaneeds-list-sent')
-        .gte('changed_at', startIso)
-        .lt('changed_at', endIso);
+        .gte('changed_at', wideStartIso)
+        .lt('changed_at', wideEndIso);
 
-      // 2) FinServ pipeline — deals created in-period.
+      // 2) FinServ pipeline — deals created in the wide window.
       const finservQ = supabase
         .from('deals')
-        .select('id')
+        .select('id, created_at')
         .eq('company_id', company!.id)
         .eq('pipeline_id', FINSERV_PIPELINE_ID)
         .neq('status', 'archived')
-        .gte('created_at', startIso)
-        .lte('created_at', endIso);
+        .gte('created_at', wideStartIso)
+        .lte('created_at', wideEndIso);
 
-      // 3) Naitive pipeline — Demo Access stage entries in-period.
+      // 3) Naitive pipeline — Demo Access stage entries in the wide window.
       const naitiveQ = naitivePipelineId
         ? supabase
             .from('deal_stage_history')
-            .select('deal_id')
+            .select('deal_id, changed_at')
             .eq('pipeline_id', naitivePipelineId)
             .eq('event_type', 'stage_enter')
             .or('to_stage_id.eq.demo-access,to_stage.eq.demo-access')
-            .gte('changed_at', startIso)
-            .lt('changed_at', endIso)
-        : Promise.resolve({ data: [] as { deal_id: string }[], error: null });
+            .gte('changed_at', wideStartIso)
+            .lt('changed_at', wideEndIso)
+        : Promise.resolve({ data: [] as { deal_id: string; changed_at: string }[], error: null });
 
       const [ndaRes, finservRes, naitiveRes] = await Promise.all([ndaQ, finservQ, naitiveQ]);
       if ((ndaRes as any).error) throw (ndaRes as any).error;
       if ((finservRes as any).error) throw (finservRes as any).error;
       if ((naitiveRes as any).error) throw (naitiveRes as any).error;
 
-      const dealIds = new Set<string>();
-      for (const r of ((ndaRes as any).data ?? []) as { deal_id: string | null }[]) {
-        if (r.deal_id) dealIds.add(r.deal_id);
+      // Merge into (deal_id, event_at) pairs across sources.
+      const events: Array<{ dealId: string; at: string }> = [];
+      for (const r of ((ndaRes as any).data ?? []) as { deal_id: string | null; changed_at: string }[]) {
+        if (r.deal_id && r.changed_at) events.push({ dealId: r.deal_id, at: r.changed_at });
       }
-      for (const r of ((finservRes as any).data ?? []) as { id: string }[]) {
-        if (r.id) dealIds.add(r.id);
+      for (const r of ((finservRes as any).data ?? []) as { id: string; created_at: string }[]) {
+        if (r.id && r.created_at) events.push({ dealId: r.id, at: r.created_at });
       }
-      for (const r of ((naitiveRes as any).data ?? []) as { deal_id: string | null }[]) {
-        if (r.deal_id) dealIds.add(r.deal_id);
+      for (const r of ((naitiveRes as any).data ?? []) as { deal_id: string | null; changed_at: string }[]) {
+        if (r.deal_id && r.changed_at) events.push({ dealId: r.deal_id, at: r.changed_at });
       }
 
+      const dealIds = new Set(events.map((e) => e.dealId));
+
       if (dealIds.size === 0) {
-        return [] as Array<{
-          id: string;
-          company: string | null;
-          sourced_via: string | null;
-          referral_source: string | null;
-          referral_source_id: string | null;
-          referred_by: string | null;
-          lead_source: string | null;
-          created_at: string;
-        }>;
+        return { events, deals: [] as DealRow[] };
       }
 
       const { data: dealsData, error: dealsErr } = await supabase
@@ -1110,44 +1143,90 @@ function TopSourcedViaWidget() {
         .select('id, company, sourced_via, referral_source, referral_source_id, referred_by, lead_source, created_at')
         .in('id', Array.from(dealIds));
       if (dealsErr) throw dealsErr;
-      return (dealsData ?? []) as Array<{
-        id: string;
-        company: string | null;
-        sourced_via: string | null;
-        referral_source: string | null;
-        referral_source_id: string | null;
-        referred_by: string | null;
-        lead_source: string | null;
-        created_at: string;
-      }>;
+      return { events, deals: (dealsData ?? []) as DealRow[] };
     },
   });
 
-  const rows = React.useMemo(() => {
-    const counts = new Map<string, number>();
-    let total = 0;
-    for (const d of data ?? []) {
-      if (isExcludedDeal(d.company)) continue;
+  // Bucket qualifying deals per period and compute per-source counts.
+  const analysis = React.useMemo(() => {
+    const deals = data?.deals ?? [];
+    const events = data?.events ?? [];
+    const dealMap = new Map(deals.map((d) => [d.id, d] as const));
+
+    const sourceKey = (d: DealRow): string => {
       const hasReferral =
-        !!(d.referral_source_id) ||
+        !!d.referral_source_id ||
         !!(d.referral_source || '').trim() ||
         !!(d.referred_by || '').trim();
-      const key =
+      return (
         (d.sourced_via || '').trim() ||
         (hasReferral ? 'Referral' : '') ||
         (d.lead_source || '').trim() ||
-        'Unattributed';
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-      total += 1;
+        'Unattributed'
+      );
+    };
+
+    // Bucket unique deal_ids per period based on event timestamps.
+    const perPeriodDeals: Record<string, Set<string>> = { p2: new Set(), p1: new Set(), p0: new Set() };
+    for (const e of events) {
+      const t = new Date(e.at).getTime();
+      for (const b of periods.buckets) {
+        if (t >= b.start.getTime() && t < b.end.getTime()) {
+          perPeriodDeals[b.key].add(e.dealId);
+          break;
+        }
+      }
     }
-    const sorted = Array.from(counts.entries())
+
+    const bucketToCounts = (dealSet: Set<string>) => {
+      const counts = new Map<string, number>();
+      let total = 0;
+      for (const id of dealSet) {
+        const d = dealMap.get(id);
+        if (!d) continue;
+        if (isExcludedDeal(d.company)) continue;
+        const key = sourceKey(d);
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+        total += 1;
+      }
+      return { counts, total };
+    };
+
+    const current = bucketToCounts(perPeriodDeals.p0);
+    const prior1 = bucketToCounts(perPeriodDeals.p1);
+    const prior2 = bucketToCounts(perPeriodDeals.p2);
+
+    const topRows = Array.from(current.counts.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([label, count]) => ({ label, count }));
-    return { rows: sorted, total };
-  }, [data]);
 
-  const max = rows.rows[0]?.count ?? 0;
+    // Build chart data: one entry per period with a numeric field per top source.
+    const chartData = periods.buckets.map((b) => {
+      const src = b.key === 'p0' ? current.counts : b.key === 'p1' ? prior1.counts : prior2.counts;
+      const row: Record<string, number | string> = { period: b.label };
+      for (const r of topRows) row[r.label] = src.get(r.label) ?? 0;
+      return row;
+    });
+
+    // Deals in current period, grouped by source (for the right-side list).
+    const currentDeals = Array.from(perPeriodDeals.p0)
+      .map((id) => dealMap.get(id))
+      .filter((d): d is DealRow => !!d && !isExcludedDeal(d.company));
+    const groupedDeals = new Map<string, DealRow[]>();
+    for (const d of currentDeals) {
+      const k = sourceKey(d);
+      const list = groupedDeals.get(k) ?? [];
+      list.push(d);
+      groupedDeals.set(k, list);
+    }
+
+    return { topRows, currentTotal: current.total, chartData, groupedDeals };
+  }, [data, periods]);
+
+  const max = analysis.topRows[0]?.count ?? 0;
+
+  const SERIES_COLORS = ['#9DA2F5', '#7EC8E3', '#C7A6F2', '#F5A97F', '#7FD4B0'];
 
   return (
     <>
@@ -1162,67 +1241,157 @@ function TopSourcedViaWidget() {
 
       {isLoading ? (
         <div className="text-[12px]" style={{ color: C.textMuted }}>Loading…</div>
-      ) : rows.rows.length === 0 ? (
+      ) : analysis.topRows.length === 0 ? (
         <div className="text-[12px]" style={{ color: C.textMuted }}>
-          No deals with a "Sourced Via" value were created in this period.
+          No qualifying deals in this period.
         </div>
       ) : (
-        <div className="flex flex-col">
-          {rows.rows.map((r, idx) => {
-            const widthPct = max === 0 ? 0 : (r.count / max) * 100;
-            const share = rows.total === 0 ? 0 : r.count / rows.total;
-            return (
-              <button
-                type="button"
-                key={r.label}
-                onClick={() => setSelectedSource(r.label)}
-                title={`View ${r.count} deal${r.count === 1 ? '' : 's'} sourced via ${r.label}`}
-                className="grid grid-cols-[1fr_auto] items-center gap-3 py-2.5 text-left w-full cursor-pointer hover:bg-white/[0.03] rounded-md px-2 -mx-2 focus-visible:outline-none focus-visible:ring-1"
-                style={{ borderTop: idx === 0 ? 'none' : `1px solid ${C.hairline}` }}
-              >
-                <div className="min-w-0">
-                  <div
-                    className="text-[12px] truncate mb-1.5"
-                    style={{ color: C.textPrimary }}
-                    title={r.label}
-                  >
-                    {r.label}
-                  </div>
-                  <div
-                    className="relative w-full"
-                    style={{
-                      height: 6,
-                      background: 'rgba(255,255,255,0.04)',
-                      borderRadius: 3,
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${widthPct}%`,
-                        height: '100%',
-                        background: `linear-gradient(90deg, rgba(157,162,245,0.85), rgba(157,162,245,0.45))`,
-                        borderRadius: 3,
-                      }}
-                    />
-                  </div>
-                </div>
-                <div
-                  className="text-[11px] tabular-nums whitespace-nowrap"
-                  style={{ fontVariantNumeric: 'tabular-nums' }}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* LEFT — current-period top sources with bars */}
+          <div className="flex flex-col">
+            {analysis.topRows.map((r, idx) => {
+              const widthPct = max === 0 ? 0 : (r.count / max) * 100;
+              const share = analysis.currentTotal === 0 ? 0 : r.count / analysis.currentTotal;
+              return (
+                <button
+                  type="button"
+                  key={r.label}
+                  onClick={() => setSelectedSource(r.label)}
+                  title={`View ${r.count} deal${r.count === 1 ? '' : 's'} sourced via ${r.label}`}
+                  className="grid grid-cols-[1fr_auto] items-center gap-3 py-2.5 text-left w-full cursor-pointer hover:bg-white/[0.03] rounded-md px-2 -mx-2 focus-visible:outline-none focus-visible:ring-1"
+                  style={{ borderTop: idx === 0 ? 'none' : `1px solid ${C.hairline}` }}
                 >
-                  <span style={{ color: C.textPrimary }}>{r.count}</span>
-                  <span style={{ color: C.textFaint }}>{' · '}{Math.round(share * 100)}%</span>
-                </div>
-              </button>
-            );
-          })}
+                  <div className="min-w-0">
+                    <div
+                      className="text-[12px] truncate mb-1.5"
+                      style={{ color: C.textPrimary }}
+                      title={r.label}
+                    >
+                      {r.label}
+                    </div>
+                    <div
+                      className="relative w-full"
+                      style={{ height: 6, background: 'rgba(255,255,255,0.04)', borderRadius: 3, overflow: 'hidden' }}
+                    >
+                      <div
+                        style={{
+                          width: `${widthPct}%`,
+                          height: '100%',
+                          background: `linear-gradient(90deg, rgba(157,162,245,0.85), rgba(157,162,245,0.45))`,
+                          borderRadius: 3,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div
+                    className="text-[11px] tabular-nums whitespace-nowrap"
+                    style={{ fontVariantNumeric: 'tabular-nums' }}
+                  >
+                    <span style={{ color: C.textPrimary }}>{r.count}</span>
+                    <span style={{ color: C.textFaint }}>{' · '}{Math.round(share * 100)}%</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* RIGHT — trend chart + current-period deal list */}
+          <div className="flex flex-col gap-4 min-w-0">
+            <div>
+              <div
+                className="text-[10px] font-medium uppercase mb-2"
+                style={{ color: C.textFaint, letterSpacing: '0.08em' }}
+              >
+                Trend · current vs prior 2 periods
+              </div>
+              <div style={{ width: '100%', height: 180 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={analysis.chartData} margin={{ top: 6, right: 8, bottom: 0, left: -18 }}>
+                    <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+                    <XAxis dataKey="period" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{
+                        background: 'rgba(20,20,30,0.95)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: 8,
+                        fontSize: 11,
+                      }}
+                      labelStyle={{ color: 'rgba(255,255,255,0.9)' }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 10, color: 'rgba(255,255,255,0.75)' }} />
+                    {analysis.topRows.map((r, i) => (
+                      <Bar
+                        key={r.label}
+                        dataKey={r.label}
+                        stackId="src"
+                        fill={SERIES_COLORS[i % SERIES_COLORS.length]}
+                        radius={i === analysis.topRows.length - 1 ? [4, 4, 0, 0] : 0}
+                      />
+                    ))}
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div>
+              <div
+                className="text-[10px] font-medium uppercase mb-2"
+                style={{ color: C.textFaint, letterSpacing: '0.08em' }}
+              >
+                Deals · {view.label}
+              </div>
+              <div className="max-h-[240px] overflow-y-auto pr-1 flex flex-col gap-3">
+                {analysis.topRows.map((r, i) => {
+                  const deals = analysis.groupedDeals.get(r.label) ?? [];
+                  if (deals.length === 0) return null;
+                  return (
+                    <div key={r.label}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 2,
+                            background: SERIES_COLORS[i % SERIES_COLORS.length],
+                            display: 'inline-block',
+                          }}
+                        />
+                        <span className="text-[11px] font-medium" style={{ color: C.textPrimary }}>
+                          {r.label}
+                        </span>
+                        <span className="text-[10px]" style={{ color: C.textFaint }}>
+                          {deals.length}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 pl-4">
+                        {deals.map((d) => (
+                          <span
+                            key={d.id}
+                            className="text-[10.5px] px-2 py-0.5 rounded"
+                            style={{
+                              background: 'rgba(255,255,255,0.04)',
+                              color: C.textPrimary,
+                              border: '1px solid rgba(255,255,255,0.06)',
+                            }}
+                            title={d.company ?? ''}
+                          >
+                            {d.company ?? 'Unnamed deal'}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
     <SourcedViaDrilldownDialog
       source={selectedSource}
-      deals={(data ?? []).filter(
+      deals={(data?.deals ?? []).filter(
         (d) => {
           if (isExcludedDeal(d.company)) return false;
           const hasReferral =
