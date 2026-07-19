@@ -97,8 +97,15 @@ export function InsightsReportingBar({ tabsSlot }: Props) {
   };
 
   return (
-    <div style={{ marginBottom: 12 }}>
-      <Card className="glass-module">
+    <div style={{ marginTop: -12, marginBottom: 12 }}>
+      <Card
+        className="glass-module"
+        style={{
+          borderTopLeftRadius: 0,
+          borderTopRightRadius: 0,
+          borderTop: 'none',
+        }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             {tabsSlot}
