@@ -1370,7 +1370,7 @@ function CumulativePace() {
         </div>
         <div className="flex items-center gap-5 text-[11px]" style={{ fontVariantNumeric: 'tabular-nums' }}>
           <Readout label="YTD ACTUAL" value={fmt(actualToDate)} color={C.cyan} />
-          <Readout label="YTD PLAN" value={fmt(planToDate)} color={C.periwinkle} />
+          <Readout label="YTD PLAN" value={fmt(planToDate)} color="#a855f7" />
           <Readout label="YTD TARGET" value={fmt(fyTarget)} color={C.textMuted} />
         </div>
       </div>
@@ -1405,7 +1405,7 @@ function CumulativePace() {
                 color: C.textPrimary,
                 fontSize: 12,
               }}
-              formatter={(v: number, n: string) => [fmt(v), n === 'plan' ? 'Plan' : 'Actual']}
+              formatter={(v: number, n: string) => [fmt(v), n === 'plan' ? 'YTD Plan' : 'Actual']}
             />
             <ReferenceLine
               x={months[E - 1] ?? ''}
@@ -1426,10 +1426,10 @@ function CumulativePace() {
             <Line
               type="monotone"
               dataKey="plan"
-              stroke={C.periwinkle}
-              strokeWidth={1.5}
-              strokeDasharray="4 4"
-              dot={false}
+              name="YTD Plan"
+              stroke="#a855f7"
+              strokeWidth={2}
+              dot={{ r: 2.5, fill: '#a855f7', stroke: '#a855f7' }}
               isAnimationActive={false}
             />
           </AreaChart>
