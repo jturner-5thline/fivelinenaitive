@@ -631,10 +631,13 @@ function KpiCardInner({
   const comparePlan = currentPlan;
   const gap = compareActual - comparePlan;
 
-  const sparkData = view.months.map((m, i) => ({
+  const sparkMonthsArr = view.sparkMonths ?? view.months;
+  const sparkPlanArr = view.sparkPlan?.[metricKey] ?? planArr;
+  const sparkActualArr = view.sparkActual?.[metricKey] ?? actualArr;
+  const sparkData = sparkMonthsArr.map((m, i) => ({
     month: m,
-    plan: planArr[i],
-    actual: actualArr[i],
+    plan: sparkPlanArr[i],
+    actual: sparkActualArr[i],
   }));
 
   return (
