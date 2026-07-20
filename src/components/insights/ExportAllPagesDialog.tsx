@@ -33,9 +33,9 @@ function CoverPage() {
       className="rounded-md p-6 text-white insights-glass-skin export-cover-dark"
       style={{
         background:
-          'radial-gradient(120% 90% at 15% 0%, rgba(88, 60, 180, 0.55) 0%, rgba(20, 24, 60, 0) 55%), linear-gradient(160deg, #0b1024 0%, #131a3a 45%, #0a0f22 100%)',
+          'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)',
         border: '1px solid rgba(255,255,255,0.10)',
-        boxShadow: '0 20px 60px -20px rgba(20, 20, 60, 0.55)',
+        boxShadow: '0 20px 60px -20px rgba(0, 0, 0, 0.65)',
       }}
     >
       <style>{`
@@ -125,7 +125,7 @@ export function ExportAllPagesDialog({ open, onOpenChange }: { open: boolean; on
                         ? 'px-5 py-3 flex items-center justify-between text-white/80 border-b border-white/10'
                         : 'px-5 py-3 border-b bg-muted/30 flex items-center justify-between'
                     }
-                    style={isCover ? { background: 'linear-gradient(180deg, #0b1024 0%, #101635 100%)' } : undefined}
+                    style={isCover ? { background: 'linear-gradient(135deg, #020208 0%, #050d1f 50%, #040008 100%)' } : undefined}
                   >
                     <div className={isCover ? 'text-[11px] uppercase tracking-wider text-white/60' : 'text-[11px] uppercase tracking-wider text-muted-foreground'}>
                       Page {i + 1} of {PAGES.length}
