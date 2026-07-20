@@ -195,6 +195,8 @@ function persistInsightsDashboard(id: string) {
 
 function getInitialInsightsDashboard(search: string) {
   const params = new URLSearchParams(search);
+  const dashParam = params.get('dashboard');
+  if (dashParam) return dashParam;
   const view = params.get('view');
   if (view === 'weekly-rundown') return 'management-snapshot';
   if (params.get('tab')) return 'management-review';
