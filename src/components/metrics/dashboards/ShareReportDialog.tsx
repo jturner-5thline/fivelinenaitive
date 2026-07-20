@@ -355,6 +355,7 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     const dashboardContent = dashNode.querySelector<HTMLElement>('.sales-dashboard-v2 > .relative.flex > .flex-1');
     const sourceNode = dashboardContent ?? dashNode;
     const exportStage = document.createElement('div');
+    exportStage.className = 'sales-dashboard-v2';
     exportStage.style.cssText = [
       'position:fixed',
       'left:0',
