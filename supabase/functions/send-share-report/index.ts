@@ -50,8 +50,21 @@ serve(async (req) => {
     }
 
     const payload = (await req.json()) as Payload;
-    const to = (payload.to || []).map((s) => s.trim()).filter(Boolean);
-    const cc = (payload.cc || []).map((s) => s.trim()).filter(Boolean);
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const cleanList = (arr: string[] | undefined) =>
+      (arr || []).map((s) => s.trim()).filter(Boolean);
+    const rawTo = cleanList(payload.to);
+    const rawCc = cleanList(payload.cc);
+    const badTo = rawTo.filter((e) => !EMAIL_RE.test(e));
+    const badCc = rawCc.filter((e) => !EMAIL_RE.test(e));
+    if (badTo.length + badCc.length > 0) {
+      return new Response(
+        JSON.stringify({ error: `Invalid email address(es): ${[...badTo, ...badCc].join(", ")}` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const to = rawTo.filter((e) => EMAIL_RE.test(e));
+    const cc = rawCc.filter((e) => EMAIL_RE.test(e));
     const subject = (payload.subject || "").trim();
     if (to.length === 0) {
       return new Response(JSON.stringify({ error: "Missing recipients" }), {
@@ -106,11 +119,19 @@ serve(async (req) => {
       headers: { "X-Sent-By": fromName },
     });
 
-    if ((sent as any)?.error) {
-      return new Response(JSON.stringify({ error: (sent as any).error?.message || "Send failed" }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const sentErr = (sent as any)?.error;
+    if (sentErr) {
+      console.error("Resend send failed:", sentErr);
+      const detail =
+        sentErr?.message ||
+        sentErr?.name ||
+        (typeof sentErr === "string" ? sentErr : JSON.stringify(sentErr));
+      return new Response(
+        JSON.stringify({ error: `Resend: ${detail}`, resend: sentErr }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
+    console.log(`send-share-report ok: id=${(sent as any)?.data?.id} to=${to.length} cc=${cc.length} attachment=${payload.attachment ? "yes" : "no"}`);
 
     return new Response(JSON.stringify({ ok: true, id: (sent as any)?.data?.id ?? null }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
