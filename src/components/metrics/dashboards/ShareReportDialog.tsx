@@ -199,7 +199,33 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
       notes.style.cssText =
         'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.18);' +
         'border-radius:10px;padding:14px 18px;color:#fff;font-size:14px;line-height:1.55;';
-      notes.innerHTML = editorHtml;
+      // Inline styles so lists / headings / marks render identically to the
+      // in-app editor (Tailwind / prose classes are not present in this
+      // off-screen node).
+      const styleTag = document.createElement('style');
+      styleTag.textContent = `
+        .report-notes, .report-notes * { color:#fff; font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif; }
+        .report-notes h1 { font-size:22px; font-weight:700; margin:10px 0 6px; }
+        .report-notes h2 { font-size:18px; font-weight:700; margin:12px 0 6px; }
+        .report-notes h3 { font-size:15px; font-weight:600; margin:10px 0 4px; }
+        .report-notes p { margin:4px 0; }
+        .report-notes ul { list-style:disc; padding-left:24px; margin:6px 0; }
+        .report-notes ol { list-style:decimal; padding-left:24px; margin:6px 0; }
+        .report-notes li { margin:2px 0; }
+        .report-notes li > p { margin:0; }
+        .report-notes blockquote { border-left:3px solid rgba(255,255,255,0.35); padding-left:10px; color:rgba(255,255,255,0.85); font-style:italic; margin:6px 0; }
+        .report-notes code { background:rgba(255,255,255,0.12); padding:1px 4px; border-radius:4px; font-size:0.9em; }
+        .report-notes a { color:#67e8f9; text-decoration:underline; }
+        .report-notes mark { background:rgba(253,224,71,0.4); color:inherit; padding:0 2px; border-radius:2px; }
+        .report-notes hr { border:0; border-top:1px solid rgba(255,255,255,0.2); margin:10px 0; }
+        .report-notes .mention { display:inline-block; padding:1px 6px; margin:0 2px; border-radius:4px;
+          background:rgba(34,211,238,0.2); color:#a5f3fc; border:1px solid rgba(103,232,249,0.3); font-weight:500; }
+      `;
+      notes.className = 'report-notes';
+      notes.appendChild(styleTag);
+      const inner = document.createElement('div');
+      inner.innerHTML = editorHtml;
+      notes.appendChild(inner);
       header.appendChild(notes);
     }
     document.body.appendChild(header);
@@ -221,7 +247,9 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
 
     // 2) Dashboard — capture the live, on-screen node directly.
     const dashRect = dashNode.getBoundingClientRect();
-    const dashW = Math.ceil(dashRect.width);
+    // Use scrollWidth so any widget whose content overflows the visible
+    // bounds (right-edge borders in particular) is fully captured.
+    const dashW = Math.max(Math.ceil(dashRect.width), dashNode.scrollWidth);
     const dashH = Math.ceil(dashNode.scrollHeight);
     const dashUrl = await htmlToImage.toPng(dashNode, {
       pixelRatio: 2,
@@ -229,6 +257,7 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
       width: dashW,
       height: dashH,
       cacheBust: true,
+      style: { width: `${dashW}px` },
     });
 
     if (!headerUrl || headerUrl.length < 200 || !dashUrl || dashUrl.length < 200) {
