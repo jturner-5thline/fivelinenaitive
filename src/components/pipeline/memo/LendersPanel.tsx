@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { ChevronDown, StickyNote, Check, ListChecks } from 'lucide-react';
 import type { Deal, DealLender, LenderTrackingStatus } from '@/types/deal';
 import { LENDER_TRACKING_STATUS_CONFIG, LENDER_STAGE_CONFIG } from '@/types/deal';
+import { bucketLender, isExcludedFromClientReport } from '@/lib/lenderStatusBuckets';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
@@ -47,58 +48,31 @@ const VISIBLE_PER_BUCKET = 2;
 
 type LenderTagVariant = 'destructive' | 'amber' | 'blue' | 'green' | 'gray';
 
-function humanizeStage(s: string): string {
-  const acronyms = new Set(['drl', 'ioi', 'loi', 'nda', 'dd']);
-  const minorWords = new Set(['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'in', 'nor', 'of', 'on', 'or', 'the', 'to', 'via']);
-  return s
-    .trim()
-    .replace(/[-_]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .split(' ')
-    .map((word, index) => {
-      const lower = word.toLowerCase();
-      if (acronyms.has(lower)) return lower.toUpperCase();
-      if (index > 0 && minorWords.has(lower)) return lower;
-      return lower.charAt(0).toUpperCase() + lower.slice(1);
-    })
-    .join(' ');
-}
-
 /**
- * Derive the displayed lender tag strictly from the deal-lender relationship
- * record (per-deal stage + trackingStatus). PASSED always wins and renders red.
- * Falls back to "No Stage" when no per-deal stage data exists.
+ * Derive the displayed lender tag from the same status buckets used by the
+ * Funding Sources tab snapshot (On Deck / In Review / Terms Issued / Passed,
+ * plus On Hold). Tag color mirrors the funding source column color so the
+ * two surfaces stay in visual lockstep.
  */
 function deriveLenderTag(l: DealLender): { label: string; variant: LenderTagVariant } {
   const ts = (l.trackingStatus || '').toString().trim().toLowerCase();
-  const stageRaw = (l.stage || '').toString().trim();
-  const stage = stageRaw.toLowerCase();
-
-  // PASSED — highest priority, red/danger
-  if (ts === 'passed' || isPassedLikeStage(stage)) {
-    return { label: stageRaw ? humanizeStage(stageRaw) : 'Passed', variant: 'destructive' };
+  // On Hold / Excluded — surface as an amber "On Hold" tag.
+  if (ts === 'on-hold' || ts === 'on hold' || isExcludedFromClientReport(l)) {
+    return { label: 'On Hold', variant: 'amber' };
   }
-
-  // Prefer the per-deal lender stage label
-  let label: string | null = null;
-  if (stageRaw) {
-    label =
-      LENDER_STAGE_CONFIG[stageRaw]?.label ||
-      humanizeStage(stageRaw);
+  const bucket = bucketLender(l);
+  switch (bucket) {
+    case 'passed':
+      return { label: 'Passed', variant: 'destructive' };
+    case 'termsIssued':
+      return { label: 'Terms Issued', variant: 'green' };
+    case 'inReview':
+      return { label: 'In Review', variant: 'green' };
+    case 'onDeck':
+      return { label: 'On Deck', variant: 'blue' };
+    default:
+      return { label: 'On Deck', variant: 'blue' };
   }
-  if (!label && ts) {
-    label = LENDER_TRACKING_STATUS_CONFIG[ts]?.label || humanizeStage(ts);
-  }
-  if (!label) return { label: 'No Stage', variant: 'gray' };
-
-  if (/closed|funded|complet/.test(stage)) return { label, variant: 'green' };
-  if (/term|diligen/.test(stage)) return { label, variant: 'green' };
-  if (/hold/.test(stage) || ts === 'on-hold') return { label, variant: 'amber' };
-  if (/review/.test(stage) || ts === 'active') return { label, variant: 'amber' };
-  if (/deck|outreach|identified|initial/.test(stage) || ts === 'on-deck') {
-    return { label, variant: 'blue' };
-  }
-  return { label, variant: 'gray' };
 }
 
 const STATUS_OPTIONS: { value: LenderTrackingStatus; label: string }[] = [
