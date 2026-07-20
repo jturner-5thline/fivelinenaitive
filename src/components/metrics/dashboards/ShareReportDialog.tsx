@@ -100,7 +100,8 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
       }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
     ],
-    content: '',
+    content:
+      '<h2>Summary</h2><p></p><p></p><h2>Key Take Aways</h2><p></p><p></p><h2>Asks for Today\u2019s Meeting</h2><p>Please review the BD Calls &amp; Meetings List in the Report to determine what is worth discussing at today\u2019s meeting HERE</p>',
     editorProps: {
       attributes: {
         class:
