@@ -195,6 +195,8 @@ function persistInsightsDashboard(id: string) {
 
 function getInitialInsightsDashboard(search: string) {
   const params = new URLSearchParams(search);
+  const dashParam = params.get('dashboard');
+  if (dashParam) return dashParam;
   const view = params.get('view');
   if (view === 'weekly-rundown') return 'management-snapshot';
   if (params.get('tab')) return 'management-review';
@@ -1446,6 +1448,18 @@ function MetricsInner() {
     const nextId = allowed && !allowed.has(id) ? (Array.from(allowed)[0] ?? id) : id;
     persistInsightsDashboard(nextId);
     setSelectedDashboard(nextId);
+    // Reflect the current dashboard in the URL so /insights?dashboard=<id>
+    // is a shareable deep link. Preserve other query params (timeframe,
+    // reporting period, etc.) and replace history to keep the back stack clean.
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('dashboard') !== nextId) {
+        url.searchParams.set('dashboard', nextId);
+        window.history.replaceState(window.history.state, '', url.toString());
+      }
+    } catch {
+      /* no-op */
+    }
   }, []);
   const [isEditMode, setIsEditMode] = useState(false);
 
@@ -1507,11 +1521,20 @@ function MetricsInner() {
   useEffect(() => {
     const view = searchParams.get('view');
     const tab = searchParams.get('tab');
+    const dashboard = searchParams.get('dashboard');
     const last = lastHandledDeepLinkRef.current;
     const isFirstRun = last === null;
     const viewChanged = !isFirstRun && last!.view !== view;
     const tabChanged = !isFirstRun && last!.tab !== tab;
-    lastHandledDeepLinkRef.current = { view, tab };
+    const dashboardChanged = !isFirstRun && (last as any).dashboard !== dashboard;
+    lastHandledDeepLinkRef.current = { view, tab, dashboard } as any;
+
+    // Explicit ?dashboard=<id> deep link (initial load, back/forward,
+    // pasted URL) wins over the legacy view/tab heuristics below.
+    if (dashboard && (isFirstRun || dashboardChanged)) {
+      selectDashboard(dashboard);
+      return;
+    }
 
     // Only the Weekly Rundown deep link uses `view`. Other `view` values
     // (e.g. the ReportingPeriodPicker's `month` / `quarter`) must be
