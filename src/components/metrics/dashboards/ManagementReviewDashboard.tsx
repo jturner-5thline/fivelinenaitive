@@ -1076,15 +1076,15 @@ function Card({ children, className = '', style }: { children: React.ReactNode; 
   return (
     <div className={`mgmt-widget relative overflow-hidden rounded-[10px] ${className}`}
       style={{
-        // Premium dark indigo gradient — reduced purple saturation.
+        // Premium dark indigo gradient — sharper, deeper purple accent.
         background:
-          'radial-gradient(120% 140% at 100% 100%, hsla(260, 40%, 40%, 0.14) 0%, transparent 55%), linear-gradient(160deg, hsl(228, 38%, 9%) 0%, hsl(232, 34%, 11%) 50%, hsl(238, 32%, 12%) 100%)',
+          'radial-gradient(90% 110% at 100% 100%, hsla(265, 75%, 28%, 0.42) 0%, hsla(265, 70%, 20%, 0.18) 35%, transparent 62%), linear-gradient(160deg, hsl(228, 38%, 9%) 0%, hsl(232, 34%, 11%) 50%, hsl(238, 32%, 12%) 100%)',
         border: '1px solid #ffffff',
         boxShadow:
           '0 12px 32px -18px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.12)',
         ...style,
       }}>
-      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,hsla(213,95%,78%,0.55),hsla(268,90%,78%,0.55),transparent)' }} />
+      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,hsla(213,95%,78%,0.55),hsla(268,95%,68%,0.75),transparent)' }} />
       {children}
     </div>
   );
@@ -1823,11 +1823,11 @@ function GridShell({
     <div className="mgmt-widget h-full w-full flex flex-col rounded-[10px] overflow-hidden relative"
       style={{
         background:
-          'radial-gradient(120% 140% at 100% 100%, hsla(260, 40%, 40%, 0.14) 0%, transparent 55%), linear-gradient(160deg, hsl(228, 38%, 9%) 0%, hsl(232, 34%, 11%) 50%, hsl(238, 32%, 12%) 100%)',
+          'radial-gradient(90% 110% at 100% 100%, hsla(265, 75%, 28%, 0.42) 0%, hsla(265, 70%, 20%, 0.18) 35%, transparent 62%), linear-gradient(160deg, hsl(228, 38%, 9%) 0%, hsl(232, 34%, 11%) 50%, hsl(238, 32%, 12%) 100%)',
         border: '1px solid #ffffff',
         boxShadow: '0 12px 32px -18px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.12)',
       }}>
-      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,hsla(213,95%,78%,0.55),hsla(268,90%,78%,0.55),transparent)' }} />
+      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,hsla(213,95%,78%,0.55),hsla(268,95%,68%,0.75),transparent)' }} />
       <div
         className={`px-3 py-2 flex items-center justify-between ${dragHandleMode === 'header' && isEditMode ? 'widget-drag-handle cursor-grab active:cursor-grabbing' : ''}`}
         style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
