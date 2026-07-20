@@ -24,6 +24,93 @@ interface ShareNotesDialogProps {
   defaultRecipients?: string[];
 }
 
+function escapeHtml(s: string) {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// Convert plain-note text to HTML preserving line breaks exactly as displayed
+// in the Notes section (which uses `whitespace-pre-wrap`).
+function textToHtml(text: string) {
+  return escapeHtml(text).replace(/\n/g, '<br/>');
+}
+
+function composeHtml(opts: {
+  eventTitle: string;
+  eventStartISO?: string | null;
+  savedNotes: SavedNote[];
+  currentDraft?: string;
+  claapSummary?: string | null;
+  claapUrl?: string | null;
+}) {
+  const parts: string[] = [];
+  parts.push(
+    `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.55;color:#111827;">`,
+  );
+  parts.push(
+    `<div style="font-weight:600;font-size:15px;margin-bottom:4px;">Notes from: ${escapeHtml(opts.eventTitle)}</div>`,
+  );
+  if (opts.eventStartISO) {
+    try {
+      const d = new Date(opts.eventStartISO);
+      if (!Number.isNaN(d.getTime())) {
+        parts.push(
+          `<div style="color:#6b7280;font-size:12px;margin-bottom:16px;">${escapeHtml(
+            d.toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' }),
+          )}</div>`,
+        );
+      }
+    } catch { /* noop */ }
+  }
+
+  if (opts.claapSummary?.trim()) {
+    parts.push(
+      `<div style="text-transform:uppercase;letter-spacing:.05em;font-size:11px;color:#6b7280;font-weight:600;margin:18px 0 6px;">Claap summary</div>`,
+    );
+    parts.push(
+      `<div style="white-space:pre-wrap;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px 12px;">${textToHtml(
+        opts.claapSummary.trim(),
+      )}</div>`,
+    );
+    if (opts.claapUrl) {
+      parts.push(
+        `<div style="font-size:12px;margin-top:6px;"><a href="${escapeHtml(
+          opts.claapUrl,
+        )}" style="color:#2563eb;">View recording</a></div>`,
+      );
+    }
+  }
+
+  if (opts.savedNotes.length) {
+    parts.push(
+      `<div style="text-transform:uppercase;letter-spacing:.05em;font-size:11px;color:#6b7280;font-weight:600;margin:18px 0 6px;">Notes</div>`,
+    );
+    for (const n of opts.savedNotes) {
+      parts.push(
+        `<div style="white-space:pre-wrap;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px 12px;margin-bottom:8px;">${textToHtml(
+          n.text,
+        )}</div>`,
+      );
+    }
+  }
+
+  if (opts.currentDraft?.trim()) {
+    parts.push(
+      `<div style="text-transform:uppercase;letter-spacing:.05em;font-size:11px;color:#6b7280;font-weight:600;margin:18px 0 6px;">Draft (unsaved)</div>`,
+    );
+    parts.push(
+      `<div style="white-space:pre-wrap;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:10px 12px;">${textToHtml(
+        opts.currentDraft.trim(),
+      )}</div>`,
+    );
+  }
+
+  parts.push(`</div>`);
+  return parts.join('');
+}
+
 function composeBody(opts: {
   eventTitle: string;
   eventStartISO?: string | null;
@@ -51,8 +138,9 @@ function composeBody(opts: {
   }
   if (opts.savedNotes.length) {
     lines.push('— Notes —');
-    opts.savedNotes.forEach((n, i) => {
-      lines.push(`${i + 1}. ${n.text}`);
+    opts.savedNotes.forEach((n) => {
+      lines.push(n.text);
+      lines.push('');
     });
     lines.push('');
   }
@@ -99,10 +187,12 @@ export function ShareNotesDialog({
     }
     setSending(true);
     try {
-      const html = body
-        .split('\n')
-        .map((l) => l ? `<div>${l.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>` : '<div><br/></div>')
-        .join('');
+      // If the user hasn't edited the auto-generated body, send the rich HTML
+      // version so formatting (spacing, note separation, links) matches the
+      // Notes section. Otherwise preserve their edits as line-wrapped HTML.
+      const html = body === defaultBody
+        ? composeHtml({ eventTitle, eventStartISO, savedNotes, currentDraft, claapSummary, claapUrl })
+        : `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.55;white-space:pre-wrap;">${escapeHtml(body)}</div>`;
       const { data, error } = await supabase.functions.invoke('gmail-messages', {
         body: { action: 'send', to: recipients, subject: subject.trim(), body, html },
       });
