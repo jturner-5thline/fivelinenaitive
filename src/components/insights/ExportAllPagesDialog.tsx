@@ -100,9 +100,10 @@ export function ExportAllPagesDialog({ open, onOpenChange }: { open: boolean; on
           @media print {
             @page { size: letter landscape; margin: 12mm; }
             html, body { background: #ffffff !important; }
-            /* Hide the entire app, then reveal only the export dialog contents */
-            body > *:not([data-radix-portal]) { display: none !important; }
-            [data-radix-portal] :not(:has([data-export-report-dialog])) > [data-state="open"][role="dialog"]:not([data-export-report-dialog]) { display: none !important; }
+            /* Hide everything, then reveal only the export dialog contents. */
+            body * { visibility: hidden !important; }
+            [data-export-report-dialog],
+            [data-export-report-dialog] * { visibility: visible !important; }
             /* Neutralise Radix dialog chrome so it prints as a plain document */
             [data-export-report-dialog] {
               position: static !important;
@@ -114,9 +115,8 @@ export function ExportAllPagesDialog({ open, onOpenChange }: { open: boolean; on
               box-shadow: none !important; border: 0 !important; border-radius: 0 !important;
               display: block !important;
             }
-            [data-export-report-dialog] [data-radix-dialog-overlay],
-            [data-export-report-dialog] [data-radix-dialog-close],
-            [data-export-report-dialog] .export-report-dialog-header { display: none !important; }
+            [data-export-report-dialog] [data-print-hide],
+            [data-export-report-dialog] [data-print-hide] * { display: none !important; visibility: hidden !important; }
             /* Unclip the ScrollArea so every page renders */
             [data-export-report-dialog] .export-report-scroll,
             [data-export-report-dialog] [data-radix-scroll-area-viewport],
@@ -136,9 +136,11 @@ export function ExportAllPagesDialog({ open, onOpenChange }: { open: boolean; on
             }
             .export-report-page:last-child { break-after: auto; page-break-after: auto; }
           }
-          /* Hide the overlay backdrop for our dialog so nothing else prints on top */
         `}</style>
-        <DialogHeader className="px-6 pt-5 pb-3 border-b flex flex-row items-start justify-between gap-4 shrink-0">
+        <DialogHeader
+          data-print-hide
+          className="px-6 pt-5 pb-3 border-b flex flex-row items-start justify-between gap-4 shrink-0"
+        >
           <div>
             <DialogTitle>Export report preview</DialogTitle>
             <DialogDescription>
