@@ -266,7 +266,10 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
 
     // 3) Single-page PDF sized to header + dashboard stacked.
     const pxToPt = 72 / 96;
-    const pageW = Math.max(headerWidth, dashW);
+    // Add a small right-edge pad so 1px widget borders aren't clipped by
+    // sub-pixel rounding in html-to-image / jsPDF.
+    const EDGE_PAD = 8;
+    const pageW = Math.max(headerWidth, dashW) + EDGE_PAD;
     const pageH = headerH + dashH;
     const pageWpt = pageW * pxToPt;
     const pageHpt = pageH * pxToPt;
