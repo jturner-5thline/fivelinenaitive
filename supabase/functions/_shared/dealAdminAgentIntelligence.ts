@@ -3888,9 +3888,21 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
         console.log(`[deal-admin-agent] REWROTE ${holdNormalized.rewritten} update_funding_source proposal(s) for deal=${d.id} — on-hold→unresponsive (no explicit pause language)`);
       }
 
+      // Drop any update_funding_source→unresponsive proposal when the deal
+      // actually had a calendar or Claap meeting with that lender in the
+      // last 5 days. Silence in email ≠ silence overall — a meeting IS
+      // contact, and the correct next step is a status note, not a
+      // reclassification to Unresponsive.
+      const meetingGated = filterUnresponsiveWhenRecentMeeting(holdNormalized.kept, bundle);
+      if (meetingGated.dropped > 0) {
+        result.candidates_filtered += meetingGated.dropped;
+        console.log(`[deal-admin-agent] DROPPED ${meetingGated.dropped} update_funding_source→unresponsive proposal(s) for deal=${d.id} — recent calendar/Claap meeting with that lender in past 5 days`);
+      }
+      if (meetingGated.kept.length === 0) continue;
+
       // Normalize pass vs not-a-fit and populate pass_reason from evidence
       // when the agent forgot. Keeps stage labels honest to lender wording.
-      const passNormalized = normalizePassVsNotAFit(holdNormalized.kept);
+      const passNormalized = normalizePassVsNotAFit(meetingGated.kept);
       if (passNormalized.rewritten > 0) {
         console.log(`[deal-admin-agent] REWROTE ${passNormalized.rewritten} update_funding_source proposal(s) for deal=${d.id} — pass/not_a_fit reclassification + pass_reason backfill`);
       }
