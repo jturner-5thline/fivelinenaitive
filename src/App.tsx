@@ -65,6 +65,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { runDemoAiChatReset } from "@/lib/ai/resetDemoChats";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 const ImpersonationCallback = lazy(lazyRetry(() => import("./pages/ImpersonationCallback")));
+const OAuthConsent = lazy(lazyRetry(() => import("./pages/OAuthConsent")));
 
 /**
  * Demo-only: wipes prior naitive AI chat history once per page load
@@ -400,6 +401,7 @@ const App = () => (
                           <Route path="/auth" element={<RedirectIfAuthenticated><Auth /></RedirectIfAuthenticated>} />
                           <Route path="/auth/demo/callback" element={<DemoCallbackRedirect />} />
                           <Route path="/auth/impersonation/callback" element={<ImpersonationCallback />} />
+                          <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                           <Route path="/pending-approval" element={<Navigate to="/pipeline" replace />} />
                           <Route path="/pending-company-approval" element={<Navigate to="/pipeline" replace />} />
                           <Route path="/onboarding" element={
