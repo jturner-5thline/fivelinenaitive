@@ -1521,11 +1521,20 @@ function MetricsInner() {
   useEffect(() => {
     const view = searchParams.get('view');
     const tab = searchParams.get('tab');
+    const dashboard = searchParams.get('dashboard');
     const last = lastHandledDeepLinkRef.current;
     const isFirstRun = last === null;
     const viewChanged = !isFirstRun && last!.view !== view;
     const tabChanged = !isFirstRun && last!.tab !== tab;
-    lastHandledDeepLinkRef.current = { view, tab };
+    const dashboardChanged = !isFirstRun && (last as any).dashboard !== dashboard;
+    lastHandledDeepLinkRef.current = { view, tab, dashboard } as any;
+
+    // Explicit ?dashboard=<id> deep link (initial load, back/forward,
+    // pasted URL) wins over the legacy view/tab heuristics below.
+    if (dashboard && (isFirstRun || dashboardChanged)) {
+      selectDashboard(dashboard);
+      return;
+    }
 
     // Only the Weekly Rundown deep link uses `view`. Other `view` values
     // (e.g. the ReportingPeriodPicker's `month` / `quarter`) must be
