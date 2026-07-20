@@ -14,7 +14,13 @@ interface Payload {
   subject: string;
   message?: string;      // plain text message body
   messageHtml?: string;  // optional rich-text HTML body
-  attachment?: { filename: string; contentBase64: string };
+  attachment?: {
+    filename: string;
+    /** Preferred: signed URL to fetch the PDF from storage. */
+    url?: string;
+    /** Legacy inline base64 (kept for backwards compatibility). */
+    contentBase64?: string;
+  };
 }
 
 serve(async (req) => {
@@ -72,9 +78,28 @@ serve(async (req) => {
       <p style="margin-top:24px;color:#64748b;font-size:12px;">Report attached as PDF.</p>
     </body></html>`;
 
-    const attachments = payload.attachment
-      ? [{ filename: payload.attachment.filename || "report.pdf", content: payload.attachment.contentBase64 }]
-      : undefined;
+    let attachments: Array<{ filename: string; content: string }> | undefined;
+    if (payload.attachment) {
+      const filename = payload.attachment.filename || "report.pdf";
+      let base64 = payload.attachment.contentBase64 || "";
+      if (!base64 && payload.attachment.url) {
+        const res = await fetch(payload.attachment.url);
+        if (!res.ok) {
+          return new Response(JSON.stringify({ error: `Failed to fetch attachment (${res.status})` }), {
+            status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const buf = new Uint8Array(await res.arrayBuffer());
+        // Chunked base64 encode to avoid stack overflow on large PDFs.
+        let bin = "";
+        const chunk = 0x8000;
+        for (let i = 0; i < buf.length; i += chunk) {
+          bin += String.fromCharCode.apply(null, Array.from(buf.subarray(i, i + chunk)) as any);
+        }
+        base64 = btoa(bin);
+      }
+      if (base64) attachments = [{ filename, content: base64 }];
+    }
 
     const resend = new Resend(RESEND_API_KEY);
     const sent = await resend.emails.send({
