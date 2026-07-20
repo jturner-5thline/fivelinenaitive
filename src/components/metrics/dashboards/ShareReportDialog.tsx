@@ -13,6 +13,8 @@ import Link from '@tiptap/extension-link';
 import TextAlign from '@tiptap/extension-text-align';
 import Highlight from '@tiptap/extension-highlight';
 import HorizontalRule from '@tiptap/extension-horizontal-rule';
+import Mention from '@tiptap/extension-mention';
+import mentionSuggestion from '@/components/deal/notes/mentionSuggestion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import {
@@ -83,6 +85,13 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
       Underline,
       Highlight.configure({ multicolor: false }),
       HorizontalRule,
+      Mention.configure({
+        HTMLAttributes: {
+          class:
+            'mention inline-flex items-center rounded px-1 py-0.5 mx-0.5 bg-cyan-400/20 text-cyan-200 border border-cyan-300/30 font-medium',
+        },
+        suggestion: mentionSuggestion,
+      }),
       Link.configure({
         openOnClick: false,
         autolink: true,
