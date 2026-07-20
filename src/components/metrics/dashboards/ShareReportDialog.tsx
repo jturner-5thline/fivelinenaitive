@@ -31,6 +31,12 @@ interface ShareReportDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// 1242 keeps the three-card KPI rows on whole-pixel column widths:
+// (1242px total - 52px page padding - 32px grid gaps) / 3 = 386px.
+// Fractional grid columns were being rasterized with clipped right edges in
+// the PDF snapshot.
+const REPORT_EXPORT_WIDTH = 1242;
+
 function ToolbarBtn({
   active,
   onClick,
@@ -60,6 +66,7 @@ function ToolbarBtn({
 
 export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps) {
   const snapshotRef = useRef<HTMLDivElement>(null);
+  const exportSnapshotRef = useRef<HTMLDivElement>(null);
   const [sendOpen, setSendOpen] = useState(false);
   const DEFAULT_RECIPIENTS =
     'jturner@5thline.co, jmoffitt@5thline.co, swilliams@5thline.co, ppina@5thline.co, ffustinoni@5thline.co, nheikali@5thline.co';
@@ -158,10 +165,12 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     // off-screen clone path that produced a blank JPEG (foreignObject
     // silently fails when the cloned subtree is too tall / references
     // absolute-positioned charts).
-    const [htmlToImage, jsPDFmod] = await Promise.all([
+    const [htmlToImage, html2canvasMod, jsPDFmod] = await Promise.all([
       import('html-to-image'),
+      import('html2canvas'),
       import('jspdf'),
     ]);
+    const html2canvas = (html2canvasMod as any).default || html2canvasMod;
     const jsPDF = (jsPDFmod as any).jsPDF || (jsPDFmod as any).default;
     const dashNode = snapshotRef.current;
     if (!dashNode) throw new Error('Nothing to capture');
@@ -249,7 +258,7 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
       return canvas.toDataURL('image/png');
     };
 
-    const EXPORT_WIDTH = 1240;
+    const EXPORT_WIDTH = REPORT_EXPORT_WIDTH;
 
     // 1) Header block (title + date + rich text notes). Keep the capture node
     // at x=0 rather than far off-screen; html-to-image can otherwise return a
@@ -352,14 +361,26 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     // responsive widget rows; the inner content is the true 1240px report
     // canvas. Use the live node (not a DOM clone) so SVG/canvas chart content
     // is preserved exactly as rendered.
-    const dashboardContent = dashNode.querySelector<HTMLElement>('.sales-dashboard-v2 > .relative.flex > .flex-1');
-    const sourceNode = dashboardContent ?? dashNode;
-    const originalInlineStyle = sourceNode.getAttribute('style');
+    const exportNode = exportSnapshotRef.current ?? dashNode;
+    const dashboardRoot = exportNode.querySelector<HTMLElement>('.sales-dashboard-v2');
+    const dashboardContent = dashboardRoot?.querySelector<HTMLElement>(':scope > .relative.flex > .flex-1')
+      ?? dashNode.querySelector<HTMLElement>('.sales-dashboard-v2 > .relative.flex > .flex-1');
+    const sourceNode = dashboardRoot ?? dashboardContent ?? dashNode;
+    const originalSourceStyle = sourceNode.getAttribute('style');
+    const originalContentStyle = dashboardContent?.getAttribute('style') ?? null;
+    sourceNode.classList.add('share-report-capture-root');
     sourceNode.style.width = `${EXPORT_WIDTH}px`;
     sourceNode.style.maxWidth = `${EXPORT_WIDTH}px`;
     sourceNode.style.margin = '0';
     sourceNode.style.overflow = 'visible';
     sourceNode.style.boxSizing = 'border-box';
+    if (dashboardContent) {
+      dashboardContent.style.width = `${EXPORT_WIDTH}px`;
+      dashboardContent.style.maxWidth = `${EXPORT_WIDTH}px`;
+      dashboardContent.style.margin = '0';
+      dashboardContent.style.overflow = 'visible';
+      dashboardContent.style.boxSizing = 'border-box';
+    }
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     const dashW = EXPORT_WIDTH;
     const dashH = Math.ceil(sourceNode.scrollHeight);
@@ -374,6 +395,8 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
        * the padding box and is immune to that sub-pixel clipping. */
       .share-report-exporting .sales-dashboard-v2 [style*="linear-gradient(135deg"] {
         border-color: transparent !important;
+        outline: 1px solid rgba(255,255,255,0.84) !important;
+        outline-offset: -1px !important;
         box-shadow:
           inset 0 0 0 1px rgba(255,255,255,0.82),
           inset 0 0 0 2px rgba(255,255,255,0.14),
@@ -381,6 +404,8 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
       }
       .share-report-exporting .sales-dashboard-v2 button[aria-label^="Drill into"] {
         border-color: transparent !important;
+        outline: 1px solid rgba(255,255,255,0.86) !important;
+        outline-offset: -1px !important;
         box-shadow: inset 0 0 0 1px rgba(255,255,255,0.86) !important;
       }
     `;
@@ -388,23 +413,29 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     document.documentElement.classList.add('share-report-exporting');
     let dashUrl = '';
     try {
-      dashUrl = await htmlToImage.toJpeg(sourceNode, {
-        pixelRatio: 1.5,
-        quality: 0.92,
+      const canvas = await html2canvas(sourceNode, {
+        scale: 1.5,
         backgroundColor: '#0b0b12',
         width: dashW,
         height: dashH,
-        cacheBust: true,
-        style: {
-          width: `${dashW}px`,
-          overflow: 'visible',
-        },
+        windowWidth: dashW,
+        windowHeight: Math.max(1800, dashH),
+        scrollX: 0,
+        scrollY: 0,
+        useCORS: true,
+        logging: false,
       });
+      dashUrl = canvas.toDataURL('image/jpeg', 0.92);
     } finally {
       document.documentElement.classList.remove('share-report-exporting');
       document.head.removeChild(exportStyle);
-      if (originalInlineStyle === null) sourceNode.removeAttribute('style');
-      else sourceNode.setAttribute('style', originalInlineStyle);
+      sourceNode.classList.remove('share-report-capture-root');
+      if (originalSourceStyle === null) sourceNode.removeAttribute('style');
+      else sourceNode.setAttribute('style', originalSourceStyle);
+      if (dashboardContent) {
+        if (originalContentStyle === null) dashboardContent.removeAttribute('style');
+        else dashboardContent.setAttribute('style', originalContentStyle);
+      }
     }
 
     if (!headerUrl || headerUrl.length < 200 || !dashUrl || dashUrl.length < 200) {
@@ -524,6 +555,7 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-w-[96vw] w-[96vw] h-[92vh] p-0 overflow-hidden border-white/10"
@@ -544,7 +576,7 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
         </DialogHeader>
         <div className="flex flex-col h-full overflow-hidden">
           {/* Rich text editor — aligned exactly to the 3-widget KPI row */}
-          <div style={{ maxWidth: 1240, margin: '0 auto', padding: '16px 26px 0' }} className="w-full">
+          <div style={{ maxWidth: REPORT_EXPORT_WIDTH, margin: '0 auto', padding: '16px 26px 0' }} className="w-full">
             <div
               className="rounded-lg border border-white/40 bg-white/[0.04] shadow-[0_0_0_1px_rgba(0,0,0,0.6),0_10px_30px_-12px_rgba(0,0,0,0.8)]"
               style={{
@@ -785,5 +817,25 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
         </Dialog>
       </DialogContent>
     </Dialog>
+
+    {/* Dedicated export canvas. This must live outside the dialog content:
+        Radix's fixed/translated dialog + overflow-hidden panel was clipping
+        the off-screen report at roughly the same places as the emailed PDF. */}
+    {open && (
+      <div
+        aria-hidden="true"
+        className="fixed left-0 top-0 pointer-events-none"
+        style={{
+          width: REPORT_EXPORT_WIDTH,
+          zIndex: -1000,
+          background: '#0b0b12',
+        }}
+      >
+        <div ref={exportSnapshotRef}>
+          <SalesDashboardV2 reportMode />
+        </div>
+      </div>
+    )}
+    </>
   );
 }
