@@ -721,7 +721,6 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
       queryClient.invalidateQueries({ queryKey: ['master-plan-monthly'] });
       queryClient.invalidateQueries({ queryKey: ['master-plan-quarterly'] });
       queryClient.invalidateQueries({ queryKey: ['debt-advisory-plan-values'] });
-      queryClient.invalidateQueries({ queryKey: ['niki-performance-plan'] });
       const editedCells = upserts.length + Object.values(clearedByMetric).reduce((a, b) => a + b.length, 0);
       if (!silent) {
         toast.success(`Master plan saved — ${editedCells} cell${editedCells === 1 ? '' : 's'} updated`);
