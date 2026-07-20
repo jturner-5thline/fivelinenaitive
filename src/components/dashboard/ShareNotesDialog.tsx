@@ -72,6 +72,7 @@ export function ShareNotesDialog({
     () => composeBody({ eventTitle, eventStartISO, savedNotes, currentDraft, claapSummary, claapUrl }),
     [eventTitle, eventStartISO, savedNotes, currentDraft, claapSummary, claapUrl],
   );
+  const defaultRecipientsKey = defaultRecipients.join(',');
   const [to, setTo] = useState(defaultRecipients.join(', '));
   const [subject, setSubject] = useState(`Notes: ${eventTitle}`);
   const [body, setBody] = useState(defaultBody);
@@ -79,11 +80,12 @@ export function ShareNotesDialog({
 
   useEffect(() => {
     if (open) {
-      setTo(defaultRecipients.join(', '));
+      setTo(defaultRecipientsKey ? defaultRecipientsKey.split(',').join(', ') : '');
       setSubject(`Notes: ${eventTitle}`);
       setBody(defaultBody);
     }
-  }, [open, defaultBody, defaultRecipients, eventTitle]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const handleSend = async () => {
     const recipients = to.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
