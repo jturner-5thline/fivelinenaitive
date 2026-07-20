@@ -25,7 +25,13 @@ function CoverPage() {
     createQuarterlyReportSeed(),
     'naitive.quarterlyReport.v1.report1',
   );
-  return <ReportCoverSection s={state} set={setState} />;
+  // Wrap in the shared `.n` dark-gradient surface so the export cover matches
+  // the Agenda page treatment (AgendaEditor's root uses `.n`).
+  return (
+    <div className="n p-4 rounded-md">
+      <ReportCoverSection s={state} set={setState} />
+    </div>
+  );
 }
 
 function ReportPage({ reportKey, defaultAuthor, persona }: { reportKey: string; defaultAuthor: string; persona: string }) {
