@@ -58,7 +58,7 @@ export function useMasterPlanQuarterly(): {
   const { data, isSuccess } = useQuery({
     queryKey: ['master-plan-quarterly', YEAR, company?.id ?? null],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('insights_metric_targets' as any)
         .select('metric_key, period_month, target_value')
         .or(
@@ -66,6 +66,8 @@ export function useMasterPlanQuarterly(): {
         )
         .gte('period_month', `${YEAR}-01`)
         .lte('period_month', `${YEAR}-12`);
+      query = company?.id ? query.eq('company_id', company.id) : query.is('company_id', null);
+      const { data, error } = await query;
       if (error) throw error;
       return (data as unknown as Row[]) ?? [];
     },
