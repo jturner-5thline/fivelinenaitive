@@ -31,10 +31,45 @@ function escapeHtml(s: string) {
     .replace(/>/g, '&gt;');
 }
 
-// Convert plain-note text to HTML preserving line breaks exactly as displayed
-// in the Notes section (which uses `whitespace-pre-wrap`).
+// Inline markdown-lite: **bold**, *italic*, `code`, and autolinks.
+function inlineFormat(s: string) {
+  let out = escapeHtml(s);
+  out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  out = out.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  out = out.replace(/`([^`]+)`/g, '<code style="background:#f1f5f9;padding:1px 4px;border-radius:3px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;">$1</code>');
+  out = out.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#2563eb;">$1</a>');
+  return out;
+}
+
+// Convert plain-note text to HTML, promoting `-`/`*`/`•` lines to <ul> and
+// `1.` lines to <ol>, so bullets and numbered lists render properly in email
+// clients that don't honor `white-space: pre-wrap` on list markers.
 function textToHtml(text: string) {
-  return escapeHtml(text).replace(/\n/g, '<br/>');
+  const lines = text.replace(/\r\n/g, '\n').split('\n');
+  const out: string[] = [];
+  let listType: 'ul' | 'ol' | null = null;
+  const closeList = () => { if (listType) { out.push(`</${listType}>`); listType = null; } };
+
+  for (const raw of lines) {
+    const line = raw.replace(/\t/g, '    ');
+    const bullet = line.match(/^\s*[-*•]\s+(.*)$/);
+    const numbered = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (bullet) {
+      if (listType !== 'ul') { closeList(); out.push('<ul style="margin:4px 0 4px 20px;padding:0;">'); listType = 'ul'; }
+      out.push(`<li style="margin:2px 0;">${inlineFormat(bullet[1])}</li>`);
+      continue;
+    }
+    if (numbered) {
+      if (listType !== 'ol') { closeList(); out.push('<ol style="margin:4px 0 4px 20px;padding:0;">'); listType = 'ol'; }
+      out.push(`<li style="margin:2px 0;">${inlineFormat(numbered[1])}</li>`);
+      continue;
+    }
+    closeList();
+    if (line.trim() === '') { out.push('<div style="height:6px;"></div>'); continue; }
+    out.push(`<div>${inlineFormat(line)}</div>`);
+  }
+  closeList();
+  return out.join('');
 }
 
 function composeHtml(opts: {
