@@ -24,6 +24,25 @@ import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton
 import { LenderFollowUpPopover } from '@/components/deal/LenderFollowUpPopover';
 import { getLenderStatusTheme } from '@/components/deal/lenderStatusTheme';
 import { LenderRowBoundary } from '@/components/deal/LenderRowBoundary';
+import { bucketLender, isExcludedFromClientReport } from '@/lib/lenderStatusBuckets';
+
+// Map lender to the same bucket label used on the Funding Sources snapshot
+// (On Deck / In Review / Terms Issued / Passed / On Hold) so cards show the
+// stage bucket, not the internal milestone (e.g. "Reviewing DRL").
+function bucketDisplayLabel(
+  lender: DealLender,
+  configuredStages: { id: string; label: string; group: StageGroup }[],
+): string {
+  if (isExcludedFromClientReport(lender, configuredStages)) return 'On Hold';
+  const b = bucketLender(lender, configuredStages);
+  switch (b) {
+    case 'onDeck': return 'On Deck';
+    case 'inReview': return 'In Review';
+    case 'termsIssued': return 'Terms Issued';
+    case 'passed': return 'Passed';
+    default: return 'On Deck';
+  }
+}
 
 
 interface LenderMetrics {
@@ -119,7 +138,7 @@ function DraggableLenderTile({
 
   const displayName = (typeof lender?.name === 'string' && lender.name.trim()) || 'Unknown funding source';
   const stageConfig = lender?.stage ? configuredStages.find(s => s.id === lender.stage) : undefined;
-  const stageLabel = stageConfig?.label || lender?.stage || 'Unassigned';
+  const stageLabel = bucketDisplayLabel(lender, configuredStages);
   const hideTime = stageConfig?.group === 'on-deck' || stageConfig?.group === 'passed' || lender?.trackingStatus === 'passed' || lender?.trackingStatus === 'on-deck';
   const timeAgo = hideTime ? '' : getRelativeTime(lender?.updatedAt);
 
