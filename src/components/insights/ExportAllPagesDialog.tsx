@@ -30,7 +30,7 @@ function CoverPage() {
   // dialog portals outside that scope so we apply the gradient inline here.
   return (
     <div
-      className="rounded-md p-6 text-white insights-glass-skin"
+      className="rounded-md p-6 text-white insights-glass-skin export-cover-dark"
       style={{
         background:
           'radial-gradient(120% 90% at 15% 0%, rgba(88, 60, 180, 0.55) 0%, rgba(20, 24, 60, 0) 55%), linear-gradient(160deg, #0b1024 0%, #131a3a 45%, #0a0f22 100%)',
@@ -38,6 +38,17 @@ function CoverPage() {
         boxShadow: '0 20px 60px -20px rgba(20, 20, 60, 0.55)',
       }}
     >
+      <style>{`
+        .export-cover-dark .glass-module,
+        .export-cover-dark .qir-cover-card {
+          background: transparent !important;
+          background-color: transparent !important;
+          border-color: rgba(255,255,255,0.10) !important;
+          box-shadow: none !important;
+          backdrop-filter: none !important;
+        }
+        .export-cover-dark .qir-cover-hero { background: transparent !important; }
+      `}</style>
       <ReportCoverSection s={state} set={setState} />
     </div>
   );
