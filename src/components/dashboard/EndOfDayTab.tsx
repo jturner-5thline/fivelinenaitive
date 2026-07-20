@@ -56,6 +56,8 @@ import { FindATimeDialog } from '@/components/scheduling/FindATimeDialog';
 import { SuggestedTasksSection } from '@/components/dashboard/SuggestedTasksSection';
 import { ClaapNoteEditor } from '@/components/dashboard/ClaapNoteEditor';
 import { HighlightCalendarMenu } from '@/components/calendar/HighlightCalendarMenu';
+import { ShareNotesDialog } from '@/components/dashboard/ShareNotesDialog';
+import { Share2 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
 // End of Day · Two-pane master/detail layout
@@ -1655,6 +1657,7 @@ function EventDetailPane({
   const claapStillGenerating = claapCtx.source === 'none' && !!claapCtx.recording;
   const [claapLinkerOpen, setClaapLinkerOpen] = useState(false);
   const [scheduleNextOpen, setScheduleNextOpen] = useState(false);
+  const [shareNotesOpen, setShareNotesOpen] = useState(false);
 
   const allEmails = externals.map(a => (a.email || '').trim()).filter(Boolean);
 
@@ -1880,9 +1883,25 @@ function EventDetailPane({
         {/* Saved notes — selectable narrative */}
         {savedNotes.length > 0 && (
           <section>
-            <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-0.5">
-              Notes
-            </h3>
+            <div className="flex items-center justify-between mb-0.5">
+              <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80">
+                Notes
+              </h3>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 text-white/70 hover:text-primary"
+                    onClick={() => setShareNotesOpen(true)}
+                    aria-label="Share notes via email"
+                  >
+                    <Share2 className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Share notes via email</TooltipContent>
+              </Tooltip>
+            </div>
             <div className="space-y-0.5">
               {savedNotes.map((n) => (
                 <HighlightCalendarMenu
@@ -1925,6 +1944,22 @@ function EventDetailPane({
             <div className="flex items-center gap-0.5 mb-0.5">
               <StickyNote className="h-3 w-3 text-muted-foreground" />
               <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80">Add note</span>
+              {savedNotes.length === 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-5 w-5 ml-auto text-white/70 hover:text-primary"
+                      onClick={() => setShareNotesOpen(true)}
+                      aria-label="Share notes via email"
+                    >
+                      <Share2 className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Share notes via email</TooltipContent>
+                </Tooltip>
+              )}
             </div>
             {notePrefilledFromClaap && (
               <div className="flex items-center gap-0.5 mb-0.5">
@@ -2174,6 +2209,17 @@ function EventDetailPane({
         eventId={event.id}
         eventTitle={eventTitle}
         attendeeEmails={allEmails}
+      />
+
+      <ShareNotesDialog
+        open={shareNotesOpen}
+        onOpenChange={setShareNotesOpen}
+        eventTitle={eventTitle}
+        eventStartISO={event.start}
+        savedNotes={savedNotes}
+        currentDraft={noteDraft}
+        claapSummary={claapCtx.summary ?? null}
+        claapUrl={claapCtx.recording?.url ?? null}
       />
     </div>
   );
