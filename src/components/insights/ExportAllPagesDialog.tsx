@@ -95,24 +95,38 @@ export function ExportAllPagesDialog({ open, onOpenChange }: { open: boolean; on
         </DialogHeader>
         <ScrollArea className="flex-1 export-report-scroll">
           <div className="px-6 py-6 space-y-8">
-            {PAGES.map((p, i) => (
-              <section
-                key={p.id}
-                aria-label={p.title}
-                className="export-report-page bg-card border rounded-md shadow-sm overflow-hidden"
-                style={{ pageBreakAfter: i === PAGES.length - 1 ? 'auto' : 'always', breakAfter: i === PAGES.length - 1 ? 'auto' : 'page' }}
-              >
-                <div className="px-5 py-3 border-b bg-muted/30 flex items-center justify-between">
-                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                    Page {i + 1} of {PAGES.length}
+            {PAGES.map((p, i) => {
+              const isCover = p.id === 'cover';
+              return (
+                <section
+                  key={p.id}
+                  aria-label={p.title}
+                  className={
+                    isCover
+                      ? 'export-report-page rounded-md overflow-hidden'
+                      : 'export-report-page bg-card border rounded-md shadow-sm overflow-hidden'
+                  }
+                  style={{ pageBreakAfter: i === PAGES.length - 1 ? 'auto' : 'always', breakAfter: i === PAGES.length - 1 ? 'auto' : 'page' }}
+                >
+                  <div
+                    className={
+                      isCover
+                        ? 'px-5 py-3 flex items-center justify-between text-white/80 border-b border-white/10'
+                        : 'px-5 py-3 border-b bg-muted/30 flex items-center justify-between'
+                    }
+                    style={isCover ? { background: 'linear-gradient(180deg, #0b1024 0%, #101635 100%)' } : undefined}
+                  >
+                    <div className={isCover ? 'text-[11px] uppercase tracking-wider text-white/60' : 'text-[11px] uppercase tracking-wider text-muted-foreground'}>
+                      Page {i + 1} of {PAGES.length}
+                    </div>
+                    <div className="text-sm font-semibold">{p.title}</div>
                   </div>
-                  <div className="text-sm font-semibold">{p.title}</div>
-                </div>
-                <div className="p-5">
-                  {p.render()}
-                </div>
-              </section>
-            ))}
+                  <div className={isCover ? '' : 'p-5'}>
+                    {p.render()}
+                  </div>
+                </section>
+              );
+            })}
           </div>
         </ScrollArea>
       </DialogContent>
