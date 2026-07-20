@@ -1448,6 +1448,18 @@ function MetricsInner() {
     const nextId = allowed && !allowed.has(id) ? (Array.from(allowed)[0] ?? id) : id;
     persistInsightsDashboard(nextId);
     setSelectedDashboard(nextId);
+    // Reflect the current dashboard in the URL so /insights?dashboard=<id>
+    // is a shareable deep link. Preserve other query params (timeframe,
+    // reporting period, etc.) and replace history to keep the back stack clean.
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('dashboard') !== nextId) {
+        url.searchParams.set('dashboard', nextId);
+        window.history.replaceState(window.history.state, '', url.toString());
+      }
+    } catch {
+      /* no-op */
+    }
   }, []);
   const [isEditMode, setIsEditMode] = useState(false);
 
