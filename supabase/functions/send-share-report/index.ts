@@ -78,27 +78,19 @@ serve(async (req) => {
       <p style="margin-top:24px;color:#64748b;font-size:12px;">Report attached as PDF.</p>
     </body></html>`;
 
-    let attachments: Array<{ filename: string; content: string }> | undefined;
+    let attachments: Array<{ filename: string; content?: string; path?: string; content_type?: string }> | undefined;
     if (payload.attachment) {
       const filename = payload.attachment.filename || "report.pdf";
-      let base64 = payload.attachment.contentBase64 || "";
-      if (!base64 && payload.attachment.url) {
-        const res = await fetch(payload.attachment.url);
-        if (!res.ok) {
-          return new Response(JSON.stringify({ error: `Failed to fetch attachment (${res.status})` }), {
-            status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        const buf = new Uint8Array(await res.arrayBuffer());
-        // Chunked base64 encode to avoid stack overflow on large PDFs.
-        let bin = "";
-        const chunk = 0x8000;
-        for (let i = 0; i < buf.length; i += chunk) {
-          bin += String.fromCharCode.apply(null, Array.from(buf.subarray(i, i + chunk)) as any);
-        }
-        base64 = btoa(bin);
+      if (payload.attachment.url) {
+        // Let Resend retrieve the hosted PDF instead of loading/re-encoding it
+        // inside the edge function. This keeps function memory usage tiny and
+        // avoids WORKER_RESOURCE_LIMIT on large dashboard screenshots.
+        attachments = [{ filename, path: payload.attachment.url, content_type: "application/pdf" }];
+      } else if (payload.attachment.contentBase64) {
+        // Legacy fallback only. The Share Report client now uploads PDFs to
+        // private storage and sends a short-lived signed URL instead.
+        attachments = [{ filename, content: payload.attachment.contentBase64, content_type: "application/pdf" }];
       }
-      if (base64) attachments = [{ filename, content: base64 }];
     }
 
     const resend = new Resend(RESEND_API_KEY);
