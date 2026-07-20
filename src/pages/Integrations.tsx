@@ -37,6 +37,7 @@ import { MicrosoftUpcomingEvents } from "@/components/integrations/MicrosoftUpco
 import { IntegrationCard, ComingSoonCard, type IntegrationStatus } from "@/components/integrations/IntegrationCard";
 import { ClaapSummaryCard, ZapierSummaryCard, FlexAutomationCard } from "@/components/integrations/IntegrationSummaryCards";
 import { HubSpotSyncSettingsModal } from "@/components/integrations/HubSpotSyncSettingsModal";
+import { NaitiveApiAccessCard } from "@/components/integrations/NaitiveApiAccessCard";
 import { QuickBooksSyncSettingsModal } from "@/components/integrations/QuickBooksSyncSettingsModal";
 import { GmailSyncSettingsModal } from "@/components/integrations/GmailSyncSettingsModal";
 import { CalendarSyncSettingsModal } from "@/components/integrations/CalendarSyncSettingsModal";
@@ -56,6 +57,7 @@ const COMING_SOON_INTEGRATIONS = [
 export default function Integrations() {
   const { user } = useAuth();
   const is5thLine = user?.email?.endsWith("@5thline.co") ?? false;
+  const canSeeNaitiveApi = user?.email?.toLowerCase() === "jturner@5thline.co";
   const { company, isAdmin: isCompanyAdmin } = useCompany();
   const { canSeeFlexSync } = useCanSeeFlexSync();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -589,6 +591,8 @@ export default function Integrations() {
             Connect external systems and monitor sync health. Use Deals, Finance, and other modules to work with synced data.
           </p>
         </header>
+
+        {canSeeNaitiveApi && <NaitiveApiAccessCard />}
 
         {/* 1 — Connected (primary) */}
         <section className="space-y-3">
