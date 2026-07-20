@@ -878,6 +878,7 @@ FUNDING SOURCE (LENDER) UPDATE GATE — apply strictly
     (c) HOLD / PAUSE on the deal — ONLY when the lender EXPLICITLY says so. Trigger language: "revisit", "table this", "pause", "postpone", "circle back later", "park this", "put on hold", "shelve", "come back to this in <N> weeks". Propose stage="on-hold".
         Do NOT infer hold from silence, slow replies, missed deadlines, or your own assumption that the lender is "probably busy". Those are unresponsive, not on hold.
     (d) UNRESPONSIVE — multiple follow-ups with no response from the funding source (multiple unanswered nudges, no reply past a committed date, or business_days_since_last_contact materially exceeds normal cadence) and there is NO explicit hold/pause language anywhere in the thread. Propose stage="unresponsive". This is the correct status whenever the only signal is absence of a response — never collapse this into "on-hold", "passed", or "not_a_fit".
+        HARD GUARD: BEFORE proposing "unresponsive" for a lender, scan calendar_items and claap_recordings for a meeting whose title/attendees/participants include that lender's name AND whose date falls in the last 5 days. If ANY such meeting exists, DO NOT propose "unresponsive" — a meeting IS contact. Instead emit an add_status_note asking the deal owner to confirm what was reviewed with {Lender} on {meeting date} (e.g. "Did you review {Deal} with {Lender} on {date}? Please add a status note."). Never treat email silence as unresponsiveness when a real meeting just happened.
 - STAGE DISAMBIGUATION (apply in this exact order):
     1. Silence only (no reply, multiple unanswered follow-ups) → "unresponsive".
     2. Lender quoted saying "not a fit" / "not for us" / "outside our box" → "not_a_fit" + pass_reason.
@@ -1860,6 +1861,105 @@ function normalizeHoldVsUnresponsive(candidates: CandidateItem[]): {
   });
 
   return { kept, rewritten };
+}
+
+/**
+ * Deterministic guardrail: never propose "unresponsive" for a lender when the
+ * deal actually had a meeting / call with that lender in the last few business
+ * days. Silence is the AI's signal for unresponsive, but silence in email
+ * doesn't mean silence overall — a Zoom / calendar / Claap-recorded meeting
+ * with the lender IS contact, and the correct next step is for the deal owner
+ * to log a status note about that meeting, not to reclassify the lender.
+ *
+ * We match a lender name against calendar event titles/attendees and Claap
+ * recording titles/participants within the last 5 calendar days. If any of
+ * those overlap, the update_funding_source→unresponsive proposal is dropped.
+ */
+function filterUnresponsiveWhenRecentMeeting(
+  candidates: CandidateItem[],
+  bundle: DealBundle,
+): { kept: CandidateItem[]; dropped: number } {
+  const RECENT_MS = 5 * 24 * 60 * 60 * 1000; // 5 calendar days
+  const now = Date.now();
+
+  const fsById = new Map<string, any>();
+  for (const f of bundle.funding_sources ?? []) {
+    if (f?.id) fsById.set(String(f.id), f);
+  }
+
+  const tokenize = (name: string): string[] => {
+    const stop = new Set([
+      "the", "and", "of", "llc", "inc", "corp", "corporation", "co",
+      "capital", "credit", "finance", "financial", "partners", "fund",
+      "funds", "group", "bank", "holdings", "advisors", "advisory",
+      "management", "ltd", "lp", "llp", "company", "usa", "us",
+    ]);
+    return String(name)
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((t) => t.length >= 3 && !stop.has(t));
+  };
+
+  const meetingSignals: Array<{ text: string; ts: number }> = [];
+  const pushSignal = (parts: unknown[], tsRaw: unknown) => {
+    const ts = tsRaw ? new Date(tsRaw as string).getTime() : NaN;
+    if (!Number.isFinite(ts)) return;
+    if (now - ts > RECENT_MS || ts > now + 24 * 60 * 60 * 1000) return;
+    const text = parts
+      .filter((p) => p != null)
+      .map((p) => (typeof p === "string" ? p : JSON.stringify(p)))
+      .join(" ")
+      .toLowerCase();
+    if (text.trim().length > 0) meetingSignals.push({ text, ts });
+  };
+  for (const c of bundle.calendar_items ?? []) {
+    pushSignal(
+      [(c as any)?.title, (c as any)?.attendees, (c as any)?.organizer_email, (c as any)?.description],
+      (c as any)?.start_time ?? (c as any)?.end_time ?? (c as any)?.date,
+    );
+  }
+  for (const r of bundle.claap_recordings ?? []) {
+    pushSignal(
+      [
+        (r as any)?.title,
+        (r as any)?.participants,
+        (r as any)?.summary,
+        (r as any)?.transcript_excerpt,
+      ],
+      (r as any)?.started_at ?? (r as any)?.ended_at ?? (r as any)?.recorded_at,
+    );
+  }
+
+  if (meetingSignals.length === 0) return { kept: candidates, dropped: 0 };
+
+  let dropped = 0;
+  const kept = candidates.filter((c) => {
+    if (c.action_type !== "update_funding_source") return true;
+    const pv = (c.proposed_values ?? {}) as Record<string, any>;
+    const targets = [pv.stage, pv.substage, pv.tracking_status]
+      .filter((v) => typeof v === "string")
+      .map((v) => String(v).toLowerCase());
+    const isUnresponsive = targets.some((v) => /unresponsive/.test(v));
+    if (!isUnresponsive) return true;
+
+    const fs = c.target_object_id ? fsById.get(String(c.target_object_id)) : null;
+    const lenderName = fs?.name;
+    if (!lenderName || typeof lenderName !== "string") return true;
+    const tokens = tokenize(lenderName);
+    if (tokens.length === 0) return true;
+
+    const matched = meetingSignals.some(({ text }) =>
+      tokens.some((tok) => text.includes(tok)),
+    );
+    if (matched) {
+      dropped++;
+      return false;
+    }
+    return true;
+  });
+
+  return { kept, dropped };
 }
 
 /**
@@ -3789,9 +3889,21 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
         console.log(`[deal-admin-agent] REWROTE ${holdNormalized.rewritten} update_funding_source proposal(s) for deal=${d.id} — on-hold→unresponsive (no explicit pause language)`);
       }
 
+      // Drop any update_funding_source→unresponsive proposal when the deal
+      // actually had a calendar or Claap meeting with that lender in the
+      // last 5 days. Silence in email ≠ silence overall — a meeting IS
+      // contact, and the correct next step is a status note, not a
+      // reclassification to Unresponsive.
+      const meetingGated = filterUnresponsiveWhenRecentMeeting(holdNormalized.kept, bundle);
+      if (meetingGated.dropped > 0) {
+        result.candidates_filtered += meetingGated.dropped;
+        console.log(`[deal-admin-agent] DROPPED ${meetingGated.dropped} update_funding_source→unresponsive proposal(s) for deal=${d.id} — recent calendar/Claap meeting with that lender in past 5 days`);
+      }
+      if (meetingGated.kept.length === 0) continue;
+
       // Normalize pass vs not-a-fit and populate pass_reason from evidence
       // when the agent forgot. Keeps stage labels honest to lender wording.
-      const passNormalized = normalizePassVsNotAFit(holdNormalized.kept);
+      const passNormalized = normalizePassVsNotAFit(meetingGated.kept);
       if (passNormalized.rewritten > 0) {
         console.log(`[deal-admin-agent] REWROTE ${passNormalized.rewritten} update_funding_source proposal(s) for deal=${d.id} — pass/not_a_fit reclassification + pass_reason backfill`);
       }
