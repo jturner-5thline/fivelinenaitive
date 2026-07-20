@@ -31,7 +31,7 @@ export const DEBT_ADVISORY_KPI_TO_PLAN: Record<
   'deals-on-board': { primary: 'deals-on-board', secondary: 'deals-on-board-value' },
   'proposals-issued': { primary: 'proposals-issued', secondary: 'dollars-proposed' },
   'debt-deals-signed': { primary: 'deals-signed', secondary: 'dollars-signed' },
-  'terms-issued': { primary: 'terms-issued' },
+  'terms-issued': { primary: 'terms-issued', secondary: 'dollars-terms-issued' },
   'terms-signed': { primary: 'terms-signed', secondary: 'volume-of-terms-signed' },
   'deals-closed': { primary: 'deals-closed', secondary: 'dollars-funded' },
   'total-revenue-opportunity': { primary: 'total-revenue-opportunity' },
