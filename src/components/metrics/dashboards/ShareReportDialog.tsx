@@ -142,6 +142,16 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
   const parseEmails = (s: string): string[] =>
     s.split(/[,;\s]+/).map((e) => e.trim()).filter(Boolean);
 
+  // Basic RFC-5322-ish check. Rejects malformed entries like
+  // "jturner@5thline.coli@5thline.co" that Resend silently drops.
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const splitValidInvalid = (list: string[]) => {
+    const valid: string[] = [];
+    const invalid: string[] = [];
+    for (const e of list) (EMAIL_RE.test(e) ? valid : invalid).push(e);
+    return { valid, invalid };
+  };
+
   const generatePdfBase64 = async (): Promise<string> => {
     // Capture the ON-SCREEN dashboard (snapshotRef) plus a small header
     // (title + notes). Capturing the live, already-rendered node avoids the
@@ -268,8 +278,15 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
   };
 
   const handleSend = async () => {
-    const to = parseEmails(toValue);
-    const cc = parseEmails(ccValue);
+    const toParsed = splitValidInvalid(parseEmails(toValue));
+    const ccParsed = splitValidInvalid(parseEmails(ccValue));
+    if (toParsed.invalid.length > 0 || ccParsed.invalid.length > 0) {
+      const bad = [...toParsed.invalid, ...ccParsed.invalid].join(', ');
+      toast.error(`Invalid email address${toParsed.invalid.length + ccParsed.invalid.length === 1 ? '' : 'es'}: ${bad}`);
+      return;
+    }
+    const to = toParsed.valid;
+    const cc = ccParsed.valid;
     if (to.length === 0) {
       toast.error('Add at least one recipient email');
       return;
@@ -293,7 +310,16 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
           attachment: { filename, url: attachmentUrl },
         },
       });
-      if (error) throw error;
+      if (error) {
+        // Surface the real edge-function response body (Resend error) instead of
+        // the generic "non-2xx" message returned by supabase-js.
+        let details = error.message;
+        try {
+          const ctx: any = (error as any).context;
+          if (ctx?.text) details = await ctx.text();
+        } catch { /* ignore */ }
+        throw new Error(details);
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       toast.success(`Report sent to ${to.length} recipient${to.length === 1 ? '' : 's'}`);
       setSendOpen(false);
