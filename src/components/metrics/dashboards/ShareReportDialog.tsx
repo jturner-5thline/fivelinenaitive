@@ -165,10 +165,12 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     // off-screen clone path that produced a blank JPEG (foreignObject
     // silently fails when the cloned subtree is too tall / references
     // absolute-positioned charts).
-    const [htmlToImage, jsPDFmod] = await Promise.all([
+    const [htmlToImage, html2canvasMod, jsPDFmod] = await Promise.all([
       import('html-to-image'),
+      import('html2canvas'),
       import('jspdf'),
     ]);
+    const html2canvas = (html2canvasMod as any).default || html2canvasMod;
     const jsPDF = (jsPDFmod as any).jsPDF || (jsPDFmod as any).default;
     const dashNode = snapshotRef.current;
     if (!dashNode) throw new Error('Nothing to capture');
@@ -411,18 +413,19 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     document.documentElement.classList.add('share-report-exporting');
     let dashUrl = '';
     try {
-      dashUrl = await htmlToImage.toJpeg(sourceNode, {
-        pixelRatio: 1.5,
-        quality: 0.92,
+      const canvas = await html2canvas(sourceNode, {
+        scale: 1.5,
         backgroundColor: '#0b0b12',
         width: dashW,
         height: dashH,
-        cacheBust: true,
-        style: {
-          width: `${dashW}px`,
-          overflow: 'visible',
-        },
+        windowWidth: dashW,
+        windowHeight: Math.max(1800, dashH),
+        scrollX: 0,
+        scrollY: 0,
+        useCORS: true,
+        logging: false,
       });
+      dashUrl = canvas.toDataURL('image/jpeg', 0.92);
     } finally {
       document.documentElement.classList.remove('share-report-exporting');
       document.head.removeChild(exportStyle);
