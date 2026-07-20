@@ -367,12 +367,21 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     // limit — PNG at 2x pixelRatio blew past it on wide dashboards.
     const exportStyle = document.createElement('style');
     exportStyle.textContent = `
+      /* Draw widget borders as INSET box-shadows during export. Fractional
+       * grid-column widths (e.g. 1240/3) get truncated when html-to-image
+       * rasterizes each cell, which clipped the 1px outer border on the
+       * left/middle cards of every 3-col row. An inset shadow lives inside
+       * the padding box and is immune to that sub-pixel clipping. */
       .share-report-exporting .sales-dashboard-v2 [style*="linear-gradient(135deg"] {
-        border-color: rgba(255,255,255,0.82) !important;
-        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.28), 0 0 0 1px rgba(0,0,0,0.65), 0 18px 40px -14px rgba(0,0,0,0.9) !important;
+        border-color: transparent !important;
+        box-shadow:
+          inset 0 0 0 1px rgba(255,255,255,0.82),
+          inset 0 0 0 2px rgba(255,255,255,0.14),
+          0 18px 40px -14px rgba(0,0,0,0.9) !important;
       }
       .share-report-exporting .sales-dashboard-v2 button[aria-label^="Drill into"] {
-        border-color: rgba(255,255,255,0.86) !important;
+        border-color: transparent !important;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.86) !important;
       }
     `;
     document.head.appendChild(exportStyle);
