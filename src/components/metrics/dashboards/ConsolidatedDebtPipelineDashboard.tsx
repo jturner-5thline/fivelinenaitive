@@ -263,26 +263,8 @@ function MetricKPICard({
           </span>
         );
       }
-      const label =
-        chip.reason === 'no-plan'
-          ? `— No plan for ${periodLabel}`
-          : chip.reason === 'unmapped'
-            ? '— No plan'
-            : '—';
-      return (
-        <span
-          className={cn('text-muted-foreground/70 font-mono tabular-nums', textSize)}
-          title={
-            chip.reason === 'no-plan'
-              ? `No Master Plan value entered for ${periodLabel}. Open the master plan dialog to enter one.`
-              : chip.reason === 'unmapped'
-                ? 'This KPI is not tracked in the Master Plan.'
-                : 'Waiting for data'
-          }
-        >
-          {label}
-        </span>
-      );
+      // Blank Master Plan cell → render nothing (no "No plan" chip).
+      return null;
     }
     const { diff, formatDiff, pct, priorLabel } = chip;
     const neutral = diff === 0;
