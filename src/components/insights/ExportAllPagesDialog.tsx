@@ -92,8 +92,55 @@ const PAGES: { id: string; title: string; render: () => JSX.Element }[] = [
 export function ExportAllPagesDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[1280px] w-[95vw] h-[92vh] p-0 flex flex-col bg-background overflow-hidden">
-        <DialogHeader className="px-6 pt-5 pb-3 border-b flex flex-row items-start justify-between gap-4 shrink-0">
+      <DialogContent
+        data-export-report-dialog
+        className="max-w-[1280px] w-[95vw] h-[92vh] p-0 flex flex-col bg-background overflow-hidden"
+      >
+        <style>{`
+          @media print {
+            @page { size: letter landscape; margin: 12mm; }
+            html, body { background: #ffffff !important; }
+            /* Hide everything, then reveal only the export dialog contents. */
+            body * { visibility: hidden !important; }
+            [data-export-report-dialog],
+            [data-export-report-dialog] * { visibility: visible !important; }
+            /* Neutralise Radix dialog chrome so it prints as a plain document */
+            [data-export-report-dialog] {
+              position: static !important;
+              transform: none !important;
+              inset: auto !important;
+              left: 0 !important; top: 0 !important;
+              width: 100% !important; max-width: 100% !important; height: auto !important;
+              max-height: none !important; overflow: visible !important;
+              box-shadow: none !important; border: 0 !important; border-radius: 0 !important;
+              display: block !important;
+            }
+            [data-export-report-dialog] [data-print-hide],
+            [data-export-report-dialog] [data-print-hide] * { display: none !important; visibility: hidden !important; }
+            /* Unclip the ScrollArea so every page renders */
+            [data-export-report-dialog] .export-report-scroll,
+            [data-export-report-dialog] [data-radix-scroll-area-viewport],
+            [data-export-report-dialog] [data-radix-scroll-area-root] {
+              height: auto !important; max-height: none !important; overflow: visible !important;
+            }
+            [data-export-report-dialog] [data-radix-scroll-area-scrollbar] { display: none !important; }
+            /* Preserve chart / gradient colors */
+            [data-export-report-dialog] * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .export-report-page {
+              break-inside: avoid; page-break-inside: avoid;
+              break-after: page; page-break-after: always;
+              box-shadow: none !important;
+            }
+            .export-report-page:last-child { break-after: auto; page-break-after: auto; }
+          }
+        `}</style>
+        <DialogHeader
+          data-print-hide
+          className="px-6 pt-5 pb-3 border-b flex flex-row items-start justify-between gap-4 shrink-0"
+        >
           <div>
             <DialogTitle>Export report preview</DialogTitle>
             <DialogDescription>
