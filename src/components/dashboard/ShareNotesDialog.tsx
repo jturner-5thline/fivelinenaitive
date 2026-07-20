@@ -194,7 +194,7 @@ export function ShareNotesDialog({
         ? composeHtml({ eventTitle, eventStartISO, savedNotes, currentDraft, claapSummary, claapUrl })
         : `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.55;white-space:pre-wrap;">${escapeHtml(body)}</div>`;
       const { data, error } = await supabase.functions.invoke('gmail-messages', {
-        body: { action: 'send', to: recipients, subject: subject.trim(), body, html },
+        body: { action: 'send', to: recipients, subject: subject.trim(), body, body_html: html },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
