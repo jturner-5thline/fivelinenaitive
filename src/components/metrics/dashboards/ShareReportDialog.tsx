@@ -244,6 +244,29 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     return dataUri.split(',')[1] ?? '';
   };
 
+  /**
+   * Upload PDF to Supabase Storage and return a short-lived signed URL.
+   * Passing a URL to the edge function avoids WORKER_RESOURCE_LIMIT errors
+   * caused by inlining large base64 bodies in the JSON request.
+   */
+  const uploadPdfAndGetUrl = async (filename: string): Promise<string> => {
+    const base64 = await generatePdfBase64();
+    // base64 -> Uint8Array (avoids atob on huge strings by chunking)
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${filename}`;
+    const { error: upErr } = await supabase.storage
+      .from('share-reports')
+      .upload(path, bytes, { contentType: 'application/pdf', upsert: false });
+    if (upErr) throw upErr;
+    const { data, error: signErr } = await supabase.storage
+      .from('share-reports')
+      .createSignedUrl(path, 60 * 15);
+    if (signErr || !data?.signedUrl) throw signErr || new Error('Signed URL failed');
+    return data.signedUrl;
+  };
+
   const handleSend = async () => {
     const to = parseEmails(toValue);
     const cc = parseEmails(ccValue);
@@ -257,7 +280,8 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     }
     setSending(true);
     try {
-      const contentBase64 = await generatePdfBase64();
+      const filename = `${(subjectValue.trim() || defaultSubject()).replace(/[^\w\-]+/g, '_')}.pdf`;
+      const attachmentUrl = await uploadPdfAndGetUrl(filename);
       const messageHtml = editor?.getHTML() || '';
       const { data, error } = await supabase.functions.invoke('send-share-report', {
         body: {
@@ -266,10 +290,7 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
           subject: subjectValue.trim(),
           message: messageValue,
           messageHtml,
-          attachment: {
-            filename: `${(subjectValue.trim() || defaultSubject()).replace(/[^\w\-]+/g, '_')}.pdf`,
-            contentBase64,
-          },
+          attachment: { filename, url: attachmentUrl },
         },
       });
       if (error) throw error;
