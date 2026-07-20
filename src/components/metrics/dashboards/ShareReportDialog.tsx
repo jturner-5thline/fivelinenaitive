@@ -552,6 +552,7 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-w-[96vw] w-[96vw] h-[92vh] p-0 overflow-hidden border-white/10"
@@ -742,22 +743,6 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
               <SalesDashboardV2 reportMode />
             </div>
           </div>
-
-          {/* Dedicated export canvas. It renders at the final PDF width outside
-              the dialog scroll container so parent overflow cannot crop cards. */}
-          <div
-            aria-hidden="true"
-            className="fixed left-0 top-0 pointer-events-none"
-            style={{
-              width: REPORT_EXPORT_WIDTH,
-              zIndex: -1000,
-              background: '#0b0b12',
-            }}
-          >
-            <div ref={exportSnapshotRef}>
-              <SalesDashboardV2 reportMode />
-            </div>
-          </div>
         </div>
 
         {/* Nested send-by-email dialog */}
@@ -829,5 +814,25 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
         </Dialog>
       </DialogContent>
     </Dialog>
+
+    {/* Dedicated export canvas. This must live outside the dialog content:
+        Radix's fixed/translated dialog + overflow-hidden panel was clipping
+        the off-screen report at roughly the same places as the emailed PDF. */}
+    {open && (
+      <div
+        aria-hidden="true"
+        className="fixed left-0 top-0 pointer-events-none"
+        style={{
+          width: REPORT_EXPORT_WIDTH,
+          zIndex: -1000,
+          background: '#0b0b12',
+        }}
+      >
+        <div ref={exportSnapshotRef}>
+          <SalesDashboardV2 reportMode />
+        </div>
+      </div>
+    )}
+    </>
   );
 }
