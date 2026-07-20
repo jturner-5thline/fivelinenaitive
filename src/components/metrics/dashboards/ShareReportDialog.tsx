@@ -249,10 +249,12 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
       return canvas.toDataURL('image/png');
     };
 
+    const EXPORT_WIDTH = 1240;
+
     // 1) Header block (title + date + rich text notes). Keep the capture node
     // at x=0 rather than far off-screen; html-to-image can otherwise return a
     // black image while still reserving the header height in the final PDF.
-    const headerWidth = dashNode.getBoundingClientRect().width || 1240;
+    const headerWidth = EXPORT_WIDTH;
     const headerStage = document.createElement('div');
     headerStage.style.cssText = [
       'position:fixed',
@@ -345,12 +347,35 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
       document.body.removeChild(headerStage);
     }
 
-    // 2) Dashboard — capture the live, on-screen node directly.
-    const dashRect = dashNode.getBoundingClientRect();
-    // Use scrollWidth so any widget whose content overflows the visible
-    // bounds (right-edge borders in particular) is fully captured.
-    const dashW = Math.max(Math.ceil(dashRect.width), dashNode.scrollWidth);
-    const dashH = Math.ceil(dashNode.scrollHeight);
+    // 2) Dashboard — capture the visible dashboard content in a fixed-width
+    // export stage. Capturing the dialog's scroll viewport directly can clip
+    // the right edge of responsive widgets because html-to-image preserves the
+    // viewport clipping box. The inner dashboard content is already 1240px
+    // wide, so copy that rendered subtree into a temporary unclipped stage.
+    const dashboardContent = dashNode.querySelector<HTMLElement>('.sales-dashboard-v2 > .relative.flex > .flex-1');
+    const sourceNode = dashboardContent ?? dashNode;
+    const exportStage = document.createElement('div');
+    exportStage.style.cssText = [
+      'position:fixed',
+      'left:0',
+      'top:0',
+      `width:${EXPORT_WIDTH}px`,
+      'pointer-events:none',
+      'z-index:-1',
+      'overflow:visible',
+      'background:#0b0b12',
+    ].join(';');
+    const exportClone = sourceNode.cloneNode(true) as HTMLElement;
+    exportClone.style.width = `${EXPORT_WIDTH}px`;
+    exportClone.style.maxWidth = `${EXPORT_WIDTH}px`;
+    exportClone.style.margin = '0';
+    exportClone.style.overflow = 'visible';
+    exportClone.style.boxSizing = 'border-box';
+    exportStage.appendChild(exportClone);
+    document.body.appendChild(exportStage);
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const dashW = EXPORT_WIDTH;
+    const dashH = Math.ceil(exportClone.scrollHeight);
     // JPEG keeps the PDF well under Resend's 40MB attachment
     // limit — PNG at 2x pixelRatio blew past it on wide dashboards.
     const exportStyle = document.createElement('style');
@@ -367,7 +392,7 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     document.documentElement.classList.add('share-report-exporting');
     let dashUrl = '';
     try {
-      dashUrl = await htmlToImage.toJpeg(dashNode, {
+      dashUrl = await htmlToImage.toJpeg(exportClone, {
         pixelRatio: 1.5,
         quality: 0.92,
         backgroundColor: '#0b0b12',
@@ -382,6 +407,7 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     } finally {
       document.documentElement.classList.remove('share-report-exporting');
       document.head.removeChild(exportStyle);
+      document.body.removeChild(exportStage);
     }
 
     if (!headerUrl || headerUrl.length < 200 || !dashUrl || dashUrl.length < 200) {
