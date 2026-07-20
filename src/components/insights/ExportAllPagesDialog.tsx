@@ -25,10 +25,19 @@ function CoverPage() {
     createQuarterlyReportSeed(),
     'naitive.quarterlyReport.v1.report1',
   );
-  // Wrap in the shared `.n` dark-gradient surface so the export cover matches
-  // the Agenda page treatment (AgendaEditor's root uses `.n`).
+  // Match the Agenda page's dark gradient treatment. The Agenda uses the
+  // `.n` surface inside the app's `.insights-glass-skin` scope; the export
+  // dialog portals outside that scope so we apply the gradient inline here.
   return (
-    <div className="n p-4 rounded-md">
+    <div
+      className="rounded-md p-6 text-white insights-glass-skin"
+      style={{
+        background:
+          'radial-gradient(120% 90% at 15% 0%, rgba(88, 60, 180, 0.55) 0%, rgba(20, 24, 60, 0) 55%), linear-gradient(160deg, #0b1024 0%, #131a3a 45%, #0a0f22 100%)',
+        border: '1px solid rgba(255,255,255,0.10)',
+        boxShadow: '0 20px 60px -20px rgba(20, 20, 60, 0.55)',
+      }}
+    >
       <ReportCoverSection s={state} set={setState} />
     </div>
   );
@@ -86,24 +95,38 @@ export function ExportAllPagesDialog({ open, onOpenChange }: { open: boolean; on
         </DialogHeader>
         <ScrollArea className="flex-1 export-report-scroll">
           <div className="px-6 py-6 space-y-8">
-            {PAGES.map((p, i) => (
-              <section
-                key={p.id}
-                aria-label={p.title}
-                className="export-report-page bg-card border rounded-md shadow-sm overflow-hidden"
-                style={{ pageBreakAfter: i === PAGES.length - 1 ? 'auto' : 'always', breakAfter: i === PAGES.length - 1 ? 'auto' : 'page' }}
-              >
-                <div className="px-5 py-3 border-b bg-muted/30 flex items-center justify-between">
-                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                    Page {i + 1} of {PAGES.length}
+            {PAGES.map((p, i) => {
+              const isCover = p.id === 'cover';
+              return (
+                <section
+                  key={p.id}
+                  aria-label={p.title}
+                  className={
+                    isCover
+                      ? 'export-report-page rounded-md overflow-hidden'
+                      : 'export-report-page bg-card border rounded-md shadow-sm overflow-hidden'
+                  }
+                  style={{ pageBreakAfter: i === PAGES.length - 1 ? 'auto' : 'always', breakAfter: i === PAGES.length - 1 ? 'auto' : 'page' }}
+                >
+                  <div
+                    className={
+                      isCover
+                        ? 'px-5 py-3 flex items-center justify-between text-white/80 border-b border-white/10'
+                        : 'px-5 py-3 border-b bg-muted/30 flex items-center justify-between'
+                    }
+                    style={isCover ? { background: 'linear-gradient(180deg, #0b1024 0%, #101635 100%)' } : undefined}
+                  >
+                    <div className={isCover ? 'text-[11px] uppercase tracking-wider text-white/60' : 'text-[11px] uppercase tracking-wider text-muted-foreground'}>
+                      Page {i + 1} of {PAGES.length}
+                    </div>
+                    <div className="text-sm font-semibold">{p.title}</div>
                   </div>
-                  <div className="text-sm font-semibold">{p.title}</div>
-                </div>
-                <div className="p-5">
-                  {p.render()}
-                </div>
-              </section>
-            ))}
+                  <div className={isCover ? '' : 'p-5'}>
+                    {p.render()}
+                  </div>
+                </section>
+              );
+            })}
           </div>
         </ScrollArea>
       </DialogContent>
