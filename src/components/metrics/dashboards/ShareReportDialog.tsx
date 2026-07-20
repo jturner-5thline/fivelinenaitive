@@ -351,7 +351,7 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     // bounds (right-edge borders in particular) is fully captured.
     const dashW = Math.max(Math.ceil(dashRect.width), dashNode.scrollWidth);
     const dashH = Math.ceil(dashNode.scrollHeight);
-    // JPEG (quality 0.9) keeps the PDF well under Resend's 40MB attachment
+    // JPEG keeps the PDF well under Resend's 40MB attachment
     // limit — PNG at 2x pixelRatio blew past it on wide dashboards.
     const exportStyle = document.createElement('style');
     exportStyle.textContent = `
@@ -369,7 +369,7 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     try {
       dashUrl = await htmlToImage.toJpeg(dashNode, {
         pixelRatio: 1.5,
-        quality: 0.96,
+        quality: 0.92,
         backgroundColor: '#0b0b12',
         width: dashW,
         height: dashH,
