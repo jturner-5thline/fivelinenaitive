@@ -100,10 +100,11 @@ export function ExportAllPagesDialog({ open, onOpenChange }: { open: boolean; on
           @media print {
             @page { size: letter landscape; margin: 12mm; }
             html, body { background: #ffffff !important; }
-            /* Hide everything, then reveal only the export dialog contents. */
-            body * { visibility: hidden !important; }
-            [data-export-report-dialog],
-            [data-export-report-dialog] * { visibility: visible !important; }
+            /* Hide every top-level body node except the one containing the
+               export dialog (Radix portals render as direct children of body). */
+            body > *:not(:has([data-export-report-dialog])) { display: none !important; }
+            /* Also hide the Radix overlay backdrop that sits alongside the dialog. */
+            [data-radix-dialog-overlay] { display: none !important; }
             /* Neutralise Radix dialog chrome so it prints as a plain document */
             [data-export-report-dialog] {
               position: static !important;
@@ -114,6 +115,15 @@ export function ExportAllPagesDialog({ open, onOpenChange }: { open: boolean; on
               max-height: none !important; overflow: visible !important;
               box-shadow: none !important; border: 0 !important; border-radius: 0 !important;
               display: block !important;
+            }
+            /* The portal wrapper itself may be fixed / clipped — unclip it. */
+            body > :has([data-export-report-dialog]) {
+              position: static !important;
+              inset: auto !important;
+              width: 100% !important; height: auto !important;
+              max-height: none !important; overflow: visible !important;
+              transform: none !important;
+              background: transparent !important;
             }
             [data-export-report-dialog] [data-print-hide],
             [data-export-report-dialog] [data-print-hide] * { display: none !important; visibility: hidden !important; }
