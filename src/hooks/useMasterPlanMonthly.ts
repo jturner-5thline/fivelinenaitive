@@ -23,12 +23,14 @@ export function useMasterPlanMonthly(widgetKeys: string[]): {
   const { data, isSuccess } = useQuery({
     queryKey: ['master-plan-monthly', company?.id ?? null, ...[...widgetKeys].sort()],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('insights_metric_targets' as any)
         .select('metric_key, period_month, target_value')
         .or(
           'metric_key.like.plan:sales-dashboard-v2:%,metric_key.like.plan:consolidated-debt-pipeline:%',
         );
+      query = company?.id ? query.eq('company_id', company.id) : query.is('company_id', null);
+      const { data, error } = await query;
       if (error) throw error;
       return (data as unknown as Row[]) ?? [];
     },

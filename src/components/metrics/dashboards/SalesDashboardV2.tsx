@@ -173,6 +173,28 @@ const ACTUAL: Record<MetricKey, (number | null)[]> = {
   finservDollarsProposed: pad([]),
 };
 
+// Map dashboard MetricKey → Master Plan widget key + divisor.
+// Currency metrics store raw USD in the Master Plan; dashboard renders $MM.
+const PLAN_OVERLAY_MAP: Partial<Record<MetricKey, { widgetKey: string; divisor: number }>> = {
+  dealsOnBoard: { widgetKey: 'deals-on-board', divisor: 1 },
+  dollarsOnBoard: { widgetKey: 'deals-on-board-value', divisor: 1_000_000 },
+  proposalsIssued: { widgetKey: 'proposals-issued', divisor: 1 },
+  dollarsProposed: { widgetKey: 'dollars-proposed', divisor: 1_000_000 },
+  clientsSigned: { widgetKey: 'deals-signed', divisor: 1 },
+  dollarsSigned: { widgetKey: 'dollars-signed', divisor: 1_000_000 },
+  clientsReceivingTerms: { widgetKey: 'clients-receiving-terms', divisor: 1 },
+  termsSigned: { widgetKey: 'terms-signed', divisor: 1 },
+  volumeOfTermsSigned: { widgetKey: 'volume-of-terms-signed', divisor: 1_000_000 },
+  dealsClosed: { widgetKey: 'deals-closed', divisor: 1 },
+  dollarsFunded: { widgetKey: 'dollars-funded', divisor: 1_000_000 },
+  finservProposalsIssued: { widgetKey: 'finserv-proposals-issued', divisor: 1 },
+  finservDollarsProposed: { widgetKey: 'finserv-dollars-proposed', divisor: 1_000_000 },
+};
+
+const MASTER_PLAN_WIDGET_KEYS = Array.from(
+  new Set(Object.values(PLAN_OVERLAY_MAP).map((m) => m.widgetKey)),
+);
+
 function pad(actuals: number[]): (number | null)[] {
   const out: (number | null)[] = new Array(9).fill(null);
   actuals.forEach((v, i) => (out[i] = v));
@@ -4252,6 +4274,11 @@ export function SalesDashboardV2({ reportMode = false }: { reportMode?: boolean 
   );
   const lookup = (map: Record<string, number>, isLoading: boolean) =>
     monthKeys.map((k) => (isLoading ? null : map[k] ?? 0));
+
+  // Master Plan monthly targets are the source of truth for plan values shown
+  // in KPI cards, gap/performance-to-plan rows, and cumulative pace charts.
+  const masterPlanMonthly = useMasterPlanMonthly(MASTER_PLAN_WIDGET_KEYS);
+
   const liveSalesCallsActual = React.useMemo(
     () => lookup(salesCallsByMonthKey, salesCallsQuery.isLoading || salesCallsQuery.isFetching),
     [salesCallsByMonthKey, salesCallsQuery.isLoading, salesCallsQuery.isFetching, monthKeys],
@@ -4280,13 +4307,20 @@ export function SalesDashboardV2({ reportMode = false }: { reportMode?: boolean 
 
   const view = React.useMemo<DashboardView>(() => {
     // Merge user's forecast edits into the visible plan slice by mapping
-    // each month back to its calendar year/month key.
+    // each month back to its calendar year/month key. Master Plan values win
+    // over local forecast defaults so widgets immediately reflect saved plans.
     const startY = baseView.rangeStart.getUTCFullYear();
     const startM = baseView.rangeStart.getUTCMonth();
     const mergedPlan = {} as Record<MetricKey, number[]>;
     (Object.keys(baseView.plan) as MetricKey[]).forEach((k) => {
       mergedPlan[k] = baseView.plan[k].map((base, i) => {
         const d = new Date(Date.UTC(startY, startM + i, 1));
+        const ym = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+        const overlay = PLAN_OVERLAY_MAP[k];
+        const masterPlanValue = overlay ? masterPlanMonthly.values[overlay.widgetKey]?.[ym] : undefined;
+        if (masterPlanValue !== undefined && Number.isFinite(masterPlanValue)) {
+          return masterPlanValue / overlay!.divisor;
+        }
         const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
         const idx = fullDraft.columns.findIndex((c) => c.key === key);
         const override = idx >= 0 ? fullDraft.data[k]?.[idx] : undefined;
@@ -4305,7 +4339,7 @@ export function SalesDashboardV2({ reportMode = false }: { reportMode?: boolean 
         dollarsSigned: liveDollarsSignedActual,
       },
     };
-  }, [baseView, fullDraft, liveSalesCallsActual, liveDealsOnBoardActual, liveProposalsIssuedActual, liveDollarsSignedActual]);
+  }, [baseView, fullDraft, masterPlanMonthly.values, liveSalesCallsActual, liveDealsOnBoardActual, liveProposalsIssuedActual, liveDollarsSignedActual]);
 
   // FinServ-scoped actuals for the top three KPI cards, indexed to the
   // active timeframe months just like the Debt actuals above.
@@ -4480,6 +4514,11 @@ export function SalesDashboardV2({ reportMode = false }: { reportMode?: boolean 
       const [yStr, mStr] = k.split('-');
       const y = Number(yStr);
       const monIdx = Number(mStr) - 1;
+      const overlay = PLAN_OVERLAY_MAP[metric];
+      const masterPlanValue = overlay ? masterPlanMonthly.values[overlay.widgetKey]?.[k] : undefined;
+      if (masterPlanValue !== undefined && Number.isFinite(masterPlanValue)) {
+        return masterPlanValue / overlay!.divisor;
+      }
       const dk = `${y}-${monIdx}`;
       const colIdx = fullDraft.columns.findIndex((c) => c.key === dk);
       const override = colIdx >= 0 ? fullDraft.data[metric]?.[colIdx] : undefined;
@@ -4488,7 +4527,7 @@ export function SalesDashboardV2({ reportMode = false }: { reportMode?: boolean 
       const pos = SEED_MONTH_INDEXES.indexOf(monIdx);
       return pos >= 0 ? (PLAN[metric][pos] ?? 0) : 0;
     }),
-  [sparkMonthKeys, fullDraft]);
+  [sparkMonthKeys, fullDraft, masterPlanMonthly.values]);
 
   const sparkLookup = React.useCallback(
     (map: Record<string, number>, isLoading: boolean): (number | null)[] =>
@@ -4585,46 +4624,6 @@ export function SalesDashboardV2({ reportMode = false }: { reportMode?: boolean 
   );
   const kpiViewWithSpark = kpiValueMode === 'value' ? kpiValueViewWithSpark : kpiCountViewWithSpark;
   const finservKpiViewWithSpark = kpiValueMode === 'value' ? finservValueViewWithSpark : finservCountViewWithSpark;
-
-  // Master Plan monthly targets for FinServ Proposals rows — authored in
-  // the Master Plan popup and overlaid onto the hardcoded PLAN so the
-  // gap/performance-to-plan panel compares against the same values users
-  // enter there. Uses the same widget-key convention as the other FinServ
-  // rows and matches both `sales-dashboard-v2` and
-  // `consolidated-debt-pipeline` namespaces.
-  const masterPlanMonthly = useMasterPlanMonthly([
-    'deals-on-board',
-    'deals-on-board-value',
-    'proposals-issued',
-    'dollars-proposed',
-    'deals-signed',
-    'dollars-signed',
-    'clients-receiving-terms',
-    'terms-signed',
-    'volume-of-terms-signed',
-    'deals-closed',
-    'dollars-funded',
-    'finserv-proposals-issued',
-    'finserv-dollars-proposed',
-  ]);
-
-  // Map dashboard MetricKey → Master Plan widget key + divisor.
-  // Currency metrics store raw USD in the Master Plan; dashboard renders $MM.
-  const PLAN_OVERLAY_MAP: Partial<Record<MetricKey, { widgetKey: string; divisor: number }>> = {
-    dealsOnBoard: { widgetKey: 'deals-on-board', divisor: 1 },
-    dollarsOnBoard: { widgetKey: 'deals-on-board-value', divisor: 1_000_000 },
-    proposalsIssued: { widgetKey: 'proposals-issued', divisor: 1 },
-    dollarsProposed: { widgetKey: 'dollars-proposed', divisor: 1_000_000 },
-    clientsSigned: { widgetKey: 'deals-signed', divisor: 1 },
-    dollarsSigned: { widgetKey: 'dollars-signed', divisor: 1_000_000 },
-    clientsReceivingTerms: { widgetKey: 'clients-receiving-terms', divisor: 1 },
-    termsSigned: { widgetKey: 'terms-signed', divisor: 1 },
-    volumeOfTermsSigned: { widgetKey: 'volume-of-terms-signed', divisor: 1_000_000 },
-    dealsClosed: { widgetKey: 'deals-closed', divisor: 1 },
-    dollarsFunded: { widgetKey: 'dollars-funded', divisor: 1_000_000 },
-    finservProposalsIssued: { widgetKey: 'finserv-proposals-issued', divisor: 1 },
-    finservDollarsProposed: { widgetKey: 'finserv-dollars-proposed', divisor: 1_000_000 },
-  };
 
   // Overlay live FinServ Proposals actuals + Master Plan monthly targets
   // onto the view consumed by the PerformancePanel drivers list.
