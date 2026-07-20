@@ -1863,6 +1863,105 @@ function normalizeHoldVsUnresponsive(candidates: CandidateItem[]): {
 }
 
 /**
+ * Deterministic guardrail: never propose "unresponsive" for a lender when the
+ * deal actually had a meeting / call with that lender in the last few business
+ * days. Silence is the AI's signal for unresponsive, but silence in email
+ * doesn't mean silence overall — a Zoom / calendar / Claap-recorded meeting
+ * with the lender IS contact, and the correct next step is for the deal owner
+ * to log a status note about that meeting, not to reclassify the lender.
+ *
+ * We match a lender name against calendar event titles/attendees and Claap
+ * recording titles/participants within the last 5 calendar days. If any of
+ * those overlap, the update_funding_source→unresponsive proposal is dropped.
+ */
+function filterUnresponsiveWhenRecentMeeting(
+  candidates: CandidateItem[],
+  bundle: DealBundle,
+): { kept: CandidateItem[]; dropped: number } {
+  const RECENT_MS = 5 * 24 * 60 * 60 * 1000; // 5 calendar days
+  const now = Date.now();
+
+  const fsById = new Map<string, any>();
+  for (const f of bundle.funding_sources ?? []) {
+    if (f?.id) fsById.set(String(f.id), f);
+  }
+
+  const tokenize = (name: string): string[] => {
+    const stop = new Set([
+      "the", "and", "of", "llc", "inc", "corp", "corporation", "co",
+      "capital", "credit", "finance", "financial", "partners", "fund",
+      "funds", "group", "bank", "holdings", "advisors", "advisory",
+      "management", "ltd", "lp", "llp", "company", "usa", "us",
+    ]);
+    return String(name)
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((t) => t.length >= 3 && !stop.has(t));
+  };
+
+  const meetingSignals: Array<{ text: string; ts: number }> = [];
+  const pushSignal = (parts: unknown[], tsRaw: unknown) => {
+    const ts = tsRaw ? new Date(tsRaw as string).getTime() : NaN;
+    if (!Number.isFinite(ts)) return;
+    if (now - ts > RECENT_MS || ts > now + 24 * 60 * 60 * 1000) return;
+    const text = parts
+      .filter((p) => p != null)
+      .map((p) => (typeof p === "string" ? p : JSON.stringify(p)))
+      .join(" ")
+      .toLowerCase();
+    if (text.trim().length > 0) meetingSignals.push({ text, ts });
+  };
+  for (const c of bundle.calendar_items ?? []) {
+    pushSignal(
+      [(c as any)?.title, (c as any)?.attendees, (c as any)?.organizer_email, (c as any)?.description],
+      (c as any)?.start_time ?? (c as any)?.end_time ?? (c as any)?.date,
+    );
+  }
+  for (const r of bundle.claap_recordings ?? []) {
+    pushSignal(
+      [
+        (r as any)?.title,
+        (r as any)?.participants,
+        (r as any)?.summary,
+        (r as any)?.transcript_excerpt,
+      ],
+      (r as any)?.started_at ?? (r as any)?.ended_at ?? (r as any)?.recorded_at,
+    );
+  }
+
+  if (meetingSignals.length === 0) return { kept: candidates, dropped: 0 };
+
+  let dropped = 0;
+  const kept = candidates.filter((c) => {
+    if (c.action_type !== "update_funding_source") return true;
+    const pv = (c.proposed_values ?? {}) as Record<string, any>;
+    const targets = [pv.stage, pv.substage, pv.tracking_status]
+      .filter((v) => typeof v === "string")
+      .map((v) => String(v).toLowerCase());
+    const isUnresponsive = targets.some((v) => /unresponsive/.test(v));
+    if (!isUnresponsive) return true;
+
+    const fs = c.target_object_id ? fsById.get(String(c.target_object_id)) : null;
+    const lenderName = fs?.name;
+    if (!lenderName || typeof lenderName !== "string") return true;
+    const tokens = tokenize(lenderName);
+    if (tokens.length === 0) return true;
+
+    const matched = meetingSignals.some(({ text }) =>
+      tokens.some((tok) => text.includes(tok)),
+    );
+    if (matched) {
+      dropped++;
+      return false;
+    }
+    return true;
+  });
+
+  return { kept, dropped };
+}
+
+/**
  * Deterministic guardrail: distinguish "Passed" from "Not a Fit" based on the
  * actual lender language in evidence, and ensure a pass_reason is populated
  * when the lender quoted one. The AI's prompt covers this, but this rewrite
