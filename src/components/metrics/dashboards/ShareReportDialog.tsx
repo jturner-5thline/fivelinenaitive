@@ -169,20 +169,133 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     await (document as any).fonts?.ready?.catch?.(() => {});
     await new Promise((r) => setTimeout(r, 80));
 
-    // 1) Header block (title + date + optional notes) — small offscreen node.
+    const imageHasVisibleInk = async (dataUrl: string): Promise<boolean> => {
+      try {
+        const img = new Image();
+        img.decoding = 'async';
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = reject;
+          img.src = dataUrl;
+        });
+        const canvas = document.createElement('canvas');
+        const sampleW = Math.max(1, Math.min(320, img.naturalWidth || img.width));
+        const sampleH = Math.max(1, Math.min(240, img.naturalHeight || img.height));
+        canvas.width = sampleW;
+        canvas.height = sampleH;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return true;
+        ctx.drawImage(img, 0, 0, sampleW, sampleH);
+        const pixels = ctx.getImageData(0, 0, sampleW, sampleH).data;
+        let lightPixels = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+          const alpha = pixels[i + 3];
+          if (alpha < 24) continue;
+          const luminance = 0.2126 * pixels[i] + 0.7152 * pixels[i + 1] + 0.0722 * pixels[i + 2];
+          if (luminance > 120) lightPixels += 1;
+          if (lightPixels > 40) return true;
+        }
+        return false;
+      } catch {
+        return true;
+      }
+    };
+
+    const createFallbackHeaderUrl = (width: number, height: number, html: string): string => {
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.ceil(width * 2));
+      canvas.height = Math.max(1, Math.ceil(height * 2));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return '';
+      ctx.scale(2, 2);
+      ctx.fillStyle = '#0b0b12';
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 22px -apple-system, Segoe UI, Helvetica, Arial, sans-serif';
+      ctx.fillText(subjectValue.trim() || defaultSubject(), 26, 42);
+      ctx.fillStyle = 'rgba(255,255,255,0.62)';
+      ctx.font = '12px -apple-system, Segoe UI, Helvetica, Arial, sans-serif';
+      ctx.fillText(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), 26, 64);
+
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      const lines = (tmp.textContent || '')
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean);
+      let y = 98;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '14px -apple-system, Segoe UI, Helvetica, Arial, sans-serif';
+      for (const raw of lines.slice(0, 18)) {
+        const words = raw.split(/\s+/);
+        let line = '';
+        for (const word of words) {
+          const test = line ? `${line} ${word}` : word;
+          if (ctx.measureText(test).width > width - 64 && line) {
+            ctx.fillText(line, 32, y);
+            y += 20;
+            line = word;
+          } else {
+            line = test;
+          }
+          if (y > height - 24) break;
+        }
+        if (line && y <= height - 24) {
+          ctx.fillText(line, 32, y);
+          y += 22;
+        }
+        if (y > height - 24) break;
+      }
+      return canvas.toDataURL('image/png');
+    };
+
+    // 1) Header block (title + date + rich text notes). Keep the capture node
+    // at x=0 rather than far off-screen; html-to-image can otherwise return a
+    // black image while still reserving the header height in the final PDF.
     const headerWidth = dashNode.getBoundingClientRect().width || 1240;
+    const headerStage = document.createElement('div');
+    headerStage.style.cssText = [
+      'position:fixed',
+      'left:0',
+      'top:0',
+      `width:${headerWidth}px`,
+      'pointer-events:none',
+      'z-index:-1',
+      'overflow:hidden',
+    ].join(';');
     const header = document.createElement('div');
     header.style.cssText = [
-      'position:fixed',
-      'left:-100000px',
-      'top:0',
       `width:${headerWidth}px`,
       'background:#0b0b12',
       'color:#ffffff',
       'font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif',
-      'padding:24px 26px 8px',
+      'padding:24px 26px 18px',
       'box-sizing:border-box',
     ].join(';');
+    const styleTag = document.createElement('style');
+    styleTag.textContent = `
+      .report-notes, .report-notes * { color:#fff; font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif; box-sizing:border-box; }
+      .report-notes h1 { font-size:22px; line-height:1.25; font-weight:700; margin:10px 0 6px; }
+      .report-notes h2 { font-size:18px; line-height:1.3; font-weight:700; margin:12px 0 6px; }
+      .report-notes h3 { font-size:15px; line-height:1.35; font-weight:600; margin:10px 0 4px; }
+      .report-notes p { margin:4px 0; }
+      .report-notes ul { list-style:disc; padding-left:24px; margin:6px 0; }
+      .report-notes ol { list-style:decimal; padding-left:24px; margin:6px 0; }
+      .report-notes li { margin:3px 0; padding-left:2px; }
+      .report-notes li > p { display:inline; margin:0; }
+      .report-notes strong { font-weight:700; }
+      .report-notes em { font-style:italic; }
+      .report-notes u { text-decoration:underline; text-underline-offset:2px; }
+      .report-notes s { text-decoration:line-through; }
+      .report-notes blockquote { border-left:3px solid rgba(255,255,255,0.35); padding-left:10px; color:rgba(255,255,255,0.85); font-style:italic; margin:8px 0; }
+      .report-notes code { background:rgba(255,255,255,0.12); padding:1px 4px; border-radius:4px; font-size:0.9em; }
+      .report-notes a { color:#67e8f9; text-decoration:underline; text-underline-offset:2px; }
+      .report-notes mark { background:rgba(253,224,71,0.4); color:inherit; padding:0 2px; border-radius:2px; }
+      .report-notes hr { border:0; border-top:1px solid rgba(255,255,255,0.2); margin:10px 0; }
+      .report-notes .mention { display:inline-block; padding:1px 6px; margin:0 2px; border-radius:4px;
+        background:rgba(34,211,238,0.2); color:#a5f3fc; border:1px solid rgba(103,232,249,0.3); font-weight:500; }
+    `;
+    header.appendChild(styleTag);
     const title = document.createElement('div');
     title.style.cssText = 'font-size:22px;font-weight:700;color:#fff;margin:0 0 6px 0;';
     title.textContent = subjectValue.trim() || defaultSubject();
@@ -199,36 +312,14 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
       notes.style.cssText =
         'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.18);' +
         'border-radius:10px;padding:14px 18px;color:#fff;font-size:14px;line-height:1.55;';
-      // Inline styles so lists / headings / marks render identically to the
-      // in-app editor (Tailwind / prose classes are not present in this
-      // off-screen node).
-      const styleTag = document.createElement('style');
-      styleTag.textContent = `
-        .report-notes, .report-notes * { color:#fff; font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif; }
-        .report-notes h1 { font-size:22px; font-weight:700; margin:10px 0 6px; }
-        .report-notes h2 { font-size:18px; font-weight:700; margin:12px 0 6px; }
-        .report-notes h3 { font-size:15px; font-weight:600; margin:10px 0 4px; }
-        .report-notes p { margin:4px 0; }
-        .report-notes ul { list-style:disc; padding-left:24px; margin:6px 0; }
-        .report-notes ol { list-style:decimal; padding-left:24px; margin:6px 0; }
-        .report-notes li { margin:2px 0; }
-        .report-notes li > p { margin:0; }
-        .report-notes blockquote { border-left:3px solid rgba(255,255,255,0.35); padding-left:10px; color:rgba(255,255,255,0.85); font-style:italic; margin:6px 0; }
-        .report-notes code { background:rgba(255,255,255,0.12); padding:1px 4px; border-radius:4px; font-size:0.9em; }
-        .report-notes a { color:#67e8f9; text-decoration:underline; }
-        .report-notes mark { background:rgba(253,224,71,0.4); color:inherit; padding:0 2px; border-radius:2px; }
-        .report-notes hr { border:0; border-top:1px solid rgba(255,255,255,0.2); margin:10px 0; }
-        .report-notes .mention { display:inline-block; padding:1px 6px; margin:0 2px; border-radius:4px;
-          background:rgba(34,211,238,0.2); color:#a5f3fc; border:1px solid rgba(103,232,249,0.3); font-weight:500; }
-      `;
       notes.className = 'report-notes';
-      notes.appendChild(styleTag);
       const inner = document.createElement('div');
       inner.innerHTML = editorHtml;
       notes.appendChild(inner);
       header.appendChild(notes);
     }
-    document.body.appendChild(header);
+    headerStage.appendChild(header);
+    document.body.appendChild(headerStage);
 
     let headerUrl = '';
     let headerH = 0;
@@ -240,9 +331,18 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
         width: headerWidth,
         height: headerH,
         cacheBust: true,
+        style: {
+          position: 'static',
+          left: '0',
+          top: '0',
+          transform: 'none',
+        },
       });
+      if (!(await imageHasVisibleInk(headerUrl))) {
+        headerUrl = createFallbackHeaderUrl(headerWidth, headerH, editorHtml);
+      }
     } finally {
-      document.body.removeChild(header);
+      document.body.removeChild(headerStage);
     }
 
     // 2) Dashboard — capture the live, on-screen node directly.
@@ -251,17 +351,38 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     // bounds (right-edge borders in particular) is fully captured.
     const dashW = Math.max(Math.ceil(dashRect.width), dashNode.scrollWidth);
     const dashH = Math.ceil(dashNode.scrollHeight);
-    // JPEG (quality 0.9) keeps the PDF well under Resend's 40MB attachment
+    // JPEG keeps the PDF well under Resend's 40MB attachment
     // limit — PNG at 2x pixelRatio blew past it on wide dashboards.
-    const dashUrl = await htmlToImage.toJpeg(dashNode, {
-      pixelRatio: 1.5,
-      quality: 0.9,
-      backgroundColor: '#0b0b12',
-      width: dashW,
-      height: dashH,
-      cacheBust: true,
-      style: { width: `${dashW}px` },
-    });
+    const exportStyle = document.createElement('style');
+    exportStyle.textContent = `
+      .share-report-exporting .sales-dashboard-v2 [style*="linear-gradient(135deg"] {
+        border-color: rgba(255,255,255,0.82) !important;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.28), 0 0 0 1px rgba(0,0,0,0.65), 0 18px 40px -14px rgba(0,0,0,0.9) !important;
+      }
+      .share-report-exporting .sales-dashboard-v2 button[aria-label^="Drill into"] {
+        border-color: rgba(255,255,255,0.86) !important;
+      }
+    `;
+    document.head.appendChild(exportStyle);
+    document.documentElement.classList.add('share-report-exporting');
+    let dashUrl = '';
+    try {
+      dashUrl = await htmlToImage.toJpeg(dashNode, {
+        pixelRatio: 1.5,
+        quality: 0.92,
+        backgroundColor: '#0b0b12',
+        width: dashW,
+        height: dashH,
+        cacheBust: true,
+        style: {
+          width: `${dashW}px`,
+          overflow: 'visible',
+        },
+      });
+    } finally {
+      document.documentElement.classList.remove('share-report-exporting');
+      document.head.removeChild(exportStyle);
+    }
 
     if (!headerUrl || headerUrl.length < 200 || !dashUrl || dashUrl.length < 200) {
       throw new Error('Snapshot rendering returned an empty image');
@@ -273,7 +394,8 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
     // sub-pixel rounding in html-to-image / jsPDF.
     const EDGE_PAD = 8;
     const pageW = Math.max(headerWidth, dashW) + EDGE_PAD;
-    const pageH = headerH + dashH;
+    const STACK_GAP = 10;
+    const pageH = headerH + STACK_GAP + dashH + EDGE_PAD;
     const pageWpt = pageW * pxToPt;
     const pageHpt = pageH * pxToPt;
     const pdf = new jsPDF({
@@ -288,7 +410,7 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
       dashUrl,
       'JPEG',
       0,
-      headerH * pxToPt,
+      (headerH + STACK_GAP) * pxToPt,
       dashW * pxToPt,
       dashH * pxToPt,
       undefined,
