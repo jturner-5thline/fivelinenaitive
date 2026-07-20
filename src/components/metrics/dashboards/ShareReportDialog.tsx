@@ -61,7 +61,9 @@ function ToolbarBtn({
 export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps) {
   const snapshotRef = useRef<HTMLDivElement>(null);
   const [sendOpen, setSendOpen] = useState(false);
-  const [toValue, setToValue] = useState('');
+  const DEFAULT_RECIPIENTS =
+    'jturner@5thline.co, jmoffitt@5thline.co, swilliams@5thline.co, ppina@5thline.co, ffustinoni@5thline.co, nheikali@5thline.co';
+  const [toValue, setToValue] = useState(DEFAULT_RECIPIENTS);
   const [ccValue, setCcValue] = useState('');
   const formatReportDate = (d = new Date()) => {
     const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -274,7 +276,7 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
       if ((data as any)?.error) throw new Error((data as any).error);
       toast.success(`Report sent to ${to.length} recipient${to.length === 1 ? '' : 's'}`);
       setSendOpen(false);
-      setToValue('');
+      setToValue(DEFAULT_RECIPIENTS);
       setCcValue('');
       setMessageValue('');
     } catch (err: any) {
