@@ -716,6 +716,11 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
       const firstErr = results.find((r: any) => r?.error)?.error;
       if (firstErr) throw firstErr;
       queryClient.invalidateQueries({ queryKey: ['insights-metric-targets'] });
+      // Widget hooks consume the plan under different query keys — invalidate
+      // them all so KPI tiles/charts refresh immediately after a plan edit.
+      queryClient.invalidateQueries({ queryKey: ['master-plan-monthly'] });
+      queryClient.invalidateQueries({ queryKey: ['master-plan-quarterly'] });
+      queryClient.invalidateQueries({ queryKey: ['debt-advisory-plan-values'] });
       const editedCells = upserts.length + Object.values(clearedByMetric).reduce((a, b) => a + b.length, 0);
       if (!silent) {
         toast.success(`Master plan saved — ${editedCells} cell${editedCells === 1 ? '' : 's'} updated`);
