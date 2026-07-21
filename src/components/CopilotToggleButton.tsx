@@ -87,6 +87,7 @@ export function CopilotToggleButton() {
   const unreadCount = useCopilotStore((s) => s.unreadCount);
   const demoMode = useCopilotStore((s) => s.demoMode);
   const demoTypedPrompt = useCopilotStore((s) => s.demoTypedPrompt);
+  const selectedAgent = useCopilotStore((s) => s.selectedAgent);
   // NOTE: we intentionally no longer early-return when a modal/sheet/drawer
   // is open. The Ask naitive AI bar is a global top-layer assist surface
   // and must remain visible & interactive above every overlay (deal
@@ -737,6 +738,8 @@ export function CopilotToggleButton() {
           ariaControls="naitive-unified-suggestions"
           dataTour="ask-ai"
           forceFocused={isOpen && !isMinimized}
+          activeAgentLabel={selectedAgent?.name || 'Ask naitive'}
+          activeAgentEmoji={selectedAgent?.emoji}
           style={{ width: `${barWidth}px`, maxWidth: 'calc(100% - 32px)' }}
           onResizeStart={onResizeStart}
           onResizeDoubleClick={onResizeDoubleClick}
