@@ -3897,10 +3897,27 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
   //    made; a fresh sweep must not resurface it.
   const dealIdsArr = dealList.map((d: any) => d.id);
   const existingKeys = new Set<string>();
+  // Map: schedule_call semantic key -> existing pending row we can refresh
+  // in place when the agent re-detects the same (deal, lender) connect/
+  // schedule request with updated contact emails, description, or evidence.
+  // This lets a later inbound email UPDATE the existing Approval Queue
+  // item instead of being silently dropped as a duplicate.
+  const pendingScheduleCallByKey = new Map<
+    string,
+    {
+      id: string;
+      payload: Record<string, any>;
+      new_values: Record<string, any>;
+      rationale: string | null;
+      evidence: any[];
+      description: string | null;
+      title: string | null;
+    }
+  >();
   if (dealIdsArr.length > 0) {
     const { data: existing } = await supabase
       .from("ai_action_queue")
-      .select("action_type, target_object_type, target_object_id, deal_id, status, payload, source, evidence")
+      .select("id, action_type, target_object_type, target_object_id, deal_id, status, payload, source, evidence, new_values, rationale, description, title")
       .in("deal_id", dealIdsArr)
       .in("status", ["pending", "approved", "dismissed"]);
     for (const e of existing ?? []) {
@@ -3912,6 +3929,23 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       // different target_object_type label.
       if ((e as any).target_object_id) {
         existingKeys.add(key.replace(`${(e as any).deal_id ?? ""}::`, "::"));
+      }
+      // Track pending schedule_call rows so a later sweep updates the
+      // same card instead of skipping it.
+      if (
+        (e as any).status === "pending" &&
+        key.includes("::schedule_call::") &&
+        (e as any).id
+      ) {
+        pendingScheduleCallByKey.set(key, {
+          id: String((e as any).id),
+          payload: ((e as any).payload ?? {}) as Record<string, any>,
+          new_values: ((e as any).new_values ?? {}) as Record<string, any>,
+          rationale: (e as any).rationale ?? null,
+          evidence: Array.isArray((e as any).evidence) ? (e as any).evidence : [],
+          description: (e as any).description ?? null,
+          title: (e as any).title ?? null,
+        });
       }
     }
   }
