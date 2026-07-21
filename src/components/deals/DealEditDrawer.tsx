@@ -343,7 +343,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
             {/* Value (hidden for FinServ — MRR / One-Time Revenue below) */}
             {!isFinServ && (
               <div className="space-y-2">
-                <Label htmlFor="value">Deal Value ({preferences.currency})</Label>
+                <Label htmlFor="value">Deal Value (USD)</Label>
                 <Input
                   id="value"
                   type="number"
