@@ -313,6 +313,27 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
   const queryClient = useQueryClient();
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
   const { tasks, isLoading, createTask, updateTask, deleteTask } = useMyTasks(ownerFilter);
+  // 5th Line teammates — surfaced in the owner filter so a user can quickly
+  // pivot from "My tasks" to any other naitive teammate's task list.
+  const { user: _currentUserForTeam } = useAuth();
+  const { data: fifthLineTeammates = [] } = useQuery({
+    queryKey: ['fifth-line-teammates'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, email')
+        .ilike('email', '%@5thline.co')
+        .order('display_name', { ascending: true });
+      if (error) throw error;
+      return (data || []).filter((p: any) => !!p.user_id);
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const selectedTeammate = useMemo(() => {
+    if (typeof ownerFilter !== 'string' || !ownerFilter.startsWith('user:')) return null;
+    const id = ownerFilter.slice('user:'.length);
+    return fifthLineTeammates.find((p: any) => p.user_id === id) || null;
+  }, [ownerFilter, fifthLineTeammates]);
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { notifications } = useTaskNotifications();
   const { savedViews, saveView, deleteView, renameView, duplicateView, togglePinView } = useTaskSavedViews();
