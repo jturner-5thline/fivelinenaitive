@@ -1428,6 +1428,25 @@ export function LenderAnalyticsDialog({
             let mode: 'lenders' | 'deals' = 'lenders';
             let lenderRows: LenderStat[] = [];
             let dealRows: Enriched[] = [];
+            // Collapse deal_lenders rows to one row per deal so a deal fanned
+            // out to many funding sources isn't listed multiple times. Prefer
+            // the furthest-along stage (highest ord), tiebreak on most recent.
+            const dedupeByDeal = (list: Enriched[]): Enriched[] => {
+              const best = new Map<string, Enriched>();
+              for (const r of list) {
+                const prev = best.get(r.deal_id);
+                if (
+                  !prev ||
+                  r.ord > prev.ord ||
+                  (r.ord === prev.ord &&
+                    new Date(r.updated_at).getTime() >
+                      new Date(prev.updated_at).getTime())
+                ) {
+                  best.set(r.deal_id, r);
+                }
+              }
+              return Array.from(best.values());
+            };
             if (openKpi === 'active') {
               mode = 'lenders';
               lenderRows = lenderStats;
