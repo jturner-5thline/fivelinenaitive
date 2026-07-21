@@ -136,7 +136,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {visibleMenuItems.map((item) => {
-                if (item.url === "/deals") {
+                if (item.url === "/deals" || item.url === "/workspace?tab=deals") {
                   return <DealsFlyoutMenu key={item.title} />;
                 }
                 if (item.url === "/insights") {
