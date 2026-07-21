@@ -395,18 +395,17 @@ export function ShareReportDialog({ open, onOpenChange }: ShareReportDialogProps
        * the padding box and is immune to that sub-pixel clipping. */
       .share-report-exporting .sales-dashboard-v2 [style*="linear-gradient(135deg"] {
         border-color: transparent !important;
-        outline: 1px solid rgba(255,255,255,0.84) !important;
+        outline: 1px solid rgba(255,255,255,0.18) !important;
         outline-offset: -1px !important;
         box-shadow:
-          inset 0 0 0 1px rgba(255,255,255,0.82),
-          inset 0 0 0 2px rgba(255,255,255,0.14),
+          inset 0 0 0 1px rgba(255,255,255,0.16),
           0 18px 40px -14px rgba(0,0,0,0.9) !important;
       }
       .share-report-exporting .sales-dashboard-v2 button[aria-label^="Drill into"] {
         border-color: transparent !important;
-        outline: 1px solid rgba(255,255,255,0.86) !important;
+        outline: 1px solid rgba(255,255,255,0.18) !important;
         outline-offset: -1px !important;
-        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.86) !important;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16) !important;
       }
     `;
     document.head.appendChild(exportStyle);
