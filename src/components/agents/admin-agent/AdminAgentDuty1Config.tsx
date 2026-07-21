@@ -440,6 +440,25 @@ export function AdminAgentDuty1Config() {
   const [isSavingPaste, setIsSavingPaste] = useState(false);
   const [knowledgeTestOpen, setKnowledgeTestOpen] = useState(false);
 
+  // Latest persisted Knowledge Test run for this company — powers the score
+  // badge on the "Run Knowledge Test" button. Full history + interaction
+  // lives inside <KnowledgeTestDialog />.
+  const latestKnowledgeTestQ = useQuery<{ score: number; total: number; created_at: string } | null>({
+    queryKey: ['admin-agent-knowledge-test-latest', companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('admin_agent_knowledge_test_runs')
+        .select('score, total, created_at')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as { score: number; total: number; created_at: string } | null) ?? null;
+    },
+  });
+
   // Realtime: reflect ingestion progress as the edge function updates status.
   useEffect(() => {
     if (!companyId) return;
