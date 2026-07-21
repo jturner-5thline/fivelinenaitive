@@ -148,7 +148,7 @@ export function MemoHeader({ deal, showLiveDot = true, onOpenDeal, onClose }: Me
     <div className="px-5 pt-4 pb-3 border-b border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex flex-col gap-1.5 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <div className="flex items-center gap-3 flex-wrap min-w-0">
             {onOpenDeal ? (
               <button
                 type="button"
@@ -169,12 +169,12 @@ export function MemoHeader({ deal, showLiveDot = true, onOpenDeal, onClose }: Me
             {amountLabel !== '—' && (
               <span className="text-[17px] font-semibold text-white shrink-0">{amountLabel}</span>
             )}
-            <span className="inline-flex origin-left" style={{ transform: 'scale(1.15)', transformOrigin: 'left center' }}>
+            <span className="inline-flex origin-left ml-1 mr-2" style={{ transform: 'scale(1.15)', transformOrigin: 'left center' }}>
               <EditableDealStatusTag dealId={deal.id} status={deal.status} />
             </span>
           </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="inline-flex" style={{ transform: 'scale(1.15)', transformOrigin: 'left center' }}>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="inline-flex mr-1.5" style={{ transform: 'scale(1.15)', transformOrigin: 'left center' }}>
               <EditableDealStageTag
                 dealId={deal.id}
                 stage={deal.stage}
