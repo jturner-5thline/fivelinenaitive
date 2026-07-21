@@ -182,10 +182,14 @@ export function MemoHeader({ deal, showLiveDot = true, onOpenDeal, onClose }: Me
               />
             </span>
             {structureLabel && (
-              <Badge variant="gray" className="rounded-full font-medium">{structureLabel}</Badge>
+              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium text-white bg-gradient-to-r from-primary/80 to-primary/60 border border-primary/40 backdrop-blur-sm">
+                {structureLabel}
+              </span>
             )}
             {assetClass && (
-              <Badge variant="gray" className="rounded-full font-medium">{assetClass}</Badge>
+              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium text-white bg-gradient-to-r from-primary/80 to-primary/60 border border-primary/40 backdrop-blur-sm">
+                {assetClass}
+              </span>
             )}
           </div>
         </div>
