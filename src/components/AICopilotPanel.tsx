@@ -40,6 +40,7 @@ import { logUsage } from '@/lib/usageLogger';
 import { useCopilotChatScope, serializeScope } from '@/lib/copilotChatScope';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { matchDemoScript } from '@/lib/ai/demoScripts';
+import { detectDealFilterHints } from '@/lib/detectDealFilterHints';
 
 const COPILOT_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`;
 
