@@ -56,9 +56,9 @@ function Calendar({
   };
 
   return (
-    <div className={cn("rounded-lg border border-border/60 bg-popover text-popover-foreground shadow-lg overflow-hidden", className?.toString().includes("border-") ? "" : "")}>
+    <div className="overflow-hidden">
       {resolvedPresets && resolvedPresets.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 px-3 pt-3 pb-2 border-b border-border/60 bg-muted/30">
+        <div className="flex flex-wrap gap-1.5 px-3 pt-3 pb-2 border-b border-border/60 bg-muted/40">
           {resolvedPresets.map((preset) => (
             <button
               key={preset.label}
