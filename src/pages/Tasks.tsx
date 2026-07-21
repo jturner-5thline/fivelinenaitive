@@ -1191,7 +1191,15 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
         <div className="flex items-center px-6 pt-5 pb-3 min-w-0 gap-3 flex-wrap border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
           <div className="min-w-0 shrink-0">
             <h1 className="text-[22px] font-semibold tracking-tight leading-none" style={{ color: '#eef1f6' }}>
-              {ownerFilter === 'mine' ? 'My Tasks' : ownerFilter === 'others' ? "Others' Tasks" : 'All Tasks'}
+              {ownerFilter === 'mine'
+                ? 'My Tasks'
+                : ownerFilter === 'others'
+                  ? "Others' Tasks"
+                  : ownerFilter === 'all'
+                    ? 'All Tasks'
+                    : selectedTeammate
+                      ? `${(selectedTeammate.display_name || selectedTeammate.email || 'Teammate')}'s Tasks`
+                      : 'Teammate Tasks'}
             </h1>
             <p className="mt-1.5 text-[12px] tabular-nums" style={{ color: '#8a93a6' }}>
               {(() => {
@@ -1257,13 +1265,31 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
           </div>
 
           <Select value={ownerFilter} onValueChange={v => setOwnerFilter(v as TaskOwnerFilter)}>
-            <SelectTrigger className="h-8 w-[130px] text-[12px] text-[#b3bccc]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
+            <SelectTrigger className="h-8 w-[170px] text-[12px] text-[#b3bccc]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
               <Users className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="mine" className="text-xs">My tasks</SelectItem>
               <SelectItem value="others" className="text-xs">Delegated</SelectItem>
               <SelectItem value="all" className="text-xs">All tasks</SelectItem>
+              {fifthLineTeammates.length > 0 && (
+                <>
+                  <div className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    5th Line teammates
+                  </div>
+                  {fifthLineTeammates
+                    .filter((p: any) => p.user_id !== _currentUserForTeam?.id)
+                    .map((p: any) => (
+                      <SelectItem
+                        key={p.user_id}
+                        value={`user:${p.user_id}`}
+                        className="text-xs"
+                      >
+                        {p.display_name || p.email}
+                      </SelectItem>
+                    ))}
+                </>
+              )}
             </SelectContent>
           </Select>
           <Select value={taskFilters.status} onValueChange={v => patchFilters({ status: v as FilterStatus })}>
