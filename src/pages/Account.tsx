@@ -1,7 +1,5 @@
 import { Helmet } from 'react-helmet-async';
-import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useSearchParams } from 'react-router-dom';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { CompanySettings } from '@/components/settings/CompanySettings';
 import { SecuritySettings } from '@/components/settings/SecuritySettings';
@@ -73,13 +71,6 @@ export default function Account() {
 
       <div className="bg-transparent min-h-full">
         <main className="max-w-5xl mx-auto px-4 sm:px-8 pt-6 sm:pt-8 pb-12">
-          <Button variant="ghost" size="sm" className="gap-1.5 mb-4 -ml-2 h-7 px-2 text-xs text-muted-foreground hover:text-foreground" asChild>
-            <Link to="/settings">
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Settings
-            </Link>
-          </Button>
-
           {/* Header */}
           <header className="mb-5">
             <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/80 mb-1.5">
