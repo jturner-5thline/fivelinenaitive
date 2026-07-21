@@ -1992,7 +1992,7 @@ const ALL_TABS = [
   { value: 'email', label: 'Email', icon: Mail },
   { value: 'financial', label: 'Financial', icon: DollarSign },
   { value: 'pipeline', label: 'Deals', icon: GitBranch },
-  { value: 'operational', label: 'Operational', icon: ListChecks },
+  { value: 'operational', label: 'Tasks', icon: ListChecks },
   { value: 'end_of_day', label: 'End of Day', icon: Sunset },
   { value: 'queue', label: 'Approval Queue', icon: Inbox },
 ] as const;
@@ -2048,7 +2048,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
     () =>
       ALL_TABS.map(t => {
         if (t.value === 'operational' && !canSeeOperationalFull) {
-          return { ...t, label: 'My Tasks' };
+          return { ...t, label: 'Tasks' };
         }
         return t;
       }).filter(t => {
