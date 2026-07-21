@@ -1200,6 +1200,17 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
       business_days_since_last_contact: (f as any).business_days_since_last_contact ?? null,
       notes: trim(f.notes, 200),
       pass_reason: trim(f.pass_reason, 160),
+      outbound_awaiting_reply: (f as any).outbound_awaiting_reply
+        ? {
+            sent_at: (f as any).outbound_awaiting_reply.sent_at,
+            subject: (f as any).outbound_awaiting_reply.subject,
+            body_excerpt: trim((f as any).outbound_awaiting_reply.body_excerpt, 1200),
+            business_days_since_sent:
+              (f as any).outbound_awaiting_reply.business_days_since_sent,
+            replied: (f as any).outbound_awaiting_reply.replied,
+            reply_received_at: (f as any).outbound_awaiting_reply.reply_received_at ?? null,
+          }
+        : null,
     })),
     status_notes: bundle.status_notes.map((n) => ({
       id: n.id, created_at: n.created_at, note: trim(n.note, 200),
