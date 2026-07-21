@@ -1159,6 +1159,13 @@ export function AICopilotPanel() {
   const liveRegionRef = useRef<HTMLDivElement>(null);
   const messageQueueRef = useRef<string[]>([]);
   const isProcessingRef = useRef(false);
+  /**
+   * When set, the next handleSend call skips the deal-filter preview
+   * confirmation and dispatches straight through. Used by the "Run" button
+   * on the preview card so a confirmed prompt doesn't re-trigger the
+   * preview.
+   */
+  const bypassFilterPreviewRef = useRef(false);
   const { nudges, dismissNudge, dismissAllNudges } = useProactiveNudges();
   const isMobile = useIsMobile();
   const isOnline = useOnlineStatus();
