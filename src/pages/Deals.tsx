@@ -706,9 +706,14 @@ export default function Dashboard() {
             <LatestUpdatesDropdown />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="h-8 w-8 rounded-md">
-                  <Download className="h-4 w-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-md" aria-label="Export deals">
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Export deals</TooltipContent>
+                </Tooltip>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => {
@@ -860,15 +865,19 @@ export default function Dashboard() {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      aria-label="Sort deals"
-                      title="Sort deals"
-                      className="relative h-9 w-9 shrink-0 rounded-md"
-                    >
-                      <ArrowUpDown className="h-3.5 w-3.5" />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          aria-label="Sort deals"
+                          className="relative h-9 w-9 shrink-0 rounded-md"
+                        >
+                          <ArrowUpDown className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Sort deals</TooltipContent>
+                    </Tooltip>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {(() => {
@@ -917,9 +926,14 @@ export default function Dashboard() {
                 {viewMode === 'grid' && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 rounded-md">
-                        <Layers className="h-4 w-4" />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 rounded-md" aria-label="Group deals">
+                            <Layers className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Group deals</TooltipContent>
+                      </Tooltip>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       {(() => {
@@ -956,12 +970,17 @@ export default function Dashboard() {
 
                 {/* View Mode Dropdown */}
                 <Select value={viewMode} onValueChange={(val: 'grid' | 'list' | 'pipeline' | 'timeline') => setViewMode(val)}>
-                  <SelectTrigger className="h-9 w-9 p-0 justify-center [&>svg:last-child]:hidden shrink-0 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground">
-                    {viewMode === 'grid' && <LayoutGrid className="h-4 w-4" />}
-                    {viewMode === 'list' && <List className="h-4 w-4" />}
-                    {viewMode === 'pipeline' && <Kanban className="h-4 w-4" />}
-                    {viewMode === 'timeline' && <ChartGantt className="h-4 w-4" />}
-                  </SelectTrigger>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <SelectTrigger aria-label="Change view" className="h-9 w-9 p-0 justify-center [&>svg:last-child]:hidden shrink-0 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground">
+                        {viewMode === 'grid' && <LayoutGrid className="h-4 w-4" />}
+                        {viewMode === 'list' && <List className="h-4 w-4" />}
+                        {viewMode === 'pipeline' && <Kanban className="h-4 w-4" />}
+                        {viewMode === 'timeline' && <ChartGantt className="h-4 w-4" />}
+                      </SelectTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>{`View: ${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)}`}</TooltipContent>
+                  </Tooltip>
                   <SelectContent>
                     <SelectItem value="grid">
                       <div className="flex items-center gap-2">
@@ -991,18 +1010,22 @@ export default function Dashboard() {
                     )}
                   </SelectContent>
                 </Select>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-9 w-9 p-0 shrink-0 rounded-md"
-                  onClick={() => setShowMilestones(!showMilestones)}
-                  aria-label="Milestones"
-                  title="Milestones"
-                >
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round">
-                    <path d="M12 2L22 12L12 22L2 12L12 2Z" />
-                  </svg>
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-9 w-9 p-0 shrink-0 rounded-md"
+                      onClick={() => setShowMilestones(!showMilestones)}
+                      aria-label="Milestones"
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round">
+                        <path d="M12 2L22 12L12 22L2 12L12 2Z" />
+                      </svg>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{showMilestones ? 'Hide milestones' : 'Show milestones'}</TooltipContent>
+                </Tooltip>
                 <div className="relative self-center">
                   <DealSavedViewsMenu
                     views={savedViews}
