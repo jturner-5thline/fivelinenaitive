@@ -26,7 +26,6 @@ const BudgetApprovalWorkflow = lazy(() => import('./collaboration/BudgetApproval
 const VarianceLegend = lazy(() => import('./VarianceLegend').then(m => ({ default: m.VarianceLegend })));
 const BoardReportExport = lazy(() => import('./BoardReportExport').then(m => ({ default: m.BoardReportExport })));
 const BDRoiModule = lazy(() => import('./bd-roi/BDRoiModule').then(m => ({ default: m.BDRoiModule })));
-const SalesModelModule = lazy(() => import('./sales-model/SalesModelModule').then(m => ({ default: m.SalesModelModule })));
 const CashFlowManager = lazy(() => import('@/components/cashflow/CashFlowManager').then(m => ({ default: m.CashFlowManager })));
 
 function TabSkeleton() {
@@ -144,7 +143,6 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
     if (isTabVisible('collaborate', t.collaborate)) keys.push('collaborate');
     if (isTabVisible('export', t.export)) keys.push('export');
     if (isTabVisible('salesBdRoi')) keys.push('salesBdRoi');
-    if (isTabVisible('salesModel')) keys.push('salesModel');
     return keys;
   }, [isTabVisible, t]);
 
@@ -258,14 +256,6 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
                   Sales & BD ROI
                 </TabsTrigger>
               )}
-              {isTabVisible('salesModel') && (
-                <TabsTrigger
-                  value="salesModel"
-                  className="h-8 px-2.5 text-xs rounded-md"
-                >
-                  Sales Model
-                </TabsTrigger>
-              )}
             </TabsList>
           </HeaderTabsPortal>
           {(isTabVisible('overview', t.overview) ||
@@ -357,11 +347,6 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
             </div>
           )}
 
-          {activeTab === 'salesModel' && (
-            <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
-              <SalesModelModule />
-            </div>
-          )}
         </Suspense>
       )}
     </div>
