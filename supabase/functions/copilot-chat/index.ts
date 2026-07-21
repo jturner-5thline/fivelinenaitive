@@ -8535,6 +8535,15 @@ serve(async (req) => {
     }
 
     const { message, context, history, conversationMutations } = body;
+    // Active agent persona for this turn (from the Ask naitive bar's
+    // agent picker). Shape: { kind: 'default'|'admin'|'custom', id, name, emoji }.
+    const selectedAgent = body?.selectedAgent && typeof body.selectedAgent === "object"
+      ? {
+          kind: typeof body.selectedAgent.kind === "string" ? String(body.selectedAgent.kind) : "default",
+          id: typeof body.selectedAgent.id === "string" ? String(body.selectedAgent.id) : null,
+          name: typeof body.selectedAgent.name === "string" ? String(body.selectedAgent.name) : "Ask naitive",
+        }
+      : { kind: "default", id: null, name: "Ask naitive" };
     const chatScope = parseChatScope(context?.chatScope);
 
     // Lightweight profile fetch only — all other data is lazy-loaded via tools
@@ -8753,6 +8762,90 @@ serve(async (req) => {
         }
       } catch (e) {
         console.warn("[copilot-chat] admin_agent_knowledge_docs load failed", (e as Error)?.message);
+      }
+
+      // ── Custom agents — roster + knowledge + optional persona override ──
+      // Everything the user has activated (`agents` + `company_agent_access`)
+      // becomes addressable from the Ask naitive bar. We always inject a
+      // roster so the model can route / delegate; when the bar's picker
+      // targets a specific custom agent we also inject that agent's
+      // system prompt as an ACTIVE PERSONA and pull docs keyed to its id.
+      try {
+        const { data: accessRows } = await supabaseAdmin
+          .from("company_agent_access")
+          .select("agent_id, enabled")
+          .eq("company_id", companyId)
+          .eq("enabled", true);
+        const enabledIds = (accessRows || [])
+          .map((r: any) => (typeof r?.agent_id === "string" ? r.agent_id : null))
+          .filter((v: string | null): v is string => !!v);
+        let activeAgentRow: any = null;
+        if (enabledIds.length > 0) {
+          const { data: agentRows } = await supabaseAdmin
+            .from("agents")
+            .select("id, name, description, avatar_emoji, personality, system_prompt")
+            .in("id", enabledIds);
+          const rows = agentRows || [];
+          if (rows.length > 0) {
+            const roster = rows
+              .map((a: any) => {
+                const bits: string[] = [];
+                bits.push(`- ${a.avatar_emoji || "🤖"} ${a.name}`);
+                if (a.description) bits.push(`  purpose: ${String(a.description).slice(0, 240)}`);
+                if (a.personality) bits.push(`  style: ${String(a.personality).slice(0, 200)}`);
+                return bits.join("\n");
+              })
+              .join("\n");
+            orgPreferencesSection += `\n\nACTIVATED AGENT ROSTER (available from the Ask naitive bar — the user can direct any prompt at any of these, and you may reference or delegate to them by name when helpful):\n${roster}\n- ✨ Ask naitive (default) — general copilot with full tool + knowledge access\n- 🛡️ Admin Agent — Duty 1 verify-deal-information reviewer with the rules/knowledge above`;
+            if (selectedAgent.kind === "custom" && selectedAgent.id) {
+              activeAgentRow = rows.find((a: any) => a.id === selectedAgent.id) || null;
+            }
+          }
+        }
+        if (selectedAgent.kind === "custom" && activeAgentRow) {
+          const parts: string[] = [];
+          parts.push(`You are now speaking AS "${activeAgentRow.name}" ${activeAgentRow.avatar_emoji || ""}.`.trim());
+          if (activeAgentRow.description) parts.push(`Purpose: ${activeAgentRow.description}`);
+          if (activeAgentRow.personality) parts.push(`Personality/tone: ${activeAgentRow.personality}`);
+          if (activeAgentRow.system_prompt) parts.push(`Agent instructions:\n${String(activeAgentRow.system_prompt).slice(0, 6000)}`);
+          parts.push(`Introduce yourself as ${activeAgentRow.name} on the first reply of this session only. Keep all shared tools, guardrails, and the knowledge above; the user chose this persona from the Ask naitive bar's agent picker.`);
+          orgPreferencesSection += `\n\nACTIVE AGENT PERSONA (STRICT — apply for this entire turn):\n${parts.join("\n\n")}`;
+        } else if (selectedAgent.kind === "admin") {
+          orgPreferencesSection += `\n\nACTIVE AGENT PERSONA (STRICT — apply for this entire turn):\nYou are now speaking AS the Admin Agent 🛡️ (Duty 1 — Verify Deal Information). Prefer the Admin Agent rules, learned rules, and knowledge base above over general answers, and default to the verify_deal_information tool when the user asks anything about deal completeness, staleness, or "what needs review".`;
+        }
+        // Custom-agent knowledge docs (rows keyed by agent id in agent_key).
+        if (enabledIds.length > 0) {
+          const { data: kb2 } = await supabaseAdmin
+            .from("admin_agent_knowledge_docs")
+            .select("title, extracted_text, tags, agent_key")
+            .eq("company_id", companyId)
+            .eq("status", "ready")
+            .in("agent_key", enabledIds);
+          const docs2 = (kb2 || [])
+            .map((d: any) => ({
+              title: String(d?.title || "Untitled").trim(),
+              text: String(d?.extracted_text || "").trim(),
+              agentKey: String(d?.agent_key || ""),
+            }))
+            .filter((d) => d.text.length > 0);
+          if (docs2.length > 0) {
+            const PER_DOC = 5000;
+            const TOTAL = 40_000;
+            let used = 0;
+            const blocks: string[] = [];
+            for (const d of docs2) {
+              const snip = d.text.slice(0, PER_DOC);
+              if (used + snip.length > TOTAL) break;
+              used += snip.length;
+              blocks.push(`### ${d.title} (agent: ${d.agentKey})\n${snip}`);
+            }
+            if (blocks.length > 0) {
+              orgPreferencesSection += `\n\nCUSTOM AGENT KNOWLEDGE (reference material uploaded to activated custom agents; use when the user asks about topics those agents cover):\n\n${blocks.join("\n\n---\n\n")}`;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[copilot-chat] custom agent roster/knowledge load failed", (e as Error)?.message);
       }
     }
 

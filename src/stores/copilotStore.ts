@@ -10,6 +10,47 @@ export interface CopilotMessage {
   metadata?: Record<string, any>;
 }
 
+/**
+ * Active agent for the Ask naitive AI bar. The bar is the single surface
+ * the user talks to; switching agents here changes the persona/system
+ * prompt the server uses to answer, while still keeping knowledge and
+ * tools from every activated agent available for retrieval.
+ *
+ * - `kind: 'default'` — the built-in Ask naitive Copilot (no persona override).
+ * - `kind: 'admin'` — the Admin Agent (Verify Deal Info) rules + knowledge.
+ * - `kind: 'custom'` — a user-configured agent from the `agents` table;
+ *   `id` is the agent row id.
+ */
+export interface CopilotSelectedAgent {
+  kind: 'default' | 'admin' | 'custom';
+  id: string | null;
+  name: string;
+  emoji?: string;
+}
+
+const AGENT_PREF_KEY = 'naitive.copilot.selected_agent';
+function readSelectedAgent(): CopilotSelectedAgent {
+  if (typeof window === 'undefined') return { kind: 'default', id: null, name: 'Ask naitive' };
+  try {
+    const raw = window.sessionStorage.getItem(AGENT_PREF_KEY);
+    if (!raw) return { kind: 'default', id: null, name: 'Ask naitive' };
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && typeof parsed.kind === 'string') {
+      return {
+        kind: parsed.kind === 'admin' || parsed.kind === 'custom' ? parsed.kind : 'default',
+        id: typeof parsed.id === 'string' ? parsed.id : null,
+        name: typeof parsed.name === 'string' && parsed.name ? parsed.name : 'Ask naitive',
+        emoji: typeof parsed.emoji === 'string' ? parsed.emoji : undefined,
+      };
+    }
+  } catch { /* ignore */ }
+  return { kind: 'default', id: null, name: 'Ask naitive' };
+}
+function writeSelectedAgent(a: CopilotSelectedAgent) {
+  if (typeof window === 'undefined') return;
+  try { window.sessionStorage.setItem(AGENT_PREF_KEY, JSON.stringify(a)); } catch { /* ignore */ }
+}
+
 interface CopilotStore {
   isOpen: boolean;
   isMinimized: boolean;
@@ -38,6 +79,9 @@ interface CopilotStore {
     candidates: Array<{ deal_id: string; name: string }>,
   ) => void;
   clearDisambiguationCandidates: () => void;
+  /** Active agent persona for the Ask naitive bar. */
+  selectedAgent: CopilotSelectedAgent;
+  setSelectedAgent: (a: CopilotSelectedAgent) => void;
   togglePanel: () => void;
   openPanel: () => void;
   closePanel: () => void;
@@ -70,6 +114,8 @@ export const useCopilotStore = create<CopilotStore>((set) => ({
   disambiguationCandidates: [],
   setDisambiguationCandidates: (candidates) => set({ disambiguationCandidates: candidates }),
   clearDisambiguationCandidates: () => set({ disambiguationCandidates: [] }),
+  selectedAgent: readSelectedAgent(),
+  setSelectedAgent: (a) => { writeSelectedAgent(a); set({ selectedAgent: a }); },
   // togglePanel cycles: closed → open, open → minimized, minimized → open.
   togglePanel: () => set((s) => {
     if (!s.isOpen) return { isOpen: true, isMinimized: false, unreadCount: 0 };
