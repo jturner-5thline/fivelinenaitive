@@ -1052,7 +1052,7 @@ export function LenderAnalyticsDialog({
                             ))}
                           </ul>
                           <div className="mt-3 text-[11px] italic text-slate-500">
-                            Based on {passReasonsAgg.totalPassed} lender pass{passReasonsAgg.totalPassed === 1 ? '' : 'es'} {dateRange === 'ytd' ? 'YTD' : 'trailing 12M'}
+                            Based on {passReasonsAgg.totalPassed} lender pass{passReasonsAgg.totalPassed === 1 ? '' : 'es'} · {dateRangeLabel(dateRange)}
                           </div>
                         </>
                       )}
