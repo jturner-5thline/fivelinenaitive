@@ -2432,6 +2432,36 @@ function resolveLenderAttentionTarget(row: {
   return extractPayloadLenderTargetId(row) ?? extractLenderEvidenceId(row);
 }
 
+/**
+ * Return the exact `schedule_call:{deal_id}:{funding_source_id}` bundle_key
+ * carried by a schedule-a-call queue row (either as a live candidate or a
+ * persisted ai_action_queue row), or null when this isn't a schedule-call.
+ * Checks proposed_values, new_values, and the executor payload so dedupe
+ * works uniformly whether the row is pre-insert (candidate) or post-insert.
+ */
+function extractScheduleCallBundleKey(row: {
+  payload?: unknown;
+  proposed_values?: unknown;
+  new_values?: unknown;
+}): string | null {
+  const check = (v: unknown): string | null => {
+    const o = asObject(v);
+    const bk = o.bundle_key;
+    return typeof bk === "string" && bk.startsWith("schedule_call:") ? bk : null;
+  };
+  const direct =
+    check((row as any).proposed_values) ??
+    check((row as any).new_values);
+  if (direct) return direct;
+  const payload = asObject((row as any).payload);
+  return (
+    check(payload.on_approve_execution_payload) ??
+    check((payload as any).new_values) ??
+    check((payload as any).proposed_values) ??
+    null
+  );
+}
+
 function queueSemanticKey(row: {
   action_type?: string | null;
   target_object_type?: string | null;
