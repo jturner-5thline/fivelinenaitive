@@ -1,5 +1,6 @@
 export interface LenderCsvRow {
   name: string;
+  tier: string;
   contactName: string;
   email: string;
   phone: string;
@@ -10,15 +11,17 @@ export interface LenderCsvRow {
 
 export function exportLendersToCsv(lenders: {
   name: string;
+  tier?: string | null;
   contact: { name: string; email: string; phone: string };
   preferences: string[];
   website?: string;
   description?: string;
 }[]): string {
-  const headers = ['Name', 'Contact Name', 'Email', 'Phone', 'Preferences', 'Website', 'Description'];
+  const headers = ['Name', 'Tier', 'Contact Name', 'Email', 'Phone', 'Preferences', 'Website', 'Description'];
   
   const rows = lenders.map(lender => [
     escapeCsvField(lender.name),
+    escapeCsvField(lender.tier || ''),
     escapeCsvField(lender.contact.name),
     escapeCsvField(lender.contact.email),
     escapeCsvField(lender.contact.phone),
