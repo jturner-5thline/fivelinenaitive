@@ -2411,7 +2411,7 @@ function selectToolsWithScopes(
   const coreNames = new Set([
     "find_entity",
     "get_deal", "search_deals", "get_pipeline_summary", "get_activity_log",
-    "draft_email", "create_task", "get_tasks", "search_team_members",
+    "draft_email", "create_task", "get_tasks", "get_deals_task_coverage", "search_team_members",
     "get_pipelines", "move_deal_pipeline",
     // Always-available kitchen-sink reads so the model never says "I don't have that data".
     "get_deal_full", "get_lender_full", "get_contact_full", "get_company_full",
