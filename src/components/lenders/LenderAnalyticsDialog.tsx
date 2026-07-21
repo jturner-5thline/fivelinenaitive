@@ -883,7 +883,7 @@ export function LenderAnalyticsDialog({
             <IntelKpi
               label="Conversion Rate"
               value={fmtPct(kpis.conv)}
-              hint="added to deal → terms issued"
+              hint="added to deal → Draft Terms or later"
               loading={loading}
               onClick={() => setOpenKpi('conv')}
             />
