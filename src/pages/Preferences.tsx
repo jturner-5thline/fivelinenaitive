@@ -351,69 +351,6 @@ export default function Preferences() {
                       </Card>
                     </Collapsible>
                   )}
-
-                  {isVisible('regional') && (
-                    <Collapsible>
-                      <Card>
-                        <CollapsibleTrigger className="w-full group">
-                          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Globe className="h-5 w-5" />
-                                <div className="text-left">
-                                  <CardTitle className="text-lg">Regional</CardTitle>
-                                  <CardDescription>Language and regional settings</CardDescription>
-                                </div>
-                              </div>
-                              <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                            </div>
-                          </CardHeader>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <div className="space-y-0.5">
-                                <Label>Currency</Label>
-                                <p className="text-sm text-muted-foreground">Display currency format</p>
-                              </div>
-                              <Select
-                                value={preferences.currency}
-                                onValueChange={(value: 'usd' | 'eur' | 'gbp') => updatePreference('currency', value)}
-                              >
-                                <SelectTrigger className="w-32">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="usd">USD ($)</SelectItem>
-                                  <SelectItem value="eur">EUR (€)</SelectItem>
-                                  <SelectItem value="gbp">GBP (£)</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <div className="space-y-0.5">
-                                <Label>Date Format</Label>
-                                <p className="text-sm text-muted-foreground">How dates are displayed</p>
-                              </div>
-                              <Select
-                                value={preferences.dateFormat}
-                                onValueChange={(value: 'mdy' | 'dmy' | 'ymd') => updatePreference('dateFormat', value)}
-                              >
-                                <SelectTrigger className="w-32">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="mdy">MM/DD/YYYY</SelectItem>
-                                  <SelectItem value="dmy">DD/MM/YYYY</SelectItem>
-                                  <SelectItem value="ymd">YYYY-MM-DD</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </CardContent>
-                        </CollapsibleContent>
-                      </Card>
-                    </Collapsible>
-                  )}
                 </TabsContent>
               </Tabs>
             )}
