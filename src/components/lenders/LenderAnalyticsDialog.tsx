@@ -45,7 +45,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 
-type DateRange = '30d' | '90d' | 'ytd' | '12m' | 'all' | `y${number}`;
+type DateRange = '30d' | '90d' | 'ytd' | '6m' | '12m' | 'all' | `y${number}`;
 
 interface Props {
   open: boolean;
@@ -90,6 +90,7 @@ const STATIC_DATE_LABEL: Record<Exclude<DateRange, `y${number}`>, string> = {
   '30d': 'Last 30 days',
   '90d': 'Last 90 days',
   ytd: 'Year to date',
+  '6m': 'Last 6 months',
   '12m': 'Last 12 months',
   all: 'All time',
 };
@@ -109,6 +110,7 @@ function rangeStart(range: DateRange): Date | null {
   switch (range) {
     case '30d': return new Date(now.getTime() - 30 * 86400000);
     case '90d': return new Date(now.getTime() - 90 * 86400000);
+    case '6m': { const d = new Date(now); d.setMonth(d.getMonth() - 6); return d; }
     case '12m': { const d = new Date(now); d.setFullYear(d.getFullYear() - 1); return d; }
     case 'ytd': return new Date(now.getFullYear(), 0, 1);
     case 'all': return null;
@@ -839,6 +841,7 @@ export function LenderAnalyticsDialog({
                   }}
                 >
                   <SelectItem value="ytd">YTD</SelectItem>
+                  <SelectItem value="6m">Last 6 Months</SelectItem>
                   <SelectItem value="12m">TTM (Trailing 12 Months)</SelectItem>
                   {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 1 - i).map((yr) => (
                     <SelectItem key={yr} value={`y${yr}`}>{yr}</SelectItem>
