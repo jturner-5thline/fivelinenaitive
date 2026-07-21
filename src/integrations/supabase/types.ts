@@ -530,6 +530,45 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_agent_knowledge_test_runs: {
+        Row: {
+          agent_key: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          questions: Json
+          results: Json
+          score: number
+          tag_filter: string[]
+          total: number
+        }
+        Insert: {
+          agent_key?: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          questions?: Json
+          results?: Json
+          score?: number
+          tag_filter?: string[]
+          total?: number
+        }
+        Update: {
+          agent_key?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          questions?: Json
+          results?: Json
+          score?: number
+          tag_filter?: string[]
+          total?: number
+        }
+        Relationships: []
+      }
       admin_agent_parse_logs: {
         Row: {
           audit_run_id: string | null

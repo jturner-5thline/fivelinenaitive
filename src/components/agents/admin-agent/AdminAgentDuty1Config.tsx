@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { BookOpen, Brain, CalendarDays, Check, FileText, Loader2, Paperclip, Pencil, Plus, ShieldCheck, Sparkles, Trash2, Upload, X } from 'lucide-react';
+import { BookOpen, Brain, CalendarDays, Check, FileText, FlaskConical, Loader2, Paperclip, Pencil, Plus, ShieldCheck, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { KnowledgeTestDialog } from '@/components/agents/KnowledgeTestDialog';
 
 /**
  * Admin Agent — Duty 1 ("Verify Deal Information") configuration.
@@ -437,6 +438,26 @@ export function AdminAgentDuty1Config() {
   const [pasteTitle, setPasteTitle] = useState('');
   const [pasteBody, setPasteBody] = useState('');
   const [isSavingPaste, setIsSavingPaste] = useState(false);
+  const [knowledgeTestOpen, setKnowledgeTestOpen] = useState(false);
+
+  // Latest persisted Knowledge Test run for this company — powers the score
+  // badge on the "Run Knowledge Test" button. Full history + interaction
+  // lives inside <KnowledgeTestDialog />.
+  const latestKnowledgeTestQ = useQuery<{ score: number; total: number; created_at: string } | null>({
+    queryKey: ['admin-agent-knowledge-test-latest', companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('admin_agent_knowledge_test_runs')
+        .select('score, total, created_at')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as { score: number; total: number; created_at: string } | null) ?? null;
+    },
+  });
 
   // Realtime: reflect ingestion progress as the edge function updates status.
   useEffect(() => {
@@ -1105,6 +1126,34 @@ export function AdminAgentDuty1Config() {
                 />
               </label>
               <span className="text-[10px] text-muted-foreground">PDF, DOCX, XLSX, TXT, MD, CSV, JSON, HTML · 25MB max</span>
+              <div className="ml-auto flex items-center gap-1.5">
+                {latestKnowledgeTestQ.data && latestKnowledgeTestQ.data.total > 0 && (
+                  <span
+                    className={`text-[10px] tabular-nums px-1.5 h-5 inline-flex items-center rounded-full border ${
+                      latestKnowledgeTestQ.data.score / latestKnowledgeTestQ.data.total >= 0.8
+                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                        : latestKnowledgeTestQ.data.score / latestKnowledgeTestQ.data.total >= 0.5
+                        ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                        : 'bg-red-500/15 text-red-300 border-red-500/30'
+                    }`}
+                    title={`Last knowledge test: ${latestKnowledgeTestQ.data.score}/${latestKnowledgeTestQ.data.total}`}
+                  >
+                    {latestKnowledgeTestQ.data.score}/{latestKnowledgeTestQ.data.total}
+                  </span>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px]"
+                  onClick={() => setKnowledgeTestOpen(true)}
+                  disabled={(knowledgeQ.data ?? []).filter((d) => d.status === 'ready').length === 0}
+                  title="Verify the agent has truly digested every uploaded document"
+                >
+                  <FlaskConical className="h-3 w-3 mr-1" />
+                  Run Knowledge Test
+                </Button>
+              </div>
             </div>
 
             {/* Prompt inclusion filter */}
@@ -1403,6 +1452,13 @@ export function AdminAgentDuty1Config() {
           </Button>
         </div>
       )}
+
+      <KnowledgeTestDialog
+        open={knowledgeTestOpen}
+        onOpenChange={setKnowledgeTestOpen}
+        companyId={companyId}
+        hasReadyDocs={(knowledgeQ.data ?? []).some((d) => d.status === 'ready')}
+      />
     </div>
   );
 }
