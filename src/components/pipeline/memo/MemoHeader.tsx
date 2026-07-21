@@ -171,16 +171,19 @@ export function MemoHeader({ deal, showLiveDot = true, onOpenDeal, onClose }: Me
             )}
             <EditableDealStatusTag dealId={deal.id} status={deal.status} />
           </div>
-          {(structureLabel || assetClass) && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {structureLabel && (
-                <Badge variant="gray" className="rounded-full font-medium">{structureLabel}</Badge>
-              )}
-              {assetClass && (
-                <Badge variant="gray" className="rounded-full font-medium">{assetClass}</Badge>
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <EditableDealStageTag
+              dealId={deal.id}
+              stage={deal.stage}
+              pipelineId={deal.pipelineId}
+            />
+            {structureLabel && (
+              <Badge variant="gray" className="rounded-full font-medium">{structureLabel}</Badge>
+            )}
+            {assetClass && (
+              <Badge variant="gray" className="rounded-full font-medium">{assetClass}</Badge>
+            )}
+          </div>
         </div>
         <div
           className="flex flex-wrap items-center justify-end gap-1.5 shrink-0"
@@ -189,14 +192,6 @@ export function MemoHeader({ deal, showLiveDot = true, onOpenDeal, onClose }: Me
           onMouseDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
-          {/* Editable stage tag — same UX pattern, mutates deal.stage so
-              the rundown surfaces (memo card, master tile, briefing
-              boards) re-render in lockstep with the canonical pipeline. */}
-          <EditableDealStageTag
-            dealId={deal.id}
-            stage={deal.stage}
-            pipelineId={deal.pipelineId}
-          />
           {/* Email — launches the existing thread-aware Draft Email to
               Client Contact dialog. Reuses the same composer + thread
               picker shipped on the deal detail page. */}
