@@ -959,36 +959,127 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
   );
 }
 
-// Deal link sub-component
-function DealLinkField({ dealId }: { dealId: string }) {
-  const { data: deal } = useQuery({
-    queryKey: ['deal-detail-link', dealId],
+// Deal link sub-component — view + link/unlink from the details panel.
+function DealLinkField({
+  dealId,
+  onChange,
+}: {
+  dealId: string | null;
+  onChange: (dealId: string | null) => void;
+}) {
+  const { deals } = useDealsContext();
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const linkedDeal = dealId ? deals.find(d => d.id === dealId) : undefined;
+
+  // Fallback fetch if the linked deal isn't in the current user's deals list.
+  const { data: fallbackDeal } = useQuery({
+    queryKey: ['task-linked-deal', dealId],
+    enabled: !!dealId && !linkedDeal,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('deals')
         .select('id, company, stage')
-        .eq('id', dealId)
-        .single();
-      if (error) return null;
+        .eq('id', dealId as string)
+        .maybeSingle();
       return data;
     },
   });
 
-  if (!deal) return null;
+  const displayDeal = linkedDeal
+    ? { id: linkedDeal.id, company: linkedDeal.name, stage: (linkedDeal as any).stage }
+    : fallbackDeal
+      ? { id: fallbackDeal.id, company: fallbackDeal.company, stage: fallbackDeal.stage }
+      : null;
+
+  const q = search.trim().toLowerCase();
+  const filtered = (q
+    ? deals.filter(d => d.name?.toLowerCase().includes(q))
+    : deals
+  ).slice(0, 50);
 
   return (
     <div className="flex items-start gap-3">
       <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0 mt-1" style={{ color: '#8b92a5' }}>
         <Link2 className="h-3 w-3" /> Deal
       </div>
-      <div className="rounded-lg p-2.5 flex-1" style={{ backgroundColor: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}>
-        <Link to={`/deal/${deal.id}`} className="text-xs font-medium hover:underline" style={{ color: '#3b7eff' }}>
-          {deal.company}
-        </Link>
-        <div className="flex items-center gap-3 mt-1">
-          {deal.stage && <span className="text-[10px]" style={{ color: '#8b92a5' }}>Stage: {deal.stage}</span>}
-          
-        </div>
+      <div className="flex-1">
+        {displayDeal ? (
+          <div
+            className="rounded-lg p-2.5 flex items-start justify-between gap-2"
+            style={{ backgroundColor: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <div className="min-w-0">
+              <Link
+                to={`/deal/${displayDeal.id}`}
+                className="text-xs font-medium hover:underline block truncate"
+                style={{ color: '#3b7eff' }}
+              >
+                {displayDeal.company || 'Deal'}
+              </Link>
+              {displayDeal.stage && (
+                <span className="text-[10px]" style={{ color: '#8b92a5' }}>Stage: {displayDeal.stage}</span>
+              )}
+            </div>
+            <button
+              type="button"
+              aria-label="Unlink deal"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange(null); }}
+              className="opacity-60 hover:opacity-100 transition-opacity mt-0.5"
+            >
+              <X className="h-3 w-3" style={{ color: '#8b92a5' }} />
+            </button>
+          </div>
+        ) : (
+          <Popover open={open} onOpenChange={setOpen} modal>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-[11px] gap-1.5 border-dashed"
+                style={{ borderColor: 'rgba(255,255,255,0.12)', color: '#8b92a5', backgroundColor: 'transparent' }}
+              >
+                <Plus className="h-3 w-3" /> Link a deal
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[280px] p-0" align="start">
+              <Command shouldFilter={false}>
+                <CommandInput
+                  placeholder="Search deals…"
+                  className="h-8 text-xs"
+                  value={search}
+                  onValueChange={setSearch}
+                />
+                <CommandList className="max-h-[260px]">
+                  <CommandEmpty className="py-3 text-center text-[11px] text-muted-foreground">
+                    No deals found
+                  </CommandEmpty>
+                  {filtered.length > 0 && (
+                    <CommandGroup>
+                      {filtered.map(d => (
+                        <CommandItem
+                          key={d.id}
+                          value={d.id}
+                          onSelect={() => {
+                            onChange(d.id);
+                            setOpen(false);
+                            setSearch('');
+                          }}
+                          className="flex items-center gap-2 text-xs cursor-pointer"
+                        >
+                          <Link2 className="h-3 w-3" style={{ color: '#8b92a5' }} />
+                          <span className="truncate">{d.name}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )}
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
     </div>
   );
