@@ -8535,6 +8535,15 @@ serve(async (req) => {
     }
 
     const { message, context, history, conversationMutations } = body;
+    // Active agent persona for this turn (from the Ask naitive bar's
+    // agent picker). Shape: { kind: 'default'|'admin'|'custom', id, name, emoji }.
+    const selectedAgent = body?.selectedAgent && typeof body.selectedAgent === "object"
+      ? {
+          kind: typeof body.selectedAgent.kind === "string" ? String(body.selectedAgent.kind) : "default",
+          id: typeof body.selectedAgent.id === "string" ? String(body.selectedAgent.id) : null,
+          name: typeof body.selectedAgent.name === "string" ? String(body.selectedAgent.name) : "Ask naitive",
+        }
+      : { kind: "default", id: null, name: "Ask naitive" };
     const chatScope = parseChatScope(context?.chatScope);
 
     // Lightweight profile fetch only — all other data is lazy-loaded via tools
