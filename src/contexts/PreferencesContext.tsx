@@ -17,12 +17,7 @@ export interface SuggestionPreferences {
 }
 
 export interface Preferences {
-  compactMode: boolean;
-  emailNotifications: boolean;
-  dealStatusAlerts: boolean;
-  currency: 'usd' | 'eur' | 'gbp';
   currencyFormat: CurrencyFormat;
-  dateFormat: 'mdy' | 'dmy' | 'ymd';
   lenderUpdateYellowDays: number;
   lenderUpdateRedDays: number;
   staleDealsDays: number;
@@ -50,12 +45,7 @@ export const DEFAULT_SUGGESTION_PREFERENCES: SuggestionPreferences = {
 };
 
 const DEFAULT_PREFERENCES: Preferences = {
-  compactMode: false,
-  emailNotifications: true,
-  dealStatusAlerts: true,
-  currency: 'usd',
   currencyFormat: 'abbreviated-2',
-  dateFormat: 'mdy',
   lenderUpdateYellowDays: 7,
   lenderUpdateRedDays: 14,
   staleDealsDays: 14,
@@ -85,14 +75,8 @@ const savePreferences = (preferences: Preferences) => {
   }
 };
 
-const CURRENCY_SYMBOLS: Record<Preferences['currency'], string> = {
-  usd: '$',
-  eur: '€',
-  gbp: '£',
-};
-
 export const formatCurrency = (value: number, preferences: Preferences): string => {
-  const symbol = CURRENCY_SYMBOLS[preferences.currency];
+  const symbol = '$';
   const abs = Math.abs(value);
   const sign = value < 0 ? '-' : '';
   
