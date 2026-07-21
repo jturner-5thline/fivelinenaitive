@@ -10107,7 +10107,11 @@ Disambiguation rules — apply these literally:
 - create_task: Create a task (needs confirmation)
 
 READ TOOLS:
-- get_outstanding_items, get_deal_milestones, get_data_room_documents, get_deal_memo, get_deal_writeup, get_activity_log, get_deal_lenders, get_tasks, get_deal, search_deals, search_lenders, get_pipeline_summary, get_deal_health
+- get_outstanding_items, get_deal_milestones, get_data_room_documents, get_deal_memo, get_deal_writeup, get_activity_log, get_deal_lenders, get_tasks, get_deals_task_coverage, get_deal, search_deals, search_lenders, get_pipeline_summary, get_deal_health
+
+PORTFOLIO TASK-COVERAGE QUERIES:
+- For any portfolio-scope task question ("which deals need tasks?", "what deals don't have tasks?", "deals with no open tasks", "deals with overdue tasks", "top deals by task count"), call get_deals_task_coverage ONCE with the right `has` filter — never loop search_deals + get_tasks per deal.
+- Answer as a short bullet list of deal names (add "— <n> open" or "— no tasks" when helpful). Keep it concise; no tables, no JSON, no per-deal paragraphs. If the list is long, show the first 15 and note the total remaining.
 
 ADMIN AGENT — DUTY 1 (VERIFY DEAL INFORMATION):
 - Trigger verify_deal_information whenever the user asks to audit deals / check what needs review / verify a deal / find stale or missing updates / "is anything missing on <Deal>". Pass deal_id for a single-deal request; omit for portfolio. Pass offset for "Show more".
