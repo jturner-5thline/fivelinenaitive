@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronDown, StickyNote, Check, ListChecks } from 'lucide-react';
+import { ChevronDown, StickyNote, Check, ListChecks, Maximize2 } from 'lucide-react';
 import type { Deal, DealLender, LenderTrackingStatus } from '@/types/deal';
 import { LENDER_TRACKING_STATUS_CONFIG, LENDER_STAGE_CONFIG } from '@/types/deal';
 import { bucketLender, isExcludedFromClientReport } from '@/lib/lenderStatusBuckets';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -311,6 +312,7 @@ function LenderRow({
 
 export function LendersPanel({ deal }: LendersPanelProps) {
   const [expanded, setExpanded] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
@@ -435,6 +437,7 @@ export function LendersPanel({ deal }: LendersPanelProps) {
   return (
     <div className="p-5 min-w-0 self-start">
       <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
@@ -455,6 +458,20 @@ export function LendersPanel({ deal }: LendersPanelProps) {
             />
           )}
         </button>
+          {lenders.length > 0 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setDetailOpen(true); }}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="inline-flex items-center justify-center h-5 w-5 rounded hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
+              title="Open full lender list"
+              aria-label="Open full lender list"
+            >
+              <Maximize2 className="h-3 w-3" />
+            </button>
+          )}
+        </div>
         {lenders.length > 0 && (
           <button
             type="button"
