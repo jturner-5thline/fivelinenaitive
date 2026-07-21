@@ -30,7 +30,6 @@ const loadAICopilotPanel = () =>
   import('@/components/AICopilotPanel').then((m) => ({ default: m.AICopilotPanel }));
 const AICopilotPanel = lazy(loadAICopilotPanel);
 import { AskNaitiveBar } from '@/components/copilot/AskNaitiveBar';
-import { CopilotAgentPicker } from '@/components/copilot/CopilotAgentPicker';
 
 const QUICK_PAGES: { name: string; path: string }[] = [
   { name: 'Dashboard', path: '/dashboard' },
@@ -709,15 +708,6 @@ export function CopilotToggleButton() {
         )}
 
         <div className={cn(collapsed && 'hidden')}>
-        {/* Agent picker chip — lets the user direct the next prompt at
-            ANY activated agent (default Ask naitive, Admin Agent, or a
-            custom agent). Shown only when the bar is expanded so it
-            doesn't add visual weight to the resting pill. */}
-        {!demoMode && (hovered || focused || isOpen) && (
-          <div className="mb-1.5 flex justify-start pl-1">
-            <CopilotAgentPicker />
-          </div>
-        )}
         <AskNaitiveBar
           ref={barRef}
           inputRef={inputRef}
