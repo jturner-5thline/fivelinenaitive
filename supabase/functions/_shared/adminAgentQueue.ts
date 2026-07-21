@@ -323,6 +323,18 @@ export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<En
   // They're too vague to action from the queue — funding-source movements
   // should be captured directly on the deal / lender record instead.
   const queueRows = queueRowsAll.filter((r: any) => {
+    // SCOPE WHITELIST — the Deal Admin Agent is limited to 6 exact
+    // triggers, all of which flow through runDealAdminAgentAnalysis
+    // (lender Terms Issued / Pass status updates + draft_email follow-ups
+    // for lenders, outstanding items, and unanswered client threads).
+    // The portfolio field-verification pipeline in this file produces
+    // reminder cards (update_deal_stage / update_deal_status / add_status_note
+    // / update_milestone / update_contact / update_company / create_task)
+    // that are NOT in that list — drop them all here so this producer
+    // stops writing out-of-scope rows to ai_action_queue.
+    return false;
+    // (Legacy filters preserved below for reference — unreachable.)
+    // eslint-disable-next-line no-unreachable
     if (r.action_type === "create_task" || r.action_type === "create_followup_task") return false;
     if (r.action_type === "update_funding_source") return false;
     if (typeof r.target_object_type === "string" && r.target_object_type.toLowerCase() === "task") return false;
