@@ -4310,7 +4310,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       // Pull the candidate deal set within the caller's chat scope.
       let dq = supabase
         .from("deals")
-        .select("id, company, stage, status, deal_manager")
+        .select("id, company, stage, status, manager, deal_owner_user_id")
         .limit(1000);
       dq = applyDealScope(dq, scope, { allowOutOfScope: args.broaden === true });
       const { data: allDeals, error: dealErr } = await dq;
@@ -4327,7 +4327,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
             const sg = String(d.stage || "").toLowerCase();
             return !TERMINAL.has(st) && !TERMINAL.has(sg);
           })
-        : allDeals) as Array<{ id: string; company: string; stage: string | null; status: string | null; deal_manager: string | null }>;
+        : allDeals) as Array<{ id: string; company: string; stage: string | null; status: string | null; manager: string | null; deal_owner_user_id: string | null }>;
       if (pipelineDeals.length === 0) return { deals: [], total: 0, scope: scope.label };
       const dealIds = pipelineDeals.map((d) => d.id);
       // One task fetch, joined in memory.
@@ -4360,7 +4360,10 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         }
       }
       // Resolve deal_manager (user_id → display name) in one batched fetch.
-      const managerIds = Array.from(new Set(pipelineDeals.map((d) => d.deal_manager).filter((v): v is string => !!v)));
+      // `manager` is a free-text name (legacy); `deal_owner_user_id` is the
+      // canonical FK. Prefer the resolved profile name, fall back to the
+      // free-text manager string.
+      const managerIds = Array.from(new Set(pipelineDeals.map((d) => d.deal_owner_user_id).filter((v): v is string => !!v)));
       const managerNames: Record<string, string> = {};
       if (managerIds.length > 0) {
         const { data: profs } = await supabase
@@ -4382,7 +4385,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           name: d.company,
           stage: d.stage,
           status: d.status,
-          deal_manager: d.deal_manager ? (managerNames[d.deal_manager] || null) : null,
+          deal_manager: (d.deal_owner_user_id && managerNames[d.deal_owner_user_id]) || d.manager || null,
           task_count: b.total,
           open_task_count: b.open,
           overdue_count: b.overdue,
