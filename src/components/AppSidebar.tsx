@@ -106,6 +106,11 @@ export function AppSidebar() {
   );
 
   const isActive = (url: string) => {
+    if (url.startsWith("/workspace?tab=")) {
+      const tab = url.split("=")[1];
+      const currentTab = new URLSearchParams(location.search).get("tab") || "deals";
+      return currentPath === "/workspace" && currentTab === tab;
+    }
     if (url === "/deals") return currentPath === "/deals";
     if (url === "/tasks") return currentPath === "/tasks";
     if (url === "/deal") return currentPath.startsWith("/deal/");
