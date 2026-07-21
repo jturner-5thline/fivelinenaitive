@@ -1017,8 +1017,9 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
     const parts: string[] = [];
     // Scope
     if (ownerFilter === 'mine') parts.push('My');
-    else if (ownerFilter === 'others') parts.push('Delegated');
     else if (ownerFilter === 'all') parts.push('Team');
+    else if (selectedTeammates.length === 1) parts.push(`${((selectedTeammates[0] as any).display_name || (selectedTeammates[0] as any).email || '').split(/\s+/)[0]}'s`);
+    else if (selectedTeammates.length > 1) parts.push(`${selectedTeammates.length} teammates'`);
     // Due / status
     if (filterDueDate === 'overdue') parts.push('overdue');
     else if (filterDueDate === 'today') parts.push('due today');
