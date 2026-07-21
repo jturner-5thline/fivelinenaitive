@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Palette, Bell, Globe, DollarSign, Clock, Users, ChevronDown, Search, X } from 'lucide-react';
+import { ArrowLeft, Bell, DollarSign, Clock, Users, ChevronDown, Search, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -30,21 +30,19 @@ import { cn } from '@/lib/utils';
 
 const PREF_SECTIONS = [
   { id: 'profile', keywords: ['profile', 'avatar', 'display name', 'email', 'photo', 'picture', 'name', 'account'] },
-  { id: 'appearance', keywords: ['appearance', 'theme', 'dark', 'light', 'compact', 'mode', 'look', 'style', 'display'] },
   { id: 'notifications', keywords: ['notifications', 'alerts', 'email', 'in-app', 'deal updates', 'lender updates', 'summary', 'weekly'] },
   { id: 'suggestions', keywords: ['suggestions', 'smart', 'ai', 'warnings', 'reminders', 'opportunities', 'actions', 'stale', 'overdue', 'milestones'] },
   { id: 'lenderAlerts', keywords: ['lender', 'update', 'alerts', 'stale', 'warning', 'threshold', 'yellow', 'red', 'urgent', 'days'] },
   { id: 'staleDeals', keywords: ['stale', 'deals', 'alert', 'threshold', 'days', 'inactive', 'old'] },
   { id: 'lenderDefaults', keywords: ['lender', 'defaults', 'stage', 'new lenders', 'default stage'] },
   { id: 'currency', keywords: ['currency', 'format', 'number', 'abbreviated', 'million', 'thousand', 'money'] },
-  { id: 'regional', keywords: ['regional', 'language', 'date', 'format', 'usd', 'eur', 'gbp', 'currency'] },
 ];
 
 const TABS = [
-  { id: 'general', label: 'General', sectionIds: ['profile', 'appearance'] },
+  { id: 'general', label: 'General', sectionIds: ['profile'] },
   { id: 'notifications', label: 'Notifications', sectionIds: ['notifications', 'suggestions'] },
   { id: 'alerts', label: 'Alerts & Thresholds', sectionIds: ['lenderAlerts', 'staleDeals', 'lenderDefaults'] },
-  { id: 'formatting', label: 'Formatting', sectionIds: ['currency', 'regional'] },
+  { id: 'formatting', label: 'Formatting', sectionIds: ['currency'] },
 ];
 
 export default function Preferences() {
