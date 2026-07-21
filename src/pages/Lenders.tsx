@@ -1223,6 +1223,7 @@ export default function Lenders() {
     }
     const exportData = allRows.map(l => ({
       name: l.name,
+      tier: l.tier || '',
       contact: { name: l.contact_name || '', email: l.email || '', phone: '' },
       preferences: [...(l.loan_types || []), ...(l.industries || [])],
       website: l.lender_one_pager_url,
