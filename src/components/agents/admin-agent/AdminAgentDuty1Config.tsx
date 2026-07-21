@@ -1104,28 +1104,9 @@ export function AdminAgentDuty1Config() {
             <div className="flex items-center gap-1.5">
               <BookOpen className="h-3.5 w-3.5 text-primary" />
               <h5 className="text-xs font-semibold">Knowledge base</h5>
-              <span className="text-[10px] text-muted-foreground ml-auto">
+              <span className="text-[10px] text-muted-foreground ml-2">
                 {(knowledgeQ.data ?? []).length} document{(knowledgeQ.data ?? []).length === 1 ? '' : 's'}
               </span>
-            </div>
-            <p className="text-[11px] text-muted-foreground leading-snug">
-              Reference documents the agent learns from — rules, requirements, definitions, glossaries, workflows, etc. Text is extracted, split into passages, and embedded into a vector index. For each deal it evaluates, the agent retrieves only the most relevant passages instead of re-reading every file on every run.
-            </p>
-
-            <div className="flex items-center gap-2">
-              <label className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border/60 bg-card/60 text-[11px] cursor-pointer hover:bg-card ${readOnly || isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-                <span>Upload files</span>
-                <input
-                  type="file"
-                  multiple
-                  className="hidden"
-                  disabled={readOnly || isUploading}
-                  onChange={(e) => { uploadKnowledgeFiles(e.target.files); e.currentTarget.value = ''; }}
-                  accept=".pdf,.txt,.md,.csv,.json,.docx,.doc,.rtf,.html,.htm,.xml,.tsv,.xlsx,.xls"
-                />
-              </label>
-              <span className="text-[10px] text-muted-foreground">PDF, DOCX, XLSX, TXT, MD, CSV, JSON, HTML · 25MB max</span>
               <div className="ml-auto flex items-center gap-1.5">
                 {latestKnowledgeTestQ.data && latestKnowledgeTestQ.data.total > 0 && (
                   <span
@@ -1145,7 +1126,7 @@ export function AdminAgentDuty1Config() {
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-7 text-[11px]"
+                  className="h-6 text-[11px] px-2"
                   onClick={() => setKnowledgeTestOpen(true)}
                   disabled={(knowledgeQ.data ?? []).filter((d) => d.status === 'ready').length === 0}
                   title="Verify the agent has truly digested every uploaded document"
@@ -1154,6 +1135,25 @@ export function AdminAgentDuty1Config() {
                   Run Knowledge Test
                 </Button>
               </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              Reference documents the agent learns from — rules, requirements, definitions, glossaries, workflows, etc. Text is extracted, split into passages, and embedded into a vector index. For each deal it evaluates, the agent retrieves only the most relevant passages instead of re-reading every file on every run.
+            </p>
+
+            <div className="flex items-center gap-2">
+              <label className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border/60 bg-card/60 text-[11px] cursor-pointer hover:bg-card ${readOnly || isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                <span>Upload files</span>
+                <input
+                  type="file"
+                  multiple
+                  className="hidden"
+                  disabled={readOnly || isUploading}
+                  onChange={(e) => { uploadKnowledgeFiles(e.target.files); e.currentTarget.value = ''; }}
+                  accept=".pdf,.txt,.md,.csv,.json,.docx,.doc,.rtf,.html,.htm,.xml,.tsv,.xlsx,.xls"
+                />
+              </label>
+              <span className="text-[10px] text-muted-foreground">PDF, DOCX, XLSX, TXT, MD, CSV, JSON, HTML · 25MB max</span>
             </div>
 
             {/* Prompt inclusion filter */}
