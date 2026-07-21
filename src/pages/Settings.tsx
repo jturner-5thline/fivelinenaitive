@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   ChevronRight,
+  ChevronDown,
   Search,
   Briefcase,
   Building2,
@@ -453,30 +454,69 @@ export default function Settings() {
         const isActive = activeGroup?.id === group.id;
         const badge = groupBadge(group.id);
         return (
-          <button
-            key={group.id}
-            onClick={() => {
-              const first = group.sections[0];
-              if (first) {
+          <div key={group.id} className="flex flex-col">
+            <button
+              onClick={() => {
+                const first = group.sections[0];
+                if (!first) return;
+                if (isActive) {
+                  // collapse by navigating away — go to first group as default? Instead toggle: navigate to first section still, but if already there, do nothing (keeps expanded).
+                  return;
+                }
                 goToSection(group.id, first.id);
                 setMobileOpen(false);
-              }
-            }}
-            className={`group/nav text-left flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${
-              isActive
-                ? 'bg-primary/15 text-foreground font-medium border border-primary/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]'
-                : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04] border border-transparent'
-            }`}
-            aria-current={isActive ? 'page' : undefined}
-          >
-            <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground group-hover/nav:text-foreground'}`} />
-            <span className="truncate flex-1">{group.label}</span>
-            {badge > 0 && (
-              <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
-                {badge}
-              </Badge>
+              }}
+              className={`group/nav text-left flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${
+                isActive
+                  ? 'bg-primary/15 text-foreground font-medium border border-primary/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04] border border-transparent'
+              }`}
+              aria-current={isActive ? 'page' : undefined}
+              aria-expanded={isActive}
+            >
+              <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground group-hover/nav:text-foreground'}`} />
+              <span className="truncate flex-1">{group.label}</span>
+              {badge > 0 && (
+                <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
+                  {badge}
+                </Badge>
+              )}
+              {group.sections.length > 1 && (
+                <ChevronDown
+                  className={`h-3.5 w-3.5 text-muted-foreground/70 transition-transform ${isActive ? 'rotate-0' : '-rotate-90'}`}
+                />
+              )}
+            </button>
+            {isActive && group.sections.length > 1 && (
+              <div className="mt-0.5 mb-1 ml-6 pl-3 border-l border-white/[0.06] flex flex-col gap-0.5">
+                {group.sections.map((section) => {
+                  const secActive = activeSection?.id === section.id;
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => {
+                        goToSection(group.id, section.id);
+                        setMobileOpen(false);
+                      }}
+                      className={`text-left flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors ${
+                        secActive
+                          ? 'bg-white/[0.06] text-foreground font-medium'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]'
+                      }`}
+                      aria-current={secActive ? 'page' : undefined}
+                    >
+                      <span className="truncate flex-1">{section.label}</span>
+                      {section.badge != null && section.badge > 0 && (
+                        <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
+                          {section.badge}
+                        </Badge>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             )}
-          </button>
+          </div>
         );
       })}
     </nav>
@@ -559,36 +599,6 @@ export default function Settings() {
                     </p>
                   )}
                 </header>
-              )}
-
-              {/* Subsection pills */}
-              {activeGroup && activeGroup.sections.length > 1 && (
-                <div className="mb-6 -mx-1 overflow-x-auto">
-                  <div className="flex items-center gap-1 px-1 pb-1">
-                    {activeGroup.sections.map((section) => {
-                      const isActive = activeSection?.id === section.id;
-                      return (
-                        <button
-                          key={section.id}
-                          onClick={() => goToSection(activeGroup.id, section.id)}
-                          className={`whitespace-nowrap text-sm px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5 border ${
-                            isActive
-                              ? 'bg-primary/15 text-foreground border-primary/30 font-medium'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04] border-transparent'
-                          }`}
-                          aria-current={isActive ? 'page' : undefined}
-                        >
-                          {section.label}
-                          {section.badge != null && section.badge > 0 && (
-                            <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
-                              {section.badge}
-                            </Badge>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
               )}
 
               {/* Read-only banner */}
