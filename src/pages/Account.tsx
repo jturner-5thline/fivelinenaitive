@@ -3,11 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { CompanySettings } from '@/components/settings/CompanySettings';
 import { SecuritySettings } from '@/components/settings/SecuritySettings';
-import { DealSummarySettings } from '@/components/settings/DealSummarySettings';
 import { TaskDefaultsSettings } from '@/components/settings/TaskDefaultsSettings';
 import { useAuth } from '@/contexts/AuthContext';
 
-type SectionId = 'profile' | 'security' | 'emails' | 'tasks';
+type SectionId = 'profile' | 'security' | 'tasks';
 
 const SECTIONS: Array<{
   id: SectionId;
@@ -31,12 +30,6 @@ const SECTIONS: Array<{
     label: 'Security',
     description: 'Password, active sessions, and recent login history.',
     render: () => <SecuritySettings />,
-  },
-  {
-    id: 'emails',
-    label: 'Email Summaries',
-    description: 'Recurring deal-activity digests sent to your inbox.',
-    render: () => <DealSummarySettings />,
   },
   {
     id: 'tasks',
