@@ -88,11 +88,15 @@ interface Props {
   lenders: MasterLender[];
   /** Opens the existing FundingSourcePlanModal (pre-filled). */
   onOpenPlan: () => void;
+  /** Year controlled by parent timeframe selector. When provided, hides the internal year picker. */
+  year?: number;
 }
 
-export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: Props) {
+export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan, year: yearProp }: Props) {
   const currentYear = new Date().getFullYear();
-  const [year, setYear] = useState<number>(currentYear);
+  const [yearState, setYear] = useState<number>(currentYear);
+  const year = yearProp ?? yearState;
+  const yearControlled = yearProp != null;
   const [cadenceOverride, setCadenceOverride] = useState<Cadence | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('plan');
   const [addedDrill, setAddedDrill] = useState<{ idx: number; label: string } | null>(null);
@@ -358,7 +362,7 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
                 <TabsTrigger value="quarterly" className="text-[11px] h-5 px-2">Quarterly</TabsTrigger>
               </TabsList>
             </Tabs>
-            <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+            {!yearControlled && <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
               <SelectTrigger className="h-7 w-[88px] text-[11px] bg-slate-900/60 border-slate-700/60 text-slate-100">
                 <SelectValue />
               </SelectTrigger>
@@ -367,7 +371,7 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
                   <SelectItem key={y} value={String(y)}>{y}</SelectItem>
                 ))}
               </SelectContent>
-            </Select>
+            </Select>}
             {viewMode === 'plan' && <Button
               variant="ghost"
               size="sm"

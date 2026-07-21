@@ -914,6 +914,11 @@ export function LenderAnalyticsDialog({
               tenantId={FIFTH_LINE_COMPANY_ID}
               lenders={lenders}
               onOpenPlan={() => setPlanOpen(true)}
+              year={
+                typeof dateRange === 'string' && dateRange.startsWith('y')
+                  ? Number(dateRange.slice(1))
+                  : currentYear
+              }
             />
           )}
 
