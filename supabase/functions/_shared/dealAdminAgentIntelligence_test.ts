@@ -1,6 +1,7 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   isInDealAdminAgentScope,
+  queueSemanticKey,
   type CandidateItem,
 } from "./dealAdminAgentIntelligence.ts";
 
@@ -214,5 +215,75 @@ Deno.test(
       },
     });
     assertEquals(isInDealAdminAgentScope(wrongBundle), false);
+  },
+);
+
+/**
+ * Dedupe contract for schedule-a-call proposals. Repeated inbound
+ * "let's connect" emails from the same lender on the same deal MUST
+ * collapse to a single Approval Queue item. Also verifies that a
+ * schedule-call card does NOT share a key with an unrelated
+ * update_funding_source card on the same lender, because those are
+ * two independent reviewer decisions.
+ */
+Deno.test(
+  "schedule-call queueSemanticKey collapses repeat emails for same (deal, lender)",
+  () => {
+    const bundleKey = `schedule_call:${DEAL_ID}:${LENDER_ID}`;
+    const first = {
+      action_type: "create_followup_task",
+      target_object_type: "deal_lender",
+      target_object_id: LENDER_ID,
+      deal_id: DEAL_ID,
+      proposed_values: {
+        bundle_key: bundleKey,
+        source_email_id: "gmail-msg-1",
+      },
+    };
+    const second = {
+      ...first,
+      proposed_values: {
+        bundle_key: bundleKey,
+        source_email_id: "gmail-msg-2", // later email, same lender
+      },
+    };
+    assertEquals(queueSemanticKey(first), queueSemanticKey(second));
+
+    // Persisted row shape (payload.on_approve_execution_payload.bundle_key)
+    const persisted = {
+      action_type: "create_followup_task",
+      target_object_type: "deal_lender",
+      target_object_id: LENDER_ID,
+      deal_id: DEAL_ID,
+      payload: {
+        on_approve_execution_payload: { bundle_key: bundleKey },
+      },
+    };
+    assertEquals(queueSemanticKey(persisted), queueSemanticKey(first));
+  },
+);
+
+Deno.test(
+  "schedule-call key is distinct from funding_source_attention key on same lender",
+  () => {
+    const scheduleKey = queueSemanticKey({
+      action_type: "create_followup_task",
+      target_object_type: "deal_lender",
+      target_object_id: LENDER_ID,
+      deal_id: DEAL_ID,
+      proposed_values: { bundle_key: `schedule_call:${DEAL_ID}:${LENDER_ID}` },
+    });
+    const attentionKey = queueSemanticKey({
+      action_type: "update_funding_source",
+      target_object_type: "deal_lender",
+      target_object_id: LENDER_ID,
+      deal_id: DEAL_ID,
+      proposed_values: { status: "Terms Issued" },
+    });
+    if (scheduleKey === attentionKey) {
+      throw new Error(
+        `schedule-call key must not collide with funding_source_attention key (got ${scheduleKey})`,
+      );
+    }
   },
 );
