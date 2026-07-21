@@ -59,12 +59,13 @@ export function parseCsvToLenders(csvContent: string): LenderCsvRow[] {
 
     return {
       name: fields[0]?.trim() || '',
-      contactName: fields[1]?.trim() || '',
-      email: fields[2]?.trim() || '',
-      phone: fields[3]?.trim() || '',
-      preferences: fields[4]?.trim() || '',
-      website: fields[5]?.trim() || '',
-      description: fields[6]?.trim() || '',
+      tier: fields[1]?.trim() || '',
+      contactName: fields[2]?.trim() || '',
+      email: fields[3]?.trim() || '',
+      phone: fields[4]?.trim() || '',
+      preferences: fields[5]?.trim() || '',
+      website: fields[6]?.trim() || '',
+      description: fields[7]?.trim() || '',
     };
   });
 }
