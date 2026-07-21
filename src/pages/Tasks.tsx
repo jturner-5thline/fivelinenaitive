@@ -329,11 +329,65 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
     },
     staleTime: 5 * 60 * 1000,
   });
-  const selectedTeammate = useMemo(() => {
-    if (typeof ownerFilter !== 'string' || !ownerFilter.startsWith('user:')) return null;
-    const id = ownerFilter.slice('user:'.length);
-    return fifthLineTeammates.find((p: any) => p.user_id === id) || null;
-  }, [ownerFilter, fifthLineTeammates]);
+  // Restrict the teammate picker to the specific 5th Line roster requested
+  // by leadership. Match against the first token of display_name OR the
+  // email local-part so display names like "John Turner" or emails like
+  // "jturner@5thline.co" both resolve.
+  const ALLOWED_TEAMMATE_FIRST_NAMES = useMemo(
+    () => ['flor', 'john', 'mark', 'makenzie', 'scott', 'niki', 'paz'],
+    [],
+  );
+  const allowedTeammates = useMemo(() => {
+    const first = (p: any) => {
+      const dn = (p.display_name || '').trim().toLowerCase();
+      if (dn) return dn.split(/\s+/)[0];
+      const local = (p.email || '').split('@')[0].toLowerCase();
+      return local;
+    };
+    // Map first-letter of email local part → first name so "jturner" → "john".
+    const emailPrefixMap: Record<string, string> = {
+      fmartinez: 'flor', ffustinoni: 'flor',
+      jturner: 'john', jmoffitt: 'john',
+      mclark: 'mark',
+      mmarshall: 'makenzie', makenzie: 'makenzie',
+      swilliams: 'scott',
+      nheikali: 'niki',
+      ppina: 'paz',
+    };
+    return fifthLineTeammates.filter((p: any) => {
+      const dnFirst = first(p);
+      const localFull = (p.email || '').split('@')[0].toLowerCase();
+      if (ALLOWED_TEAMMATE_FIRST_NAMES.includes(dnFirst)) return true;
+      if (emailPrefixMap[localFull]) return true;
+      return false;
+    });
+  }, [fifthLineTeammates, ALLOWED_TEAMMATE_FIRST_NAMES]);
+  const selectedTeammateIds = useMemo(() => {
+    if (typeof ownerFilter !== 'string') return [] as string[];
+    if (ownerFilter.startsWith('users:')) return ownerFilter.slice('users:'.length).split(',').filter(Boolean);
+    if (ownerFilter.startsWith('user:')) return [ownerFilter.slice('user:'.length)];
+    return [];
+  }, [ownerFilter]);
+  const selectedTeammates = useMemo(
+    () => allowedTeammates.filter((p: any) => selectedTeammateIds.includes(p.user_id)),
+    [allowedTeammates, selectedTeammateIds],
+  );
+  const teammateLabel = useMemo(() => {
+    if (selectedTeammates.length === 0) return null;
+    if (selectedTeammates.length === 1) {
+      const p: any = selectedTeammates[0];
+      const name = p.display_name || p.email || 'Teammate';
+      return name.split(/\s+/)[0];
+    }
+    return `${selectedTeammates.length} teammates`;
+  }, [selectedTeammates]);
+  const toggleTeammate = (userId: string) => {
+    const next = selectedTeammateIds.includes(userId)
+      ? selectedTeammateIds.filter(id => id !== userId)
+      : [...selectedTeammateIds, userId];
+    if (next.length === 0) setOwnerFilter('mine');
+    else setOwnerFilter(`users:${next.join(',')}` as TaskOwnerFilter);
+  };
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { notifications } = useTaskNotifications();
   const { savedViews, saveView, deleteView, renameView, duplicateView, togglePinView } = useTaskSavedViews();
@@ -963,8 +1017,9 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
     const parts: string[] = [];
     // Scope
     if (ownerFilter === 'mine') parts.push('My');
-    else if (ownerFilter === 'others') parts.push('Delegated');
     else if (ownerFilter === 'all') parts.push('Team');
+    else if (selectedTeammates.length === 1) parts.push(`${((selectedTeammates[0] as any).display_name || (selectedTeammates[0] as any).email || '').split(/\s+/)[0]}'s`);
+    else if (selectedTeammates.length > 1) parts.push(`${selectedTeammates.length} teammates'`);
     // Due / status
     if (filterDueDate === 'overdue') parts.push('overdue');
     else if (filterDueDate === 'today') parts.push('due today');
@@ -1193,13 +1248,13 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
             <h1 className="text-[22px] font-semibold tracking-tight leading-none" style={{ color: '#eef1f6' }}>
               {ownerFilter === 'mine'
                 ? 'My Tasks'
-                : ownerFilter === 'others'
-                  ? "Others' Tasks"
-                  : ownerFilter === 'all'
-                    ? 'All Tasks'
-                    : selectedTeammate
-                      ? `${(selectedTeammate.display_name || selectedTeammate.email || 'Teammate')}'s Tasks`
-                      : 'Teammate Tasks'}
+                : ownerFilter === 'all'
+                  ? 'All Tasks'
+                  : selectedTeammates.length === 1
+                    ? `${(((selectedTeammates[0] as any).display_name) || (selectedTeammates[0] as any).email || 'Teammate')}'s Tasks`
+                    : selectedTeammates.length > 1
+                      ? `${selectedTeammates.length} Teammates' Tasks`
+                      : 'Tasks'}
             </h1>
             <p className="mt-1.5 text-[12px] tabular-nums" style={{ color: '#8a93a6' }}>
               {(() => {
@@ -1264,34 +1319,72 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
             <ClaapRoutingTasksBadge />
           </div>
 
-          <Select value={ownerFilter} onValueChange={v => setOwnerFilter(v as TaskOwnerFilter)}>
-            <SelectTrigger className="h-8 w-[170px] text-[12px] text-[#b3bccc]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
-              <Users className="h-3 w-3 mr-1.5" /><SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="mine" className="text-xs">My tasks</SelectItem>
-              <SelectItem value="others" className="text-xs">Delegated</SelectItem>
-              <SelectItem value="all" className="text-xs">All tasks</SelectItem>
-              {fifthLineTeammates.length > 0 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center h-8 w-[190px] px-3 rounded-md border text-[12px] text-[#b3bccc] justify-between"
+                style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}
+              >
+                <span className="inline-flex items-center min-w-0">
+                  <Users className="h-3 w-3 mr-1.5 shrink-0" />
+                  <span className="truncate">
+                    {ownerFilter === 'mine'
+                      ? 'My tasks'
+                      : ownerFilter === 'all'
+                        ? 'All tasks'
+                        : teammateLabel || 'Teammates'}
+                  </span>
+                </span>
+                <ChevronDown className="h-3 w-3 opacity-60 shrink-0 ml-1" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-56 p-1.5 z-[1400]">
+              <button
+                type="button"
+                className={cn(
+                  'flex items-center w-full px-2 py-1.5 text-xs rounded hover:bg-muted/50 text-left',
+                  ownerFilter === 'mine' && 'bg-muted/40',
+                )}
+                onClick={() => setOwnerFilter('mine')}
+              >
+                My tasks
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  'flex items-center w-full px-2 py-1.5 text-xs rounded hover:bg-muted/50 text-left',
+                  ownerFilter === 'all' && 'bg-muted/40',
+                )}
+                onClick={() => setOwnerFilter('all')}
+              >
+                All tasks
+              </button>
+              {allowedTeammates.length > 0 && (
                 <>
-                  <div className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                  <div className="mt-1.5 mb-1 px-2 text-[10px] uppercase tracking-wide text-muted-foreground">
                     5th Line teammates
                   </div>
-                  {fifthLineTeammates
-                    .filter((p: any) => p.user_id !== _currentUserForTeam?.id)
-                    .map((p: any) => (
-                      <SelectItem
-                        key={p.user_id}
-                        value={`user:${p.user_id}`}
-                        className="text-xs"
-                      >
-                        {p.display_name || p.email}
-                      </SelectItem>
-                    ))}
+                  <div className="max-h-[240px] overflow-y-auto">
+                    {allowedTeammates.map((p: any) => {
+                      const isSelected = selectedTeammateIds.includes(p.user_id);
+                      return (
+                        <button
+                          key={p.user_id}
+                          type="button"
+                          className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-muted/50 text-left"
+                          onClick={() => toggleTeammate(p.user_id)}
+                        >
+                          <Checkbox checked={isSelected} className="pointer-events-none h-3.5 w-3.5" />
+                          <span className="truncate">{p.display_name || p.email}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </>
               )}
-            </SelectContent>
-          </Select>
+            </PopoverContent>
+          </Popover>
           <Select value={taskFilters.status} onValueChange={v => patchFilters({ status: v as FilterStatus })}>
             <SelectTrigger aria-label="Status: All" className="h-8 w-[110px] text-[12px] text-[#b3bccc]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
               <Filter className="h-3 w-3 mr-1.5" /><SelectValue />

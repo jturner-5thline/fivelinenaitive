@@ -137,7 +137,7 @@ export interface TaskActivityEvent {
   actor_profile?: { display_name: string; avatar_url: string | null } | null;
 }
 
-export type TaskOwnerFilter = 'mine' | 'others' | 'all' | `user:${string}`;
+export type TaskOwnerFilter = 'mine' | 'all' | `user:${string}` | `users:${string}`;
 const TASKS_KEY = ['my-tasks'];
 
 function buildBaseTasksQuery() {
@@ -231,11 +231,15 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
     queryFn: async () => {
       if (!user) return [];
 
-      // Filter by a specific user id (e.g. another 5th Line teammate).
-      if (typeof ownerFilter === 'string' && ownerFilter.startsWith('user:')) {
-        const targetUserId = ownerFilter.slice('user:'.length);
-        let query = buildBaseTasksQueryIncludingSubtasks()
-          .eq('assigned_to', targetUserId)
+      // Filter by one or more specific user ids (5th Line teammates).
+      if (typeof ownerFilter === 'string' && (ownerFilter.startsWith('user:') || ownerFilter.startsWith('users:'))) {
+        const raw = ownerFilter.startsWith('users:')
+          ? ownerFilter.slice('users:'.length)
+          : ownerFilter.slice('user:'.length);
+        const ids = raw.split(',').map(s => s.trim()).filter(Boolean);
+        if (ids.length === 0) return [];
+        const base = buildBaseTasksQueryIncludingSubtasks();
+        const query = (ids.length === 1 ? base.eq('assigned_to', ids[0]) : base.in('assigned_to', ids))
           .order('position', { ascending: true })
           .order('created_at', { ascending: false });
         const { data, error } = await query;
@@ -288,16 +292,9 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
         .order('position', { ascending: true })
         .order('created_at', { ascending: false });
 
-      if (ownerFilter === 'others') {
-        query = query.neq('assigned_to', user.id);
-        if (company?.id) {
-          query = query.eq('company_id', company.id);
-        }
-      } else {
-        // 'all' — fetch all company tasks
-        if (company?.id) {
-          query = query.eq('company_id', company.id);
-        }
+      // 'all' — fetch all company tasks
+      if (company?.id) {
+        query = query.eq('company_id', company.id);
       }
 
       const { data, error } = await query;
