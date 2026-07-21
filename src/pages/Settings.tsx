@@ -601,36 +601,6 @@ export default function Settings() {
                 </header>
               )}
 
-              {/* Subsection pills */}
-              {activeGroup && activeGroup.sections.length > 1 && (
-                <div className="mb-6 -mx-1 overflow-x-auto">
-                  <div className="flex items-center gap-1 px-1 pb-1">
-                    {activeGroup.sections.map((section) => {
-                      const isActive = activeSection?.id === section.id;
-                      return (
-                        <button
-                          key={section.id}
-                          onClick={() => goToSection(activeGroup.id, section.id)}
-                          className={`whitespace-nowrap text-sm px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5 border ${
-                            isActive
-                              ? 'bg-primary/15 text-foreground border-primary/30 font-medium'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04] border-transparent'
-                          }`}
-                          aria-current={isActive ? 'page' : undefined}
-                        >
-                          {section.label}
-                          {section.badge != null && section.badge > 0 && (
-                            <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
-                              {section.badge}
-                            </Badge>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
               {/* Read-only banner */}
               {!isAdmin && (
                 <div className="mb-6 flex items-start gap-3 rounded-lg glass-border-soft bg-white/[0.03] px-4 py-3 text-sm">
