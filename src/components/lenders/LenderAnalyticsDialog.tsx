@@ -779,14 +779,21 @@ export function LenderAnalyticsDialog({
     }));
   }, [passReasonsAgg]);
 
-  // Data for the vertical Lender Conversion Rate bar chart. Top 6 lenders by
-  // submitted volume, coloured by tier (T1/T2 teal, T3+other blue).
+  // Data for the vertical Lender Conversion Rate bar chart. Ranks lenders by
+  // absolute conversions (reached Draft Terms or later) so high-performing
+  // partners surface even when higher-volume lenders never issued terms.
+  // Tiebreak on conversion rate, then submitted volume. Coloured by tier.
   const conversionChartData = useMemo(() => {
     return lenderStats
-      .filter((s) => s.submitted > 0)
+      .filter((s) => s.terms > 0)
       .slice()
-      .sort((a, b) => b.submitted - a.submitted || b.terms - a.terms)
-      .slice(0, 6)
+      .sort(
+        (a, b) =>
+          b.terms - a.terms ||
+          b.conv - a.conv ||
+          b.submitted - a.submitted,
+      )
+      .slice(0, 8)
       .map((s) => ({
         key: s.key,
         name: s.name,
