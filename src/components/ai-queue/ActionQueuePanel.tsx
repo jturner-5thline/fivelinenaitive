@@ -1968,6 +1968,27 @@ function DetailPane({
             {toSingleSentence(item.rationale || buildRationaleFallback(item))}
           </p>
 
+          {/* Evidence snippet — short neutral quote of the triggering signal
+              (e.g. the connect/schedule language from the inbound lender
+              email). Renders only when the agent supplied one. */}
+          {(() => {
+            const ev = String(
+              (item as any).payload?.evidence_summary ?? '',
+            ).trim();
+            if (!ev) return null;
+            return (
+              <div
+                className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] leading-[1.55] text-white/85 max-w-[72ch]"
+                style={FONT_BODY}
+              >
+                <div className="mb-0.5 text-[11px] uppercase tracking-wide text-white/50">
+                  Evidence
+                </div>
+                {ev}
+              </div>
+            );
+          })()}
+
           {/* Proposed changes — stacked review cards, one per field */}
           {isEmailDraft && (
             <EmailDraftPreview
