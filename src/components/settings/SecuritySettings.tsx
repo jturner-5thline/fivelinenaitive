@@ -55,6 +55,14 @@ interface LoginHistoryEntry {
 
 export function SecuritySettings() {
   const { user } = useAuth();
+  const isGoogleUser = (() => {
+    if (!user) return false;
+    const identities = (user as any).identities as Array<{ provider?: string }> | undefined;
+    const providers = identities?.map((i) => i.provider) ?? [];
+    const primary = (user as any).app_metadata?.provider as string | undefined;
+    const all = [primary, ...providers].filter(Boolean) as string[];
+    return all.length > 0 && all.every((p) => p === 'google');
+  })();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -276,7 +284,22 @@ export function SecuritySettings() {
       </div>
       <CardContent className="space-y-6 pt-6">
         {/* Password Section */}
-        {!isChangingPassword ? (
+        {isGoogleUser ? (
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+            <div>
+              <p className="font-medium">Password</p>
+              <p className="text-sm text-muted-foreground">
+                You sign in with Google. Manage your password in your Google Account.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => window.open('https://myaccount.google.com/security', '_blank', 'noopener,noreferrer')}
+            >
+              Manage in Google
+            </Button>
+          </div>
+        ) : !isChangingPassword ? (
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div>
               <p className="font-medium">Password</p>
