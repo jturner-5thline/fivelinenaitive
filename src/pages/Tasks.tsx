@@ -329,11 +329,65 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
     },
     staleTime: 5 * 60 * 1000,
   });
-  const selectedTeammate = useMemo(() => {
-    if (typeof ownerFilter !== 'string' || !ownerFilter.startsWith('user:')) return null;
-    const id = ownerFilter.slice('user:'.length);
-    return fifthLineTeammates.find((p: any) => p.user_id === id) || null;
-  }, [ownerFilter, fifthLineTeammates]);
+  // Restrict the teammate picker to the specific 5th Line roster requested
+  // by leadership. Match against the first token of display_name OR the
+  // email local-part so display names like "John Turner" or emails like
+  // "jturner@5thline.co" both resolve.
+  const ALLOWED_TEAMMATE_FIRST_NAMES = useMemo(
+    () => ['flor', 'john', 'mark', 'makenzie', 'scott', 'niki', 'paz'],
+    [],
+  );
+  const allowedTeammates = useMemo(() => {
+    const first = (p: any) => {
+      const dn = (p.display_name || '').trim().toLowerCase();
+      if (dn) return dn.split(/\s+/)[0];
+      const local = (p.email || '').split('@')[0].toLowerCase();
+      return local;
+    };
+    // Map first-letter of email local part → first name so "jturner" → "john".
+    const emailPrefixMap: Record<string, string> = {
+      fmartinez: 'flor', ffustinoni: 'flor',
+      jturner: 'john', jmoffitt: 'john',
+      mclark: 'mark',
+      mmarshall: 'makenzie', makenzie: 'makenzie',
+      swilliams: 'scott',
+      nheikali: 'niki',
+      ppina: 'paz',
+    };
+    return fifthLineTeammates.filter((p: any) => {
+      const dnFirst = first(p);
+      const localFull = (p.email || '').split('@')[0].toLowerCase();
+      if (ALLOWED_TEAMMATE_FIRST_NAMES.includes(dnFirst)) return true;
+      if (emailPrefixMap[localFull]) return true;
+      return false;
+    });
+  }, [fifthLineTeammates, ALLOWED_TEAMMATE_FIRST_NAMES]);
+  const selectedTeammateIds = useMemo(() => {
+    if (typeof ownerFilter !== 'string') return [] as string[];
+    if (ownerFilter.startsWith('users:')) return ownerFilter.slice('users:'.length).split(',').filter(Boolean);
+    if (ownerFilter.startsWith('user:')) return [ownerFilter.slice('user:'.length)];
+    return [];
+  }, [ownerFilter]);
+  const selectedTeammates = useMemo(
+    () => allowedTeammates.filter((p: any) => selectedTeammateIds.includes(p.user_id)),
+    [allowedTeammates, selectedTeammateIds],
+  );
+  const teammateLabel = useMemo(() => {
+    if (selectedTeammates.length === 0) return null;
+    if (selectedTeammates.length === 1) {
+      const p: any = selectedTeammates[0];
+      const name = p.display_name || p.email || 'Teammate';
+      return name.split(/\s+/)[0];
+    }
+    return `${selectedTeammates.length} teammates`;
+  }, [selectedTeammates]);
+  const toggleTeammate = (userId: string) => {
+    const next = selectedTeammateIds.includes(userId)
+      ? selectedTeammateIds.filter(id => id !== userId)
+      : [...selectedTeammateIds, userId];
+    if (next.length === 0) setOwnerFilter('mine');
+    else setOwnerFilter(`users:${next.join(',')}` as TaskOwnerFilter);
+  };
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { notifications } = useTaskNotifications();
   const { savedViews, saveView, deleteView, renameView, duplicateView, togglePinView } = useTaskSavedViews();
