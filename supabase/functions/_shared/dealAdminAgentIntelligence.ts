@@ -2442,6 +2442,19 @@ function queueSemanticKey(row: {
 }): string {
   const actionType = row.action_type ?? "";
   const targetType = normalizeQueueTargetType(actionType, row.target_object_type);
+  // Schedule-a-call cards live in their own dedupe bucket, keyed by the
+  // `schedule_call:{deal_id}:{funding_source_id}` bundle_key. This
+  // guarantees repeated inbound "let's connect" emails for the same
+  // (deal, lender) collapse into a single Approval Queue item, and
+  // that a schedule-call card does NOT collide with an unrelated
+  // funding_source_attention (status / draft-email) card for the same
+  // lender — they are separate reviewer decisions.
+  if (actionType === "create_followup_task") {
+    const scheduleBundle = extractScheduleCallBundleKey(row);
+    if (scheduleBundle) {
+      return `${row.deal_id ?? ""}::schedule_call::${scheduleBundle}`;
+    }
+  }
   const lenderTargetId = resolveLenderAttentionTarget(row);
   if (lenderTargetId) {
     return `${row.deal_id ?? ""}::funding_source_attention::deal_lender::${lenderTargetId}`;
