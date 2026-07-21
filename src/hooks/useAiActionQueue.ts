@@ -844,6 +844,47 @@ export function useApproveAiAction() {
             toast.success(msg || 'Approved & applied', { description: item.title });
           }
         }
+        // Schedule-a-call side-effect: when the Deal Admin Agent flagged an
+        // inbound lender email requesting to connect, the queue item is a
+        // create_followup_task tagged with a `schedule_call:` bundle_key.
+        // Approving it records the follow-up task AND opens the naitive
+        // calendar pop-up prefilled with the deal + lender so the deal
+        // owner can pick a time and book the meeting themselves. The agent
+        // never schedules automatically — this is a UI hand-off only.
+        try {
+          if (item.action_type === 'create_followup_task' && item.deal_id) {
+            const nv =
+              (item.new_values as any) ||
+              (item.payload as any)?.on_approve_execution_payload?.new_values ||
+              (item.payload as any) ||
+              {};
+            const bundleKey: string | undefined = nv?.bundle_key;
+            if (typeof bundleKey === 'string' && bundleKey.startsWith('schedule_call:')) {
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(
+                  new CustomEvent('naitive:open-schedule-call', {
+                    detail: {
+                      dealId: item.deal_id,
+                      dealName: item.deal_name ?? null,
+                      lenderName: nv?.lender_name ?? null,
+                      contactEmails: Array.isArray(nv?.lender_contact_emails)
+                        ? nv.lender_contact_emails
+                        : [],
+                      title:
+                        nv?.title ||
+                        item.title ||
+                        `Schedule call: ${nv?.lender_name ?? 'lender'}`,
+                      description: nv?.description ?? item.description ?? null,
+                      sourceRecordId: `ai-queue:${item.id}`,
+                    },
+                  }),
+                );
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[schedule-call side-effect] dispatch failed:', e);
+        }
         invalidateAllTaskCaches(qc);
         return { ok: true };
       }

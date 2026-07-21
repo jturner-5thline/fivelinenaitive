@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AddToDealCalendarDialog, type AddToDealCalendarPrefill } from './AddToDealCalendarDialog';
 import { parseRelativeDate } from '@/lib/parseRelativeDate';
 
@@ -102,6 +102,53 @@ export function AddToDealCalendarProvider({ children }: { children: ReactNode })
     () => ({ openFromSelection, openManual }),
     [openFromSelection, openManual],
   );
+
+  // Deal Admin Agent hand-off: approving a `create_followup_task` with a
+  // `schedule_call:` bundle_key in the Approval Queue dispatches this
+  // event so the calendar pop-up opens prefilled with the deal + lender.
+  // The agent never books the meeting — the deal owner completes the
+  // scheduling here.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | {
+            dealId?: string | null;
+            dealName?: string | null;
+            lenderName?: string | null;
+            contactEmails?: string[];
+            title?: string;
+            description?: string | null;
+            sourceRecordId?: string;
+          }
+        | undefined;
+      if (!detail?.dealId) return;
+      const lender = detail.lenderName ?? 'lender';
+      const deal = detail.dealName ?? 'deal';
+      const title = detail.title || `Schedule call: ${lender} on ${deal}`;
+      const sourceText = [
+        detail.description || '',
+        detail.contactEmails && detail.contactEmails.length > 0
+          ? `Lender contact(s): ${detail.contactEmails.join(', ')}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join('\n');
+      openManual({
+        title,
+        sourceText: sourceText || title,
+        ctx: {
+          module: 'other',
+          recordId: detail.sourceRecordId || `schedule-call:${detail.dealId}`,
+          sourceTimestamp: new Date().toISOString(),
+          dealId: detail.dealId,
+          label: `Schedule call — ${lender}`,
+        },
+      });
+    };
+    window.addEventListener('naitive:open-schedule-call', handler);
+    return () => window.removeEventListener('naitive:open-schedule-call', handler);
+  }, [openManual]);
 
   return (
     <Ctx.Provider value={api}>

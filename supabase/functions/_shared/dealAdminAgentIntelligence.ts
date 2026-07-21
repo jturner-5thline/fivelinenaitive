@@ -246,6 +246,17 @@ export function isInDealAdminAgentScope(c: CandidateItem): boolean {
     const bundleKey = typeof pv.bundle_key === "string" ? pv.bundle_key : "";
     return bundleKey.startsWith("terms_issued:");
   }
+  if (c.action_type === "create_followup_task") {
+    // The Deal Admin Agent's ONLY sanctioned use of create_followup_task is
+    // the "Schedule a call" trigger — an inbound lender email asking to
+    // connect / speak / set up time. Detection tags the proposal with a
+    // stable bundle_key so the client-side approve handler can open the
+    // calendar popup after the task lands. Anything else must go through a
+    // different (whitelisted) action_type.
+    const pv = (c.proposed_values ?? {}) as Record<string, any>;
+    const bundleKey = typeof pv.bundle_key === "string" ? pv.bundle_key : "";
+    return bundleKey.startsWith("schedule_call:");
+  }
   if (c.action_type === "update_funding_source") {
     const pv = (c.proposed_values ?? {}) as Record<string, any>;
     const statusBlob = [pv.tracking_status, pv.stage, pv.substage, pv.status]
@@ -1047,7 +1058,38 @@ TERM SHEET / IOI / LOI RECEIVED — HIGH-PRIORITY BUNDLE (apply whenever a lende
 - IOI / BODY-ONLY TERMS ARE FIRST-CLASS: an inbound email whose subject or body clearly delivers an IOI / LOI / term sheet / proposal counts as a full trigger EVEN WHEN there is no attachment. Do not skip steps 1 and 2 for a lender just because they emailed the terms in-body instead of attaching a document — you MUST still emit update_funding_source + add_status_note for that lender. Step 4 (save_to_data_room) is the only step that is optional when no attachment exists.
 - Never propose Terms Issued from a scheduling email, intro pleasantry, materials request, generic pricing question, or a lender merely SAYING they will send terms later. The email must actually deliver the terms (attachment or terms language quoted in-body).`;
 
-const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES + TERMS_ISSUED_RULES;
+const SCHEDULE_CALL_RULES = `
+
+SCHEDULE-A-CALL TRIGGER — INBOUND LENDER / FUNDING SOURCE EMAIL (approved, mandatory)
+- TRIGGER: an inbound email in emails[] / email_threads[] / unlinked_terms_emails[] from a funding-source contact whose body or subject clearly asks to connect, speak, or schedule time. Examples of qualifying language (non-exhaustive, treat semantically — any reasonably similar phrasing counts):
+    "can we set up a call?", "can we get some time?", "let's jump on a call",
+    "would love to connect", "would love to chat", "would love to learn more",
+    "interested in talking further", "interested in learning more",
+    "happy to hop on a call", "let's schedule a call", "grab 15 / 20 / 30 min",
+    "any time this week to talk", "do you have time to discuss", "let's connect".
+- Distinguish from Terms Issued: if the same email ALSO delivers term-sheet / IOI / LOI language or an attachment matching the terms filename regex, apply the TERMS_ISSUED bundle rules INSTEAD and do NOT also emit a schedule-call proposal for the same email.
+- SENDER ATTRIBUTION: identify the funding source by matching the inbound sender email (or its domain) to funding_sources[].contacts.email. If no funding source on the deal matches, DO NOT emit anything — never invent a funding_sources[].id and never route a schedule-a-call proposal to a non-lender.
+- EMIT EXACTLY ONE PROPOSAL per qualifying (deal, funding_source) per scan:
+    action_type = "create_followup_task"
+    item_title  = "Schedule call: {Lender} on {Deal}"  (Deal = bundle.deal_name, Lender = the resolved funding_sources[].name)
+    target_object_type = "deal_lender"
+    target_object_id   = the exact funding_sources[].id (never the deal id, never a contact id, never a made-up value)
+    proposed_values = {
+      bundle_key: "schedule_call:{deal_id}:{funding_source_id}",   // MUST be set exactly, no other action types share this prefix
+      title: "Schedule call: {Lender} on {Deal}",
+      description: "<1-2 sentence factual paraphrase of what the lender asked for, quoting the actual language when short>",
+      lender_name: "{Lender}",
+      lender_contact_emails: [<the sender email, plus any other funding_sources[].contacts.email that were also on the thread>],
+      source_email_id: "<gmail message id of the inbound request>",
+      source_email_subject: "<email subject>"
+    }
+    rationale_summary = "{Lender} asked to connect on {Deal} — surfacing a schedule-a-call confirmation so the deal owner can open the calendar and book time between the lender and the client."
+    evidence_references MUST cite the inbound email (kind="email").
+- DEDUPE: never emit more than one schedule-a-call proposal per (deal, funding_source.id) per scan. If the lender sent multiple qualifying emails, pick the MOST RECENT and reference the earlier ones in rationale_summary.
+- TERMINAL LENDER GUARD applies: if the funding source is in any terminal state (pass, declined, not_a_fit, withdrawn, dead, lost, rejected, closed, no_go, unresponsive, on_hold, paused), DO NOT emit — there is nothing to schedule.
+- The proposal is a scheduling CONFIRMATION, not an actual booking. It does NOT send email, does NOT create a calendar event, and does NOT choose a time. On approval the naitive calendar pop-up opens for the deal owner to complete the booking manually.`;
+
+const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES + TERMS_ISSUED_RULES + SCHEDULE_CALL_RULES;
 
 function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null): string {
   // Trim large fields to keep prompt compact.
