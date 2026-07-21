@@ -2056,15 +2056,44 @@ function normalizePassVsNotAFit(candidates: CandidateItem[]): {
       }
     }
 
+    // (4) Backfill the lender's status note. On approval this writes to
+    //     deal_lenders.notes, which is the user-facing status note. If the
+    //     agent didn't emit one, derive a concise 1–2 sentence factual
+    //     summary from evidence (fall back to pass_reason). Never store
+    //     internal reclassification diagnostics here — those belong on
+    //     rationale_summary only.
+    if (isPassStage || isNotFitStage) {
+      const existingNote = typeof nextPv.notes === "string" ? nextPv.notes.trim() : "";
+      if (!existingNote) {
+        const trimmed = evidenceText.replace(/\s+/g, " ").trim();
+        let summary = "";
+        if (trimmed.length > 0) {
+          const sentences = trimmed.split(/(?<=[.!?])\s+/).filter((s) => s.length > 0);
+          const triggerIdx = sentences.findIndex(
+            (s) => PASS_RE.test(s) || NOT_A_FIT_RE.test(s),
+          );
+          const picked = triggerIdx >= 0
+            ? sentences.slice(triggerIdx, triggerIdx + 2)
+            : sentences.slice(0, 2);
+          summary = picked.join(" ").trim();
+          if (summary.length > 320) summary = summary.slice(0, 320).trim() + "…";
+        }
+        if (!summary) {
+          const reason = typeof nextPv.pass_reason === "string" ? nextPv.pass_reason.trim() : "";
+          summary = isPassStage
+            ? `Lender is passing. ${reason && reason !== "No reason provided" ? `Reason: ${reason}` : "No reason provided."}`
+            : `Lender indicated the deal is not a fit. ${reason && reason !== "No reason provided" ? `Reason: ${reason}` : "No specific reason provided."}`;
+        }
+        nextPv.notes = summary;
+        mutated = true;
+      }
+    }
+
     if (!mutated) return c;
     rewritten++;
 
-    if (rewriteNote) {
-      nextPv.notes =
-        typeof nextPv.notes === "string" && nextPv.notes.trim().length
-          ? `${nextPv.notes}\n\n${rewriteNote}`
-          : rewriteNote;
-    }
+    // Reclassification diagnostics belong on rationale_summary only —
+    // deal_lenders.notes must stay a clean, user-facing status note.
 
     // Sync rationale wording with the corrected stage.
     let nextRationale = typeof c.rationale_summary === "string" ? c.rationale_summary : "";
