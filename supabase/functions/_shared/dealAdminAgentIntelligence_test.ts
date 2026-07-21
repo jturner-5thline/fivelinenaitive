@@ -166,3 +166,53 @@ Deno.test(
     assertEquals(isInDealAdminAgentScope(evidenceOnly), true);
   },
 );
+
+/**
+ * Guards the Schedule-a-Call trigger. The Deal Admin Agent's ONLY
+ * sanctioned use of create_followup_task is an inbound lender email
+ * asking to connect / speak / set up time. Detection tags the proposal
+ * with a `schedule_call:{deal_id}:{funding_source_id}` bundle_key so
+ * the client-side approve handler can open the calendar pop-up. Any
+ * other create_followup_task shape must be dropped from the queue.
+ */
+Deno.test(
+  "schedule-a-call create_followup_task with schedule_call bundle_key passes",
+  () => {
+    const scheduleCall = baseCandidate({
+      action_type: "create_followup_task",
+      target_object_type: "deal_lender",
+      target_object_id: LENDER_ID,
+      item_title: "Schedule call: Acme Capital on Widget Co",
+      proposed_values: {
+        bundle_key: `schedule_call:${DEAL_ID}:${LENDER_ID}`,
+        title: "Schedule call: Acme Capital on Widget Co",
+        lender_name: "Acme Capital",
+        lender_contact_emails: ["partner@acme.example"],
+        source_email_id: "gmail-msg-1",
+      },
+      rationale_summary:
+        "Acme asked to connect on Widget Co — surfacing schedule confirmation.",
+    });
+    assertEquals(isInDealAdminAgentScope(scheduleCall), true);
+  },
+);
+
+Deno.test(
+  "create_followup_task WITHOUT schedule_call bundle_key is rejected",
+  () => {
+    const noBundle = baseCandidate({
+      action_type: "create_followup_task",
+      proposed_values: { title: "Do something generic" },
+    });
+    assertEquals(isInDealAdminAgentScope(noBundle), false);
+
+    const wrongBundle = baseCandidate({
+      action_type: "create_followup_task",
+      proposed_values: {
+        title: "Something else",
+        bundle_key: "terms_issued:abc:xyz",
+      },
+    });
+    assertEquals(isInDealAdminAgentScope(wrongBundle), false);
+  },
+);
