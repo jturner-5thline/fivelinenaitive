@@ -146,30 +146,40 @@ export function MemoHeader({ deal, showLiveDot = true, onOpenDeal, onClose }: Me
 
   return (
     <div className="px-5 pt-4 pb-3 border-b border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap min-w-0">
-          {onOpenDeal ? (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onOpenDeal(); }}
-              title={`Open details for ${deal.company || deal.name}`}
-              className="text-[17px] font-semibold leading-tight tracking-tight text-white truncate text-left hover:text-primary hover:underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-sm"
-            >
-              <h2 className="truncate">{deal.company || deal.name}</h2>
-            </button>
-          ) : (
-            <h2
-              className="text-[17px] font-semibold leading-tight tracking-tight text-white truncate"
-              title={deal.company || deal.name}
-            >
-              {deal.company || deal.name}
-            </h2>
-          )}
-          {structureLabel && (
-            <Badge variant="gray" className="rounded-full font-medium">{structureLabel}</Badge>
-          )}
-          {assetClass && (
-            <Badge variant="gray" className="rounded-full font-medium">{assetClass}</Badge>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex flex-col gap-1.5 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            {onOpenDeal ? (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onOpenDeal(); }}
+                title={`Open details for ${deal.company || deal.name}`}
+                className="text-[17px] font-semibold leading-tight tracking-tight text-white truncate text-left hover:text-primary hover:underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-sm"
+              >
+                <h2 className="truncate">{deal.company || deal.name}</h2>
+              </button>
+            ) : (
+              <h2
+                className="text-[17px] font-semibold leading-tight tracking-tight text-white truncate"
+                title={deal.company || deal.name}
+              >
+                {deal.company || deal.name}
+              </h2>
+            )}
+            {amountLabel !== '—' && (
+              <span className="text-[15px] font-semibold text-white shrink-0">{amountLabel}</span>
+            )}
+            <EditableDealStatusTag dealId={deal.id} status={deal.status} />
+          </div>
+          {(structureLabel || assetClass) && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {structureLabel && (
+                <Badge variant="gray" className="rounded-full font-medium">{structureLabel}</Badge>
+              )}
+              {assetClass && (
+                <Badge variant="gray" className="rounded-full font-medium">{assetClass}</Badge>
+              )}
+            </div>
           )}
         </div>
         <div
@@ -179,9 +189,6 @@ export function MemoHeader({ deal, showLiveDot = true, onOpenDeal, onClose }: Me
           onMouseDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
-          {/* Editable status tag — reuses the shared status surface and
-              writes back to deal.status so every other consumer updates. */}
-          <EditableDealStatusTag dealId={deal.id} status={deal.status} />
           {/* Editable stage tag — same UX pattern, mutates deal.stage so
               the rundown surfaces (memo card, master tile, briefing
               boards) re-render in lockstep with the canonical pipeline. */}
@@ -190,7 +197,6 @@ export function MemoHeader({ deal, showLiveDot = true, onOpenDeal, onClose }: Me
             stage={deal.stage}
             pipelineId={deal.pipelineId}
           />
-          <Badge variant="green" className="rounded-full font-semibold">{amountLabel}</Badge>
           {/* Email — launches the existing thread-aware Draft Email to
               Client Contact dialog. Reuses the same composer + thread
               picker shipped on the deal detail page. */}
