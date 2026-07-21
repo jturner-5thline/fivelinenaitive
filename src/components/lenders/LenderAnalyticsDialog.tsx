@@ -227,11 +227,23 @@ function StageTag({ label }: { label: string | null | undefined }) {
   );
 }
 
-/** Returns ordinal milestone reached (1..7) for a normalized label, or 0 if not on the linear path. */
+/** Returns ordinal milestone reached (1..7) for a normalized label, or 0 if not on the linear path.
+ *  Ordinal 7 = "Draft Terms" or any later stage (terms issued, due diligence, agreement pending,
+ *  funded/invoiced, closed/won). Conversion rate = (ord >= 7) / (added to deal). */
 function stageOrdinal(label: string): number {
   const n = normalizeLabel(label);
   if (!n) return 0;
-  if (n.includes('term')) return 7; // term sheet, terms issued, draft terms
+  // Post-terms progression counts as "reached Draft Terms or later".
+  if (
+    n.includes('term') ||
+    n.includes('due diligence') ||
+    n.includes('diligence') ||
+    n.includes('agreement') ||
+    n.includes('funded') ||
+    n.includes('invoiced') ||
+    n.includes('closed') ||
+    n === 'won'
+  ) return 7;
   if (n.includes('management call completed') || n.includes('mgmt call completed')) return 6;
   if (n.includes('management call') || n.includes('mgmt call')) return 5;
   if (n.includes('reviewing') || n === 'in review' || n.includes('in review')) return 4;
@@ -422,10 +434,13 @@ export function LenderAnalyticsDialog({
       const ord = stageOrdinal(label);
       const terminal = isTerminal(label, dl.pass_reason);
       const bucket = bucketFor(label, ord, terminal);
-      // Denominator = lender was added to a deal at any stage (outreach, inquiry,
-      // sent DRL, in review, mgmt call, terms) or reached a terminal state.
-      // Numerator = lender reached "Terms Issued" (ord === 7).
-      const everSubmitted = ord >= 1 || terminal.passed || terminal.unresponsive || terminal.onHold;
+      // Conversion rate definition:
+      //   Denominator (`everSubmitted`) = lender was ADDED to a deal.
+      //     Every deal_lenders row counts, regardless of current stage.
+      //   Numerator   (`everTerms`)     = reached "Draft Terms" or any later
+      //     stage (terms issued, due diligence, agreement pending, funded,
+      //     closed / won).
+      const everSubmitted = true;
       const everTerms = ord >= 7;
       out.push({
         ...dl,
@@ -868,7 +883,7 @@ export function LenderAnalyticsDialog({
             <IntelKpi
               label="Conversion Rate"
               value={fmtPct(kpis.conv)}
-              hint="added to deal → terms issued"
+              hint="added to deal → Draft Terms or later"
               loading={loading}
               onClick={() => setOpenKpi('conv')}
             />
