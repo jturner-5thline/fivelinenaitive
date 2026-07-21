@@ -12,6 +12,7 @@ import { useMyTasks } from '@/hooks/useTasks';
 import { useCreateMentions } from '@/hooks/useTaskMentions';
 import { MentionTextarea, MentionText } from '@/components/tasks/MentionTextarea';
 import { useQuery } from '@tanstack/react-query';
+import { useDealsContext } from '@/contexts/DealsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -586,7 +587,10 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
 
 
             {/* Deal link */}
-            {task.deal_id && <DealLinkField dealId={task.deal_id} />}
+            <DealLinkField
+              dealId={task.deal_id || null}
+              onChange={(id) => onUpdateWithUndo({ deal_id: id } as any)}
+            />
 
             {/* Recurrence controls */}
             {(task.recurrence_rule || (task as any).is_recurring) && (() => {
