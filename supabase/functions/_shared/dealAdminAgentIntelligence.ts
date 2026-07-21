@@ -203,7 +203,7 @@ interface DealSignalBundle {
   configured_milestone_titles: string[];
 }
 
-interface CandidateItem {
+export interface CandidateItem {
   action_type: AdminActionType;
   item_title: string;
   linked_entity_label: string;
@@ -226,6 +226,43 @@ interface CandidateItem {
   bulk_eligible: boolean;
   requires_send_ui: boolean;
   priority: "low" | "normal" | "high" | "urgent";
+}
+
+/**
+ * SCOPE WHITELIST for the Deal Admin Agent's Approval Queue producer.
+ *
+ * Exported so unit tests can verify — without invoking Claude — that a
+ * given LLM-shaped proposal list collapses to exactly the queue items
+ * we expect for the 6 approved triggers (see runDealAdminAgentAnalysis
+ * for the full list). Keep in lock-step with the inline `inScope` in
+ * `runDealAdminAgentAnalysis`.
+ */
+const TERMS_STATUS_RE_EXPORT = /term|ioi|loi|indication|proposal/i;
+const PASS_STATUS_RE_EXPORT = /pass|declin|not[_\s-]?a?[_\s-]?fit|withdraw|dead|lost|reject|no[_\s-]?go/i;
+export function isInDealAdminAgentScope(c: CandidateItem): boolean {
+  if (c.action_type === "draft_email") return true;
+  if (c.action_type === "save_to_data_room") {
+    const pv = (c.proposed_values ?? {}) as Record<string, any>;
+    const bundleKey = typeof pv.bundle_key === "string" ? pv.bundle_key : "";
+    return bundleKey.startsWith("terms_issued:");
+  }
+  if (c.action_type === "update_funding_source") {
+    const pv = (c.proposed_values ?? {}) as Record<string, any>;
+    const statusBlob = [pv.tracking_status, pv.stage, pv.substage, pv.status]
+      .map((v) => (typeof v === "string" ? v : ""))
+      .join(" ");
+    const textBlob = [
+      pv.notes, pv.note, pv.reason,
+      c.rationale_summary, c.evidence_summary,
+      ...(Array.isArray(c.evidence_references)
+        ? c.evidence_references.flatMap((e) => [e?.snippet, e?.label])
+        : []),
+    ].filter((s) => typeof s === "string").join("\n");
+    if (TERMS_STATUS_RE_EXPORT.test(statusBlob) || PASS_STATUS_RE_EXPORT.test(statusBlob)) return true;
+    if (!statusBlob.trim() && (TERMS_STATUS_RE_EXPORT.test(textBlob) || PASS_STATUS_RE_EXPORT.test(textBlob))) return true;
+    return false;
+  }
+  return false;
 }
 
 export interface AnalyzeOpts {
