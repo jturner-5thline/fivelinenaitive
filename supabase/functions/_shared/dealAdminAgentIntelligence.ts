@@ -4170,6 +4170,37 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       const { kept, merged, filtered } = dedupeAndMerge(scopedFiltered, existingKeys);
       result.candidates_merged += merged;
       result.candidates_filtered += filtered;
+
+      // Update-in-place pass for schedule_call cards. When a candidate's
+      // semantic key matches a still-pending schedule_call row, refresh
+      // that row's contact emails / description / evidence / rationale
+      // instead of leaving stale details on a duplicate that dedupe would
+      // drop. This runs regardless of whether other new candidates
+      // survived, so a later "let's connect" email always keeps the
+      // existing Approval Queue item current.
+      if (pendingScheduleCallByKey.size > 0) {
+        const remainingKept: typeof scopedFiltered = [];
+        for (const c of scopedFiltered) {
+          const key = queueSemanticKey({ ...c, deal_id: bundle.deal_id } as any);
+          const existingRow = pendingScheduleCallByKey.get(key);
+          if (!existingRow) {
+            remainingKept.push(c);
+            continue;
+          }
+          try {
+            await applyScheduleCallUpdate(supabase, existingRow, c, bundle);
+            result.candidates_merged += 1;
+          } catch (err) {
+            console.warn(
+              `[deal-admin-agent] schedule_call in-place update failed for row=${existingRow.id}:`,
+              (err as Error)?.message,
+            );
+          }
+        }
+        // If everything collapsed into updates, fall through — nothing left to insert.
+        if (remainingKept.length === 0 && kept.length === 0) continue;
+      }
+
       if (kept.length === 0) continue;
 
       // Rank: confidence desc, then risk asc for ties (low risk first).
