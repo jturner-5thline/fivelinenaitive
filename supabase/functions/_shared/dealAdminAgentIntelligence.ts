@@ -3954,7 +3954,50 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       }
       if (taskFiltered.length === 0) continue;
 
-      const { kept, merged, filtered } = dedupeAndMerge(taskFiltered, existingKeys);
+      // ------------------------------------------------------------------
+      // SCOPE WHITELIST — Deal Admin Agent is limited to 6 exact triggers:
+      //   Lender email → Terms Issued update           (update_funding_source)
+      //   Lender email → Pass update                   (update_funding_source)
+      //   Lender email → schedule a call               (draft_email)
+      //   Follow up on unanswered lender email (2 BD)  (draft_email)
+      //   Outstanding items reminder to client (2 BD)  (draft_email)
+      //   No client reply in 3 BD                      (draft_email)
+      // Anything else is out of scope and must not reach the approval queue.
+      // ------------------------------------------------------------------
+      const TERMS_STATUS_RE = /term|ioi|loi|indication|proposal/i;
+      const PASS_STATUS_RE = /pass|declin|not[_\s-]?a?[_\s-]?fit|withdraw|dead|lost|reject|no[_\s-]?go/i;
+      const inScope = (c: CandidateItem): boolean => {
+        if (c.action_type === "draft_email") return true;
+        if (c.action_type === "update_funding_source") {
+          const pv = (c.proposed_values ?? {}) as Record<string, any>;
+          const statusBlob = [pv.tracking_status, pv.stage, pv.substage, pv.status]
+            .map((v) => (typeof v === "string" ? v : ""))
+            .join(" ");
+          const textBlob = [
+            pv.notes, pv.note, pv.reason,
+            c.rationale_summary, c.evidence_summary,
+            ...(Array.isArray(c.evidence_references)
+              ? c.evidence_references.flatMap((e) => [e?.snippet, e?.label])
+              : []),
+          ].filter((s) => typeof s === "string").join("\n");
+          if (TERMS_STATUS_RE.test(statusBlob) || PASS_STATUS_RE.test(statusBlob)) return true;
+          // Fall back to evidence wording only if the status field is blank
+          // (some proposals only carry a status_note update paired with the
+          // implicit transition described in the evidence).
+          if (!statusBlob.trim() && (TERMS_STATUS_RE.test(textBlob) || PASS_STATUS_RE.test(textBlob))) return true;
+          return false;
+        }
+        return false;
+      };
+      const outOfScopeCount = taskFiltered.filter((c) => !inScope(c)).length;
+      const scopedFiltered = taskFiltered.filter(inScope);
+      if (outOfScopeCount > 0) {
+        result.candidates_filtered += outOfScopeCount;
+        console.log(`[deal-admin-agent] DROPPED ${outOfScopeCount} out-of-scope proposal(s) for deal=${d.id} — not one of the 6 approved triggers (lender Terms Issued/Pass, follow-ups, outstanding-items reminder, client no-reply)`);
+      }
+      if (scopedFiltered.length === 0) continue;
+
+      const { kept, merged, filtered } = dedupeAndMerge(scopedFiltered, existingKeys);
       result.candidates_merged += merged;
       result.candidates_filtered += filtered;
       if (kept.length === 0) continue;

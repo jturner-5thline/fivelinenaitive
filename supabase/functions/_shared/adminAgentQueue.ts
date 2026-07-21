@@ -322,41 +322,17 @@ export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<En
   // Also: never surface generic "update funding sources on <Deal>" cards.
   // They're too vague to action from the queue — funding-source movements
   // should be captured directly on the deal / lender record instead.
-  const queueRows = queueRowsAll.filter((r: any) => {
-    if (r.action_type === "create_task" || r.action_type === "create_followup_task") return false;
-    if (r.action_type === "update_funding_source") return false;
-    if (typeof r.target_object_type === "string" && r.target_object_type.toLowerCase() === "task") return false;
-    // Never surface vague "update X on <Deal>" cards. If the enqueue payload
-    // carries no concrete target values (e.g. a specific new stage / status
-    // / milestone / field value), the item is unactionable noise. The Deal
-    // Admin Agent proper always attaches new_values when it knows exactly
-    // what should change; anything without them is a proactive-sweep
-    // placeholder and should be dropped.
-    const VAGUE_WHEN_EMPTY = new Set([
-      "update_deal_stage",
-      "update_deal_status",
-      "update_milestone",
-      "update_contact",
-      "update_company",
-    ]);
-    if (VAGUE_WHEN_EMPTY.has(r.action_type)) {
-      const nv = r.new_values;
-      const hasConcrete = nv && typeof nv === "object" && Object.keys(nv).length > 0;
-      if (!hasConcrete) return false;
-    }
-    // Deal STATUS enum guardrail. Status is a health badge with a strict
-    // enum: on-track | at-risk | off-track (or cleared). Anything else
-    // (e.g. "Active", "Live", "Pending", "Kickoff") is not a real status
-    // value and must never surface in the queue.
-    if (r.action_type === "update_deal_status") {
-      const nv = (r.new_values ?? {}) as Record<string, unknown>;
-      const candidate = (nv.status ?? nv.new_status ?? "") as unknown;
-      const norm = String(candidate ?? "").trim().toLowerCase().replace(/[\s_]+/g, "-");
-      const ALLOWED = new Set(["on-track", "at-risk", "off-track"]);
-      if (!norm || !ALLOWED.has(norm)) return false;
-    }
-    return true;
-  });
+  // SCOPE WHITELIST — the Deal Admin Agent is limited to 6 exact triggers,
+  // all of which flow through runDealAdminAgentAnalysis (lender Terms
+  // Issued / Pass status updates and draft_email follow-ups for lenders,
+  // outstanding items, and unanswered client threads). The portfolio
+  // field-verification pipeline in this file produces reminder cards
+  // (update_deal_stage / update_deal_status / add_status_note /
+  // update_milestone / update_contact / update_company / create_task) that
+  // are NOT in that list — drop them all so this producer stops writing
+  // out-of-scope rows to ai_action_queue. The paired admin_agent_selected_actions
+  // rows are still recorded above so the audit trail is preserved.
+  const queueRows: typeof queueRowsAll = [];
   if (queueRows.length === 0) return result;
 
   const { data: insertedQueue, error: qErr } = await supabase
