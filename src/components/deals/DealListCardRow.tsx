@@ -167,7 +167,7 @@ function DealListCardRowImpl({
       )}
 
       <div className="flex-1 min-w-0">
-        {/* Primary row: company name + status chip + inline tags */}
+        {/* Top row: warning/status icons + name + deal size + status badge */}
         <div className="flex items-center gap-2 flex-wrap">
           {!compact && timeAgoData.isStale && (
             <TooltipProvider>
@@ -186,9 +186,6 @@ function DealListCardRowImpl({
               </Tooltip>
             </TooltipProvider>
           )}
-          <h3 className="font-medium truncate text-foreground">
-            {deal.company || 'Untitled deal'}
-          </h3>
           {!compact && notificationCount > 0 &&
             deal.status !== 'archived' &&
             deal.stage !== 'closed-lost' && (
@@ -223,6 +220,12 @@ function DealListCardRowImpl({
               </Tooltip>
             </TooltipProvider>
           )}
+          <h3 className="font-medium truncate text-foreground">
+            {deal.company || 'Untitled deal'}
+          </h3>
+          <span className="font-medium text-foreground tabular-nums shrink-0">
+            {formatCurrencyValue(deal.value)}
+          </span>
           {!compact && (
             <div onClick={(e) => e.stopPropagation()} className="shrink-0">
               <InlineStatusDropdown
@@ -232,14 +235,6 @@ function DealListCardRowImpl({
                 className="text-foreground dark:text-[hsl(240,25%,5%)] whitespace-nowrap"
               />
             </div>
-          )}
-          {!compact && engagementLabel && (
-            <Badge
-              variant="outline"
-              className="text-[10px] uppercase tracking-wider rounded-md whitespace-nowrap border-white/10 bg-white/[0.03] text-muted-foreground shrink-0"
-            >
-              {engagementLabel}
-            </Badge>
           )}
           {!compact && lateMilestoneCount > 0 && (
             <Badge
@@ -251,22 +246,9 @@ function DealListCardRowImpl({
           )}
         </div>
 
-        {/* Secondary metadata: value · stage · manager · fee · updated */}
+        {/* Bottom row: manager · stage · deal type · updated */}
         {!compact && (
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground tabular-nums">
-            {formatCurrencyValue(deal.value)}
-          </span>
-          <div onClick={(e) => e.stopPropagation()}>
-            <InlineStageDropdown
-              dealId={deal.id}
-              stage={deal.stage}
-              pipelineId={deal.pipelineId}
-              onStageChange={
-                onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))
-              }
-            />
-          </div>
           <span className="inline-flex items-center gap-1.5">
             {managerInitials ? (
               <span
@@ -280,11 +262,24 @@ function DealListCardRowImpl({
             )}
             <span className="truncate max-w-[140px]">{deal.manager || 'No manager'}</span>
           </span>
-          {!compact && deal.totalFee ? (
-            <span className="tabular-nums">
-              Fee: <span className="text-foreground font-medium">${deal.totalFee.toLocaleString()}</span>
-            </span>
-          ) : null}
+          <div onClick={(e) => e.stopPropagation()}>
+            <InlineStageDropdown
+              dealId={deal.id}
+              stage={deal.stage}
+              pipelineId={deal.pipelineId}
+              onStageChange={
+                onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))
+              }
+            />
+          </div>
+          {engagementLabel && (
+            <Badge
+              variant="outline"
+              className="text-[10px] uppercase tracking-wider rounded-md whitespace-nowrap border-white/10 bg-white/[0.03] text-muted-foreground shrink-0"
+            >
+              {engagementLabel}
+            </Badge>
+          )}
           {!compact && (
             <span
               className={cn(
