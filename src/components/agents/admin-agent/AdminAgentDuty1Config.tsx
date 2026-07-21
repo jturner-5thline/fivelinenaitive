@@ -1452,6 +1452,13 @@ export function AdminAgentDuty1Config() {
           </Button>
         </div>
       )}
+
+      <KnowledgeTestDialog
+        open={knowledgeTestOpen}
+        onOpenChange={setKnowledgeTestOpen}
+        companyId={companyId}
+        hasReadyDocs={(knowledgeQ.data ?? []).some((d) => d.status === 'ready')}
+      />
     </div>
   );
 }
