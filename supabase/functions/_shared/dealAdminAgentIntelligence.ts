@@ -1085,6 +1085,9 @@ SCHEDULE-A-CALL TRIGGER — INBOUND LENDER / FUNDING SOURCE EMAIL (approved, man
     }
     rationale_summary = "{Lender} asked to connect on {Deal} — surfacing a schedule-a-call confirmation so the deal owner can open the calendar and book time between the lender and the client."
     evidence_references MUST cite the inbound email (kind="email").
+    evidence_summary = REQUIRED. A single short, neutral sentence (<= 240 chars) that names the triggering language, quoted verbatim in double quotes when the phrase is <= 12 words. Format exactly:
+        "{Sender first name or lender name} on {short date, e.g. Mar 12}: \"<verbatim quote of the connect/schedule phrase>\""
+      If the qualifying phrase is longer than 12 words, paraphrase it neutrally in <= 20 words instead of quoting. Never editorialize ("great fit", "excited", "urgent"), never speculate about intent beyond what the sender wrote, and never mention terms/pricing.
 - DEDUPE: never emit more than one schedule-a-call proposal per (deal, funding_source.id) per scan. If the lender sent multiple qualifying emails, pick the MOST RECENT and reference the earlier ones in rationale_summary.
 - TERMINAL LENDER GUARD applies: if the funding source is in any terminal state (pass, declined, not_a_fit, withdrawn, dead, lost, rejected, closed, no_go, unresponsive, on_hold, paused), DO NOT emit — there is nothing to schedule.
 - The proposal is a scheduling CONFIRMATION, not an actual booking. It does NOT send email, does NOT create a calendar event, and does NOT choose a time. On approval the naitive calendar pop-up opens for the deal owner to complete the booking manually.`;
