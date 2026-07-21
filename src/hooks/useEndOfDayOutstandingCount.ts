@@ -136,35 +136,12 @@ export function useEndOfDayOutstandingCount(): number {
 
   return useMemo(() => {
     if (!eligible || !userId) return 0;
-    // Post one-time-clear: the entire allowlist should read 0 on the badge.
-    // The cutoff row above also empties the EOD tab, but we short-circuit
-    // here so the badge never flickers a stale count between mount and the
-    // clear query settling.
+    // Post one-time-clear: the entire 5th Line allowlist reads 0 on the
+    // badge. The cutoff rows written above also empty the EOD tab, but we
+    // short-circuit here so the badge never flickers a stale count between
+    // mount and the clear query settling. Referencing the cache signals
+    // below keeps them as deps without doing per-event math.
+    void events; void isResolved; void isDismissed; void tick;
     return 0;
-    // eslint-disable-next-line no-unreachable
-    const snoozeMap = readLS<Record<string, string>>(`${SNOOZE_KEY_PREFIX}:${userId}`, {});
-    const readSet = new Set(readLS<string[]>(`${READ_KEY_PREFIX}:${userId}`, []));
-    const now = new Date();
-    const ws = startOfDay(subDays(now, EOD_LOOKBACK_DAYS));
-    const we = endOfDay(now);
-    let count = 0;
-    for (const ev of events || []) {
-      const start = safeParse(ev.start);
-      if (!start || start < ws || start > we) continue;
-      const attendees = ev.attendees || [];
-      const otherCount = attendees.filter((a) => !a.self).length;
-      if (otherCount === 0) continue;
-      if (isResolved(ev.id)) continue;
-      if (isDismissed(ev.id, start)) continue;
-      const until = snoozeMap[ev.id];
-      if (until) {
-        const d = safeParse(until);
-        if (d && d > now) continue;
-      }
-      if (readSet.has(ev.id)) continue;
-      count += 1;
-    }
-    return count;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [events, eligible, userId, isResolved, isDismissed, tick]);
 }
