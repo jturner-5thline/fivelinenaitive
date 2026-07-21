@@ -40,6 +40,7 @@ import { logUsage } from '@/lib/usageLogger';
 import { useCopilotChatScope, serializeScope } from '@/lib/copilotChatScope';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { matchDemoScript } from '@/lib/ai/demoScripts';
+import { detectDealFilterHints } from '@/lib/detectDealFilterHints';
 
 const COPILOT_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`;
 
@@ -1158,6 +1159,13 @@ export function AICopilotPanel() {
   const liveRegionRef = useRef<HTMLDivElement>(null);
   const messageQueueRef = useRef<string[]>([]);
   const isProcessingRef = useRef(false);
+  /**
+   * When set, the next handleSend call skips the deal-filter preview
+   * confirmation and dispatches straight through. Used by the "Run" button
+   * on the preview card so a confirmed prompt doesn't re-trigger the
+   * preview.
+   */
+  const bypassFilterPreviewRef = useRef(false);
   const { nudges, dismissNudge, dismissAllNudges } = useProactiveNudges();
   const isMobile = useIsMobile();
   const isOnline = useOnlineStatus();
@@ -1823,6 +1831,32 @@ export function AICopilotPanel() {
       return;
     }
 
+    // Quick confirmation preview: if the prompt narrows to a subset of
+    // deals via detectable filters, post a preview card and wait for the
+    // user to confirm before firing any tools. The user's own message is
+    // already visible above the card. Skipped once when the confirm
+    // button re-invokes handleSend via bypassFilterPreviewRef.
+    if (!bypassFilterPreviewRef.current) {
+      const preview = detectDealFilterHints(text);
+      if (preview) {
+        addMessage({
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: '',
+          timestamp: new Date(),
+          metadata: {
+            kind: 'filter_preview',
+            prompt: text,
+            intent: preview.intent,
+            intentLabel: preview.intentLabel,
+            filters: preview.filters,
+          },
+        });
+        return;
+      }
+    }
+    bypassFilterPreviewRef.current = false;
+
     if (isProcessingRef.current) {
       // Queue this message to be processed after current one finishes
       messageQueueRef.current.push(text);
@@ -2301,7 +2335,113 @@ export function AICopilotPanel() {
                   </div>
                 )}
                 {/* Error message with retry */}
-                {msg.metadata?.kind === 'agent_run' ? (
+                {msg.metadata?.kind === 'filter_preview' ? (
+                  <div
+                    style={{
+                      width: '100%',
+                      maxWidth: '95%',
+                      padding: '12px 14px',
+                      borderRadius: '12px 12px 12px 2px',
+                      background: 'linear-gradient(135deg, rgba(126,184,247,0.14), rgba(126,184,247,0.06))',
+                      border: '1px solid rgba(126,184,247,0.30)',
+                      color: 'var(--foreground)',
+                      fontSize: 13,
+                      lineHeight: 1.5,
+                    }}
+                    role="group"
+                    aria-label="Confirm detected filters before running"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <span style={{ fontSize: 14 }}>🔎</span>
+                      <span style={{ fontWeight: 600 }}>Quick confirm</span>
+                      <span style={{ opacity: 0.75, fontSize: 12 }}>
+                        Intent: {msg.metadata.intentLabel}
+                      </span>
+                    </div>
+                    <div style={{ opacity: 0.85, marginBottom: 8 }}>
+                      I'll run this against the deals matching:
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                      {(msg.metadata.filters as Array<{ label: string }>).map((f, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontSize: 12,
+                            padding: '3px 8px',
+                            borderRadius: 999,
+                            background: 'rgba(126,184,247,0.18)',
+                            border: '1px solid rgba(126,184,247,0.35)',
+                          }}
+                        >
+                          {f.label}
+                        </span>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Remove this preview card, then re-send the same
+                          // prompt with the bypass flag so it dispatches
+                          // straight through without re-triggering the
+                          // preview.
+                          const store = useCopilotStore.getState();
+                          store.setMessages(store.messages.filter((m) => m.id !== msg.id));
+                          bypassFilterPreviewRef.current = true;
+                          // Also drop the last user echo of this same prompt so
+                          // the confirmed run reads cleanly (handleSend will
+                          // re-add it).
+                          const trimmed = store.messages.filter((m) => m.id !== msg.id);
+                          const lastUser = [...trimmed].reverse().find((m) => m.role === 'user');
+                          if (lastUser && lastUser.content === msg.metadata.prompt) {
+                            store.setMessages(trimmed.filter((m) => m.id !== lastUser.id));
+                          }
+                          handleSend(msg.metadata.prompt as string);
+                        }}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          background: 'rgba(126,184,247,0.28)', border: '1px solid rgba(126,184,247,0.55)',
+                          borderRadius: 8, padding: '5px 12px', fontSize: 13,
+                          color: 'var(--foreground)', cursor: 'pointer', fontWeight: 500,
+                        }}
+                      >
+                        Run it
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const store = useCopilotStore.getState();
+                          store.setMessages(store.messages.filter((m) => m.id !== msg.id));
+                          setInput(msg.metadata.prompt as string);
+                          setTimeout(() => textareaRef.current?.focus(), 0);
+                        }}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          background: 'transparent', border: '1px solid var(--glass-border)',
+                          borderRadius: 8, padding: '5px 12px', fontSize: 13,
+                          color: 'var(--foreground)', cursor: 'pointer',
+                        }}
+                      >
+                        Edit prompt
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const store = useCopilotStore.getState();
+                          store.setMessages(store.messages.filter((m) => m.id !== msg.id));
+                        }}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          background: 'transparent', border: '1px solid var(--glass-border)',
+                          borderRadius: 8, padding: '5px 12px', fontSize: 13,
+                          color: 'hsl(var(--muted-foreground))', cursor: 'pointer',
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : msg.metadata?.kind === 'agent_run' ? (
                   <div style={{ width: '100%', maxWidth: '95%' }}>
                     <AgentRunCard
                       runId={msg.metadata.runId}
