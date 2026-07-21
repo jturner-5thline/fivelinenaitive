@@ -134,40 +134,6 @@ export default function Preferences() {
                   {isVisible('profile') && (
                     <ProfileSettings />
                   )}
-                  {isVisible('appearance') && (
-                    <Collapsible>
-                      <Card>
-                        <CollapsibleTrigger className="w-full group">
-                          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Palette className="h-5 w-5" />
-                                <div className="text-left">
-                                  <CardTitle className="text-lg">Appearance</CardTitle>
-                                  <CardDescription>Customize how the app looks</CardDescription>
-                                </div>
-                              </div>
-                              <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                            </div>
-                          </CardHeader>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <div className="space-y-0.5">
-                                <Label>Compact Mode</Label>
-                                <p className="text-sm text-muted-foreground">Use smaller spacing and fonts</p>
-                              </div>
-                              <Switch
-                                checked={preferences.compactMode}
-                                onCheckedChange={(checked) => updatePreference('compactMode', checked)}
-                              />
-                            </div>
-                          </CardContent>
-                        </CollapsibleContent>
-                      </Card>
-                    </Collapsible>
-                  )}
                 </TabsContent>
 
                 {/* Notifications Tab */}
