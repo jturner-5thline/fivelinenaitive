@@ -416,6 +416,7 @@ const App = () => (
                             <Route path="/pipeline" element={<NaitivePipeline />} />
                             <Route path="/news-feed" element={<NewsFeed />} />
                             <Route path="/tasks" element={<Tasks />} />
+                            <Route path="/workspace" element={<Workspace />} />
                             <Route path="/meeting-notes" element={<MeetingNotesSearch />} />
                             <Route path="/tasks/:taskId" element={<TaskDetail />} />
                             <Route path="/tasks/preview/suggested" element={<SuggestedTaskPreview />} />
