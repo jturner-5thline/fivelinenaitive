@@ -246,6 +246,17 @@ export function isInDealAdminAgentScope(c: CandidateItem): boolean {
     const bundleKey = typeof pv.bundle_key === "string" ? pv.bundle_key : "";
     return bundleKey.startsWith("terms_issued:");
   }
+  if (c.action_type === "create_followup_task") {
+    // The Deal Admin Agent's ONLY sanctioned use of create_followup_task is
+    // the "Schedule a call" trigger — an inbound lender email asking to
+    // connect / speak / set up time. Detection tags the proposal with a
+    // stable bundle_key so the client-side approve handler can open the
+    // calendar popup after the task lands. Anything else must go through a
+    // different (whitelisted) action_type.
+    const pv = (c.proposed_values ?? {}) as Record<string, any>;
+    const bundleKey = typeof pv.bundle_key === "string" ? pv.bundle_key : "";
+    return bundleKey.startsWith("schedule_call:");
+  }
   if (c.action_type === "update_funding_source") {
     const pv = (c.proposed_values ?? {}) as Record<string, any>;
     const statusBlob = [pv.tracking_status, pv.stage, pv.substage, pv.status]
