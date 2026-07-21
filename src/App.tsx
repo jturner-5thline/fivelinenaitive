@@ -134,6 +134,7 @@ const Index = lazy(lazyRetry(() => import("./pages/Index")));
 const Auth = lazy(lazyRetry(() => import("./pages/Auth")));
 const Onboarding = lazy(lazyRetry(() => import("./pages/Onboarding")));
 const Deals = lazy(lazyRetry(() => import("./pages/Deals")));
+const Workspace = lazy(lazyRetry(() => import("./pages/Workspace")));
 // /dashboard route removed — global popup overlays now live in the floating
 // header so dashboard widgets are reachable from every page.
 // Shared DealDetail loader — the kanban deal overlay and hover/idle
@@ -415,6 +416,7 @@ const App = () => (
                             <Route path="/pipeline" element={<NaitivePipeline />} />
                             <Route path="/news-feed" element={<NewsFeed />} />
                             <Route path="/tasks" element={<Tasks />} />
+                            <Route path="/workspace" element={<Workspace />} />
                             <Route path="/meeting-notes" element={<MeetingNotesSearch />} />
                             <Route path="/tasks/:taskId" element={<TaskDetail />} />
                             <Route path="/tasks/preview/suggested" element={<SuggestedTaskPreview />} />
