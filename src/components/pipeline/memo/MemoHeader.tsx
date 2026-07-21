@@ -169,14 +169,18 @@ export function MemoHeader({ deal, showLiveDot = true, onOpenDeal, onClose }: Me
             {amountLabel !== '—' && (
               <span className="text-[17px] font-semibold text-white shrink-0">{amountLabel}</span>
             )}
-            <EditableDealStatusTag dealId={deal.id} status={deal.status} />
+            <span className="inline-flex origin-left" style={{ transform: 'scale(1.15)', transformOrigin: 'left center' }}>
+              <EditableDealStatusTag dealId={deal.id} status={deal.status} />
+            </span>
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
-            <EditableDealStageTag
-              dealId={deal.id}
-              stage={deal.stage}
-              pipelineId={deal.pipelineId}
-            />
+            <span className="inline-flex" style={{ transform: 'scale(1.15)', transformOrigin: 'left center' }}>
+              <EditableDealStageTag
+                dealId={deal.id}
+                stage={deal.stage}
+                pipelineId={deal.pipelineId}
+              />
+            </span>
             {structureLabel && (
               <Badge variant="gray" className="rounded-full font-medium">{structureLabel}</Badge>
             )}
