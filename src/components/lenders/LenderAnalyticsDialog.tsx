@@ -1420,8 +1420,8 @@ export function LenderAnalyticsDialog({
               'Flex Active Lenders';
             const subtitle =
               openKpi === 'active' ? `${activeLenderCount} lenders · ${dateRangeLabel(dateRange)}` :
-              openKpi === 'sent' ? `${kpis.submitted} deal_lenders submitted · ${dateRangeLabel(dateRange)}` :
-              openKpi === 'conv' ? `${kpis.terms} terms of ${kpis.submitted} submitted (${fmtPct(kpis.conv)}) · ${dateRangeLabel(dateRange)}` :
+              openKpi === 'sent' ? `${kpis.submitted} unique deals sent · ${dateRangeLabel(dateRange)}` :
+              openKpi === 'conv' ? `${kpis.terms} of ${kpis.submitted} deals reached terms (${fmtPct(kpis.conv)}) · ${dateRangeLabel(dateRange)}` :
               `${flexActiveLenderCount} Flex-linked lenders active · ${dateRangeLabel(dateRange)}`;
             const q = kpiDrillSearch.trim().toLowerCase();
             // Build rows for the table view depending on drill type
