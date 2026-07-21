@@ -2,7 +2,8 @@ import { useMemo, useState, useRef } from 'react';
 import {
   format, parseISO, startOfWeek, eachDayOfInterval, isToday, addDays, getDay,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, Lock, Trash2, Pencil, X, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Lock, Trash2, Pencil, X, Check, Maximize2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { Deal } from '@/types/deal';
 import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
 import { useDealMilestones } from '@/hooks/useDealMilestones';
@@ -76,6 +77,7 @@ function defaultWindowStart(now: Date = new Date()): Date {
 export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelProps) {
   const { milestones } = useDealMilestones(deal.id);
   const { items: customItems, creators, addItem, updateItem, deleteItem } = useDealCalendarItems(deal.id);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   // Visible window = 2 work weeks starting at `windowStart` (a Monday).
   const [windowStart, setWindowStart] = useState<Date>(() => defaultWindowStart());
@@ -280,9 +282,17 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
       <div className="px-5 pt-2 pb-4 min-w-0 border-t border-white/[0.06]">
         {/* Header */}
         <div className="flex items-center justify-between mb-2 gap-2">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/90">
-            Calendar
-          </div>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setDetailOpen(true); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="group flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/90 hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+            title="Open full calendar"
+          >
+            <span>Calendar</span>
+            <Maximize2 className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -572,6 +582,48 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
             </form>
           )}
         </div>
+
+        <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="truncate">Calendar — {deal.name}</DialogTitle>
+            </DialogHeader>
+            <div className="overflow-y-auto pr-1 mt-2 space-y-2">
+              {Array.from(itemsByDate.entries())
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([dateKey, items]) => (
+                  <div key={`full-${dateKey}`} className="border border-white/[0.06] rounded-md p-3">
+                    <div className="text-xs font-semibold text-foreground mb-2">
+                      {format(parseISO(dateKey), 'EEEE, MMM d, yyyy')}
+                    </div>
+                    <ul className="space-y-1.5">
+                      {items.map((it) => (
+                        <li key={`full-item-${it.id}`} className="flex items-start gap-2 text-sm">
+                          <span className={cn('mt-1.5 h-2 w-2 rounded-full shrink-0', KIND_COLORS[it.kind].dot)} />
+                          <div className="min-w-0 flex-1">
+                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mr-2">
+                              {it.type || KIND_COLORS[it.kind].label}
+                            </span>
+                            <span className="text-foreground">{it.title}</span>
+                            {it.time && <span className="text-muted-foreground"> · {it.time.slice(0, 5)}</span>}
+                            {it.weekendTag && (
+                              <span className="text-[10px] text-muted-foreground/70 ml-1">({it.weekendTag})</span>
+                            )}
+                            {it.notes && (
+                              <div className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">{it.notes}</div>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              {itemsByDate.size === 0 && (
+                <p className="text-sm text-muted-foreground italic">No scheduled items in the visible window.</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   );
