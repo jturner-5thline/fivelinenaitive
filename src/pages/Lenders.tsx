@@ -1195,9 +1195,33 @@ export default function Lenders() {
     toast({ title: 'Lender updated', description: `${lenderData.name} has been updated.` });
   };
 
-  const handleExport = () => {
-    // Convert master lenders to the export format
-    const exportData = masterLenders.map(l => ({
+  const handleExport = async () => {
+    // The directory streams in pages (100 at a time) so `masterLenders` may
+    // only contain the first page(s) if the user clicks Export before the
+    // background load finishes. Fetch the full list directly from the
+    // database to guarantee a complete export.
+    toast({ title: 'Preparing export…', description: 'Fetching all funding sources.' });
+    let allRows: MasterLender[] = [];
+    try {
+      const PAGE = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from('master_lenders')
+          .select('*')
+          .order('name', { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const batch = (data as MasterLender[] | null) ?? [];
+        allRows.push(...batch);
+        if (batch.length < PAGE) break;
+        from += PAGE;
+      }
+    } catch (err) {
+      console.error('Full lender export failed, falling back to loaded rows', err);
+      allRows = masterLenders;
+    }
+    const exportData = allRows.map(l => ({
       name: l.name,
       contact: { name: l.contact_name || '', email: l.email || '', phone: '' },
       preferences: [...(l.loan_types || []), ...(l.industries || [])],
@@ -1206,7 +1230,7 @@ export default function Lenders() {
     }));
     const csv = exportLendersToCsv(exportData);
     downloadCsv(csv, `lenders-${new Date().toISOString().split('T')[0]}.csv`);
-    toast({ title: 'Export complete', description: `Exported ${masterLenders.length} lenders to CSV.` });
+    toast({ title: 'Export complete', description: `Exported ${allRows.length.toLocaleString()} funding sources to CSV.` });
   };
 
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
