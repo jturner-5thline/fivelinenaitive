@@ -738,6 +738,8 @@ export function CopilotToggleButton() {
           ariaControls="naitive-unified-suggestions"
           dataTour="ask-ai"
           forceFocused={isOpen && !isMinimized}
+          activeAgentLabel={selectedAgent?.name || 'Ask naitive'}
+          activeAgentEmoji={selectedAgent?.emoji}
           style={{ width: `${barWidth}px`, maxWidth: 'calc(100% - 32px)' }}
           onResizeStart={onResizeStart}
           onResizeDoubleClick={onResizeDoubleClick}
