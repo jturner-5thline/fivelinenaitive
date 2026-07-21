@@ -1,0 +1,168 @@
+import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import {
+  isInDealAdminAgentScope,
+  type CandidateItem,
+} from "./dealAdminAgentIntelligence.ts";
+
+/**
+ * Guards the Approval Queue contract for inbound lender emails carrying
+ * terms language. The Deal Admin Agent prompt (`TERMS_ISSUED_RULES`)
+ * asks Claude to emit a 3- or 4-item bundle per terms email:
+ *
+ *   1. update_funding_source  → lender status = "Terms Issued" + note
+ *   2. add_status_note        → deal-level note (out of scope)
+ *   3. update_deal_stage      → deal-level stage advance (out of scope)
+ *   4. save_to_data_room      → term sheet PDF (ONLY when attached)
+ *
+ * The scope whitelist in `runDealAdminAgentAnalysis` must collapse that
+ * bundle to exactly the user-facing Approval Queue items:
+ *   • With attachment    → 2 items (update_funding_source + save_to_data_room)
+ *   • Without attachment → 1 item  (update_funding_source only)
+ *
+ * If either count drifts, the reviewer either loses the term sheet upload
+ * card or gets flooded with duplicate deal-level cards — the exact bug
+ * the last two rounds of scope work exists to prevent.
+ */
+
+const DEAL_ID = "deal-abc";
+const LENDER_ID = "lender-xyz";
+const BUNDLE_KEY = `terms_issued:${DEAL_ID}:${LENDER_ID}`;
+
+function baseCandidate(overrides: Partial<CandidateItem>): CandidateItem {
+  return {
+    action_type: "update_funding_source",
+    item_title: "",
+    linked_entity_label: "",
+    target_object_type: "funding_source",
+    target_object_id: LENDER_ID,
+    target_field_paths: [],
+    current_values: {},
+    proposed_values: {},
+    rationale_summary: "",
+    evidence_summary: "",
+    evidence_references: [],
+    confidence_score: 0.9,
+    risk_level: "low",
+    bulk_eligible: false,
+    requires_send_ui: false,
+    priority: "normal",
+    ...overrides,
+  } as CandidateItem;
+}
+
+function llmBundleForTermsEmail(opts: { attachment: boolean }): CandidateItem[] {
+  const bundle: CandidateItem[] = [
+    // 1. Lender status → Terms Issued (in scope)
+    baseCandidate({
+      action_type: "update_funding_source",
+      item_title: "Set funding source to Terms Issued",
+      proposed_values: {
+        tracking_status: "terms_issued",
+        notes: "Lender attached indicative terms outlining a $10M ABL facility.",
+        bundle_key: BUNDLE_KEY,
+      },
+    }),
+    // 2. Deal-level status note (out of scope)
+    baseCandidate({
+      action_type: "add_status_note",
+      target_object_type: "deal",
+      target_object_id: DEAL_ID,
+      proposed_values: {
+        note: "Received indicative terms from lender.",
+        bundle_key: BUNDLE_KEY,
+      },
+    }),
+    // 3. Deal stage advance (out of scope — belongs on its own card)
+    baseCandidate({
+      action_type: "update_deal_stage",
+      target_object_type: "deal",
+      target_object_id: DEAL_ID,
+      proposed_values: { stage: "terms" },
+    }),
+  ];
+  if (opts.attachment) {
+    // 4. Save term sheet PDF to Internal ▸ Data Room ▸ Terms
+    bundle.push(
+      baseCandidate({
+        action_type: "save_to_data_room",
+        target_object_type: "deal",
+        target_object_id: DEAL_ID,
+        proposed_values: {
+          filename: "IOI-Acme-Capital.pdf",
+          bundle_key: BUNDLE_KEY,
+        },
+      }),
+    );
+  }
+  return bundle;
+}
+
+Deno.test(
+  "terms email WITH attachment → exactly 2 queue items (funding source + data room)",
+  () => {
+    const kept = llmBundleForTermsEmail({ attachment: true }).filter(
+      isInDealAdminAgentScope,
+    );
+    assertEquals(kept.length, 2);
+    const types = kept.map((c) => c.action_type).sort();
+    assertEquals(types, ["save_to_data_room", "update_funding_source"]);
+    const dataRoom = kept.find((c) => c.action_type === "save_to_data_room")!;
+    assertEquals(dataRoom.proposed_values.bundle_key, BUNDLE_KEY);
+  },
+);
+
+Deno.test(
+  "terms email WITHOUT attachment → exactly 1 queue item (funding source only)",
+  () => {
+    const kept = llmBundleForTermsEmail({ attachment: false }).filter(
+      isInDealAdminAgentScope,
+    );
+    assertEquals(kept.length, 1);
+    assertEquals(kept[0].action_type, "update_funding_source");
+    assertEquals(kept[0].proposed_values.tracking_status, "terms_issued");
+  },
+);
+
+Deno.test(
+  "stray save_to_data_room WITHOUT terms_issued bundle_key is rejected",
+  () => {
+    // If any other trigger tries to sneak a data-room save into the queue
+    // (e.g. a random attachment classification), the whitelist must drop it.
+    const stray = baseCandidate({
+      action_type: "save_to_data_room",
+      proposed_values: { filename: "random.pdf" }, // no bundle_key
+    });
+    assertEquals(isInDealAdminAgentScope(stray), false);
+
+    const wrongBundle = baseCandidate({
+      action_type: "save_to_data_room",
+      proposed_values: { filename: "misc.pdf", bundle_key: "outstanding:xyz" },
+    });
+    assertEquals(isInDealAdminAgentScope(wrongBundle), false);
+  },
+);
+
+Deno.test(
+  "update_funding_source without terms/pass language is rejected",
+  () => {
+    const offTopic = baseCandidate({
+      action_type: "update_funding_source",
+      proposed_values: { tracking_status: "reviewing", notes: "left a voicemail" },
+      rationale_summary: "checking in",
+    });
+    assertEquals(isInDealAdminAgentScope(offTopic), false);
+  },
+);
+
+Deno.test(
+  "terms language surfaced via evidence (blank status field) still passes",
+  () => {
+    // Some LLM outputs only fill notes/evidence and leave status blank.
+    const evidenceOnly = baseCandidate({
+      action_type: "update_funding_source",
+      proposed_values: { notes: "Attached LOI for review" },
+      evidence_summary: "Lender sent LOI outlining structure",
+    });
+    assertEquals(isInDealAdminAgentScope(evidenceOnly), true);
+  },
+);
