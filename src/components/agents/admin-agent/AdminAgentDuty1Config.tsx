@@ -510,6 +510,10 @@ export function AdminAgentDuty1Config() {
             size_bytes: file.size,
             status: 'pending',
             uploaded_by: currentUserId,
+            // Default tag so the doc stays included under any future
+            // knowledge_tag_filter (empty tags array would be excluded by
+            // the RPC's overlaps('tags', filter) check).
+            tags: ['other'],
           })
           .select('id')
           .single();
@@ -545,6 +549,8 @@ export function AdminAgentDuty1Config() {
         extracted_text: body.slice(0, 200_000),
         status: 'pending',
         uploaded_by: currentUserId,
+        // Default tag so future tag filters don't silently exclude this doc.
+        tags: ['other'],
       }).select('id').single();
       if (error) throw error;
       // Chunk + embed in the background.
