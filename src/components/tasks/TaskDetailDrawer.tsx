@@ -32,6 +32,7 @@ import {
 import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from '@/components/ui/command';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -574,15 +575,40 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
               <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
                 <Calendar className="h-3 w-3" /> Due date
               </div>
-              <div className="flex items-center gap-1 flex-wrap">
-                <Input type="date" value={task.due_date || ''} onChange={e => onUpdateWithUndo({ due_date: e.target.value || null } as any)}
-                  className="h-7 text-xs w-[130px] bg-[rgba(255,255,255,0.025)] text-white border-[rgba(255,255,255,0.06)]" />
-                <div className="flex gap-1">
-                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdateWithUndo({ due_date: today } as any)}>Today</Button>
-                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdateWithUndo({ due_date: tomorrow } as any)}>Tomorrow</Button>
-                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdateWithUndo({ due_date: format(addDays(new Date(), 7), 'yyyy-MM-dd') } as any)}>+1 Week</Button>
-                </div>
-              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs justify-start gap-1.5 min-w-[160px] bg-[rgba(255,255,255,0.025)] border-[rgba(255,255,255,0.06)]"
+                    style={{ color: task.due_date ? 'white' : '#8b92a5' }}
+                  >
+                    <Calendar className="h-3 w-3" />
+                    {task.due_date ? format(new Date(`${task.due_date}T00:00:00`), 'PPP') : 'Pick a date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarPicker
+                    mode="single"
+                    selected={task.due_date ? new Date(`${task.due_date}T00:00:00`) : undefined}
+                    onSelect={(d) => onUpdateWithUndo({ due_date: d ? format(d, 'yyyy-MM-dd') : null } as any)}
+                    defaultPresets
+                    initialFocus
+                  />
+                  {task.due_date && (
+                    <div className="flex justify-end px-3 py-2 border-t border-border/60">
+                      <button
+                        type="button"
+                        onClick={() => onUpdateWithUndo({ due_date: null } as any)}
+                        className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
             </div>
 
 
