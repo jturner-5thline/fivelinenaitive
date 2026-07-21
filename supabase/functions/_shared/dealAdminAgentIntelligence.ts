@@ -3962,12 +3962,29 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       //   Follow up on unanswered lender email (2 BD)  (draft_email)
       //   Outstanding items reminder to client (2 BD)  (draft_email)
       //   No client reply in 3 BD                      (draft_email)
+      // Plus: when a Terms Issued email carries an attachment (term sheet /
+      // IOI / LOI / proposal / indicative terms), also allow the paired
+      // save_to_data_room proposal so the file lands in the deal's
+      // Internal ▸ Data Room ▸ "Terms" folder (folder is fixed by
+      // save-terms-attachment). The deal-level add_status_note and
+      // update_deal_stage proposals from the bundle stay out of scope —
+      // the lender status note is already captured on update_funding_source.
       // Anything else is out of scope and must not reach the approval queue.
       // ------------------------------------------------------------------
       const TERMS_STATUS_RE = /term|ioi|loi|indication|proposal/i;
       const PASS_STATUS_RE = /pass|declin|not[_\s-]?a?[_\s-]?fit|withdraw|dead|lost|reject|no[_\s-]?go/i;
       const inScope = (c: CandidateItem): boolean => {
         if (c.action_type === "draft_email") return true;
+        if (c.action_type === "save_to_data_room") {
+          // Only allow when this file is part of a Terms Issued bundle.
+          // The bundler stamps `bundle_key = terms_issued:{deal}:{lender}`
+          // on every save_to_data_room proposal tied to a terms email;
+          // stray data-room proposals from any other trigger must not
+          // reach the queue.
+          const pv = (c.proposed_values ?? {}) as Record<string, any>;
+          const bundleKey = typeof pv.bundle_key === "string" ? pv.bundle_key : "";
+          return bundleKey.startsWith("terms_issued:");
+        }
         if (c.action_type === "update_funding_source") {
           const pv = (c.proposed_values ?? {}) as Record<string, any>;
           const statusBlob = [pv.tracking_status, pv.stage, pv.substage, pv.status]
