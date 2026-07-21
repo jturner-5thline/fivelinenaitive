@@ -89,19 +89,9 @@ export default function Preferences() {
       <div className="bg-transparent">
 
         <main className="container mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
-          <Button variant="ghost" size="sm" className="gap-2 mb-6" asChild>
-            <Link to="/settings">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Settings
-            </Link>
-          </Button>
-
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">Preferences</h1>
-                <p className="text-muted-foreground">Customize your experience</p>
-              </div>
+              <div />
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
