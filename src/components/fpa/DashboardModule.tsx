@@ -25,7 +25,6 @@ const VarianceReviewPanel = lazy(() => import('./collaboration/VarianceReviewPan
 const BudgetApprovalWorkflow = lazy(() => import('./collaboration/BudgetApprovalWorkflow').then(m => ({ default: m.BudgetApprovalWorkflow })));
 const VarianceLegend = lazy(() => import('./VarianceLegend').then(m => ({ default: m.VarianceLegend })));
 const BoardReportExport = lazy(() => import('./BoardReportExport').then(m => ({ default: m.BoardReportExport })));
-const BDRoiModule = lazy(() => import('./bd-roi/BDRoiModule').then(m => ({ default: m.BDRoiModule })));
 const CashFlowManager = lazy(() => import('@/components/cashflow/CashFlowManager').then(m => ({ default: m.CashFlowManager })));
 
 function TabSkeleton() {
@@ -142,7 +141,6 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
     if (isTabVisible('scenarios', t.scenarios)) keys.push('scenarios');
     if (isTabVisible('collaborate', t.collaborate)) keys.push('collaborate');
     if (isTabVisible('export', t.export)) keys.push('export');
-    if (isTabVisible('salesBdRoi')) keys.push('salesBdRoi');
     return keys;
   }, [isTabVisible, t]);
 
@@ -248,14 +246,6 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
                   Cash Flow
                 </TabsTrigger>
               )}
-              {isTabVisible('salesBdRoi') && (
-                <TabsTrigger
-                  value="salesBdRoi"
-                  className="h-8 px-2.5 text-xs rounded-md"
-                >
-                  Sales & BD ROI
-                </TabsTrigger>
-              )}
             </TabsList>
           </HeaderTabsPortal>
           {(isTabVisible('overview', t.overview) ||
@@ -338,12 +328,6 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               <VarianceReviewPanel />
               <BudgetApprovalWorkflow />
-            </div>
-          )}
-
-          {activeTab === 'salesBdRoi' && (
-            <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
-              <BDRoiModule />
             </div>
           )}
 
