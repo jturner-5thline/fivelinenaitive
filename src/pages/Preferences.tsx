@@ -19,7 +19,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { usePreferences, CURRENCY_FORMAT_OPTIONS, CurrencyFormat } from '@/contexts/PreferencesContext';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
-import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { UserNotificationSettings } from '@/components/settings/UserNotificationSettings';
 import { NotificationLinkSettings } from '@/components/settings/NotificationLinkSettings';
 import { MorningDigestSettings } from '@/components/settings/MorningDigestSettings';
@@ -179,7 +178,6 @@ export default function Preferences() {
                   {isVisible('notifications') && <PerUserStaleThresholdSettings />}
                   {isVisible('notifications') && <NotificationLinkSettings />}
                   {isVisible('notifications') && <UserNotificationSettings />}
-                  {isVisible('notifications') && <NotificationSettings />}
                 </TabsContent>
 
                 {/* Alerts & Thresholds Tab */}
