@@ -154,20 +154,20 @@ export function MemoHeader({ deal, showLiveDot = true, onOpenDeal, onClose }: Me
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onOpenDeal(); }}
                 title={`Open details for ${deal.company || deal.name}`}
-                className="text-[17px] font-semibold leading-tight tracking-tight text-white truncate text-left hover:text-primary hover:underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-sm"
+                className="text-[20px] font-semibold leading-tight tracking-tight text-white truncate text-left hover:text-primary hover:underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-sm"
               >
                 <h2 className="truncate">{deal.company || deal.name}</h2>
               </button>
             ) : (
               <h2
-                className="text-[17px] font-semibold leading-tight tracking-tight text-white truncate"
+                className="text-[20px] font-semibold leading-tight tracking-tight text-white truncate"
                 title={deal.company || deal.name}
               >
                 {deal.company || deal.name}
               </h2>
             )}
             {amountLabel !== '—' && (
-              <span className="text-[15px] font-semibold text-white shrink-0">{amountLabel}</span>
+              <span className="text-[17px] font-semibold text-white shrink-0">{amountLabel}</span>
             )}
             <EditableDealStatusTag dealId={deal.id} status={deal.status} />
           </div>
