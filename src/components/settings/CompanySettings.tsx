@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProfile } from '@/hooks/useProfile';
+import { useCompany } from '@/hooks/useCompany';
 import { toast } from '@/hooks/use-toast';
 
 const companySizeOptions = [
@@ -46,6 +47,7 @@ type FormErrors = Partial<Record<keyof z.infer<typeof companySettingsSchema>, st
 
 export function CompanySettings() {
   const { profile, isLoading, updateProfile } = useProfile();
+  const { company } = useCompany();
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [formData, setFormData] = useState({
@@ -59,16 +61,21 @@ export function CompanySettings() {
 
   useEffect(() => {
     if (profile) {
+      // Auto-fill from the user's linked company when the profile field is empty.
+      const normalizeUrl = (u?: string | null) => {
+        if (!u) return '';
+        return /^https?:\/\//i.test(u) ? u : `https://${u}`;
+      };
       setFormData({
         phone: profile.phone || '',
-        company_name: profile.company_name || '',
+        company_name: profile.company_name || company?.name || '',
         backup_email: profile.backup_email || '',
-        company_url: profile.company_url || '',
-        company_size: profile.company_size || '',
+        company_url: profile.company_url || normalizeUrl(company?.website_url),
+        company_size: profile.company_size || company?.employee_size || '',
         company_role: profile.company_role || '',
       });
     }
-  }, [profile]);
+  }, [profile, company]);
 
   const validateForm = (): boolean => {
     const result = companySettingsSchema.safeParse(formData);
