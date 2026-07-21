@@ -71,19 +71,6 @@ export default function Account() {
 
       <div className="bg-transparent min-h-full">
         <main className="max-w-5xl mx-auto px-4 sm:px-8 pt-6 sm:pt-8 pb-12">
-          {/* Header */}
-          <header className="mb-5">
-            <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/80 mb-1.5">
-              Workspace
-            </div>
-            <h1 className="text-[22px] font-semibold tracking-tight leading-tight">
-              {active.label}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1.5 max-w-2xl">
-              {active.description}
-            </p>
-          </header>
-
           {/* Pills */}
           <div className="mb-6 -mx-1 overflow-x-auto">
             <div className="flex items-center gap-1 px-1 pb-1">
