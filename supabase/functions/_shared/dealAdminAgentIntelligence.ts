@@ -501,6 +501,88 @@ async function gatherSignalsForDeal(
     };
   });
 
+  // ------------------------------------------------------------------
+  //  Per-lender OUTBOUND-AWAITING-REPLY detection
+  //  For each funding source: find the most recent outbound email sent
+  //  from any of this workspace's users to one of the lender's known
+  //  contact emails, then check whether that lender has replied since.
+  //  This powers the "outbound with no reply in 2 business days" trigger.
+  // ------------------------------------------------------------------
+  try {
+    const masterIds = Array.from(
+      new Set(
+        fundingWithBd
+          .map((f: any) => f.master_lender_id)
+          .filter((v: any): v is string => typeof v === "string" && v.length > 0),
+      ),
+    );
+    const emailsByMaster = new Map<string, string[]>();
+    if (masterIds.length > 0) {
+      const { data: lcs } = await supabase
+        .from("lender_contacts")
+        .select("lender_id, email")
+        .in("lender_id", masterIds);
+      for (const lc of (lcs ?? []) as any[]) {
+        const e = (lc.email as string | null)?.toLowerCase();
+        if (!e || !lc.lender_id) continue;
+        const arr = emailsByMaster.get(lc.lender_id) ?? [];
+        if (!arr.includes(e)) arr.push(e);
+        emailsByMaster.set(lc.lender_id, arr);
+      }
+    }
+    for (const f of fundingWithBd) {
+      const contactEmails: string[] =
+        (f.master_lender_id && emailsByMaster.get(f.master_lender_id)) || [];
+      if (contactEmails.length === 0) {
+        (f as any).outbound_awaiting_reply = null;
+        continue;
+      }
+      // Most recent outbound to any of this lender's contact emails.
+      const { data: outRows } = await supabase
+        .from("gmail_sent_messages")
+        .select("id, gmail_message_id, subject, body_text, sent_at, created_at, to_emails")
+        .overlaps("to_emails", contactEmails)
+        .order("sent_at", { ascending: false, nullsFirst: false })
+        .limit(1);
+      const lastOut = (outRows ?? [])[0] as any;
+      if (!lastOut) {
+        (f as any).outbound_awaiting_reply = null;
+        continue;
+      }
+      const sentAt: string | null =
+        (lastOut.sent_at as string | null) ?? (lastOut.created_at as string | null) ?? null;
+      if (!sentAt) {
+        (f as any).outbound_awaiting_reply = null;
+        continue;
+      }
+      // Any inbound reply from those contact emails after the outbound sent_at?
+      const { data: replyRows } = await supabase
+        .from("gmail_messages")
+        .select("gmail_message_id, from_email, received_at")
+        .in("from_email", contactEmails)
+        .gt("received_at", sentAt)
+        .order("received_at", { ascending: false })
+        .limit(1);
+      const replied = (replyRows ?? []).length > 0;
+      const bdSinceSent = businessDaysBetween(new Date(sentAt), today);
+      const body: string = typeof lastOut.body_text === "string" ? lastOut.body_text : "";
+      (f as any).outbound_awaiting_reply = {
+        sent_at: sentAt,
+        subject: lastOut.subject ?? null,
+        to_emails: lastOut.to_emails ?? [],
+        body_excerpt: body.length > 1600 ? body.slice(0, 1600) + "…" : body,
+        business_days_since_sent: bdSinceSent,
+        replied,
+        reply_received_at: replied ? ((replyRows ?? [])[0] as any)?.received_at ?? null : null,
+      };
+    }
+  } catch (err) {
+    console.warn(
+      `[deal-admin-agent] outbound-awaiting-reply enrichment failed for deal=${deal.id}:`,
+      (err as Error).message,
+    );
+  }
+
   // Hydrate claap recordings with transcript / summary / action items from
   // claap_transcripts (deal-linked) and claap_recordings (org-linked).
   const claapRows: any[] = claap.data ?? [];
@@ -1092,7 +1174,42 @@ SCHEDULE-A-CALL TRIGGER — INBOUND LENDER / FUNDING SOURCE EMAIL (approved, man
 - TERMINAL LENDER GUARD applies: if the funding source is in any terminal state (pass, declined, not_a_fit, withdrawn, dead, lost, rejected, closed, no_go, unresponsive, on_hold, paused), DO NOT emit — there is nothing to schedule.
 - The proposal is a scheduling CONFIRMATION, not an actual booking. It does NOT send email, does NOT create a calendar event, and does NOT choose a time. On approval the naitive calendar pop-up opens for the deal owner to complete the booking manually.`;
 
-const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES + TERMS_ISSUED_RULES + SCHEDULE_CALL_RULES;
+const OUTBOUND_FOLLOWUP_RULES = `
+
+OUTBOUND-AWAITING-REPLY TRIGGER — USER SENT LENDER EMAIL, NO REPLY IN 2 BUSINESS DAYS (approved, mandatory)
+- INPUT: each funding_sources[] row may carry an outbound_awaiting_reply object:
+    { sent_at, subject, body_excerpt, business_days_since_sent, replied, reply_received_at }
+  This is the MOST RECENT outbound email a user in this workspace sent to that lender's known contact emails, plus whether that lender has replied since.
+- FIRE ONLY IF ALL of the following are true for a funding source:
+    1. outbound_awaiting_reply is present (not null).
+    2. outbound_awaiting_reply.replied === false (lender has NOT replied since sent_at).
+    3. outbound_awaiting_reply.business_days_since_sent >= 2 (strict — only count business days).
+    4. The funding source is NOT in a terminal state (pass, declined, not_a_fit, withdrawn, dead, lost, rejected, closed, no_go, unresponsive, on_hold, paused).
+    5. YOUR JUDGMENT — the outbound (subject + body_excerpt) genuinely WARRANTS A REPLY from the lender. It warrants a reply if it: asks a question, responds to a question the lender raised, requests information / materials / a decision / a next step, or otherwise reasonably requires the lender to act. Purely informational blasts, "no reply needed" FYIs, calendar invites, and out-of-office style messages DO NOT warrant a reply — skip them.
+    6. If outbound_awaiting_reply.replied === true, the follow-up clock is cancelled — DO NOT emit under any circumstance, even if bd >= 2.
+- WHEN ALL 6 CONDITIONS HOLD, emit EXACTLY ONE proposal per (deal, funding_source) per scan:
+    action_type = "draft_email"
+    item_title  = "Follow up: {Lender} on {Deal}"
+    target_object_type = "deal_lender"
+    target_object_id   = the exact funding_sources[].id (never a contact id, never a deal id)
+    requires_send_ui   = true
+    proposed_values = {
+      to: [<the same lender contact email(s) from the original outbound's to_emails>],
+      subject: "Re: <original subject>" (or a short, neutral nudge subject if none),
+      body: "<short, professional nudge that references the ORIGINAL ask in one sentence — e.g. 'Following up on my note from {Mon DD} re: {topic} — any thoughts?' — never generic filler>",
+      bundle_key: "lender_followup:{deal_id}:{funding_source_id}"
+    }
+    rationale_summary = "Sent {Lender} an email on {Mon DD} that asked for {short summary of the ask}. No reply in {N} business days — surfacing a follow-up draft for the deal owner to review and send."
+    evidence_summary  = REQUIRED. <= 240 chars, neutral, factual, format exactly:
+        "Sent {Mon DD}: \"<verbatim short quote (<= 12 words) of the outbound ask>\" — no reply in {N} business days."
+      If the ask is longer than 12 words, paraphrase in <= 20 words instead of quoting.
+    evidence_references MUST cite the outbound (kind="email", label="Outbound email to {Lender}").
+    confidence_score >= 0.7.
+- DEDUPE: at most ONE draft_email follow-up per (deal, funding_source.id) per scan. If multiple lenders on the deal are past 2 BD with no reply, emit one proposal per lender — never batch them.
+- If the lender replies at any point before you next run, the outbound_awaiting_reply.replied flag will flip to true — the queue producer will not fire this trigger again. Existing pending items are also auto-resolved once the reply lands (handled by the executor).
+- NEVER emit this trigger from an outbound sent by the lender to us, from an inbound thread, or when there is no outbound_awaiting_reply payload — the rule keys ENTIRELY off outbound_awaiting_reply.`;
+
+const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES + TERMS_ISSUED_RULES + SCHEDULE_CALL_RULES + OUTBOUND_FOLLOWUP_RULES;
 
 function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null): string {
   // Trim large fields to keep prompt compact.
@@ -1118,6 +1235,17 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
       business_days_since_last_contact: (f as any).business_days_since_last_contact ?? null,
       notes: trim(f.notes, 200),
       pass_reason: trim(f.pass_reason, 160),
+      outbound_awaiting_reply: (f as any).outbound_awaiting_reply
+        ? {
+            sent_at: (f as any).outbound_awaiting_reply.sent_at,
+            subject: (f as any).outbound_awaiting_reply.subject,
+            body_excerpt: trim((f as any).outbound_awaiting_reply.body_excerpt, 1200),
+            business_days_since_sent:
+              (f as any).outbound_awaiting_reply.business_days_since_sent,
+            replied: (f as any).outbound_awaiting_reply.replied,
+            reply_received_at: (f as any).outbound_awaiting_reply.reply_received_at ?? null,
+          }
+        : null,
     })),
     status_notes: bundle.status_notes.map((n) => ({
       id: n.id, created_at: n.created_at, note: trim(n.note, 200),

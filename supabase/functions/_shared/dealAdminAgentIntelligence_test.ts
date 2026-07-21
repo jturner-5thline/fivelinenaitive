@@ -287,3 +287,57 @@ Deno.test(
     }
   },
 );
+
+/**
+ * OUTBOUND-AWAITING-REPLY trigger: a draft_email nudge targeting a
+ * deal_lender must (a) pass the scope whitelist and (b) dedupe under
+ * the same `funding_source_attention` semantic key as other lender
+ * nudges so we never surface two follow-up drafts for the same lender
+ * on the same deal in a single scan.
+ */
+Deno.test(
+  "outbound-awaiting-reply draft_email is in scope for lender target",
+  () => {
+    const followup: CandidateItem = baseCandidate({
+      action_type: "draft_email",
+      item_title: "Follow up: LAGO Innovation on Censys",
+      target_object_type: "deal_lender",
+      target_object_id: LENDER_ID,
+      requires_send_ui: true,
+      proposed_values: {
+        to: ["partner@lago.example"],
+        subject: "Re: Censys diligence",
+        body: "Following up on my note from Mon 3/10 — any thoughts?",
+        bundle_key: `lender_followup:${DEAL_ID}:${LENDER_ID}`,
+      },
+      evidence_summary:
+        'Sent Mar 10: "any thoughts on next steps?" — no reply in 3 business days.',
+    });
+    assertEquals(isInDealAdminAgentScope(followup), true);
+  },
+);
+
+Deno.test(
+  "outbound-awaiting-reply dedupes with other lender-attention items",
+  () => {
+    const followupKey = queueSemanticKey({
+      action_type: "draft_email",
+      target_object_type: "deal_lender",
+      target_object_id: LENDER_ID,
+      deal_id: DEAL_ID,
+      proposed_values: {
+        bundle_key: `lender_followup:${DEAL_ID}:${LENDER_ID}`,
+      },
+    });
+    const attentionKey = queueSemanticKey({
+      action_type: "update_funding_source",
+      target_object_type: "deal_lender",
+      target_object_id: LENDER_ID,
+      deal_id: DEAL_ID,
+      proposed_values: { status: "Unresponsive" },
+    });
+    // Both should collapse into the single funding_source_attention slot
+    // for this lender so the reviewer never sees two competing cards.
+    assertEquals(followupKey, attentionKey);
+  },
+);
