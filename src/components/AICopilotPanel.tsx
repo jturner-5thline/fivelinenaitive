@@ -1559,6 +1559,10 @@ export function AICopilotPanel() {
             },
             history,
             conversationMutations: useCopilotStore.getState().conversationMutations,
+          // Active agent persona for this turn. The server uses this to
+          // adopt the selected agent's system prompt + personality while
+          // still exposing knowledge/tools from every activated agent.
+          selectedAgent: useCopilotStore.getState().selectedAgent,
             dealMemory: dealIdFromPath
               ? {
                   deal_id: dealIdFromPath,
