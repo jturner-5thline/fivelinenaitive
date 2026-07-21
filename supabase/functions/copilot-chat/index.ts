@@ -981,6 +981,29 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_deals_task_coverage",
+      description: "Aggregate view of tasks-per-deal across the ACTIVE PIPELINE in ONE call. USE THIS (not a loop of search_deals + get_tasks) for any portfolio question about task coverage — 'which deals need tasks?', 'what deals don't have tasks?', 'deals with no open tasks', 'deals with overdue tasks', 'top deals by task count'. Returns, per deal: id, name, stage, status, deal_manager, total task count, open task count (not_started + in_progress), overdue count, and the next upcoming due date. Filter with `has` to slice: 'none' (zero tasks at all), 'no_open' (zero open tasks — includes fully-completed backlogs), 'has_overdue', or 'any' (default). Present results as a concise bullet list of deal names — do NOT dump the raw JSON.",
+      parameters: {
+        type: "object",
+        properties: {
+          has: {
+            type: "string",
+            enum: ["none", "no_open", "has_overdue", "any"],
+            description: "Filter which deals to return. Default 'any'.",
+          },
+          scope: {
+            type: "string",
+            enum: ["active_only", "all"],
+            description: "active_only (default) excludes on-hold/closed/won/lost/archived deals. Use 'all' only when the user explicitly asks about the full book.",
+          },
+          limit: { type: "number", description: "Max deals returned. Default 100, max 300." },
+        },
+      },
+    },
+  },
   // ── Fix 2: Team member search tool ──
   {
     type: "function",
