@@ -501,6 +501,88 @@ async function gatherSignalsForDeal(
     };
   });
 
+  // ------------------------------------------------------------------
+  //  Per-lender OUTBOUND-AWAITING-REPLY detection
+  //  For each funding source: find the most recent outbound email sent
+  //  from any of this workspace's users to one of the lender's known
+  //  contact emails, then check whether that lender has replied since.
+  //  This powers the "outbound with no reply in 2 business days" trigger.
+  // ------------------------------------------------------------------
+  try {
+    const masterIds = Array.from(
+      new Set(
+        fundingWithBd
+          .map((f: any) => f.master_lender_id)
+          .filter((v: any): v is string => typeof v === "string" && v.length > 0),
+      ),
+    );
+    const emailsByMaster = new Map<string, string[]>();
+    if (masterIds.length > 0) {
+      const { data: lcs } = await supabase
+        .from("lender_contacts")
+        .select("lender_id, email")
+        .in("lender_id", masterIds);
+      for (const lc of (lcs ?? []) as any[]) {
+        const e = (lc.email as string | null)?.toLowerCase();
+        if (!e || !lc.lender_id) continue;
+        const arr = emailsByMaster.get(lc.lender_id) ?? [];
+        if (!arr.includes(e)) arr.push(e);
+        emailsByMaster.set(lc.lender_id, arr);
+      }
+    }
+    for (const f of fundingWithBd) {
+      const contactEmails: string[] =
+        (f.master_lender_id && emailsByMaster.get(f.master_lender_id)) || [];
+      if (contactEmails.length === 0) {
+        (f as any).outbound_awaiting_reply = null;
+        continue;
+      }
+      // Most recent outbound to any of this lender's contact emails.
+      const { data: outRows } = await supabase
+        .from("gmail_sent_messages")
+        .select("id, gmail_message_id, subject, body_text, sent_at, created_at, to_emails")
+        .overlaps("to_emails", contactEmails)
+        .order("sent_at", { ascending: false, nullsFirst: false })
+        .limit(1);
+      const lastOut = (outRows ?? [])[0] as any;
+      if (!lastOut) {
+        (f as any).outbound_awaiting_reply = null;
+        continue;
+      }
+      const sentAt: string | null =
+        (lastOut.sent_at as string | null) ?? (lastOut.created_at as string | null) ?? null;
+      if (!sentAt) {
+        (f as any).outbound_awaiting_reply = null;
+        continue;
+      }
+      // Any inbound reply from those contact emails after the outbound sent_at?
+      const { data: replyRows } = await supabase
+        .from("gmail_messages")
+        .select("gmail_message_id, from_email, received_at")
+        .in("from_email", contactEmails)
+        .gt("received_at", sentAt)
+        .order("received_at", { ascending: false })
+        .limit(1);
+      const replied = (replyRows ?? []).length > 0;
+      const bdSinceSent = businessDaysBetween(new Date(sentAt), today);
+      const body: string = typeof lastOut.body_text === "string" ? lastOut.body_text : "";
+      (f as any).outbound_awaiting_reply = {
+        sent_at: sentAt,
+        subject: lastOut.subject ?? null,
+        to_emails: lastOut.to_emails ?? [],
+        body_excerpt: body.length > 1600 ? body.slice(0, 1600) + "…" : body,
+        business_days_since_sent: bdSinceSent,
+        replied,
+        reply_received_at: replied ? ((replyRows ?? [])[0] as any)?.received_at ?? null : null,
+      };
+    }
+  } catch (err) {
+    console.warn(
+      `[deal-admin-agent] outbound-awaiting-reply enrichment failed for deal=${deal.id}:`,
+      (err as Error).message,
+    );
+  }
+
   // Hydrate claap recordings with transcript / summary / action items from
   // claap_transcripts (deal-linked) and claap_recordings (org-linked).
   const claapRows: any[] = claap.data ?? [];
