@@ -1436,11 +1436,11 @@ export function LenderAnalyticsDialog({
               lenderRows = lenderStats.filter((l) => l.isFlex);
             } else if (openKpi === 'sent') {
               mode = 'deals';
-              dealRows = rows.filter((r) => r.everSubmitted);
+              dealRows = dedupeByDeal(rows.filter((r) => r.everSubmitted));
             } else {
               // conversion: show terms rows
               mode = 'deals';
-              dealRows = rows.filter((r) => r.everTerms);
+              dealRows = dedupeByDeal(rows.filter((r) => r.everTerms));
             }
             const filteredLenders = q
               ? lenderRows.filter((l) => l.name.toLowerCase().includes(q))
