@@ -872,8 +872,8 @@ STATUS NOTE RECENCY GATE — apply strictly
 
 FUNDING SOURCE (LENDER) UPDATE GATE — apply strictly
 - ONLY propose update_funding_source when the lender's situation clearly maps to ONE of:
-    (a) PASS / DECLINE on this deal — lender says they are "passing", "going to pass", "we'll pass", "it's a pass", "have to pass", "going to have to take a pass", "decline", or any clear variation. Propose stage="passed" AND populate proposed_values.pass_reason with the lender's actual stated reason quoted/paraphrased from the email thread (e.g. "leverage too high", "outside credit box", "industry concentration"). If no reason is given, set pass_reason="No reason provided" — do NOT invent one.
-    (a2) NOT A FIT — lender says the deal is "not a fit", "not for us", "doesn't fit our box/mandate", "outside our criteria", "not in our wheelhouse", or similar. Propose stage="not_a_fit" (NOT "passed") and capture the fit reason in proposed_values.pass_reason.
+    (a) PASS / DECLINE on this deal — lender says they are "passing", "going to pass", "we'll pass", "it's a pass", "have to pass", "going to have to take a pass", "decline", "not going to be able to get comfortable", "not moving forward", "not interested at this time", or any clear variation. Propose stage="passed" AND populate proposed_values.pass_reason with the lender's actual stated reason quoted/paraphrased from the email thread (e.g. "leverage too high", "outside credit box", "industry concentration"). If no reason is given, set pass_reason="No reason provided" — do NOT invent one. ALSO populate proposed_values.notes with a concise 1–2 sentence factual, neutral summary of why the lender is passing, grounded strictly in the email content (no speculation, no filler, hard cap 2 sentences). This is what gets written to the lender's status note on approval.
+    (a2) NOT A FIT — lender says the deal is "not a fit", "not for us", "doesn't fit our box/mandate", "outside our criteria", "not in our wheelhouse", or similar. Propose stage="not_a_fit" (NOT "passed") and capture the fit reason in proposed_values.pass_reason. ALSO populate proposed_values.notes with a concise 1–2 sentence factual, neutral summary of why the deal is not a fit, grounded strictly in the email content (no speculation, hard cap 2 sentences).
     (b) TERM SHEET / IOI / indication / proposal / pricing terms issued or revised → propose the matching terms stage.
     (c) HOLD / PAUSE on the deal — ONLY when the lender EXPLICITLY says so. Trigger language: "revisit", "table this", "pause", "postpone", "circle back later", "park this", "put on hold", "shelve", "come back to this in <N> weeks". Propose stage="on-hold".
         Do NOT infer hold from silence, slow replies, missed deadlines, or your own assumption that the lender is "probably busy". Those are unresponsive, not on hold.
@@ -2056,15 +2056,44 @@ function normalizePassVsNotAFit(candidates: CandidateItem[]): {
       }
     }
 
+    // (4) Backfill the lender's status note. On approval this writes to
+    //     deal_lenders.notes, which is the user-facing status note. If the
+    //     agent didn't emit one, derive a concise 1–2 sentence factual
+    //     summary from evidence (fall back to pass_reason). Never store
+    //     internal reclassification diagnostics here — those belong on
+    //     rationale_summary only.
+    if (isPassStage || isNotFitStage) {
+      const existingNote = typeof nextPv.notes === "string" ? nextPv.notes.trim() : "";
+      if (!existingNote) {
+        const trimmed = evidenceText.replace(/\s+/g, " ").trim();
+        let summary = "";
+        if (trimmed.length > 0) {
+          const sentences = trimmed.split(/(?<=[.!?])\s+/).filter((s) => s.length > 0);
+          const triggerIdx = sentences.findIndex(
+            (s) => PASS_RE.test(s) || NOT_A_FIT_RE.test(s),
+          );
+          const picked = triggerIdx >= 0
+            ? sentences.slice(triggerIdx, triggerIdx + 2)
+            : sentences.slice(0, 2);
+          summary = picked.join(" ").trim();
+          if (summary.length > 320) summary = summary.slice(0, 320).trim() + "…";
+        }
+        if (!summary) {
+          const reason = typeof nextPv.pass_reason === "string" ? nextPv.pass_reason.trim() : "";
+          summary = isPassStage
+            ? `Lender is passing. ${reason && reason !== "No reason provided" ? `Reason: ${reason}` : "No reason provided."}`
+            : `Lender indicated the deal is not a fit. ${reason && reason !== "No reason provided" ? `Reason: ${reason}` : "No specific reason provided."}`;
+        }
+        nextPv.notes = summary;
+        mutated = true;
+      }
+    }
+
     if (!mutated) return c;
     rewritten++;
 
-    if (rewriteNote) {
-      nextPv.notes =
-        typeof nextPv.notes === "string" && nextPv.notes.trim().length
-          ? `${nextPv.notes}\n\n${rewriteNote}`
-          : rewriteNote;
-    }
+    // Reclassification diagnostics belong on rationale_summary only —
+    // deal_lenders.notes must stay a clean, user-facing status note.
 
     // Sync rationale wording with the corrected stage.
     let nextRationale = typeof c.rationale_summary === "string" ? c.rationale_summary : "";
