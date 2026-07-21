@@ -460,15 +460,17 @@ export function LenderAnalyticsDialog({
     return out;
   }, [dealLenders, dealMap, lenderNameSet, lenderScopeActive, stageLabelByCompany]);
 
-  // KPI metrics — counting grain = unique lender-deal relationship (deal_lenders.id)
+  // KPI metrics — "Deals Sent" counts unique deals (not deal_lenders rows),
+  // so a deal fanned out to many funding sources still counts once. Conversion
+  // = unique deals that reached Draft Terms or later / unique deals sent.
   const kpis = useMemo(() => {
     const submittedSet = new Set<string>();
     const termsSet = new Set<string>();
     const activeSet = new Set<string>();
     for (const r of rows) {
-      if (r.everSubmitted) submittedSet.add(r.id);
-      if (r.everTerms) termsSet.add(r.id);
-      if (!r.terminal.passed && !r.terminal.unresponsive && !r.terminal.onHold && r.ord > 0) activeSet.add(r.id);
+      if (r.everSubmitted) submittedSet.add(r.deal_id);
+      if (r.everTerms) termsSet.add(r.deal_id);
+      if (!r.terminal.passed && !r.terminal.unresponsive && !r.terminal.onHold && r.ord > 0) activeSet.add(r.deal_id);
     }
     const submitted = submittedSet.size;
     const terms = termsSet.size;
@@ -749,7 +751,7 @@ export function LenderAnalyticsDialog({
     const windowMs = (end ? end.getTime() : Date.now()) - startMs;
     const prevStart = startMs - windowMs;
     const prevEnd = startMs;
-    let n = 0;
+    const dealSet = new Set<string>();
     for (const dl of dealLenders) {
       const t = new Date(dl.created_at).getTime();
       if (isNaN(t)) continue;
@@ -760,9 +762,9 @@ export function LenderAnalyticsDialog({
       const ord = stageOrdinal(label);
       const term = isTerminal(label, dl.pass_reason);
       const ever = ord >= 3 || (term.passed && (label || '').toLowerCase().includes('drl'));
-      if (ever) n += 1;
+      if (ever) dealSet.add(dl.deal_id);
     }
-    return n;
+    return dealSet.size;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dealLenders, dealMap, dateRange, stageLabelByCompany]);
 
@@ -1418,8 +1420,8 @@ export function LenderAnalyticsDialog({
               'Flex Active Lenders';
             const subtitle =
               openKpi === 'active' ? `${activeLenderCount} lenders · ${dateRangeLabel(dateRange)}` :
-              openKpi === 'sent' ? `${kpis.submitted} deal_lenders submitted · ${dateRangeLabel(dateRange)}` :
-              openKpi === 'conv' ? `${kpis.terms} terms of ${kpis.submitted} submitted (${fmtPct(kpis.conv)}) · ${dateRangeLabel(dateRange)}` :
+              openKpi === 'sent' ? `${kpis.submitted} unique deals sent · ${dateRangeLabel(dateRange)}` :
+              openKpi === 'conv' ? `${kpis.terms} of ${kpis.submitted} deals reached terms (${fmtPct(kpis.conv)}) · ${dateRangeLabel(dateRange)}` :
               `${flexActiveLenderCount} Flex-linked lenders active · ${dateRangeLabel(dateRange)}`;
             const q = kpiDrillSearch.trim().toLowerCase();
             // Build rows for the table view depending on drill type
