@@ -1,5 +1,6 @@
 export interface LenderCsvRow {
   name: string;
+  tier: string;
   contactName: string;
   email: string;
   phone: string;
@@ -10,15 +11,17 @@ export interface LenderCsvRow {
 
 export function exportLendersToCsv(lenders: {
   name: string;
+  tier?: string | null;
   contact: { name: string; email: string; phone: string };
   preferences: string[];
   website?: string;
   description?: string;
 }[]): string {
-  const headers = ['Name', 'Contact Name', 'Email', 'Phone', 'Preferences', 'Website', 'Description'];
+  const headers = ['Name', 'Tier', 'Contact Name', 'Email', 'Phone', 'Preferences', 'Website', 'Description'];
   
   const rows = lenders.map(lender => [
     escapeCsvField(lender.name),
+    escapeCsvField(lender.tier || ''),
     escapeCsvField(lender.contact.name),
     escapeCsvField(lender.contact.email),
     escapeCsvField(lender.contact.phone),
@@ -56,12 +59,13 @@ export function parseCsvToLenders(csvContent: string): LenderCsvRow[] {
 
     return {
       name: fields[0]?.trim() || '',
-      contactName: fields[1]?.trim() || '',
-      email: fields[2]?.trim() || '',
-      phone: fields[3]?.trim() || '',
-      preferences: fields[4]?.trim() || '',
-      website: fields[5]?.trim() || '',
-      description: fields[6]?.trim() || '',
+      tier: fields[1]?.trim() || '',
+      contactName: fields[2]?.trim() || '',
+      email: fields[3]?.trim() || '',
+      phone: fields[4]?.trim() || '',
+      preferences: fields[5]?.trim() || '',
+      website: fields[6]?.trim() || '',
+      description: fields[7]?.trim() || '',
     };
   });
 }
