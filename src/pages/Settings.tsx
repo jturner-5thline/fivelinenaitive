@@ -534,13 +534,6 @@ export default function Settings() {
           {/* Sidebar — desktop */}
           <aside className="hidden md:block w-56 shrink-0 border-r border-white/[0.06] sticky top-0 self-start h-screen overflow-y-auto bg-transparent">
             <div className="px-4 pt-5 pb-4">
-              <Link
-                to="/dashboard"
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-3"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                Dashboard
-              </Link>
               <h1 className="text-base font-semibold tracking-tight">Settings</h1>
               <button
                 onClick={() => setPaletteOpen(true)}
