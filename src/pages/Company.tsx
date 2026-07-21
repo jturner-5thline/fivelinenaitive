@@ -77,15 +77,6 @@ export default function Company() {
 
         <main className="container mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
-                {company.name}
-              </h1>
-              <p className="text-muted-foreground">
-                {isAdmin ? 'Manage your company settings and team members' : 'View your company information'}
-              </p>
-            </div>
-
             {isAdmin && pendingJoinCount > 0 && (
               <Alert className="border-destructive/40 bg-destructive/5">
                 <UserPlus className="h-4 w-4 text-destructive" />
