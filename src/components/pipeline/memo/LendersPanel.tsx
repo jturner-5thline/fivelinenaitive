@@ -716,6 +716,49 @@ export function LendersPanel({ deal }: LendersPanelProps) {
           )}
         </div>
       )}
+
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="truncate">Lenders — {deal.name}</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto pr-1 mt-2 space-y-4">
+            {(['reviewing', 'onhold', 'ondeck', 'passed'] as Bucket[]).map((b) => {
+              const items = grouped[b];
+              if (items.length === 0) return null;
+              const meta = BUCKET_META[b];
+              return (
+                <section key={`full-${b}`}>
+                  <h4 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground mb-2">
+                    {meta.label} · {items.length}
+                  </h4>
+                  <div className="space-y-2">
+                    {items.map((l) => (
+                      <div
+                        key={`full-lender-${l.id}`}
+                        className="rounded-md border border-white/[0.06] bg-white/[0.02] p-3"
+                      >
+                        <LenderRow
+                          lender={l}
+                          meta={meta}
+                          selectionMode={false}
+                          selected={false}
+                          onToggleSelected={() => {}}
+                        />
+                        {l.notes && (
+                          <div className="mt-2 pl-4 text-xs text-muted-foreground whitespace-pre-wrap border-l border-white/[0.06]">
+                            {l.notes}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
