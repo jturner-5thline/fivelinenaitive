@@ -1831,6 +1831,32 @@ export function AICopilotPanel() {
       return;
     }
 
+    // Quick confirmation preview: if the prompt narrows to a subset of
+    // deals via detectable filters, post a preview card and wait for the
+    // user to confirm before firing any tools. The user's own message is
+    // already visible above the card. Skipped once when the confirm
+    // button re-invokes handleSend via bypassFilterPreviewRef.
+    if (!bypassFilterPreviewRef.current) {
+      const preview = detectDealFilterHints(text);
+      if (preview) {
+        addMessage({
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: '',
+          timestamp: new Date(),
+          metadata: {
+            kind: 'filter_preview',
+            prompt: text,
+            intent: preview.intent,
+            intentLabel: preview.intentLabel,
+            filters: preview.filters,
+          },
+        });
+        return;
+      }
+    }
+    bypassFilterPreviewRef.current = false;
+
     if (isProcessingRef.current) {
       // Queue this message to be processed after current one finishes
       messageQueueRef.current.push(text);
