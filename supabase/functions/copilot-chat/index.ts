@@ -4302,6 +4302,113 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         full_count: deals.length,
       };
     }
+    case "get_deals_task_coverage": {
+      const argScope: string = args.scope || "active_only";
+      const filterHas: string = args.has || "any";
+      const rawLimit = typeof args.limit === "number" ? args.limit : 100;
+      const limit = Math.min(Math.max(1, rawLimit), 300);
+      // Pull the candidate deal set within the caller's chat scope.
+      let dq = supabase
+        .from("deals")
+        .select("id, company, stage, status, deal_manager")
+        .limit(1000);
+      dq = applyDealScope(dq, scope, { allowOutOfScope: args.broaden === true });
+      const { data: allDeals, error: dealErr } = await dq;
+      if (dealErr) return { error: dealErr.message };
+      if (!allDeals || allDeals.length === 0) return { deals: [], total: 0, scope: scope.label };
+      // Active-pipeline slice: exclude terminal & on-hold stages/statuses.
+      const TERMINAL = new Set([
+        "on-hold", "on_hold", "closed", "closed-won", "closed-lost", "closed_won", "closed_lost",
+        "won", "lost", "archived", "passed",
+      ]);
+      const pipelineDeals = (argScope === "active_only"
+        ? allDeals.filter((d: any) => {
+            const st = String(d.status || "").toLowerCase();
+            const sg = String(d.stage || "").toLowerCase();
+            return !TERMINAL.has(st) && !TERMINAL.has(sg);
+          })
+        : allDeals) as Array<{ id: string; company: string; stage: string | null; status: string | null; deal_manager: string | null }>;
+      if (pipelineDeals.length === 0) return { deals: [], total: 0, scope: scope.label };
+      const dealIds = pipelineDeals.map((d) => d.id);
+      // One task fetch, joined in memory.
+      const { data: tasks, error: taskErr } = await supabase
+        .from("tasks")
+        .select("deal_id, status, due_date, archived_at")
+        .in("deal_id", dealIds)
+        .is("archived_at", null);
+      if (taskErr) return { error: taskErr.message };
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const openStatuses = new Set(["not_started", "in_progress"]);
+      const perDeal = new Map<string, { total: number; open: number; overdue: number; nextDue: string | null }>();
+      for (const id of dealIds) perDeal.set(id, { total: 0, open: 0, overdue: 0, nextDue: null });
+      for (const t of tasks || []) {
+        const bucket = perDeal.get(String((t as any).deal_id));
+        if (!bucket) continue;
+        bucket.total += 1;
+        const status = String((t as any).status || "").toLowerCase();
+        const isOpen = openStatuses.has(status);
+        if (isOpen) {
+          bucket.open += 1;
+          const due = (t as any).due_date ? new Date((t as any).due_date + "T00:00:00") : null;
+          if (due && !isNaN(due.getTime())) {
+            if (due < today) bucket.overdue += 1;
+            if (!bucket.nextDue || due < new Date(bucket.nextDue + "T00:00:00")) {
+              bucket.nextDue = (t as any).due_date;
+            }
+          }
+        }
+      }
+      // Resolve deal_manager (user_id → display name) in one batched fetch.
+      const managerIds = Array.from(new Set(pipelineDeals.map((d) => d.deal_manager).filter((v): v is string => !!v)));
+      const managerNames: Record<string, string> = {};
+      if (managerIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, first_name, last_name, email")
+          .in("user_id", managerIds);
+        for (const p of profs || []) {
+          const n = (p as any).display_name
+            || [(p as any).first_name, (p as any).last_name].filter(Boolean).join(" ").trim()
+            || (p as any).email
+            || null;
+          if (n) managerNames[(p as any).user_id] = n;
+        }
+      }
+      const enriched = pipelineDeals.map((d) => {
+        const b = perDeal.get(d.id) || { total: 0, open: 0, overdue: 0, nextDue: null };
+        return {
+          deal_id: d.id,
+          name: d.company,
+          stage: d.stage,
+          status: d.status,
+          deal_manager: d.deal_manager ? (managerNames[d.deal_manager] || null) : null,
+          task_count: b.total,
+          open_task_count: b.open,
+          overdue_count: b.overdue,
+          next_due_date: b.nextDue,
+        };
+      });
+      let filtered = enriched;
+      if (filterHas === "none") filtered = enriched.filter((d) => d.task_count === 0);
+      else if (filterHas === "no_open") filtered = enriched.filter((d) => d.open_task_count === 0);
+      else if (filterHas === "has_overdue") filtered = enriched.filter((d) => d.overdue_count > 0);
+      filtered.sort((a, b) => {
+        // Deals with least coverage surface first for "needs tasks"-style asks;
+        // when coverage is equal, sort by name for stable, readable output.
+        if (a.open_task_count !== b.open_task_count) return a.open_task_count - b.open_task_count;
+        if (a.task_count !== b.task_count) return a.task_count - b.task_count;
+        return String(a.name || "").localeCompare(String(b.name || ""));
+      });
+      const capped = filtered.slice(0, limit);
+      return {
+        deals: capped,
+        total: filtered.length,
+        truncated: filtered.length > capped.length,
+        filter: filterHas,
+        scope: `${scope.label}${argScope === "active_only" ? " · active pipeline" : " · full book"}`,
+      };
+    }
     // ── Fix 2: Team member search with fuzzy matching ──
     case "search_team_members": {
       // Get user's company
