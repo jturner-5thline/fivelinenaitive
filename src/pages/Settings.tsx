@@ -58,6 +58,9 @@ import { EmailStyleGuideSettings } from '@/components/settings/EmailStyleGuideSe
 import { EmailCadenceSettings } from '@/components/settings/EmailCadenceSettings';
 import { PartnerRulesSettings } from '@/components/settings/PartnerRulesSettings';
 import { ContactTypesSettings } from '@/components/settings/ContactTypesSettings';
+import Account from '@/pages/Account';
+import Company from '@/pages/Company';
+import Preferences from '@/pages/Preferences';
 import { useCanEditPartnerRules } from '@/hooks/usePartnerRules';
 import { useCompany } from '@/hooks/useCompany';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
@@ -103,14 +106,14 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
         label: 'Account',
         description: 'Your personal profile, security, and notification preferences.',
         keywords: ['account', 'profile', 'personal', 'email', 'name', 'avatar', 'security', '2fa'],
-        href: '/account',
+        render: () => <Account />,
       },
       {
         id: 'company',
         label: 'Company',
         description: 'Company profile, team members, and roles.',
         keywords: ['company', 'team', 'organization', 'members', 'admin', 'logo', 'industry', 'employees', 'roles'],
-        href: '/company',
+        render: () => <Company />,
         badge: ctx.pendingJoinCount,
       },
       {
@@ -118,7 +121,7 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
         label: 'Preferences',
         description: 'Theme, notifications, and regional settings.',
         keywords: ['preferences', 'theme', 'dark', 'light', 'regional', 'timezone'],
-        href: '/preferences',
+        render: () => <Preferences />,
       },
     ],
   },
