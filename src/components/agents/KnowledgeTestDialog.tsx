@@ -48,7 +48,7 @@ export function KnowledgeTestDialog({ open, onOpenChange, companyId, hasReadyDoc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-3xl h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Sparkles className="h-4 w-4 text-primary" />
@@ -92,10 +92,10 @@ export function KnowledgeTestDialog({ open, onOpenChange, companyId, hasReadyDoc
           )}
         </div>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <div className="grid grid-cols-[1fr_180px] gap-3 h-full">
+        <div className="flex-1 min-h-0">
+          <div className="grid grid-cols-[1fr_180px] gap-3 h-full min-h-0">
             {/* ── Scorecard ─────────────────────────────────────── */}
-            <ScrollArea className="h-full pr-2">
+            <div className="h-full min-h-0 overflow-y-auto pr-2">
               {isRunning && !currentRun ? (
                 <RunningPlaceholder />
               ) : currentRun ? (
@@ -103,7 +103,7 @@ export function KnowledgeTestDialog({ open, onOpenChange, companyId, hasReadyDoc
               ) : (
                 <EmptyState hasReadyDocs={hasReadyDocs} />
               )}
-            </ScrollArea>
+            </div>
 
             {/* ── History ───────────────────────────────────────── */}
             <div className="border-l border-border/50 pl-3 flex flex-col min-h-0">
@@ -113,7 +113,7 @@ export function KnowledgeTestDialog({ open, onOpenChange, companyId, hasReadyDoc
                   Recent runs
                 </p>
               </div>
-              <ScrollArea className="flex-1">
+              <div className="flex-1 min-h-0 overflow-y-auto">
                 {historyLoading ? (
                   <p className="text-[11px] text-muted-foreground italic">Loading…</p>
                 ) : history.length === 0 ? (
@@ -151,7 +151,7 @@ export function KnowledgeTestDialog({ open, onOpenChange, companyId, hasReadyDoc
                     })}
                   </ul>
                 )}
-              </ScrollArea>
+              </div>
             </div>
           </div>
         </div>
