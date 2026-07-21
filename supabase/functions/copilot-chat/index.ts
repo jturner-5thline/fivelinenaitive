@@ -981,6 +981,29 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_deals_task_coverage",
+      description: "Aggregate view of tasks-per-deal across the ACTIVE PIPELINE in ONE call. USE THIS (not a loop of search_deals + get_tasks) for any portfolio question about task coverage — 'which deals need tasks?', 'what deals don't have tasks?', 'deals with no open tasks', 'deals with overdue tasks', 'top deals by task count'. Returns, per deal: id, name, stage, status, deal_manager, total task count, open task count (not_started + in_progress), overdue count, and the next upcoming due date. Filter with `has` to slice: 'none' (zero tasks at all), 'no_open' (zero open tasks — includes fully-completed backlogs), 'has_overdue', or 'any' (default). Present results as a concise bullet list of deal names — do NOT dump the raw JSON.",
+      parameters: {
+        type: "object",
+        properties: {
+          has: {
+            type: "string",
+            enum: ["none", "no_open", "has_overdue", "any"],
+            description: "Filter which deals to return. Default 'any'.",
+          },
+          scope: {
+            type: "string",
+            enum: ["active_only", "all"],
+            description: "active_only (default) excludes on-hold/closed/won/lost/archived deals. Use 'all' only when the user explicitly asks about the full book.",
+          },
+          limit: { type: "number", description: "Max deals returned. Default 100, max 300." },
+        },
+      },
+    },
+  },
   // ── Fix 2: Team member search tool ──
   {
     type: "function",
@@ -2388,7 +2411,7 @@ function selectToolsWithScopes(
   const coreNames = new Set([
     "find_entity",
     "get_deal", "search_deals", "get_pipeline_summary", "get_activity_log",
-    "draft_email", "create_task", "get_tasks", "search_team_members",
+    "draft_email", "create_task", "get_tasks", "get_deals_task_coverage", "search_team_members",
     "get_pipelines", "move_deal_pipeline",
     // Always-available kitchen-sink reads so the model never says "I don't have that data".
     "get_deal_full", "get_lender_full", "get_contact_full", "get_company_full",
@@ -4277,6 +4300,116 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         scope_label: scope.label,
         excluded_count: excluded,
         full_count: deals.length,
+      };
+    }
+    case "get_deals_task_coverage": {
+      const argScope: string = args.scope || "active_only";
+      const filterHas: string = args.has || "any";
+      const rawLimit = typeof args.limit === "number" ? args.limit : 100;
+      const limit = Math.min(Math.max(1, rawLimit), 300);
+      // Pull the candidate deal set within the caller's chat scope.
+      let dq = supabase
+        .from("deals")
+        .select("id, company, stage, status, manager, deal_owner_user_id")
+        .limit(1000);
+      dq = applyDealScope(dq, scope, { allowOutOfScope: args.broaden === true });
+      const { data: allDeals, error: dealErr } = await dq;
+      if (dealErr) return { error: dealErr.message };
+      if (!allDeals || allDeals.length === 0) return { deals: [], total: 0, scope: scope.label };
+      // Active-pipeline slice: exclude terminal & on-hold stages/statuses.
+      const TERMINAL = new Set([
+        "on-hold", "on_hold", "closed", "closed-won", "closed-lost", "closed_won", "closed_lost",
+        "won", "lost", "archived", "passed",
+      ]);
+      const pipelineDeals = (argScope === "active_only"
+        ? allDeals.filter((d: any) => {
+            const st = String(d.status || "").toLowerCase();
+            const sg = String(d.stage || "").toLowerCase();
+            return !TERMINAL.has(st) && !TERMINAL.has(sg);
+          })
+        : allDeals) as Array<{ id: string; company: string; stage: string | null; status: string | null; manager: string | null; deal_owner_user_id: string | null }>;
+      if (pipelineDeals.length === 0) return { deals: [], total: 0, scope: scope.label };
+      const dealIds = pipelineDeals.map((d) => d.id);
+      // One task fetch, joined in memory.
+      const { data: tasks, error: taskErr } = await supabase
+        .from("tasks")
+        .select("deal_id, status, due_date, archived_at")
+        .in("deal_id", dealIds)
+        .is("archived_at", null);
+      if (taskErr) return { error: taskErr.message };
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const openStatuses = new Set(["not_started", "in_progress"]);
+      const perDeal = new Map<string, { total: number; open: number; overdue: number; nextDue: string | null }>();
+      for (const id of dealIds) perDeal.set(id, { total: 0, open: 0, overdue: 0, nextDue: null });
+      for (const t of tasks || []) {
+        const bucket = perDeal.get(String((t as any).deal_id));
+        if (!bucket) continue;
+        bucket.total += 1;
+        const status = String((t as any).status || "").toLowerCase();
+        const isOpen = openStatuses.has(status);
+        if (isOpen) {
+          bucket.open += 1;
+          const due = (t as any).due_date ? new Date((t as any).due_date + "T00:00:00") : null;
+          if (due && !isNaN(due.getTime())) {
+            if (due < today) bucket.overdue += 1;
+            if (!bucket.nextDue || due < new Date(bucket.nextDue + "T00:00:00")) {
+              bucket.nextDue = (t as any).due_date;
+            }
+          }
+        }
+      }
+      // Resolve deal_manager (user_id → display name) in one batched fetch.
+      // `manager` is a free-text name (legacy); `deal_owner_user_id` is the
+      // canonical FK. Prefer the resolved profile name, fall back to the
+      // free-text manager string.
+      const managerIds = Array.from(new Set(pipelineDeals.map((d) => d.deal_owner_user_id).filter((v): v is string => !!v)));
+      const managerNames: Record<string, string> = {};
+      if (managerIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, first_name, last_name, email")
+          .in("user_id", managerIds);
+        for (const p of profs || []) {
+          const n = (p as any).display_name
+            || [(p as any).first_name, (p as any).last_name].filter(Boolean).join(" ").trim()
+            || (p as any).email
+            || null;
+          if (n) managerNames[(p as any).user_id] = n;
+        }
+      }
+      const enriched = pipelineDeals.map((d) => {
+        const b = perDeal.get(d.id) || { total: 0, open: 0, overdue: 0, nextDue: null };
+        return {
+          deal_id: d.id,
+          name: d.company,
+          stage: d.stage,
+          status: d.status,
+          deal_manager: (d.deal_owner_user_id && managerNames[d.deal_owner_user_id]) || d.manager || null,
+          task_count: b.total,
+          open_task_count: b.open,
+          overdue_count: b.overdue,
+          next_due_date: b.nextDue,
+        };
+      });
+      let filtered = enriched;
+      if (filterHas === "none") filtered = enriched.filter((d) => d.task_count === 0);
+      else if (filterHas === "no_open") filtered = enriched.filter((d) => d.open_task_count === 0);
+      else if (filterHas === "has_overdue") filtered = enriched.filter((d) => d.overdue_count > 0);
+      filtered.sort((a, b) => {
+        // Deals with least coverage surface first for "needs tasks"-style asks;
+        // when coverage is equal, sort by name for stable, readable output.
+        if (a.open_task_count !== b.open_task_count) return a.open_task_count - b.open_task_count;
+        if (a.task_count !== b.task_count) return a.task_count - b.task_count;
+        return String(a.name || "").localeCompare(String(b.name || ""));
+      });
+      const capped = filtered.slice(0, limit);
+      return {
+        deals: capped,
+        total: filtered.length,
+        truncated: filtered.length > capped.length,
+        filter: filterHas,
+        scope: `${scope.label}${argScope === "active_only" ? " · active pipeline" : " · full book"}`,
       };
     }
     // ── Fix 2: Team member search with fuzzy matching ──
@@ -9974,7 +10107,11 @@ Disambiguation rules — apply these literally:
 - create_task: Create a task (needs confirmation)
 
 READ TOOLS:
-- get_outstanding_items, get_deal_milestones, get_data_room_documents, get_deal_memo, get_deal_writeup, get_activity_log, get_deal_lenders, get_tasks, get_deal, search_deals, search_lenders, get_pipeline_summary, get_deal_health
+- get_outstanding_items, get_deal_milestones, get_data_room_documents, get_deal_memo, get_deal_writeup, get_activity_log, get_deal_lenders, get_tasks, get_deals_task_coverage, get_deal, search_deals, search_lenders, get_pipeline_summary, get_deal_health
+
+PORTFOLIO TASK-COVERAGE QUERIES:
+- For any portfolio-scope task question ("which deals need tasks?", "what deals don't have tasks?", "deals with no open tasks", "deals with overdue tasks", "top deals by task count"), call get_deals_task_coverage ONCE with the right `has` filter — never loop search_deals + get_tasks per deal.
+- Answer as a short bullet list of deal names (add "— <n> open" or "— no tasks" when helpful). Keep it concise; no tables, no JSON, no per-deal paragraphs. If the list is long, show the first 15 and note the total remaining.
 
 ADMIN AGENT — DUTY 1 (VERIFY DEAL INFORMATION):
 - Trigger verify_deal_information whenever the user asks to audit deals / check what needs review / verify a deal / find stale or missing updates / "is anything missing on <Deal>". Pass deal_id for a single-deal request; omit for portfolio. Pass offset for "Show more".
