@@ -1126,6 +1126,34 @@ export function AdminAgentDuty1Config() {
                 />
               </label>
               <span className="text-[10px] text-muted-foreground">PDF, DOCX, XLSX, TXT, MD, CSV, JSON, HTML · 25MB max</span>
+              <div className="ml-auto flex items-center gap-1.5">
+                {latestKnowledgeTestQ.data && latestKnowledgeTestQ.data.total > 0 && (
+                  <span
+                    className={`text-[10px] tabular-nums px-1.5 h-5 inline-flex items-center rounded-full border ${
+                      latestKnowledgeTestQ.data.score / latestKnowledgeTestQ.data.total >= 0.8
+                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                        : latestKnowledgeTestQ.data.score / latestKnowledgeTestQ.data.total >= 0.5
+                        ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                        : 'bg-red-500/15 text-red-300 border-red-500/30'
+                    }`}
+                    title={`Last knowledge test: ${latestKnowledgeTestQ.data.score}/${latestKnowledgeTestQ.data.total}`}
+                  >
+                    {latestKnowledgeTestQ.data.score}/{latestKnowledgeTestQ.data.total}
+                  </span>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px]"
+                  onClick={() => setKnowledgeTestOpen(true)}
+                  disabled={(knowledgeQ.data ?? []).filter((d) => d.status === 'ready').length === 0}
+                  title="Verify the agent has truly digested every uploaded document"
+                >
+                  <FlaskConical className="h-3 w-3 mr-1" />
+                  Run Knowledge Test
+                </Button>
+              </div>
             </div>
 
             {/* Prompt inclusion filter */}
