@@ -1,72 +1,61 @@
-# Variance vs. Performance-to-Plan toggle — Debt Advisory Metrics
+# Knowledge Test for the Deal Admin Agent
 
-Add a header-level toggle on the **Debt Advisory Metrics** dashboard (`ConsolidatedDebtPipelineDashboard.tsx`) that switches every KPI tile's delta chip between two comparison bases:
+A single button in the agent's Knowledge Base tab that (1) auto-generates a set of questions from the docs already ingested, (2) asks the agent each question through the same RAG retrieval path it uses in production, and (3) grades whether the answer actually cites the right source passage. Results render as a scorecard with per-question pass/fail, the retrieved passages, and the citations.
 
-- **Variance** (default, existing behavior) — actual current period vs. actual prior period.
-- **Performance to Plan** — actual current period vs. the plan value saved for that same period in the Master Plan popup, shown as signed # and %.
+## User flow
 
-## UX
+1. In the Deal Admin Agent Configure popup → Knowledge tab, a new "Run Knowledge Test" button appears above the docs list.
+2. Clicking it opens a modal that streams progress: "Generating questions…", "Question 1/10…", etc.
+3. When done: a scorecard shows overall score (e.g. 8/10 correct), each question with the agent's answer, the top retrieved chunk, the expected doc, and a pass/fail badge with reasoning.
+4. A "Re-run" button and a "View last run" affordance let the user compare over time. Prior runs persist per company.
 
-Two-tab pill in the dashboard header (next to timeframe / signed-mode controls):
+## Backend
 
-```text
-[ Variance | Performance to Plan ]
-```
+New edge function `admin-agent-knowledge-test` (JWT-verified, service-role for reads):
 
-- Selected tab is persisted per user via `user_ui_preferences` (key: `debt-advisory:comparison-mode`) so it survives reloads and matches the pattern used by other dashboard toggles.
-- When **Performance to Plan** is active:
-  - Each KPI card's delta chip renders `▲ +$X (+Y%)` / `▼ −$X (−Y%)` vs. plan for the current period, tooltip: `vs Plan · {period label}`.
-  - If no plan value exists for that widget/period, chip shows `— No plan` in muted tone and links (on click) to the Master Plan dialog with that widget row focused.
-  - Plan values are formatted using the same `formatDiff` helper already used by the Variance chip so currency / number / percent stay consistent.
+1. Loads all `status='ready'` docs + chunks for the company, honoring the agent's `knowledge_tag_filter` if set (matches production behavior).
+2. **Question generation pass** — one Claude Sonnet 4.5 call given a compact digest (title + tags + first ~800 chars of each doc, capped) that returns a JSON array of ~10 test items: `{ question, expected_doc_id, expected_snippet, rubric }`. Distribute across docs (at least one per doc when total docs ≤ 10; otherwise sample).
+3. **Answering pass** — for each question, run the same retrieval path the agent uses in prod: call the existing `match_admin_agent_knowledge` RPC with the same tag filter, then send the retrieved passages + question to Claude with the same "ADMIN AGENT KNOWLEDGE BASE" injection block. Capture the answer, the top 3 retrieved chunk ids, and their doc ids.
+4. **Grading pass** — one Claude call per question with a strict rubric: pass only if (a) the answer is factually consistent with `expected_snippet` and (b) the retrieval included `expected_doc_id` in the top-3. Returns `{ pass: boolean, reason: string, retrieval_hit: boolean, answer_hit: boolean }`.
+5. Persists the run to a new `admin_agent_knowledge_test_runs` table (company-scoped, RLS) with `run_id`, `questions_jsonb`, `results_jsonb`, `score`, `total`, `created_by`, `created_at`. Returns the payload to the client.
 
-## Data
+## Storage
 
-- New hook `useDebtAdvisoryPlanValues(period)` in `src/components/metrics/dashboards/qir/useDebtAdvisoryPlanValues.ts`.
-  - Reads `insights_metric_targets` filtered by `company_id`, `metric_key IN (plan:consolidated-debt-pipeline:*, plan:sales-dashboard-v2:*)` (linked widgets), and `period_month = {resolvedPeriodKey}`.
-  - Returns a `Map<widgetKey, { value: number; format: PlanWidgetFormat; source: 'consolidated-debt-pipeline' | 'sales-dashboard-v2' }>`.
-  - Period resolution: month (`YYYY-MM`) when timeframe is monthly, quarter (`YYYY-Qn`) otherwise — same convention already used by the Master Plan writer.
-  - React Query cache-key: `['debt-advisory-plan-values', companyId, periodKey]`, 30 s staleTime.
+New table `admin_agent_knowledge_test_runs`:
+- `id uuid pk`, `company_id uuid`, `agent_key text default 'admin_agent'`
+- `score int`, `total int`, `tag_filter text[]`
+- `questions jsonb` (generated items), `results jsonb` (per-question answer/retrieval/grade)
+- `created_by uuid`, `created_at timestamptz default now()`
+- RLS: company members can select; only same company + auth user can insert; grants for `authenticated` + `service_role`.
 
-- New KPI-to-plan-widget map in the same hook file:
+## Frontend
 
-  ```ts
-  export const DEBT_ADVISORY_KPI_TO_PLAN: Record<string, string> = {
-    'total-revenue-opportunity': 'total-revenue-opportunity',
-    'active-deals': 'active-deals',
-    'deals-on-board-count': 'deals-on-board',
-    'deals-on-board-value': 'deals-on-board-value',
-    'deals-signed': 'deals-signed',
-    'deals-closed': 'deals-closed',
-    'nda-sent': 'nda-sent',
-    'terms-issued': 'terms-issued',
-    'in-due-diligence': 'in-due-diligence',
-    'proposals-issued': 'proposals-issued',
-    'proposal-to-signed-conversion': 'proposal-to-signed-conversion',
-    'agreements-pending': 'agreements-pending',
-    'closed-won-fees': 'closed-won-fees',
-  };
-  ```
+- New component `src/components/agents/KnowledgeTestDialog.tsx` — the modal with streaming progress, scorecard, and history list.
+- New hook `src/hooks/useAdminAgentKnowledgeTest.ts` — invokes the edge function, exposes `run()`, `isRunning`, `latestRun`, `history`.
+- Wire a "Run Knowledge Test" button into the existing Knowledge Base tab inside `AdminAgentDuty1Config` (per the `mem://features/agents/knowledge-base-tab` pattern). Button disabled when 0 ready docs; shows last score badge next to it.
+- Scorecard layout: overall score header, then a collapsible list of questions with:
+  - Question text
+  - Pass/fail badge (green/red)
+  - Agent's answer
+  - Expected source (doc title + snippet)
+  - Retrieved chunks (doc titles) with a "matched expected doc" indicator
+  - Grader reasoning
+- History: last 10 runs listed with date + score, click to reopen the scorecard.
 
-  Any KPI tile without a mapping renders no plan chip (falls back to `— No plan`).
+## Behavior guarantees
 
-## Rendering changes
+- The test uses the exact same RPC + prompt injection the production agent uses, so a pass means retrieval genuinely surfaces the doc for a realistic question. No side-channel that bypasses the RAG path.
+- Honors the current `knowledge_tag_filter` — if untagged docs would be filtered out in prod, they're filtered here too, so the test reflects reality.
+- No writes to `admin_agent_knowledge_docs` or chunks; test is read-only against the KB.
+- Uses `google/gemini-3.5-flash` for question generation + grading (fast, cheap, sufficient for JSON scoring); the answering pass uses the same model the production agent uses.
 
-- Extend `MetricCardConfig` with an optional `planKey?: string` and a `comparisonMode: 'variance' | 'plan'` prop threaded from the dashboard-level state.
-- `MetricKPICard` picks between the existing `delta` render (variance) and a new `planDelta` render (built from `actualNumericValue - planValue` and its `%` counterpart). No new visual primitives — reuses arrow / tone classes so both modes look identical.
-- Every existing `MetricKPICard` call site in `ConsolidatedDebtPipelineDashboard.tsx` gets a `planKey` prop referencing the map above; the mode + plan-values map are consumed from a single `ComparisonModeContext` created in the dashboard root so we don't drill props through every subtree.
+## Files
 
-## Files touched
+New:
+- `supabase/functions/admin-agent-knowledge-test/index.ts`
+- `supabase/migrations/<timestamp>_admin_agent_knowledge_test_runs.sql`
+- `src/components/agents/KnowledgeTestDialog.tsx`
+- `src/hooks/useAdminAgentKnowledgeTest.ts`
 
-```text
-src/components/metrics/dashboards/ConsolidatedDebtPipelineDashboard.tsx     (toggle, context, plan chip wiring on all MetricKPICard call sites)
-src/components/metrics/dashboards/qir/useDebtAdvisoryPlanValues.ts          (new hook + KPI→plan-widget map)
-src/components/metrics/dashboards/qir/ComparisonModeContext.tsx             (new context: mode + planValues map)
-```
-
-No schema changes — plan values already live in `insights_metric_targets` and are written by the existing Master Plan dialog.
-
-## Out of scope
-
-- No changes to trend charts (bar/line variance stays period-over-period only).
-- No changes to other dashboards — the toggle is local to Debt Advisory Metrics.
-- No plan editing UI changes — Master Plan popup remains the single place plans are entered.
+Modified:
+- The existing Knowledge tab component inside the Deal Admin Agent Configure popup (adds the button + last-score badge).
