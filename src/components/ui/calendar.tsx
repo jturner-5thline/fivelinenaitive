@@ -23,6 +23,12 @@ export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   defaultPresets?: boolean;
   /** Called when a preset chip is clicked (in addition to onSelect). */
   onPresetSelect?: (date: Date) => void;
+  /**
+   * Show a "Clear" affordance that resets the selection. Defaults to true
+   * for single-mode calendars. Fires onSelect(undefined) and onClear().
+   */
+  showClear?: boolean;
+  onClear?: () => void;
 };
 
 const DEFAULT_PRESETS: CalendarPreset[] = [
@@ -39,9 +45,13 @@ function Calendar({
   presets,
   defaultPresets = false,
   onPresetSelect,
+  showClear,
+  onClear,
   ...props
 }: CalendarProps) {
   const resolvedPresets = presets ?? (defaultPresets ? DEFAULT_PRESETS : undefined);
+  const mode = (props as { mode?: string }).mode ?? "single";
+  const clearVisible = showClear ?? mode === "single";
 
   const handlePreset = (preset: CalendarPreset) => {
     const value = typeof preset.date === "function" ? preset.date() : preset.date;
@@ -49,16 +59,23 @@ function Calendar({
     const selectHandler = (props as { onSelect?: (d: Date) => void }).onSelect;
     // Only single-mode gets the direct forward; range/multiple callers should
     // pass their own onPresetSelect if they want preset behavior.
-    const mode = (props as { mode?: string }).mode ?? "single";
     if (mode === "single" && typeof selectHandler === "function") {
       selectHandler(value);
+    }
+  };
+
+  const handleClear = () => {
+    onClear?.();
+    const selectHandler = (props as { onSelect?: (d: Date | undefined) => void }).onSelect;
+    if (mode === "single" && typeof selectHandler === "function") {
+      selectHandler(undefined);
     }
   };
 
   return (
     <div className="overflow-hidden">
       {resolvedPresets && resolvedPresets.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 px-3 pt-3 pb-2 border-b border-border/60 bg-muted/40">
+        <div className="flex flex-wrap items-center gap-1.5 px-3 pt-3 pb-2 border-b border-border/60 bg-muted/40">
           {resolvedPresets.map((preset) => (
             <button
               key={preset.label}
@@ -74,6 +91,20 @@ function Calendar({
               {preset.label}
             </button>
           ))}
+          {clearVisible && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className={cn(
+                "ml-auto px-2.5 py-1 rounded-full text-[11px] font-medium",
+                "text-muted-foreground border border-transparent",
+                "hover:text-destructive hover:border-destructive/40 hover:bg-destructive/10",
+                "transition-colors",
+              )}
+            >
+              Clear
+            </button>
+          )}
         </div>
       )}
       <DayPicker
@@ -123,6 +154,22 @@ function Calendar({
         }}
         {...props}
       />
+      {clearVisible && !(resolvedPresets && resolvedPresets.length > 0) && (
+        <div className="flex justify-end px-3 pb-2 pt-1 border-t border-border/60 bg-muted/30">
+          <button
+            type="button"
+            onClick={handleClear}
+            className={cn(
+              "px-2.5 py-1 rounded-md text-[11px] font-medium",
+              "text-muted-foreground",
+              "hover:text-destructive hover:bg-destructive/10",
+              "transition-colors",
+            )}
+          >
+            Clear date
+          </button>
+        </div>
+      )}
     </div>
   );
 }
