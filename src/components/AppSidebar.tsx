@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, BarChart3, Users, Settings, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, SlidersHorizontal, Contact, Building2, UserCircle, LogOut, Handshake, Landmark, FileText, PieChart } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Users, Settings, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, SlidersHorizontal, Contact, Building2, UserCircle, LogOut, Handshake, Landmark, FileText, PieChart, Mail, SlidersHorizontal as SlidersIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCompanyFeatures } from "@/hooks/useCompanyFeatures";
 import { useClaapRoutingTasks } from '@/hooks/useClaapMeetings';
@@ -38,11 +38,13 @@ import {
 
 // Map page URLs to feature flag names
 const menuItems = [
-  { title: "Deals", url: "/deals", icon: Briefcase, featureKey: null }, // Always visible
+  { title: "Deals", url: "/workspace?tab=deals", icon: Briefcase, featureKey: null }, // Always visible
   // Moved out of the global top header into the sidebar, ordered directly under Deals.
-  { title: "Funding Sources", url: "/lenders", icon: Landmark, featureKey: null },
+  { title: "Funding Sources", url: "/workspace?tab=lenders", icon: Landmark, featureKey: null },
+  { title: "Communications", url: "/workspace?tab=communications", icon: Mail, featureKey: null },
   { title: "Contacts", url: "/contacts", icon: Contact, featureKey: null },
-  { title: "Companies", url: "/crm-companies", icon: Building2, featureKey: null },
+  { title: "Companies", url: "/workspace?tab=company", icon: Building2, featureKey: null },
+  { title: "Preferences", url: "/workspace?tab=preferences", icon: SlidersIcon, featureKey: null },
   { title: "Reports", url: "/reports", icon: FileText, featureKey: "reports", hideForDemoEmail: true as const },
   
   { title: "AI Agents", url: "/agents", icon: Bot, featureKey: "agents" },
