@@ -2462,7 +2462,7 @@ function extractScheduleCallBundleKey(row: {
   );
 }
 
-function queueSemanticKey(row: {
+export function queueSemanticKey(row: {
   action_type?: string | null;
   target_object_type?: string | null;
   target_object_id?: string | null;
