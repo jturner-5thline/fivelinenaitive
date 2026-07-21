@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { BookOpen, Brain, CalendarDays, Check, FileText, Loader2, Paperclip, Pencil, Plus, ShieldCheck, Sparkles, Trash2, Upload, X } from 'lucide-react';
+import { BookOpen, Brain, CalendarDays, Check, FileText, FlaskConical, Loader2, Paperclip, Pencil, Plus, ShieldCheck, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { KnowledgeTestDialog } from '@/components/agents/KnowledgeTestDialog';
 
 /**
  * Admin Agent — Duty 1 ("Verify Deal Information") configuration.
@@ -437,6 +438,7 @@ export function AdminAgentDuty1Config() {
   const [pasteTitle, setPasteTitle] = useState('');
   const [pasteBody, setPasteBody] = useState('');
   const [isSavingPaste, setIsSavingPaste] = useState(false);
+  const [knowledgeTestOpen, setKnowledgeTestOpen] = useState(false);
 
   // Realtime: reflect ingestion progress as the edge function updates status.
   useEffect(() => {
