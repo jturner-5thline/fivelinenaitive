@@ -137,7 +137,7 @@ export interface TaskActivityEvent {
   actor_profile?: { display_name: string; avatar_url: string | null } | null;
 }
 
-export type TaskOwnerFilter = 'mine' | 'others' | 'all';
+export type TaskOwnerFilter = 'mine' | 'others' | 'all' | `user:${string}`;
 const TASKS_KEY = ['my-tasks'];
 
 function buildBaseTasksQuery() {
@@ -230,6 +230,18 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
     enabled: !!user,
     queryFn: async () => {
       if (!user) return [];
+
+      // Filter by a specific user id (e.g. another 5th Line teammate).
+      if (typeof ownerFilter === 'string' && ownerFilter.startsWith('user:')) {
+        const targetUserId = ownerFilter.slice('user:'.length);
+        let query = buildBaseTasksQueryIncludingSubtasks()
+          .eq('assigned_to', targetUserId)
+          .order('position', { ascending: true })
+          .order('created_at', { ascending: false });
+        const { data, error } = await query;
+        if (error) throw error;
+        return sortAndDedupeTasks((data || []) as Task[]);
+      }
 
       if (ownerFilter === 'mine') {
         const [assignedResult, collaboratorResult] = await Promise.all([

@@ -313,6 +313,27 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
   const queryClient = useQueryClient();
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
   const { tasks, isLoading, createTask, updateTask, deleteTask } = useMyTasks(ownerFilter);
+  // 5th Line teammates — surfaced in the owner filter so a user can quickly
+  // pivot from "My tasks" to any other naitive teammate's task list.
+  const { user: _currentUserForTeam } = useAuth();
+  const { data: fifthLineTeammates = [] } = useQuery({
+    queryKey: ['fifth-line-teammates'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, email')
+        .ilike('email', '%@5thline.co')
+        .order('display_name', { ascending: true });
+      if (error) throw error;
+      return (data || []).filter((p: any) => !!p.user_id);
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const selectedTeammate = useMemo(() => {
+    if (typeof ownerFilter !== 'string' || !ownerFilter.startsWith('user:')) return null;
+    const id = ownerFilter.slice('user:'.length);
+    return fifthLineTeammates.find((p: any) => p.user_id === id) || null;
+  }, [ownerFilter, fifthLineTeammates]);
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { notifications } = useTaskNotifications();
   const { savedViews, saveView, deleteView, renameView, duplicateView, togglePinView } = useTaskSavedViews();
@@ -1170,7 +1191,15 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
         <div className="flex items-center px-6 pt-5 pb-3 min-w-0 gap-3 flex-wrap border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
           <div className="min-w-0 shrink-0">
             <h1 className="text-[22px] font-semibold tracking-tight leading-none" style={{ color: '#eef1f6' }}>
-              {ownerFilter === 'mine' ? 'My Tasks' : ownerFilter === 'others' ? "Others' Tasks" : 'All Tasks'}
+              {ownerFilter === 'mine'
+                ? 'My Tasks'
+                : ownerFilter === 'others'
+                  ? "Others' Tasks"
+                  : ownerFilter === 'all'
+                    ? 'All Tasks'
+                    : selectedTeammate
+                      ? `${(selectedTeammate.display_name || selectedTeammate.email || 'Teammate')}'s Tasks`
+                      : 'Teammate Tasks'}
             </h1>
             <p className="mt-1.5 text-[12px] tabular-nums" style={{ color: '#8a93a6' }}>
               {(() => {
@@ -1236,13 +1265,31 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
           </div>
 
           <Select value={ownerFilter} onValueChange={v => setOwnerFilter(v as TaskOwnerFilter)}>
-            <SelectTrigger className="h-8 w-[130px] text-[12px] text-[#b3bccc]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
+            <SelectTrigger className="h-8 w-[170px] text-[12px] text-[#b3bccc]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
               <Users className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="mine" className="text-xs">My tasks</SelectItem>
               <SelectItem value="others" className="text-xs">Delegated</SelectItem>
               <SelectItem value="all" className="text-xs">All tasks</SelectItem>
+              {fifthLineTeammates.length > 0 && (
+                <>
+                  <div className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    5th Line teammates
+                  </div>
+                  {fifthLineTeammates
+                    .filter((p: any) => p.user_id !== _currentUserForTeam?.id)
+                    .map((p: any) => (
+                      <SelectItem
+                        key={p.user_id}
+                        value={`user:${p.user_id}`}
+                        className="text-xs"
+                      >
+                        {p.display_name || p.email}
+                      </SelectItem>
+                    ))}
+                </>
+              )}
             </SelectContent>
           </Select>
           <Select value={taskFilters.status} onValueChange={v => patchFilters({ status: v as FilterStatus })}>
