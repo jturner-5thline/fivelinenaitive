@@ -4037,43 +4037,8 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       // the lender status note is already captured on update_funding_source.
       // Anything else is out of scope and must not reach the approval queue.
       // ------------------------------------------------------------------
-      const TERMS_STATUS_RE = /term|ioi|loi|indication|proposal/i;
-      const PASS_STATUS_RE = /pass|declin|not[_\s-]?a?[_\s-]?fit|withdraw|dead|lost|reject|no[_\s-]?go/i;
-      const inScope = (c: CandidateItem): boolean => {
-        if (c.action_type === "draft_email") return true;
-        if (c.action_type === "save_to_data_room") {
-          // Only allow when this file is part of a Terms Issued bundle.
-          // The bundler stamps `bundle_key = terms_issued:{deal}:{lender}`
-          // on every save_to_data_room proposal tied to a terms email;
-          // stray data-room proposals from any other trigger must not
-          // reach the queue.
-          const pv = (c.proposed_values ?? {}) as Record<string, any>;
-          const bundleKey = typeof pv.bundle_key === "string" ? pv.bundle_key : "";
-          return bundleKey.startsWith("terms_issued:");
-        }
-        if (c.action_type === "update_funding_source") {
-          const pv = (c.proposed_values ?? {}) as Record<string, any>;
-          const statusBlob = [pv.tracking_status, pv.stage, pv.substage, pv.status]
-            .map((v) => (typeof v === "string" ? v : ""))
-            .join(" ");
-          const textBlob = [
-            pv.notes, pv.note, pv.reason,
-            c.rationale_summary, c.evidence_summary,
-            ...(Array.isArray(c.evidence_references)
-              ? c.evidence_references.flatMap((e) => [e?.snippet, e?.label])
-              : []),
-          ].filter((s) => typeof s === "string").join("\n");
-          if (TERMS_STATUS_RE.test(statusBlob) || PASS_STATUS_RE.test(statusBlob)) return true;
-          // Fall back to evidence wording only if the status field is blank
-          // (some proposals only carry a status_note update paired with the
-          // implicit transition described in the evidence).
-          if (!statusBlob.trim() && (TERMS_STATUS_RE.test(textBlob) || PASS_STATUS_RE.test(textBlob))) return true;
-          return false;
-        }
-        return false;
-      };
-      const outOfScopeCount = taskFiltered.filter((c) => !inScope(c)).length;
-      const scopedFiltered = taskFiltered.filter(inScope);
+      const outOfScopeCount = taskFiltered.filter((c) => !isInDealAdminAgentScope(c)).length;
+      const scopedFiltered = taskFiltered.filter(isInDealAdminAgentScope);
       if (outOfScopeCount > 0) {
         result.candidates_filtered += outOfScopeCount;
         console.log(`[deal-admin-agent] DROPPED ${outOfScopeCount} out-of-scope proposal(s) for deal=${d.id} — not one of the 6 approved triggers (lender Terms Issued/Pass, follow-ups, outstanding-items reminder, client no-reply)`);
