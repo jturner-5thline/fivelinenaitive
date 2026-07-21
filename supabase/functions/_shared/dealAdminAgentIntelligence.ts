@@ -3085,6 +3085,106 @@ async function insertCandidates(
   return { ids: (data ?? []).map((r: any) => r.id), error: null };
 }
 
+/**
+ * Refresh a still-pending schedule_call Approval Queue row with the
+ * latest details the agent detected on a subsequent inbound "let's
+ * connect" email. Merges (does not overwrite) contact_emails and
+ * evidence, and refreshes the evidence snippet / rationale / description
+ * / proposed values so the reviewer always sees the newest context.
+ * Never re-opens or changes status.
+ */
+async function applyScheduleCallUpdate(
+  supabase: SupabaseClient,
+  existing: {
+    id: string;
+    payload: Record<string, any>;
+    new_values: Record<string, any>;
+    rationale: string | null;
+    evidence: any[];
+    description: string | null;
+    title: string | null;
+  },
+  candidate: CandidateItem,
+  bundle: DealSignalBundle,
+): Promise<void> {
+  const proposed = (candidate.proposed_values ?? {}) as Record<string, any>;
+
+  // Merge lender contact emails (unique, order-preserving).
+  const prevEmails: string[] = Array.isArray(
+    (existing.new_values as any)?.lender_contact_emails,
+  )
+    ? (existing.new_values as any).lender_contact_emails.filter(
+        (v: any): v is string => typeof v === "string" && v.length > 0,
+      )
+    : [];
+  const nextEmails: string[] = Array.isArray(proposed.lender_contact_emails)
+    ? proposed.lender_contact_emails.filter(
+        (v: any): v is string => typeof v === "string" && v.length > 0,
+      )
+    : [];
+  const mergedEmails = Array.from(
+    new Set([...prevEmails, ...nextEmails].map((e) => e.trim().toLowerCase())),
+  ).filter(Boolean);
+
+  const nextNewValues = {
+    ...(existing.new_values ?? {}),
+    ...proposed,
+    lender_contact_emails: mergedEmails,
+  };
+
+  // Merge evidence references (cap at 12).
+  const prevEvidence = Array.isArray(existing.evidence) ? existing.evidence : [];
+  const newEvidence = Array.isArray(candidate.evidence_references)
+    ? candidate.evidence_references
+    : [];
+  const mergedEvidence = [...newEvidence, ...prevEvidence].slice(0, 12);
+
+  const nextPayload = {
+    ...(existing.payload ?? {}),
+    // Refresh evidence snippet + confidence with the newer signal.
+    evidence_summary:
+      candidate.evidence_summary ||
+      (existing.payload as any)?.evidence_summary ||
+      "",
+    confidence_score:
+      typeof candidate.confidence_score === "number"
+        ? candidate.confidence_score
+        : (existing.payload as any)?.confidence_score,
+    on_approve_execution_payload: {
+      ...((existing.payload as any)?.on_approve_execution_payload ?? {}),
+      target_object_type: normalizeQueueTargetType(
+        candidate.action_type,
+        candidate.target_object_type,
+      ),
+      target_object_id:
+        candidate.target_object_id ??
+        (existing.payload as any)?.on_approve_execution_payload?.target_object_id ??
+        null,
+      new_values: nextNewValues,
+    },
+    schedule_call_last_refreshed_at: new Date().toISOString(),
+  };
+
+  const updatePatch: Record<string, any> = {
+    new_values: nextNewValues,
+    evidence: mergedEvidence,
+    rationale: candidate.rationale_summary || existing.rationale,
+    description: candidate.rationale_summary || existing.description,
+    payload: nextPayload,
+  };
+
+  const { error } = await supabase
+    .from("ai_action_queue")
+    .update(updatePatch)
+    .eq("id", existing.id)
+    .eq("status", "pending"); // never resurrect approved/dismissed rows
+  if (error) throw new Error(error.message);
+
+  console.log(
+    `[deal-admin-agent] schedule_call REFRESHED row=${existing.id} deal=${bundle.deal_id} emails=${mergedEmails.length}`,
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /*  Main entry                                                         */
 /* ------------------------------------------------------------------ */
@@ -3897,10 +3997,27 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
   //    made; a fresh sweep must not resurface it.
   const dealIdsArr = dealList.map((d: any) => d.id);
   const existingKeys = new Set<string>();
+  // Map: schedule_call semantic key -> existing pending row we can refresh
+  // in place when the agent re-detects the same (deal, lender) connect/
+  // schedule request with updated contact emails, description, or evidence.
+  // This lets a later inbound email UPDATE the existing Approval Queue
+  // item instead of being silently dropped as a duplicate.
+  const pendingScheduleCallByKey = new Map<
+    string,
+    {
+      id: string;
+      payload: Record<string, any>;
+      new_values: Record<string, any>;
+      rationale: string | null;
+      evidence: any[];
+      description: string | null;
+      title: string | null;
+    }
+  >();
   if (dealIdsArr.length > 0) {
     const { data: existing } = await supabase
       .from("ai_action_queue")
-      .select("action_type, target_object_type, target_object_id, deal_id, status, payload, source, evidence")
+      .select("id, action_type, target_object_type, target_object_id, deal_id, status, payload, source, evidence, new_values, rationale, description, title")
       .in("deal_id", dealIdsArr)
       .in("status", ["pending", "approved", "dismissed"]);
     for (const e of existing ?? []) {
@@ -3912,6 +4029,23 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       // different target_object_type label.
       if ((e as any).target_object_id) {
         existingKeys.add(key.replace(`${(e as any).deal_id ?? ""}::`, "::"));
+      }
+      // Track pending schedule_call rows so a later sweep updates the
+      // same card instead of skipping it.
+      if (
+        (e as any).status === "pending" &&
+        key.includes("::schedule_call::") &&
+        (e as any).id
+      ) {
+        pendingScheduleCallByKey.set(key, {
+          id: String((e as any).id),
+          payload: ((e as any).payload ?? {}) as Record<string, any>,
+          new_values: ((e as any).new_values ?? {}) as Record<string, any>,
+          rationale: (e as any).rationale ?? null,
+          evidence: Array.isArray((e as any).evidence) ? (e as any).evidence : [],
+          description: (e as any).description ?? null,
+          title: (e as any).title ?? null,
+        });
       }
     }
   }
@@ -4136,6 +4270,31 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       const { kept, merged, filtered } = dedupeAndMerge(scopedFiltered, existingKeys);
       result.candidates_merged += merged;
       result.candidates_filtered += filtered;
+
+      // Update-in-place pass for schedule_call cards. When a candidate's
+      // semantic key matches a still-pending schedule_call row, refresh
+      // that row's contact emails / description / evidence / rationale
+      // instead of leaving stale details on a duplicate that dedupe would
+      // drop. This runs regardless of whether other new candidates
+      // survived, so a later "let's connect" email always keeps the
+      // existing Approval Queue item current.
+      if (pendingScheduleCallByKey.size > 0) {
+        for (const c of scopedFiltered) {
+          const key = queueSemanticKey({ ...c, deal_id: bundle.deal_id } as any);
+          const existingRow = pendingScheduleCallByKey.get(key);
+          if (!existingRow) continue;
+          try {
+            await applyScheduleCallUpdate(supabase, existingRow, c, bundle);
+            result.candidates_merged += 1;
+          } catch (err) {
+            console.warn(
+              `[deal-admin-agent] schedule_call in-place update failed for row=${existingRow.id}:`,
+              (err as Error)?.message,
+            );
+          }
+        }
+      }
+
       if (kept.length === 0) continue;
 
       // Rank: confidence desc, then risk asc for ties (low risk first).
