@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import type { Deal } from '@/types/deal';
 import type { PipelineDigestRaw } from '@/hooks/usePipelineDigests';
 import { formatSlug } from '@/utils/dealTypeLabels';
-import { Mail } from 'lucide-react';
+import { Mail, Maximize2 } from 'lucide-react';
 import { formatDistanceToNowStrict } from 'date-fns';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface RawEmail {
   id: string;
@@ -66,6 +68,7 @@ function relTime(iso?: string | null): string | null {
 }
 
 export function ActivityPanel({ deal, rawDigest, isLoading, emails = [] }: ActivityPanelProps) {
+  const [detailOpen, setDetailOpen] = useState(false);
   if (isLoading) {
     return (
       <div className="px-5 pt-2 pb-4 space-y-2">
@@ -85,9 +88,17 @@ export function ActivityPanel({ deal, rawDigest, isLoading, emails = [] }: Activ
 
   return (
     <div className="px-5 pt-2 pb-4 min-w-0 self-start">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/90 mb-2">
-        Activity · Last 24h
-      </div>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setDetailOpen(true); }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="group flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/90 hover:text-primary transition-colors mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+        title="Open activity details"
+      >
+        <span>Activity · Last 24h</span>
+        <Maximize2 className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+      </button>
 
       {!hasAny ? (
         <p className="text-xs text-muted-foreground">No recent activity or emails.</p>
@@ -146,6 +157,85 @@ export function ActivityPanel({ deal, rawDigest, isLoading, emails = [] }: Activ
           })}
         </div>
       )}
+
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="truncate">Activity — {deal.name}</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto pr-1 space-y-4 mt-2">
+            <section>
+              <h4 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground mb-2">
+                Stage changes ({stageEvents.length})
+              </h4>
+              {stageEvents.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No recent stage changes.</p>
+              ) : (
+                <div className="space-y-2">
+                  {stageEvents.map((a) => {
+                    const meta = (a.metadata as any) || {};
+                    const lender: string | undefined = meta.lender_name;
+                    const from: string | undefined = meta.from;
+                    const to: string | undefined = meta.to;
+                    const tone = toneFromStage(to);
+                    const ts = relTime((a as any).created_at);
+                    return (
+                      <div key={a.id} className="flex gap-2 items-start">
+                        <span className={`mt-1 h-3 w-0.5 rounded-sm ${TONE_BAR[tone]} shrink-0`} />
+                        <div className="min-w-0 flex-1 text-sm leading-snug text-foreground">
+                          {lender && <span className="font-semibold">{lender} </span>}
+                          <span className="text-muted-foreground">→ </span>
+                          <span>{formatSlug(to) || 'updated'}</span>
+                          {from && (
+                            <span className="text-muted-foreground"> (from {formatSlug(from)})</span>
+                          )}
+                          {ts && (
+                            <span className="text-muted-foreground/70"> · {ts}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+            <section>
+              <h4 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground mb-2">
+                Emails ({emails.length})
+              </h4>
+              {emails.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No recent emails.</p>
+              ) : (
+                <div className="space-y-2">
+                  {emails.map((e) => {
+                    const sender = e.from_name || e.from_email || 'Unknown';
+                    const org = senderOrg(e);
+                    const subject = (e.subject || '').trim();
+                    const snippet = (e.snippet || '').trim();
+                    const ts = relTime(e.received_at);
+                    return (
+                      <div key={`email-full-${e.id}`} className="flex gap-2 items-start">
+                        <Mail className="mt-0.5 h-3.5 w-3.5 text-primary/70 shrink-0" />
+                        <div className="min-w-0 text-sm leading-snug">
+                          <div className="text-foreground">
+                            <span className="font-semibold">{sender}</span>
+                            {org && <span className="text-muted-foreground"> · {org}</span>}
+                            {ts && <span className="text-muted-foreground/70"> · {ts}</span>}
+                          </div>
+                          {subject && <div className="text-foreground/90">{subject}</div>}
+                          {snippet && (
+                            <div className="text-muted-foreground text-xs whitespace-pre-wrap">{snippet}</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
