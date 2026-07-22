@@ -101,7 +101,18 @@ export function useDollarsSignedByMonth(yearOrYears: number | number[]): Dollars
         month_index: d.getUTCMonth(),
       });
     }
-    return Array.from(seen.values());
+    // Collapse duplicate deals with the same company name (case-insensitive),
+    // keeping the earliest entry so we don't double-count e.g. "Trashie" twice.
+    const byName = new Map<string, DollarsSignedEntry>();
+    for (const entry of seen.values()) {
+      const key = (entry.company ?? '').toLowerCase().trim();
+      if (!key) { byName.set(entry.deal_id, entry); continue; }
+      const existing = byName.get(key);
+      if (!existing || new Date(entry.entered_at).getTime() < new Date(existing.entered_at).getTime()) {
+        byName.set(key, entry);
+      }
+    }
+    return Array.from(byName.values());
   })();
 
   const byMonth: DollarsSignedEntry[][] = Array.from({ length: 12 }, () => []);
