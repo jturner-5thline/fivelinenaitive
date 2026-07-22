@@ -751,11 +751,11 @@ export function LenderAnalyticsDialog({
     const prevEnd = startMs;
     const dealSet = new Set<string>();
     for (const dl of dealLenders) {
-      const t = new Date(dl.created_at).getTime();
-      if (isNaN(t)) continue;
-      if (t < prevStart || t >= prevEnd) continue;
       const deal = dealMap.get(dl.deal_id);
       if (!deal) continue;
+      const t = deal.created_at ? new Date(deal.created_at).getTime() : NaN;
+      if (!Number.isFinite(t)) continue;
+      if (t < prevStart || t >= prevEnd) continue;
       const label = resolveLabel(dl.stage, deal.company_id);
       const ord = stageOrdinal(label);
       const term = isTerminal(label, dl.pass_reason);
