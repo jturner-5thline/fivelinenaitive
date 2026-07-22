@@ -1538,11 +1538,18 @@ export function useConsolidatedDebtPipelineMetrics(
   // ownership from the "Deals on the Board" metrics — those entries are not
   // part of the current pipeline's activity we want to report on.
   const NDA_EXCLUDED_OWNERS = ['John Moffitt'];
+  // Also exclude entries whose stage_enter row was authored by John Moffitt
+  // directly, regardless of the deal's current deal_owner (catches deals
+  // that were reassigned after Moffitt logged the NDA entry, e.g.
+  // Mason Dixie Foods).
+  const NDA_EXCLUDED_CHANGED_BY = ['2e65a4b1-bd94-46ef-87c6-9afe697b3180'];
   const ndaNeedsList = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, quarter, NDA_PIPELINES, {
     excludeDealOwners: NDA_EXCLUDED_OWNERS,
+    excludeChangedByUserIds: NDA_EXCLUDED_CHANGED_BY,
   });
   const ndaNeedsListPrior = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, priorQuarter, NDA_PIPELINES, {
     excludeDealOwners: NDA_EXCLUDED_OWNERS,
+    excludeChangedByUserIds: NDA_EXCLUDED_CHANGED_BY,
   });
   const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const proposalsIssuedPrior = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, priorQuarter, ACTIVE_PIPELINE_ID);
