@@ -302,6 +302,10 @@ export function LenderAnalyticsDialog({
   const [dealLenders, setDealLenders] = useState<DealLenderRow[]>([]);
   const [deals, setDeals] = useState<DealRow[]>([]);
   const [stageConfigs, setStageConfigs] = useState<StageConfigRow[]>([]);
+  // Map of deal_id -> earliest ms timestamp when the deal entered a
+  // "sent to lenders" style stage (Submitted to Lenders / Lenders in Review
+  // / Initial Lender Review). Drives the timeframe filter for Deals Sent.
+  const [dealSentAt, setDealSentAt] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
@@ -329,14 +333,24 @@ export function LenderAnalyticsDialog({
       setLoading(true);
       setError(null);
       try {
-        const [dlRes, dRes, scRes] = await Promise.all([
+        const [dlRes, dRes, scRes, dshRes] = await Promise.all([
           // Fetch all deal_lenders; timeframe filtering happens client-side
-          // against the parent deal's created_at. deal_lenders.created_at was
-          // backfilled during migration, so all rows share ~identical
-          // timestamps and can't drive cohort filtering.
+          // against the earliest "sent to lenders" stage transition.
+          // deal_lenders.created_at was backfilled during migration, so all
+          // rows share ~identical timestamps and can't drive cohort filtering.
           supabase.from('deal_lenders').select('id, deal_id, name, stage, substage, pass_reason, created_at, updated_at').limit(10000),
           supabase.from('deals').select('id, company, company_id, deal_type, manager, created_at, value').limit(10000),
           supabase.from('lender_stage_configs').select('company_id, stages').limit(500),
+          supabase
+            .from('deal_stage_history')
+            .select('deal_id, to_stage, changed_at')
+            .eq('event_type', 'stage_enter')
+            .in('to_stage', [
+              'Submitted to Lenders', 'SUBMITTED TO LENDERS', 'submitted-to-lenders',
+              'Lenders in Review', 'LENDERS IN REVIEW', 'lenders-in-review',
+              'Initial Lender Review', 'INITIAL LENDER REVIEW', 'initial-lender-review',
+            ])
+            .limit(20000),
         ]);
         if (cancelled) return;
         if (dlRes.error) throw dlRes.error;
@@ -344,6 +358,14 @@ export function LenderAnalyticsDialog({
         setDealLenders((dlRes.data ?? []) as DealLenderRow[]);
         setDeals((dRes.data ?? []) as DealRow[]);
         setStageConfigs((scRes.data ?? []) as StageConfigRow[]);
+        const sent = new Map<string, number>();
+        for (const h of (dshRes.data ?? []) as Array<{ deal_id: string; changed_at: string }>) {
+          const t = new Date(h.changed_at).getTime();
+          if (!Number.isFinite(t)) continue;
+          const prev = sent.get(h.deal_id);
+          if (prev == null || t < prev) sent.set(h.deal_id, t);
+        }
+        setDealSentAt(sent);
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? 'Failed to load analytics');
       } finally {
@@ -421,14 +443,19 @@ export function LenderAnalyticsDialog({
     const out: Enriched[] = [];
     const start = rangeStart(dateRange)?.getTime() ?? null;
     const end = rangeEnd(dateRange)?.getTime() ?? null;
+    const applyRange = start != null || end != null;
     for (const dl of dealLenders) {
       const deal = dealMap.get(dl.deal_id);
       if (!deal) continue;
-      // Attribute the fanout to the deal's origination timestamp so YTD /
-      // TTM / prior-year selections produce distinct cohorts.
-      const dealTs = deal.created_at ? new Date(deal.created_at).getTime() : NaN;
-      if (start != null && (!Number.isFinite(dealTs) || dealTs < start)) continue;
-      if (end != null && (!Number.isFinite(dealTs) || dealTs >= end)) continue;
+      // Attribute the fanout to when the deal entered "Submitted to Lenders"
+      // / "Lenders in Review" / "Initial Lender Review" so YTD, TTM and
+      // per-year selections reflect real send activity.
+      if (applyRange) {
+        const sentTs = dealSentAt.get(dl.deal_id);
+        if (sentTs == null) continue;
+        if (start != null && sentTs < start) continue;
+        if (end != null && sentTs >= end) continue;
+      }
       if (lenderScopeActive && !lenderNameSet.has((dl.name || '').trim().toLowerCase())) continue;
       const label = resolveLabel(dl.stage, deal.company_id);
       const ord = stageOrdinal(label);
@@ -456,7 +483,7 @@ export function LenderAnalyticsDialog({
       });
     }
     return out;
-  }, [dealLenders, dealMap, lenderNameSet, lenderScopeActive, stageLabelByCompany, dateRange]);
+  }, [dealLenders, dealMap, lenderNameSet, lenderScopeActive, stageLabelByCompany, dateRange, dealSentAt]);
 
   // KPI metrics — "Deals Sent" counts unique deals (not deal_lenders rows),
   // so a deal fanned out to many funding sources still counts once. Conversion
@@ -753,7 +780,7 @@ export function LenderAnalyticsDialog({
     for (const dl of dealLenders) {
       const deal = dealMap.get(dl.deal_id);
       if (!deal) continue;
-      const t = deal.created_at ? new Date(deal.created_at).getTime() : NaN;
+      const t = dealSentAt.get(dl.deal_id) ?? NaN;
       if (!Number.isFinite(t)) continue;
       if (t < prevStart || t >= prevEnd) continue;
       const label = resolveLabel(dl.stage, deal.company_id);
@@ -764,7 +791,7 @@ export function LenderAnalyticsDialog({
     }
     return dealSet.size;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dealLenders, dealMap, dateRange, stageLabelByCompany]);
+  }, [dealLenders, dealMap, dateRange, stageLabelByCompany, dealSentAt]);
 
   const submittedDelta =
     priorSubmittedCount == null ? null : kpis.submitted - priorSubmittedCount;
