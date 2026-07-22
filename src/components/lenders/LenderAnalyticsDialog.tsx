@@ -633,6 +633,15 @@ export function LenderAnalyticsDialog({
   const [kpiDrillSearch, setKpiDrillSearch] = useState('');
   useEffect(() => { if (!openKpi) setKpiDrillSearch(''); }, [openKpi]);
 
+  // Secondary drill-down: from a lender row inside the KPI sheet to that
+  // lender's underlying deals, optionally filtered to submitted / terms.
+  type LenderDrillFilter = 'all' | 'submitted' | 'terms';
+  const [lenderDrill, setLenderDrill] = useState<
+    { key: string; name: string; filter: LenderDrillFilter } | null
+  >(null);
+  const [lenderDrillSearch, setLenderDrillSearch] = useState('');
+  useEffect(() => { if (!lenderDrill) setLenderDrillSearch(''); }, [lenderDrill]);
+
   // Widget 1: New Funding Sources
   const newLenders = useMemo(() => {
     const start = rangeStart(dateRange);
