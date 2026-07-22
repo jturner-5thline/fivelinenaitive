@@ -1712,23 +1712,23 @@ export function LenderAnalyticsDialog({
                 </div>
                 <div className="mt-3 max-h-[calc(100vh-200px)] overflow-auto">
                   {mode === 'lenders' ? (
-                    filteredLenders.length === 0 ? (
+                    sortedLenders.length === 0 ? (
                       <div className="p-6 text-center text-[12px] text-slate-500">No lenders</div>
                     ) : (
                       <table className="w-full text-[12px]">
-                        <thead className="text-left text-slate-400">
+                        <thead className="text-left text-slate-400 select-none">
                           <tr>
-                            <th className="py-1.5">Lender</th>
-                            <th className="text-right pr-3">Tier</th>
-                            <th className="text-right pr-3">Deals</th>
-                            <th className="text-right pr-3">Submitted</th>
-                            <th className="text-right pr-3">Terms</th>
-                            <th className="text-right pr-3">Conv</th>
-                            <th className="text-right">Flex</th>
+                            <th className="py-1.5 cursor-pointer hover:text-slate-200" onClick={() => toggleLenderSort('name')}>Lender{arrow(kpiLenderSort.key==='name', kpiLenderSort.dir)}</th>
+                            <th className="text-right pr-3 cursor-pointer hover:text-slate-200" onClick={() => toggleLenderSort('tier')}>Tier{arrow(kpiLenderSort.key==='tier', kpiLenderSort.dir)}</th>
+                            <th className="text-right pr-3 cursor-pointer hover:text-slate-200" onClick={() => toggleLenderSort('count')}>Deals{arrow(kpiLenderSort.key==='count', kpiLenderSort.dir)}</th>
+                            <th className="text-right pr-3 cursor-pointer hover:text-slate-200" onClick={() => toggleLenderSort('submitted')}>Submitted{arrow(kpiLenderSort.key==='submitted', kpiLenderSort.dir)}</th>
+                            <th className="text-right pr-3 cursor-pointer hover:text-slate-200" onClick={() => toggleLenderSort('terms')}>Terms{arrow(kpiLenderSort.key==='terms', kpiLenderSort.dir)}</th>
+                            <th className="text-right pr-3 cursor-pointer hover:text-slate-200" onClick={() => toggleLenderSort('conv')}>Conv{arrow(kpiLenderSort.key==='conv', kpiLenderSort.dir)}</th>
+                            <th className="text-right cursor-pointer hover:text-slate-200" onClick={() => toggleLenderSort('flex')}>Flex{arrow(kpiLenderSort.key==='flex', kpiLenderSort.dir)}</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredLenders.map((l) => (
+                          {sortedLenders.map((l) => (
                             <tr key={l.key} className="border-t border-slate-700/40">
                               <td className="py-1.5 text-slate-100 truncate max-w-[220px]">
                                 <button
@@ -1792,23 +1792,23 @@ export function LenderAnalyticsDialog({
                         </tbody>
                       </table>
                     )
-                  ) : filteredDeals.length === 0 ? (
+                  ) : sortedDeals.length === 0 ? (
                     <div className="p-6 text-center text-[12px] text-slate-500">No deals</div>
                   ) : (
                     <table className="w-full text-[12px]">
-                      <thead className="text-left text-slate-400">
+                      <thead className="text-left text-slate-400 select-none">
                         <tr>
-                          <th className="py-1.5">Deal</th>
-                          <th>Lender</th>
-                          <th>Stage</th>
-                          <th className="text-right pr-3 whitespace-nowrap">Amount</th>
-                          <th className="whitespace-nowrap">Owner</th>
-                          <th className="text-right whitespace-nowrap">Sent Date</th>
+                          <th className="py-1.5 cursor-pointer hover:text-slate-200" onClick={() => toggleDealSort('deal')}>Deal{arrow(kpiDealSort.key==='deal', kpiDealSort.dir)}</th>
+                          <th className="cursor-pointer hover:text-slate-200" onClick={() => toggleDealSort('lender')}>Lender{arrow(kpiDealSort.key==='lender', kpiDealSort.dir)}</th>
+                          <th className="cursor-pointer hover:text-slate-200" onClick={() => toggleDealSort('stage')}>Stage{arrow(kpiDealSort.key==='stage', kpiDealSort.dir)}</th>
+                          <th className="text-right pr-3 whitespace-nowrap cursor-pointer hover:text-slate-200" onClick={() => toggleDealSort('amount')}>Amount{arrow(kpiDealSort.key==='amount', kpiDealSort.dir)}</th>
+                          <th className="whitespace-nowrap cursor-pointer hover:text-slate-200" onClick={() => toggleDealSort('owner')}>Owner{arrow(kpiDealSort.key==='owner', kpiDealSort.dir)}</th>
+                          <th className="text-right whitespace-nowrap cursor-pointer hover:text-slate-200" onClick={() => toggleDealSort('sent')}>Sent Date{arrow(kpiDealSort.key==='sent', kpiDealSort.dir)}</th>
                           <th className="text-right whitespace-nowrap">Sent At (exact)</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredDeals.map((r) => (
+                        {sortedDeals.map((r) => (
                           <tr key={r.id} className="border-t border-slate-700/40">
                             <td className="py-1.5 text-slate-100 truncate max-w-[160px]">{r.deal.company || '—'}</td>
                             <td className="text-slate-300 truncate max-w-[140px]">{r.name || '—'}</td>
