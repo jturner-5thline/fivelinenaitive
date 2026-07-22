@@ -169,6 +169,21 @@ function normalizeLabel(s: string | null | undefined): string {
   return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
+function isSentToLendersStage(label: string | null | undefined): boolean {
+  const n = normalizeLabel(label);
+  if (!n) return false;
+  return (
+    n === 'submitted to lenders' ||
+    n === 'submitted lenders' ||
+    n === 'lenders in review' ||
+    n === 'initial lender review' ||
+    n.includes('submitted to lender') ||
+    n.includes('lenders in review') ||
+    n.includes('initial lender review') ||
+    n.includes('sent to lender')
+  );
+}
+
 /**
  * Render a lender/funding-source stage as a coloured tag.
  *  - Red   : "Not a Fit", "Passed", "Declined", "Lost"
@@ -345,21 +360,38 @@ export function LenderAnalyticsDialog({
             .from('deal_stage_history')
             .select('deal_id, to_stage, changed_at')
             .eq('event_type', 'stage_enter')
-            .in('to_stage', [
-              'Submitted to Lenders', 'SUBMITTED TO LENDERS', 'submitted-to-lenders',
-              'Lenders in Review', 'LENDERS IN REVIEW', 'lenders-in-review',
-              'Initial Lender Review', 'INITIAL LENDER REVIEW', 'initial-lender-review',
-            ])
-            .limit(20000),
+            .limit(50000),
         ]);
         if (cancelled) return;
         if (dlRes.error) throw dlRes.error;
         if (dRes.error) throw dRes.error;
+        if (scRes.error) throw scRes.error;
+        if (dshRes.error) throw dshRes.error;
         setDealLenders((dlRes.data ?? []) as DealLenderRow[]);
         setDeals((dRes.data ?? []) as DealRow[]);
         setStageConfigs((scRes.data ?? []) as StageConfigRow[]);
+        const dealsById = new Map<string, DealRow>();
+        for (const d of (dRes.data ?? []) as DealRow[]) dealsById.set(d.id, d);
+        const globalStages = new Map<string, string>();
+        const stagesByCompany = new Map<string, Map<string, string>>();
+        for (const cfg of (scRes.data ?? []) as StageConfigRow[]) {
+          const stages = Array.isArray(cfg.stages) ? cfg.stages as Array<{ id?: string; label?: string }> : [];
+          const target = cfg.company_id ? stagesByCompany.get(cfg.company_id) ?? new Map<string, string>() : globalStages;
+          if (cfg.company_id) stagesByCompany.set(cfg.company_id, target);
+          for (const stage of stages) {
+            if (!stage?.id || !stage?.label) continue;
+            target.set(stage.id, stage.label);
+            if (!globalStages.has(stage.id)) globalStages.set(stage.id, stage.label);
+          }
+        }
         const sent = new Map<string, number>();
-        for (const h of (dshRes.data ?? []) as Array<{ deal_id: string; changed_at: string }>) {
+        for (const h of (dshRes.data ?? []) as Array<{ deal_id: string; to_stage: string | null; changed_at: string }>) {
+          const deal = dealsById.get(h.deal_id);
+          const stageLabel =
+            (deal?.company_id ? stagesByCompany.get(deal.company_id)?.get(h.to_stage || '') : null) ??
+            globalStages.get(h.to_stage || '') ??
+            h.to_stage;
+          if (!isSentToLendersStage(stageLabel)) continue;
           const t = new Date(h.changed_at).getTime();
           if (!Number.isFinite(t)) continue;
           const prev = sent.get(h.deal_id);
@@ -433,6 +465,7 @@ export function LenderAnalyticsDialog({
     ord: number;
     terminal: ReturnType<typeof isTerminal>;
     bucket: Bucket;
+    sentAt: number | null;
     everSubmitted: boolean;
     everTerms: boolean;
     manager: string;
@@ -458,6 +491,7 @@ export function LenderAnalyticsDialog({
       }
       if (lenderScopeActive && !lenderNameSet.has((dl.name || '').trim().toLowerCase())) continue;
       const label = resolveLabel(dl.stage, deal.company_id);
+      const sentAt = dealSentAt.get(dl.deal_id) ?? null;
       const ord = stageOrdinal(label);
       const terminal = isTerminal(label, dl.pass_reason);
       const bucket = bucketFor(label, ord, terminal);
@@ -476,6 +510,7 @@ export function LenderAnalyticsDialog({
         ord,
         terminal,
         bucket,
+        sentAt,
         everSubmitted,
         everTerms,
         manager: (deal.manager || '').trim() || 'Unassigned',
