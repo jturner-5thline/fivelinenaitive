@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { CalendarRange, TrendingUp, Download, Search, Target } from 'lucide-react';
+import { CalendarRange, TrendingUp, Download, Search, Target, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import type { MasterLender } from '@/hooks/useMasterLenders';
@@ -1190,19 +1190,26 @@ export function LenderAnalyticsDialog({
                         </div>
                       ) : (
                         <>
-                          <ul className="space-y-2 list-disc pl-5 marker:text-[#4dd9ac]">
+                          <ul className="space-y-1">
                             {passReasonsRanked.slice(0, 5).map((p) => (
-                              <li
-                                key={p.key}
-                                className="text-[12.5px] text-slate-100 cursor-pointer hover:text-white"
-                                onClick={() => setOpenPassReason(p.key)}
-                              >
-                                <div className="flex items-baseline justify-between gap-3">
-                                  <span className="flex-1 min-w-0">{p.reason}</span>
-                                  <span className="text-[11px] tabular-nums text-slate-400 shrink-0">
-                                    {p.count} <span className="text-slate-500">({p.pct.toFixed(0)}%)</span>
+                              <li key={p.key}>
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenPassReason(p.key)}
+                                  title={`View ${p.count} pass${p.count === 1 ? '' : 'es'} · lenders and deals`}
+                                  className="group w-full flex items-baseline justify-between gap-3 rounded-md px-2 py-1.5 text-left text-[12.5px] text-slate-100 hover:bg-slate-800/60 hover:text-white transition-colors"
+                                >
+                                  <span className="flex items-center gap-1.5 flex-1 min-w-0">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-[#4dd9ac] shrink-0" />
+                                    <span className="truncate">{p.reason}</span>
                                   </span>
-                                </div>
+                                  <span className="flex items-center gap-1 shrink-0">
+                                    <span className="text-[11px] tabular-nums text-slate-400">
+                                      {p.count} <span className="text-slate-500">({p.pct.toFixed(0)}%)</span>
+                                    </span>
+                                    <ChevronRight className="h-3.5 w-3.5 text-slate-600 group-hover:text-sky-300 transition-colors" />
+                                  </span>
+                                </button>
                               </li>
                             ))}
                           </ul>
@@ -1472,10 +1479,13 @@ export function LenderAnalyticsDialog({
               const filteredLenders = q
                 ? lenderList.filter(l => l.name.toLowerCase().includes(q))
                 : lenderList;
-              const filteredDeals = q
+              const filteredDeals = (q
                 ? activePassReason.rows.filter(r =>
-                    [r.deal.company, r.name, r.deal.manager].some(s => (s || '').toLowerCase().includes(q)))
-                : activePassReason.rows;
+                    [r.deal.company, r.name, r.deal.manager, r.label].some(s => (s || '').toLowerCase().includes(q)))
+                : activePassReason.rows
+              )
+                .slice()
+                .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
               return (
                 <>
                   <div className="mt-3 flex items-center gap-2">
@@ -1503,10 +1513,12 @@ export function LenderAnalyticsDialog({
                   </div>
                   <div className="mt-3 grid grid-cols-1 gap-3 max-h-[calc(100vh-220px)] overflow-auto">
                     <div className="rounded-lg border border-slate-700/40 p-2">
-                      <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-1.5 px-1">By Lender</div>
+                      <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-1.5 px-1">
+                        By Funding Source · {filteredLenders.length}
+                      </div>
                       <table className="w-full text-[12px]">
                         <thead className="text-left text-slate-500">
-                          <tr><th className="py-1 px-1">Lender</th><th className="text-right px-1">Count</th><th className="text-right px-1">%</th></tr>
+                          <tr><th className="py-1 px-1">Funding Source</th><th className="text-right px-1">Passes</th><th className="text-right px-1">%</th></tr>
                         </thead>
                         <tbody>
                           {filteredLenders.map(l => (
@@ -1520,11 +1532,15 @@ export function LenderAnalyticsDialog({
                       </table>
                     </div>
                     <div className="rounded-lg border border-slate-700/40 p-2">
-                      <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-1.5 px-1">By Deal</div>
+                      <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-1.5 px-1">
+                        By Deal · {filteredDeals.length}
+                      </div>
                       <table className="w-full text-[12px]">
                         <thead className="text-left text-slate-500">
                           <tr>
-                            <th className="py-1 px-1">Deal</th><th className="px-1">Lender</th>
+                            <th className="py-1 px-1">Deal</th>
+                            <th className="px-1">Funding Source</th>
+                            <th className="px-1">Stage</th>
                             <th className="text-right px-1 pr-4 whitespace-nowrap">Amount</th>
                             <th className="px-1 pl-3 whitespace-nowrap">Owner</th>
                             <th className="text-right px-1 pl-3 whitespace-nowrap">Date</th>
@@ -1535,6 +1551,7 @@ export function LenderAnalyticsDialog({
                             <tr key={r.id} className="border-t border-slate-700/40">
                               <td className="py-1 px-1 text-slate-100 truncate max-w-[160px]">{r.deal.company || '—'}</td>
                               <td className="py-1 px-1 text-slate-300 truncate max-w-[120px]">{r.name || '—'}</td>
+                              <td className="py-1 px-1 max-w-[140px]"><StageTag label={r.label} /></td>
                               <td className="py-1 px-1 pr-4 text-right text-slate-200 tabular-nums whitespace-nowrap">{r.deal.value != null ? formatUSD(Number(r.deal.value)) : '—'}</td>
                               <td className="py-1 px-1 pl-3 text-slate-300 truncate max-w-[110px]">{r.deal.manager || '—'}</td>
                               <td className="py-1 px-1 pl-3 text-right text-slate-400 tabular-nums whitespace-nowrap">{new Date(r.updated_at).toLocaleDateString()}</td>
