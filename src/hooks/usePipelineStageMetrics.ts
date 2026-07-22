@@ -1018,7 +1018,7 @@ function useStageEntryMetric(
   targetStage: string | string[],
   quarter: QuarterOption,
   pipelineId?: string | string[],
-  options?: { excludeDealOwners?: string[] },
+  options?: { excludeDealOwners?: string[]; excludeChangedByUserIds?: string[] },
 ): StageMetricResult {
   const { user } = useAuth();
   const targetStages = Array.isArray(targetStage) ? targetStage : [targetStage];
@@ -1028,6 +1028,7 @@ function useStageEntryMetric(
     : undefined;
   const queryStages = expandMetricStageLabels(targetStages, primaryPipelineId);
   const excludeOwnersKey = (options?.excludeDealOwners ?? []).map((s) => s.toLowerCase()).sort().join('|');
+  const excludeChangedByKey = (options?.excludeChangedByUserIds ?? []).slice().sort().join('|');
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: [
@@ -1036,6 +1037,7 @@ function useStageEntryMetric(
       quarter.value,
       pipelineIds ? pipelineIds.join(',') : null,
       excludeOwnersKey || null,
+      excludeChangedByKey || null,
     ],
     queryFn: async () => {
       const startDate = quarter.startDate;
@@ -1053,6 +1055,7 @@ function useStageEntryMetric(
           to_stage,
           to_stage_id,
           from_stage_id,
+          changed_by,
           deals!inner (
             company,
             value,
