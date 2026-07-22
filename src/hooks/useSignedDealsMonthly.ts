@@ -8,7 +8,10 @@ import { type StageEntryDeal } from '@/hooks/usePipelineStageMetrics';
 const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
 const FINSERV_PIPELINE_ID = 'eb9db15a-62cc-4b99-adcf-24e57a2a46ce';
 const IN_DEVELOPMENT_PIPELINE_ID = '40b17dfb-9122-49e0-bf7c-5aa993d5d615';
-const FINAL_CREDIT_ITEMS_STAGE = 'final-credit-items';
+// Treat first entry into Final Credit Items OR any downstream stage as
+// "signed" — deals sometimes skip FCI and jump straight to Terms Issued
+// (e.g. Xnergy United Network).
+const SIGNED_STAGES = ['final-credit-items', 'terms-issued', 'in-due-diligence', 'funded-invoiced'];
 const FS_ACTIVE_CLIENT_STAGE = 'fs-active-client';
 
 export interface MonthBucket {
@@ -30,19 +33,21 @@ function toMonthBuckets(months: MonthDef[]): { label: string; key: string; start
 }
 
 function useStageEntryMonthlySeries(
-  targetStage: string,
+  targetStage: string | string[],
   pipelineId: string | string[],
   quarterMonths: MonthDef[],
 ) {
   const { user } = useAuth();
   const pipelineIds = Array.isArray(pipelineId) ? pipelineId : [pipelineId];
   const pipelineKey = pipelineIds.join(',');
+  const targetStages = Array.isArray(targetStage) ? targetStage : [targetStage];
+  const targetKey = targetStages.join(',');
   const buckets = useMemo(() => toMonthBuckets(quarterMonths), [quarterMonths]);
   const startDate = buckets[0]?.start ?? '';
   const endDate = buckets[buckets.length - 1]?.end ?? '';
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['stage-entry-monthly', targetStage, pipelineKey, startDate, endDate],
+    queryKey: ['stage-entry-monthly', targetKey, pipelineKey, startDate, endDate],
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from('activity_logs')
@@ -59,7 +64,7 @@ function useStageEntryMonthlySeries(
           )
         `)
         .eq('activity_type', 'stage_change')
-        .eq('metadata->>to', targetStage)
+        .in('metadata->>to', targetStages)
         .gte('created_at', startDate)
         .lte('created_at', endDate + 'T23:59:59.999Z')
         .order('created_at', { ascending: true });
@@ -89,7 +94,7 @@ function useStageEntryMonthlySeries(
         entered_at: row.created_at,
         pipeline_id: deal.pipeline_id,
         from_stage: meta.from ?? null,
-        to_stage: meta.to ?? targetStage,
+        to_stage: meta.to ?? targetStages[0],
         monthKey,
       });
     }
@@ -114,7 +119,7 @@ function useStageEntryMonthlySeries(
 
 export function useDealsSignedMonthlySeries(quarterMonths: MonthDef[]) {
   return useStageEntryMonthlySeries(
-    FINAL_CREDIT_ITEMS_STAGE,
+    SIGNED_STAGES,
     [ACTIVE_PIPELINE_ID, IN_DEVELOPMENT_PIPELINE_ID],
     quarterMonths,
   );
