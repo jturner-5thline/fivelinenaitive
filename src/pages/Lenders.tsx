@@ -340,6 +340,52 @@ export default function Lenders() {
     // No server-side searchQuery — we filter on the client across many fields.
   });
 
+  // Server-side search fallback: when a user searches before the background
+  // load has finished streaming the full directory, run an ilike query so
+  // matches beyond the currently-loaded window still surface immediately.
+  const [serverSearchLenders, setServerSearchLenders] = useState<MasterLender[]>([]);
+  useEffect(() => {
+    const q = debouncedSearchQuery.trim();
+    if (!q || q.length < 2) {
+      setServerSearchLenders([]);
+      return;
+    }
+    // Skip the extra fetch once the full directory is in memory.
+    if (!hasMore && !loadingMore) {
+      setServerSearchLenders([]);
+      return;
+    }
+    let cancelled = false;
+    const pattern = `%${q}%`;
+    (async () => {
+      const { data, error } = await supabase
+        .from('master_lenders')
+        .select('*')
+        .or(
+          `name.ilike.${pattern},contact_name.ilike.${pattern},email.ilike.${pattern},lender_type.ilike.${pattern},geo.ilike.${pattern},tier.ilike.${pattern},relationship_owners.ilike.${pattern},website.ilike.${pattern},linkedin_url.ilike.${pattern},phone.ilike.${pattern},address.ilike.${pattern},industries.ilike.${pattern},loan_types.ilike.${pattern}`
+        )
+        .order('name', { ascending: true })
+        .limit(200);
+      if (cancelled) return;
+      if (error) {
+        console.warn('Server-side lender search failed:', error);
+        return;
+      }
+      setServerSearchLenders((data ?? []) as MasterLender[]);
+    })();
+    return () => { cancelled = true; };
+  }, [debouncedSearchQuery, hasMore, loadingMore]);
+
+  // Union the streamed directory with any server-side search hits so search
+  // reliably finds lenders that live past the currently-loaded window.
+  const searchableLenders = useMemo(() => {
+    if (!serverSearchLenders.length) return masterLenders;
+    const byId = new Map<string, MasterLender>();
+    for (const l of masterLenders) byId.set(l.id, l);
+    for (const l of serverSearchLenders) if (!byId.has(l.id)) byId.set(l.id, l);
+    return Array.from(byId.values());
+  }, [masterLenders, serverSearchLenders]);
+
   // Load tile display settings from localStorage
   useEffect(() => {
     const savedSettings = localStorage.getItem(TILE_DISPLAY_STORAGE_KEY);
@@ -628,7 +674,7 @@ export default function Lenders() {
   // Filter lenders: advanced filters → AI filter → active-deals → text search.
   // Text search runs client-side across many fields (real-time substring match).
   const filteredLenders = useMemo(() => {
-    let list = applyLenderFilters(masterLenders, advancedFilters);
+    let list = applyLenderFilters(searchableLenders, advancedFilters);
 
     if (aiFilter && aiFilter.names.size) {
       list = list.filter((l) => aiFilter.names.has(l.name.toLowerCase().trim()));
@@ -685,7 +731,7 @@ export default function Lenders() {
         matches(aux)
       );
     });
-  }, [masterLenders, advancedFilters, showActiveDealsOnly, showDuplicatesOnly, duplicateIndex, activeDealCounts, debouncedSearchQuery, lenderDealIndex, lenderAuxIndex, aiFilter]);
+  }, [searchableLenders, advancedFilters, showActiveDealsOnly, showDuplicatesOnly, duplicateIndex, activeDealCounts, debouncedSearchQuery, lenderDealIndex, lenderAuxIndex, aiFilter]);
 
   // Sort filtered lenders - memoized to prevent re-sorting on every render
   const sortedLenders = useMemo(() => {
