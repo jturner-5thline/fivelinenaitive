@@ -1190,19 +1190,26 @@ export function LenderAnalyticsDialog({
                         </div>
                       ) : (
                         <>
-                          <ul className="space-y-2 list-disc pl-5 marker:text-[#4dd9ac]">
+                          <ul className="space-y-1">
                             {passReasonsRanked.slice(0, 5).map((p) => (
-                              <li
-                                key={p.key}
-                                className="text-[12.5px] text-slate-100 cursor-pointer hover:text-white"
-                                onClick={() => setOpenPassReason(p.key)}
-                              >
-                                <div className="flex items-baseline justify-between gap-3">
-                                  <span className="flex-1 min-w-0">{p.reason}</span>
-                                  <span className="text-[11px] tabular-nums text-slate-400 shrink-0">
-                                    {p.count} <span className="text-slate-500">({p.pct.toFixed(0)}%)</span>
+                              <li key={p.key}>
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenPassReason(p.key)}
+                                  title={`View ${p.count} pass${p.count === 1 ? '' : 'es'} · lenders and deals`}
+                                  className="group w-full flex items-baseline justify-between gap-3 rounded-md px-2 py-1.5 text-left text-[12.5px] text-slate-100 hover:bg-slate-800/60 hover:text-white transition-colors"
+                                >
+                                  <span className="flex items-center gap-1.5 flex-1 min-w-0">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-[#4dd9ac] shrink-0" />
+                                    <span className="truncate">{p.reason}</span>
                                   </span>
-                                </div>
+                                  <span className="flex items-center gap-1 shrink-0">
+                                    <span className="text-[11px] tabular-nums text-slate-400">
+                                      {p.count} <span className="text-slate-500">({p.pct.toFixed(0)}%)</span>
+                                    </span>
+                                    <ChevronRight className="h-3.5 w-3.5 text-slate-600 group-hover:text-sky-300 transition-colors" />
+                                  </span>
+                                </button>
                               </li>
                             ))}
                           </ul>
