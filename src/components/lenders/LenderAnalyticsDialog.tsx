@@ -948,7 +948,7 @@ export function LenderAnalyticsDialog({
             <IntelKpi
               label="Deals Sent"
               value={kpis.submitted}
-              hint="deal_lenders in selected timeframe"
+              hint="entered lender review in selected timeframe"
               loading={loading}
               onClick={() => setOpenKpi('sent')}
             />
@@ -1547,14 +1547,14 @@ export function LenderAnalyticsDialog({
                 ]);
               } else {
                 downloadCsv(`kpi-${openKpi}`, [
-                  ['deal', 'lender', 'stage', 'amount', 'owner', 'last_activity'],
+                  ['deal', 'lender', 'stage', 'amount', 'owner', 'sent_date'],
                   ...filteredDeals.map((r) => [
                     r.deal.company || '',
                     r.name || '',
                     r.label || '',
                     String(r.deal.value ?? ''),
                     r.deal.manager || '',
-                    r.updated_at,
+                    r.sentAt ? new Date(r.sentAt).toISOString() : '',
                   ]),
                 ]);
               }
@@ -1630,7 +1630,7 @@ export function LenderAnalyticsDialog({
                           <th>Stage</th>
                           <th className="text-right pr-3 whitespace-nowrap">Amount</th>
                           <th className="whitespace-nowrap">Owner</th>
-                          <th className="text-right whitespace-nowrap">Last Activity</th>
+                          <th className="text-right whitespace-nowrap">Sent Date</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1644,7 +1644,7 @@ export function LenderAnalyticsDialog({
                             </td>
                             <td className="text-slate-300 truncate max-w-[120px]">{r.deal.manager || '—'}</td>
                             <td className="text-right text-slate-400 tabular-nums whitespace-nowrap">
-                              {new Date(r.updated_at).toLocaleDateString()}
+                              {r.sentAt ? new Date(r.sentAt).toLocaleDateString() : '—'}
                             </td>
                           </tr>
                         ))}
