@@ -29,6 +29,7 @@ import { MultiSelectFilter } from './MultiSelectFilter';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useDealSourcedViaOptions } from '@/hooks/useDealSourcedViaOptions';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useHubSpotOwners, type HubSpotOwner } from '@/hooks/useHubSpot';
 import {
   Select,
   SelectContent,
@@ -37,6 +38,69 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+const isNumericOwnerId = (value: string) => /^\d+$/.test(value.trim());
+
+const formatHubSpotOwnerName = (owner: HubSpotOwner) => {
+  const fullName = [owner.firstName, owner.lastName].filter(Boolean).join(' ').trim();
+  return fullName || owner.email || 'Unknown HubSpot owner';
+};
+
+function useDealOwnerOptions(deals: Deal[]) {
+  const rawOwners = useMemo(() => {
+    const owners = new Set<string>();
+    deals.forEach((deal) => {
+      if (deal.dealOwner && deal.dealOwner.trim()) {
+        owners.add(deal.dealOwner.trim());
+      }
+    });
+    return Array.from(owners);
+  }, [deals]);
+
+  const hasHubSpotOwnerIds = useMemo(
+    () => rawOwners.some((owner) => isNumericOwnerId(owner)),
+    [rawOwners]
+  );
+
+  const teamMembers = useTeamMembers();
+  const { data: hubSpotOwnersData, isLoading: isLoadingHubSpotOwners } = useHubSpotOwners(100, {
+    enabled: hasHubSpotOwnerIds,
+  });
+
+  const ownerNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+
+    teamMembers.forEach((tm) => {
+      map.set(tm.id, tm.display_name);
+    });
+
+    (hubSpotOwnersData?.results || []).forEach((owner) => {
+      const label = formatHubSpotOwnerName(owner);
+      if (owner.id) map.set(String(owner.id), label);
+      if (owner.userId !== undefined && owner.userId !== null) {
+        map.set(String(owner.userId), label);
+      }
+      if (owner.email) map.set(owner.email, label);
+    });
+
+    return map;
+  }, [teamMembers, hubSpotOwnersData]);
+
+  return useMemo(() => {
+    return rawOwners
+      .map((owner) => {
+        const label =
+          ownerNameMap.get(owner) ||
+          (isNumericOwnerId(owner)
+            ? isLoadingHubSpotOwners
+              ? 'Resolving owner…'
+              : 'Unknown HubSpot owner'
+            : owner);
+
+        return { value: owner, label };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [rawOwners, ownerNameMap, isLoadingHubSpotOwners]);
+}
 
 export type FilterKey = 'stage' | 'status' | 'engagementType' | 'manager' | 'dealOwner' | 'lender' | 'referredBy' | 'sourcedVia';
 
@@ -69,12 +133,7 @@ export function FiltersPopover({
   const [open, setOpen] = useState(false);
   const { deals } = useDealsContext();
   const { options: sourcedViaSource } = useDealSourcedViaOptions();
-  const teamMembers = useTeamMembers();
-  const ownerNameMap = useMemo(() => {
-    const m = new Map<string, string>();
-    teamMembers.forEach((tm) => m.set(tm.id, tm.display_name));
-    return m;
-  }, [teamMembers]);
+  const dealOwnerOptions = useDealOwnerOptions(deals);
 
   const stageOptions = Object.entries(STAGE_CONFIG).map(([key, { label }]) => ({
     value: key,
@@ -107,20 +166,6 @@ export function FiltersPopover({
       label: manager,
     }));
   }, [deals]);
-
-  // Get unique deal owners from actual deals data
-  const dealOwnerOptions = useMemo(() => {
-    const owners = new Set<string>();
-    deals.forEach(deal => {
-      if (deal.dealOwner && deal.dealOwner.trim()) {
-        owners.add(deal.dealOwner);
-      }
-    });
-    return Array.from(owners).sort().map(owner => ({
-      value: owner,
-      label: ownerNameMap.get(owner) || owner,
-    }));
-  }, [deals, ownerNameMap]);
 
   const lenderOptions = LENDERS.map((lender) => ({
     value: lender,
@@ -326,12 +371,7 @@ export function FiltersPopover({
 export function useFilterConfigs() {
   const { deals } = useDealsContext();
   const { options: sourcedViaSource } = useDealSourcedViaOptions();
-  const teamMembers = useTeamMembers();
-  const ownerNameMap = useMemo(() => {
-    const m = new Map<string, string>();
-    teamMembers.forEach((tm) => m.set(tm.id, tm.display_name));
-    return m;
-  }, [teamMembers]);
+  const dealOwnerOptions = useDealOwnerOptions(deals);
 
   const stageOptions = Object.entries(STAGE_CONFIG).map(([key, { label }]) => ({
     value: key,
@@ -364,19 +404,6 @@ export function useFilterConfigs() {
       label: manager,
     }));
   }, [deals]);
-
-  const dealOwnerOptions = useMemo(() => {
-    const owners = new Set<string>();
-    deals.forEach(deal => {
-      if (deal.dealOwner && deal.dealOwner.trim()) {
-        owners.add(deal.dealOwner);
-      }
-    });
-    return Array.from(owners).sort().map(owner => ({
-      value: owner,
-      label: ownerNameMap.get(owner) || owner,
-    }));
-  }, [deals, ownerNameMap]);
 
   const lenderOptions = LENDERS.map((lender) => ({
     value: lender,
