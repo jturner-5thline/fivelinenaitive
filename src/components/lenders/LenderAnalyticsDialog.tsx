@@ -47,6 +47,10 @@ import {
 
 type DateRange = '30d' | '90d' | 'ytd' | '6m' | '12m' | 'all' | `y${number}`;
 
+function isYearRange(range: DateRange): range is `y${number}` {
+  return /^y\d{4}$/.test(range);
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -96,13 +100,13 @@ const STATIC_DATE_LABEL: Record<Exclude<DateRange, `y${number}`>, string> = {
 };
 
 function dateRangeLabel(range: DateRange): string {
-  if (typeof range === 'string' && range.startsWith('y')) return range.slice(1);
+  if (isYearRange(range)) return range.slice(1);
   return STATIC_DATE_LABEL[range as Exclude<DateRange, `y${number}`>];
 }
 
 function rangeStart(range: DateRange): Date | null {
   const now = new Date();
-  if (typeof range === 'string' && range.startsWith('y')) {
+  if (isYearRange(range)) {
     const yr = Number(range.slice(1));
     if (Number.isFinite(yr)) return new Date(yr, 0, 1);
     return null;
@@ -119,7 +123,7 @@ function rangeStart(range: DateRange): Date | null {
 }
 
 function rangeEnd(range: DateRange): Date | null {
-  if (typeof range === 'string' && range.startsWith('y')) {
+  if (isYearRange(range)) {
     const yr = Number(range.slice(1));
     if (Number.isFinite(yr)) return new Date(yr + 1, 0, 1);
   }
@@ -1005,7 +1009,7 @@ export function LenderAnalyticsDialog({
               lenders={lenders}
               onOpenPlan={() => setPlanOpen(true)}
               year={
-                typeof dateRange === 'string' && dateRange.startsWith('y')
+                isYearRange(dateRange)
                   ? Number(dateRange.slice(1))
                   : currentYear
               }
