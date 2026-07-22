@@ -28,6 +28,7 @@ import { mockReferrers } from '@/data/mockDeals';
 import { MultiSelectFilter } from './MultiSelectFilter';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useDealSourcedViaOptions } from '@/hooks/useDealSourcedViaOptions';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import {
   Select,
   SelectContent,
@@ -68,6 +69,12 @@ export function FiltersPopover({
   const [open, setOpen] = useState(false);
   const { deals } = useDealsContext();
   const { options: sourcedViaSource } = useDealSourcedViaOptions();
+  const teamMembers = useTeamMembers();
+  const ownerNameMap = useMemo(() => {
+    const m = new Map<string, string>();
+    teamMembers.forEach((tm) => m.set(tm.id, tm.display_name));
+    return m;
+  }, [teamMembers]);
 
   const stageOptions = Object.entries(STAGE_CONFIG).map(([key, { label }]) => ({
     value: key,
@@ -111,9 +118,9 @@ export function FiltersPopover({
     });
     return Array.from(owners).sort().map(owner => ({
       value: owner,
-      label: owner,
+      label: ownerNameMap.get(owner) || owner,
     }));
-  }, [deals]);
+  }, [deals, ownerNameMap]);
 
   const lenderOptions = LENDERS.map((lender) => ({
     value: lender,
@@ -319,6 +326,12 @@ export function FiltersPopover({
 export function useFilterConfigs() {
   const { deals } = useDealsContext();
   const { options: sourcedViaSource } = useDealSourcedViaOptions();
+  const teamMembers = useTeamMembers();
+  const ownerNameMap = useMemo(() => {
+    const m = new Map<string, string>();
+    teamMembers.forEach((tm) => m.set(tm.id, tm.display_name));
+    return m;
+  }, [teamMembers]);
 
   const stageOptions = Object.entries(STAGE_CONFIG).map(([key, { label }]) => ({
     value: key,
@@ -361,9 +374,9 @@ export function useFilterConfigs() {
     });
     return Array.from(owners).sort().map(owner => ({
       value: owner,
-      label: owner,
+      label: ownerNameMap.get(owner) || owner,
     }));
-  }, [deals]);
+  }, [deals, ownerNameMap]);
 
   const lenderOptions = LENDERS.map((lender) => ({
     value: lender,
