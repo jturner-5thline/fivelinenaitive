@@ -17,7 +17,14 @@ import { isExcludedDealName } from '@/utils/excludedDeals';
 const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
 const IN_DEVELOPMENT_PIPELINE_ID = '40b17dfb-9122-49e0-bf7c-5aa993d5d615';
 const DEBT_STAGE_PIPELINES = [ACTIVE_PIPELINE_ID, IN_DEVELOPMENT_PIPELINE_ID];
-const FINAL_CREDIT_ITEMS_STAGE_LABELS = ['final-credit-items', 'Final Credit Items'];
+// Treat first entry into Final Credit Items OR any downstream stage as a
+// signed event — some deals skip FCI and jump straight to Terms Issued.
+const FINAL_CREDIT_ITEMS_STAGE_LABELS = [
+  'final-credit-items', 'Final Credit Items',
+  'terms-issued', 'Terms Issued',
+  'in-due-diligence', 'In Due Diligence',
+  'funded-invoiced', 'Funded/Invoiced', 'Funded / Invoiced', 'Closed & Funded',
+];
 
 export interface DollarsSignedEntry {
   id: string;
