@@ -73,6 +73,7 @@ interface DealLenderRow {
   pass_reason: string | null;
   created_at: string;
   updated_at: string;
+  excluded_at?: string | null;
 }
 
 interface DealRow {
@@ -383,7 +384,7 @@ export function LenderAnalyticsDialog({
           // against the earliest "sent to lenders" stage transition.
           // deal_lenders.created_at was backfilled during migration, so all
           // rows share ~identical timestamps and can't drive cohort filtering.
-          supabase.from('deal_lenders').select('id, deal_id, name, stage, substage, pass_reason, approved_at, created_at, updated_at').limit(10000),
+        supabase.from('deal_lenders').select('id, deal_id, name, stage, substage, pass_reason, approved_at, excluded_at, created_at, updated_at').limit(10000),
           supabase.from('deals').select('id, company, company_id, deal_type, manager, created_at, value').limit(10000),
           supabase.from('lender_stage_configs').select('company_id, stages').limit(500),
           fetchStageHistoryRows(),
@@ -505,6 +506,9 @@ export function LenderAnalyticsDialog({
     for (const dl of dealLenders) {
       const deal = dealMap.get(dl.deal_id);
       if (!deal) continue;
+      // Skip lenders that were explicitly excluded from this deal — they
+      // should not count toward Active Lenders, Submitted, Terms, etc.
+      if ((dl as any).excluded_at) continue;
       // Attribute the fanout to when the deal entered "Submitted to Lenders"
       // / "Lenders in Review" / "Initial Lender Review" so YTD, TTM and
       // per-year selections reflect real send activity.
