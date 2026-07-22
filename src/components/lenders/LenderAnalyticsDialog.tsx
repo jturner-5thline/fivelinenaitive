@@ -383,7 +383,7 @@ export function LenderAnalyticsDialog({
           // against the earliest "sent to lenders" stage transition.
           // deal_lenders.created_at was backfilled during migration, so all
           // rows share ~identical timestamps and can't drive cohort filtering.
-          supabase.from('deal_lenders').select('id, deal_id, name, stage, substage, pass_reason, created_at, updated_at').limit(10000),
+          supabase.from('deal_lenders').select('id, deal_id, name, stage, substage, pass_reason, approved_at, created_at, updated_at').limit(10000),
           supabase.from('deals').select('id, company, company_id, deal_type, manager, created_at, value').limit(10000),
           supabase.from('lender_stage_configs').select('company_id, stages').limit(500),
           fetchStageHistoryRows(),
