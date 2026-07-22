@@ -662,6 +662,26 @@ export function LenderAnalyticsDialog({
   const [lenderDrillSearch, setLenderDrillSearch] = useState('');
   useEffect(() => { if (!lenderDrill) setLenderDrillSearch(''); }, [lenderDrill]);
 
+  // Sorting state for drawer tables
+  type SortDir = 'asc' | 'desc';
+  type KpiLenderSortKey = 'name' | 'tier' | 'count' | 'submitted' | 'terms' | 'conv' | 'flex';
+  type KpiDealSortKey = 'deal' | 'lender' | 'stage' | 'amount' | 'owner' | 'sent';
+  type LenderDrillSortKey = 'deal' | 'stage' | 'amount' | 'owner' | 'updated';
+  const [kpiLenderSort, setKpiLenderSort] = useState<{ key: KpiLenderSortKey; dir: SortDir }>({ key: 'count', dir: 'desc' });
+  const [kpiDealSort, setKpiDealSort] = useState<{ key: KpiDealSortKey; dir: SortDir }>({ key: 'sent', dir: 'desc' });
+  const [lenderDrillSort, setLenderDrillSort] = useState<{ key: LenderDrillSortKey; dir: SortDir }>({ key: 'updated', dir: 'desc' });
+  const cmp = (a: unknown, b: unknown, dir: SortDir): number => {
+    const nullA = a == null || a === '';
+    const nullB = b == null || b === '';
+    if (nullA && nullB) return 0;
+    if (nullA) return 1; // nulls last
+    if (nullB) return -1;
+    let r = 0;
+    if (typeof a === 'number' && typeof b === 'number') r = a - b;
+    else r = String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+    return dir === 'asc' ? r : -r;
+  };
+
   // Widget 1: New Funding Sources
   const newLenders = useMemo(() => {
     const start = rangeStart(dateRange);
