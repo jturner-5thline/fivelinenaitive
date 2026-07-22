@@ -328,22 +328,13 @@ export function LenderAnalyticsDialog({
     (async () => {
       setLoading(true);
       setError(null);
-      const start = rangeStart(dateRange);
-      const end = rangeEnd(dateRange);
-      const startIso = start?.toISOString();
-      const endIso = end?.toISOString();
       try {
         const [dlRes, dRes, scRes] = await Promise.all([
-          (() => {
-            let q = supabase.from('deal_lenders').select('id, deal_id, name, stage, substage, pass_reason, created_at, updated_at').limit(10000);
-            // Filter by when the lender-deal relationship was created so that
-            // each range (YTD, TTM, prior years) reflects a distinct cohort.
-            // Using updated_at here collapsed windows together because
-            // deal_lenders rows are touched frequently by background jobs.
-            if (startIso) q = q.gte('created_at', startIso);
-            if (endIso) q = q.lt('created_at', endIso);
-            return q;
-          })(),
+          // Fetch all deal_lenders; timeframe filtering happens client-side
+          // against the parent deal's created_at. deal_lenders.created_at was
+          // backfilled during migration, so all rows share ~identical
+          // timestamps and can't drive cohort filtering.
+          supabase.from('deal_lenders').select('id, deal_id, name, stage, substage, pass_reason, created_at, updated_at').limit(10000),
           supabase.from('deals').select('id, company, company_id, deal_type, manager, created_at, value').limit(10000),
           supabase.from('lender_stage_configs').select('company_id, stages').limit(500),
         ]);
@@ -428,9 +419,16 @@ export function LenderAnalyticsDialog({
 
   const rows: Enriched[] = useMemo(() => {
     const out: Enriched[] = [];
+    const start = rangeStart(dateRange)?.getTime() ?? null;
+    const end = rangeEnd(dateRange)?.getTime() ?? null;
     for (const dl of dealLenders) {
       const deal = dealMap.get(dl.deal_id);
       if (!deal) continue;
+      // Attribute the fanout to the deal's origination timestamp so YTD /
+      // TTM / prior-year selections produce distinct cohorts.
+      const dealTs = deal.created_at ? new Date(deal.created_at).getTime() : NaN;
+      if (start != null && (!Number.isFinite(dealTs) || dealTs < start)) continue;
+      if (end != null && (!Number.isFinite(dealTs) || dealTs >= end)) continue;
       if (lenderScopeActive && !lenderNameSet.has((dl.name || '').trim().toLowerCase())) continue;
       const label = resolveLabel(dl.stage, deal.company_id);
       const ord = stageOrdinal(label);
@@ -458,7 +456,7 @@ export function LenderAnalyticsDialog({
       });
     }
     return out;
-  }, [dealLenders, dealMap, lenderNameSet, lenderScopeActive, stageLabelByCompany]);
+  }, [dealLenders, dealMap, lenderNameSet, lenderScopeActive, stageLabelByCompany, dateRange]);
 
   // KPI metrics — "Deals Sent" counts unique deals (not deal_lenders rows),
   // so a deal fanned out to many funding sources still counts once. Conversion
@@ -753,11 +751,11 @@ export function LenderAnalyticsDialog({
     const prevEnd = startMs;
     const dealSet = new Set<string>();
     for (const dl of dealLenders) {
-      const t = new Date(dl.created_at).getTime();
-      if (isNaN(t)) continue;
-      if (t < prevStart || t >= prevEnd) continue;
       const deal = dealMap.get(dl.deal_id);
       if (!deal) continue;
+      const t = deal.created_at ? new Date(deal.created_at).getTime() : NaN;
+      if (!Number.isFinite(t)) continue;
+      if (t < prevStart || t >= prevEnd) continue;
       const label = resolveLabel(dl.stage, deal.company_id);
       const ord = stageOrdinal(label);
       const term = isTerminal(label, dl.pass_reason);
