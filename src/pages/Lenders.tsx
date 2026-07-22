@@ -674,7 +674,7 @@ export default function Lenders() {
   // Filter lenders: advanced filters → AI filter → active-deals → text search.
   // Text search runs client-side across many fields (real-time substring match).
   const filteredLenders = useMemo(() => {
-    let list = applyLenderFilters(masterLenders, advancedFilters);
+    let list = applyLenderFilters(searchableLenders, advancedFilters);
 
     if (aiFilter && aiFilter.names.size) {
       list = list.filter((l) => aiFilter.names.has(l.name.toLowerCase().trim()));
@@ -731,7 +731,7 @@ export default function Lenders() {
         matches(aux)
       );
     });
-  }, [masterLenders, advancedFilters, showActiveDealsOnly, showDuplicatesOnly, duplicateIndex, activeDealCounts, debouncedSearchQuery, lenderDealIndex, lenderAuxIndex, aiFilter]);
+  }, [searchableLenders, advancedFilters, showActiveDealsOnly, showDuplicatesOnly, duplicateIndex, activeDealCounts, debouncedSearchQuery, lenderDealIndex, lenderAuxIndex, aiFilter]);
 
   // Sort filtered lenders - memoized to prevent re-sorting on every render
   const sortedLenders = useMemo(() => {
