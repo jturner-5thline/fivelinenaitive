@@ -178,9 +178,16 @@ function isSentToLendersStage(label: string | null | undefined): boolean {
   const n = normalizeLabel(label);
   if (!n) return false;
   // Attribution rule: a deal counts for a lender based on the timestamp it
-  // entered the lender-review stage. Historical imports use the legacy label
-  // "Initial Lender Review" for the same cohort gate, so keep that alias.
-  return n === 'lenders in review' || n.includes('lenders in review') || n === 'initial lender review';
+  // entered the "Lenders in Review" stage. "Initial Lender Review" is
+  // intentionally NOT treated as an alias — use the Terms Issued fallback
+  // below for deals that never logged Lenders in Review.
+  return n === 'lenders in review' || n.includes('lenders in review');
+}
+
+function isTermsIssuedStage(label: string | null | undefined): boolean {
+  const n = normalizeLabel(label);
+  if (!n) return false;
+  return n === 'terms issued' || n.includes('terms issued');
 }
 
 /**
