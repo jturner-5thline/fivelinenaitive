@@ -169,6 +169,21 @@ function normalizeLabel(s: string | null | undefined): string {
   return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
+function isSentToLendersStage(label: string | null | undefined): boolean {
+  const n = normalizeLabel(label);
+  if (!n) return false;
+  return (
+    n === 'submitted to lenders' ||
+    n === 'submitted lenders' ||
+    n === 'lenders in review' ||
+    n === 'initial lender review' ||
+    n.includes('submitted to lender') ||
+    n.includes('lenders in review') ||
+    n.includes('initial lender review') ||
+    n.includes('sent to lender')
+  );
+}
+
 /**
  * Render a lender/funding-source stage as a coloured tag.
  *  - Red   : "Not a Fit", "Passed", "Declined", "Lost"
@@ -333,7 +348,33 @@ export function LenderAnalyticsDialog({
       setLoading(true);
       setError(null);
       try {
-        const [dlRes, dRes, scRes, dshRes] = await Promise.all([
+        const fetchStageHistoryRows = async () => {
+          const pageSize = 1000;
+          const all: Array<{
+            deal_id: string;
+            to_stage: string | null;
+            to_stage_label_raw: string | null;
+            unresolved_stage_label: string | null;
+            changed_at: string;
+          }> = [];
+
+          for (let from = 0; ; from += pageSize) {
+            const { data, error } = await supabase
+              .from('deal_stage_history')
+              .select('deal_id, to_stage, to_stage_label_raw, unresolved_stage_label, changed_at')
+              .eq('event_type', 'stage_enter')
+              .order('changed_at', { ascending: true })
+              .range(from, from + pageSize - 1);
+            if (error) throw error;
+            const rows = (data ?? []) as typeof all;
+            all.push(...rows);
+            if (rows.length < pageSize) break;
+          }
+
+          return all;
+        };
+
+        const [dlRes, dRes, scRes, stageHistoryRows] = await Promise.all([
           // Fetch all deal_lenders; timeframe filtering happens client-side
           // against the earliest "sent to lenders" stage transition.
           // deal_lenders.created_at was backfilled during migration, so all
@@ -341,25 +382,37 @@ export function LenderAnalyticsDialog({
           supabase.from('deal_lenders').select('id, deal_id, name, stage, substage, pass_reason, created_at, updated_at').limit(10000),
           supabase.from('deals').select('id, company, company_id, deal_type, manager, created_at, value').limit(10000),
           supabase.from('lender_stage_configs').select('company_id, stages').limit(500),
-          supabase
-            .from('deal_stage_history')
-            .select('deal_id, to_stage, changed_at')
-            .eq('event_type', 'stage_enter')
-            .in('to_stage', [
-              'Submitted to Lenders', 'SUBMITTED TO LENDERS', 'submitted-to-lenders',
-              'Lenders in Review', 'LENDERS IN REVIEW', 'lenders-in-review',
-              'Initial Lender Review', 'INITIAL LENDER REVIEW', 'initial-lender-review',
-            ])
-            .limit(20000),
+          fetchStageHistoryRows(),
         ]);
         if (cancelled) return;
         if (dlRes.error) throw dlRes.error;
         if (dRes.error) throw dRes.error;
+        if (scRes.error) throw scRes.error;
         setDealLenders((dlRes.data ?? []) as DealLenderRow[]);
         setDeals((dRes.data ?? []) as DealRow[]);
         setStageConfigs((scRes.data ?? []) as StageConfigRow[]);
+        const dealsById = new Map<string, DealRow>();
+        for (const d of (dRes.data ?? []) as DealRow[]) dealsById.set(d.id, d);
+        const globalStages = new Map<string, string>();
+        const stagesByCompany = new Map<string, Map<string, string>>();
+        for (const cfg of (scRes.data ?? []) as StageConfigRow[]) {
+          const stages = Array.isArray(cfg.stages) ? cfg.stages as Array<{ id?: string; label?: string }> : [];
+          const target = cfg.company_id ? stagesByCompany.get(cfg.company_id) ?? new Map<string, string>() : globalStages;
+          if (cfg.company_id) stagesByCompany.set(cfg.company_id, target);
+          for (const stage of stages) {
+            if (!stage?.id || !stage?.label) continue;
+            target.set(stage.id, stage.label);
+            if (!globalStages.has(stage.id)) globalStages.set(stage.id, stage.label);
+          }
+        }
         const sent = new Map<string, number>();
-        for (const h of (dshRes.data ?? []) as Array<{ deal_id: string; changed_at: string }>) {
+        for (const h of stageHistoryRows) {
+          const deal = dealsById.get(h.deal_id);
+          const resolvedStageLabel =
+            (deal?.company_id ? stagesByCompany.get(deal.company_id)?.get(h.to_stage || '') : null) ??
+            globalStages.get(h.to_stage || '') ??
+            h.to_stage;
+          if (![h.to_stage_label_raw, h.unresolved_stage_label, resolvedStageLabel].some(isSentToLendersStage)) continue;
           const t = new Date(h.changed_at).getTime();
           if (!Number.isFinite(t)) continue;
           const prev = sent.get(h.deal_id);
@@ -433,6 +486,7 @@ export function LenderAnalyticsDialog({
     ord: number;
     terminal: ReturnType<typeof isTerminal>;
     bucket: Bucket;
+    sentAt: number | null;
     everSubmitted: boolean;
     everTerms: boolean;
     manager: string;
@@ -458,6 +512,7 @@ export function LenderAnalyticsDialog({
       }
       if (lenderScopeActive && !lenderNameSet.has((dl.name || '').trim().toLowerCase())) continue;
       const label = resolveLabel(dl.stage, deal.company_id);
+      const sentAt = dealSentAt.get(dl.deal_id) ?? null;
       const ord = stageOrdinal(label);
       const terminal = isTerminal(label, dl.pass_reason);
       const bucket = bucketFor(label, ord, terminal);
@@ -476,6 +531,7 @@ export function LenderAnalyticsDialog({
         ord,
         terminal,
         bucket,
+        sentAt,
         everSubmitted,
         everTerms,
         manager: (deal.manager || '').trim() || 'Unassigned',
@@ -913,7 +969,7 @@ export function LenderAnalyticsDialog({
             <IntelKpi
               label="Deals Sent"
               value={kpis.submitted}
-              hint="deal_lenders in selected timeframe"
+              hint="entered lender review in selected timeframe"
               loading={loading}
               onClick={() => setOpenKpi('sent')}
             />
@@ -1512,14 +1568,14 @@ export function LenderAnalyticsDialog({
                 ]);
               } else {
                 downloadCsv(`kpi-${openKpi}`, [
-                  ['deal', 'lender', 'stage', 'amount', 'owner', 'last_activity'],
+                  ['deal', 'lender', 'stage', 'amount', 'owner', 'sent_date'],
                   ...filteredDeals.map((r) => [
                     r.deal.company || '',
                     r.name || '',
                     r.label || '',
                     String(r.deal.value ?? ''),
                     r.deal.manager || '',
-                    r.updated_at,
+                    r.sentAt ? new Date(r.sentAt).toISOString() : '',
                   ]),
                 ]);
               }
@@ -1595,7 +1651,7 @@ export function LenderAnalyticsDialog({
                           <th>Stage</th>
                           <th className="text-right pr-3 whitespace-nowrap">Amount</th>
                           <th className="whitespace-nowrap">Owner</th>
-                          <th className="text-right whitespace-nowrap">Last Activity</th>
+                          <th className="text-right whitespace-nowrap">Sent Date</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1609,7 +1665,7 @@ export function LenderAnalyticsDialog({
                             </td>
                             <td className="text-slate-300 truncate max-w-[120px]">{r.deal.manager || '—'}</td>
                             <td className="text-right text-slate-400 tabular-nums whitespace-nowrap">
-                              {new Date(r.updated_at).toLocaleDateString()}
+                              {r.sentAt ? new Date(r.sentAt).toLocaleDateString() : '—'}
                             </td>
                           </tr>
                         ))}
