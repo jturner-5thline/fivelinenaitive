@@ -78,9 +78,11 @@ export default function Workspace() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="sticky top-0 z-20 border-b border-white/5 bg-background/70 px-4 py-2 backdrop-blur">
-        <div className="flex items-center gap-1 overflow-x-auto">{tabButtons}</div>
-      </div>
+      {active !== 'lenders' && (
+        <div className="sticky top-0 z-20 border-b border-white/5 bg-background/70 px-4 py-2 backdrop-blur">
+          <div className="flex items-center gap-1 overflow-x-auto">{tabButtons}</div>
+        </div>
+      )}
 
       <div className="relative flex-1 min-h-0">
         {TABS.map((t) => {
