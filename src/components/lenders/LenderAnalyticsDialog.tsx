@@ -662,6 +662,26 @@ export function LenderAnalyticsDialog({
   const [lenderDrillSearch, setLenderDrillSearch] = useState('');
   useEffect(() => { if (!lenderDrill) setLenderDrillSearch(''); }, [lenderDrill]);
 
+  // Sorting state for drawer tables
+  type SortDir = 'asc' | 'desc';
+  type KpiLenderSortKey = 'name' | 'tier' | 'count' | 'submitted' | 'terms' | 'conv' | 'flex';
+  type KpiDealSortKey = 'deal' | 'lender' | 'stage' | 'amount' | 'owner' | 'sent';
+  type LenderDrillSortKey = 'deal' | 'stage' | 'amount' | 'owner' | 'updated';
+  const [kpiLenderSort, setKpiLenderSort] = useState<{ key: KpiLenderSortKey; dir: SortDir }>({ key: 'count', dir: 'desc' });
+  const [kpiDealSort, setKpiDealSort] = useState<{ key: KpiDealSortKey; dir: SortDir }>({ key: 'sent', dir: 'desc' });
+  const [lenderDrillSort, setLenderDrillSort] = useState<{ key: LenderDrillSortKey; dir: SortDir }>({ key: 'updated', dir: 'desc' });
+  const cmp = (a: unknown, b: unknown, dir: SortDir): number => {
+    const nullA = a == null || a === '';
+    const nullB = b == null || b === '';
+    if (nullA && nullB) return 0;
+    if (nullA) return 1; // nulls last
+    if (nullB) return -1;
+    let r = 0;
+    if (typeof a === 'number' && typeof b === 'number') r = a - b;
+    else r = String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+    return dir === 'asc' ? r : -r;
+  };
+
   // Widget 1: New Funding Sources
   const newLenders = useMemo(() => {
     const start = rangeStart(dateRange);
@@ -1592,11 +1612,54 @@ export function LenderAnalyticsDialog({
                   ),
                 )
               : dealRows;
+            const sortedLenders = [...filteredLenders].sort((a, b) => {
+              const k = kpiLenderSort.key;
+              const va =
+                k === 'name' ? a.name :
+                k === 'tier' ? (a.tier ?? null) :
+                k === 'count' ? a.count :
+                k === 'submitted' ? a.submitted :
+                k === 'terms' ? a.terms :
+                k === 'conv' ? (a.submitted > 0 ? a.conv : null) :
+                a.isFlex ? 1 : 0;
+              const vb =
+                k === 'name' ? b.name :
+                k === 'tier' ? (b.tier ?? null) :
+                k === 'count' ? b.count :
+                k === 'submitted' ? b.submitted :
+                k === 'terms' ? b.terms :
+                k === 'conv' ? (b.submitted > 0 ? b.conv : null) :
+                b.isFlex ? 1 : 0;
+              return cmp(va, vb, kpiLenderSort.dir);
+            });
+            const sortedDeals = [...filteredDeals].sort((a, b) => {
+              const k = kpiDealSort.key;
+              const va =
+                k === 'deal' ? a.deal.company :
+                k === 'lender' ? a.name :
+                k === 'stage' ? a.label :
+                k === 'amount' ? (a.deal.value != null ? Number(a.deal.value) : null) :
+                k === 'owner' ? a.deal.manager :
+                (a.sentAt ? new Date(a.sentAt).getTime() : null);
+              const vb =
+                k === 'deal' ? b.deal.company :
+                k === 'lender' ? b.name :
+                k === 'stage' ? b.label :
+                k === 'amount' ? (b.deal.value != null ? Number(b.deal.value) : null) :
+                k === 'owner' ? b.deal.manager :
+                (b.sentAt ? new Date(b.sentAt).getTime() : null);
+              return cmp(va, vb, kpiDealSort.dir);
+            });
+            const toggleLenderSort = (key: KpiLenderSortKey) =>
+              setKpiLenderSort((s) => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' });
+            const toggleDealSort = (key: KpiDealSortKey) =>
+              setKpiDealSort((s) => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' });
+            const arrow = (active: boolean, dir: SortDir) => active ? (dir === 'asc' ? ' ▲' : ' ▼') : '';
             const csvExport = () => {
               if (mode === 'lenders') {
                 downloadCsv(`kpi-${openKpi}`, [
                   ['lender', 'tier', 'deals', 'submitted', 'terms', 'conv_pct', 'flex'],
-                  ...filteredLenders.map((l) => [
+                  ...sortedLenders.map((l) => [
                     l.name,
                     l.tier ?? '',
                     l.count,
@@ -1609,7 +1672,7 @@ export function LenderAnalyticsDialog({
               } else {
                 downloadCsv(`kpi-${openKpi}`, [
                     ['deal', 'lender', 'stage', 'amount', 'owner', 'sent_date', 'sent_at_exact'],
-                  ...filteredDeals.map((r) => [
+                  ...sortedDeals.map((r) => [
                     r.deal.company || '',
                     r.name || '',
                     r.label || '',
@@ -1649,23 +1712,23 @@ export function LenderAnalyticsDialog({
                 </div>
                 <div className="mt-3 max-h-[calc(100vh-200px)] overflow-auto">
                   {mode === 'lenders' ? (
-                    filteredLenders.length === 0 ? (
+                    sortedLenders.length === 0 ? (
                       <div className="p-6 text-center text-[12px] text-slate-500">No lenders</div>
                     ) : (
                       <table className="w-full text-[12px]">
-                        <thead className="text-left text-slate-400">
+                        <thead className="text-left text-slate-400 select-none">
                           <tr>
-                            <th className="py-1.5">Lender</th>
-                            <th className="text-right pr-3">Tier</th>
-                            <th className="text-right pr-3">Deals</th>
-                            <th className="text-right pr-3">Submitted</th>
-                            <th className="text-right pr-3">Terms</th>
-                            <th className="text-right pr-3">Conv</th>
-                            <th className="text-right">Flex</th>
+                            <th className="py-1.5 cursor-pointer hover:text-slate-200" onClick={() => toggleLenderSort('name')}>Lender{arrow(kpiLenderSort.key==='name', kpiLenderSort.dir)}</th>
+                            <th className="text-right pr-3 cursor-pointer hover:text-slate-200" onClick={() => toggleLenderSort('tier')}>Tier{arrow(kpiLenderSort.key==='tier', kpiLenderSort.dir)}</th>
+                            <th className="text-right pr-3 cursor-pointer hover:text-slate-200" onClick={() => toggleLenderSort('count')}>Deals{arrow(kpiLenderSort.key==='count', kpiLenderSort.dir)}</th>
+                            <th className="text-right pr-3 cursor-pointer hover:text-slate-200" onClick={() => toggleLenderSort('submitted')}>Submitted{arrow(kpiLenderSort.key==='submitted', kpiLenderSort.dir)}</th>
+                            <th className="text-right pr-3 cursor-pointer hover:text-slate-200" onClick={() => toggleLenderSort('terms')}>Terms{arrow(kpiLenderSort.key==='terms', kpiLenderSort.dir)}</th>
+                            <th className="text-right pr-3 cursor-pointer hover:text-slate-200" onClick={() => toggleLenderSort('conv')}>Conv{arrow(kpiLenderSort.key==='conv', kpiLenderSort.dir)}</th>
+                            <th className="text-right cursor-pointer hover:text-slate-200" onClick={() => toggleLenderSort('flex')}>Flex{arrow(kpiLenderSort.key==='flex', kpiLenderSort.dir)}</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredLenders.map((l) => (
+                          {sortedLenders.map((l) => (
                             <tr key={l.key} className="border-t border-slate-700/40">
                               <td className="py-1.5 text-slate-100 truncate max-w-[220px]">
                                 <button
@@ -1729,23 +1792,23 @@ export function LenderAnalyticsDialog({
                         </tbody>
                       </table>
                     )
-                  ) : filteredDeals.length === 0 ? (
+                  ) : sortedDeals.length === 0 ? (
                     <div className="p-6 text-center text-[12px] text-slate-500">No deals</div>
                   ) : (
                     <table className="w-full text-[12px]">
-                      <thead className="text-left text-slate-400">
+                      <thead className="text-left text-slate-400 select-none">
                         <tr>
-                          <th className="py-1.5">Deal</th>
-                          <th>Lender</th>
-                          <th>Stage</th>
-                          <th className="text-right pr-3 whitespace-nowrap">Amount</th>
-                          <th className="whitespace-nowrap">Owner</th>
-                          <th className="text-right whitespace-nowrap">Sent Date</th>
+                          <th className="py-1.5 cursor-pointer hover:text-slate-200" onClick={() => toggleDealSort('deal')}>Deal{arrow(kpiDealSort.key==='deal', kpiDealSort.dir)}</th>
+                          <th className="cursor-pointer hover:text-slate-200" onClick={() => toggleDealSort('lender')}>Lender{arrow(kpiDealSort.key==='lender', kpiDealSort.dir)}</th>
+                          <th className="cursor-pointer hover:text-slate-200" onClick={() => toggleDealSort('stage')}>Stage{arrow(kpiDealSort.key==='stage', kpiDealSort.dir)}</th>
+                          <th className="text-right pr-3 whitespace-nowrap cursor-pointer hover:text-slate-200" onClick={() => toggleDealSort('amount')}>Amount{arrow(kpiDealSort.key==='amount', kpiDealSort.dir)}</th>
+                          <th className="whitespace-nowrap cursor-pointer hover:text-slate-200" onClick={() => toggleDealSort('owner')}>Owner{arrow(kpiDealSort.key==='owner', kpiDealSort.dir)}</th>
+                          <th className="text-right whitespace-nowrap cursor-pointer hover:text-slate-200" onClick={() => toggleDealSort('sent')}>Sent Date{arrow(kpiDealSort.key==='sent', kpiDealSort.dir)}</th>
                           <th className="text-right whitespace-nowrap">Sent At (exact)</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredDeals.map((r) => (
+                        {sortedDeals.map((r) => (
                           <tr key={r.id} className="border-t border-slate-700/40">
                             <td className="py-1.5 text-slate-100 truncate max-w-[160px]">{r.deal.company || '—'}</td>
                             <td className="text-slate-300 truncate max-w-[140px]">{r.name || '—'}</td>
@@ -1807,6 +1870,25 @@ export function LenderAnalyticsDialog({
             const filtered = q
               ? dealRows.filter((r) => [r.deal.company, r.deal.manager, r.label].some((s) => (s || '').toLowerCase().includes(q)))
               : dealRows;
+            const sortedFiltered = [...filtered].sort((a, b) => {
+              const k = lenderDrillSort.key;
+              const va =
+                k === 'deal' ? a.deal.company :
+                k === 'stage' ? a.label :
+                k === 'amount' ? (a.deal.value != null ? Number(a.deal.value) : null) :
+                k === 'owner' ? a.deal.manager :
+                (a.updated_at ? new Date(a.updated_at).getTime() : null);
+              const vb =
+                k === 'deal' ? b.deal.company :
+                k === 'stage' ? b.label :
+                k === 'amount' ? (b.deal.value != null ? Number(b.deal.value) : null) :
+                k === 'owner' ? b.deal.manager :
+                (b.updated_at ? new Date(b.updated_at).getTime() : null);
+              return cmp(va, vb, lenderDrillSort.dir);
+            });
+            const toggleDrillSort = (key: LenderDrillSortKey) =>
+              setLenderDrillSort((s) => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' });
+            const arrow2 = (active: boolean, dir: SortDir) => active ? (dir === 'asc' ? ' ▲' : ' ▼') : '';
             const filterLabel =
               lenderDrill.filter === 'submitted' ? 'Submitted deals' :
               lenderDrill.filter === 'terms' ? 'Deals reaching terms' :
@@ -1847,7 +1929,7 @@ export function LenderAnalyticsDialog({
                     className="h-8 text-[11px] bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70 gap-1.5"
                     onClick={() => downloadCsv(`lender-${lenderDrill.key}-${lenderDrill.filter}`, [
                       ['deal', 'stage', 'amount', 'owner', 'updated'],
-                      ...filtered.map((r) => [
+                      ...sortedFiltered.map((r) => [
                         r.deal.company || '',
                         r.label || '',
                         String(r.deal.value ?? ''),
@@ -1855,27 +1937,27 @@ export function LenderAnalyticsDialog({
                         r.updated_at ? new Date(r.updated_at).toISOString() : '',
                       ]),
                     ])}
-                    disabled={filtered.length === 0}
+                    disabled={sortedFiltered.length === 0}
                   >
                     <Download className="h-3.5 w-3.5" /> CSV
                   </Button>
                 </div>
                 <div className="mt-3 max-h-[calc(100vh-200px)] overflow-auto">
-                  {filtered.length === 0 ? (
+                  {sortedFiltered.length === 0 ? (
                     <div className="p-6 text-center text-[12px] text-slate-500">No deals</div>
                   ) : (
                     <table className="w-full text-[12px]">
-                      <thead className="text-left text-slate-400">
+                      <thead className="text-left text-slate-400 select-none">
                         <tr>
-                          <th className="py-1.5">Deal</th>
-                          <th>Stage</th>
-                          <th className="text-right pr-3 whitespace-nowrap">Amount</th>
-                          <th className="whitespace-nowrap">Owner</th>
-                          <th className="text-right whitespace-nowrap">Updated</th>
+                          <th className="py-1.5 cursor-pointer hover:text-slate-200" onClick={() => toggleDrillSort('deal')}>Deal{arrow2(lenderDrillSort.key==='deal', lenderDrillSort.dir)}</th>
+                          <th className="cursor-pointer hover:text-slate-200" onClick={() => toggleDrillSort('stage')}>Stage{arrow2(lenderDrillSort.key==='stage', lenderDrillSort.dir)}</th>
+                          <th className="text-right pr-3 whitespace-nowrap cursor-pointer hover:text-slate-200" onClick={() => toggleDrillSort('amount')}>Amount{arrow2(lenderDrillSort.key==='amount', lenderDrillSort.dir)}</th>
+                          <th className="whitespace-nowrap cursor-pointer hover:text-slate-200" onClick={() => toggleDrillSort('owner')}>Owner{arrow2(lenderDrillSort.key==='owner', lenderDrillSort.dir)}</th>
+                          <th className="text-right whitespace-nowrap cursor-pointer hover:text-slate-200" onClick={() => toggleDrillSort('updated')}>Updated{arrow2(lenderDrillSort.key==='updated', lenderDrillSort.dir)}</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filtered.map((r) => (
+                        {sortedFiltered.map((r) => (
                           <tr key={r.id} className="border-t border-slate-700/40">
                             <td className="py-1.5 text-slate-100 truncate max-w-[220px]">{r.deal.company || '—'}</td>
                             <td className="max-w-[160px]"><StageTag label={r.label} /></td>
