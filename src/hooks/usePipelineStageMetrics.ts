@@ -1018,7 +1018,7 @@ function useStageEntryMetric(
   targetStage: string | string[],
   quarter: QuarterOption,
   pipelineId?: string | string[],
-  options?: { excludeDealOwners?: string[]; excludeChangedByUserIds?: string[] },
+  options?: { excludeDealOwners?: string[]; excludeChangedByUserIds?: string[]; firstEverInWindow?: boolean },
 ): StageMetricResult {
   const { user } = useAuth();
   const targetStages = Array.isArray(targetStage) ? targetStage : [targetStage];
@@ -1029,6 +1029,7 @@ function useStageEntryMetric(
   const queryStages = expandMetricStageLabels(targetStages, primaryPipelineId);
   const excludeOwnersKey = (options?.excludeDealOwners ?? []).map((s) => s.toLowerCase()).sort().join('|');
   const excludeChangedByKey = (options?.excludeChangedByUserIds ?? []).slice().sort().join('|');
+  const firstEverInWindow = !!options?.firstEverInWindow;
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: [
@@ -1038,6 +1039,7 @@ function useStageEntryMetric(
       pipelineIds ? pipelineIds.join(',') : null,
       excludeOwnersKey || null,
       excludeChangedByKey || null,
+      firstEverInWindow ? 'first-ever' : null,
     ],
     queryFn: async () => {
       const startDate = quarter.startDate;
@@ -1068,9 +1070,12 @@ function useStageEntryMetric(
           )
         `)
         .eq('event_type', 'stage_enter')
-        .in('to_stage', queryStages)
-        .gte('changed_at', startDate)
-        .lte('changed_at', endDate + 'T23:59:59.999Z');
+        .in('to_stage', queryStages);
+      if (!firstEverInWindow) {
+        query = query
+          .gte('changed_at', startDate)
+          .lte('changed_at', endDate + 'T23:59:59.999Z');
+      }
 
       if (pipelineIds && pipelineIds.length === 1) {
         query = query.eq('pipeline_id', pipelineIds[0]);
@@ -1101,6 +1106,9 @@ function useStageEntryMetric(
   return useMemo(() => {
     const loading = isLoading || isFetching;
     if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading: loading, mrr: 0 };
+
+    const windowStartMs = new Date(quarter.startDate + 'T00:00:00.000Z').getTime();
+    const windowEndMs = new Date(quarter.endDate + 'T23:59:59.999Z').getTime();
 
     const excludedOwners = new Set(
       (options?.excludeDealOwners ?? []).map((s) => s.toLowerCase().trim()),
@@ -1135,6 +1143,19 @@ function useStageEntryMetric(
           targetStages,
         );
       if (!stageSlug || !targetStages.includes(stageSlug)) continue;
+      // When counting "first-ever" entry into any signed stage, only
+      // include the deal if its earliest signed-stage entry (this row,
+      // since rows are ordered ascending) falls within the window. Deals
+      // whose first signed-stage entry happened before the window (e.g.
+      // entered FCI last year, then Terms Issued this year) are excluded.
+      if (firstEverInWindow) {
+        const enteredMs = new Date((row as any).changed_at).getTime();
+        if (enteredMs < windowStartMs || enteredMs > windowEndMs) {
+          // Mark as seen so later in-window rows for this deal don't sneak in
+          seen.set(row.deal_id, null as any);
+          continue;
+        }
+      }
       seen.set(row.deal_id, {
         deal_id: row.deal_id,
         company: deal.company ?? '—',
@@ -1147,7 +1168,9 @@ function useStageEntryMetric(
       });
     }
 
-    const rawDeals: StageEntryDeal[] = Array.from(seen.values()).filter(d => !isExcludedDealName(d.company));
+    const rawDeals: StageEntryDeal[] = Array.from(seen.values())
+      .filter((d): d is StageEntryDeal => !!d)
+      .filter(d => !isExcludedDealName(d.company));
     // Collapse duplicate deals sharing the same company name (case-insensitive),
     // keeping the earliest stage entry so counts don't double-book the same deal.
     const byName = new Map<string, StageEntryDeal>();
@@ -1356,7 +1379,7 @@ export function usePipelineStageMetrics(quarter: QuarterOption): PipelineMetrics
   const dealsOnBoard = usePipelineDealsInPeriod(ACTIVE_PIPELINE_ID, quarter);
 
   // Signed metrics remain stage-entry based
-  const debtDealsSigned = useStageEntryMetric(SIGNED_STAGES, quarter, DEBT_STAGE_PIPELINES);
+  const debtDealsSigned = useStageEntryMetric(SIGNED_STAGES, quarter, DEBT_STAGE_PIPELINES, { firstEverInWindow: true });
   // Deals Closed = unique deals that entered the Funded / Invoiced stage in
   // the active pipeline within the selected period. (The active pipeline has
   // a single combined "Funded / Invoiced" stage, so a single stage-entry
@@ -1586,8 +1609,8 @@ export function useConsolidatedDebtPipelineMetrics(
   });
   const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, DEBT_STAGE_PIPELINES);
   const proposalsIssuedPrior = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, priorQuarter, DEBT_STAGE_PIPELINES);
-  const finalCreditItems = useStageEntryMetric(SIGNED_STAGES, quarter, DEBT_STAGE_PIPELINES);
-  const finalCreditItemsPrior = useStageEntryMetric(SIGNED_STAGES, priorQuarter, DEBT_STAGE_PIPELINES);
+  const finalCreditItems = useStageEntryMetric(SIGNED_STAGES, quarter, DEBT_STAGE_PIPELINES, { firstEverInWindow: true });
+  const finalCreditItemsPrior = useStageEntryMetric(SIGNED_STAGES, priorQuarter, DEBT_STAGE_PIPELINES, { firstEverInWindow: true });
   // Closed metrics aggregate BOTH "funded-invoiced" and "closed-won" stage
   // entries within the Active Pipeline, per product spec.
   const CLOSED_STAGES = [FUNDED_INVOICED_STAGE, 'closed-won'];
@@ -1606,14 +1629,14 @@ export function useConsolidatedDebtPipelineMetrics(
   const inDueDiligence = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, quarter, DEBT_STAGE_PIPELINES);
   const inDueDiligencePrior = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, priorQuarter, DEBT_STAGE_PIPELINES);
 
-  const finalCreditItemsRolling6 = useStageEntryMetric(SIGNED_STAGES, sixMonthPeriod, DEBT_STAGE_PIPELINES);
+  const finalCreditItemsRolling6 = useStageEntryMetric(SIGNED_STAGES, sixMonthPeriod, DEBT_STAGE_PIPELINES, { firstEverInWindow: true });
   const fundedInvoicedRolling6 = useStageEntryMetric(CLOSED_STAGES, sixMonthPeriod, ACTIVE_PIPELINE_ID);
-  const finalCreditItemsRolling12 = useStageEntryMetric(SIGNED_STAGES, twelveMonthPeriod, DEBT_STAGE_PIPELINES);
+  const finalCreditItemsRolling12 = useStageEntryMetric(SIGNED_STAGES, twelveMonthPeriod, DEBT_STAGE_PIPELINES, { firstEverInWindow: true });
   const fundedInvoicedRolling12 = useStageEntryMetric(CLOSED_STAGES, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   // Prior-period stage & revenue metrics for delta calculations.
-  const finalCreditItemsRolling6Prior = useStageEntryMetric(SIGNED_STAGES, priorSixMonthPeriod, DEBT_STAGE_PIPELINES);
+  const finalCreditItemsRolling6Prior = useStageEntryMetric(SIGNED_STAGES, priorSixMonthPeriod, DEBT_STAGE_PIPELINES, { firstEverInWindow: true });
   const fundedInvoicedRolling6Prior = useStageEntryMetric(CLOSED_STAGES, priorSixMonthPeriod, ACTIVE_PIPELINE_ID);
-  const finalCreditItemsRolling12Prior = useStageEntryMetric(SIGNED_STAGES, priorTwelveMonthPeriod, DEBT_STAGE_PIPELINES);
+  const finalCreditItemsRolling12Prior = useStageEntryMetric(SIGNED_STAGES, priorTwelveMonthPeriod, DEBT_STAGE_PIPELINES, { firstEverInWindow: true });
   const fundedInvoicedRolling12Prior = useStageEntryMetric(CLOSED_STAGES, priorTwelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const proposalIssuedRolling12 = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, twelveMonthPeriod, DEBT_STAGE_PIPELINES);
   // "Submitted to Lenders" for conversion widgets includes BOTH the
