@@ -58,6 +58,7 @@ export const FINSERV_OPPORTUNITY_TYPES = [
   'Expansion',
   'Renewal',
   'Reactivation (returning dormant client or prospect)',
+  'Agentic Support',
 ] as const;
 
 export const FINSERV_SERVICES = [
