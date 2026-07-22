@@ -7,6 +7,7 @@ import { type StageEntryDeal } from '@/hooks/usePipelineStageMetrics';
 // Pipeline & stage IDs (same as usePipelineStageMetrics)
 const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
 const FINSERV_PIPELINE_ID = 'eb9db15a-62cc-4b99-adcf-24e57a2a46ce';
+const IN_DEVELOPMENT_PIPELINE_ID = '40b17dfb-9122-49e0-bf7c-5aa993d5d615';
 const FINAL_CREDIT_ITEMS_STAGE = 'final-credit-items';
 const FS_ACTIVE_CLIENT_STAGE = 'fs-active-client';
 
@@ -30,16 +31,18 @@ function toMonthBuckets(months: MonthDef[]): { label: string; key: string; start
 
 function useStageEntryMonthlySeries(
   targetStage: string,
-  pipelineId: string,
+  pipelineId: string | string[],
   quarterMonths: MonthDef[],
 ) {
   const { user } = useAuth();
+  const pipelineIds = Array.isArray(pipelineId) ? pipelineId : [pipelineId];
+  const pipelineKey = pipelineIds.join(',');
   const buckets = useMemo(() => toMonthBuckets(quarterMonths), [quarterMonths]);
   const startDate = buckets[0]?.start ?? '';
   const endDate = buckets[buckets.length - 1]?.end ?? '';
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['stage-entry-monthly', targetStage, pipelineId, startDate, endDate],
+    queryKey: ['stage-entry-monthly', targetStage, pipelineKey, startDate, endDate],
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from('activity_logs')
@@ -73,7 +76,7 @@ function useStageEntryMonthlySeries(
     for (const row of data ?? []) {
       if (seen.has(row.deal_id)) continue;
       const deal = row.deals as any;
-      if (!deal || deal.pipeline_id !== pipelineId) continue;
+      if (!deal || !pipelineIds.includes(deal.pipeline_id)) continue;
       const ts = new Date(row.created_at);
       const monthKey = `${ts.getFullYear()}-${String(ts.getMonth() + 1).padStart(2, '0')}`;
       const meta = (row as any).metadata ?? {};
@@ -106,11 +109,15 @@ function useStageEntryMonthlySeries(
     // so the UI shows a skeleton instead of stale data.
     const loading = isLoading || isFetching;
     return { months: result, isLoading: loading };
-  }, [data, isLoading, isFetching, buckets, pipelineId]);
+  }, [data, isLoading, isFetching, buckets, pipelineKey]);
 }
 
 export function useDealsSignedMonthlySeries(quarterMonths: MonthDef[]) {
-  return useStageEntryMonthlySeries(FINAL_CREDIT_ITEMS_STAGE, ACTIVE_PIPELINE_ID, quarterMonths);
+  return useStageEntryMonthlySeries(
+    FINAL_CREDIT_ITEMS_STAGE,
+    [ACTIVE_PIPELINE_ID, IN_DEVELOPMENT_PIPELINE_ID],
+    quarterMonths,
+  );
 }
 
 export function useFinServClientsSignedMonthlySeries(quarterMonths: MonthDef[]) {

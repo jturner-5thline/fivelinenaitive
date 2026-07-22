@@ -15,6 +15,8 @@ import { isExcludedDealName } from '@/utils/excludedDeals';
  * Range: full calendar year [year, year+1) in UTC.
  */
 const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
+const IN_DEVELOPMENT_PIPELINE_ID = '40b17dfb-9122-49e0-bf7c-5aa993d5d615';
+const DEBT_STAGE_PIPELINES = [ACTIVE_PIPELINE_ID, IN_DEVELOPMENT_PIPELINE_ID];
 const FINAL_CREDIT_ITEMS_STAGE_LABELS = ['final-credit-items', 'Final Credit Items'];
 
 export interface DollarsSignedEntry {
@@ -50,7 +52,7 @@ export function useDollarsSignedByMonth(yearOrYears: number | number[]): Dollars
   const end = `${endYear}-12-31`;
 
   const { data, isLoading, isFetching, error } = useQuery({
-    queryKey: ['dollars-signed-by-month', ACTIVE_PIPELINE_ID, startYear, endYear],
+    queryKey: ['dollars-signed-by-month', DEBT_STAGE_PIPELINES.join(','), startYear, endYear],
     queryFn: async () => {
       const { data: rows, error: err } = await supabase
         .from('deal_stage_history')
@@ -67,7 +69,7 @@ export function useDollarsSignedByMonth(yearOrYears: number | number[]): Dollars
           )
         `)
         .eq('event_type', 'stage_enter')
-        .eq('pipeline_id', ACTIVE_PIPELINE_ID)
+        .in('pipeline_id', DEBT_STAGE_PIPELINES)
         .in('to_stage', FINAL_CREDIT_ITEMS_STAGE_LABELS)
         .gte('changed_at', start)
         .lte('changed_at', end + 'T23:59:59.999Z')
