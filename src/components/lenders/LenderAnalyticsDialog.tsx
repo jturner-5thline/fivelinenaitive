@@ -1647,11 +1647,59 @@ export function LenderAnalyticsDialog({
                         <tbody>
                           {filteredLenders.map((l) => (
                             <tr key={l.key} className="border-t border-slate-700/40">
-                              <td className="py-1.5 text-slate-100 truncate max-w-[220px]">{l.name}</td>
+                              <td className="py-1.5 text-slate-100 truncate max-w-[220px]">
+                                <button
+                                  type="button"
+                                  className="text-left hover:text-sky-300 hover:underline underline-offset-2 truncate max-w-full"
+                                  onClick={() => setLenderDrill({ key: l.key, name: l.name, filter: 'all' })}
+                                  title={`View ${l.name} deals`}
+                                >
+                                  {l.name}
+                                </button>
+                              </td>
                               <td className="text-right pr-3 text-slate-300 tabular-nums">{l.tier ?? '—'}</td>
-                              <td className="text-right pr-3 text-slate-200 tabular-nums">{l.count}</td>
-                              <td className="text-right pr-3 text-slate-200 tabular-nums">{l.submitted}</td>
-                              <td className="text-right pr-3 text-slate-200 tabular-nums">{l.terms}</td>
+                              <td className="text-right pr-3 text-slate-200 tabular-nums">
+                                {l.count > 0 ? (
+                                  <button
+                                    type="button"
+                                    className="hover:text-sky-300 hover:underline underline-offset-2 tabular-nums"
+                                    onClick={() => setLenderDrill({ key: l.key, name: l.name, filter: 'all' })}
+                                    title={`View ${l.count} deal${l.count === 1 ? '' : 's'} for ${l.name}`}
+                                  >
+                                    {l.count}
+                                  </button>
+                                ) : (
+                                  l.count
+                                )}
+                              </td>
+                              <td className="text-right pr-3 text-slate-200 tabular-nums">
+                                {l.submitted > 0 ? (
+                                  <button
+                                    type="button"
+                                    className="hover:text-sky-300 hover:underline underline-offset-2 tabular-nums"
+                                    onClick={() => setLenderDrill({ key: l.key, name: l.name, filter: 'submitted' })}
+                                    title={`View ${l.submitted} submitted deal${l.submitted === 1 ? '' : 's'} for ${l.name}`}
+                                  >
+                                    {l.submitted}
+                                  </button>
+                                ) : (
+                                  l.submitted
+                                )}
+                              </td>
+                              <td className="text-right pr-3 text-slate-200 tabular-nums">
+                                {l.terms > 0 ? (
+                                  <button
+                                    type="button"
+                                    className="hover:text-sky-300 hover:underline underline-offset-2 tabular-nums"
+                                    onClick={() => setLenderDrill({ key: l.key, name: l.name, filter: 'terms' })}
+                                    title={`View ${l.terms} deal${l.terms === 1 ? '' : 's'} that reached terms for ${l.name}`}
+                                  >
+                                    {l.terms}
+                                  </button>
+                                ) : (
+                                  l.terms
+                                )}
+                              </td>
                               <td className="text-right pr-3 text-slate-300 tabular-nums">
                                 {l.submitted > 0 ? `${(l.conv * 100).toFixed(1)}%` : '—'}
                               </td>
