@@ -943,6 +943,7 @@ export function LenderAnalyticsDialog({
                   <SelectItem value="ytd">YTD</SelectItem>
                   <SelectItem value="6m">Last 6 Months</SelectItem>
                   <SelectItem value="12m">TTM (Trailing 12 Months)</SelectItem>
+                  <SelectItem value="all">All Time</SelectItem>
                   {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 1 - i).map((yr) => (
                     <SelectItem key={yr} value={`y${yr}`}>{yr}</SelectItem>
                   ))}
