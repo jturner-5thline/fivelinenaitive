@@ -178,9 +178,9 @@ function isSentToLendersStage(label: string | null | undefined): boolean {
   const n = normalizeLabel(label);
   if (!n) return false;
   // Attribution rule: a deal counts for a lender based on the timestamp it
-  // first entered the "Lenders in Review" stage — NOT earlier sent-style
-  // stages like "Initial Lender Review" or "Submitted to Lenders".
-  return n === 'lenders in review' || n.includes('lenders in review');
+  // entered the lender-review stage. Historical imports use the legacy label
+  // "Initial Lender Review" for the same cohort gate, so keep that alias.
+  return n === 'lenders in review' || n.includes('lenders in review') || n === 'initial lender review';
 }
 
 /**
@@ -516,7 +516,7 @@ export function LenderAnalyticsDialog({
       const label = resolveLabel(dl.stage, deal.company_id);
       // Skip lenders currently sitting in "On Deck" — they aren't actively
       // engaged in the deal and should not count toward Active Lenders.
-      if ((label || '').trim().toLowerCase() === 'on deck') continue;
+      if (normalizeLabel(label) === 'on deck') continue;
       const sentAt = dealSentAt.get(dl.deal_id) ?? null;
       const ord = stageOrdinal(label);
       const terminal = isTerminal(label, dl.pass_reason);
