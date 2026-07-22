@@ -40,6 +40,7 @@ const OPPORTUNITY_TYPES = [
   'Expansion',
   'Renewal',
   'Reactivation (returning dormant client or prospect)',
+  'Agentic Support',
 ] as const;
 const SERVICES = [
   'Bookkeeping',
