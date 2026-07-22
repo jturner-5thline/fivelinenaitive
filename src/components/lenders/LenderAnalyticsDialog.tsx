@@ -177,16 +177,10 @@ function normalizeLabel(s: string | null | undefined): string {
 function isSentToLendersStage(label: string | null | undefined): boolean {
   const n = normalizeLabel(label);
   if (!n) return false;
-  return (
-    n === 'submitted to lenders' ||
-    n === 'submitted lenders' ||
-    n === 'lenders in review' ||
-    n === 'initial lender review' ||
-    n.includes('submitted to lender') ||
-    n.includes('lenders in review') ||
-    n.includes('initial lender review') ||
-    n.includes('sent to lender')
-  );
+  // Attribution rule: a deal counts for a lender based on the timestamp it
+  // first entered the "Lenders in Review" stage — NOT earlier sent-style
+  // stages like "Initial Lender Review" or "Submitted to Lenders".
+  return n === 'lenders in review' || n.includes('lenders in review');
 }
 
 /**
