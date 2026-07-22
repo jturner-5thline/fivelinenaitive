@@ -1018,6 +1018,7 @@ function useStageEntryMetric(
   targetStage: string | string[],
   quarter: QuarterOption,
   pipelineId?: string | string[],
+  options?: { excludeDealOwners?: string[] },
 ): StageMetricResult {
   const { user } = useAuth();
   const targetStages = Array.isArray(targetStage) ? targetStage : [targetStage];
@@ -1026,6 +1027,7 @@ function useStageEntryMetric(
     ? (Array.isArray(pipelineId) ? pipelineId : [pipelineId])
     : undefined;
   const queryStages = expandMetricStageLabels(targetStages, primaryPipelineId);
+  const excludeOwnersKey = (options?.excludeDealOwners ?? []).map((s) => s.toLowerCase()).sort().join('|');
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: [
@@ -1033,6 +1035,7 @@ function useStageEntryMetric(
       targetStages.join(','),
       quarter.value,
       pipelineIds ? pipelineIds.join(',') : null,
+      excludeOwnersKey || null,
     ],
     queryFn: async () => {
       const startDate = quarter.startDate;
@@ -1057,7 +1060,8 @@ function useStageEntryMetric(
             stage,
             pipeline_id,
             status,
-            mrr
+            mrr,
+            deal_owner
           )
         `)
         .eq('event_type', 'stage_enter')
@@ -1095,12 +1099,21 @@ function useStageEntryMetric(
     const loading = isLoading || isFetching;
     if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading: loading, mrr: 0 };
 
+    const excludedOwners = new Set(
+      (options?.excludeDealOwners ?? []).map((s) => s.toLowerCase().trim()),
+    );
     // Deduplicate: first entry per deal_id only
     const seen = new Map<string, StageEntryDeal>();
     for (const row of data) {
       if (seen.has(row.deal_id)) continue;
       const deal = row.deals as any;
       if (!deal) continue;
+      // Excluded deal_owner filter (e.g. remove NDA entries authored under
+      // former team member John Moffitt's ownership).
+      if (excludedOwners.size > 0) {
+        const owner = String(deal.deal_owner ?? '').toLowerCase().trim();
+        if (owner && excludedOwners.has(owner)) continue;
+      }
       // If pipelineId filter specified but inner join didn't filter (safety)
         if (pipelineIds && !pipelineIds.includes(deal.pipeline_id)) continue;
         const stageSlug = normalizeMetricStageSlug(
@@ -1131,7 +1144,7 @@ function useStageEntryMetric(
       isLoading: loading,
       mrr,
     };
-  }, [data, isLoading, isFetching, pipelineIds?.join(','), targetStages]);
+  }, [data, isLoading, isFetching, pipelineIds?.join(','), targetStages, excludeOwnersKey]);
 }
 
 /**
@@ -1509,8 +1522,16 @@ export function useConsolidatedDebtPipelineMetrics(
   // still count. The count and dollar volume move with the selected timeframe
   // (YTD, Last 6 Months, etc.) instead of being pinned to `deals.created_at`.
   const NDA_PIPELINES = ['b78ad452-b489-4c89-8a91-789347c05f79', '40b17dfb-9122-49e0-bf7c-5aa993d5d615'];
-  const ndaNeedsList = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, quarter, NDA_PIPELINES);
-  const ndaNeedsListPrior = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, priorQuarter, NDA_PIPELINES);
+  // Exclude NDA / Needs List Sent activity authored under John Moffitt's
+  // ownership from the "Deals on the Board" metrics — those entries are not
+  // part of the current pipeline's activity we want to report on.
+  const NDA_EXCLUDED_OWNERS = ['John Moffitt'];
+  const ndaNeedsList = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, quarter, NDA_PIPELINES, {
+    excludeDealOwners: NDA_EXCLUDED_OWNERS,
+  });
+  const ndaNeedsListPrior = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, priorQuarter, NDA_PIPELINES, {
+    excludeDealOwners: NDA_EXCLUDED_OWNERS,
+  });
   const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const proposalsIssuedPrior = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, priorQuarter, ACTIVE_PIPELINE_ID);
   const finalCreditItems = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, quarter, ACTIVE_PIPELINE_ID);
