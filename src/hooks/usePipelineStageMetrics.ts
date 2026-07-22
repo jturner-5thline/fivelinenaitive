@@ -1490,14 +1490,15 @@ export function useConsolidatedDebtPipelineMetrics(
   // comparison is the immediately preceding equal-length window.
   const priorQuarter = useMemo(() => buildPriorPeriodFor(quarter), [quarter]);
 
-  // "Deals on the Board" / "Debt $ on the Board" / "Average Deal on the Board":
-  // deals ADDED TO the Active Pipeline within the selected period. Mirrors the
-  // definition used by PipelineMetricsSection (usePipelineDealsInPeriod): filters
-  // `deals.pipeline_id = ACTIVE_PIPELINE_ID` and `deals.created_at` within range,
-  // excluding closed-won / closed-lost / on-hold / archived deals. Dollar value
-  // uses `deals.value` (same as other Active-pipeline widgets).
-  const ndaNeedsList = usePipelineDealsInPeriod(ACTIVE_PIPELINE_ID, quarter);
-  const ndaNeedsListPrior = usePipelineDealsInPeriod(ACTIVE_PIPELINE_ID, priorQuarter);
+  // "Deals on the Board" / "Dollars on the Board" / "Average Deal on the Board":
+  // distinct deals that ENTERED the "NDA / Needs List Sent" stage in the
+  // Active Pipeline during the selected period. Sourced from
+  // `deal_stage_history` (stage_enter events) so the count and dollar volume
+  // move with the selected timeframe (YTD, Last 6 Months, etc.) instead of
+  // being pinned to `deals.created_at`, which caused historical deals whose
+  // stage entry happened in-period to be missed and vice versa.
+  const ndaNeedsList = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const ndaNeedsListPrior = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, priorQuarter, ACTIVE_PIPELINE_ID);
   const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const proposalsIssuedPrior = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, priorQuarter, ACTIVE_PIPELINE_ID);
   const finalCreditItems = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, quarter, ACTIVE_PIPELINE_ID);
