@@ -1502,14 +1502,15 @@ export function useConsolidatedDebtPipelineMetrics(
   const priorQuarter = useMemo(() => buildPriorPeriodFor(quarter), [quarter]);
 
   // "Deals on the Board" / "Dollars on the Board" / "Average Deal on the Board":
-  // distinct deals that ENTERED the "NDA / Needs List Sent" stage in the
-  // Active Pipeline during the selected period. Sourced from
-  // `deal_stage_history` (stage_enter events) so the count and dollar volume
-  // move with the selected timeframe (YTD, Last 6 Months, etc.) instead of
-  // being pinned to `deals.created_at`, which caused historical deals whose
-  // stage entry happened in-period to be missed and vice versa.
-  const ndaNeedsList = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, quarter, ACTIVE_PIPELINE_ID);
-  const ndaNeedsListPrior = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, priorQuarter, ACTIVE_PIPELINE_ID);
+  // distinct deals that ENTERED the "NDA / Needs List Sent" stage during the
+  // selected period. Sourced from `deal_stage_history` (stage_enter events)
+  // across BOTH the Active Pipeline and the In Development pipeline, so deals
+  // that later moved to In Development (or were sent to lenders from there)
+  // still count. The count and dollar volume move with the selected timeframe
+  // (YTD, Last 6 Months, etc.) instead of being pinned to `deals.created_at`.
+  const NDA_PIPELINES = ['b78ad452-b489-4c89-8a91-789347c05f79', '40b17dfb-9122-49e0-bf7c-5aa993d5d615'];
+  const ndaNeedsList = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, quarter, NDA_PIPELINES);
+  const ndaNeedsListPrior = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, priorQuarter, NDA_PIPELINES);
   const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const proposalsIssuedPrior = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, priorQuarter, ACTIVE_PIPELINE_ID);
   const finalCreditItems = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, quarter, ACTIVE_PIPELINE_ID);
