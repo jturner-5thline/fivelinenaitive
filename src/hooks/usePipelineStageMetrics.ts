@@ -1018,7 +1018,7 @@ function useStageEntryMetric(
   targetStage: string | string[],
   quarter: QuarterOption,
   pipelineId?: string | string[],
-  options?: { excludeDealOwners?: string[] },
+  options?: { excludeDealOwners?: string[]; excludeChangedByUserIds?: string[] },
 ): StageMetricResult {
   const { user } = useAuth();
   const targetStages = Array.isArray(targetStage) ? targetStage : [targetStage];
@@ -1028,6 +1028,7 @@ function useStageEntryMetric(
     : undefined;
   const queryStages = expandMetricStageLabels(targetStages, primaryPipelineId);
   const excludeOwnersKey = (options?.excludeDealOwners ?? []).map((s) => s.toLowerCase()).sort().join('|');
+  const excludeChangedByKey = (options?.excludeChangedByUserIds ?? []).slice().sort().join('|');
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: [
@@ -1036,6 +1037,7 @@ function useStageEntryMetric(
       quarter.value,
       pipelineIds ? pipelineIds.join(',') : null,
       excludeOwnersKey || null,
+      excludeChangedByKey || null,
     ],
     queryFn: async () => {
       const startDate = quarter.startDate;
@@ -1053,6 +1055,7 @@ function useStageEntryMetric(
           to_stage,
           to_stage_id,
           from_stage_id,
+          changed_by,
           deals!inner (
             company,
             value,
@@ -1102,6 +1105,7 @@ function useStageEntryMetric(
     const excludedOwners = new Set(
       (options?.excludeDealOwners ?? []).map((s) => s.toLowerCase().trim()),
     );
+    const excludedChangedBy = new Set(options?.excludeChangedByUserIds ?? []);
     // Deduplicate: first entry per deal_id only
     const seen = new Map<string, StageEntryDeal>();
     for (const row of data) {
@@ -1113,6 +1117,14 @@ function useStageEntryMetric(
       if (excludedOwners.size > 0) {
         const owner = String(deal.deal_owner ?? '').toLowerCase().trim();
         if (owner && excludedOwners.has(owner)) continue;
+      }
+      // Excluded changed_by filter: skip stage entries authored by specific
+      // users (e.g. former team member John Moffitt), regardless of current
+      // deal_owner. This catches deals that were reassigned after Moffitt
+      // originally logged the NDA / Needs List Sent entry.
+      if (excludedChangedBy.size > 0) {
+        const changedBy = String((row as any).changed_by ?? '');
+        if (changedBy && excludedChangedBy.has(changedBy)) continue;
       }
       // If pipelineId filter specified but inner join didn't filter (safety)
         if (pipelineIds && !pipelineIds.includes(deal.pipeline_id)) continue;
@@ -1526,11 +1538,18 @@ export function useConsolidatedDebtPipelineMetrics(
   // ownership from the "Deals on the Board" metrics — those entries are not
   // part of the current pipeline's activity we want to report on.
   const NDA_EXCLUDED_OWNERS = ['John Moffitt'];
+  // Also exclude entries whose stage_enter row was authored by John Moffitt
+  // directly, regardless of the deal's current deal_owner (catches deals
+  // that were reassigned after Moffitt logged the NDA entry, e.g.
+  // Mason Dixie Foods).
+  const NDA_EXCLUDED_CHANGED_BY = ['2e65a4b1-bd94-46ef-87c6-9afe697b3180'];
   const ndaNeedsList = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, quarter, NDA_PIPELINES, {
     excludeDealOwners: NDA_EXCLUDED_OWNERS,
+    excludeChangedByUserIds: NDA_EXCLUDED_CHANGED_BY,
   });
   const ndaNeedsListPrior = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, priorQuarter, NDA_PIPELINES, {
     excludeDealOwners: NDA_EXCLUDED_OWNERS,
+    excludeChangedByUserIds: NDA_EXCLUDED_CHANGED_BY,
   });
   const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const proposalsIssuedPrior = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, priorQuarter, ACTIVE_PIPELINE_ID);
