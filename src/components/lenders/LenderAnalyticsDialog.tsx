@@ -383,7 +383,7 @@ export function LenderAnalyticsDialog({
           // against the earliest "sent to lenders" stage transition.
           // deal_lenders.created_at was backfilled during migration, so all
           // rows share ~identical timestamps and can't drive cohort filtering.
-          supabase.from('deal_lenders').select('id, deal_id, name, stage, substage, pass_reason, created_at, updated_at').limit(10000),
+          supabase.from('deal_lenders').select('id, deal_id, name, stage, substage, pass_reason, approved_at, created_at, updated_at').limit(10000),
           supabase.from('deals').select('id, company, company_id, deal_type, manager, created_at, value').limit(10000),
           supabase.from('lender_stage_configs').select('company_id, stages').limit(500),
           fetchStageHistoryRows(),
@@ -527,7 +527,13 @@ export function LenderAnalyticsDialog({
       //     stage (terms issued, due diligence, agreement pending, funded,
       //     closed / won).
       const everSubmitted = true;
-      const everTerms = ord >= 7;
+      // A lender that previously reached "Draft Terms" or later but has since
+      // regressed to On Hold / Passed / Unresponsive still counts as a
+      // conversion. `approved_at` is stamped when the lender is moved to the
+      // Approved / Draft Terms / Terms Issued milestone, so use it as a
+      // durable historical signal in addition to the current stage.
+      const approvedAt = (dl as any).approved_at ? Date.parse((dl as any).approved_at) : null;
+      const everTerms = ord >= 7 || (approvedAt != null && !Number.isNaN(approvedAt));
       out.push({
         ...dl,
         deal,
