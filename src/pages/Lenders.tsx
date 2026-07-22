@@ -350,11 +350,6 @@ export default function Lenders() {
       setServerSearchLenders([]);
       return;
     }
-    // Skip the extra fetch once the full directory is in memory.
-    if (!hasMore && !loadingMore) {
-      setServerSearchLenders([]);
-      return;
-    }
     let cancelled = false;
     const pattern = `%${q}%`;
     (async () => {
@@ -374,7 +369,7 @@ export default function Lenders() {
       setServerSearchLenders((data ?? []) as MasterLender[]);
     })();
     return () => { cancelled = true; };
-  }, [debouncedSearchQuery, hasMore, loadingMore]);
+  }, [debouncedSearchQuery]);
 
   // Union the streamed directory with any server-side search hits so search
   // reliably finds lenders that live past the currently-loaded window.
