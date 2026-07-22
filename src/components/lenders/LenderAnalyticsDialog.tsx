@@ -348,7 +348,33 @@ export function LenderAnalyticsDialog({
       setLoading(true);
       setError(null);
       try {
-        const [dlRes, dRes, scRes, dshRes] = await Promise.all([
+        const fetchStageHistoryRows = async () => {
+          const pageSize = 1000;
+          const all: Array<{
+            deal_id: string;
+            to_stage: string | null;
+            to_stage_label_raw: string | null;
+            unresolved_stage_label: string | null;
+            changed_at: string;
+          }> = [];
+
+          for (let from = 0; ; from += pageSize) {
+            const { data, error } = await supabase
+              .from('deal_stage_history')
+              .select('deal_id, to_stage, to_stage_label_raw, unresolved_stage_label, changed_at')
+              .eq('event_type', 'stage_enter')
+              .order('changed_at', { ascending: true })
+              .range(from, from + pageSize - 1);
+            if (error) throw error;
+            const rows = (data ?? []) as typeof all;
+            all.push(...rows);
+            if (rows.length < pageSize) break;
+          }
+
+          return all;
+        };
+
+        const [dlRes, dRes, scRes, stageHistoryRows] = await Promise.all([
           // Fetch all deal_lenders; timeframe filtering happens client-side
           // against the earliest "sent to lenders" stage transition.
           // deal_lenders.created_at was backfilled during migration, so all
@@ -356,17 +382,12 @@ export function LenderAnalyticsDialog({
           supabase.from('deal_lenders').select('id, deal_id, name, stage, substage, pass_reason, created_at, updated_at').limit(10000),
           supabase.from('deals').select('id, company, company_id, deal_type, manager, created_at, value').limit(10000),
           supabase.from('lender_stage_configs').select('company_id, stages').limit(500),
-          supabase
-            .from('deal_stage_history')
-            .select('deal_id, to_stage, changed_at')
-            .eq('event_type', 'stage_enter')
-            .limit(50000),
+          fetchStageHistoryRows(),
         ]);
         if (cancelled) return;
         if (dlRes.error) throw dlRes.error;
         if (dRes.error) throw dRes.error;
         if (scRes.error) throw scRes.error;
-        if (dshRes.error) throw dshRes.error;
         setDealLenders((dlRes.data ?? []) as DealLenderRow[]);
         setDeals((dRes.data ?? []) as DealRow[]);
         setStageConfigs((scRes.data ?? []) as StageConfigRow[]);
@@ -385,13 +406,13 @@ export function LenderAnalyticsDialog({
           }
         }
         const sent = new Map<string, number>();
-        for (const h of (dshRes.data ?? []) as Array<{ deal_id: string; to_stage: string | null; changed_at: string }>) {
+        for (const h of stageHistoryRows) {
           const deal = dealsById.get(h.deal_id);
-          const stageLabel =
+          const resolvedStageLabel =
             (deal?.company_id ? stagesByCompany.get(deal.company_id)?.get(h.to_stage || '') : null) ??
             globalStages.get(h.to_stage || '') ??
             h.to_stage;
-          if (!isSentToLendersStage(stageLabel)) continue;
+          if (![h.to_stage_label_raw, h.unresolved_stage_label, resolvedStageLabel].some(isSentToLendersStage)) continue;
           const t = new Date(h.changed_at).getTime();
           if (!Number.isFinite(t)) continue;
           const prev = sent.get(h.deal_id);
