@@ -1105,6 +1105,7 @@ function useStageEntryMetric(
     const excludedOwners = new Set(
       (options?.excludeDealOwners ?? []).map((s) => s.toLowerCase().trim()),
     );
+    const excludedChangedBy = new Set(options?.excludeChangedByUserIds ?? []);
     // Deduplicate: first entry per deal_id only
     const seen = new Map<string, StageEntryDeal>();
     for (const row of data) {
@@ -1116,6 +1117,14 @@ function useStageEntryMetric(
       if (excludedOwners.size > 0) {
         const owner = String(deal.deal_owner ?? '').toLowerCase().trim();
         if (owner && excludedOwners.has(owner)) continue;
+      }
+      // Excluded changed_by filter: skip stage entries authored by specific
+      // users (e.g. former team member John Moffitt), regardless of current
+      // deal_owner. This catches deals that were reassigned after Moffitt
+      // originally logged the NDA / Needs List Sent entry.
+      if (excludedChangedBy.size > 0) {
+        const changedBy = String((row as any).changed_by ?? '');
+        if (changedBy && excludedChangedBy.has(changedBy)) continue;
       }
       // If pipelineId filter specified but inner join didn't filter (safety)
         if (pipelineIds && !pipelineIds.includes(deal.pipeline_id)) continue;
