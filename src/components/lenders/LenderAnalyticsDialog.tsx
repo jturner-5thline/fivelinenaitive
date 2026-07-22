@@ -178,9 +178,16 @@ function isSentToLendersStage(label: string | null | undefined): boolean {
   const n = normalizeLabel(label);
   if (!n) return false;
   // Attribution rule: a deal counts for a lender based on the timestamp it
-  // entered the lender-review stage. Historical imports use the legacy label
-  // "Initial Lender Review" for the same cohort gate, so keep that alias.
-  return n === 'lenders in review' || n.includes('lenders in review') || n === 'initial lender review';
+  // entered the "Lenders in Review" stage. "Initial Lender Review" is
+  // intentionally NOT treated as an alias — use the Terms Issued fallback
+  // below for deals that never logged Lenders in Review.
+  return n === 'lenders in review' || n.includes('lenders in review');
+}
+
+function isTermsIssuedStage(label: string | null | undefined): boolean {
+  const n = normalizeLabel(label);
+  if (!n) return false;
+  return n === 'terms issued' || n.includes('terms issued');
 }
 
 /**
@@ -405,17 +412,29 @@ export function LenderAnalyticsDialog({
           }
         }
         const sent = new Map<string, number>();
+        const termsIssuedAt = new Map<string, number>();
         for (const h of stageHistoryRows) {
           const deal = dealsById.get(h.deal_id);
           const resolvedStageLabel =
             (deal?.company_id ? stagesByCompany.get(deal.company_id)?.get(h.to_stage || '') : null) ??
             globalStages.get(h.to_stage || '') ??
             h.to_stage;
-          if (![h.to_stage_label_raw, h.unresolved_stage_label, resolvedStageLabel].some(isSentToLendersStage)) continue;
+          const labels = [h.to_stage_label_raw, h.unresolved_stage_label, resolvedStageLabel];
           const t = new Date(h.changed_at).getTime();
           if (!Number.isFinite(t)) continue;
-          const prev = sent.get(h.deal_id);
-          if (prev == null || t < prev) sent.set(h.deal_id, t);
+          if (labels.some(isSentToLendersStage)) {
+            const prev = sent.get(h.deal_id);
+            if (prev == null || t < prev) sent.set(h.deal_id, t);
+          }
+          if (labels.some(isTermsIssuedStage)) {
+            const prev = termsIssuedAt.get(h.deal_id);
+            if (prev == null || t < prev) termsIssuedAt.set(h.deal_id, t);
+          }
+        }
+        // Fallback: for any deal without a "Lenders in Review" entry, use the
+        // earliest "Terms Issued" entry as the attribution timestamp.
+        for (const [dealId, ts] of termsIssuedAt) {
+          if (!sent.has(dealId)) sent.set(dealId, ts);
         }
         setDealSentAt(sent);
       } catch (e: any) {
