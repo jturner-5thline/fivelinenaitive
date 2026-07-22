@@ -1017,14 +1017,23 @@ function useRevenuePerHourMetric(
 function useStageEntryMetric(
   targetStage: string | string[],
   quarter: QuarterOption,
-  pipelineId?: string,
+  pipelineId?: string | string[],
 ): StageMetricResult {
   const { user } = useAuth();
   const targetStages = Array.isArray(targetStage) ? targetStage : [targetStage];
-  const queryStages = expandMetricStageLabels(targetStages, pipelineId);
+  const primaryPipelineId = Array.isArray(pipelineId) ? pipelineId[0] : pipelineId;
+  const pipelineIds = pipelineId
+    ? (Array.isArray(pipelineId) ? pipelineId : [pipelineId])
+    : undefined;
+  const queryStages = expandMetricStageLabels(targetStages, primaryPipelineId);
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['stage-entry-metric-dsh', targetStages.join(','), quarter.value, pipelineId],
+    queryKey: [
+      'stage-entry-metric-dsh',
+      targetStages.join(','),
+      quarter.value,
+      pipelineIds ? pipelineIds.join(',') : null,
+    ],
     queryFn: async () => {
       const startDate = quarter.startDate;
       const endDate = quarter.endDate;
@@ -1056,8 +1065,10 @@ function useStageEntryMetric(
         .gte('changed_at', startDate)
         .lte('changed_at', endDate + 'T23:59:59.999Z');
 
-      if (pipelineId) {
-        query = query.eq('pipeline_id', pipelineId);
+      if (pipelineIds && pipelineIds.length === 1) {
+        query = query.eq('pipeline_id', pipelineIds[0]);
+      } else if (pipelineIds && pipelineIds.length > 1) {
+        query = query.in('pipeline_id', pipelineIds);
       }
 
       const { data: rows, error } = await query
@@ -1065,10 +1076,10 @@ function useStageEntryMetric(
 
       if (error) throw error;
       if ((rows?.length ?? 0) === 0) {
-        console.warn('[stage-entry-metric] 0 rows', { targetStages, pipelineId, startDate, endDate });
+        console.warn('[stage-entry-metric] 0 rows', { targetStages, pipelineIds, startDate, endDate });
       }
       const synthetic = await fetchClosedDealsAsSyntheticRows(
-        pipelineId,
+        primaryPipelineId,
         targetStages,
         `${startDate}T00:00:00.000Z`,
         `${endDate}T23:59:59.999Z`,
@@ -1091,11 +1102,11 @@ function useStageEntryMetric(
       const deal = row.deals as any;
       if (!deal) continue;
       // If pipelineId filter specified but inner join didn't filter (safety)
-      if (pipelineId && deal.pipeline_id !== pipelineId) continue;
+        if (pipelineIds && !pipelineIds.includes(deal.pipeline_id)) continue;
         const stageSlug = normalizeMetricStageSlug(
           (row as any).to_stage,
           (row as any).to_stage_id,
-          pipelineId,
+          primaryPipelineId,
           targetStages,
         );
       if (!stageSlug || !targetStages.includes(stageSlug)) continue;
@@ -1120,7 +1131,7 @@ function useStageEntryMetric(
       isLoading: loading,
       mrr,
     };
-  }, [data, isLoading, isFetching, pipelineId, targetStages]);
+  }, [data, isLoading, isFetching, pipelineIds?.join(','), targetStages]);
 }
 
 /**
