@@ -1296,6 +1296,16 @@ function usePipelineDealsInPeriod(pipelineId: string, quarter: QuarterOption): S
 // 5th Line company's pipeline IDs
 const FINSERV_PIPELINE_ID = 'eb9db15a-62cc-4b99-adcf-24e57a2a46ce';
 const DEBT_REALM_ID = '193514877331929';
+// Deals often start in the In Development pipeline and later graduate to
+// Active. Stage-entry events (Proposal Issued, Terms Issued, Final Credit
+// Items, In Due Diligence) logged while the deal still sat in In Development
+// still represent real progress and must count in these debt KPIs. Funded /
+// Closed Won metrics stay Active-only because `closed-won` in In Development
+// is overloaded to mean "Indication of Interest" (see mem://technical/pipeline-stage-id-overloading).
+const DEBT_STAGE_PIPELINES = [
+  'b78ad452-b489-4c89-8a91-789347c05f79',
+  '40b17dfb-9122-49e0-bf7c-5aa993d5d615',
+];
 
 // Stage IDs
 const NDA_NEEDS_LIST_STAGE = 'ndaneeds-list-sent';
@@ -1323,7 +1333,7 @@ export function usePipelineStageMetrics(quarter: QuarterOption): PipelineMetrics
   const dealsOnBoard = usePipelineDealsInPeriod(ACTIVE_PIPELINE_ID, quarter);
 
   // Signed metrics remain stage-entry based
-  const debtDealsSigned = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const debtDealsSigned = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, quarter, DEBT_STAGE_PIPELINES);
   // Deals Closed = unique deals that entered the Funded / Invoiced stage in
   // the active pipeline within the selected period. (The active pipeline has
   // a single combined "Funded / Invoiced" stage, so a single stage-entry
