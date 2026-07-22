@@ -1572,7 +1572,7 @@ export function LenderAnalyticsDialog({
                 ]);
               } else {
                 downloadCsv(`kpi-${openKpi}`, [
-                  ['deal', 'lender', 'stage', 'amount', 'owner', 'sent_date'],
+                    ['deal', 'lender', 'stage', 'amount', 'owner', 'sent_date', 'sent_at_exact'],
                   ...filteredDeals.map((r) => [
                     r.deal.company || '',
                     r.name || '',
@@ -1580,6 +1580,7 @@ export function LenderAnalyticsDialog({
                     String(r.deal.value ?? ''),
                     r.deal.manager || '',
                     r.sentAt ? new Date(r.sentAt).toISOString() : '',
+                      r.sentAt ? new Date(r.sentAt).toISOString() : '',
                   ]),
                 ]);
               }
@@ -1656,6 +1657,7 @@ export function LenderAnalyticsDialog({
                           <th className="text-right pr-3 whitespace-nowrap">Amount</th>
                           <th className="whitespace-nowrap">Owner</th>
                           <th className="text-right whitespace-nowrap">Sent Date</th>
+                          <th className="text-right whitespace-nowrap">Sent At (exact)</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1670,6 +1672,17 @@ export function LenderAnalyticsDialog({
                             <td className="text-slate-300 truncate max-w-[120px]">{r.deal.manager || '—'}</td>
                             <td className="text-right text-slate-400 tabular-nums whitespace-nowrap">
                               {r.sentAt ? new Date(r.sentAt).toLocaleDateString() : '—'}
+                            </td>
+                            <td className="text-right text-slate-500 tabular-nums whitespace-nowrap font-mono text-[11px]">
+                              {r.sentAt
+                                ? new Date(r.sentAt).toLocaleString(undefined, {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })
+                                : '—'}
                             </td>
                           </tr>
                         ))}
