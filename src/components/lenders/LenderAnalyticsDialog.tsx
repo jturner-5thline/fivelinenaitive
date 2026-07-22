@@ -633,6 +633,15 @@ export function LenderAnalyticsDialog({
   const [kpiDrillSearch, setKpiDrillSearch] = useState('');
   useEffect(() => { if (!openKpi) setKpiDrillSearch(''); }, [openKpi]);
 
+  // Secondary drill-down: from a lender row inside the KPI sheet to that
+  // lender's underlying deals, optionally filtered to submitted / terms.
+  type LenderDrillFilter = 'all' | 'submitted' | 'terms';
+  const [lenderDrill, setLenderDrill] = useState<
+    { key: string; name: string; filter: LenderDrillFilter } | null
+  >(null);
+  const [lenderDrillSearch, setLenderDrillSearch] = useState('');
+  useEffect(() => { if (!lenderDrill) setLenderDrillSearch(''); }, [lenderDrill]);
+
   // Widget 1: New Funding Sources
   const newLenders = useMemo(() => {
     const start = rangeStart(dateRange);
@@ -1638,11 +1647,59 @@ export function LenderAnalyticsDialog({
                         <tbody>
                           {filteredLenders.map((l) => (
                             <tr key={l.key} className="border-t border-slate-700/40">
-                              <td className="py-1.5 text-slate-100 truncate max-w-[220px]">{l.name}</td>
+                              <td className="py-1.5 text-slate-100 truncate max-w-[220px]">
+                                <button
+                                  type="button"
+                                  className="text-left hover:text-sky-300 hover:underline underline-offset-2 truncate max-w-full"
+                                  onClick={() => setLenderDrill({ key: l.key, name: l.name, filter: 'all' })}
+                                  title={`View ${l.name} deals`}
+                                >
+                                  {l.name}
+                                </button>
+                              </td>
                               <td className="text-right pr-3 text-slate-300 tabular-nums">{l.tier ?? '—'}</td>
-                              <td className="text-right pr-3 text-slate-200 tabular-nums">{l.count}</td>
-                              <td className="text-right pr-3 text-slate-200 tabular-nums">{l.submitted}</td>
-                              <td className="text-right pr-3 text-slate-200 tabular-nums">{l.terms}</td>
+                              <td className="text-right pr-3 text-slate-200 tabular-nums">
+                                {l.count > 0 ? (
+                                  <button
+                                    type="button"
+                                    className="hover:text-sky-300 hover:underline underline-offset-2 tabular-nums"
+                                    onClick={() => setLenderDrill({ key: l.key, name: l.name, filter: 'all' })}
+                                    title={`View ${l.count} deal${l.count === 1 ? '' : 's'} for ${l.name}`}
+                                  >
+                                    {l.count}
+                                  </button>
+                                ) : (
+                                  l.count
+                                )}
+                              </td>
+                              <td className="text-right pr-3 text-slate-200 tabular-nums">
+                                {l.submitted > 0 ? (
+                                  <button
+                                    type="button"
+                                    className="hover:text-sky-300 hover:underline underline-offset-2 tabular-nums"
+                                    onClick={() => setLenderDrill({ key: l.key, name: l.name, filter: 'submitted' })}
+                                    title={`View ${l.submitted} submitted deal${l.submitted === 1 ? '' : 's'} for ${l.name}`}
+                                  >
+                                    {l.submitted}
+                                  </button>
+                                ) : (
+                                  l.submitted
+                                )}
+                              </td>
+                              <td className="text-right pr-3 text-slate-200 tabular-nums">
+                                {l.terms > 0 ? (
+                                  <button
+                                    type="button"
+                                    className="hover:text-sky-300 hover:underline underline-offset-2 tabular-nums"
+                                    onClick={() => setLenderDrill({ key: l.key, name: l.name, filter: 'terms' })}
+                                    title={`View ${l.terms} deal${l.terms === 1 ? '' : 's'} that reached terms for ${l.name}`}
+                                  >
+                                    {l.terms}
+                                  </button>
+                                ) : (
+                                  l.terms
+                                )}
+                              </td>
                               <td className="text-right pr-3 text-slate-300 tabular-nums">
                                 {l.submitted > 0 ? `${(l.conv * 100).toFixed(1)}%` : '—'}
                               </td>
@@ -1690,6 +1747,124 @@ export function LenderAnalyticsDialog({
                                     minute: '2-digit',
                                   })
                                 : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
+      {/* Secondary drill-down: a single lender's underlying deals */}
+      <Sheet open={!!lenderDrill} onOpenChange={(o) => { if (!o) setLenderDrill(null); }}>
+        <SheetContent side="right" className="w-[720px] sm:max-w-[820px] z-[1700] bg-slate-950 text-slate-100 border-slate-700/60">
+          {lenderDrill && (() => {
+            const lenderRowsAll = rows.filter((r) => (r.name || '').trim().toLowerCase() === lenderDrill.key);
+            const filterFn = (r: Enriched) =>
+              lenderDrill.filter === 'submitted' ? r.everSubmitted :
+              lenderDrill.filter === 'terms' ? r.everTerms :
+              true;
+            // One row per deal, prefer furthest-along stage
+            const bestByDeal = new Map<string, Enriched>();
+            for (const r of lenderRowsAll.filter(filterFn)) {
+              const prev = bestByDeal.get(r.deal_id);
+              if (
+                !prev ||
+                r.ord > prev.ord ||
+                (r.ord === prev.ord && new Date(r.updated_at).getTime() > new Date(prev.updated_at).getTime())
+              ) {
+                bestByDeal.set(r.deal_id, r);
+              }
+            }
+            const dealRows = Array.from(bestByDeal.values()).sort(
+              (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+            );
+            const q = lenderDrillSearch.trim().toLowerCase();
+            const filtered = q
+              ? dealRows.filter((r) => [r.deal.company, r.deal.manager, r.label].some((s) => (s || '').toLowerCase().includes(q)))
+              : dealRows;
+            const filterLabel =
+              lenderDrill.filter === 'submitted' ? 'Submitted deals' :
+              lenderDrill.filter === 'terms' ? 'Deals reaching terms' :
+              'All deals';
+            return (
+              <>
+                <SheetHeader>
+                  <SheetTitle className="text-slate-100 truncate">{lenderDrill.name}</SheetTitle>
+                  <SheetDescription className="text-slate-400">
+                    {filterLabel} · {filtered.length} deal{filtered.length === 1 ? '' : 's'} · {dateRangeLabel(dateRange)}
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="mt-3 flex items-center gap-2">
+                  <div className="inline-flex rounded-md border border-slate-700/60 bg-slate-900/60 p-0.5 text-[11px]">
+                    {(['all', 'submitted', 'terms'] as LenderDrillFilter[]).map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => setLenderDrill({ ...lenderDrill, filter: f })}
+                        className={`px-2 py-1 rounded ${lenderDrill.filter === f ? 'bg-slate-700/70 text-slate-100' : 'text-slate-400 hover:text-slate-200'}`}
+                      >
+                        {f === 'all' ? 'All' : f === 'submitted' ? 'Submitted' : 'Terms'}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+                    <Input
+                      value={lenderDrillSearch}
+                      onChange={(e) => setLenderDrillSearch(e.target.value)}
+                      placeholder="Search deal or stage…"
+                      className="h-8 pl-7 text-[12px] bg-slate-900/60 border-slate-700/60"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-[11px] bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70 gap-1.5"
+                    onClick={() => downloadCsv(`lender-${lenderDrill.key}-${lenderDrill.filter}`, [
+                      ['deal', 'stage', 'amount', 'owner', 'updated'],
+                      ...filtered.map((r) => [
+                        r.deal.company || '',
+                        r.label || '',
+                        String(r.deal.value ?? ''),
+                        r.deal.manager || '',
+                        r.updated_at ? new Date(r.updated_at).toISOString() : '',
+                      ]),
+                    ])}
+                    disabled={filtered.length === 0}
+                  >
+                    <Download className="h-3.5 w-3.5" /> CSV
+                  </Button>
+                </div>
+                <div className="mt-3 max-h-[calc(100vh-200px)] overflow-auto">
+                  {filtered.length === 0 ? (
+                    <div className="p-6 text-center text-[12px] text-slate-500">No deals</div>
+                  ) : (
+                    <table className="w-full text-[12px]">
+                      <thead className="text-left text-slate-400">
+                        <tr>
+                          <th className="py-1.5">Deal</th>
+                          <th>Stage</th>
+                          <th className="text-right pr-3 whitespace-nowrap">Amount</th>
+                          <th className="whitespace-nowrap">Owner</th>
+                          <th className="text-right whitespace-nowrap">Updated</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtered.map((r) => (
+                          <tr key={r.id} className="border-t border-slate-700/40">
+                            <td className="py-1.5 text-slate-100 truncate max-w-[220px]">{r.deal.company || '—'}</td>
+                            <td className="max-w-[160px]"><StageTag label={r.label} /></td>
+                            <td className="text-right pr-3 text-slate-200 tabular-nums whitespace-nowrap">
+                              {r.deal.value != null ? formatUSD(Number(r.deal.value)) : '—'}
+                            </td>
+                            <td className="text-slate-300 truncate max-w-[140px]">{r.deal.manager || '—'}</td>
+                            <td className="text-right text-slate-400 tabular-nums whitespace-nowrap">
+                              {r.updated_at ? new Date(r.updated_at).toLocaleDateString() : '—'}
                             </td>
                           </tr>
                         ))}
