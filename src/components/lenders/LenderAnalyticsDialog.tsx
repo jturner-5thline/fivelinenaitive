@@ -419,9 +419,16 @@ export function LenderAnalyticsDialog({
 
   const rows: Enriched[] = useMemo(() => {
     const out: Enriched[] = [];
+    const start = rangeStart(dateRange)?.getTime() ?? null;
+    const end = rangeEnd(dateRange)?.getTime() ?? null;
     for (const dl of dealLenders) {
       const deal = dealMap.get(dl.deal_id);
       if (!deal) continue;
+      // Attribute the fanout to the deal's origination timestamp so YTD /
+      // TTM / prior-year selections produce distinct cohorts.
+      const dealTs = deal.created_at ? new Date(deal.created_at).getTime() : NaN;
+      if (start != null && (!Number.isFinite(dealTs) || dealTs < start)) continue;
+      if (end != null && (!Number.isFinite(dealTs) || dealTs >= end)) continue;
       if (lenderScopeActive && !lenderNameSet.has((dl.name || '').trim().toLowerCase())) continue;
       const label = resolveLabel(dl.stage, deal.company_id);
       const ord = stageOrdinal(label);
@@ -449,7 +456,7 @@ export function LenderAnalyticsDialog({
       });
     }
     return out;
-  }, [dealLenders, dealMap, lenderNameSet, lenderScopeActive, stageLabelByCompany]);
+  }, [dealLenders, dealMap, lenderNameSet, lenderScopeActive, stageLabelByCompany, dateRange]);
 
   // KPI metrics — "Deals Sent" counts unique deals (not deal_lenders rows),
   // so a deal fanned out to many funding sources still counts once. Conversion
