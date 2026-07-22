@@ -566,10 +566,11 @@ export function useHubSpotTicketPipelines() {
 
 // ===== OWNER HOOKS =====
 
-export function useHubSpotOwners(limit = 100) {
+export function useHubSpotOwners(limit = 100, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['hubspot', 'owners', limit],
     queryFn: () => hubspotRequest<{ results: HubSpotOwner[] }>('getOwners', { limit }),
+    enabled: options?.enabled ?? true,
     staleTime: 1000 * 60 * 30,
   });
 }
