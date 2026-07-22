@@ -527,7 +527,13 @@ export function LenderAnalyticsDialog({
       //     stage (terms issued, due diligence, agreement pending, funded,
       //     closed / won).
       const everSubmitted = true;
-      const everTerms = ord >= 7;
+      // A lender that previously reached "Draft Terms" or later but has since
+      // regressed to On Hold / Passed / Unresponsive still counts as a
+      // conversion. `approved_at` is stamped when the lender is moved to the
+      // Approved / Draft Terms / Terms Issued milestone, so use it as a
+      // durable historical signal in addition to the current stage.
+      const approvedAt = (dl as any).approved_at ? Date.parse((dl as any).approved_at) : null;
+      const everTerms = ord >= 7 || (approvedAt != null && !Number.isNaN(approvedAt));
       out.push({
         ...dl,
         deal,
