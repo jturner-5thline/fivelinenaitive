@@ -520,6 +520,9 @@ export function LenderAnalyticsDialog({
       }
       if (lenderScopeActive && !lenderNameSet.has((dl.name || '').trim().toLowerCase())) continue;
       const label = resolveLabel(dl.stage, deal.company_id);
+      // Skip lenders currently sitting in "On Deck" — they aren't actively
+      // engaged in the deal and should not count toward Active Lenders.
+      if ((label || '').trim().toLowerCase() === 'on deck') continue;
       const sentAt = dealSentAt.get(dl.deal_id) ?? null;
       const ord = stageOrdinal(label);
       const terminal = isTerminal(label, dl.pass_reason);
