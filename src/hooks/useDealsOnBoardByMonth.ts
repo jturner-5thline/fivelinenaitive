@@ -63,7 +63,7 @@ export function useDealsOnBoardByMonth(yearOrYears: number | number[]): DealsOnB
   const excludedStatuses = new Set(['closed-won', 'closed-lost', 'on-hold', 'archived']);
   const excludedStages = new Set(['closed-won', 'closed-lost']);
 
-  const deals: DealOnBoardEntry[] = (data ?? [])
+  const rawDeals: DealOnBoardEntry[] = (data ?? [])
     .filter((d: any) => {
       const status = (d.status || '').toLowerCase();
       const stage = (d.stage || '').toLowerCase();
@@ -85,6 +85,18 @@ export function useDealsOnBoardByMonth(yearOrYears: number | number[]): DealsOnB
         month_index: created.getUTCMonth(),
       };
     });
+  // Collapse duplicate deals sharing the same company name (case-insensitive),
+  // keeping the earliest created_at so e.g. "Trashie" is only counted once.
+  const byName = new Map<string, DealOnBoardEntry>();
+  for (const d of rawDeals) {
+    const key = (d.company ?? '').toLowerCase().trim();
+    if (!key) { byName.set(d.id, d); continue; }
+    const existing = byName.get(key);
+    if (!existing || new Date(d.created_at).getTime() < new Date(existing.created_at).getTime()) {
+      byName.set(key, d);
+    }
+  }
+  const deals: DealOnBoardEntry[] = Array.from(byName.values());
 
   const byMonth: DealOnBoardEntry[][] = Array.from({ length: 12 }, () => []);
   const byMonthKey: Record<string, DealOnBoardEntry[]> = {};
