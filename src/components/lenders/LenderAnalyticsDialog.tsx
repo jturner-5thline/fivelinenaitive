@@ -1870,6 +1870,25 @@ export function LenderAnalyticsDialog({
             const filtered = q
               ? dealRows.filter((r) => [r.deal.company, r.deal.manager, r.label].some((s) => (s || '').toLowerCase().includes(q)))
               : dealRows;
+            const sortedFiltered = [...filtered].sort((a, b) => {
+              const k = lenderDrillSort.key;
+              const va =
+                k === 'deal' ? a.deal.company :
+                k === 'stage' ? a.label :
+                k === 'amount' ? (a.deal.value != null ? Number(a.deal.value) : null) :
+                k === 'owner' ? a.deal.manager :
+                (a.updated_at ? new Date(a.updated_at).getTime() : null);
+              const vb =
+                k === 'deal' ? b.deal.company :
+                k === 'stage' ? b.label :
+                k === 'amount' ? (b.deal.value != null ? Number(b.deal.value) : null) :
+                k === 'owner' ? b.deal.manager :
+                (b.updated_at ? new Date(b.updated_at).getTime() : null);
+              return cmp(va, vb, lenderDrillSort.dir);
+            });
+            const toggleDrillSort = (key: LenderDrillSortKey) =>
+              setLenderDrillSort((s) => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' });
+            const arrow2 = (active: boolean, dir: SortDir) => active ? (dir === 'asc' ? ' ▲' : ' ▼') : '';
             const filterLabel =
               lenderDrill.filter === 'submitted' ? 'Submitted deals' :
               lenderDrill.filter === 'terms' ? 'Deals reaching terms' :
@@ -1910,7 +1929,7 @@ export function LenderAnalyticsDialog({
                     className="h-8 text-[11px] bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70 gap-1.5"
                     onClick={() => downloadCsv(`lender-${lenderDrill.key}-${lenderDrill.filter}`, [
                       ['deal', 'stage', 'amount', 'owner', 'updated'],
-                      ...filtered.map((r) => [
+                      ...sortedFiltered.map((r) => [
                         r.deal.company || '',
                         r.label || '',
                         String(r.deal.value ?? ''),
@@ -1918,27 +1937,27 @@ export function LenderAnalyticsDialog({
                         r.updated_at ? new Date(r.updated_at).toISOString() : '',
                       ]),
                     ])}
-                    disabled={filtered.length === 0}
+                    disabled={sortedFiltered.length === 0}
                   >
                     <Download className="h-3.5 w-3.5" /> CSV
                   </Button>
                 </div>
                 <div className="mt-3 max-h-[calc(100vh-200px)] overflow-auto">
-                  {filtered.length === 0 ? (
+                  {sortedFiltered.length === 0 ? (
                     <div className="p-6 text-center text-[12px] text-slate-500">No deals</div>
                   ) : (
                     <table className="w-full text-[12px]">
-                      <thead className="text-left text-slate-400">
+                      <thead className="text-left text-slate-400 select-none">
                         <tr>
-                          <th className="py-1.5">Deal</th>
-                          <th>Stage</th>
-                          <th className="text-right pr-3 whitespace-nowrap">Amount</th>
-                          <th className="whitespace-nowrap">Owner</th>
-                          <th className="text-right whitespace-nowrap">Updated</th>
+                          <th className="py-1.5 cursor-pointer hover:text-slate-200" onClick={() => toggleDrillSort('deal')}>Deal{arrow2(lenderDrillSort.key==='deal', lenderDrillSort.dir)}</th>
+                          <th className="cursor-pointer hover:text-slate-200" onClick={() => toggleDrillSort('stage')}>Stage{arrow2(lenderDrillSort.key==='stage', lenderDrillSort.dir)}</th>
+                          <th className="text-right pr-3 whitespace-nowrap cursor-pointer hover:text-slate-200" onClick={() => toggleDrillSort('amount')}>Amount{arrow2(lenderDrillSort.key==='amount', lenderDrillSort.dir)}</th>
+                          <th className="whitespace-nowrap cursor-pointer hover:text-slate-200" onClick={() => toggleDrillSort('owner')}>Owner{arrow2(lenderDrillSort.key==='owner', lenderDrillSort.dir)}</th>
+                          <th className="text-right whitespace-nowrap cursor-pointer hover:text-slate-200" onClick={() => toggleDrillSort('updated')}>Updated{arrow2(lenderDrillSort.key==='updated', lenderDrillSort.dir)}</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filtered.map((r) => (
+                        {sortedFiltered.map((r) => (
                           <tr key={r.id} className="border-t border-slate-700/40">
                             <td className="py-1.5 text-slate-100 truncate max-w-[220px]">{r.deal.company || '—'}</td>
                             <td className="max-w-[160px]"><StageTag label={r.label} /></td>
