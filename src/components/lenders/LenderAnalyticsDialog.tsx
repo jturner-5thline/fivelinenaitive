@@ -1612,11 +1612,54 @@ export function LenderAnalyticsDialog({
                   ),
                 )
               : dealRows;
+            const sortedLenders = [...filteredLenders].sort((a, b) => {
+              const k = kpiLenderSort.key;
+              const va =
+                k === 'name' ? a.name :
+                k === 'tier' ? (a.tier ?? null) :
+                k === 'count' ? a.count :
+                k === 'submitted' ? a.submitted :
+                k === 'terms' ? a.terms :
+                k === 'conv' ? (a.submitted > 0 ? a.conv : null) :
+                a.isFlex ? 1 : 0;
+              const vb =
+                k === 'name' ? b.name :
+                k === 'tier' ? (b.tier ?? null) :
+                k === 'count' ? b.count :
+                k === 'submitted' ? b.submitted :
+                k === 'terms' ? b.terms :
+                k === 'conv' ? (b.submitted > 0 ? b.conv : null) :
+                b.isFlex ? 1 : 0;
+              return cmp(va, vb, kpiLenderSort.dir);
+            });
+            const sortedDeals = [...filteredDeals].sort((a, b) => {
+              const k = kpiDealSort.key;
+              const va =
+                k === 'deal' ? a.deal.company :
+                k === 'lender' ? a.name :
+                k === 'stage' ? a.label :
+                k === 'amount' ? (a.deal.value != null ? Number(a.deal.value) : null) :
+                k === 'owner' ? a.deal.manager :
+                (a.sentAt ? new Date(a.sentAt).getTime() : null);
+              const vb =
+                k === 'deal' ? b.deal.company :
+                k === 'lender' ? b.name :
+                k === 'stage' ? b.label :
+                k === 'amount' ? (b.deal.value != null ? Number(b.deal.value) : null) :
+                k === 'owner' ? b.deal.manager :
+                (b.sentAt ? new Date(b.sentAt).getTime() : null);
+              return cmp(va, vb, kpiDealSort.dir);
+            });
+            const toggleLenderSort = (key: KpiLenderSortKey) =>
+              setKpiLenderSort((s) => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' });
+            const toggleDealSort = (key: KpiDealSortKey) =>
+              setKpiDealSort((s) => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' });
+            const arrow = (active: boolean, dir: SortDir) => active ? (dir === 'asc' ? ' ▲' : ' ▼') : '';
             const csvExport = () => {
               if (mode === 'lenders') {
                 downloadCsv(`kpi-${openKpi}`, [
                   ['lender', 'tier', 'deals', 'submitted', 'terms', 'conv_pct', 'flex'],
-                  ...filteredLenders.map((l) => [
+                  ...sortedLenders.map((l) => [
                     l.name,
                     l.tier ?? '',
                     l.count,
@@ -1629,7 +1672,7 @@ export function LenderAnalyticsDialog({
               } else {
                 downloadCsv(`kpi-${openKpi}`, [
                     ['deal', 'lender', 'stage', 'amount', 'owner', 'sent_date', 'sent_at_exact'],
-                  ...filteredDeals.map((r) => [
+                  ...sortedDeals.map((r) => [
                     r.deal.company || '',
                     r.name || '',
                     r.label || '',
