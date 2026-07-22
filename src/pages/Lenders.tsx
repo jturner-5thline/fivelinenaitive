@@ -1791,9 +1791,6 @@ export default function Lenders() {
                               <p className="text-xs text-muted-foreground text-center py-4">No deals found</p>
                             ) : (
                               filteredDealsForPicker.map(({ deal, isDuplicate }) => {
-                                const createdLabel = deal.createdAt
-                                  ? new Date(deal.createdAt).toLocaleDateString()
-                                  : null;
                                 return (
                                   <button
                                     key={deal.id}
@@ -1811,8 +1808,7 @@ export default function Lenders() {
                                     </span>
                                     <span className="text-xs text-muted-foreground truncate">
                                       {deal.name}
-                                      {isDuplicate && createdLabel && ` · created ${createdLabel}`}
-                                      {isDuplicate && ` · id ${deal.id.slice(0, 8)}`}
+                                      {deal.stage && ` · ${deal.stage}`}
                                     </span>
                                   </button>
                                 );
