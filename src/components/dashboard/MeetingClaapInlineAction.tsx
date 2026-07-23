@@ -233,8 +233,13 @@ export function MeetingClaapInlineAction(props: Props) {
     setRanking(true);
     setSource('fresh');
     setRankPending(true);
-    fetchRecordings().catch((err) => console.warn('claap recordings fetch failed', err));
-  }, [eventId, fetchRecordings]);
+    // Derive a targeted search hint from the event title so the Claap live
+    // list (capped at ~100 recent recordings) surfaces older matches whose
+    // titles reference the attendees (e.g. "Apryl Syed & James Turner"),
+    // not just the last 100 by recency.
+    const hint = deriveSearchHint(eventTitle);
+    fetchRecordings(hint || undefined).catch((err) => console.warn('claap recordings fetch failed', err));
+  }, [eventId, eventTitle, fetchRecordings]);
 
   // Trigger requestGenerate ONLY when: no stored cache, not already linked,
   // and either first mount or an explicit refresh tick. Additionally,
