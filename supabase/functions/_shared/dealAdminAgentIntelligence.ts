@@ -3102,9 +3102,7 @@ async function maybeBuildUpdateTasksCandidate(
   const lastTaskAt = (lastTaskRow ?? [])[0]?.updated_at as string | null | undefined;
 
   const dealName = deal.company || bundle.deal_name || "this deal";
-  const description =
-    `This deal is in the active pipeline (not archived, not on hold) and has no outstanding tasks. ` +
-    `Add task(s) for the next steps — include titles, assignees, and due dates so the deal keeps moving.`;
+  const description = "";
 
   // Prefill sensible defaults so the details panel renders editable
   // fields for title / assignee / due date. Reviewer edits the values
