@@ -2143,17 +2143,20 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
     const next = direction === 'right' ? currentIndex + 1 : currentIndex - 1;
     if (next < 0 || next >= TABS.length) return;
     setSlideDirection(direction === 'right' ? 'left' : 'right');
-    startTabTransition(() => setActiveTab(TABS[next].value));
-    // Clear animation class after transition
+    // Commit tab switches synchronously — wrapping in `useTransition`
+    // caused subsequent tab clicks to be dropped when the previously
+    // active tab's subtree (e.g., Approval Queue) rendered heavily,
+    // leaving the user stuck on that tab.
+    setActiveTab(TABS[next].value);
     setTimeout(() => setSlideDirection(null), 300);
-  }, [currentIndex]);
+  }, [currentIndex, TABS]);
 
   const handleTabChange = useCallback((value: string) => {
     const newIdx = TABS.findIndex(t => t.value === value);
     setSlideDirection(newIdx > currentIndex ? 'left' : 'right');
-    startTabTransition(() => setActiveTab(value));
+    setActiveTab(value);
     setTimeout(() => setSlideDirection(null), 300);
-  }, [currentIndex]);
+  }, [currentIndex, TABS]);
 
   const handleNavigate = (path: string) => {
     // Open deal/company links in a new tab so the briefing modal stays open
