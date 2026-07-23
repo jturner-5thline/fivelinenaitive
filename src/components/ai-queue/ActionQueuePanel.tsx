@@ -1961,12 +1961,14 @@ function DetailPane({
           </div>
 
           {/* Rationale */}
-          <p
-            className="text-[14px] leading-[1.6] text-white max-w-[72ch]"
-            style={FONT_BODY}
-          >
-            {toSingleSentence(item.rationale || buildRationaleFallback(item))}
-          </p>
+          {!isUpdateTasksPrompt && (
+            <p
+              className="text-[14px] leading-[1.6] text-white max-w-[72ch]"
+              style={FONT_BODY}
+            >
+              {toSingleSentence(item.rationale || buildRationaleFallback(item))}
+            </p>
+          )}
 
           {/* Evidence snippet — short neutral quote of the triggering signal
               (e.g. the connect/schedule language from the inbound lender

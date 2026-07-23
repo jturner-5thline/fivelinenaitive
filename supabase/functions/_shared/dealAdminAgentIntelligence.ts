@@ -3821,6 +3821,10 @@ function buildCandidateRows(
     if (suffix && title && !title.toLowerCase().includes(suffix.toLowerCase())) {
       title = `${title} ${suffix}`;
     }
+    const isNeedsTasksCandidate =
+      c.action_type === "create_followup_task" &&
+      (c.proposed_values as any)?._synthetic === "update_tasks";
+
     return {
       user_id: opts.attributionUserId,
       assigned_to: assignedTo,
@@ -3828,7 +3832,7 @@ function buildCandidateRows(
       deal_name: bundle.deal_name,
       action_type: c.action_type,
       title,
-      description: c.rationale_summary,
+      description: isNeedsTasksCandidate ? "" : c.rationale_summary,
       priority,
       risk_level: risk,
       target_object_type: normalizeQueueTargetType(c.action_type, c.target_object_type),
@@ -3836,14 +3840,14 @@ function buildCandidateRows(
       old_values: c.current_values ?? {},
       new_values: c.proposed_values ?? {},
       evidence: c.evidence_references ?? [],
-      rationale: c.rationale_summary,
+      rationale: isNeedsTasksCandidate ? "" : c.rationale_summary,
       payload: {
         linked_entity_label: c.linked_entity_label,
         target_field_paths: c.target_field_paths ?? [],
         confidence_score: c.confidence_score,
         bulk_eligible: !!c.bulk_eligible,
         requires_send_ui: c.action_type === "draft_email" ? true : !!c.requires_send_ui,
-        evidence_summary: c.evidence_summary,
+        evidence_summary: isNeedsTasksCandidate ? "" : c.evidence_summary,
         on_approve_execution_type:
           c.action_type === "draft_email" ? "stage_email_for_send" : "execute_mutation",
         on_approve_execution_payload: {

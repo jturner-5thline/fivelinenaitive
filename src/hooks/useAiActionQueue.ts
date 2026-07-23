@@ -280,6 +280,33 @@ function isStale(item: QueuedAiAction): boolean {
   return item.status === 'pending' && new Date(item.expires_at).getTime() < Date.now();
 }
 
+function isNeedsTasksItem(item: QueuedAiAction): boolean {
+  return item.action_type === 'create_followup_task' &&
+    (item.new_values as any)?._synthetic === 'update_tasks';
+}
+
+function stripNeedsTasksRationale(item: QueuedAiAction): QueuedAiAction {
+  if (!isNeedsTasksItem(item)) return item;
+  const newValues = { ...(item.new_values ?? {}) };
+  delete (newValues as any).description;
+  const payload = { ...(item.payload ?? {}) };
+  delete (payload as any).evidence_summary;
+  if ((payload as any).on_approve_execution_payload?.new_values) {
+    (payload as any).on_approve_execution_payload = {
+      ...(payload as any).on_approve_execution_payload,
+      new_values: { ...(payload as any).on_approve_execution_payload.new_values },
+    };
+    delete (payload as any).on_approve_execution_payload.new_values.description;
+  }
+  return {
+    ...item,
+    description: null,
+    rationale: null,
+    new_values: newValues,
+    payload,
+  };
+}
+
 /**
  * Subscribe to realtime row changes on `ai_action_queue` for this user and
  * fan-out a single debounced invalidation that refreshes BOTH the panel
@@ -342,7 +369,9 @@ export function useAiActionQueue() {
     refetchInterval: 1_000,
     refetchIntervalInBackground: false,
     queryFn: async (): Promise<QueuedAiAction[]> => {
-      const visible = (await fetchVisibleQueueRows()).filter(r => !isStale(r));
+      const visible = (await fetchVisibleQueueRows())
+        .filter(r => !isStale(r))
+        .map(stripNeedsTasksRationale);
       // De-duplicate: the same recommendation can be enqueued multiple
       // times (e.g. by repeated AI runs across 5th Line teammates on the
       // shared queue). Collapse to one card per logical action in-memory,
