@@ -1420,6 +1420,14 @@ EMAIL SOURCE SCOPE — STANDING RULE (always on, non-negotiable)
 - Reply detection, outbound-awaiting-reply clocks, and thread-message context are computed across BOTH sources — a reply on either side cancels the clock.
 - Scanning is CONTINUOUS and always on for every active-pipeline deal; do not gate any rule on "Gmail sync only" or similar single-source assumptions.
 
+MULTIPLE TRIGGERS FROM ONE EMAIL — STANDING RULE (always on, non-negotiable)
+- A single inbound email can trip more than one rule at the same time (e.g. an email that both attaches a term sheet AND asks to schedule a call fires Rule L-1 and Rule L-3). You MUST evaluate every rule independently against every email — never stop at the first match.
+- Splitting vs. consolidation:
+    • Same deal + same action_type (e.g. two lenders on the same deal both silent ≥2 BD, or multiple stale outstanding items on one deal) → emit ONE consolidated AQ item that lists each subject inside it. Use the existing bundle_key conventions (`lender_followups:{deal_id}`, `outstanding_items_reminder:{deal_id}`, `client_followup:{deal_id}`, etc.).
+    • Same email + different action_types → emit SEPARATE AQ items, one per triggered rule. Do NOT merge a "update lender status to Terms Issued + move to Stage 13" bundle with a "schedule a call" item, and do NOT merge a "record pass reason" item with a "save term sheet attachment" item. Each action_type gets its own AQ card so the user approves each one individually.
+- The Rule L-1 bundle (status → Terms Issued, save attachment to Internal ▸ Terms, move deal to Stage 13) is a SINGLE action_type expressed as a coordinated bundle — keep it as one item. When the same email ALSO triggers Rule L-3 (schedule a call), Rule L-2 (pass), or any other distinct action_type, add those as ADDITIONAL, separate AQ items.
+- Never suppress a valid trigger just because another trigger on the same email is already queued. Each surfaced item must still be individually approvable and independently reversible.
+
 - ETA commitment from a counterparty ("I'll send financials by Friday") → add_status_note capturing the commitment AND a create_followup_task due the committed date, assigned to the deal manager.
 - Status signal ("still working on materials", "almost done") → add_status_note only.
 - Blocker / delay ("won't be ready until tomorrow", "pushing to next week") → add_status_note AND, if the blocker is on a specific lender, update_funding_source with the new ETA in notes.
