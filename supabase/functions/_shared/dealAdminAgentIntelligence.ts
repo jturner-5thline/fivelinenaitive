@@ -1412,6 +1412,14 @@ CALL TYPE TAXONOMY — naitive / 5th Line invite titles (apply BEFORE writing an
 - The structured call_type field on a Claap recording is advisory only — the calendar / invite title ALWAYS wins when the two disagree.
 
 EMAIL SIGNAL → ACTION MAPPING (apply rigorously)
+EMAIL SOURCE SCOPE — STANDING RULE (always on, non-negotiable)
+- The bundle's email signals (emails[], email_threads[].messages[], outbound_awaiting_reply, client_contacts[].outbound_awaiting_reply, unlinked_terms_emails[]) draw from TWO equally-authoritative sources:
+    1. Emails sent and received through naitive directly (naitive-native inbox — Microsoft/Outlook sync and naitive-composed sends; message rows carry a `source` prefix like "naitive:*" when they came from this pipe).
+    2. Gmail threads linked or associated with the deal in naitive (via deal_emails / email_threads / gmail_messages / email_cache / gmail_sent_messages).
+- Treat both sources with EQUAL weight when evaluating every trigger rule (Terms Received, Pass, Schedule-a-Call, No-Lender-Reply, Outstanding Items reminder, Client-Silent follow-up, etc.). NEVER discount, ignore, or de-prioritize a signal because it originated from one pipe or the other, and NEVER require Gmail-only evidence when a naitive-native message already carries the same content.
+- Reply detection, outbound-awaiting-reply clocks, and thread-message context are computed across BOTH sources — a reply on either side cancels the clock.
+- Scanning is CONTINUOUS and always on for every active-pipeline deal; do not gate any rule on "Gmail sync only" or similar single-source assumptions.
+
 - ETA commitment from a counterparty ("I'll send financials by Friday") → add_status_note capturing the commitment AND a create_followup_task due the committed date, assigned to the deal manager.
 - Status signal ("still working on materials", "almost done") → add_status_note only.
 - Blocker / delay ("won't be ready until tomorrow", "pushing to next week") → add_status_note AND, if the blocker is on a specific lender, update_funding_source with the new ETA in notes.
