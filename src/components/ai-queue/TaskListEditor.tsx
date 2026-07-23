@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useAuth } from '@/contexts/AuthContext';
+import { UserCircle2 } from 'lucide-react';
 
 export interface EditorTask {
   title: string;
@@ -38,6 +40,8 @@ function toDate(iso: string | null): Date | undefined {
 
 export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
   const members = useTeamMembers();
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? null;
   const [rows, setRows] = useState<Row[]>(() => {
     const seed = initialTasks.length > 0
       ? initialTasks.map((t) => ({
@@ -56,10 +60,12 @@ export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
         .map((r) => ({
           title: r.title.trim(),
           due_date: r.due_date,
-          assigned_to: r.assigned_to,
+          // Tasks must always have an assignee. If the reviewer didn't pick
+          // one, fall back to the current user creating the task.
+          assigned_to: r.assigned_to ?? currentUserId,
         })),
     );
-  }, [rows, onChange]);
+  }, [rows, onChange, currentUserId]);
 
   const memberOptions = useMemo(
     () =>
@@ -69,6 +75,11 @@ export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
       })),
     [members],
   );
+
+  const currentUserLabel = useMemo(() => {
+    const me = memberOptions.find((m) => m.id === currentUserId);
+    return me?.label ?? user?.email ?? 'You';
+  }, [memberOptions, currentUserId, user?.email]);
 
   const update = (i: number, patch: Partial<Row>) =>
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -142,8 +153,22 @@ export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
                   value={row.assigned_to ?? ''}
                   onValueChange={(v) => update(i, { assigned_to: v || null })}
                 >
-                  <SelectTrigger className="h-7 text-[11px] px-2 flex-1 min-w-[160px]">
-                    <SelectValue placeholder="Assign owner…" />
+                  <SelectTrigger
+                    className={cn(
+                      'h-8 text-[12px] px-2 flex-1 min-w-[180px] gap-1.5 font-medium',
+                      'border-primary/40 bg-primary/5 text-primary',
+                      'hover:bg-primary/10 hover:border-primary/60',
+                      row.assigned_to && 'border-primary/70 bg-primary/10',
+                    )}
+                  >
+                    <UserCircle2 className="h-3.5 w-3.5 shrink-0" />
+                    <SelectValue
+                      placeholder={
+                        <span className="text-primary/80">
+                          Assign to {currentUserLabel} (you)
+                        </span>
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent className="z-[2100]">
                     {memberOptions.length === 0 ? (
@@ -153,7 +178,7 @@ export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
                     ) : (
                       memberOptions.map((m) => (
                         <SelectItem key={m.id} value={m.id} className="text-[12px]">
-                          {m.label}
+                          {m.label}{m.id === currentUserId ? ' (you)' : ''}
                         </SelectItem>
                       ))
                     )}
@@ -176,7 +201,7 @@ export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
       </Button>
 
       <p className="text-[10px] text-muted-foreground italic">
-        Approve to create these tasks on the deal. Each will appear in the deal's Tasks section, assigned to the selected owner (defaults to you).
+        Every task must have an assignee. If you don't pick one, it defaults to you ({currentUserLabel}).
       </p>
     </div>
   );
