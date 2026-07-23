@@ -917,7 +917,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Search actions, deals…"
-                    className="h-8 pl-8 text-[12px] rounded-lg bg-white/[0.035] border-white/[0.20] text-[#ecedf4] placeholder:text-[#ecedf4]/34 focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+                    className="h-8 pl-8 text-[12px] rounded-lg bg-white/[0.04] border border-white/60 hover:border-white/75 focus-visible:border-white/90 text-[#ecedf4] placeholder:text-[#ecedf4]/40 focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
                     style={FONT_BODY}
                   />
                 </div>
