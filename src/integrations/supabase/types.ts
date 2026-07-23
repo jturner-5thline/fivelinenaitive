@@ -626,6 +626,45 @@ export type Database = {
           },
         ]
       }
+      admin_agent_processed_reply_triggers: {
+        Row: {
+          cleared_item_id: string | null
+          created_at: string
+          deal_id: string
+          from_email: string | null
+          id: string
+          message_id: string
+          received_at: string | null
+          rule: string
+          source: string
+          thread_id: string | null
+        }
+        Insert: {
+          cleared_item_id?: string | null
+          created_at?: string
+          deal_id: string
+          from_email?: string | null
+          id?: string
+          message_id: string
+          received_at?: string | null
+          rule?: string
+          source: string
+          thread_id?: string | null
+        }
+        Update: {
+          cleared_item_id?: string | null
+          created_at?: string
+          deal_id?: string
+          from_email?: string | null
+          id?: string
+          message_id?: string
+          received_at?: string | null
+          rule?: string
+          source?: string
+          thread_id?: string | null
+        }
+        Relationships: []
+      }
       admin_agent_selected_actions: {
         Row: {
           action: string
