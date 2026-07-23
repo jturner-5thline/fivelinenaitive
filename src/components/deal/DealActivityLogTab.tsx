@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useDealAuditLog } from '@/hooks/useDealAuditLog';
 import { DealAuditLogPanel } from '@/components/deal/DealAuditLogPanel';
+import { DealCorrectionsLog } from '@/components/deal/DealCorrectionsLog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { DealAuditEntry } from '@/hooks/useDealAuditLog';
@@ -59,14 +60,19 @@ export function DealActivityLogTab({ dealId }: DealActivityLogTabProps) {
   }, [logAuditAction, refetch]);
 
   return (
-    <DealAuditLogPanel
-      entries={entries}
-      unresolvedStageEntries={unresolvedStageEntries}
-      loading={loading}
-      hasMore={hasMore}
-      onLoadMore={loadMore}
-      onRestore={handleRestore}
-      onRevert={handleRevert}
-    />
+    <div className="flex flex-col h-full overflow-y-auto">
+      <div className="p-4 pb-2">
+        <DealCorrectionsLog dealId={dealId} />
+      </div>
+      <DealAuditLogPanel
+        entries={entries}
+        unresolvedStageEntries={unresolvedStageEntries}
+        loading={loading}
+        hasMore={hasMore}
+        onLoadMore={loadMore}
+        onRestore={handleRestore}
+        onRevert={handleRevert}
+      />
+    </div>
   );
 }
