@@ -698,6 +698,12 @@ async function gatherSignalsForDeal(
       business_days_since_last_contact: bd,
       stage_label: stageLabel,
       substage_label: substageLabel,
+      // Real, on-file contacts for this funding source. Populated below by
+      // merging `lender_contacts` (multi-contact directory) with the
+      // primary contact stored directly on `master_lenders` (name/email/title).
+      // The Deal Admin Agent MUST route lender-facing draft_email items to
+      // one of these addresses — never a synthetic `contact@<domain>`.
+      contacts: [] as Array<{ name: string | null; email: string; title: string | null }>,
     };
   });
 
@@ -717,10 +723,16 @@ async function gatherSignalsForDeal(
       ),
     );
     const emailsByMaster = new Map<string, string[]>();
+    // Full contact rows (name + email + title) keyed by master_lender_id, so
+    // we can attach real people to each funding_sources[] row in the payload.
+    const contactsByMaster = new Map<
+      string,
+      Array<{ name: string | null; email: string; title: string | null }>
+    >();
     if (masterIds.length > 0) {
       const { data: lcs } = await supabase
         .from("lender_contacts")
-        .select("lender_id, email")
+        .select("lender_id, name, email, title, is_primary")
         .in("lender_id", masterIds);
       for (const lc of (lcs ?? []) as any[]) {
         const e = (lc.email as string | null)?.toLowerCase();
@@ -728,9 +740,48 @@ async function gatherSignalsForDeal(
         const arr = emailsByMaster.get(lc.lender_id) ?? [];
         if (!arr.includes(e)) arr.push(e);
         emailsByMaster.set(lc.lender_id, arr);
+        const list = contactsByMaster.get(lc.lender_id) ?? [];
+        if (!list.some((c) => c.email.toLowerCase() === e)) {
+          list.push({
+            name: (lc.name as string | null) ?? null,
+            email: e,
+            title: (lc.title as string | null) ?? null,
+          });
+        }
+        contactsByMaster.set(lc.lender_id, list);
+      }
+
+      // Fallback: many master_lenders carry the primary contact directly on
+      // the row (`email` + `contact_name` + `contact_title`) without a
+      // matching `lender_contacts` record. Merge those so the agent has SOME
+      // real address to target instead of hallucinating `contact@<domain>`.
+      const { data: mls } = await supabase
+        .from("master_lenders")
+        .select("id, email, contact_name, contact_title")
+        .in("id", masterIds);
+      for (const ml of (mls ?? []) as any[]) {
+        const e = (ml.email as string | null)?.trim().toLowerCase();
+        if (!e || !ml.id) continue;
+        const arr = emailsByMaster.get(ml.id) ?? [];
+        if (!arr.includes(e)) arr.push(e);
+        emailsByMaster.set(ml.id, arr);
+        const list = contactsByMaster.get(ml.id) ?? [];
+        if (!list.some((c) => c.email.toLowerCase() === e)) {
+          list.push({
+            name: (ml.contact_name as string | null) ?? null,
+            email: e,
+            title: (ml.contact_title as string | null) ?? null,
+          });
+        }
+        contactsByMaster.set(ml.id, list);
       }
     }
     for (const f of fundingWithBd) {
+      // Attach resolved contacts to the funding source (empty array if none
+      // on file — the prompt uses this to decide whether it may draft an
+      // email at all).
+      (f as any).contacts =
+        (f.master_lender_id && contactsByMaster.get(f.master_lender_id)) || [];
       const contactEmails: string[] =
         (f.master_lender_id && emailsByMaster.get(f.master_lender_id)) || [];
       if (contactEmails.length === 0) {
@@ -1505,6 +1556,7 @@ LENDER FOLLOW-UP RULES (use funding_sources[].business_days_since_last_contact)
 - Rule L2: An outbound email to a lender contact reads as urgent (deadline language, escalation, "ASAP", calling out timing) AND no inbound reply has arrived → draft_email re-pinging that lender. Reference the email id in evidence (kind="email"). Tone: still semi-formal, do not blame.
 - Rule L3: A lender explicitly stated they would respond by date X (parsed from an email, claap transcript, or status note) AND that date is today or in the past with no reply since → draft_email referencing their commitment, plus an optional internal create_followup_task for the deal manager.
 - All lender draft_email items: proposed_values must include { to (array of email strings), subject, body }. Keep body under 120 words.
+- RECIPIENT SOURCING (HARD RULE): every address in \`to\` MUST be copied EXACTLY from the resolved funding_sources[].contacts[].email list for that specific lender. NEVER invent, guess, or template an address (no \`contact@<domain>\`, \`info@<domain>\`, \`hello@<domain>\`, \`hi@<domain>\`, \`team@<domain>\`, \`sales@<domain>\`, or any generic role mailbox). If funding_sources[].contacts is empty for that lender, DO NOT emit a draft_email — instead emit a single add_status_note with note="Need a contact email on file for {Lender} before we can follow up. Please add one under the funding source's contact card." and skip the draft entirely for this scan.
 - Do not nudge the same lender more than once per scan — pick the strongest rule and emit one draft.`;
 
 const LENDER_FOLLOWUP_TITLE_RULE = `
@@ -1865,6 +1917,13 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
       business_days_since_last_contact: (f as any).business_days_since_last_contact ?? null,
       notes: trim(f.notes, 200),
       pass_reason: trim(f.pass_reason, 160),
+      contacts: Array.isArray((f as any).contacts)
+        ? (f as any).contacts.map((c: any) => ({
+            name: c?.name ?? null,
+            email: c?.email ?? null,
+            title: c?.title ?? null,
+          }))
+        : [],
       outbound_awaiting_reply: (f as any).outbound_awaiting_reply
         ? {
             sent_at: (f as any).outbound_awaiting_reply.sent_at,
@@ -4556,6 +4615,13 @@ async function reconcileStalePendingApprovals(
     // funding source has no real contact on file. Dismiss so the queue isn't
     // polluted with drafts pointing at seed/placeholder addresses.
     const PLACEHOLDER_DOMAIN_RE = /@(example\.(com|org|net)|test\.local|localhost|invalid)$/i;
+    // Generic role-mailbox pattern. LLMs love to fabricate `contact@<domain>`
+    // or `info@<domain>` when a real contact is missing. Those aren't
+    // deliverable to a specific person on the funding-source team, so we
+    // treat them as un-sendable and dismiss the draft. Real named-mailbox
+    // addresses (rmichaud@…, jsmith@…) are unaffected.
+    const ROLE_MAILBOX_RE =
+      /^(contact|contacts|info|hello|hi|team|sales|admin|office|general|inquir(?:y|ies)|support|help|noreply|no-reply|donotreply)@/i;
     for (const p of lenderEmailPending) {
       if (toResolve.includes(p.id)) continue;
       const nv: any = (p as any).new_values || {};
@@ -4566,8 +4632,10 @@ async function reconcileStalePendingApprovals(
           ? rawTo.split(/[,;\s]+/).map((v) => v.toLowerCase()).filter(Boolean)
           : [];
       if (toArr.length === 0) continue;
-      const allPlaceholder = toArr.every((addr) => PLACEHOLDER_DOMAIN_RE.test(addr));
-      if (allPlaceholder) toResolve.push(p.id);
+      const allBad = toArr.every(
+        (addr) => PLACEHOLDER_DOMAIN_RE.test(addr) || ROLE_MAILBOX_RE.test(addr),
+      );
+      if (allBad) toResolve.push(p.id);
     }
   }
 
