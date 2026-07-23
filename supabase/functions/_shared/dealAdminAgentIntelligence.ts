@@ -1257,21 +1257,13 @@ LENDER PASS / NOT-A-FIT — HIGH-PRIORITY BUNDLE (Rule L-2, apply whenever an in
           proposed_values = {
             stage: "not_a_fit" | "passed",   // agent's recommendation per rules above
             tracking_status: "not_a_fit" | "passed",  // mirror stage
-            pass_reason_category: <one of: "deal_size_mismatch" | "industry_exclusion" | "geographic_restriction" | "risk_profile_concerns" | "timing_issues" | "relationship_issues" | "terms_mismatch" | "other">,
+            pass_reason_category: <one of the keys listed in the PASS-REASON CATEGORY TAXONOMY block appended to these rules — never invent a new key>,
             pass_reason: "<verbatim quote of the lender's stated reason from the email body — NOT a paraphrase; the exact language they used. If the email states no reason at all, set pass_reason=\"No reason provided\" and pass_reason_category=\"other\">",
             commentary: "<the verbatim lender-stated reason, same content as pass_reason, preserved word-for-word for the commentary field on the funding source>",
             notes: "<the same verbatim excerpt trimmed to <= 1200 chars>",
             bundle_key: "lender_pass:{deal_id}:{funding_source_id}"
           }
-          PASS-REASON CATEGORY PRE-SELECTION IS MANDATORY (the field is NEVER blank). Map the lender's stated reason to the closest category using the guidance below. The Manager can change it in the queue — but the agent must pre-select the best match, not defer:
-            • deal_size_mismatch — reason references deal size / check size / minimum or maximum size / hold size (e.g. "too small for us", "below our minimum", "above our hold").
-            • industry_exclusion — reason references industry / sector / vertical / business type exclusion (e.g. "we don't lend to SaaS", "we avoid healthcare services").
-            • geographic_restriction — reason references geography / region / country / state / jurisdiction (e.g. "outside our footprint", "we don't lend in Canada").
-            • risk_profile_concerns — reason references credit / leverage / cash flow / EBITDA / concentration / customer concentration / covenant / rating / underwriting concerns (e.g. "leverage too high", "cash flow coverage is thin", "customer concentration risk").
-            • timing_issues — reason references timing / capacity / bandwidth / pipeline / quarter / freeze (e.g. "we're at capacity this quarter", "in a credit freeze right now", "revisit next year").
-            • relationship_issues — reason references sponsor / management / prior deal / reputational concerns (e.g. "prior experience with sponsor", "management team concerns").
-            • terms_mismatch — reason references pricing / structure / rate / fees / covenants / structure being unworkable for them (e.g. "pricing doesn't work for us", "structure isn't what we do").
-            • other — only when the reason genuinely doesn't map to any category above (or when pass_reason="No reason provided").
+          PASS-REASON CATEGORY PRE-SELECTION IS MANDATORY (the field is NEVER blank). Use ONLY the keys and mapping guidance in the PASS-REASON CATEGORY TAXONOMY block appended to these rules (loaded from the Deal Admin Agent Knowledge Base when configured). Pre-select the best match — the Manager can change it in the queue, but the agent must not defer or invent a new key.
           rationale: "{Lender} is {passing on|saying not-a-fit for} {Deal}. Reason (verbatim from their email): \"{short quote}\". Recommending status={Passed|Not a Fit} with pass reason category={Category Label} — Manager to confirm or adjust in the queue."
           evidence_references MUST cite the inbound email (kind="email").
 
