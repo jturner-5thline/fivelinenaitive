@@ -594,6 +594,37 @@ async function gatherSignalsForDeal(
         }
       }
     }
+    // ALSO pull from the naitive-native `emails` table (unified inbox that
+    // covers Microsoft/Outlook sync AND emails sent/received through naitive
+    // directly — NOT just Gmail). Standing rule: the Deal Admin Agent must
+    // scan BOTH naitive-native emails and Gmail threads with equal weight.
+    const { data: naitiveThread } = await supabase
+      .from("emails")
+      .select("message_id, thread_id, subject, preview, from_email, from_name, to_emails, received_at, provider")
+      .in("thread_id", threadIds)
+      .order("received_at", { ascending: false })
+      .limit(80);
+    for (const m of naitiveThread ?? []) {
+      const tid = (m as any).thread_id as string;
+      if (!threadMessages[tid]) threadMessages[tid] = [];
+      // Dedupe against Gmail rows by provider message id.
+      const mid = (m as any).message_id as string | null;
+      const already = mid
+        ? threadMessages[tid].some((x: any) => x.gmail_message_id === mid)
+        : false;
+      if (!already && threadMessages[tid].length < 8) {
+        threadMessages[tid].push({
+          gmail_message_id: mid,
+          thread_id: tid,
+          subject: (m as any).subject ?? null,
+          snippet: (m as any).preview ?? null,
+          from_email: (m as any).from_email ?? null,
+          from_name: (m as any).from_name ?? null,
+          received_at: (m as any).received_at ?? null,
+          source: `naitive:${(m as any).provider ?? "unknown"}`,
+        });
+      }
+    }
   }
   const enrichedThreads = threadRows.map((t) => ({
     ...t,
