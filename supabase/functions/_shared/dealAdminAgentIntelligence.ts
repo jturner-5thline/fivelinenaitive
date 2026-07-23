@@ -1252,7 +1252,31 @@ async function gatherClientContactsForDeal(
         .contains("to_emails", [email])
         .order("sent_at", { ascending: false, nullsFirst: false })
         .limit(1);
-      const lastOut = (outRows ?? [])[0] as any;
+      // Also check the naitive-native `emails` table (Microsoft / naitive-composed).
+      const { data: outNaitive } = await supabase
+        .from("emails")
+        .select("message_id, thread_id, subject, preview, from_email, to_emails, received_at, provider")
+        .contains("to_emails", [email])
+        .neq("from_email", email)
+        .order("received_at", { ascending: false, nullsFirst: false })
+        .limit(1);
+      const gmOut = (outRows ?? [])[0] as any;
+      const nvOut = (outNaitive ?? [])[0] as any;
+      const gmTs = gmOut?.sent_at ?? gmOut?.created_at ?? null;
+      const nvTs = nvOut?.received_at ?? null;
+      const lastOut =
+        (nvTs && (!gmTs || new Date(nvTs) > new Date(gmTs)))
+          ? {
+              gmail_message_id: nvOut.message_id ?? null,
+              thread_id: nvOut.thread_id ?? null,
+              subject: nvOut.subject ?? null,
+              body_text: nvOut.preview ?? "",
+              sent_at: nvTs,
+              created_at: nvTs,
+              to_emails: nvOut.to_emails ?? [],
+              source: `naitive:${nvOut.provider ?? "unknown"}`,
+            }
+          : gmOut;
       if (!lastOut) continue;
       const sentAt: string | null =
         (lastOut.sent_at as string | null) ?? (lastOut.created_at as string | null) ?? null;
@@ -1265,7 +1289,15 @@ async function gatherClientContactsForDeal(
         .gt("received_at", sentAt)
         .order("received_at", { ascending: false })
         .limit(1);
-      const replied = (replyRows ?? []).length > 0;
+      const { data: replyNaitive } = await supabase
+        .from("emails")
+        .select("message_id, from_email, received_at")
+        .eq("from_email", email)
+        .gt("received_at", sentAt)
+        .order("received_at", { ascending: false })
+        .limit(1);
+      const replied =
+        (replyRows ?? []).length > 0 || (replyNaitive ?? []).length > 0;
       const bdSinceSent = businessDaysBetween(new Date(sentAt), today);
       // Recent candidate threads with this contact (last 90d), so the
       // approver can pick which one to reply in.
@@ -1277,17 +1309,36 @@ async function gatherClientContactsForDeal(
         .gte("sent_at", ninetyAgo)
         .order("sent_at", { ascending: false })
         .limit(20);
+      const { data: naitiveThreadRows } = await supabase
+        .from("emails")
+        .select("thread_id, subject, received_at")
+        .contains("to_emails", [email])
+        .neq("from_email", email)
+        .gte("received_at", ninetyAgo)
+        .order("received_at", { ascending: false })
+        .limit(20);
       const seenThreads = new Set<string>();
       const candidateThreads: any[] = [];
-      for (const t of (threadRows ?? []) as any[]) {
-        const tid = typeof t.thread_id === "string" ? t.thread_id : null;
-        if (!tid || seenThreads.has(tid)) continue;
-        seenThreads.add(tid);
-        candidateThreads.push({
-          thread_id: tid,
+      const merged = [
+        ...((threadRows ?? []) as any[]).map((t) => ({
+          thread_id: typeof t.thread_id === "string" ? t.thread_id : null,
           subject: t.subject ?? null,
           latest_message_at: t.sent_at ?? null,
-        });
+        })),
+        ...((naitiveThreadRows ?? []) as any[]).map((t) => ({
+          thread_id: typeof t.thread_id === "string" ? t.thread_id : null,
+          subject: t.subject ?? null,
+          latest_message_at: t.received_at ?? null,
+        })),
+      ].sort((a, b) => {
+        const ta = a.latest_message_at ? new Date(a.latest_message_at).getTime() : 0;
+        const tb = b.latest_message_at ? new Date(b.latest_message_at).getTime() : 0;
+        return tb - ta;
+      });
+      for (const t of merged) {
+        if (!t.thread_id || seenThreads.has(t.thread_id)) continue;
+        seenThreads.add(t.thread_id);
+        candidateThreads.push(t);
         if (candidateThreads.length >= 5) break;
       }
       const body: string = typeof lastOut.body_text === "string" ? lastOut.body_text : "";
