@@ -368,70 +368,27 @@ function DealListCardRowImpl({
           </TooltipProvider>
         )}
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>Change status</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {Object.entries(STATUS_CONFIG).map(([key, { label, dotColor }]) => (
-              <DropdownMenuItem
-                key={key}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                aria-label="Open deal details"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onStatusChange(deal.id, key as DealStatus);
-                }}
-                className={cn('flex items-center gap-2', deal.status === key && 'bg-muted')}
-              >
-                <span className={`h-2 w-2 rounded-full ${dotColor}`} />
-                {label}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            {pipelines.length > 1 && (
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsPipelineDialogOpen(true);
+                  openDealSummary(deal.id);
                 }}
               >
-                <ArrowRightLeft className="h-4 w-4 mr-2" />
-                Move to pipeline
-              </DropdownMenuItem>
-            )}
-            {deal.status !== 'archived' && (
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onStatusChange(deal.id, 'archived');
-                }}
-              >
-                <Archive className="h-4 w-4 mr-2" />
-                Archive
-              </DropdownMenuItem>
-            )}
-            {isAdmin && (
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/deal/${deal.id}?action=delete`);
-                }}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Open deal details</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <MoveToPipelineDialog
           dealId={deal.id}
           dealName={deal.company}
