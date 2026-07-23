@@ -512,7 +512,7 @@ async function gatherSignalsForDeal(
       .from("tasks")
       .select("id, title, status, priority, due_date, assigned_to, updated_at")
       .eq("deal_id", deal.id)
-      .in("status", ["open", "in_progress", "blocked", "pending"])
+      .not("status", "in", "(complete,completed,done,archived,cancelled,canceled)")
       .order("updated_at", { ascending: false })
       .limit(15),
     // Claap recordings linked to the deal (call transcripts/summaries).
