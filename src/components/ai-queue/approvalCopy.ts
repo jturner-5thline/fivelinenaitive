@@ -130,6 +130,14 @@ function capitalize(s: string): string {
 /** CTA label for the primary approve button. */
 export function approveButtonLabel(item: QueuedAiAction, edited = false): string {
   if (item.action_type === 'draft_email') return edited ? 'Edit & Stage' : 'Approve & Stage';
+  // The synthetic "Needs Tasks" prompt is always in "create" mode — the
+  // reviewer is filling in a form, so "Edit & Approve" is misleading.
+  if (
+    (item.action_type === 'create_followup_task' || item.action_type === 'create_task') &&
+    (item.new_values as any)?._synthetic === 'update_tasks'
+  ) {
+    return 'Create tasks';
+  }
   return edited ? 'Edit & Approve' : 'Approve';
 }
 
