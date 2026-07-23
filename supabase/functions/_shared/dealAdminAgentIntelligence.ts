@@ -1525,6 +1525,17 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
     status_notes: bundle.status_notes.map((n) => ({
       id: n.id, created_at: n.created_at, note: trim(n.note, 200),
     })),
+    outstanding_items: (bundle.outstanding_items ?? []).map((it: any) => ({
+      id: it.id,
+      description: trim(it.description, 240),
+      status: it.status,
+      priority: it.priority,
+      due_date: it.due_date,
+      created_at: it.created_at,
+      updated_at: it.updated_at,
+      business_days_stale: it.business_days_stale,
+      lender_id: it.lender_id,
+    })),
     recent_activity: bundle.activity.map((a) => ({
       source: a.source, action_type: a.action_type, created_at: a.created_at,
       before: trim(JSON.stringify(a.before ?? null), 160),
