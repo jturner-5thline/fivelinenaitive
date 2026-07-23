@@ -4843,7 +4843,48 @@ async function reconcileStalePendingApprovals(
       console.log(`[deal-admin-agent] followup dismiss failed for ${itemId}: ${fErr.message}`);
       continue;
     }
-    cleared += (updated ?? []).length;
+    const didClear = (updated ?? []).length;
+    cleared += didClear;
+    if (didClear > 0) {
+      // Persist the trigger in the cross-sweep ledger. The unique index on
+      // (deal_id, rule, source, message_id) makes this write the atomic
+      // fence: if a concurrent sweep tries to reuse the same reply later,
+      // the SELECT above returns a row and we short-circuit. If two sweeps
+      // race here, one insert wins and the loser gets a duplicate-key
+      // error we swallow. Late-arriving copies of the same email can never
+      // clear a second bundle for the same deal.
+      const dealIdForLedger =
+        (updated as any[])[0]?.deal_id ??
+        (currentRow as any)?.deal_id ??
+        null;
+      const resolvedDealId =
+        dealIdForLedger ??
+        (await supabase
+          .from("ai_action_queue")
+          .select("deal_id")
+          .eq("id", itemId)
+          .maybeSingle()).data?.deal_id ??
+        null;
+      if (resolvedDealId) {
+        const { error: ledgerErr } = await supabase
+          .from("admin_agent_processed_reply_triggers")
+          .insert({
+            deal_id: resolvedDealId,
+            rule: "lender_followup",
+            source: trig.source,
+            message_id: trig.message_id,
+            thread_id: trig.thread_id,
+            from_email: trig.from_email,
+            received_at: trig.received_at,
+            cleared_item_id: itemId,
+          });
+        if (ledgerErr && !/duplicate key/i.test(ledgerErr.message)) {
+          console.log(
+            `[deal-admin-agent] processed-trigger ledger insert failed for ${itemId}: ${ledgerErr.message}`,
+          );
+        }
+      }
+    }
   }
 
   if (otherIds.length > 0) {
