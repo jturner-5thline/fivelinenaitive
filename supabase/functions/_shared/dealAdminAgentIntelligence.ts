@@ -849,6 +849,33 @@ async function gatherSignalsForDeal(
       const replied =
         (replyRows ?? []).length > 0 || (replyNaitive ?? []).length > 0;
       const bdSinceSent = businessDaysBetween(new Date(sentAt), today);
+      // Has this lender EVER replied on the deal thread (at any point,
+      // including BEFORE the latest outbound)? If so, we treat the
+      // relationship as "warm" and enforce a 24-hour cooldown after the
+      // most recent unanswered outbound before proposing another nudge —
+      // this prevents the agent from re-prompting a follow-up the moment
+      // the deal owner sends a new email in an already-active thread.
+      const { data: anyPriorReply } = await supabase
+        .from("gmail_messages")
+        .select("gmail_message_id")
+        .in("from_email", contactEmails)
+        .limit(1);
+      const { data: anyPriorReplyNv } = await supabase
+        .from("emails")
+        .select("message_id")
+        .in("from_email", contactEmails)
+        .limit(1);
+      const hasPriorReply =
+        (anyPriorReply ?? []).length > 0 || (anyPriorReplyNv ?? []).length > 0;
+      const hoursSinceSent =
+        (today.getTime() - new Date(sentAt).getTime()) / (1000 * 60 * 60);
+      // 24-hour post-reply cooldown: if the lender has ever replied on this
+      // thread and the latest outbound is <24h old, skip the awaiting-reply
+      // payload entirely so L-4 cannot fire this scan.
+      if (hasPriorReply && hoursSinceSent < 24) {
+        (f as any).outbound_awaiting_reply = null;
+        continue;
+      }
       const body: string = typeof lastOut.body_text === "string" ? lastOut.body_text : "";
       (f as any).outbound_awaiting_reply = {
         sent_at: sentAt,
@@ -856,6 +883,8 @@ async function gatherSignalsForDeal(
         to_emails: lastOut.to_emails ?? [],
         body_excerpt: body.length > 1600 ? body.slice(0, 1600) + "…" : body,
         business_days_since_sent: bdSinceSent,
+        hours_since_sent: Math.floor(hoursSinceSent),
+        has_prior_reply: hasPriorReply,
         replied,
         reply_received_at: replied
           ? (((replyRows ?? [])[0] as any)?.received_at ??
