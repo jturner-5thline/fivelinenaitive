@@ -29,6 +29,8 @@ interface Props {
   dealName: string;
   initialTasks: EditorTask[];
   onChange: (tasks: EditorTask[]) => void;
+  /** When true, reveal validation errors on every row regardless of touched state. */
+  forceShowErrors?: boolean;
 }
 
 /**
@@ -49,7 +51,12 @@ function toDate(iso: string | null): Date | undefined {
   return iso ? new Date(iso + 'T00:00:00') : undefined;
 }
 
-export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
+export function TaskListEditor({
+  dealName,
+  initialTasks,
+  onChange,
+  forceShowErrors = false,
+}: Props) {
   const members = useTeamMembers();
   const { user } = useAuth();
   const currentUserId = user?.id ?? null;
@@ -115,9 +122,11 @@ export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
           const rowEngaged =
             !!row.title || !!row.due_date || !!row.assigned_to ||
             row.titleTouched || row.assigneeTouched;
-          const showTitleError = titleMissing && (row.titleTouched || rowEngaged);
+          const showTitleError =
+            titleMissing && (forceShowErrors || row.titleTouched || rowEngaged);
           const showAssigneeError =
-            assigneeMissing && (row.assigneeTouched || rowEngaged);
+            assigneeMissing &&
+            (forceShowErrors || row.assigneeTouched || rowEngaged);
           return (
             <div
               key={i}

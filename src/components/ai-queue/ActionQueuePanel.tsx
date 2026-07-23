@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
@@ -1660,6 +1661,7 @@ function DetailPane({
   const [editMode, setEditMode] = useState(false);
   const [busy, setBusy] = useState<'a' | 'r' | null>(null);
   const [edits, setEdits] = useState<Record<string, any>>({});
+  const [showTaskErrors, setShowTaskErrors] = useState(false);
   const navigate = useNavigate();
   // Lookup tables to resolve raw UUIDs (stage_id, pipeline_id) into labels.
   const { pipelines } = usePipelineContext();
@@ -1953,9 +1955,17 @@ function DetailPane({
               </button>
               <button
                 type="button"
-                disabled={busy !== null || tasksIncomplete}
+                disabled={busy !== null}
                 title={tasksIncomplete ? 'Every task needs a title and an assignee' : undefined}
                 onClick={async () => {
+                  if (tasksIncomplete) {
+                    setShowTaskErrors(true);
+                    toast.error('Every task row needs a title and an assignee', {
+                      description:
+                        'Fill in the highlighted fields before creating tasks.',
+                    });
+                    return;
+                  }
                   setBusy('a');
                   await onApprove(editedCount > 0 ? { editedValues: edits } : undefined);
                   setBusy(null);
@@ -2241,6 +2251,7 @@ function DetailPane({
               </p>
               <TaskListEditor
                 dealName={item.deal_name || 'this deal'}
+                forceShowErrors={showTaskErrors}
                 initialTasks={
                   Array.isArray((newValues as any)?.tasks) && (newValues as any).tasks.length > 0
                     ? (newValues as any).tasks.map((t: any) => ({
