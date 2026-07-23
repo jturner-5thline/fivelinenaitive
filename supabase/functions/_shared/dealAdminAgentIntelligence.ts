@@ -821,6 +821,27 @@ async function gatherSignalsForDeal(
       is_flagged: !!deal.is_flagged,
       updated_at: deal.updated_at ?? null,
     },
+    qualified_terms_parameters: (() => {
+      const num = (v: any) => (typeof v === "number" && Number.isFinite(v) ? v : v == null ? null : Number(v) || null);
+      const p = {
+        deal_value: num(deal.value),
+        engagement_type: (deal.engagement_type ?? null) as string | null,
+        fee_type: (deal.fee_type ?? null) as string | null,
+        success_fee_percent: num(deal.success_fee_percent),
+        retainer_fee: num(deal.retainer_fee),
+        milestone_fee: num(deal.milestone_fee),
+        total_fee: num(deal.total_fee),
+        pre_signing_hours: num(deal.pre_signing_hours),
+        post_signing_hours: num(deal.post_signing_hours),
+        has_any_parameter: false,
+      };
+      p.has_any_parameter = [
+        p.deal_value, p.engagement_type, p.fee_type, p.success_fee_percent,
+        p.retainer_fee, p.milestone_fee, p.total_fee,
+        p.pre_signing_hours, p.post_signing_hours,
+      ].some((v) => v !== null && v !== "" && v !== 0);
+      return p;
+    })(),
     funding_sources: fundingWithBd,
     status_notes: notes.data ?? [],
     activity: act.data ?? [],
