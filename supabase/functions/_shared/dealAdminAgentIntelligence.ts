@@ -1773,6 +1773,29 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
         id: n.id, created_at: n.created_at, note: trim(n.note, 200),
       })),
     })),
+    client_contacts: (bundle.client_contacts ?? []).map((c: any) => ({
+      contact_id: c.contact_id,
+      name: c.name,
+      email: c.email,
+      role: c.role,
+      outbound_awaiting_reply: c.outbound_awaiting_reply
+        ? {
+            gmail_message_id: c.outbound_awaiting_reply.gmail_message_id ?? null,
+            thread_id: c.outbound_awaiting_reply.thread_id ?? null,
+            sent_at: c.outbound_awaiting_reply.sent_at,
+            subject: c.outbound_awaiting_reply.subject,
+            body_excerpt: trim(c.outbound_awaiting_reply.body_excerpt, 1200),
+            business_days_since_sent: c.outbound_awaiting_reply.business_days_since_sent,
+            replied: c.outbound_awaiting_reply.replied,
+            reply_received_at: c.outbound_awaiting_reply.reply_received_at ?? null,
+          }
+        : null,
+      candidate_threads: (c.candidate_threads ?? []).map((t: any) => ({
+        thread_id: t.thread_id,
+        subject: t.subject,
+        latest_message_at: t.latest_message_at,
+      })),
+    })),
     configured_milestone_titles: bundle.configured_milestone_titles ?? [],
   };
   const fp = fingerprint && fingerprint.trim().length > 0
