@@ -1372,7 +1372,7 @@ export function EndOfDayTab({
 
   // Detail pane
   const detailPane = (
-    <div className="flex flex-col h-full min-w-0 rounded-xl border-2 border-white/35 bg-background/40">
+    <div className="panel-pane flex flex-col h-full min-w-0">
       {selectedEvent ? (
         <EventDetailPane
           key={selectedEvent.id}
