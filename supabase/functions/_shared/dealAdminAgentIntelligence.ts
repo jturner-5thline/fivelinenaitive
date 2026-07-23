@@ -4615,6 +4615,13 @@ async function reconcileStalePendingApprovals(
     // funding source has no real contact on file. Dismiss so the queue isn't
     // polluted with drafts pointing at seed/placeholder addresses.
     const PLACEHOLDER_DOMAIN_RE = /@(example\.(com|org|net)|test\.local|localhost|invalid)$/i;
+    // Generic role-mailbox pattern. LLMs love to fabricate `contact@<domain>`
+    // or `info@<domain>` when a real contact is missing. Those aren't
+    // deliverable to a specific person on the funding-source team, so we
+    // treat them as un-sendable and dismiss the draft. Real named-mailbox
+    // addresses (rmichaud@…, jsmith@…) are unaffected.
+    const ROLE_MAILBOX_RE =
+      /^(contact|contacts|info|hello|hi|team|sales|admin|office|general|inquir(?:y|ies)|support|help|noreply|no-reply|donotreply)@/i;
     for (const p of lenderEmailPending) {
       if (toResolve.includes(p.id)) continue;
       const nv: any = (p as any).new_values || {};
@@ -4625,8 +4632,10 @@ async function reconcileStalePendingApprovals(
           ? rawTo.split(/[,;\s]+/).map((v) => v.toLowerCase()).filter(Boolean)
           : [];
       if (toArr.length === 0) continue;
-      const allPlaceholder = toArr.every((addr) => PLACEHOLDER_DOMAIN_RE.test(addr));
-      if (allPlaceholder) toResolve.push(p.id);
+      const allBad = toArr.every(
+        (addr) => PLACEHOLDER_DOMAIN_RE.test(addr) || ROLE_MAILBOX_RE.test(addr),
+      );
+      if (allBad) toResolve.push(p.id);
     }
   }
 
