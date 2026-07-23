@@ -591,6 +591,38 @@ async function gatherSignalsForDeal(
     messages: threadMessages[t.thread_id] ?? [],
   }));
 
+  // Rule D-1 — Outstanding Items stale 2+ BD. Fetch pending, non-archived
+  // outstanding items for this deal and compute business-days-stale from
+  // the item's created_at (or last updated_at, whichever is more recent
+  // and still reflects "waiting on the client"). The LLM decides whether
+  // to emit the client-reminder AQ item.
+  const { data: outstandingRows } = await supabase
+    .from("outstanding_items")
+    .select("id, deal_id, description, status, due_date, priority, assigned_to, created_at, updated_at, is_archived, lender_id")
+    .eq("deal_id", deal.id)
+    .eq("is_archived", false)
+    .neq("status", "completed")
+    .neq("status", "resolved")
+    .order("created_at", { ascending: true })
+    .limit(30);
+  const _today = new Date();
+  const outstandingItems = (outstandingRows ?? []).map((it: any) => {
+    const anchor = it.created_at ?? it.updated_at ?? null;
+    const bd = anchor ? businessDaysBetween(new Date(anchor), _today) : null;
+    return {
+      id: it.id,
+      description: it.description,
+      status: it.status,
+      priority: it.priority,
+      due_date: it.due_date,
+      assigned_to: it.assigned_to,
+      lender_id: it.lender_id,
+      created_at: it.created_at,
+      updated_at: it.updated_at,
+      business_days_stale: bd,
+    };
+  });
+
   // Pre-compute "business days since last lender contact" for each funding
   // source so the prompt can apply the 3-BD follow-up rule deterministically.
   const today = new Date();
