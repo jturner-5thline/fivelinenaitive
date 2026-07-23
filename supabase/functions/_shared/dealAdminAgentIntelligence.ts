@@ -1272,6 +1272,7 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
       owner_user_id: bundle.current.deal_owner_user_id,
       is_flagged: bundle.current.is_flagged,
       updated_at: bundle.current.updated_at,
+      qualified_terms_parameters: bundle.qualified_terms_parameters ?? null,
     },
     funding_sources: bundle.funding_sources.map((f) => ({
       id: f.id,
