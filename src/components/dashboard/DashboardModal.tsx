@@ -473,6 +473,19 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
               <div className="db-r min-w-0 max-w-full">
             {/* KPI STRIP */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,minmax(0,1fr))', gap: 16, marginBottom: 16 }}>
+              {dealStatTiles.map((t) => (
+                <div
+                  key={t.key}
+                  className="glass-module p-4 flex flex-col items-center justify-center text-center"
+                >
+                  <div className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground">
+                    {t.label}
+                  </div>
+                  <div className="text-2xl font-bold text-foreground mt-2 db-bl">
+                    {t.value}
+                  </div>
+                </div>
+              ))}
               {planTiles.map((t) => {
                 const planSet = t.planValue > 0;
                 const actual = t.actualValue ?? 0;
