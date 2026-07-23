@@ -1415,7 +1415,7 @@ CALL TYPE TAXONOMY — naitive / 5th Line invite titles (apply BEFORE writing an
 EMAIL SIGNAL → ACTION MAPPING (apply rigorously)
 EMAIL SOURCE SCOPE — STANDING RULE (always on, non-negotiable)
 - The bundle's email signals (emails[], email_threads[].messages[], outbound_awaiting_reply, client_contacts[].outbound_awaiting_reply, unlinked_terms_emails[]) draw from TWO equally-authoritative sources:
-    1. Emails sent and received through naitive directly (naitive-native inbox — Microsoft/Outlook sync and naitive-composed sends; message rows carry a `source` prefix like "naitive:*" when they came from this pipe).
+    1. Emails sent and received through naitive directly (naitive-native inbox — Microsoft/Outlook sync and naitive-composed sends; message rows carry a \`source\` prefix like "naitive:*" when they came from this pipe).
     2. Gmail threads linked or associated with the deal in naitive (via deal_emails / email_threads / gmail_messages / email_cache / gmail_sent_messages).
 - Treat both sources with EQUAL weight when evaluating every trigger rule (Terms Received, Pass, Schedule-a-Call, No-Lender-Reply, Outstanding Items reminder, Client-Silent follow-up, etc.). NEVER discount, ignore, or de-prioritize a signal because it originated from one pipe or the other, and NEVER require Gmail-only evidence when a naitive-native message already carries the same content.
 - Reply detection, outbound-awaiting-reply clocks, and thread-message context are computed across BOTH sources — a reply on either side cancels the clock.
@@ -1424,7 +1424,7 @@ EMAIL SOURCE SCOPE — STANDING RULE (always on, non-negotiable)
 MULTIPLE TRIGGERS FROM ONE EMAIL — STANDING RULE (always on, non-negotiable)
 - A single inbound email can trip more than one rule at the same time (e.g. an email that both attaches a term sheet AND asks to schedule a call fires Rule L-1 and Rule L-3). You MUST evaluate every rule independently against every email — never stop at the first match.
 - Splitting vs. consolidation:
-    • Same deal + same action_type (e.g. two lenders on the same deal both silent ≥2 BD, or multiple stale outstanding items on one deal) → emit ONE consolidated AQ item that lists each subject inside it. Use the existing bundle_key conventions (`lender_followups:{deal_id}`, `outstanding_items_reminder:{deal_id}`, `client_followup:{deal_id}`, etc.).
+    • Same deal + same action_type (e.g. two lenders on the same deal both silent ≥2 BD, or multiple stale outstanding items on one deal) → emit ONE consolidated AQ item that lists each subject inside it. Use the existing bundle_key conventions (\`lender_followups:{deal_id}\`, \`outstanding_items_reminder:{deal_id}\`, \`client_followup:{deal_id}\`, etc.).
     • Same email + different action_types → emit SEPARATE AQ items, one per triggered rule. Do NOT merge a "update lender status to Terms Issued + move to Stage 13" bundle with a "schedule a call" item, and do NOT merge a "record pass reason" item with a "save term sheet attachment" item. Each action_type gets its own AQ card so the user approves each one individually.
 - The Rule L-1 bundle (status → Terms Issued, save attachment to Internal ▸ Terms, move deal to Stage 13) is a SINGLE action_type expressed as a coordinated bundle — keep it as one item. When the same email ALSO triggers Rule L-3 (schedule a call), Rule L-2 (pass), or any other distinct action_type, add those as ADDITIONAL, separate AQ items.
 - Never suppress a valid trigger just because another trigger on the same email is already queued. Each surfaced item must still be individually approvable and independently reversible.
@@ -3125,6 +3125,11 @@ async function maybeBuildUpdateTasksCandidate(
     proposed_values: {
       _synthetic: "update_tasks",
       bundle_key: `needs_tasks:${deal.id}`,
+      // Top-level `title` is required by isValidCandidate for
+      // create_followup_task. The synthetic "Needs Tasks" card is a
+      // container for one or more tasks the reviewer fills in, so the
+      // title mirrors the item_title.
+      title: `${dealName} Needs Tasks`,
       // Seed the details panel with a single blank task row so the
       // reviewer sees the task-creation UI immediately. They can add
       // more rows (title / due date / assignee) before approving —
