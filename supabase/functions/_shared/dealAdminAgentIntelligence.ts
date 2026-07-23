@@ -743,7 +743,31 @@ async function gatherSignalsForDeal(
         .overlaps("to_emails", contactEmails)
         .order("sent_at", { ascending: false, nullsFirst: false })
         .limit(1);
-      const lastOut = (outRows ?? [])[0] as any;
+      // ALSO check the naitive-native `emails` table for outbound sent
+      // through naitive/Microsoft — pick whichever source is more recent.
+      const { data: outNaitive } = await supabase
+        .from("emails")
+        .select("message_id, subject, preview, from_email, to_emails, received_at, provider")
+        .overlaps("to_emails", contactEmails)
+        .not("from_email", "in", `(${contactEmails.map((e) => `"${e}"`).join(",")})`)
+        .order("received_at", { ascending: false, nullsFirst: false })
+        .limit(1);
+      const gmOut = (outRows ?? [])[0] as any;
+      const nvOut = (outNaitive ?? [])[0] as any;
+      const gmTs = gmOut?.sent_at ?? gmOut?.created_at ?? null;
+      const nvTs = nvOut?.received_at ?? null;
+      const lastOut =
+        (nvTs && (!gmTs || new Date(nvTs) > new Date(gmTs)))
+          ? {
+              gmail_message_id: nvOut.message_id ?? null,
+              subject: nvOut.subject ?? null,
+              body_text: nvOut.preview ?? "",
+              sent_at: nvTs,
+              created_at: nvTs,
+              to_emails: nvOut.to_emails ?? [],
+              source: `naitive:${nvOut.provider ?? "unknown"}`,
+            }
+          : gmOut;
       if (!lastOut) {
         (f as any).outbound_awaiting_reply = null;
         continue;
@@ -762,7 +786,16 @@ async function gatherSignalsForDeal(
         .gt("received_at", sentAt)
         .order("received_at", { ascending: false })
         .limit(1);
-      const replied = (replyRows ?? []).length > 0;
+      // Same check on the naitive-native `emails` table (Microsoft / naitive).
+      const { data: replyNaitive } = await supabase
+        .from("emails")
+        .select("message_id, from_email, received_at")
+        .in("from_email", contactEmails)
+        .gt("received_at", sentAt)
+        .order("received_at", { ascending: false })
+        .limit(1);
+      const replied =
+        (replyRows ?? []).length > 0 || (replyNaitive ?? []).length > 0;
       const bdSinceSent = businessDaysBetween(new Date(sentAt), today);
       const body: string = typeof lastOut.body_text === "string" ? lastOut.body_text : "";
       (f as any).outbound_awaiting_reply = {
@@ -772,7 +805,11 @@ async function gatherSignalsForDeal(
         body_excerpt: body.length > 1600 ? body.slice(0, 1600) + "…" : body,
         business_days_since_sent: bdSinceSent,
         replied,
-        reply_received_at: replied ? ((replyRows ?? [])[0] as any)?.received_at ?? null : null,
+        reply_received_at: replied
+          ? (((replyRows ?? [])[0] as any)?.received_at ??
+             ((replyNaitive ?? [])[0] as any)?.received_at ?? null)
+          : null,
+        source: (lastOut as any).source ?? "gmail",
       };
     }
   } catch (err) {
