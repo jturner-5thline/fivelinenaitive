@@ -4383,6 +4383,24 @@ async function reconcileStalePendingApprovals(
       const triggerKey = `${dealKey}|${trigger.thread_id ?? trigger.message_id}`;
       if (seenTriggers.has(triggerKey)) continue;
       seenTriggers.add(triggerKey);
+      // Cross-sweep idempotency: check the persistent ledger. If this exact
+      // (deal, source, message_id) has already been used to clear a bundle
+      // in ANY prior sweep, skip — even if a late-arriving email or a
+      // concurrent worker somehow re-queued the same trigger.
+      const { data: prior } = await supabase
+        .from("admin_agent_processed_reply_triggers")
+        .select("id")
+        .eq("deal_id", dealKey)
+        .eq("rule", "lender_followup")
+        .eq("source", trigger.source)
+        .eq("message_id", trigger.message_id)
+        .maybeSingle();
+      if (prior?.id) {
+        console.log(
+          `[deal-admin-agent] skip followup ${item.id}: reply trigger ${trigger.source}:${trigger.message_id} already processed`,
+        );
+        continue;
+      }
       followupResolutions.set(item.id, trigger);
       toResolve.push(item.id);
     }
