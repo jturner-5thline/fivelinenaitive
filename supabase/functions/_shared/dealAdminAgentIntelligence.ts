@@ -1916,6 +1916,13 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
       business_days_since_last_contact: (f as any).business_days_since_last_contact ?? null,
       notes: trim(f.notes, 200),
       pass_reason: trim(f.pass_reason, 160),
+      contacts: Array.isArray((f as any).contacts)
+        ? (f as any).contacts.map((c: any) => ({
+            name: c?.name ?? null,
+            email: c?.email ?? null,
+            title: c?.title ?? null,
+          }))
+        : [],
       outbound_awaiting_reply: (f as any).outbound_awaiting_reply
         ? {
             sent_at: (f as any).outbound_awaiting_reply.sent_at,
