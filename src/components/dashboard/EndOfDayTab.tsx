@@ -1118,7 +1118,7 @@ export function EndOfDayTab({
   const masterPane = (
     <div className={cn(
       'flex flex-col min-w-0 h-full',
-      'rounded-xl border border-white/20 bg-background/40',
+      'rounded-xl border-2 border-white/35 bg-background/40',
     )}>
       {/* Toolbar */}
       <div className="px-3 pt-3 pb-2 border-b border-white/[0.06] space-y-2">
