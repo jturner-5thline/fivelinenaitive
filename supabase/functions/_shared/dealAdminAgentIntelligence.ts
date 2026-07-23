@@ -4781,20 +4781,71 @@ async function reconcileStalePendingApprovals(
   if (toResolve.length === 0) return 0;
 
   const nowIso = new Date().toISOString();
-  const { error: updErr } = await supabase
-    .from("ai_action_queue")
-    .update({
-      status: "dismissed",
-      dismissed_at: nowIso,
-      rejection_reason: "auto_resolved_user_already_acted",
-    })
-    .in("id", toResolve)
-    .eq("status", "pending");
-  if (updErr) {
-    console.log(`[deal-admin-agent] reconcile update failed: ${updErr.message}`);
-    return 0;
+  // Split resolutions: lender-followup dismissals carry per-item trigger
+  // metadata for idempotency + audit. Everything else uses a single batch
+  // update. The `.eq("status", "pending")` guard on every write makes each
+  // transition atomic — if a concurrent sweep already flipped the row, our
+  // UPDATE affects 0 rows and we simply move on (no double-clear).
+  const followupIds = Array.from(followupResolutions.keys());
+  const otherIds = toResolve.filter((id) => !followupResolutions.has(id));
+  let cleared = 0;
+
+  for (const itemId of followupIds) {
+    const trig = followupResolutions.get(itemId)!;
+    // Read current new_values to merge (avoid clobbering the bundle payload).
+    const { data: currentRow } = await supabase
+      .from("ai_action_queue")
+      .select("new_values")
+      .eq("id", itemId)
+      .maybeSingle();
+    const currentNV = (currentRow?.new_values as any) ?? {};
+    const mergedNV = {
+      ...currentNV,
+      cleared_by_reply: {
+        thread_id: trig.thread_id,
+        message_id: trig.message_id,
+        from_email: trig.from_email,
+        received_at: trig.received_at,
+        source: trig.source,
+        cleared_at: nowIso,
+      },
+    };
+    const { data: updated, error: fErr } = await supabase
+      .from("ai_action_queue")
+      .update({
+        status: "dismissed",
+        dismissed_at: nowIso,
+        rejection_reason: "auto_resolved_lender_replied",
+        new_values: mergedNV,
+      })
+      .eq("id", itemId)
+      .eq("status", "pending")
+      .select("id");
+    if (fErr) {
+      console.log(`[deal-admin-agent] followup dismiss failed for ${itemId}: ${fErr.message}`);
+      continue;
+    }
+    cleared += (updated ?? []).length;
   }
-  return toResolve.length;
+
+  if (otherIds.length > 0) {
+    const { data: updated, error: updErr } = await supabase
+      .from("ai_action_queue")
+      .update({
+        status: "dismissed",
+        dismissed_at: nowIso,
+        rejection_reason: "auto_resolved_user_already_acted",
+      })
+      .in("id", otherIds)
+      .eq("status", "pending")
+      .select("id");
+    if (updErr) {
+      console.log(`[deal-admin-agent] reconcile update failed: ${updErr.message}`);
+    } else {
+      cleared += (updated ?? []).length;
+    }
+  }
+  return cleared;
 }
 
 export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<AnalyzeResult> {
