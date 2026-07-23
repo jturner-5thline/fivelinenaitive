@@ -5403,7 +5403,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       }
       if (scopedFiltered.length === 0) continue;
 
-      const { kept, merged, filtered } = dedupeAndMerge(scopedFiltered, existingKeys);
+      const { kept, merged, filtered } = dedupeAndMerge(scopedFiltered, existingKeys, bundle.deal_id);
       result.candidates_merged += merged;
       result.candidates_filtered += filtered;
 
