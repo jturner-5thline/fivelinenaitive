@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
 
 export type WidgetMetric = 
   | 'active-deals'
@@ -77,8 +78,17 @@ const WidgetsContext = createContext<WidgetsContextType | undefined>(undefined);
 
 export function WidgetsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { company } = useCompany();
+  const companyId = company?.id ?? null;
   const [widgets, setWidgets] = useState<Widget[]>(DEFAULT_WIDGETS);
   const [specialWidgets, setSpecialWidgets] = useState<Record<SpecialWidget, boolean>>(DEFAULT_SPECIAL_WIDGETS);
+  // Workspace-wide list of widget metrics that any teammate has removed.
+  // Once hidden, the widget stays gone for every user in the company
+  // across sessions, page refreshes, and views — the metric only comes
+  // back if someone re-adds it (which clears it from this list) or an
+  // admin edits `company_settings.deals_hidden_widget_metrics` directly.
+  const [hiddenMetrics, setHiddenMetrics] = useState<WidgetMetric[]>([]);
+  const hiddenLoaded = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
   const isLoaded = useRef(false);
 
@@ -138,6 +148,72 @@ export function WidgetsProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; clearTimeout(fallbackTimer); };
   }, [user]);
 
+  // Load company-wide hidden widget list. This is the source of truth for
+  // "deleted" widgets across the whole workspace — the per-user
+  // `widgets` array is then filtered against it at render time.
+  useEffect(() => {
+    let cancelled = false;
+    hiddenLoaded.current = false;
+    if (!companyId) {
+      setHiddenMetrics([]);
+      return;
+    }
+    (async () => {
+      const { data, error } = await (supabase as any)
+        .from('company_settings')
+        .select('deals_hidden_widget_metrics')
+        .eq('company_id', companyId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (!error && Array.isArray(data?.deals_hidden_widget_metrics)) {
+        setHiddenMetrics(
+          (data.deals_hidden_widget_metrics as unknown[]).filter(
+            (m): m is WidgetMetric => typeof m === 'string',
+          ),
+        );
+      } else {
+        setHiddenMetrics([]);
+      }
+      hiddenLoaded.current = true;
+    })();
+    return () => { cancelled = true; };
+  }, [companyId]);
+
+  // Realtime: pick up hides/unhides made by other teammates so their
+  // deletions propagate without a refresh.
+  useEffect(() => {
+    if (!companyId) return;
+    const channel = (supabase as any)
+      .channel(`company-hidden-widgets-${companyId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'company_settings', filter: `company_id=eq.${companyId}` },
+        (payload: any) => {
+          const next = payload?.new?.deals_hidden_widget_metrics;
+          if (Array.isArray(next)) {
+            setHiddenMetrics(next.filter((m: unknown): m is WidgetMetric => typeof m === 'string'));
+          }
+        },
+      )
+      .subscribe();
+    return () => { (supabase as any).removeChannel(channel); };
+  }, [companyId]);
+
+  const persistHiddenMetrics = async (next: WidgetMetric[]) => {
+    if (!companyId) return;
+    const { error } = await (supabase as any)
+      .from('company_settings')
+      .upsert(
+        {
+          company_id: companyId,
+          deals_hidden_widget_metrics: next,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'company_id' },
+      );
+    if (error) console.error('Failed to persist hidden deal widgets:', error);
+  };
+
   // Persist to Supabase whenever values change (after initial load)
   useEffect(() => {
     if (!user || !isLoaded.current) return;
@@ -162,6 +238,12 @@ export function WidgetsProvider({ children }: { children: ReactNode }) {
 
   const addWidget = (widget: Omit<Widget, 'id'>) => {
     setWidgets(prev => [...prev, { ...widget, id: `w${Date.now()}` }]);
+    // Re-adding a metric un-hides it workspace-wide.
+    if (hiddenMetrics.includes(widget.metric)) {
+      const next = hiddenMetrics.filter(m => m !== widget.metric);
+      setHiddenMetrics(next);
+      void persistHiddenMetrics(next);
+    }
   };
 
   const updateWidget = (id: string, updates: Partial<Widget>) => {
@@ -169,7 +251,17 @@ export function WidgetsProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteWidget = (id: string) => {
-    setWidgets(prev => prev.filter(w => w.id !== id));
+    let removedMetric: WidgetMetric | null = null;
+    setWidgets(prev => {
+      const target = prev.find(w => w.id === id);
+      if (target) removedMetric = target.metric;
+      return prev.filter(w => w.id !== id);
+    });
+    if (removedMetric && !hiddenMetrics.includes(removedMetric)) {
+      const next = [...hiddenMetrics, removedMetric];
+      setHiddenMetrics(next);
+      void persistHiddenMetrics(next);
+    }
   };
 
   const reorderWidgets = (newWidgets: Widget[]) => {
@@ -182,7 +274,7 @@ export function WidgetsProvider({ children }: { children: ReactNode }) {
 
   return (
     <WidgetsContext.Provider value={{ 
-      widgets, 
+      widgets: widgets.filter(w => !hiddenMetrics.includes(w.metric)), 
       isLoading,
       addWidget, 
       updateWidget, 
