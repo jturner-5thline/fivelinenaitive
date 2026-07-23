@@ -2251,6 +2251,7 @@ function DetailPane({
               </p>
               <TaskListEditor
                 dealName={item.deal_name || 'this deal'}
+                forceShowErrors={showTaskErrors}
                 initialTasks={
                   Array.isArray((newValues as any)?.tasks) && (newValues as any).tasks.length > 0
                     ? (newValues as any).tasks.map((t: any) => ({
