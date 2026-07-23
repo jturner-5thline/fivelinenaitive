@@ -1137,6 +1137,120 @@ async function gatherReferralSourcesForDeal(
   return out;
 }
 
+/**
+ * Rule D-2 — for each client contact linked to this deal, find the MOST
+ * RECENT outbound email a user in this workspace sent to that contact and
+ * check whether the contact has replied since. The clock resets every time
+ * the user sends a new email; a reply cancels the clock entirely. Also
+ * surfaces up to 5 recent threads (subject + thread_id + latest_message_at)
+ * so the approver can pick which thread to draft the follow-up in.
+ */
+async function gatherClientContactsForDeal(
+  supabase: SupabaseClient,
+  deal: any,
+  today: Date,
+): Promise<any[]> {
+  const out: any[] = [];
+  try {
+    const { data: cdRows } = await supabase
+      .from("contact_deals")
+      .select("contact_id, role")
+      .eq("deal_id", deal.id);
+    const contactIds = Array.from(
+      new Set(
+        (cdRows ?? [])
+          .map((r: any) => r.contact_id)
+          .filter((v: any): v is string => typeof v === "string" && v.length > 0),
+      ),
+    );
+    if (contactIds.length === 0) return out;
+    const roleById = new Map<string, string | null>();
+    for (const r of (cdRows ?? []) as any[]) {
+      if (r?.contact_id) roleById.set(String(r.contact_id), r.role ?? null);
+    }
+    const { data: cts } = await supabase
+      .from("contacts")
+      .select("id, first_name, last_name, email")
+      .in("id", contactIds);
+    for (const c of (cts ?? []) as any[]) {
+      const email = typeof c?.email === "string" ? c.email.toLowerCase() : null;
+      if (!email) continue;
+      const name = [c.first_name, c.last_name].filter(Boolean).join(" ").trim() || email;
+      // Most recent outbound to this client contact.
+      const { data: outRows } = await supabase
+        .from("gmail_sent_messages")
+        .select("id, gmail_message_id, thread_id, subject, body_text, sent_at, created_at, to_emails")
+        .contains("to_emails", [email])
+        .order("sent_at", { ascending: false, nullsFirst: false })
+        .limit(1);
+      const lastOut = (outRows ?? [])[0] as any;
+      if (!lastOut) continue;
+      const sentAt: string | null =
+        (lastOut.sent_at as string | null) ?? (lastOut.created_at as string | null) ?? null;
+      if (!sentAt) continue;
+      // Reply from that contact since sent_at?
+      const { data: replyRows } = await supabase
+        .from("gmail_messages")
+        .select("gmail_message_id, from_email, received_at")
+        .eq("from_email", email)
+        .gt("received_at", sentAt)
+        .order("received_at", { ascending: false })
+        .limit(1);
+      const replied = (replyRows ?? []).length > 0;
+      const bdSinceSent = businessDaysBetween(new Date(sentAt), today);
+      // Recent candidate threads with this contact (last 90d), so the
+      // approver can pick which one to reply in.
+      const ninetyAgo = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: threadRows } = await supabase
+        .from("gmail_sent_messages")
+        .select("thread_id, subject, sent_at")
+        .contains("to_emails", [email])
+        .gte("sent_at", ninetyAgo)
+        .order("sent_at", { ascending: false })
+        .limit(20);
+      const seenThreads = new Set<string>();
+      const candidateThreads: any[] = [];
+      for (const t of (threadRows ?? []) as any[]) {
+        const tid = typeof t.thread_id === "string" ? t.thread_id : null;
+        if (!tid || seenThreads.has(tid)) continue;
+        seenThreads.add(tid);
+        candidateThreads.push({
+          thread_id: tid,
+          subject: t.subject ?? null,
+          latest_message_at: t.sent_at ?? null,
+        });
+        if (candidateThreads.length >= 5) break;
+      }
+      const body: string = typeof lastOut.body_text === "string" ? lastOut.body_text : "";
+      out.push({
+        contact_id: c.id,
+        name,
+        email,
+        role: roleById.get(String(c.id)) ?? null,
+        outbound_awaiting_reply: {
+          gmail_message_id: lastOut.gmail_message_id ?? null,
+          thread_id: lastOut.thread_id ?? null,
+          sent_at: sentAt,
+          subject: lastOut.subject ?? null,
+          body_excerpt: body.length > 1600 ? body.slice(0, 1600) + "…" : body,
+          business_days_since_sent: bdSinceSent,
+          replied,
+          reply_received_at: replied
+            ? ((replyRows ?? [])[0] as any)?.received_at ?? null
+            : null,
+        },
+        candidate_threads: candidateThreads,
+      });
+    }
+  } catch (err) {
+    console.warn(
+      `[deal-admin-agent] client-awaiting-reply enrichment failed for deal=${deal.id}:`,
+      (err as Error).message,
+    );
+  }
+  return out;
+}
+
 /* ------------------------------------------------------------------ */
 /*  AI call                                                            */
 /* ------------------------------------------------------------------ */
