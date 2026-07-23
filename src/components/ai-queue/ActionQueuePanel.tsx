@@ -1955,9 +1955,17 @@ function DetailPane({
               </button>
               <button
                 type="button"
-                disabled={busy !== null || tasksIncomplete}
+                disabled={busy !== null}
                 title={tasksIncomplete ? 'Every task needs a title and an assignee' : undefined}
                 onClick={async () => {
+                  if (tasksIncomplete) {
+                    setShowTaskErrors(true);
+                    toast.error('Every task row needs a title and an assignee', {
+                      description:
+                        'Fill in the highlighted fields before creating tasks.',
+                    });
+                    return;
+                  }
                   setBusy('a');
                   await onApprove(editedCount > 0 ? { editedValues: edits } : undefined);
                   setBusy(null);
