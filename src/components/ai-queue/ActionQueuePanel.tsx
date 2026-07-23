@@ -875,12 +875,12 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   return (
     <div
       data-approval-queue-panel
-      className="relative flex flex-col h-full min-h-0 font-sans text-[#ecedf4] motion-reduce:transform-none"
+      className="relative flex flex-col h-full min-h-0 font-sans text-[#ecedf4] motion-reduce:transform-none rounded-xl border border-white/25 ring-1 ring-white/10 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] overflow-hidden"
     >
       {/* Ambient glows removed — detail pane matches Deal Details flat surface. */}
 
       {/* Header */}
-      <div className="relative px-4 py-2.5 border-b border-white/[0.20] flex items-center justify-between shrink-0">
+      <div className="relative px-4 py-2.5 border-b border-white/25 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <h2 className="text-[18px] leading-none tracking-tight" style={FONT_DISPLAY}>
             Approval Queue
@@ -907,7 +907,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       ) : (
         <div className="relative grid grid-cols-1 md:grid-cols-[392px_1fr] flex-1 min-h-0">
           {/* LEFT RAIL */}
-          <aside className="flex flex-col min-h-0 md:border-r border-white/[0.20]">
+          <aside className="flex flex-col min-h-0 md:border-r border-white/25">
             <div className="px-3 pt-2 pb-2 space-y-2 shrink-0">
               {/* Search + Me filter */}
               <div className="flex items-center gap-1.5">
