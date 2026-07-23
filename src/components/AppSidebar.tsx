@@ -41,6 +41,7 @@ const menuItems = [
   { title: "Deals", url: "/workspace?tab=deals", icon: Briefcase, featureKey: null }, // Always visible
   // Moved out of the global top header into the sidebar, ordered directly under Deals.
   { title: "Funding Sources", url: "/workspace?tab=lenders", icon: Landmark, featureKey: null },
+  { title: "Companies", url: "/crm-companies", icon: Building2, featureKey: null },
   { title: "Contacts", url: "/contacts", icon: Contact, featureKey: null },
   { title: "Reports", url: "/reports", icon: FileText, featureKey: "reports", hideForDemoEmail: true as const },
   
