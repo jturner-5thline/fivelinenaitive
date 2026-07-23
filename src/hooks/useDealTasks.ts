@@ -217,6 +217,18 @@ export function useDealTasks(dealId: string | undefined) {
               metadata: emailMetadata,
             },
           }).catch(e => console.error('Task assignment email failed:', e));
+
+          // In-app notification for the assignee (surfaces in the bell menu).
+          supabase.rpc('create_task_inapp_notification' as any, {
+            _task_id: createdTask.id,
+            _recipient_user_id: task.assigned_to,
+            _trigger_key: 'task_assigned',
+            _title: 'New task assigned',
+            _body: `${assignerProfile?.display_name || 'A teammate'} assigned you "${task.title}"${dealData?.company ? ` on ${dealData.company}` : ''}`,
+            _context: { task_id: createdTask.id, task_title: task.title, deal_id: dealId },
+          }).then(({ error }) => {
+            if (error) console.warn('[useDealTasks] in-app notify failed', error);
+          });
         }
       }
 
