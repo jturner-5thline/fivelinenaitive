@@ -289,6 +289,7 @@ interface DealSignalBundle {
   funding_sources: any[];
   status_notes: any[];
   activity: any[];
+  outstanding_items?: any[];
   stage_history: any[];
   milestones: any[];
   calendar_items: any[];
@@ -380,7 +381,8 @@ export function isInDealAdminAgentScope(c: CandidateItem): boolean {
     return (
       bundleKey.startsWith("schedule_call:") ||
       bundleKey.startsWith("draft_terms_feedback:") ||
-      bundleKey.startsWith("lender_followups:")
+      bundleKey.startsWith("lender_followups:") ||
+      bundleKey.startsWith("outstanding_items_reminder:")
     );
   }
   if (c.action_type === "update_funding_source") {
@@ -589,6 +591,38 @@ async function gatherSignalsForDeal(
     ...t,
     messages: threadMessages[t.thread_id] ?? [],
   }));
+
+  // Rule D-1 — Outstanding Items stale 2+ BD. Fetch pending, non-archived
+  // outstanding items for this deal and compute business-days-stale from
+  // the item's created_at (or last updated_at, whichever is more recent
+  // and still reflects "waiting on the client"). The LLM decides whether
+  // to emit the client-reminder AQ item.
+  const { data: outstandingRows } = await supabase
+    .from("outstanding_items")
+    .select("id, deal_id, description, status, due_date, priority, assigned_to, created_at, updated_at, is_archived, lender_id")
+    .eq("deal_id", deal.id)
+    .eq("is_archived", false)
+    .neq("status", "completed")
+    .neq("status", "resolved")
+    .order("created_at", { ascending: true })
+    .limit(30);
+  const _today = new Date();
+  const outstandingItems = (outstandingRows ?? []).map((it: any) => {
+    const anchor = it.created_at ?? it.updated_at ?? null;
+    const bd = anchor ? businessDaysBetween(new Date(anchor), _today) : null;
+    return {
+      id: it.id,
+      description: it.description,
+      status: it.status,
+      priority: it.priority,
+      due_date: it.due_date,
+      assigned_to: it.assigned_to,
+      lender_id: it.lender_id,
+      created_at: it.created_at,
+      updated_at: it.updated_at,
+      business_days_stale: bd,
+    };
+  });
 
   // Pre-compute "business days since last lender contact" for each funding
   // source so the prompt can apply the 3-BD follow-up rule deterministically.
@@ -944,6 +978,7 @@ async function gatherSignalsForDeal(
     funding_sources: fundingWithBd,
     status_notes: notes.data ?? [],
     activity: act.data ?? [],
+    outstanding_items: outstandingItems,
     stage_history: hist.data ?? [],
     milestones: mile.data ?? [],
     calendar_items: [
@@ -1449,7 +1484,46 @@ USER SENT LENDER EMAIL, NO REPLY IN 2 BUSINESS DAYS (5 BD if lender was previous
 - NEVER emit this trigger from an outbound sent by the lender to us, from an inbound thread, or when there is no outbound_awaiting_reply payload on any funding source — the rule keys ENTIRELY off outbound_awaiting_reply.
 - This rule OVERRIDES the earlier "one proposal per lender" phrasing in any other section — L-4 is always consolidated per deal.`;
 
-const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES + TERMS_ISSUED_RULES + SCHEDULE_CALL_RULES + OUTBOUND_FOLLOWUP_RULES;
+const OUTSTANDING_ITEMS_REMINDER_RULES = `
+
+OUTSTANDING-ITEMS-STALE TRIGGER — Rule D-1 (approved, mandatory)
+CLIENT HAS NOT RESOLVED OUTSTANDING ITEMS IN 2+ BUSINESS DAYS
+- INPUT: bundle.outstanding_items[] rows for this deal. Each row carries { id, description, status, priority, due_date, created_at, updated_at, business_days_stale, lender_id }. Only non-archived, non-completed items are surfaced.
+- FIRE ONLY IF ALL of the following are true for the DEAL:
+    1. bundle.outstanding_items contains at least one item where business_days_stale >= 2 (strict business-day count from created_at).
+    2. The deal is on the active pipeline (already enforced by the sweep — you just need to emit).
+    3. The stale items look like items the CLIENT (borrower / referral contact on the deal) is expected to provide — e.g. financials, documents, KYC, tax returns, org chart, cap table, answers to lender diligence questions. Skip items whose description clearly targets a lender or an internal 5th Line teammate (e.g. "5L to draft memo", "Analyst to build model") — those are not client reminders.
+- CONSOLIDATION (mandatory): all stale outstanding-item reminders for the SAME deal collapse into ONE AQ item. Never emit one item per outstanding row. If ZERO stale, client-facing items remain after filtering, emit NOTHING under this rule.
+- WHEN AT LEAST ONE qualifying stale item exists, emit EXACTLY ONE proposal per deal per scan:
+    action_type = "create_followup_task"
+    item_title  = "Remind client on {Deal}: {N} outstanding item{s} waiting {maxBd}+ BD"
+    target_object_type = "deal"
+    target_object_id   = the deal id
+    requires_send_ui   = false
+    proposed_values = {
+      title: "Send client reminder on {Deal} — {N} outstanding item{s} waiting",
+      description: "Confirm sending a reminder email to the primary client contact on this deal. The draft is NOT sent automatically — you approve here, then the composer opens prefilled with the items below.\n\n" +
+                   "Items awaiting the client (oldest first):\n" +
+                   "• \"{item.description}\" — waiting {business_days_stale} business day{s}" +
+                   " (one bullet per qualifying outstanding item, oldest first, cap at 8 bullets and append \"…and {K} more\" if more)",
+      assignee_user_id: deal.owner_user_id,
+      due_in_business_days: 1,
+      outstanding_items: [
+        { id, description, business_days_stale, priority, due_date }
+        // one entry per qualifying stale item on this deal, sorted oldest first
+      ],
+      bundle_key: "outstanding_items_reminder:{deal_id}"
+    }
+    rationale_summary = "{N} outstanding item{s} on {Deal} have been waiting on the client for {maxBd}+ business days — surfacing a single reminder prompt so the deal owner can confirm and send."
+    evidence_summary  = REQUIRED. <= 240 chars, neutral, factual, listing up to 3 items in the shape "\"{short description}\" ({N} BD)" separated by "; ". If more than 3, append "; +{K} more".
+    evidence_references MUST cite each qualifying outstanding item (kind="outstanding_item", id=<item.id>, label="Outstanding item — {short description}").
+    confidence_score >= 0.7.
+- DEDUPE: at most ONE consolidated create_followup_task per deal per scan under this rule. The bundle_key "outstanding_items_reminder:{deal_id}" is the dedupe key.
+- The user MUST approve before any client email is drafted or sent. This proposal only surfaces the ask — the actual email composer opens on approval, and the user reviews/sends manually. The agent NEVER sends automatically.
+- If any outstanding item is marked completed / resolved / archived before the next scan, drop it from the bundle. If ALL qualifying items are cleared, the consolidated AQ item is auto-resolved by the executor.
+- NEVER emit this trigger when bundle.outstanding_items is empty or contains only lender-facing / internal-facing items — the rule is exclusively for pinging the CLIENT.`;
+
+const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES + TERMS_ISSUED_RULES + SCHEDULE_CALL_RULES + OUTBOUND_FOLLOWUP_RULES + OUTSTANDING_ITEMS_REMINDER_RULES;
 
 function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null): string {
   // Trim large fields to keep prompt compact.
@@ -1490,6 +1564,17 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
     })),
     status_notes: bundle.status_notes.map((n) => ({
       id: n.id, created_at: n.created_at, note: trim(n.note, 200),
+    })),
+    outstanding_items: (bundle.outstanding_items ?? []).map((it: any) => ({
+      id: it.id,
+      description: trim(it.description, 240),
+      status: it.status,
+      priority: it.priority,
+      due_date: it.due_date,
+      created_at: it.created_at,
+      updated_at: it.updated_at,
+      business_days_stale: it.business_days_stale,
+      lender_id: it.lender_id,
     })),
     recent_activity: bundle.activity.map((a) => ({
       source: a.source, action_type: a.action_type, created_at: a.created_at,
