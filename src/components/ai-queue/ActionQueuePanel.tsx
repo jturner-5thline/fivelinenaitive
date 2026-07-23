@@ -1953,7 +1953,8 @@ function DetailPane({
               </button>
               <button
                 type="button"
-                disabled={busy !== null}
+                disabled={busy !== null || tasksIncomplete}
+                title={tasksIncomplete ? 'Every task needs a title and an assignee' : undefined}
                 onClick={async () => {
                   setBusy('a');
                   await onApprove(editedCount > 0 ? { editedValues: edits } : undefined);
