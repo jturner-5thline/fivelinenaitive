@@ -614,6 +614,8 @@
   }
   .panel-shell {
     border-radius: 0.75rem;
+    border: 1px solid rgba(var(--panel-border-rgb), 0.6);
+    background-image: linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%);
     overflow: hidden;
   }
   .panel-divider-b {
@@ -624,7 +626,7 @@
   }
   .panel-pane {
     border-radius: 0.75rem;
-    background-color: hsl(var(--background) / 0.4);
+    background-color: transparent;
   }
   .panel-item {
     border: 1px solid rgba(var(--panel-border-rgb), 0.6);
