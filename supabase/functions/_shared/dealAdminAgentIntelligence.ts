@@ -1646,7 +1646,63 @@ CLIENT HAS NOT RESOLVED OUTSTANDING ITEMS IN 2+ BUSINESS DAYS
 - If any outstanding item is marked completed / resolved / archived before the next scan, drop it from the bundle. If ALL qualifying items are cleared, the consolidated AQ item is auto-resolved by the executor.
 - NEVER emit this trigger when bundle.outstanding_items is empty or contains only lender-facing / internal-facing items — the rule is exclusively for pinging the CLIENT.`;
 
-const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES + TERMS_ISSUED_RULES + SCHEDULE_CALL_RULES + OUTBOUND_FOLLOWUP_RULES + OUTSTANDING_ITEMS_REMINDER_RULES;
+const CLIENT_FOLLOWUP_RULES = `
+
+CLIENT-SILENT-3BD TRIGGER — Rule D-2 (approved, mandatory)
+USER SENT CLIENT CONTACT EMAIL, NO REPLY IN 3 BUSINESS DAYS
+- INPUT: bundle.client_contacts[] rows for this deal. Each row is a client contact linked to the deal via contact_deals and carries:
+    { contact_id, name, email, role,
+      outbound_awaiting_reply: { gmail_message_id, thread_id, sent_at, subject, body_excerpt, business_days_since_sent, replied, reply_received_at } | null,
+      candidate_threads: [ { thread_id, subject, latest_message_at }, ... up to 5 recent threads with this contact ] }
+  outbound_awaiting_reply is the MOST RECENT outbound email a user in this workspace sent to this contact's email. The clock resets automatically each time the user sends a new email (that new send becomes the "most recent" and its sent_at becomes the new anchor). A reply from this contact after sent_at flips replied=true and cancels the clock.
+- DETERMINE PER CLIENT CONTACT whether they are "past threshold":
+    1. outbound_awaiting_reply is present (not null).
+    2. outbound_awaiting_reply.replied === false (contact has NOT replied since sent_at).
+    3. outbound_awaiting_reply.business_days_since_sent >= 3 (strict business-day count — weekends excluded).
+    4. YOUR JUDGMENT — the outbound (subject + body_excerpt) genuinely WARRANTS A REPLY. Purely informational blasts, "no reply needed" FYIs, calendar invites, and out-of-office style messages DO NOT warrant a reply — skip them.
+    5. If outbound_awaiting_reply.replied === true at any point before this scan, the clock is cancelled — the contact is NOT past threshold, no matter the day count.
+- CONSOLIDATION (mandatory): all client follow-up prompts for the SAME deal collapse into ONE AQ item. Do NOT emit one item per contact. If ZERO client contacts on the deal are past threshold, emit NOTHING under this rule.
+- WHEN AT LEAST ONE client contact on the deal is past threshold, emit EXACTLY ONE proposal per deal per scan:
+    action_type = "create_followup_task"
+    item_title  = "Follow up with client on {Deal}: {N} contact{s} silent 3+ BD"
+    target_object_type = "deal"
+    target_object_id   = the deal id
+    requires_send_ui   = false
+    proposed_values = {
+      title: "Follow up with client on {Deal} — {N} contact{s} silent {maxBd}+ BD",
+      description: "TWO-STEP CONFIRMATION REQUIRED — the agent will NOT draft or send anything until you (1) SELECT the specific thread to follow up in, and (2) CONFIRM that the agent should draft the follow-up in that thread. On confirmation the draft opens in the selected thread for your review before sending — the agent NEVER sends automatically.\n\n" +
+                   "For each silent client contact, include one bullet in this exact shape:\n" +
+                   "• {Contact name} <{email}> — last sent {Mon DD} (\"{verbatim short quote of the ask, <= 12 words}\"), no reply in {N} business days",
+      assignee_user_id: deal.owner_user_id,
+      due_in_business_days: 1,
+      confirmation_mode: "two_step_thread_select_then_draft",
+      confirmation_steps: [
+        { id: "select_thread", label: "Select the specific thread to follow up in" },
+        { id: "confirm_draft", label: "Confirm the agent should draft a follow-up in that thread" }
+      ],
+      client_contacts: [
+        {
+          contact_id, name, email,
+          sent_at, subject, business_days_since_sent,
+          latest_outbound_thread_id,   // outbound_awaiting_reply.thread_id
+          latest_outbound_message_id,  // outbound_awaiting_reply.gmail_message_id
+          candidate_threads: [ { thread_id, subject, latest_message_at }, ... ]
+        }
+        // one entry per past-threshold client contact on this deal
+      ],
+      bundle_key: "client_followup:{deal_id}"
+    }
+    rationale_summary = "{N} client contact{s} on {Deal} silent for {maxBd}+ business days — surfacing a single prompt for the deal owner to pick the thread and confirm the draft."
+    evidence_summary  = REQUIRED. <= 240 chars, neutral, factual, listing up to 3 contacts in the shape "{Contact} ({N} BD)" separated by "; ". If more than 3, append "; +{K} more".
+    evidence_references MUST cite each past-threshold contact's most recent outbound (kind="email", label="Outbound email to {Contact}") — one reference per contact in the bundle.
+    confidence_score >= 0.7.
+- DEDUPE: at most ONE consolidated create_followup_task per deal per scan under this rule. The bundle_key "client_followup:{deal_id}" is the dedupe key — never emit a second follow-up item for the same deal in the same scan.
+- If any client contact replies before the next scan, their outbound_awaiting_reply.replied flag flips to true — drop them from the consolidated bundle. If ALL contacts reply, the consolidated item is auto-resolved by the executor.
+- If the user sends another email to a still-silent contact before the next scan, the enrichment resets that contact's sent_at (and business_days_since_sent) to the new send — DO NOT emit a follow-up for that contact until the clock crosses 3 BD again.
+- NEVER emit this trigger from an outbound sent by the client to us, from an inbound thread, or when there is no outbound_awaiting_reply payload on any client contact — the rule keys ENTIRELY off outbound_awaiting_reply.
+- NEVER route this trigger to lenders, referral sources, or internal 5th Line teammates — the rule is exclusively for CLIENT contacts on bundle.client_contacts[].`;
+
+const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES + TERMS_ISSUED_RULES + SCHEDULE_CALL_RULES + OUTBOUND_FOLLOWUP_RULES + OUTSTANDING_ITEMS_REMINDER_RULES + CLIENT_FOLLOWUP_RULES;
 
 function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null): string {
   // Trim large fields to keep prompt compact.
