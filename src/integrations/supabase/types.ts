@@ -5442,6 +5442,7 @@ export type Database = {
           deal_sourced_via_options: Json | null
           deal_stages: Json | null
           deal_types: Json | null
+          deals_hidden_widget_metrics: Json
           deals_special_widgets: Json | null
           deals_widgets_config: Json | null
           default_deal_stage_id: string | null
@@ -5464,6 +5465,7 @@ export type Database = {
           deal_sourced_via_options?: Json | null
           deal_stages?: Json | null
           deal_types?: Json | null
+          deals_hidden_widget_metrics?: Json
           deals_special_widgets?: Json | null
           deals_widgets_config?: Json | null
           default_deal_stage_id?: string | null
@@ -5486,6 +5488,7 @@ export type Database = {
           deal_sourced_via_options?: Json | null
           deal_stages?: Json | null
           deal_types?: Json | null
+          deals_hidden_widget_metrics?: Json
           deals_special_widgets?: Json | null
           deals_widgets_config?: Json | null
           default_deal_stage_id?: string | null
