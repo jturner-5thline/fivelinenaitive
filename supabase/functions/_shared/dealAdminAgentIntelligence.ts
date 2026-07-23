@@ -698,6 +698,12 @@ async function gatherSignalsForDeal(
       business_days_since_last_contact: bd,
       stage_label: stageLabel,
       substage_label: substageLabel,
+      // Real, on-file contacts for this funding source. Populated below by
+      // merging `lender_contacts` (multi-contact directory) with the
+      // primary contact stored directly on `master_lenders` (name/email/title).
+      // The Deal Admin Agent MUST route lender-facing draft_email items to
+      // one of these addresses — never a synthetic `contact@<domain>`.
+      contacts: [] as Array<{ name: string | null; email: string; title: string | null }>,
     };
   });
 
@@ -717,10 +723,16 @@ async function gatherSignalsForDeal(
       ),
     );
     const emailsByMaster = new Map<string, string[]>();
+    // Full contact rows (name + email + title) keyed by master_lender_id, so
+    // we can attach real people to each funding_sources[] row in the payload.
+    const contactsByMaster = new Map<
+      string,
+      Array<{ name: string | null; email: string; title: string | null }>
+    >();
     if (masterIds.length > 0) {
       const { data: lcs } = await supabase
         .from("lender_contacts")
-        .select("lender_id, email")
+        .select("lender_id, name, email, title, is_primary")
         .in("lender_id", masterIds);
       for (const lc of (lcs ?? []) as any[]) {
         const e = (lc.email as string | null)?.toLowerCase();
@@ -728,9 +740,48 @@ async function gatherSignalsForDeal(
         const arr = emailsByMaster.get(lc.lender_id) ?? [];
         if (!arr.includes(e)) arr.push(e);
         emailsByMaster.set(lc.lender_id, arr);
+        const list = contactsByMaster.get(lc.lender_id) ?? [];
+        if (!list.some((c) => c.email.toLowerCase() === e)) {
+          list.push({
+            name: (lc.name as string | null) ?? null,
+            email: e,
+            title: (lc.title as string | null) ?? null,
+          });
+        }
+        contactsByMaster.set(lc.lender_id, list);
+      }
+
+      // Fallback: many master_lenders carry the primary contact directly on
+      // the row (`email` + `contact_name` + `contact_title`) without a
+      // matching `lender_contacts` record. Merge those so the agent has SOME
+      // real address to target instead of hallucinating `contact@<domain>`.
+      const { data: mls } = await supabase
+        .from("master_lenders")
+        .select("id, email, contact_name, contact_title")
+        .in("id", masterIds);
+      for (const ml of (mls ?? []) as any[]) {
+        const e = (ml.email as string | null)?.trim().toLowerCase();
+        if (!e || !ml.id) continue;
+        const arr = emailsByMaster.get(ml.id) ?? [];
+        if (!arr.includes(e)) arr.push(e);
+        emailsByMaster.set(ml.id, arr);
+        const list = contactsByMaster.get(ml.id) ?? [];
+        if (!list.some((c) => c.email.toLowerCase() === e)) {
+          list.push({
+            name: (ml.contact_name as string | null) ?? null,
+            email: e,
+            title: (ml.contact_title as string | null) ?? null,
+          });
+        }
+        contactsByMaster.set(ml.id, list);
       }
     }
     for (const f of fundingWithBd) {
+      // Attach resolved contacts to the funding source (empty array if none
+      // on file — the prompt uses this to decide whether it may draft an
+      // email at all).
+      (f as any).contacts =
+        (f.master_lender_id && contactsByMaster.get(f.master_lender_id)) || [];
       const contactEmails: string[] =
         (f.master_lender_id && emailsByMaster.get(f.master_lender_id)) || [];
       if (contactEmails.length === 0) {
