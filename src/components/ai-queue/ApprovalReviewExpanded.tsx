@@ -232,7 +232,7 @@ export function ApprovalReviewExpanded({ item, onDone }: Props) {
       )}
 
       {/* Rationale */}
-      {item.rationale && (
+      {!isUpdateTasksPrompt && item.rationale && (
         <div>
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Rationale</p>
           <p className="text-[13px] text-white">{toSingleSentence(item.rationale)}</p>

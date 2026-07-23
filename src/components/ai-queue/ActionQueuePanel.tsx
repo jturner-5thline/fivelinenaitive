@@ -1319,7 +1319,7 @@ function BundlePreviewDrawer({
                 >
                   {c.title}
                 </p>
-                {c.description && (
+                {c.description && !(c.action_type === 'create_followup_task' && (c.new_values as any)?._synthetic === 'update_tasks') && (
                   <p
                     className="mt-1 text-[11.5px] text-[#ecedf4]/60 leading-snug line-clamp-3"
                     style={FONT_BODY}
@@ -1961,12 +1961,14 @@ function DetailPane({
           </div>
 
           {/* Rationale */}
-          <p
-            className="text-[14px] leading-[1.6] text-white max-w-[72ch]"
-            style={FONT_BODY}
-          >
-            {toSingleSentence(item.rationale || buildRationaleFallback(item))}
-          </p>
+          {!isUpdateTasksPrompt && (
+            <p
+              className="text-[14px] leading-[1.6] text-white max-w-[72ch]"
+              style={FONT_BODY}
+            >
+              {toSingleSentence(item.rationale || buildRationaleFallback(item))}
+            </p>
+          )}
 
           {/* Evidence snippet — short neutral quote of the triggering signal
               (e.g. the connect/schedule language from the inbound lender
