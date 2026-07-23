@@ -108,7 +108,7 @@ export function useEndOfDayOutstandingCount(): number {
     const now = Date.now();
     let count = 0;
     for (const ev of events) {
-      const start = safeParse(ev.start?.dateTime || ev.start?.date);
+      const start = safeParse(ev.start);
       if (!start || start < ws || start > we) continue;
       const otherCount = (ev.attendees || []).filter((a: any) => !a.self).length;
       if (otherCount === 0) continue;
