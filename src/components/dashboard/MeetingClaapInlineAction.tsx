@@ -63,6 +63,44 @@ export function MeetingClaapInlineAction(props: Props) {
   const [refreshTick, setRefreshTick] = useState(0);
   const [rankPending, setRankPending] = useState(false);
 
+  // Client-side gate: once we auto-attempt a search for this event and it
+  // completes (whether or not a match was found and whether or not the DB
+  // cache write succeeded), don't auto-retry. The user must click
+  // "Find again" to run another attempt. Prevents wasted Claap API calls
+  // for meetings that will never have a recording (e.g. internal syncs).
+  const AUTO_ATTEMPT_STORAGE_KEY = 'claap:auto-attempted-events';
+  const readAutoAttempted = (): Set<string> => {
+    try {
+      const raw = typeof window !== 'undefined' ? window.localStorage.getItem(AUTO_ATTEMPT_STORAGE_KEY) : null;
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw);
+      return new Set(Array.isArray(arr) ? arr.filter((x) => typeof x === 'string') : []);
+    } catch {
+      return new Set();
+    }
+  };
+  const markAutoAttempted = (id: string) => {
+    try {
+      const set = readAutoAttempted();
+      set.add(id);
+      // Cap to last 500 to prevent unbounded growth.
+      const trimmed = Array.from(set).slice(-500);
+      window.localStorage.setItem(AUTO_ATTEMPT_STORAGE_KEY, JSON.stringify(trimmed));
+    } catch {
+      /* ignore quota / storage errors */
+    }
+  };
+  const clearAutoAttempted = (id: string) => {
+    try {
+      const set = readAutoAttempted();
+      if (set.delete(id)) {
+        window.localStorage.setItem(AUTO_ATTEMPT_STORAGE_KEY, JSON.stringify(Array.from(set)));
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
   // Existing manual link for this event
   const { data: existing, isLoading: existingLoading, isFetching: existingFetching } = useQuery<ExistingLinkRow | null>({
     queryKey: ['event-claap-inline-link', eventId, company?.id],
@@ -199,7 +237,9 @@ export function MeetingClaapInlineAction(props: Props) {
   }, [eventId, fetchRecordings]);
 
   // Trigger requestGenerate ONLY when: no stored cache, not already linked,
-  // and either first mount or an explicit refresh tick.
+  // and either first mount or an explicit refresh tick. Additionally,
+  // skip if this event has already been auto-attempted in a prior session
+  // (localStorage-tracked) — the user must click "Find again" to retry.
   const hasStored = !!cached; // any row (including 'none') means we've asked before
   useEffect(() => {
     if (!eventId) return;
@@ -207,6 +247,8 @@ export function MeetingClaapInlineAction(props: Props) {
     if (existing || canonicalLinked) return;      // already linked upstream
     if (hasStored && refreshTick === 0) return;   // stored answer — read only
     if (ranking || rankPending) return;
+    // Session-persistent gate: don't auto-retry if we've already attempted.
+    if (refreshTick === 0 && readAutoAttempted().has(eventId)) return;
     requestGenerate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId, existing, existingLoading, existingFetching, canonicalLinked, canonicalLoading, cachedLoading, cachedFetching, hasStored, refreshTick]);
