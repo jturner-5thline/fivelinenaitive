@@ -1144,6 +1144,54 @@ REFERRAL SOURCE UPDATE RULES (use referral_sources[])
 
 const TERMS_ISSUED_RULES = `
 
+LENDER PASS / NOT-A-FIT — HIGH-PRIORITY BUNDLE (Rule L-2, apply whenever an inbound lender email is declining)
+
+- TRIGGER: an inbound email from a lender/funding source contact whose body or subject clearly declines. Match any of (case-insensitive, non-exhaustive): "pass", "we'll pass", "we are passing", "passing on this", "have to pass", "taking a pass", "it's a pass", "decline", "declining", "not going to be able to get comfortable", "not moving forward", "not interested at this time", "not a fit", "not for us", "doesn't fit our box/mandate", "outside our criteria", "outside our mandate", "not in our wheelhouse". Also match reasonably similar phrasing.
+- IDENTIFICATION IS MANDATORY: before emitting anything, correctly resolve (a) the deal (bundle.deal_id, via linked email or unlinked_terms_emails[].matched_deal_name) AND (b) the specific funding_sources[] row for the sender (match unlinked_terms_emails[].from_email or emails[].from to funding_sources[].contacts.email OR the contact-email domain). If either cannot be resolved with confidence, SKIP the trigger — do not invent a funding source.
+- RECOMMEND PASSED vs NOT_A_FIT (agent recommends; Manager decides in the queue):
+    • Use stage="not_a_fit" (recommended) when the email's stated reason is a MANDATE / BOX / FIT mismatch — the deal itself is outside the lender's criteria (size, industry, geography, structure, product) regardless of this specific transaction. Trigger phrases include "not a fit", "not for us", "doesn't fit our box/mandate", "outside our criteria/mandate", "not in our wheelhouse".
+    • Use stage="passed" (recommended) when the lender is declining APPETITE / CREDIT / TIMING on THIS specific deal but the deal is otherwise within their box. Trigger phrases include "we'll pass", "passing on this", "have to pass", "decline", "not going to be able to get comfortable", "not moving forward", "not interested at this time".
+    • If the email mixes both signals, prefer stage="not_a_fit" and note the ambiguity in rationale — the Manager can flip to "passed" in the queue.
+- EMIT EXACTLY ONE BUNDLE per (deal, funding_source.id) per scan, containing TWO proposals sharing bundle_key = \`lender_pass:{deal_id}:{funding_source_id}\`:
+
+    P1) update_funding_source — the primary lender status move.
+          target_object_type = "deal_lender", target_object_id = funding_sources[].id.
+          proposed_values = {
+            stage: "not_a_fit" | "passed",   // agent's recommendation per rules above
+            tracking_status: "not_a_fit" | "passed",  // mirror stage
+            pass_reason_category: <one of: "deal_size_mismatch" | "industry_exclusion" | "geographic_restriction" | "risk_profile_concerns" | "timing_issues" | "relationship_issues" | "terms_mismatch" | "other">,
+            pass_reason: "<verbatim quote of the lender's stated reason from the email body — NOT a paraphrase; the exact language they used. If the email states no reason at all, set pass_reason=\"No reason provided\" and pass_reason_category=\"other\">",
+            commentary: "<the verbatim lender-stated reason, same content as pass_reason, preserved word-for-word for the commentary field on the funding source>",
+            notes: "<the same verbatim excerpt trimmed to <= 1200 chars>",
+            bundle_key: "lender_pass:{deal_id}:{funding_source_id}"
+          }
+          PASS-REASON CATEGORY PRE-SELECTION IS MANDATORY (the field is NEVER blank). Map the lender's stated reason to the closest category using the guidance below. The Manager can change it in the queue — but the agent must pre-select the best match, not defer:
+            • deal_size_mismatch — reason references deal size / check size / minimum or maximum size / hold size (e.g. "too small for us", "below our minimum", "above our hold").
+            • industry_exclusion — reason references industry / sector / vertical / business type exclusion (e.g. "we don't lend to SaaS", "we avoid healthcare services").
+            • geographic_restriction — reason references geography / region / country / state / jurisdiction (e.g. "outside our footprint", "we don't lend in Canada").
+            • risk_profile_concerns — reason references credit / leverage / cash flow / EBITDA / concentration / customer concentration / covenant / rating / underwriting concerns (e.g. "leverage too high", "cash flow coverage is thin", "customer concentration risk").
+            • timing_issues — reason references timing / capacity / bandwidth / pipeline / quarter / freeze (e.g. "we're at capacity this quarter", "in a credit freeze right now", "revisit next year").
+            • relationship_issues — reason references sponsor / management / prior deal / reputational concerns (e.g. "prior experience with sponsor", "management team concerns").
+            • terms_mismatch — reason references pricing / structure / rate / fees / covenants / structure being unworkable for them (e.g. "pricing doesn't work for us", "structure isn't what we do").
+            • other — only when the reason genuinely doesn't map to any category above (or when pass_reason="No reason provided").
+          rationale: "{Lender} is {passing on|saying not-a-fit for} {Deal}. Reason (verbatim from their email): \"{short quote}\". Recommending status={Passed|Not a Fit} with pass reason category={Category Label} — Manager to confirm or adjust in the queue."
+          evidence_references MUST cite the inbound email (kind="email").
+
+    P2) add_status_note — the deal-level status note.
+          target_object_type = "deal", target_object_id = deal_id.
+          proposed_values = {
+            note: "<1–2 sentence NEUTRAL FACTUAL summary of why the lender is passing / calling it not-a-fit, grounded strictly in the email content. No filler, no speculation, no advocacy language. Hard cap 2 sentences. Include the lender name and, when present, the stated reason.>",
+            bundle_key: "lender_pass:{deal_id}:{funding_source_id}"
+          }
+          Example: "Silver Point passed on Acme — leverage above their comfort at 5.5x. They noted willingness to revisit if the structure moves to a unitranche with tighter covenants."
+          evidence_references MUST cite the same inbound email.
+
+- DEDUPE / ONE-PER-LENDER: emit the bundle at most ONCE per (deal, funding_source.id) per scan. If multiple pass emails from the same lender exist in the window, cite the MOST RECENT one as primary evidence. Never emit two lender-pass bundles for the same (deal, lender).
+- TERMINAL LENDER GUARD applies: if the funding source is already in a terminal state (passed / not_a_fit / declined / withdrawn / dead / lost / rejected / closed / no_go), SKIP — there is nothing to move.
+- NEVER SELF-CERTIFY: the agent RECOMMENDS the stage (passed vs not_a_fit) and PRE-SELECTS the pass_reason_category, but the Manager is the final decision-maker in the queue. Do not include phrasing that treats the recommendation as final ("this qualifies as", "confirmed as", "final status") — use recommendation language ("recommending", "closest match", "Manager to confirm").
+- The verbatim quote in pass_reason / commentary MUST come from the lender's actual email body (or unlinked_terms_emails[].snippet if that's the only excerpt available). Never fabricate or embellish. If the excerpt is longer than ~400 chars, keep it verbatim but you may trim tail whitespace / signature.
+
+
 TERM SHEET / IOI / LOI RECEIVED — HIGH-PRIORITY BUNDLE (apply whenever a lender contact sends terms)
 
 DRAFT vs OFFICIAL — MUST DECIDE FIRST (Rule L-1):
