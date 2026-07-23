@@ -302,6 +302,7 @@ function stripNeedsTasksRationale(item: QueuedAiAction): QueuedAiAction {
     ...item,
     description: null,
     rationale: null,
+    evidence: [],
     new_values: newValues,
     payload,
   };
