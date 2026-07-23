@@ -4813,7 +4813,7 @@ async function reconcileStalePendingApprovals(
     // Read current new_values to merge (avoid clobbering the bundle payload).
     const { data: currentRow } = await supabase
       .from("ai_action_queue")
-      .select("new_values")
+      .select("new_values, deal_id")
       .eq("id", itemId)
       .maybeSingle();
     const currentNV = (currentRow?.new_values as any) ?? {};
@@ -4838,7 +4838,7 @@ async function reconcileStalePendingApprovals(
       })
       .eq("id", itemId)
       .eq("status", "pending")
-      .select("id");
+      .select("id, deal_id");
     if (fErr) {
       console.log(`[deal-admin-agent] followup dismiss failed for ${itemId}: ${fErr.message}`);
       continue;
