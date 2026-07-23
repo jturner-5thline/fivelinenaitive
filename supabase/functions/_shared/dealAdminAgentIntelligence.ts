@@ -3125,6 +3125,11 @@ async function maybeBuildUpdateTasksCandidate(
     proposed_values: {
       _synthetic: "update_tasks",
       bundle_key: `needs_tasks:${deal.id}`,
+      // Top-level `title` is required by isValidCandidate for
+      // create_followup_task. The synthetic "Needs Tasks" card is a
+      // container for one or more tasks the reviewer fills in, so the
+      // title mirrors the item_title.
+      title: `${dealName} Needs Tasks`,
       // Seed the details panel with a single blank task row so the
       // reviewer sees the task-creation UI immediately. They can add
       // more rows (title / due date / assignee) before approving —
