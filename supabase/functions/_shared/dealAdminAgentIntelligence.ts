@@ -379,7 +379,8 @@ export function isInDealAdminAgentScope(c: CandidateItem): boolean {
     const bundleKey = typeof pv.bundle_key === "string" ? pv.bundle_key : "";
     return (
       bundleKey.startsWith("schedule_call:") ||
-      bundleKey.startsWith("draft_terms_feedback:")
+      bundleKey.startsWith("draft_terms_feedback:") ||
+      bundleKey.startsWith("lender_followups:")
     );
   }
   if (c.action_type === "update_funding_source") {
