@@ -1,7 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { CalendarPlus, ListPlus, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMeetingClaapContext } from '@/hooks/useMeetingClaapContext';
@@ -90,12 +96,33 @@ export function MeetingCreateFollowUpAction({
     setOpen(true);
   };
 
-  // Default button — anchors the popover.
+  const dialogContent = prefill && (
+    <DialogContent className="max-w-lg w-[calc(100vw-2rem)] p-0 overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/40 bg-[linear-gradient(160deg,hsl(var(--card))_0%,hsl(var(--popover))_55%,hsl(var(--muted))_100%)] z-[120]">
+      <DialogHeader className="px-4 pt-4 pb-2">
+        <DialogTitle className="flex items-center gap-2 text-sm">
+          <Sparkles className="h-4 w-4 text-primary" />
+          Create follow-up
+        </DialogTitle>
+        <DialogDescription className="text-xs">
+          Create a task and/or add an event to the deal calendar.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="px-4 pb-4 max-h-[70vh] overflow-y-auto">
+        <AddToDealCalendarForm
+          prefill={prefill}
+          onClose={() => setOpen(false)}
+          compact
+          resetKey={`${eventId}:${initialTitleSeed ?? ''}:${open ? 'open' : 'closed'}`}
+        />
+      </div>
+    </DialogContent>
+  );
+
+  // Default button — opens centered dialog.
   if (suggestions.length === 0) {
     return (
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
+      <Dialog open={open} onOpenChange={setOpen}>
+        <Button
             size="sm"
             variant="outline"
             className="h-8 w-full min-w-0 justify-start gap-1.5 px-2 text-xs"
@@ -109,31 +136,14 @@ export function MeetingCreateFollowUpAction({
             )}
             <span className="truncate">Create follow-up</span>
           </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="start"
-          side="bottom"
-          sideOffset={6}
-          collisionPadding={{ top: 12, bottom: 24, left: 12, right: 12 }}
-          avoidCollisions
-          className="w-[500px] max-w-[calc(100vw-2rem)] p-2.5 z-[80] rounded-lg border-transparent glass-border-soft bg-card text-popover-foreground shadow-2xl shadow-black/40 flex flex-col max-h-[min(var(--radix-popover-content-available-height),26rem)] overflow-hidden"
-        >
-          {prefill && (
-            <AddToDealCalendarForm
-              prefill={prefill}
-              onClose={() => setOpen(false)}
-              compact
-              resetKey={`${eventId}:${initialTitleSeed ?? ''}:${open ? 'open' : 'closed'}`}
-            />
-          )}
-        </PopoverContent>
-      </Popover>
+        {dialogContent}
+      </Dialog>
     );
   }
 
   // AI-suggested variant — Review chip pops the same form with the first suggestion.
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <div
         className={cn(
           'rounded-md border px-2.5 py-1.5 flex items-center gap-2',
@@ -155,8 +165,7 @@ export function MeetingCreateFollowUpAction({
         >
           <Sparkles className="h-2.5 w-2.5 mr-0.5" /> AI suggested
         </Badge>
-        <PopoverTrigger asChild>
-          <Button
+        <Button
             size="sm"
             variant="ghost"
             className="h-6 px-2 text-[10px] gap-1 text-emerald-200 hover:text-emerald-100 hover:bg-emerald-500/10 shrink-0"
@@ -164,25 +173,8 @@ export function MeetingCreateFollowUpAction({
           >
             Review
           </Button>
-        </PopoverTrigger>
       </div>
-      <PopoverContent
-        align="start"
-        side="bottom"
-        sideOffset={6}
-        collisionPadding={{ top: 12, bottom: 24, left: 12, right: 12 }}
-        avoidCollisions
-        className="w-[500px] max-w-[calc(100vw-2rem)] p-2.5 z-[80] rounded-lg border-transparent glass-border-soft bg-card text-popover-foreground shadow-2xl shadow-black/40 flex flex-col max-h-[min(var(--radix-popover-content-available-height),26rem)] overflow-hidden"
-      >
-        {prefill && (
-          <AddToDealCalendarForm
-            prefill={prefill}
-            onClose={() => setOpen(false)}
-            compact
-            resetKey={`${eventId}:${initialTitleSeed ?? ''}:${open ? 'open' : 'closed'}`}
-          />
-        )}
-      </PopoverContent>
-    </Popover>
+      {dialogContent}
+    </Dialog>
   );
 }
