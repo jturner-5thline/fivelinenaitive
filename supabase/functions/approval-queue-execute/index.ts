@@ -499,8 +499,12 @@ Deno.serve(async (req) => {
         if (rows.length === 0 || !rows[0].title) {
           return recordFailure('At least one task with a title is required');
         }
-        const { error } = await admin.from('tasks').insert(rows as any);
+        const { data: insertedTasks, error } = await admin
+          .from('tasks')
+          .insert(rows as any)
+          .select('id, title, assigned_to, due_date, deal_id');
         if (error) return recordFailure(error.message);
+        await notifyTaskAssignees(admin, insertedTasks ?? [], userId, item.deal_id);
         break;
       }
       case 'log_note': {
@@ -542,7 +546,7 @@ Deno.serve(async (req) => {
         const p = { ...payload, ...merged } as any;
         const { data: membership } = await admin
           .from('company_members').select('company_id').eq('user_id', userId).limit(1).maybeSingle();
-        const { error } = await admin.from('tasks').insert({
+        const { data: insertedTasks, error } = await admin.from('tasks').insert({
           title: p.title || `Escalation: ${item.title}`,
           description: p.description ?? item.rationale ?? item.description ?? null,
           due_date: p.due_date ?? null,
@@ -551,8 +555,9 @@ Deno.serve(async (req) => {
           assigned_to: p.escalate_to ?? userId,
           assigned_by: userId,
           company_id: membership?.company_id ?? null,
-        } as any);
+        } as any).select('id, title, assigned_to, due_date, deal_id');
         if (error) return recordFailure(error.message);
+        await notifyTaskAssignees(admin, insertedTasks ?? [], userId, item.deal_id);
         break;
       }
       case 'reassign_deal': {
