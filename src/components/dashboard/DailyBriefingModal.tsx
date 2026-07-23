@@ -2060,6 +2060,8 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
         // Agenda, Catch Up & News, and Email are now hosted exclusively
         // inside the Daily Rundown tab — hide them from the left sidebar.
         if (t.value === 'agenda' || t.value === 'catchup' || t.value === 'email') return false;
+        // "Deals" (pipeline) tab retired from the dashboard pop-up.
+        if (t.value === 'pipeline') return false;
         return true;
       }),
     [excludeTabs, canSeeEndOfDay, isFifthLine, canSeeFinancial, canSeeOperationalFull, queueEnabled],
