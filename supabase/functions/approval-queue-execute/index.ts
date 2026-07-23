@@ -546,32 +546,69 @@ Deno.serve(async (req) => {
         // reviewer filled in (title / due_date / assigned_to per row).
         // For all other create_followup_task cards, fall back to the
         // legacy single-task insert.
-        const taskList: any[] = Array.isArray(p.tasks)
-          ? p.tasks.filter((t: any) => t && typeof t.title === 'string' && t.title.trim().length > 0)
-          : [];
-        const rows = taskList.length > 0
-          ? taskList.map((t: any) => ({
-              title: String(t.title).trim(),
-              description: t.description ?? null,
-              due_date: t.due_date || null,
-              priority: t.priority === 'urgent' ? 'urgent' : null,
+        const UUID_RE =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        // Multi-task path ("[Deal] Needs Tasks" reviewer flow): every row
+        // must include BOTH a non-empty title AND a valid assignee UUID.
+        // No silent self-assign fallback — mirror the UI validation so a
+        // client that bypasses the disabled button still fails here.
+        let rows: any[];
+        if (Array.isArray(p.tasks)) {
+          const taskList = p.tasks as any[];
+          if (taskList.length === 0) {
+            return recordFailure('At least one task is required');
+          }
+          const invalid: string[] = [];
+          rows = taskList.map((t: any, idx: number) => {
+            const title = typeof t?.title === 'string' ? t.title.trim() : '';
+            const assignee =
+              typeof t?.assigned_to === 'string' ? t.assigned_to.trim() : '';
+            if (!title) invalid.push(`Row ${idx + 1}: missing title`);
+            if (!assignee || !UUID_RE.test(assignee)) {
+              invalid.push(`Row ${idx + 1}: missing or invalid assignee`);
+            }
+            return {
+              title,
+              description: t?.description ?? null,
+              due_date: t?.due_date || null,
+              priority: t?.priority === 'urgent' ? 'urgent' : null,
               deal_id: item.deal_id,
-              assigned_to: t.assigned_to || userId,
+              assigned_to: assignee || null,
               assigned_by: userId,
               company_id: membership?.company_id ?? null,
-            }))
-          : [{
-              title: p.title || item.title,
-              description: p.description ?? item.description ?? null,
-              due_date: p.due_date ?? null,
-              priority: p.priority === 'urgent' ? 'urgent' : null,
-              deal_id: item.deal_id,
-              assigned_to: p.assigned_to ?? userId,
-              assigned_by: userId,
-              company_id: membership?.company_id ?? null,
-            }];
-        if (rows.length === 0 || !rows[0].title) {
-          return recordFailure('At least one task with a title is required');
+            };
+          });
+          if (invalid.length > 0) {
+            return recordFailure(
+              `Task validation failed — ${invalid.join('; ')}`,
+            );
+          }
+        } else {
+          // Legacy single-task path (create_followup_task from other cards):
+          // still require a title; assignee falls back to the actor.
+          const title =
+            typeof p.title === 'string' && p.title.trim().length > 0
+              ? p.title.trim()
+              : typeof item.title === 'string'
+              ? item.title.trim()
+              : '';
+          if (!title) {
+            return recordFailure('A task title is required');
+          }
+          const assignee =
+            typeof p.assigned_to === 'string' && UUID_RE.test(p.assigned_to)
+              ? p.assigned_to
+              : userId;
+          rows = [{
+            title,
+            description: p.description ?? item.description ?? null,
+            due_date: p.due_date ?? null,
+            priority: p.priority === 'urgent' ? 'urgent' : null,
+            deal_id: item.deal_id,
+            assigned_to: assignee,
+            assigned_by: userId,
+            company_id: membership?.company_id ?? null,
+          }];
         }
         const { data: insertedTasks, error } = await admin
           .from('tasks')
