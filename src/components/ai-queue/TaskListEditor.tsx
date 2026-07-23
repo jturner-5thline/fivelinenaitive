@@ -117,7 +117,7 @@ export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
         onValueChange={(v) => setAssignedTo(v || null)}
       >
         <SelectTrigger className="h-8 text-[12px] px-2">
-          <SelectValue placeholder="Assignee" />
+          <SelectValue placeholder="Assign owner…" />
         </SelectTrigger>
         <SelectContent>
           {memberOptions.map((m) => (
@@ -128,7 +128,7 @@ export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
         </SelectContent>
       </Select>
       <p className="text-[10px] text-muted-foreground italic">
-        Approve to create this task on the deal.
+        Approve to create this task on the deal. It will appear in the deal's Tasks section, assigned to the selected owner (defaults to you).
       </p>
     </div>
   );
