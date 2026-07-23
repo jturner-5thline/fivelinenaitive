@@ -24,6 +24,30 @@ interface Props {
 
 interface RankedTop { recording: ClaapRecording; score: number; reasons: any[] }
 
+// Extract the most distinctive token from a meeting title so we can query
+// the Claap live-list API with a hint that widens the recording window
+// beyond the latest 100 by recency. Prefer the longest capitalized/word
+// token that isn't a generic joiner ("meeting", "call", "5th line", …).
+const HINT_STOPWORDS = new Set([
+  'meeting','call','sync','review','5th','line','vs','and','with','w','x',
+  'the','a','an','of','for','to','from','intro','follow','followup','follow-up',
+  'weekly','biweekly','monthly','quarterly','update','check','checkin','check-in',
+  'zoom','google','meet','teams',
+]);
+function deriveSearchHint(title: string | null | undefined): string | null {
+  if (!title) return null;
+  const cleaned = String(title)
+    .replace(/[<>|/\\\-_:,;.!?()\[\]{}"'`~@#$%^*+=&]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleaned) return null;
+  const tokens = cleaned.split(' ').filter(t => t.length >= 3 && !HINT_STOPWORDS.has(t.toLowerCase()));
+  if (tokens.length === 0) return null;
+  // Prefer the longest token (usually a proper noun / surname).
+  tokens.sort((a, b) => b.length - a.length);
+  return tokens[0];
+}
+
 interface ExistingLinkRow {
   id: string;
   recording_id: string;
