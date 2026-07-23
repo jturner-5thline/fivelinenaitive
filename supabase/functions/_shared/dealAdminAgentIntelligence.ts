@@ -4450,7 +4450,9 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
         ? fingerprintByUser.get(bundle.current.deal_owner_user_id) ?? null
         : null;
       const kbBlock = await retrieveKnowledgeForDeal(supabase, companyId, kbTagFilter, bundle);
-      const perDealRules = [companyRulesBlock, kbBlock].filter((s): s is string => !!s && s.length > 0).join("\n\n") || null;
+      const perDealRules = [companyRulesBlock, kbBlock, passReasonTaxonomyBlock]
+        .filter((s): s is string => !!s && s.length > 0)
+        .join("\n\n") || null;
       const modelCandidates = sigCount > 0
         ? stampTermsIssuedBundleKeys(
             normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint, perDealRules), bundle),
