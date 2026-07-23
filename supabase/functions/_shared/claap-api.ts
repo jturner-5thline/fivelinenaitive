@@ -80,6 +80,40 @@ export function extractClaapExternalId(input: string | null | undefined): string
   return last || slug || null;
 }
 
+/**
+ * Extract Claap workspace id from a payload. Claap embeds the workspace id in
+ * asset URLs as `/pub/w/<id>/` and in some list responses under a top-level
+ * `workspace` / `space` field. Returns null when nothing recognisable is found.
+ */
+export function extractClaapWorkspace(payload: any): { id: string | null; name: string | null } {
+  if (!payload || typeof payload !== "object") return { id: null, name: null };
+  const direct =
+    payload.workspace_id ||
+    payload.workspaceId ||
+    payload.workspace?.id ||
+    payload.space?.id ||
+    payload.team?.id ||
+    null;
+  const name =
+    payload.workspace_name ||
+    payload.workspace?.name ||
+    payload.space?.name ||
+    payload.team?.name ||
+    null;
+  if (direct) return { id: String(direct), name: name ? String(name) : null };
+  const candidates: string[] = [
+    typeof payload.thumbnailUrl === "string" ? payload.thumbnailUrl : "",
+    typeof payload.thumbnail_url === "string" ? payload.thumbnail_url : "",
+    typeof payload.url === "string" ? payload.url : "",
+    typeof payload.video?.url === "string" ? payload.video.url : "",
+  ];
+  for (const c of candidates) {
+    const m = c.match(/\/pub\/w\/([^/]+)\//);
+    if (m) return { id: m[1], name: name ? String(name) : null };
+  }
+  return { id: null, name: name ? String(name) : null };
+}
+
 export async function claapGetRecording(externalId: string): Promise<NormalizedClaapRecording | null> {
   const token = getClaapToken();
   if (!token) throw new Error("CLAAP_API_TOKEN not configured");

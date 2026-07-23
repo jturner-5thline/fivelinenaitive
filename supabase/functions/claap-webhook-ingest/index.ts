@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { extractClaapWorkspace } from '../_shared/claap-api.ts';
 
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -34,6 +35,10 @@ Deno.serve(async (req) => {
       return json({ error: 'external_id and org_company_id required' }, 400);
     }
 
+    const ws = extractClaapWorkspace(payload);
+    const tokenWorkspaceId = Deno.env.get('CLAAP_WORKSPACE_ID') || null;
+    const inScope = !tokenWorkspaceId || !ws.id || ws.id === tokenWorkspaceId;
+
     const { data: rec, error: upErr } = await admin.from('claap_recordings').upsert({
       org_company_id,
       external_id,
@@ -44,9 +49,22 @@ Deno.serve(async (req) => {
       participants: payload.participants ?? [],
       transcript_available: !!payload.transcript,
       source_payload: payload,
+      workspace_id: ws.id,
+      workspace_name: ws.name,
       status: 'new',
     }, { onConflict: 'org_company_id,external_id' }).select('id').single();
     if (upErr) throw upErr;
+
+    // Sync scope log — one row per ingest so we can spot cross-workspace misses.
+    await admin.from('claap_sync_scope_log').insert({
+      source: 'webhook',
+      token_workspace_id: tokenWorkspaceId,
+      workspace_id: ws.id,
+      workspace_name: ws.name,
+      external_id,
+      in_scope: inScope,
+      note: inScope ? null : 'workspace_mismatch',
+    });
 
     // Fire-and-forget score call (service-role auth)
     fetch(`${SB_URL}/functions/v1/claap-score-recording`, {
