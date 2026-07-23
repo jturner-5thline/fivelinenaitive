@@ -319,6 +319,9 @@ export function MeetingClaapInlineAction(props: Props) {
         if (!cancelled) {
           setRankPending(false);
           setRanking(false);
+          // Mark this event as auto-attempted so we don't retry on next
+          // mount unless the user explicitly clicks "Find again".
+          if (eventId) markAutoAttempted(eventId);
         }
       }
     })();
@@ -330,8 +333,9 @@ export function MeetingClaapInlineAction(props: Props) {
     setUserRejected(false);
     setAutoApproved(false);
     setRanked(null);
+    if (eventId) clearAutoAttempted(eventId);
     setRefreshTick((n) => n + 1);
-  }, []);
+  }, [eventId]);
 
   const band: 'linked' | 'auto' | 'review' | 'none' = useMemo(() => {
     if (existing || locallyLinked || canonicalLinked) return 'linked';
