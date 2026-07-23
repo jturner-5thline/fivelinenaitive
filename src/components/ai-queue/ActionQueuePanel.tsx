@@ -875,12 +875,12 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   return (
     <div
       data-approval-queue-panel
-      className="relative flex flex-col h-full min-h-0 font-sans text-[#ecedf4] motion-reduce:transform-none rounded-xl border-2 border-white/50 ring-1 ring-white/20 shadow-[0_0_0_1px_rgba(255,255,255,0.12),0_8px_32px_-8px_rgba(94,205,245,0.25)] overflow-hidden"
+      className="panel-shell relative flex flex-col h-full min-h-0 font-sans text-[#ecedf4] motion-reduce:transform-none"
     >
       {/* Ambient glows removed — detail pane matches Deal Details flat surface. */}
 
       {/* Header */}
-      <div className="relative px-4 py-2.5 border-b-2 border-white/40 flex items-center justify-between shrink-0">
+      <div className="panel-divider-b relative px-4 py-2.5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <h2 className="text-[18px] leading-none tracking-tight" style={FONT_DISPLAY}>
             Approval Queue
@@ -907,7 +907,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       ) : (
         <div className="relative grid grid-cols-1 md:grid-cols-[392px_1fr] flex-1 min-h-0">
           {/* LEFT RAIL */}
-          <aside className="flex flex-col min-h-0 md:border-r-2 md:border-white/40">
+          <aside className="flex flex-col min-h-0 md:panel-divider-r">
             <div className="px-3 pt-2 pb-2 space-y-2 shrink-0">
               {/* Search + Me filter */}
               <div className="flex items-center gap-1.5">
@@ -1182,11 +1182,7 @@ function QueueRow({
           backgroundImage:
             'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)',
         }}
-        className={`relative w-full text-left rounded-[13px] pl-3 pr-3 py-2.5 border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5ecdf5] ${
-          selected
-            ? 'border-white/[0.28]'
-            : 'border-white/[0.20] hover:border-white/[0.32]'
-        }`}
+        className={`panel-item ${selected ? 'panel-item-active' : ''} relative w-full text-left pl-3 pr-3 py-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5ecdf5]`}
       >
         {selected && (
           <span
@@ -1421,11 +1417,7 @@ function DealGroupCard({
         backgroundImage:
           'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)',
       }}
-      className={`rounded-[14px] border transition-colors ${
-        expanded
-          ? 'border-white/[0.28]'
-          : 'border-white/[0.16] hover:border-white/[0.28]'
-      }`}
+      className={`panel-item ${expanded ? 'panel-item-active' : ''}`}
     >
       <div className="flex items-center gap-2 px-3 py-2">
         <button

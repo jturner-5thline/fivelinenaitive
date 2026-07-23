@@ -1118,7 +1118,7 @@ export function EndOfDayTab({
   const masterPane = (
     <div className={cn(
       'flex flex-col min-w-0 h-full',
-      'rounded-xl border-2 border-white/35 bg-background/40',
+      'panel-pane',
     )}>
       {/* Toolbar */}
       <div className="px-3 pt-3 pb-2 border-b border-white/[0.06] space-y-2">
@@ -1372,7 +1372,7 @@ export function EndOfDayTab({
 
   // Detail pane
   const detailPane = (
-    <div className="flex flex-col h-full min-w-0 rounded-xl border-2 border-white/35 bg-background/40">
+    <div className="panel-pane flex flex-col h-full min-w-0">
       {selectedEvent ? (
         <EventDetailPane
           key={selectedEvent.id}
@@ -1426,7 +1426,7 @@ export function EndOfDayTab({
     <TooltipProvider delayDuration={200}>
       <div
         ref={containerRef}
-        className="flex h-full min-h-0 gap-2 rounded-xl border-2 border-white/50 ring-1 ring-white/20 shadow-[0_0_0_1px_rgba(255,255,255,0.12),0_8px_32px_-8px_rgba(94,205,245,0.25)] p-1.5"
+        className="panel-shell flex h-full min-h-0 gap-2 p-1.5"
       >
         {isNarrow ? (
           <div className="flex-1 min-w-0">

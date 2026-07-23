@@ -607,6 +607,42 @@
 /* ═══ Liquid Glass Utility Classes ═══ */
 @layer components {
   /* Shared hover/focus for the Insights DarkNativeSelect component. */
+  /* ─── Unified dashboard panel borders (ActionQueue + EndOfDay) ─── */
+  :root {
+    --panel-border-rgb: 255, 255, 255;
+    --panel-accent-glow: 94, 205, 245; /* cyan accent */
+  }
+  .panel-shell {
+    border-radius: 0.75rem;
+    border: 2px solid rgba(var(--panel-border-rgb), 0.5);
+    box-shadow:
+      0 0 0 1px rgba(var(--panel-border-rgb), 0.18),
+      0 0 0 4px rgba(var(--panel-border-rgb), 0.06),
+      0 8px 32px -8px rgba(var(--panel-accent-glow), 0.25);
+    overflow: hidden;
+  }
+  .panel-divider-b {
+    border-bottom: 2px solid rgba(var(--panel-border-rgb), 0.4);
+  }
+  .panel-divider-r {
+    border-right: 2px solid rgba(var(--panel-border-rgb), 0.4);
+  }
+  .panel-pane {
+    border-radius: 0.75rem;
+    border: 2px solid rgba(var(--panel-border-rgb), 0.35);
+    background-color: hsl(var(--background) / 0.4);
+  }
+  .panel-item {
+    border: 1.5px solid rgba(var(--panel-border-rgb), 0.22);
+    border-radius: 13px;
+    transition: border-color 150ms ease;
+  }
+  .panel-item:hover {
+    border-color: rgba(var(--panel-border-rgb), 0.36);
+  }
+  .panel-item-active {
+    border-color: rgba(var(--panel-border-rgb), 0.5);
+  }
   .dark-native-select:hover:not(:disabled) {
     background-color: rgba(30, 100, 190, 0.45) !important;
     border-color: rgba(80, 160, 230, 0.6) !important;
