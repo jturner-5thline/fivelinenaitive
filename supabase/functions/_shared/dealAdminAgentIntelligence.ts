@@ -289,6 +289,7 @@ interface DealSignalBundle {
   funding_sources: any[];
   status_notes: any[];
   activity: any[];
+  outstanding_items?: any[];
   stage_history: any[];
   milestones: any[];
   calendar_items: any[];
