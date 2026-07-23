@@ -1523,7 +1523,7 @@ CLIENT HAS NOT RESOLVED OUTSTANDING ITEMS IN 2+ BUSINESS DAYS
 - If any outstanding item is marked completed / resolved / archived before the next scan, drop it from the bundle. If ALL qualifying items are cleared, the consolidated AQ item is auto-resolved by the executor.
 - NEVER emit this trigger when bundle.outstanding_items is empty or contains only lender-facing / internal-facing items — the rule is exclusively for pinging the CLIENT.`;
 
-const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES + TERMS_ISSUED_RULES + SCHEDULE_CALL_RULES + OUTBOUND_FOLLOWUP_RULES;
+const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES + TERMS_ISSUED_RULES + SCHEDULE_CALL_RULES + OUTBOUND_FOLLOWUP_RULES + OUTSTANDING_ITEMS_REMINDER_RULES;
 
 function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null): string {
   // Trim large fields to keep prompt compact.
