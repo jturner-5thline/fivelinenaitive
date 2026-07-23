@@ -627,11 +627,16 @@
     background-color: hsl(var(--background) / 0.4);
   }
   .panel-item {
+    border: 1px solid rgba(var(--panel-border-rgb), 0.6);
     border-radius: 13px;
     transition: border-color 150ms ease;
   }
-  .panel-item:hover {}
-  .panel-item-active {}
+  .panel-item:hover {
+    border-color: rgba(var(--panel-border-rgb), 0.75);
+  }
+  .panel-item-active {
+    border-color: rgba(var(--panel-border-rgb), 0.9);
+  }
   .dark-native-select:hover:not(:disabled) {
     background-color: rgba(30, 100, 190, 0.45) !important;
     border-color: rgba(80, 160, 230, 0.6) !important;
