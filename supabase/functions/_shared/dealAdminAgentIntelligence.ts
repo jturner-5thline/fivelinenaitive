@@ -390,7 +390,8 @@ export function isInDealAdminAgentScope(c: CandidateItem): boolean {
       bundleKey.startsWith("draft_terms_feedback:") ||
       bundleKey.startsWith("lender_followups:") ||
       bundleKey.startsWith("outstanding_items_reminder:") ||
-      bundleKey.startsWith("client_followup:")
+      bundleKey.startsWith("client_followup:") ||
+      bundleKey.startsWith("needs_tasks:")
     );
   }
   if (c.action_type === "update_funding_source") {
@@ -3077,15 +3078,21 @@ function dedupeAndMerge(
  */
 async function maybeBuildUpdateTasksCandidate(
   supabase: SupabaseClient,
-  deal: { id: string; company?: string | null; updated_at?: string | null },
+  deal: { id: string; company?: string | null; updated_at?: string | null; status?: string | null; stage?: string | null },
   bundle: DealSignalBundle,
 ): Promise<CandidateItem | null> {
+  // Only flag deals that are still actively worked. Archived is already
+  // filtered upstream in dealList; also skip On Hold here (status OR stage).
+  const status = String(deal.status ?? "").toLowerCase().replace(/_/g, "-");
+  const stage = String(deal.stage ?? "").toLowerCase().replace(/_/g, "-");
+  if (status === "archived" || status === "on-hold" || stage === "on-hold") return null;
+
   if ((bundle.open_tasks?.length ?? 0) > 0) return null;
 
-  // Find the most recent activity on ANY task for this deal (including
-  // completed/archived). If none exist, fall back to the deal's own
-  // updated_at so brand-new deals get a "12 hours after creation" grace
-  // window before the prompt fires.
+  // Record the most recent activity on ANY task for this deal (including
+  // completed/archived) for evidence display. No idle-time gate — per the
+  // rule, every active, non-archived, non-on-hold deal with zero open
+  // tasks should be flagged in the Approval Queue.
   const { data: lastTaskRow } = await supabase
     .from("tasks")
     .select("updated_at")
@@ -3093,16 +3100,10 @@ async function maybeBuildUpdateTasksCandidate(
     .order("updated_at", { ascending: false })
     .limit(1);
   const lastTaskAt = (lastTaskRow ?? [])[0]?.updated_at as string | null | undefined;
-  const referenceAt = lastTaskAt ?? deal.updated_at ?? null;
-  if (!referenceAt) return null;
-  const referenceMs = new Date(referenceAt).getTime();
-  if (!Number.isFinite(referenceMs)) return null;
-  const twelveHoursMs = 12 * 60 * 60 * 1000;
-  if (Date.now() - referenceMs < twelveHoursMs) return null;
 
   const dealName = deal.company || bundle.deal_name || "this deal";
   const description =
-    `This deal has no outstanding tasks and hasn't had any task activity in the last 12 hours. ` +
+    `This deal is in the active pipeline (not archived, not on hold) and has no outstanding tasks. ` +
     `Add task(s) for the next steps — include titles, assignees, and due dates so the deal keeps moving.`;
 
   // Prefill sensible defaults so the details panel renders editable
@@ -3123,6 +3124,7 @@ async function maybeBuildUpdateTasksCandidate(
     current_values: { open_tasks: 0, last_task_activity_at: lastTaskAt ?? null },
     proposed_values: {
       _synthetic: "update_tasks",
+      bundle_key: `needs_tasks:${deal.id}`,
       // Seed the details panel with a single blank task row so the
       // reviewer sees the task-creation UI immediately. They can add
       // more rows (title / due date / assignee) before approving —
@@ -3138,17 +3140,17 @@ async function maybeBuildUpdateTasksCandidate(
       description,
     },
     rationale_summary:
-      "Deal in the active pipeline has no outstanding tasks and no task activity in the last 12 hours. Prompt the user to add tasks so this deal doesn't stall.",
+      "Deal is in the active pipeline (not archived, not on hold) and has zero outstanding tasks. Prompt the user to add tasks so this deal doesn't stall.",
     evidence_summary: lastTaskAt
       ? `Most recent task activity on this deal was ${lastTaskAt}; no tasks are currently open.`
-      : "This deal has never had any tasks and has been idle for more than 12 hours.",
+      : "This deal has never had any tasks.",
     evidence_references: [
       {
         kind: "task",
         label: lastTaskAt ? "Last task activity on deal" : "Deal has no tasks",
         snippet: lastTaskAt
-          ? `Last task activity: ${lastTaskAt} (>12h ago)`
-          : `Deal last updated: ${deal.updated_at ?? "unknown"} (>12h ago)`,
+          ? `Last task activity: ${lastTaskAt}; zero open tasks now`
+          : `Deal has no tasks recorded`,
       },
     ],
     confidence_score: 0.95,
