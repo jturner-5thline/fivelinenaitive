@@ -4196,6 +4196,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
   // every model call so the agent operates under them company-wide.
   let companyRulesBlock: string | null = null;
   let kbTagFilter: string[] = [];
+  let passReasonTaxonomyBlock: string | null = null;
   try {
     const [{ data: settings }, { data: learned }] = await Promise.all([
       supabase
@@ -4234,6 +4235,16 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     if (parts.length > 0) companyRulesBlock = parts.join("\n\n");
   } catch (e) {
     console.warn("[deal-admin-agent] rule load failed", (e as Error)?.message);
+  }
+
+  // Load pass-reason taxonomy from Knowledge Base (tag "pass_reasons") so the
+  // enum + mapping guidance are edited in the Knowledge tab, not in code.
+  try {
+    const { taxonomy, source } = await loadPassReasonTaxonomy(supabase, companyId);
+    passReasonTaxonomyBlock = buildPassReasonTaxonomyBlock(taxonomy, source);
+    console.log(`[deal-admin-agent] pass-reason taxonomy loaded from ${source} (${taxonomy.length} keys)`);
+  } catch (e) {
+    console.warn("[deal-admin-agent] pass-reason taxonomy load failed", (e as Error)?.message);
   }
 
   // 1) Load target deals.
