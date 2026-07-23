@@ -237,33 +237,6 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
       formatType: 'number' | 'currency';
     }> = [
       {
-        key: 'deals_closed',
-        label: 'Deals Closed',
-        actualDisplay: fmtNum(kpi.dealsClosed),
-        actualValue: kpi.dealsClosed,
-        planValue: Number(kpi.plans.deals_closed?.plan_value ?? 0),
-        cls: 'db-bl',
-        formatType: 'number',
-      },
-      {
-        key: 'dollars_funded',
-        label: 'Dollars Funded',
-        actualDisplay: fmtCur(kpi.dollarsFunded),
-        actualValue: kpi.dollarsFunded,
-        planValue: Number(kpi.plans.dollars_funded?.plan_value ?? 0),
-        cls: 'db-up',
-        formatType: 'currency',
-      },
-      {
-        key: 'new_clients',
-        label: 'New Clients',
-        actualDisplay: fmtNum(kpi.newClients),
-        actualValue: kpi.newClients,
-        planValue: Number(kpi.plans.new_clients?.plan_value ?? 0),
-        cls: 'db-bl',
-        formatType: 'number',
-      },
-      {
         key: 'fee_revenue',
         label: 'Fee Revenue',
         actualDisplay: fmtCur(kpi.feeRevenue),
@@ -275,6 +248,28 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
     ];
     return tiles;
   }, [kpi]);
+
+  // "Active Deals / Deals in Diligence / Dollars in Diligence" tiles —
+  // migrated out of the retired Deals-page widget strip and rendered here
+  // in the dashboard modal with the compact centered design.
+  const dealStatTiles = useMemo(() => {
+    const ACTIVE_STAGES = new Set<string>([
+      'final-credit-items',
+      'client-strategy-review',
+      'write-up-pending',
+      'submitted-to-lenders',
+      'lenders-in-review',
+      'terms-issued',
+    ]);
+    const active = deals.filter(d => d.status !== 'archived' && ACTIVE_STAGES.has(d.stage as string));
+    const inDil = deals.filter(d => d.stage === 'in-due-diligence');
+    const dilSum = inDil.reduce((s, d) => s + (d.value || 0), 0);
+    return [
+      { key: 'active-deals', label: 'Active Deals', value: active.length.toLocaleString('en-US') },
+      { key: 'deals-in-diligence', label: 'Deals in Diligence', value: inDil.length.toLocaleString('en-US') },
+      { key: 'dollars-in-diligence', label: 'Dollars in Diligence', value: formatUSD(dilSum) },
+    ];
+  }, [deals]);
 
   const editingPlan = editingMetric
     ? planTiles.find(t => t.key === editingMetric)
