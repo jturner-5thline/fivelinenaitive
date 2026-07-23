@@ -550,6 +550,10 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
     }
   };
 
+  if (widgets.length === 0 && !isEditMode) {
+    return null;
+  }
+
   return (
     <div className="relative py-1.5 bg-transparent">
 
@@ -588,11 +592,6 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                 onClick={() => handleWidgetClick(widget.metric)}
               />
             ))}
-            {widgets.length === 0 && (
-              <div className="col-span-full text-center py-8 text-muted-foreground">
-                No widgets configured. Click the settings icon to add some.
-              </div>
-            )}
           </div>
         </SortableContext>
       </DndContext>
