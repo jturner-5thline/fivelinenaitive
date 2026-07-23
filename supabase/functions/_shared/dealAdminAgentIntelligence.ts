@@ -201,6 +201,26 @@ interface DealSignalBundle {
   unlinked_terms_emails?: any[];
   referral_sources: any[];
   configured_milestone_titles: string[];
+  /**
+   * Snapshot of the Hours & Fees section for Rule L-1 qualification
+   * comparison. When present and any field is non-null, the LLM may
+   * surface these on the update_deal_stage proposal side-by-side with
+   * incoming terms extracted from the lender email. The agent NEVER
+   * self-certifies whether the incoming terms qualify — the Manager
+   * confirms in the Approval Queue.
+   */
+  qualified_terms_parameters?: {
+    deal_value: number | null;
+    engagement_type: string | null;
+    fee_type: string | null;
+    success_fee_percent: number | null;
+    retainer_fee: number | null;
+    milestone_fee: number | null;
+    total_fee: number | null;
+    pre_signing_hours: number | null;
+    post_signing_hours: number | null;
+    has_any_parameter: boolean;
+  } | null;
 }
 
 export interface CandidateItem {
@@ -253,9 +273,16 @@ export function isInDealAdminAgentScope(c: CandidateItem): boolean {
     // stable bundle_key so the client-side approve handler can open the
     // calendar popup after the task lands. Anything else must go through a
     // different (whitelisted) action_type.
+    // Rule L-1 (Draft Terms branch): a lender email sharing a DRAFT term
+    // sheet for feedback also emits a create_followup_task — a review task
+    // for the Analyst/Manager. It is tagged `draft_terms_feedback:` so the
+    // scope filter allows it without opening the door to unbounded tasks.
     const pv = (c.proposed_values ?? {}) as Record<string, any>;
     const bundleKey = typeof pv.bundle_key === "string" ? pv.bundle_key : "";
-    return bundleKey.startsWith("schedule_call:");
+    return (
+      bundleKey.startsWith("schedule_call:") ||
+      bundleKey.startsWith("draft_terms_feedback:")
+    );
   }
   if (c.action_type === "update_funding_source") {
     const pv = (c.proposed_values ?? {}) as Record<string, any>;
@@ -794,6 +821,27 @@ async function gatherSignalsForDeal(
       is_flagged: !!deal.is_flagged,
       updated_at: deal.updated_at ?? null,
     },
+    qualified_terms_parameters: (() => {
+      const num = (v: any) => (typeof v === "number" && Number.isFinite(v) ? v : v == null ? null : Number(v) || null);
+      const p = {
+        deal_value: num(deal.value),
+        engagement_type: (deal.engagement_type ?? null) as string | null,
+        fee_type: (deal.fee_type ?? null) as string | null,
+        success_fee_percent: num(deal.success_fee_percent),
+        retainer_fee: num(deal.retainer_fee),
+        milestone_fee: num(deal.milestone_fee),
+        total_fee: num(deal.total_fee),
+        pre_signing_hours: num(deal.pre_signing_hours),
+        post_signing_hours: num(deal.post_signing_hours),
+        has_any_parameter: false,
+      };
+      p.has_any_parameter = [
+        p.deal_value, p.engagement_type, p.fee_type, p.success_fee_percent,
+        p.retainer_fee, p.milestone_fee, p.total_fee,
+        p.pre_signing_hours, p.post_signing_hours,
+      ].some((v) => v !== null && v !== "" && v !== 0);
+      return p;
+    })(),
     funding_sources: fundingWithBd,
     status_notes: notes.data ?? [],
     activity: act.data ?? [],
@@ -1097,6 +1145,15 @@ REFERRAL SOURCE UPDATE RULES (use referral_sources[])
 const TERMS_ISSUED_RULES = `
 
 TERM SHEET / IOI / LOI RECEIVED — HIGH-PRIORITY BUNDLE (apply whenever a lender contact sends terms)
+
+DRAFT vs OFFICIAL — MUST DECIDE FIRST (Rule L-1):
+- Read the inbound email carefully. Classify the terms as EITHER:
+    (a) OFFICIAL — the lender is issuing / submitting / delivering their terms as their formal position (e.g. "attached are our terms", "please find our IOI", "here is our indicative structure", "outlined below are our terms", "our term sheet is attached", "our LOI for your review"). Follow the OFFICIAL branch below (steps 1–4 + deal stage advance to Terms Issued).
+    (b) DRAFT — the lender is sharing a DRAFT and explicitly asking for feedback / edits / redlines BEFORE issuing (e.g. "sharing a draft for your feedback", "let us know if this looks right before we finalize", "redlines welcome", "wanted your thoughts before we send the formal term sheet"). Follow the DRAFT branch at the bottom of this section — DO NOT advance the deal stage.
+- If the classification is ambiguous, DEFAULT TO DRAFT (safer — no premature stage move). Never move the deal to Terms Issued on a draft under any circumstance.
+- IDENTIFICATION IS MANDATORY: before emitting anything you MUST correctly identify (a) the deal (via bundle.deal_id and email attribution) and (b) the specific funding_sources[] row for the sender. If either cannot be resolved with confidence, SKIP the trigger for this scan.
+
+OFFICIAL BRANCH (default — moves deal to Stage 13 Terms Issued):
 - TRIGGER SOURCES (either counts as an eligible email; no allowlist, no specific lender names):
     a) An inbound email already linked/matched to this deal (present in emails[] or email_threads[]) whose body or subject clearly references a term sheet, IOI (indication of interest), LOI (letter of intent), proposal, or issued/revised pricing terms — OR carries an attachment whose filename matches /(term[\\s_-]*sheet|\\bIOI\\b|indication|\\bLOI\\b|letter[\\s_-]*of[\\s_-]*intent|proposal|pricing|preliminary\\s+terms)/i.
     b) An UNLINKED inbox email surfaced in unlinked_terms_emails[]. These are inbox messages the classifier hasn't yet linked to a deal, but whose subject/body/attachment references the deal name AND contains the terms language above. Treat these as first-class triggers — the deal is inferred from unlinked_terms_emails[].matched_deal_name (== bundle.deal_name). You do NOT need the email to be pre-attached to the deal.
@@ -1112,17 +1169,23 @@ TERM SHEET / IOI / LOI RECEIVED — HIGH-PRIORITY BUNDLE (apply whenever a lende
          target_object_type = "deal", target_object_id = deal_id.
          proposed_values.note = "{Lender} issued {Term Sheet|IOI|LOI|proposal} on {ISO date}. Key points: <2-4 bullets paraphrasing pricing / structure / conditions from the email>. Attachment: <filename> (pending upload to data room)."
          evidence_references MUST cite the same inbound email.
-    3) update_deal_stage
+    3) update_deal_stage — Stage 13 (Terms Issued) + qualification comparison payload
          Only emit when the deal's current stage is BEFORE "Terms Issued" in the pipeline (e.g. Sourcing, Qualified, In Review, Lenders in Review). If the deal is already at Terms Issued or later (In Diligence, Closed/Funded), SKIP this step.
          proposed_values = { stage: "terms-issued", stage_label: "Terms Issued" } (resolve to the pipeline_stage_id present in configured_pipeline_stages when available).
+         QUALIFICATION PAYLOAD (REQUIRED — for the Manager to confirm or reject qualification in the Approval Queue):
+           proposed_values.qualified_terms_parameters = <the EXACT object from deal.qualified_terms_parameters in the prompt payload, unchanged>. This is the deal's Hours & Fees section snapshot. If bundle.qualified_terms_parameters is null OR has_any_parameter === false, set this to null.
+           proposed_values.incoming_terms_parameters = { pricing: "<verbatim quote or short paraphrase of pricing from email>", structure: "<same for structure>", conditions: "<same for conditions>", fees: "<same for lender fees, if any>", other: "<anything else material>", raw_excerpt: "<verbatim excerpt from the email that carried the terms, <= 800 chars>" }. Populate every field you can from the email body / attachment context; leave a field null if the email does not state it.
+           proposed_values.qualification_prompt = when qualified_terms_parameters exists (has_any_parameter=true): "Compare the incoming lender terms to the qualified-terms parameters on this deal (Hours & Fees) and confirm or reject qualification." When qualified_terms_parameters is null: "No qualified-terms parameters exist on this deal — confirm qualification by judgment."
+         NEVER SELF-CERTIFY: do NOT include any field, note, or rationale phrasing that asserts the incoming terms qualify or do not qualify. The agent presents the two payloads side-by-side; the Manager decides in the queue. Any language like "these qualify", "these do not qualify", "meets criteria", or "fails criteria" in this proposal is a rule violation.
          rationale: "At least one lender ({Lender}) has issued terms on {Deal} — advancing the deal stage to Terms Issued."
          evidence_references MUST cite the inbound email.
-    4) save_to_data_room — first-class upload proposal (one per attachment).
+    4) save_to_data_room — first-class upload proposal (one per attachment). ALWAYS routes to Internal ▸ Data Room ▸ "Terms" folder — the folder name is FIXED as "Terms" (never deal-specific, never "Agreements" facing the user). "category" below is legacy metadata only and does not change the destination folder.
          target_object_type = "deal", target_object_id = deal_id.
-         item_title = "Save {filename} to {Deal} data room"
+         item_title = "Save {filename} to {Deal} data room ▸ Internal ▸ Terms"
          proposed_values = {
            attachment_name: "<exact filename from email metadata>",
-           category: "agreements",   // term sheets / IOIs / LOIs live under agreements
+           category: "terms",   // routes to the fixed Internal ▸ Terms folder (server-side)
+           destination_folder: "Internal/Terms",
            source: "email_attachment",
            source_email_id: "<gmail message id>",
            source_thread_id: "<gmail thread id, if present>",
@@ -1130,7 +1193,7 @@ TERM SHEET / IOI / LOI RECEIVED — HIGH-PRIORITY BUNDLE (apply whenever a lende
            source_sender: "<lender sender email>",
            content_type: "<mime type from attachment metadata, if present>",
          }
-         rationale: "{Lender} attached {filename} ({Term Sheet|IOI|LOI}) — saving to the {Deal} data room under Agreements."
+         rationale: "{Lender} attached {filename} ({Term Sheet|IOI|LOI}) — saving to Internal ▸ Data Room ▸ Terms on {Deal}."
          evidence_references MUST cite the inbound email (kind="email"). If multiple attachments qualify, emit ONE save_to_data_room per attachment (they dedupe by (deal_id, source_email_id, attachment_name)).
 - DEDUPE / ONE-PER-LENDER: emit the bundle at most ONCE per (deal, funding_source.id) per scan. If the same lender sent multiple emails with terms language in the window, pick the MOST RECENT email as evidence and reference the earlier ones in rationale_summary. Never emit two Terms Issued bundles for the same lender on the same deal.
 - UI GROUPING (REQUIRED): proposed_values.bundle_key MUST be set to the exact string \`terms_issued:{deal_id}:{funding_source_id}\` on ONLY the three lender-scoped proposals — update_funding_source, add_status_note (the lender-specific note), and save_to_data_room. DO NOT set bundle_key on update_deal_stage — the deal-stage advance is deal-level, not lender-level, and belongs on its own separate Approval Queue card so the reviewer can approve stage moves independently of any single lender's bundle. When the lender cannot be resolved to a funding_sources[] row (sender attribution failure), OMIT bundle_key on the surviving items — do not fabricate one.
@@ -1138,7 +1201,34 @@ TERM SHEET / IOI / LOI RECEIVED — HIGH-PRIORITY BUNDLE (apply whenever a lende
 - ATTACHMENT HANDLING: cite the attachment filename verbatim from the email metadata (emails[].attachments or unlinked_terms_emails[].attachments). Do NOT invent filenames. If the trigger fires on body language alone with no attachment, emit steps 1–3 and omit step 4 (nothing to save). If two or more qualifying attachments arrive in the same email, emit ONE step-4 save_to_data_room per attachment.
 - MULTI-LENDER (STRICT — DO NOT CONSOLIDATE): if two or more different funding sources send terms on the same deal in the same scan, you MUST emit a SEPARATE step 1 (update_funding_source) AND a SEPARATE step 2 (add_status_note) for EACH lender. Do NOT merge multiple lenders into one status note or one funding-source update. Only step 3 (update_deal_stage) collapses to a SINGLE proposal for the deal, and step 4 (save_to_data_room) is emitted once per attachment. Concretely, if Lender A and Lender B both send terms: emit update_funding_source(A) + add_status_note("A issued …") + update_funding_source(B) + add_status_note("B issued …") + ONE update_deal_stage + one save_to_data_room per attachment. A single status note that lists both lenders together is a violation of this rule.
 - IOI / BODY-ONLY TERMS ARE FIRST-CLASS: an inbound email whose subject or body clearly delivers an IOI / LOI / term sheet / proposal counts as a full trigger EVEN WHEN there is no attachment. Do not skip steps 1 and 2 for a lender just because they emailed the terms in-body instead of attaching a document — you MUST still emit update_funding_source + add_status_note for that lender. Step 4 (save_to_data_room) is the only step that is optional when no attachment exists.
-- Never propose Terms Issued from a scheduling email, intro pleasantry, materials request, generic pricing question, or a lender merely SAYING they will send terms later. The email must actually deliver the terms (attachment or terms language quoted in-body).`;
+- Never propose Terms Issued from a scheduling email, intro pleasantry, materials request, generic pricing question, or a lender merely SAYING they will send terms later. The email must actually deliver the terms (attachment or terms language quoted in-body).
+
+DRAFT BRANCH (Rule L-1 draft term sheet — DOES NOT move the deal stage):
+- When the classification is DRAFT (lender sharing a draft term sheet and explicitly asking for feedback / redlines / edits BEFORE issuing), emit EXACTLY these proposals for the (deal, funding_source) — NEVER emit update_deal_stage in this branch:
+    D1) update_funding_source
+          target_object_type = "deal_lender", target_object_id = funding_sources[].id.
+          proposed_values = { stage: "draft_terms", tracking_status: "draft_terms", notes: "<verbatim body of the lender's email, trimmed to 1200 chars>", bundle_key: "draft_terms:{deal_id}:{funding_source_id}" }.
+          rationale: "{Lender} shared a DRAFT term sheet for {Deal} and asked for feedback — setting their stage to Draft Terms (not Terms Issued)."
+          evidence_references MUST cite the inbound email.
+    D2) create_followup_task — feedback task for the Analyst/Manager on the draft.
+          target_object_type = "deal", target_object_id = deal_id.
+          item_title = "Review draft term sheet from {Lender} — {Deal}"
+          proposed_values = {
+            bundle_key: "draft_terms_feedback:{deal_id}:{funding_source_id}",
+            title: "Review draft term sheet from {Lender} — {Deal}",
+            description: "<1-2 sentences: what the lender is asking for feedback on, quoting the ask verbatim when short>",
+            lender_name: "{Lender}",
+            lender_contact_emails: [<sender email + any funding_sources[].contacts.email that were on the thread>],
+            source_email_id: "<gmail message id>",
+            source_thread_id: "<gmail thread id, if present>",
+            due_in_business_days: 2,
+            priority: "high"
+          }
+          rationale_summary = "{Lender} is asking for feedback on a DRAFT term sheet — surfacing a review task so the Analyst/Manager can respond with redlines before the lender issues officially."
+          evidence_references MUST cite the inbound email.
+    D3) save_to_data_room (OPTIONAL) — only if the draft is attached as a file. Same shape as OFFICIAL step 4 but with category="terms_draft" and item_title "Save {filename} (DRAFT) to {Deal} data room ▸ Internal ▸ Terms". Same fixed Internal ▸ Terms folder.
+- DEDUPE for DRAFT branch: at most ONE D1 + ONE D2 per (deal, funding_source.id) per scan. Never emit both DRAFT and OFFICIAL branches for the same email — pick one classification.
+- If a subsequent email from the SAME lender switches from draft to official (e.g. "here is our final term sheet"), the next scan will fire the OFFICIAL branch normally; the earlier draft_terms funding-source stage is fine to overwrite.`;
 
 const SCHEDULE_CALL_RULES = `
 
@@ -1224,6 +1314,7 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
       owner_user_id: bundle.current.deal_owner_user_id,
       is_flagged: bundle.current.is_flagged,
       updated_at: bundle.current.updated_at,
+      qualified_terms_parameters: bundle.qualified_terms_parameters ?? null,
     },
     funding_sources: bundle.funding_sources.map((f) => ({
       id: f.id,
@@ -4036,7 +4127,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
 
   let dealQ = supabase
     .from("deals")
-    .select("id, company, stage, status, deal_owner_user_id, manager, deal_owner, is_flagged, updated_at, company_id, pipeline_id, referral_source_id")
+    .select("id, company, stage, status, deal_owner_user_id, manager, deal_owner, is_flagged, updated_at, company_id, pipeline_id, referral_source_id, value, engagement_type, fee_type, success_fee_percent, retainer_fee, milestone_fee, total_fee, pre_signing_hours, post_signing_hours")
     .eq("company_id", companyId)
     .order("updated_at", { ascending: false })
     .limit(Math.max(maxDeals, 200));
