@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, Plus, Trash2 } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Check, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useAuth } from '@/contexts/AuthContext';
@@ -149,41 +154,13 @@ export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
                     />
                   </PopoverContent>
                 </Popover>
-                <Select
-                  value={row.assigned_to ?? ''}
-                  onValueChange={(v) => update(i, { assigned_to: v || null })}
-                >
-                  <SelectTrigger
-                    className={cn(
-                      'h-8 text-[12px] px-2 flex-1 min-w-[180px] gap-1.5 font-medium',
-                      'border-primary/40 bg-primary/5 text-primary',
-                      'hover:bg-primary/10 hover:border-primary/60',
-                      row.assigned_to && 'border-primary/70 bg-primary/10',
-                    )}
-                  >
-                    <UserCircle2 className="h-3.5 w-3.5 shrink-0" />
-                    <SelectValue
-                      placeholder={
-                        <span className="text-primary/80">
-                          Assign to {currentUserLabel} (you)
-                        </span>
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent className="z-[2100]">
-                    {memberOptions.length === 0 ? (
-                      <div className="px-2 py-1.5 text-[11px] text-muted-foreground">
-                        No teammates found
-                      </div>
-                    ) : (
-                      memberOptions.map((m) => (
-                        <SelectItem key={m.id} value={m.id} className="text-[12px]">
-                          {m.label}{m.id === currentUserId ? ' (you)' : ''}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                <AssigneePicker
+                  value={row.assigned_to}
+                  options={memberOptions}
+                  currentUserId={currentUserId}
+                  currentUserLabel={currentUserLabel}
+                  onChange={(id) => update(i, { assigned_to: id })}
+                />
               </div>
             </div>
           );
@@ -204,5 +181,94 @@ export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
         Every task must have an assignee. If you don't pick one, it defaults to you ({currentUserLabel}).
       </p>
     </div>
+  );
+}
+
+interface AssigneePickerProps {
+  value: string | null;
+  options: { id: string; label: string }[];
+  currentUserId: string | null;
+  currentUserLabel: string;
+  onChange: (id: string | null) => void;
+}
+
+function AssigneePicker({
+  value,
+  options,
+  currentUserId,
+  currentUserLabel,
+  onChange,
+}: AssigneePickerProps) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.id === value);
+  const displayLabel = selected
+    ? `${selected.label}${selected.id === currentUserId ? ' (you)' : ''}`
+    : `Assign to ${currentUserLabel} (you)`;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            'h-8 px-2.5 text-[12px] flex-1 min-w-[200px] gap-1.5 font-semibold justify-between',
+            'border-2 shadow-sm transition-all',
+            value
+              ? 'border-emerald-400/60 bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 text-emerald-100 hover:from-emerald-500/25 hover:to-emerald-500/10 hover:border-emerald-400/80'
+              : 'border-primary/60 bg-gradient-to-br from-primary/20 to-primary/5 text-primary hover:from-primary/30 hover:to-primary/10 hover:border-primary/80 animate-pulse-subtle',
+          )}
+        >
+          <span className="flex items-center gap-1.5 truncate">
+            <UserCircle2 className="h-4 w-4 shrink-0" />
+            <span className="truncate">{displayLabel}</span>
+          </span>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[260px] p-0 z-[2100]"
+        align="start"
+        onOpenAutoFocus={(e) => {
+          // Let Command's <CommandInput autoFocus /> take focus so typing
+          // filters immediately.
+          e.preventDefault();
+        }}
+      >
+        <Command>
+          <CommandInput placeholder="Search teammates…" autoFocus className="h-9" />
+          <CommandList>
+            <CommandEmpty>No teammates found.</CommandEmpty>
+            <CommandGroup>
+              {options.map((m) => {
+                const isMe = m.id === currentUserId;
+                const isSelected = m.id === value;
+                return (
+                  <CommandItem
+                    key={m.id}
+                    value={`${m.label} ${isMe ? 'you' : ''}`}
+                    onSelect={() => {
+                      onChange(isSelected ? null : m.id);
+                      setOpen(false);
+                    }}
+                    className="text-[12px] gap-2"
+                  >
+                    <UserCircle2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="flex-1 truncate">
+                      {m.label}
+                      {isMe && <span className="text-muted-foreground"> (you)</span>}
+                    </span>
+                    {isSelected && <Check className="h-3.5 w-3.5 text-primary" />}
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
