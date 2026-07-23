@@ -3122,12 +3122,19 @@ function filterFundingSourceTaskProposals(
 function dedupeAndMerge(
   candidates: CandidateItem[],
   existingKeys: Set<string>,
+  dealId?: string | null,
 ): { kept: CandidateItem[]; merged: number; filtered: number } {
   const byTarget = new Map<string, CandidateItem>();
   let merged = 0;
   let filtered = 0;
   for (const c of candidates) {
-    const k = queueSemanticKey(c as any);
+    // Candidate objects don't carry deal_id at this stage — inject it so
+    // the computed semantic key matches the deal-scoped keys we seeded
+    // into `existingKeys` from ai_action_queue rows. Without this, every
+    // sweep re-enqueues the same deal-level card (e.g. "{Deal} Needs
+    // Tasks") because "::create_followup_task::task::" never collides
+    // with the stored "{deal_id}::create_followup_task::task::".
+    const k = queueSemanticKey({ ...(c as any), deal_id: dealId ?? (c as any).deal_id ?? null });
     if (existingKeys.has(k)) {
       filtered++;
       continue;
@@ -5396,7 +5403,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       }
       if (scopedFiltered.length === 0) continue;
 
-      const { kept, merged, filtered } = dedupeAndMerge(scopedFiltered, existingKeys);
+      const { kept, merged, filtered } = dedupeAndMerge(scopedFiltered, existingKeys, bundle.deal_id);
       result.candidates_merged += merged;
       result.candidates_filtered += filtered;
 
