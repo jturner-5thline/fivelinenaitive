@@ -1319,7 +1319,7 @@ function BundlePreviewDrawer({
                 >
                   {c.title}
                 </p>
-                {c.description && (
+                {c.description && !(c.action_type === 'create_followup_task' && (c.new_values as any)?._synthetic === 'update_tasks') && (
                   <p
                     className="mt-1 text-[11.5px] text-[#ecedf4]/60 leading-snug line-clamp-3"
                     style={FONT_BODY}
