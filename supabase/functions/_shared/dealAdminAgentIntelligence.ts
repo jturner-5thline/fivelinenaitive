@@ -977,6 +977,7 @@ async function gatherSignalsForDeal(
     funding_sources: fundingWithBd,
     status_notes: notes.data ?? [],
     activity: act.data ?? [],
+    outstanding_items: outstandingItems,
     stage_history: hist.data ?? [],
     milestones: mile.data ?? [],
     calendar_items: [
