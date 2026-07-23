@@ -1118,7 +1118,7 @@ export function EndOfDayTab({
   const masterPane = (
     <div className={cn(
       'flex flex-col min-w-0 h-full',
-      'rounded-xl border border-white/10 bg-background/40',
+      'rounded-xl border border-white/20 bg-background/40',
     )}>
       {/* Toolbar */}
       <div className="px-3 pt-3 pb-2 border-b border-white/[0.06] space-y-2">
@@ -1372,7 +1372,7 @@ export function EndOfDayTab({
 
   // Detail pane
   const detailPane = (
-    <div className="flex flex-col h-full min-w-0 rounded-xl border border-white/10 bg-background/40">
+    <div className="flex flex-col h-full min-w-0 rounded-xl border border-white/20 bg-background/40">
       {selectedEvent ? (
         <EventDetailPane
           key={selectedEvent.id}
