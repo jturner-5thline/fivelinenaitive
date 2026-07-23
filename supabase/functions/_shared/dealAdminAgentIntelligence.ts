@@ -299,6 +299,13 @@ interface DealSignalBundle {
   email_threads: any[];
   unlinked_terms_emails?: any[];
   referral_sources: any[];
+  /**
+   * Rule D-2 — client contacts on this deal, each annotated with the most
+   * recent OUTBOUND email a user in this workspace sent to that contact and
+   * whether the contact has replied since. Powers the client "silent for 3+
+   * business days" follow-up trigger.
+   */
+  client_contacts?: any[];
   configured_milestone_titles: string[];
   /**
    * Snapshot of the Hours & Fees section for Rule L-1 qualification
