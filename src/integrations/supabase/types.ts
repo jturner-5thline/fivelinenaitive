@@ -4283,6 +4283,8 @@ export type Database = {
           transcript_available: boolean
           transcript_url: string | null
           updated_at: string
+          workspace_id: string | null
+          workspace_name: string | null
         }
         Insert: {
           action_items?: Json
@@ -4316,6 +4318,8 @@ export type Database = {
           transcript_available?: boolean
           transcript_url?: string | null
           updated_at?: string
+          workspace_id?: string | null
+          workspace_name?: string | null
         }
         Update: {
           action_items?: Json
@@ -4349,6 +4353,8 @@ export type Database = {
           transcript_available?: boolean
           transcript_url?: string | null
           updated_at?: string
+          workspace_id?: string | null
+          workspace_name?: string | null
         }
         Relationships: [
           {
@@ -4577,6 +4583,7 @@ export type Database = {
           org_company_id: string | null
           recording_external_id: string | null
           recording_id: string | null
+          workspace_id: string | null
         }
         Insert: {
           attempts?: number
@@ -4588,6 +4595,7 @@ export type Database = {
           org_company_id?: string | null
           recording_external_id?: string | null
           recording_id?: string | null
+          workspace_id?: string | null
         }
         Update: {
           attempts?: number
@@ -4599,6 +4607,7 @@ export type Database = {
           org_company_id?: string | null
           recording_external_id?: string | null
           recording_id?: string | null
+          workspace_id?: string | null
         }
         Relationships: [
           {
@@ -4616,6 +4625,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      claap_sync_scope_log: {
+        Row: {
+          external_id: string | null
+          id: string
+          in_scope: boolean
+          note: string | null
+          run_at: string
+          source: string
+          token_workspace_id: string | null
+          workspace_id: string | null
+          workspace_name: string | null
+        }
+        Insert: {
+          external_id?: string | null
+          id?: string
+          in_scope?: boolean
+          note?: string | null
+          run_at?: string
+          source: string
+          token_workspace_id?: string | null
+          workspace_id?: string | null
+          workspace_name?: string | null
+        }
+        Update: {
+          external_id?: string | null
+          id?: string
+          in_scope?: boolean
+          note?: string | null
+          run_at?: string
+          source?: string
+          token_workspace_id?: string | null
+          workspace_id?: string | null
+          workspace_name?: string | null
+        }
+        Relationships: []
       }
       claap_transcripts: {
         Row: {
