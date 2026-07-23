@@ -3144,8 +3144,7 @@ async function maybeBuildUpdateTasksCandidate(
       ],
       description,
     },
-    rationale_summary:
-      "Deal is in the active pipeline (not archived, not on hold) and has zero outstanding tasks. Prompt the user to add tasks so this deal doesn't stall.",
+    rationale_summary: "",
     evidence_summary: lastTaskAt
       ? `Most recent task activity on this deal was ${lastTaskAt}; no tasks are currently open.`
       : "This deal has never had any tasks.",
