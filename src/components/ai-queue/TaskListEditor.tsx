@@ -202,7 +202,7 @@ function AssigneePicker({
   const selected = options.find((o) => o.id === value);
   const displayLabel = selected
     ? `${selected.label}${selected.id === currentUserId ? ' (you)' : ''}`
-    : `Assign to ${currentUserLabel} (you)`;
+    : 'Select assignee';
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
