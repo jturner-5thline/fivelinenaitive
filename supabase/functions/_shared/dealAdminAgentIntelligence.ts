@@ -4279,6 +4279,56 @@ async function reconcileStalePendingApprovals(
     }
   }
 
+  // Auto-dismiss consolidated lender follow-up bundles once the targeted
+  // funding source(s) reply on the deal thread. Bundle_key convention:
+  // `lender_followups:{deal_id}`. proposed_values.lenders[] carries each
+  // lender's contact_emails — if ANY of those addresses has an inbound
+  // message received after the AQ item was created, the follow-up is no
+  // longer needed. The next agent sweep will emit a fresh bundle for any
+  // still-silent lenders on this deal.
+  const followupItems = (pending as any[]).filter((p) => {
+    if (p.action_type !== "create_followup_task") return false;
+    const bk = (p.new_values as any)?.bundle_key;
+    return typeof bk === "string" && bk.startsWith("lender_followups:");
+  });
+  if (followupItems.length > 0) {
+    for (const item of followupItems) {
+      if (toResolve.includes(item.id)) continue;
+      const lenders = Array.isArray((item.new_values as any)?.lenders)
+        ? ((item.new_values as any).lenders as any[])
+        : [];
+      const emails = Array.from(
+        new Set(
+          lenders
+            .flatMap((l) =>
+              Array.isArray(l?.contact_emails) ? (l.contact_emails as any[]) : [],
+            )
+            .map((e) => (typeof e === "string" ? e.toLowerCase().trim() : ""))
+            .filter((e) => !!e),
+        ),
+      );
+      if (emails.length === 0) continue;
+      const createdIso = new Date(item.created_at).toISOString();
+      const { data: gReplies } = await supabase
+        .from("gmail_messages")
+        .select("gmail_message_id")
+        .in("from_email", emails)
+        .gt("received_at", createdIso)
+        .limit(1);
+      let replied = (gReplies ?? []).length > 0;
+      if (!replied) {
+        const { data: nReplies } = await supabase
+          .from("emails")
+          .select("message_id")
+          .in("from_email", emails)
+          .gt("received_at", createdIso)
+          .limit(1);
+        replied = (nReplies ?? []).length > 0;
+      }
+      if (replied) toResolve.push(item.id);
+    }
+  }
+
   // Extra signal: deal-scoped activity satisfying common action types.
   const dealScopeItems = (pending as any[]).filter(
     (p) =>
