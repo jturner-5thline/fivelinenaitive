@@ -1826,6 +1826,14 @@ function DetailPane({
   const isUpdateTasksPrompt =
     item.action_type === 'create_followup_task' &&
     (newValues as any)?._synthetic === 'update_tasks';
+  const tasksIncomplete = (() => {
+    if (!isUpdateTasksPrompt) return false;
+    const tasks = Array.isArray((edits as any)?.tasks) ? (edits as any).tasks : [];
+    if (tasks.length === 0) return true;
+    return tasks.some(
+      (t: any) => !t || !String(t.title ?? '').trim() || !t.assigned_to,
+    );
+  })();
   const fieldKeys = (() => {
     if (isEmailDraft || isUpdateTasksPrompt) return [] as string[];
     const norm = (v: any) =>
