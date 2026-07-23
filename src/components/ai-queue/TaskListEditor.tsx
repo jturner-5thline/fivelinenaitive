@@ -61,16 +61,15 @@ export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
   useEffect(() => {
     onChange(
       rows
-        .filter((r) => r.title.trim().length > 0)
         .map((r) => ({
           title: r.title.trim(),
           due_date: r.due_date,
-          // Tasks must always have an assignee. If the reviewer didn't pick
-          // one, fall back to the current user creating the task.
-          assigned_to: r.assigned_to ?? currentUserId,
+          // Tasks must always have an assignee — the consumer disables the
+          // approve button until every row has both a title and an assignee.
+          assigned_to: r.assigned_to,
         })),
     );
-  }, [rows, onChange, currentUserId]);
+  }, [rows, onChange]);
 
   const memberOptions = useMemo(
     () =>
@@ -178,7 +177,7 @@ export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
       </Button>
 
       <p className="text-[10px] text-muted-foreground italic">
-        Every task must have an assignee. If you don't pick one, it defaults to you ({currentUserLabel}).
+        Every task needs a title and an assignee before you can create it.
       </p>
     </div>
   );
