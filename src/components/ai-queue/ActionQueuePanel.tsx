@@ -2502,7 +2502,7 @@ function BundleDetailPane({
   const isEmailBundle = children[0]?.action_type === 'draft_email';
   const kindLabel = isEmailBundle ? 'drafts' : 'updates';
   const introCopy = isEmailBundle
-    ? 'Individual follow-up emails drafted for each lender / funding source. Review, edit, and approve each one separately, or use Approve all / Reject all above.'
+    ? null
     : 'Individual lender / funding-source updates proposed on this deal. Review and approve each one separately, or use Approve all / Reject all above.';
 
   const approveAll = async () => {
@@ -2570,9 +2570,11 @@ function BundleDetailPane({
             </div>
           </div>
 
-          <p className="text-[14px] leading-[1.6] text-white max-w-[72ch]" style={FONT_BODY}>
-            {introCopy}
-          </p>
+          {introCopy ? (
+            <p className="text-[14px] leading-[1.6] text-white max-w-[72ch]" style={FONT_BODY}>
+              {introCopy}
+            </p>
+          ) : null}
 
           <BundleChildCarousel
             children={children}
