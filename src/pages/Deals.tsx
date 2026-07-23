@@ -19,8 +19,6 @@ import { DealsListSkeleton } from '@/components/deals/DealsListSkeleton';
 import { SortField, SortDirection } from '@/hooks/useDeals';
 import type { Deal } from '@/types/deal';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
-import { WidgetsSection } from '@/components/deals/WidgetsSection';
-import { WidgetsSectionSkeleton } from '@/components/deals/WidgetsSectionSkeleton';
 import { useWidgets } from '@/contexts/WidgetsContext';
 import { PipelineSelector } from '@/components/deals/PipelineSelector';
 
