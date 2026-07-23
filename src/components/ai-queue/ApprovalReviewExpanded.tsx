@@ -18,6 +18,7 @@ import {
   toSingleSentence,
 } from './approvalCopy';
 import { TaskListEditor, type EditorTask } from './TaskListEditor';
+import { ClientReminderPreview } from './ClientReminderPreview';
 
 /**
  * Decision-first expanded review for an Approval Queue item.
@@ -157,6 +158,9 @@ export function ApprovalReviewExpanded({ item, onDone }: Props) {
           onChange={(tasks) => setEdits((p) => ({ ...p, tasks }))}
         />
       )}
+
+      {/* Client-reminder email preview (Rules D-1 & D-2) */}
+      {!isUpdateTasksPrompt && <ClientReminderPreview item={item} />}
 
       {/* Old → New diff */}
       {!isUpdateTasksPrompt && fieldKeys.length > 0 && (
