@@ -594,6 +594,37 @@ async function gatherSignalsForDeal(
         }
       }
     }
+    // ALSO pull from the naitive-native `emails` table (unified inbox that
+    // covers Microsoft/Outlook sync AND emails sent/received through naitive
+    // directly — NOT just Gmail). Standing rule: the Deal Admin Agent must
+    // scan BOTH naitive-native emails and Gmail threads with equal weight.
+    const { data: naitiveThread } = await supabase
+      .from("emails")
+      .select("message_id, thread_id, subject, preview, from_email, from_name, to_emails, received_at, provider")
+      .in("thread_id", threadIds)
+      .order("received_at", { ascending: false })
+      .limit(80);
+    for (const m of naitiveThread ?? []) {
+      const tid = (m as any).thread_id as string;
+      if (!threadMessages[tid]) threadMessages[tid] = [];
+      // Dedupe against Gmail rows by provider message id.
+      const mid = (m as any).message_id as string | null;
+      const already = mid
+        ? threadMessages[tid].some((x: any) => x.gmail_message_id === mid)
+        : false;
+      if (!already && threadMessages[tid].length < 8) {
+        threadMessages[tid].push({
+          gmail_message_id: mid,
+          thread_id: tid,
+          subject: (m as any).subject ?? null,
+          snippet: (m as any).preview ?? null,
+          from_email: (m as any).from_email ?? null,
+          from_name: (m as any).from_name ?? null,
+          received_at: (m as any).received_at ?? null,
+          source: `naitive:${(m as any).provider ?? "unknown"}`,
+        });
+      }
+    }
   }
   const enrichedThreads = threadRows.map((t) => ({
     ...t,
@@ -712,7 +743,31 @@ async function gatherSignalsForDeal(
         .overlaps("to_emails", contactEmails)
         .order("sent_at", { ascending: false, nullsFirst: false })
         .limit(1);
-      const lastOut = (outRows ?? [])[0] as any;
+      // ALSO check the naitive-native `emails` table for outbound sent
+      // through naitive/Microsoft — pick whichever source is more recent.
+      const { data: outNaitive } = await supabase
+        .from("emails")
+        .select("message_id, subject, preview, from_email, to_emails, received_at, provider")
+        .overlaps("to_emails", contactEmails)
+        .not("from_email", "in", `(${contactEmails.map((e) => `"${e}"`).join(",")})`)
+        .order("received_at", { ascending: false, nullsFirst: false })
+        .limit(1);
+      const gmOut = (outRows ?? [])[0] as any;
+      const nvOut = (outNaitive ?? [])[0] as any;
+      const gmTs = gmOut?.sent_at ?? gmOut?.created_at ?? null;
+      const nvTs = nvOut?.received_at ?? null;
+      const lastOut =
+        (nvTs && (!gmTs || new Date(nvTs) > new Date(gmTs)))
+          ? {
+              gmail_message_id: nvOut.message_id ?? null,
+              subject: nvOut.subject ?? null,
+              body_text: nvOut.preview ?? "",
+              sent_at: nvTs,
+              created_at: nvTs,
+              to_emails: nvOut.to_emails ?? [],
+              source: `naitive:${nvOut.provider ?? "unknown"}`,
+            }
+          : gmOut;
       if (!lastOut) {
         (f as any).outbound_awaiting_reply = null;
         continue;
@@ -731,7 +786,16 @@ async function gatherSignalsForDeal(
         .gt("received_at", sentAt)
         .order("received_at", { ascending: false })
         .limit(1);
-      const replied = (replyRows ?? []).length > 0;
+      // Same check on the naitive-native `emails` table (Microsoft / naitive).
+      const { data: replyNaitive } = await supabase
+        .from("emails")
+        .select("message_id, from_email, received_at")
+        .in("from_email", contactEmails)
+        .gt("received_at", sentAt)
+        .order("received_at", { ascending: false })
+        .limit(1);
+      const replied =
+        (replyRows ?? []).length > 0 || (replyNaitive ?? []).length > 0;
       const bdSinceSent = businessDaysBetween(new Date(sentAt), today);
       const body: string = typeof lastOut.body_text === "string" ? lastOut.body_text : "";
       (f as any).outbound_awaiting_reply = {
@@ -741,7 +805,11 @@ async function gatherSignalsForDeal(
         body_excerpt: body.length > 1600 ? body.slice(0, 1600) + "…" : body,
         business_days_since_sent: bdSinceSent,
         replied,
-        reply_received_at: replied ? ((replyRows ?? [])[0] as any)?.received_at ?? null : null,
+        reply_received_at: replied
+          ? (((replyRows ?? [])[0] as any)?.received_at ??
+             ((replyNaitive ?? [])[0] as any)?.received_at ?? null)
+          : null,
+        source: (lastOut as any).source ?? "gmail",
       };
     }
   } catch (err) {
@@ -1184,7 +1252,31 @@ async function gatherClientContactsForDeal(
         .contains("to_emails", [email])
         .order("sent_at", { ascending: false, nullsFirst: false })
         .limit(1);
-      const lastOut = (outRows ?? [])[0] as any;
+      // Also check the naitive-native `emails` table (Microsoft / naitive-composed).
+      const { data: outNaitive } = await supabase
+        .from("emails")
+        .select("message_id, thread_id, subject, preview, from_email, to_emails, received_at, provider")
+        .contains("to_emails", [email])
+        .neq("from_email", email)
+        .order("received_at", { ascending: false, nullsFirst: false })
+        .limit(1);
+      const gmOut = (outRows ?? [])[0] as any;
+      const nvOut = (outNaitive ?? [])[0] as any;
+      const gmTs = gmOut?.sent_at ?? gmOut?.created_at ?? null;
+      const nvTs = nvOut?.received_at ?? null;
+      const lastOut =
+        (nvTs && (!gmTs || new Date(nvTs) > new Date(gmTs)))
+          ? {
+              gmail_message_id: nvOut.message_id ?? null,
+              thread_id: nvOut.thread_id ?? null,
+              subject: nvOut.subject ?? null,
+              body_text: nvOut.preview ?? "",
+              sent_at: nvTs,
+              created_at: nvTs,
+              to_emails: nvOut.to_emails ?? [],
+              source: `naitive:${nvOut.provider ?? "unknown"}`,
+            }
+          : gmOut;
       if (!lastOut) continue;
       const sentAt: string | null =
         (lastOut.sent_at as string | null) ?? (lastOut.created_at as string | null) ?? null;
@@ -1197,7 +1289,15 @@ async function gatherClientContactsForDeal(
         .gt("received_at", sentAt)
         .order("received_at", { ascending: false })
         .limit(1);
-      const replied = (replyRows ?? []).length > 0;
+      const { data: replyNaitive } = await supabase
+        .from("emails")
+        .select("message_id, from_email, received_at")
+        .eq("from_email", email)
+        .gt("received_at", sentAt)
+        .order("received_at", { ascending: false })
+        .limit(1);
+      const replied =
+        (replyRows ?? []).length > 0 || (replyNaitive ?? []).length > 0;
       const bdSinceSent = businessDaysBetween(new Date(sentAt), today);
       // Recent candidate threads with this contact (last 90d), so the
       // approver can pick which one to reply in.
@@ -1209,17 +1309,36 @@ async function gatherClientContactsForDeal(
         .gte("sent_at", ninetyAgo)
         .order("sent_at", { ascending: false })
         .limit(20);
+      const { data: naitiveThreadRows } = await supabase
+        .from("emails")
+        .select("thread_id, subject, received_at")
+        .contains("to_emails", [email])
+        .neq("from_email", email)
+        .gte("received_at", ninetyAgo)
+        .order("received_at", { ascending: false })
+        .limit(20);
       const seenThreads = new Set<string>();
       const candidateThreads: any[] = [];
-      for (const t of (threadRows ?? []) as any[]) {
-        const tid = typeof t.thread_id === "string" ? t.thread_id : null;
-        if (!tid || seenThreads.has(tid)) continue;
-        seenThreads.add(tid);
-        candidateThreads.push({
-          thread_id: tid,
+      const merged = [
+        ...((threadRows ?? []) as any[]).map((t) => ({
+          thread_id: typeof t.thread_id === "string" ? t.thread_id : null,
           subject: t.subject ?? null,
           latest_message_at: t.sent_at ?? null,
-        });
+        })),
+        ...((naitiveThreadRows ?? []) as any[]).map((t) => ({
+          thread_id: typeof t.thread_id === "string" ? t.thread_id : null,
+          subject: t.subject ?? null,
+          latest_message_at: t.received_at ?? null,
+        })),
+      ].sort((a, b) => {
+        const ta = a.latest_message_at ? new Date(a.latest_message_at).getTime() : 0;
+        const tb = b.latest_message_at ? new Date(b.latest_message_at).getTime() : 0;
+        return tb - ta;
+      });
+      for (const t of merged) {
+        if (!t.thread_id || seenThreads.has(t.thread_id)) continue;
+        seenThreads.add(t.thread_id);
+        candidateThreads.push(t);
         if (candidateThreads.length >= 5) break;
       }
       const body: string = typeof lastOut.body_text === "string" ? lastOut.body_text : "";
@@ -1293,6 +1412,14 @@ CALL TYPE TAXONOMY — naitive / 5th Line invite titles (apply BEFORE writing an
 - The structured call_type field on a Claap recording is advisory only — the calendar / invite title ALWAYS wins when the two disagree.
 
 EMAIL SIGNAL → ACTION MAPPING (apply rigorously)
+EMAIL SOURCE SCOPE — STANDING RULE (always on, non-negotiable)
+- The bundle's email signals (emails[], email_threads[].messages[], outbound_awaiting_reply, client_contacts[].outbound_awaiting_reply, unlinked_terms_emails[]) draw from TWO equally-authoritative sources:
+    1. Emails sent and received through naitive directly (naitive-native inbox — Microsoft/Outlook sync and naitive-composed sends; message rows carry a `source` prefix like "naitive:*" when they came from this pipe).
+    2. Gmail threads linked or associated with the deal in naitive (via deal_emails / email_threads / gmail_messages / email_cache / gmail_sent_messages).
+- Treat both sources with EQUAL weight when evaluating every trigger rule (Terms Received, Pass, Schedule-a-Call, No-Lender-Reply, Outstanding Items reminder, Client-Silent follow-up, etc.). NEVER discount, ignore, or de-prioritize a signal because it originated from one pipe or the other, and NEVER require Gmail-only evidence when a naitive-native message already carries the same content.
+- Reply detection, outbound-awaiting-reply clocks, and thread-message context are computed across BOTH sources — a reply on either side cancels the clock.
+- Scanning is CONTINUOUS and always on for every active-pipeline deal; do not gate any rule on "Gmail sync only" or similar single-source assumptions.
+
 - ETA commitment from a counterparty ("I'll send financials by Friday") → add_status_note capturing the commitment AND a create_followup_task due the committed date, assigned to the deal manager.
 - Status signal ("still working on materials", "almost done") → add_status_note only.
 - Blocker / delay ("won't be ready until tomorrow", "pushing to next week") → add_status_note AND, if the blocker is on a specific lender, update_funding_source with the new ETA in notes.
