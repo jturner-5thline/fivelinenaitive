@@ -752,18 +752,6 @@ export default function Dashboard() {
           </div>
         }
       >
-            {/* 2. Stats / widgets row */}
-            {isLoading || widgetsLoading ? (
-              <WidgetsSectionSkeleton />
-            ) : (
-              <div
-                className="opacity-0"
-                style={{ animation: 'fadeInUp 0.4s ease-out 0.1s forwards' }}
-              >
-                <WidgetsSection deals={deals} />
-              </div>
-            )}
-            
             <style>{`
               @keyframes fadeInUp {
                 from {
