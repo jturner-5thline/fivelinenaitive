@@ -97,7 +97,10 @@ export function MeetingCreateFollowUpAction({
   };
 
   const dialogContent = prefill && (
-    <DialogContent className="max-w-lg w-[calc(100vw-2rem)] p-0 overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/40 bg-[linear-gradient(160deg,hsl(var(--card))_0%,hsl(var(--popover))_55%,hsl(var(--muted))_100%)] z-[120]">
+    <DialogContent
+      overlayClassName="z-[2000]"
+      className="max-w-lg w-[calc(100vw-2rem)] p-0 overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/40 bg-[linear-gradient(160deg,hsl(var(--card))_0%,hsl(var(--popover))_55%,hsl(var(--muted))_100%)] z-[2010]"
+    >
       <DialogHeader className="px-4 pt-4 pb-2">
         <DialogTitle className="flex items-center gap-2 text-sm">
           <Sparkles className="h-4 w-4 text-primary" />
