@@ -1661,6 +1661,7 @@ function DetailPane({
   const [editMode, setEditMode] = useState(false);
   const [busy, setBusy] = useState<'a' | 'r' | null>(null);
   const [edits, setEdits] = useState<Record<string, any>>({});
+  const [showTaskErrors, setShowTaskErrors] = useState(false);
   const navigate = useNavigate();
   // Lookup tables to resolve raw UUIDs (stage_id, pipeline_id) into labels.
   const { pipelines } = usePipelineContext();
