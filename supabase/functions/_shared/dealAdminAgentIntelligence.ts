@@ -4291,8 +4291,30 @@ async function reconcileStalePendingApprovals(
     const bk = (p.new_values as any)?.bundle_key;
     return typeof bk === "string" && bk.startsWith("lender_followups:");
   });
+  // Idempotency ledger: itemId -> triggering reply metadata. Also guards
+  // against processing the same (deal_id, thread_id, message_id) twice
+  // within a single sweep when multiple emails arrive close together.
+  const followupResolutions = new Map<
+    string,
+    { thread_id: string | null; message_id: string; from_email: string; received_at: string; source: "gmail" | "native" }
+  >();
+  const seenTriggers = new Set<string>(); // `${dealId}|${thread_id||msgId}`
   if (followupItems.length > 0) {
-    for (const item of followupItems) {
+    // Dedupe by deal_id to avoid double-processing when the same deal has
+    // multiple pending bundles queued during a race (only the newest is kept).
+    const newestPerDeal = new Map<string, any>();
+    for (const it of followupItems) {
+      const dealId = String(it.deal_id ?? "");
+      if (!dealId) continue;
+      const cur = newestPerDeal.get(dealId);
+      if (!cur || new Date(it.created_at).getTime() > new Date(cur.created_at).getTime()) {
+        newestPerDeal.set(dealId, it);
+      } else {
+        // Older duplicate bundle for the same deal → clear as superseded.
+        toResolve.push(it.id);
+      }
+    }
+    for (const item of newestPerDeal.values()) {
       if (toResolve.includes(item.id)) continue;
       const lenders = Array.isArray((item.new_values as any)?.lenders)
         ? ((item.new_values as any).lenders as any[])
@@ -4309,23 +4331,60 @@ async function reconcileStalePendingApprovals(
       );
       if (emails.length === 0) continue;
       const createdIso = new Date(item.created_at).toISOString();
+      // Fetch the FIRST reply after creation (ASC + limit 1) so the trigger
+      // is deterministic across concurrent sweeps — same input → same
+      // recorded trigger → idempotent.
       const { data: gReplies } = await supabase
         .from("gmail_messages")
-        .select("gmail_message_id")
+        .select("gmail_message_id, thread_id, from_email, received_at")
         .in("from_email", emails)
         .gt("received_at", createdIso)
+        .order("received_at", { ascending: true })
         .limit(1);
-      let replied = (gReplies ?? []).length > 0;
-      if (!replied) {
+      let trigger: {
+        thread_id: string | null;
+        message_id: string;
+        from_email: string;
+        received_at: string;
+        source: "gmail" | "native";
+      } | null = null;
+      if ((gReplies ?? []).length > 0) {
+        const r = (gReplies as any[])[0];
+        trigger = {
+          thread_id: r.thread_id ?? null,
+          message_id: r.gmail_message_id,
+          from_email: r.from_email,
+          received_at: r.received_at,
+          source: "gmail",
+        };
+      } else {
         const { data: nReplies } = await supabase
           .from("emails")
-          .select("message_id")
+          .select("message_id, from_email, received_at")
           .in("from_email", emails)
           .gt("received_at", createdIso)
+          .order("received_at", { ascending: true })
           .limit(1);
-        replied = (nReplies ?? []).length > 0;
+        if ((nReplies ?? []).length > 0) {
+          const r = (nReplies as any[])[0];
+          trigger = {
+            thread_id: null,
+            message_id: r.message_id,
+            from_email: r.from_email,
+            received_at: r.received_at,
+            source: "native",
+          };
+        }
       }
-      if (replied) toResolve.push(item.id);
+      if (!trigger) continue;
+      // Per-thread once-only guard: never clear more than one bundle for the
+      // same (deal, thread/message) tuple in a single reconciliation pass.
+      const dealKey = String(item.deal_id ?? "");
+      const triggerKey = `${dealKey}|${trigger.thread_id ?? trigger.message_id}`;
+      if (seenTriggers.has(triggerKey)) continue;
+      seenTriggers.add(triggerKey);
+      followupResolutions.set(item.id, trigger);
+      toResolve.push(item.id);
     }
   }
 
@@ -4722,20 +4781,71 @@ async function reconcileStalePendingApprovals(
   if (toResolve.length === 0) return 0;
 
   const nowIso = new Date().toISOString();
-  const { error: updErr } = await supabase
-    .from("ai_action_queue")
-    .update({
-      status: "dismissed",
-      dismissed_at: nowIso,
-      rejection_reason: "auto_resolved_user_already_acted",
-    })
-    .in("id", toResolve)
-    .eq("status", "pending");
-  if (updErr) {
-    console.log(`[deal-admin-agent] reconcile update failed: ${updErr.message}`);
-    return 0;
+  // Split resolutions: lender-followup dismissals carry per-item trigger
+  // metadata for idempotency + audit. Everything else uses a single batch
+  // update. The `.eq("status", "pending")` guard on every write makes each
+  // transition atomic — if a concurrent sweep already flipped the row, our
+  // UPDATE affects 0 rows and we simply move on (no double-clear).
+  const followupIds = Array.from(followupResolutions.keys());
+  const otherIds = toResolve.filter((id) => !followupResolutions.has(id));
+  let cleared = 0;
+
+  for (const itemId of followupIds) {
+    const trig = followupResolutions.get(itemId)!;
+    // Read current new_values to merge (avoid clobbering the bundle payload).
+    const { data: currentRow } = await supabase
+      .from("ai_action_queue")
+      .select("new_values")
+      .eq("id", itemId)
+      .maybeSingle();
+    const currentNV = (currentRow?.new_values as any) ?? {};
+    const mergedNV = {
+      ...currentNV,
+      cleared_by_reply: {
+        thread_id: trig.thread_id,
+        message_id: trig.message_id,
+        from_email: trig.from_email,
+        received_at: trig.received_at,
+        source: trig.source,
+        cleared_at: nowIso,
+      },
+    };
+    const { data: updated, error: fErr } = await supabase
+      .from("ai_action_queue")
+      .update({
+        status: "dismissed",
+        dismissed_at: nowIso,
+        rejection_reason: "auto_resolved_lender_replied",
+        new_values: mergedNV,
+      })
+      .eq("id", itemId)
+      .eq("status", "pending")
+      .select("id");
+    if (fErr) {
+      console.log(`[deal-admin-agent] followup dismiss failed for ${itemId}: ${fErr.message}`);
+      continue;
+    }
+    cleared += (updated ?? []).length;
   }
-  return toResolve.length;
+
+  if (otherIds.length > 0) {
+    const { data: updated, error: updErr } = await supabase
+      .from("ai_action_queue")
+      .update({
+        status: "dismissed",
+        dismissed_at: nowIso,
+        rejection_reason: "auto_resolved_user_already_acted",
+      })
+      .in("id", otherIds)
+      .eq("status", "pending")
+      .select("id");
+    if (updErr) {
+      console.log(`[deal-admin-agent] reconcile update failed: ${updErr.message}`);
+    } else {
+      cleared += (updated ?? []).length;
+    }
+  }
+  return cleared;
 }
 
 export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<AnalyzeResult> {
