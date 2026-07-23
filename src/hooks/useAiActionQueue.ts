@@ -875,6 +875,8 @@ export function useApproveAiAction() {
                         item.title ||
                         `Schedule call: ${nv?.lender_name ?? 'lender'}`,
                       description: nv?.description ?? item.description ?? null,
+                      sourceEmailId: nv?.source_email_id ?? null,
+                      sourceEmailSubject: nv?.source_email_subject ?? null,
                       sourceRecordId: `ai-queue:${item.id}`,
                     },
                   }),

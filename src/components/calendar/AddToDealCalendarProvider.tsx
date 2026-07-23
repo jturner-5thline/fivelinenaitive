@@ -119,6 +119,8 @@ export function AddToDealCalendarProvider({ children }: { children: ReactNode })
             contactEmails?: string[];
             title?: string;
             description?: string | null;
+            sourceEmailId?: string | null;
+            sourceEmailSubject?: string | null;
             sourceRecordId?: string;
           }
         | undefined;
@@ -128,6 +130,7 @@ export function AddToDealCalendarProvider({ children }: { children: ReactNode })
       const title = detail.title || `Schedule call: ${lender} on ${deal}`;
       const sourceText = [
         detail.description || '',
+        detail.sourceEmailSubject ? `Re: ${detail.sourceEmailSubject}` : '',
         detail.contactEmails && detail.contactEmails.length > 0
           ? `Lender contact(s): ${detail.contactEmails.join(', ')}`
           : '',
