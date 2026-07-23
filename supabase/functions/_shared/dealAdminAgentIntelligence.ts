@@ -1404,38 +1404,49 @@ SCHEDULE-A-CALL TRIGGER — INBOUND LENDER / FUNDING SOURCE EMAIL (approved, man
 
 const OUTBOUND_FOLLOWUP_RULES = `
 
-OUTBOUND-AWAITING-REPLY TRIGGER — USER SENT LENDER EMAIL, NO REPLY IN 2 BUSINESS DAYS (approved, mandatory)
+OUTBOUND-AWAITING-REPLY TRIGGER — Rule L-4 (approved, mandatory)
+USER SENT LENDER EMAIL, NO REPLY IN 2 BUSINESS DAYS (5 BD if lender was previously engaged)
 - INPUT: each funding_sources[] row may carry an outbound_awaiting_reply object:
     { sent_at, subject, body_excerpt, business_days_since_sent, replied, reply_received_at }
   This is the MOST RECENT outbound email a user in this workspace sent to that lender's known contact emails, plus whether that lender has replied since.
-- FIRE ONLY IF ALL of the following are true for a funding source:
+- DETERMINE PER FUNDING SOURCE whether the source is "past threshold":
     1. outbound_awaiting_reply is present (not null).
     2. outbound_awaiting_reply.replied === false (lender has NOT replied since sent_at).
-    3. outbound_awaiting_reply.business_days_since_sent >= 2 (strict — only count business days).
-    4. The funding source is NOT in a terminal state (pass, declined, not_a_fit, withdrawn, dead, lost, rejected, closed, no_go, unresponsive, on_hold, paused).
-    5. YOUR JUDGMENT — the outbound (subject + body_excerpt) genuinely WARRANTS A REPLY from the lender. It warrants a reply if it: asks a question, responds to a question the lender raised, requests information / materials / a decision / a next step, or otherwise reasonably requires the lender to act. Purely informational blasts, "no reply needed" FYIs, calendar invites, and out-of-office style messages DO NOT warrant a reply — skip them.
-    6. If outbound_awaiting_reply.replied === true, the follow-up clock is cancelled — DO NOT emit under any circumstance, even if bd >= 2.
-- WHEN ALL 6 CONDITIONS HOLD, emit EXACTLY ONE proposal per (deal, funding_source) per scan:
-    action_type = "draft_email"
-    item_title  = "Follow up: {Lender} on {Deal}"
-    target_object_type = "deal_lender"
-    target_object_id   = the exact funding_sources[].id (never a contact id, never a deal id)
-    requires_send_ui   = true
+    3. The funding source is NOT in a terminal state (pass, declined, not_a_fit, withdrawn, dead, lost, rejected, closed, no_go, unresponsive, on_hold, paused).
+    4. YOUR JUDGMENT — the outbound (subject + body_excerpt) genuinely WARRANTS A REPLY from the lender. It warrants a reply if it: asks a question, responds to a question the lender raised, requests information / materials / a decision / a next step, or otherwise reasonably requires the lender to act. Purely informational blasts, "no reply needed" FYIs, calendar invites, and out-of-office style messages DO NOT warrant a reply — skip them.
+    5. Choose the follow-up THRESHOLD based on whether the lender was PREVIOUSLY ENGAGED in this thread before going quiet:
+         • DEFAULT threshold = 2 business days.
+         • EXTENDED threshold = 5 business days IF, prior to going quiet, this lender demonstrated active review or explicitly confirmed receipt — e.g. a prior reply in the thread acknowledging materials, asking a diligence question, promising to review, or otherwise engaging substantively. Look across emails[], status_notes, and funding_source.notes for that signal. Absence of any prior reply from the lender means DEFAULT (2 BD).
+       The source is "past threshold" when outbound_awaiting_reply.business_days_since_sent >= the chosen threshold (strict business-day count).
+    6. If outbound_awaiting_reply.replied === true at any point before this scan, the clock is cancelled — the source is NOT past threshold, no matter the day count.
+- CONSOLIDATION (mandatory): all lender follow-up prompts for the SAME deal collapse into ONE AQ item. Do NOT emit one item per lender. If ZERO funding sources on the deal are past threshold, emit NOTHING under this rule.
+- WHEN AT LEAST ONE funding source on the deal is past threshold, emit EXACTLY ONE proposal per deal per scan:
+    action_type = "create_followup_task"
+    item_title  = "Follow up on {Deal}: {N} lender{s} awaiting reply"
+    target_object_type = "deal"
+    target_object_id   = the deal id
+    requires_send_ui   = false
     proposed_values = {
-      to: [<the same lender contact email(s) from the original outbound's to_emails>],
-      subject: "Re: <original subject>" (or a short, neutral nudge subject if none),
-      body: "<short, professional nudge that references the ORIGINAL ask in one sentence — e.g. 'Following up on my note from {Mon DD} re: {topic} — any thoughts?' — never generic filler>",
-      bundle_key: "lender_followup:{deal_id}:{funding_source_id}"
+      title: "Follow up on {Deal} — {N} lender{s} awaiting reply",
+      description: "Reply in the existing email thread with each lender listed below. Do not start a new thread.\n\n" +
+                   "For each past-threshold funding source, include one bullet in this exact shape:\n" +
+                   "• {Lender name} — sent {Mon DD} (\"{verbatim short quote of the ask, <= 12 words}\"), no reply in {N} business days [threshold: {2 BD | 5 BD — previously engaged}]",
+      assignee_user_id: deal.owner_user_id,
+      due_in_business_days: 1,
+      lenders: [
+        { funding_source_id, lender_name, sent_at, subject, business_days_since_sent, threshold_business_days, previously_engaged: true|false, contact_emails: [...] }
+        // one entry per past-threshold funding source on this deal
+      ],
+      bundle_key: "lender_followups:{deal_id}"
     }
-    rationale_summary = "Sent {Lender} an email on {Mon DD} that asked for {short summary of the ask}. No reply in {N} business days — surfacing a follow-up draft for the deal owner to review and send."
-    evidence_summary  = REQUIRED. <= 240 chars, neutral, factual, format exactly:
-        "Sent {Mon DD}: \"<verbatim short quote (<= 12 words) of the outbound ask>\" — no reply in {N} business days."
-      If the ask is longer than 12 words, paraphrase in <= 20 words instead of quoting.
-    evidence_references MUST cite the outbound (kind="email", label="Outbound email to {Lender}").
+    rationale_summary = "{N} lender{s} on {Deal} are past the no-reply threshold — consolidating a single follow-up prompt so the deal owner can nudge each in the existing thread."
+    evidence_summary  = REQUIRED. <= 240 chars, neutral, factual, listing up to 3 lenders in the shape "{Lender} ({N} BD)" separated by "; ". If more than 3, append "; +{K} more".
+    evidence_references MUST cite each past-threshold lender's most recent outbound (kind="email", label="Outbound email to {Lender}") — one reference per lender in the bundle.
     confidence_score >= 0.7.
-- DEDUPE: at most ONE draft_email follow-up per (deal, funding_source.id) per scan. If multiple lenders on the deal are past 2 BD with no reply, emit one proposal per lender — never batch them.
-- If the lender replies at any point before you next run, the outbound_awaiting_reply.replied flag will flip to true — the queue producer will not fire this trigger again. Existing pending items are also auto-resolved once the reply lands (handled by the executor).
-- NEVER emit this trigger from an outbound sent by the lender to us, from an inbound thread, or when there is no outbound_awaiting_reply payload — the rule keys ENTIRELY off outbound_awaiting_reply.`;
+- DEDUPE: at most ONE consolidated create_followup_task per deal per scan under this rule. The bundle_key "lender_followups:{deal_id}" is the dedupe key — never emit a second follow-up item for the same deal in the same scan.
+- If any lender replies before the next scan, the outbound_awaiting_reply.replied flag flips to true for that lender — drop them from the consolidated bundle. If ALL lenders reply, the consolidated item is auto-resolved by the executor.
+- NEVER emit this trigger from an outbound sent by the lender to us, from an inbound thread, or when there is no outbound_awaiting_reply payload on any funding source — the rule keys ENTIRELY off outbound_awaiting_reply.
+- This rule OVERRIDES the earlier "one proposal per lender" phrasing in any other section — L-4 is always consolidated per deal.`;
 
 const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES + TERMS_ISSUED_RULES + SCHEDULE_CALL_RULES + OUTBOUND_FOLLOWUP_RULES;
 
