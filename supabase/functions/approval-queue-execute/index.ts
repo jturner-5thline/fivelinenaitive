@@ -30,6 +30,80 @@ function json(body: unknown, status = 200) {
   });
 }
 
+// Fire in-app + email notifications for each newly created task whose
+// assignee is not the approver themselves. Best-effort — never fails the
+// execution if a downstream notification call errors.
+async function notifyTaskAssignees(
+  admin: any,
+  tasks: Array<{ id: string; title: string; assigned_to: string | null; due_date: string | null; deal_id: string | null }>,
+  actorUserId: string,
+  dealId: string | null,
+) {
+  try {
+    const targets = (tasks ?? []).filter(
+      (t) => t && t.assigned_to && t.assigned_to !== actorUserId,
+    );
+    if (targets.length === 0) return;
+
+    const assigneeIds = Array.from(new Set(targets.map((t) => t.assigned_to as string)));
+    const [{ data: profiles }, { data: actorProfile }, { data: deal }] = await Promise.all([
+      admin.from('profiles').select('user_id, display_name, email').in('user_id', assigneeIds),
+      admin.from('profiles').select('display_name').eq('user_id', actorUserId).maybeSingle(),
+      dealId
+        ? admin.from('deals').select('company').eq('id', dealId).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+    const profileMap = new Map<string, { email?: string; display_name?: string }>();
+    for (const p of (profiles ?? []) as any[]) profileMap.set(p.user_id, p);
+    const actorName = (actorProfile as any)?.display_name || 'A teammate';
+    const dealName = (deal as any)?.company || null;
+
+    await Promise.all(
+      targets.map(async (t) => {
+        const prof = profileMap.get(t.assigned_to as string);
+        // In-app notification (SECURITY DEFINER RPC — safe under service role).
+        try {
+          await admin.rpc('create_task_inapp_notification', {
+            _task_id: t.id,
+            _recipient_user_id: t.assigned_to,
+            _trigger_key: 'task_assigned',
+            _title: 'New task assigned',
+            _body: `${actorName} assigned you "${t.title}"${dealName ? ` on ${dealName}` : ''}`,
+            _context: { task_id: t.id, task_title: t.title, deal_id: dealId },
+          });
+        } catch (e) {
+          console.warn('[approval-queue-execute] in-app notify failed', e);
+        }
+        // Transactional email
+        if (prof?.email) {
+          try {
+            const taskUrl = `https://fivelinenaitive.lovable.app/tasks?taskId=${t.id}&view=mine`;
+            await admin.functions.invoke('send-transactional-email', {
+              body: {
+                templateName: 'task-assigned',
+                recipientEmail: prof.email,
+                idempotencyKey: `task-assigned-${t.id}-${prof.email}`,
+                templateData: {
+                  assigneeName: prof.display_name || undefined,
+                  taskTitle: t.title,
+                  dealName: dealName || undefined,
+                  assignedByName: actorName,
+                  dueDate: t.due_date || undefined,
+                  taskUrl,
+                },
+              },
+            });
+          } catch (e) {
+            console.warn('[approval-queue-execute] email notify failed', e);
+          }
+        }
+      }),
+    );
+  } catch (e) {
+    console.warn('[approval-queue-execute] notifyTaskAssignees error', e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
