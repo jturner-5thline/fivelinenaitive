@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, Sun, Sunrise, CalendarDays } from 'lucide-react';
-import { addDays, format, isSameDay, nextMonday } from 'date-fns';
+import { CalendarIcon, Plus, Trash2 } from 'lucide-react';
+import { format } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -25,30 +25,41 @@ interface Props {
 }
 
 /**
- * Inline single-task creator used by the "[Deal] Needs Tasks" approval
- * queue card. Mirrors the simple Create-Task field used elsewhere in the
- * app (deal detail popup / rundown): title + quick date chips + assignee.
- * Emits a one-element `tasks` array so the approval-queue-execute edge
- * function's batch handler stays compatible.
+ * Multi-task creator used by the "[Deal] Needs Tasks" approval queue card.
+ * Reviewer can add any number of tasks; each row has: title, due date
+ * (calendar-only picker), and assignee. Emits the full `tasks` array which
+ * approval-queue-execute inserts as a batch.
  */
+type Row = { title: string; due_date: string | null; assigned_to: string | null };
+
+function toDate(iso: string | null): Date | undefined {
+  return iso ? new Date(iso + 'T00:00:00') : undefined;
+}
+
 export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
   const members = useTeamMembers();
-  const seed = initialTasks[0] ?? { title: '', due_date: null, assigned_to: null };
-  const [title, setTitle] = useState<string>(seed.title ?? '');
-  const [dueDate, setDueDate] = useState<Date | undefined>(
-    seed.due_date ? new Date(seed.due_date + 'T00:00:00') : undefined,
-  );
-  const [assignedTo, setAssignedTo] = useState<string | null>(seed.assigned_to ?? null);
+  const [rows, setRows] = useState<Row[]>(() => {
+    const seed = initialTasks.length > 0
+      ? initialTasks.map((t) => ({
+          title: t.title ?? '',
+          due_date: t.due_date ?? null,
+          assigned_to: t.assigned_to ?? null,
+        }))
+      : [{ title: '', due_date: null, assigned_to: null }];
+    return seed;
+  });
 
   useEffect(() => {
-    onChange([
-      {
-        title: title.trim(),
-        due_date: dueDate ? format(dueDate, 'yyyy-MM-dd') : null,
-        assigned_to: assignedTo,
-      },
-    ]);
-  }, [title, dueDate, assignedTo, onChange]);
+    onChange(
+      rows
+        .filter((r) => r.title.trim().length > 0)
+        .map((r) => ({
+          title: r.title.trim(),
+          due_date: r.due_date,
+          assigned_to: r.assigned_to,
+        })),
+    );
+  }, [rows, onChange]);
 
   const memberOptions = useMemo(
     () =>
@@ -59,76 +70,113 @@ export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
     [members],
   );
 
-  const datePresets = [
-    { id: 'today', label: 'Today', icon: <Sun className="h-3 w-3" />, value: new Date() },
-    { id: 'tomorrow', label: 'Tomorrow', icon: <Sunrise className="h-3 w-3" />, value: addDays(new Date(), 1) },
-    { id: 'monday', label: 'Next Mon', icon: <CalendarDays className="h-3 w-3" />, value: nextMonday(new Date()) },
-    { id: 'week', label: '+1 week', icon: <CalendarDays className="h-3 w-3" />, value: addDays(new Date(), 7) },
-  ];
-  const dateMatches = (preset: Date) => !!dueDate && isSameDay(dueDate, preset);
+  const update = (i: number, patch: Partial<Row>) =>
+    setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  const addRow = () =>
+    setRows((prev) => [...prev, { title: '', due_date: null, assigned_to: null }]);
+  const removeRow = (i: number) =>
+    setRows((prev) => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== i)));
 
   return (
     <div className="rounded border border-white/10 bg-background/40 p-2.5 space-y-2">
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-        Create task on {dealName}
+        Create tasks on {dealName}
       </p>
-      <Input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="Task title…"
-        className="h-8 text-[12px] px-2"
-      />
-      <div className="flex flex-wrap items-center gap-1.5">
-        {datePresets.map((p) => (
-          <Button
-            key={p.id}
-            type="button"
-            size="sm"
-            variant={dateMatches(p.value) ? 'default' : 'outline'}
-            className="h-6 px-2 text-[10px] gap-1"
-            onClick={() => setDueDate(dateMatches(p.value) ? undefined : p.value)}
-          >
-            {p.icon}
-            {p.label}
-          </Button>
-        ))}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className={cn(
-                'h-6 px-2 text-[10px] gap-1',
-                dueDate && !datePresets.some((p) => dateMatches(p.value)) && 'border-primary/50 text-primary',
-              )}
+
+      <div className="space-y-2">
+        {rows.map((row, i) => {
+          const dueDate = toDate(row.due_date);
+          return (
+            <div
+              key={i}
+              className="rounded border border-white/10 bg-background/40 p-2 space-y-1.5"
             >
-              <CalendarIcon className="h-3 w-3" />
-              {dueDate ? format(dueDate, 'MMM d') : 'Pick date'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus />
-          </PopoverContent>
-        </Popover>
+              <div className="flex items-start gap-1.5">
+                <Input
+                  value={row.title}
+                  onChange={(e) => update(i, { title: e.target.value })}
+                  placeholder={`Task ${i + 1} title…`}
+                  className="h-8 text-[12px] px-2 flex-1"
+                />
+                {rows.length > 1 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-red-400"
+                    onClick={() => removeRow(i)}
+                    aria-label="Remove task"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className={cn(
+                        'h-7 px-2 text-[11px] gap-1',
+                        dueDate && 'border-primary/50 text-primary',
+                      )}
+                    >
+                      <CalendarIcon className="h-3 w-3" />
+                      {dueDate ? format(dueDate, 'MMM d, yyyy') : 'Due date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-[2100]" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dueDate}
+                      onSelect={(d) =>
+                        update(i, { due_date: d ? format(d, 'yyyy-MM-dd') : null })
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Select
+                  value={row.assigned_to ?? ''}
+                  onValueChange={(v) => update(i, { assigned_to: v || null })}
+                >
+                  <SelectTrigger className="h-7 text-[11px] px-2 flex-1 min-w-[160px]">
+                    <SelectValue placeholder="Assign owner…" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[2100]">
+                    {memberOptions.length === 0 ? (
+                      <div className="px-2 py-1.5 text-[11px] text-muted-foreground">
+                        No teammates found
+                      </div>
+                    ) : (
+                      memberOptions.map((m) => (
+                        <SelectItem key={m.id} value={m.id} className="text-[12px]">
+                          {m.label}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          );
+        })}
       </div>
-      <Select
-        value={assignedTo ?? ''}
-        onValueChange={(v) => setAssignedTo(v || null)}
+
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="h-7 px-2 text-[11px] gap-1 w-full"
+        onClick={addRow}
       >
-        <SelectTrigger className="h-8 text-[12px] px-2">
-          <SelectValue placeholder="Assign owner…" />
-        </SelectTrigger>
-        <SelectContent>
-          {memberOptions.map((m) => (
-            <SelectItem key={m.id} value={m.id} className="text-[12px]">
-              {m.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        <Plus className="h-3 w-3" /> Add another task
+      </Button>
+
       <p className="text-[10px] text-muted-foreground italic">
-        Approve to create this task on the deal. It will appear in the deal's Tasks section, assigned to the selected owner (defaults to you).
+        Approve to create these tasks on the deal. Each will appear in the deal's Tasks section, assigned to the selected owner (defaults to you).
       </p>
     </div>
   );
