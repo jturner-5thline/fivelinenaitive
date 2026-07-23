@@ -128,6 +128,104 @@ async function retrieveKnowledgeForDeal(
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* Pass-reason taxonomy — loaded from Knowledge Base docs (tag =      */
+/* "pass_reasons") so the enum + mapping guidance are editable in the */
+/* Deal Admin Agent Knowledge tab instead of hardcoded here.          */
+/* ------------------------------------------------------------------ */
+
+type PassReasonEntry = { key: string; label: string; description: string };
+
+const DEFAULT_PASS_REASON_TAXONOMY: PassReasonEntry[] = [
+  { key: "deal_size_mismatch", label: "Deal Size Mismatch", description: "reason references deal size / check size / minimum or maximum size / hold size (e.g. \"too small for us\", \"below our minimum\", \"above our hold\")." },
+  { key: "industry_exclusion", label: "Industry Exclusion", description: "reason references industry / sector / vertical / business type exclusion (e.g. \"we don't lend to SaaS\", \"we avoid healthcare services\")." },
+  { key: "geographic_restriction", label: "Geographic Restriction", description: "reason references geography / region / country / state / jurisdiction (e.g. \"outside our footprint\", \"we don't lend in Canada\")." },
+  { key: "risk_profile_concerns", label: "Risk Profile Concerns", description: "reason references credit / leverage / cash flow / EBITDA / concentration / customer concentration / covenant / rating / underwriting concerns (e.g. \"leverage too high\", \"cash flow coverage is thin\", \"customer concentration risk\")." },
+  { key: "timing_issues", label: "Timing Issues", description: "reason references timing / capacity / bandwidth / pipeline / quarter / freeze (e.g. \"we're at capacity this quarter\", \"in a credit freeze right now\", \"revisit next year\")." },
+  { key: "relationship_issues", label: "Relationship Issues", description: "reason references sponsor / management / prior deal / reputational concerns (e.g. \"prior experience with sponsor\", \"management team concerns\")." },
+  { key: "terms_mismatch", label: "Terms Mismatch", description: "reason references pricing / structure / rate / fees / covenants / structure being unworkable for them (e.g. \"pricing doesn't work for us\", \"structure isn't what we do\")." },
+  { key: "other", label: "Other", description: "only when the reason genuinely doesn't map to any category above (or when pass_reason=\"No reason provided\")." },
+];
+
+function parsePassReasonTaxonomyFromText(text: string): PassReasonEntry[] {
+  if (!text || typeof text !== "string") return [];
+  const out: PassReasonEntry[] = [];
+  const lines = text.split(/\r?\n/);
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    const stripped = line.replace(/^[-*•]\s*/, "");
+    const m = stripped.match(/^([a-z][a-z0-9_]{1,60})\s*[—\-|:]\s*(.+)$/i);
+    if (!m) continue;
+    const key = m[1].toLowerCase();
+    const rest = m[2].trim();
+    let label = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    let description = rest;
+    const parts = rest.split(/\s*[—|]\s*/);
+    if (parts.length >= 2) {
+      label = parts[0].trim() || label;
+      description = parts.slice(1).join(" — ").trim();
+    }
+    if (!description) continue;
+    out.push({ key, label, description });
+  }
+  return out;
+}
+
+async function loadPassReasonTaxonomy(
+  supabase: SupabaseClient,
+  companyId: string,
+): Promise<{ taxonomy: PassReasonEntry[]; source: "kb" | "default" }> {
+  try {
+    const { data, error } = await supabase
+      .from("admin_agent_knowledge_docs")
+      .select("extracted_text, tags, title, updated_at")
+      .eq("company_id", companyId)
+      .eq("agent_key", "admin_agent")
+      .eq("status", "ready")
+      .contains("tags", ["pass_reasons"])
+      .order("updated_at", { ascending: false })
+      .limit(5);
+    if (error) {
+      console.warn("[deal-admin-agent] loadPassReasonTaxonomy query failed", error.message);
+      return { taxonomy: DEFAULT_PASS_REASON_TAXONOMY, source: "default" };
+    }
+    const rows: any[] = Array.isArray(data) ? data : [];
+    if (rows.length === 0) return { taxonomy: DEFAULT_PASS_REASON_TAXONOMY, source: "default" };
+    const merged: PassReasonEntry[] = [];
+    const seen = new Set<string>();
+    for (const row of rows) {
+      const parsed = parsePassReasonTaxonomyFromText(String(row?.extracted_text ?? ""));
+      for (const e of parsed) {
+        if (seen.has(e.key)) continue;
+        seen.add(e.key);
+        merged.push(e);
+      }
+    }
+    if (merged.length === 0) return { taxonomy: DEFAULT_PASS_REASON_TAXONOMY, source: "default" };
+    if (!seen.has("other")) {
+      const otherDefault = DEFAULT_PASS_REASON_TAXONOMY.find((e) => e.key === "other");
+      if (otherDefault) merged.push(otherDefault);
+    }
+    return { taxonomy: merged, source: "kb" };
+  } catch (e) {
+    console.warn("[deal-admin-agent] loadPassReasonTaxonomy failed", (e as Error)?.message);
+    return { taxonomy: DEFAULT_PASS_REASON_TAXONOMY, source: "default" };
+  }
+}
+
+function buildPassReasonTaxonomyBlock(
+  taxonomy: PassReasonEntry[],
+  source: "kb" | "default",
+): string {
+  const header = source === "kb"
+    ? "PASS-REASON CATEGORY TAXONOMY (loaded from Deal Admin Agent Knowledge Base — authoritative, overrides any earlier list in these rules). The pass_reason_category enum MUST be one of these keys:"
+    : "PASS-REASON CATEGORY TAXONOMY (default — no KB doc tagged \"pass_reasons\" found). The pass_reason_category enum MUST be one of these keys:";
+  const enumLine = `  Allowed keys: ${taxonomy.map((t) => `"${t.key}"`).join(" | ")}`;
+  const mapping = taxonomy.map((t) => `    • ${t.key} — ${t.description}`).join("\n");
+  return `${header}\n${enumLine}\n  Mapping guidance — map the lender's verbatim stated reason to the closest key. The Manager can adjust in the queue, but the agent must pre-select the best match (never leave blank).\n${mapping}`;
+}
+
 // Mirrors the AiActionType union used by the queue UI/executor.
 const SUPPORTED_ACTION_TYPES = [
   "update_deal_stage",
