@@ -1009,6 +1009,7 @@ async function gatherSignalsForDeal(
     email_threads: enrichedThreads,
     unlinked_terms_emails: unlinkedTermsEmails,
     referral_sources: await gatherReferralSourcesForDeal(supabase, deal, since, today),
+    client_contacts: await gatherClientContactsForDeal(supabase, deal, today),
     configured_milestone_titles: await gatherConfiguredMilestoneTitles(supabase, companyId),
   };
 }
