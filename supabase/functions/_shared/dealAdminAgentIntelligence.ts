@@ -201,6 +201,26 @@ interface DealSignalBundle {
   unlinked_terms_emails?: any[];
   referral_sources: any[];
   configured_milestone_titles: string[];
+  /**
+   * Snapshot of the Hours & Fees section for Rule L-1 qualification
+   * comparison. When present and any field is non-null, the LLM may
+   * surface these on the update_deal_stage proposal side-by-side with
+   * incoming terms extracted from the lender email. The agent NEVER
+   * self-certifies whether the incoming terms qualify — the Manager
+   * confirms in the Approval Queue.
+   */
+  qualified_terms_parameters?: {
+    deal_value: number | null;
+    engagement_type: string | null;
+    fee_type: string | null;
+    success_fee_percent: number | null;
+    retainer_fee: number | null;
+    milestone_fee: number | null;
+    total_fee: number | null;
+    pre_signing_hours: number | null;
+    post_signing_hours: number | null;
+    has_any_parameter: boolean;
+  } | null;
 }
 
 export interface CandidateItem {
@@ -253,9 +273,16 @@ export function isInDealAdminAgentScope(c: CandidateItem): boolean {
     // stable bundle_key so the client-side approve handler can open the
     // calendar popup after the task lands. Anything else must go through a
     // different (whitelisted) action_type.
+    // Rule L-1 (Draft Terms branch): a lender email sharing a DRAFT term
+    // sheet for feedback also emits a create_followup_task — a review task
+    // for the Analyst/Manager. It is tagged `draft_terms_feedback:` so the
+    // scope filter allows it without opening the door to unbounded tasks.
     const pv = (c.proposed_values ?? {}) as Record<string, any>;
     const bundleKey = typeof pv.bundle_key === "string" ? pv.bundle_key : "";
-    return bundleKey.startsWith("schedule_call:");
+    return (
+      bundleKey.startsWith("schedule_call:") ||
+      bundleKey.startsWith("draft_terms_feedback:")
+    );
   }
   if (c.action_type === "update_funding_source") {
     const pv = (c.proposed_values ?? {}) as Record<string, any>;
