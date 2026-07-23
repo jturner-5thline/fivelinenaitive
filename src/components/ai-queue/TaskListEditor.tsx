@@ -37,7 +37,13 @@ interface Props {
  * (calendar-only picker), and assignee. Emits the full `tasks` array which
  * approval-queue-execute inserts as a batch.
  */
-type Row = { title: string; due_date: string | null; assigned_to: string | null };
+type Row = {
+  title: string;
+  due_date: string | null;
+  assigned_to: string | null;
+  titleTouched?: boolean;
+  assigneeTouched?: boolean;
+};
 
 function toDate(iso: string | null): Date | undefined {
   return iso ? new Date(iso + 'T00:00:00') : undefined;
@@ -101,18 +107,41 @@ export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
       <div className="space-y-2">
         {rows.map((row, i) => {
           const dueDate = toDate(row.due_date);
+          const titleMissing = row.title.trim().length === 0;
+          const assigneeMissing = !row.assigned_to;
+          // Reveal errors once the field has been touched, or once the user
+          // has engaged the row via any other field (so a partially filled
+          // row surfaces what's still needed).
+          const rowEngaged =
+            !!row.title || !!row.due_date || !!row.assigned_to ||
+            row.titleTouched || row.assigneeTouched;
+          const showTitleError = titleMissing && (row.titleTouched || rowEngaged);
+          const showAssigneeError =
+            assigneeMissing && (row.assigneeTouched || rowEngaged);
           return (
             <div
               key={i}
               className="rounded border border-white/10 bg-background/40 p-2 space-y-1.5"
             >
               <div className="flex items-start gap-1.5">
-                <Input
-                  value={row.title}
-                  onChange={(e) => update(i, { title: e.target.value })}
-                  placeholder={`Task ${i + 1} title…`}
-                  className="h-8 text-[12px] px-2 flex-1"
-                />
+                <div className="flex-1 space-y-1">
+                  <Input
+                    value={row.title}
+                    onChange={(e) => update(i, { title: e.target.value })}
+                    onBlur={() => update(i, { titleTouched: true })}
+                    placeholder={`Task ${i + 1} title…`}
+                    aria-invalid={showTitleError || undefined}
+                    className={cn(
+                      'h-8 text-[12px] px-2 w-full',
+                      showTitleError && 'border-red-400/70 focus-visible:ring-red-400/40',
+                    )}
+                  />
+                  {showTitleError && (
+                    <p className="text-[10px] text-red-400 leading-tight">
+                      Title is required
+                    </p>
+                  )}
+                </div>
                 {rows.length > 1 && (
                   <Button
                     type="button"
@@ -126,7 +155,7 @@ export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
                   </Button>
                 )}
               </div>
-              <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex flex-wrap items-start gap-1.5">
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -153,13 +182,26 @@ export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
                     />
                   </PopoverContent>
                 </Popover>
-                <AssigneePicker
-                  value={row.assigned_to}
-                  options={memberOptions}
-                  currentUserId={currentUserId}
-                  currentUserLabel={currentUserLabel}
-                  onChange={(id) => update(i, { assigned_to: id })}
-                />
+                <div className="flex-1 min-w-[200px] space-y-1">
+                  <AssigneePicker
+                    value={row.assigned_to}
+                    options={memberOptions}
+                    currentUserId={currentUserId}
+                    currentUserLabel={currentUserLabel}
+                    invalid={showAssigneeError}
+                    onChange={(id) =>
+                      update(i, { assigned_to: id, assigneeTouched: true })
+                    }
+                    onOpenChange={(open) => {
+                      if (!open) update(i, { assigneeTouched: true });
+                    }}
+                  />
+                  {showAssigneeError && (
+                    <p className="text-[10px] text-red-400 leading-tight">
+                      Assignee is required
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           );
@@ -189,6 +231,8 @@ interface AssigneePickerProps {
   currentUserId: string | null;
   currentUserLabel: string;
   onChange: (id: string | null) => void;
+  invalid?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 function AssigneePicker({
@@ -197,6 +241,8 @@ function AssigneePicker({
   currentUserId,
   currentUserLabel,
   onChange,
+  invalid,
+  onOpenChange,
 }: AssigneePickerProps) {
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.id === value);
@@ -205,7 +251,13 @@ function AssigneePicker({
     : 'Select assignee';
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        onOpenChange?.(next);
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -213,12 +265,14 @@ function AssigneePicker({
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          aria-invalid={invalid || undefined}
           className={cn(
-            'h-8 px-2.5 text-[12px] flex-1 min-w-[200px] gap-1.5 font-semibold justify-between',
+            'h-8 px-2.5 text-[12px] w-full min-w-[200px] gap-1.5 font-semibold justify-between',
             'border-2 shadow-sm transition-all',
             value
               ? 'border-emerald-400/60 bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 text-emerald-100 hover:from-emerald-500/25 hover:to-emerald-500/10 hover:border-emerald-400/80'
               : 'border-primary/60 bg-gradient-to-br from-primary/20 to-primary/5 text-primary hover:from-primary/30 hover:to-primary/10 hover:border-primary/80 animate-pulse-subtle',
+            invalid && 'border-red-400/70 text-red-200 from-red-500/15 to-red-500/5',
           )}
         >
           <span className="flex items-center gap-1.5 truncate">
