@@ -58,6 +58,7 @@ import { ClaapNoteEditor } from '@/components/dashboard/ClaapNoteEditor';
 import { HighlightCalendarMenu } from '@/components/calendar/HighlightCalendarMenu';
 import { ShareNotesDialog } from '@/components/dashboard/ShareNotesDialog';
 import { Share2 } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
 // End of Day · Two-pane master/detail layout
