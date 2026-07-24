@@ -260,6 +260,19 @@ function SalesBDInner() {
       {viewChannelEntry && (
         <ChannelEntityDetailModal entry={viewChannelEntry} onClose={() => setViewChannelEntry(null)} />
       )}
+      <Dialog open={rulesOpen} onOpenChange={setRulesOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Sales & BD Rules & Definitions</DialogTitle>
+            <DialogDescription>
+              Contact tier rules and partner attribution settings configured for the Sales & BD page.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="pt-2">
+            <PartnerRulesSettings />
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
