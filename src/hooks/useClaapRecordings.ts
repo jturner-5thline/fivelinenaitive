@@ -2,6 +2,13 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+export interface FetchClaapRecordingsOptions {
+  live?: boolean;
+  from?: string;
+  to?: string;
+  limit?: number;
+}
+
 export interface ClaapParticipant {
   attended: boolean;
   email: string;
@@ -152,13 +159,63 @@ function mergeByRecordingId(primary: ClaapRecording[], secondary: ClaapRecording
   });
 }
 
+const LIVE_RECORDINGS_CACHE_TTL_MS = 60_000;
+const liveRecordingsCache = new Map<string, {
+  at: number;
+  recordings: ClaapRecording[];
+  promise?: Promise<ClaapRecording[]>;
+}>();
+
+async function fetchLiveRecordings(search?: string): Promise<ClaapRecording[]> {
+  const cacheKey = (search || '').trim().toLowerCase();
+  const cached = liveRecordingsCache.get(cacheKey);
+  const now = Date.now();
+
+  if (cached?.promise) return cached.promise;
+  if (cached && now - cached.at < LIVE_RECORDINGS_CACHE_TTL_MS) return cached.recordings;
+
+  const promise = (async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return [];
+
+    const params = new URLSearchParams({ action: 'list', limit: '100' });
+    if (search && search.trim().length > 0) params.set('search', search.trim());
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claap-recordings?${params.toString()}`;
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) return [];
+
+    const apiData = await response.json();
+    return (Array.isArray(apiData?.recordings) ? apiData.recordings : [])
+      .map(mapApiRecording)
+      .filter(Boolean) as ClaapRecording[];
+  })();
+
+  liveRecordingsCache.set(cacheKey, { at: now, recordings: cached?.recordings || [], promise });
+
+  try {
+    const recordings = await promise;
+    liveRecordingsCache.set(cacheKey, { at: Date.now(), recordings });
+    return recordings;
+  } catch (err) {
+    liveRecordingsCache.delete(cacheKey);
+    throw err;
+  }
+}
+
 export function useClaapRecordings() {
   const [recordings, setRecordings] = useState<ClaapRecording[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchRecordings = useCallback(async (search?: string) => {
+  const fetchRecordings = useCallback(async (search?: string, options: FetchClaapRecordingsOptions = {}) => {
+    const { live = true, from, to, limit = 200 } = options;
     setLoading(true);
     setError(null);
     
@@ -171,11 +228,14 @@ export function useClaapRecordings() {
         .from('claap_recordings')
         .select('external_id, title, started_at, organizer_email, participants, source_payload, transcript_url, recording_url')
         .order('started_at', { ascending: false, nullsFirst: false })
-        .limit(200);
+        .limit(limit);
+
+      if (from) query = query.gte('started_at', from);
+      if (to) query = query.lte('started_at', to);
 
       if (search && search.trim().length > 0) {
         const q = search.trim().replace(/[%,]/g, ' ');
-        query = query.ilike('title', `%${q}%`);
+        query = query.or(`title.ilike.%${q}%,organizer_email.ilike.%${q}%`);
       }
 
       const { data, error: qErr } = await query;
@@ -184,31 +244,18 @@ export function useClaapRecordings() {
       const localRecordings: ClaapRecording[] = (data || []).map(mapLocalRecording);
       setRecordings(localRecordings);
 
+      if (!live) return localRecordings;
+
       // Also hydrate from the live Claap API. The local mirror can lag behind
       // when someone else on the team owned the recorder, but the current user
       // was an attendee; merging live results lets them find and link/sync it.
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const params = new URLSearchParams({ action: 'list', limit: '100' });
-      if (search && search.trim().length > 0) params.set('search', search.trim());
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claap-recordings?${params.toString()}`;
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const apiData = await response.json();
-        const liveRecordings = (Array.isArray(apiData?.recordings) ? apiData.recordings : [])
-          .map(mapApiRecording)
-          .filter(Boolean) as ClaapRecording[];
-        if (liveRecordings.length > 0) {
-          setRecordings(mergeByRecordingId(localRecordings, liveRecordings));
-        }
+      const liveRecordings = await fetchLiveRecordings(search);
+      if (liveRecordings.length > 0) {
+        const merged = mergeByRecordingId(localRecordings, liveRecordings);
+        setRecordings(merged);
+        return merged;
       }
+      return localRecordings;
     } catch (err: any) {
       console.error('Error fetching Claap recordings:', err);
       setError(err.message);
@@ -220,6 +267,7 @@ export function useClaapRecordings() {
           variant: 'destructive',
         });
       }
+      return [];
     } finally {
       setLoading(false);
     }
