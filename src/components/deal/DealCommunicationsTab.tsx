@@ -5,6 +5,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Search, X } from 'lucide-react';
 import { downloadAttachment, openAttachmentInNewTab } from '@/components/deal/email/useFullEmailMessage';
 import { toast } from 'sonner';
 import { EmailViewerDialog, type EmailViewerMessage } from '@/components/deal/email/EmailViewerDialog';
@@ -52,6 +54,8 @@ export function DealCommunicationsTab({ dealId }: Props) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [viewer, setViewer] = useState<EmailViewerMessage | null>(null);
   const [dealMeta, setDealMeta] = useState<{ name: string | null }>({ name: null });
+  const [search, setSearch] = useState('');
+  const [attachmentsOnly, setAttachmentsOnly] = useState(false);
   const toggleThread = useCallback((tid: string) => {
     setExpanded((prev) => ({ ...prev, [tid]: !prev[tid] }));
   }, []);
@@ -333,10 +337,25 @@ export function DealCommunicationsTab({ dealId }: Props) {
     return () => { cancelled = true; };
   }, [dealId]);
 
-  // Group by thread_id (null thread_id → standalone per message_id)
+  // Apply search + attachments-only filter, then group by thread_id.
+  // A thread is included if ANY message in it matches; matching messages
+  // control expand-preview accuracy in the message list itself.
   const threads = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const matches = (it: CommItem) => {
+      if (attachmentsOnly && !it.has_attachments) return false;
+      if (!q) return true;
+      const hay = [
+        it.subject,
+        it.from,
+        it.preview,
+        ...(it.to ?? []),
+      ].join(' \u0000 ').toLowerCase();
+      return hay.includes(q);
+    };
+    const filtered = items.filter(matches);
     const groups = new Map<string, CommItem[]>();
-    for (const it of items) {
+    for (const it of filtered) {
       const tid = it.thread_id ?? `__solo_${it.message_id ?? it.key}`;
       const arr = groups.get(tid) ?? [];
       arr.push(it);
@@ -354,7 +373,7 @@ export function DealCommunicationsTab({ dealId }: Props) {
         const bt = b.latest ? new Date(b.latest).getTime() : 0;
         return bt - at;
       });
-  }, [items]);
+  }, [items, search, attachmentsOnly]);
 
   if (isLoading) {
     return (
@@ -364,7 +383,8 @@ export function DealCommunicationsTab({ dealId }: Props) {
     );
   }
 
-  if (threads.length === 0) {
+  const hasFilters = search.trim().length > 0 || attachmentsOnly;
+  if (threads.length === 0 && !hasFilters) {
     return (
       <div className="rounded-lg border border-border/40 bg-card/40 px-6 py-12 text-center">
         <Mail className="h-6 w-6 mx-auto text-muted-foreground mb-3" />
@@ -379,6 +399,43 @@ export function DealCommunicationsTab({ dealId }: Props) {
 
   return (
     <div className="space-y-3 min-w-0">
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search emails by name, address, subject, or keyword…"
+            className="pl-8 pr-8 h-9 text-xs"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant={attachmentsOnly ? 'default' : 'outline'}
+          onClick={() => setAttachmentsOnly((v) => !v)}
+          className="h-9 gap-1.5 text-xs"
+          aria-pressed={attachmentsOnly}
+        >
+          <Paperclip className="h-3.5 w-3.5" />
+          Attachments only
+        </Button>
+      </div>
+      {threads.length === 0 && (
+        <div className="rounded-lg border border-border/40 bg-card/40 px-6 py-10 text-center text-xs text-muted-foreground">
+          No emails match your filters.
+        </div>
+      )}
       <div className="flex items-center justify-end gap-2 -mb-1 text-[11px]">
         <button
           type="button"
