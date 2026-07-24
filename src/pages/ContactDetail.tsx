@@ -17,8 +17,8 @@ export default function ContactDetail() {
       </Helmet>
 
       <div className="min-h-screen">
-        <div className="container mx-auto py-6 px-4 space-y-6">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/contacts')} className="gap-1.5">
+        <div className="container mx-auto py-6 px-4 space-y-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/contacts')} className="gap-1.5 -ml-2">
             <ArrowLeft className="h-4 w-4" /> Contacts
           </Button>
 
