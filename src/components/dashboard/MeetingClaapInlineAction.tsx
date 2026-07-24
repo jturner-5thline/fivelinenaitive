@@ -86,7 +86,7 @@ export function MeetingClaapInlineAction(props: Props) {
   const { eventId, eventTitle, eventStart, eventEnd, organizerEmail, attendees, onOpenPicker } = props;
   const { company } = useCompany();
   const qc = useQueryClient();
-  const { recordings, fetchRecordings, loading: loadingRecordings } = useClaapRecordings();
+  const { fetchRecordings, loading: loadingRecordings } = useClaapRecordings();
   const [ranked, setRanked] = useState<RankedTop | null>(null);
   const [ranking, setRanking] = useState(false);
   const [approving, setApproving] = useState(false);
