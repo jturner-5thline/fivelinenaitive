@@ -945,6 +945,13 @@ function CopilotAssistantContent({
                       e.preventDefault();
                       navigate(href);
                     }
+                    if (href && /^https?:\/\//i.test(href)) {
+                      // Citation link to an external source (e.g. Claap
+                      // recording). Open in a new tab so the chat state
+                      // and conversation context are preserved.
+                      e.preventDefault();
+                      window.open(href, '_blank', 'noopener,noreferrer');
+                    }
                   }}
                   style={{
                     color: 'hsl(var(--primary))',

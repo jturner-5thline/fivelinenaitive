@@ -5391,6 +5391,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
       let results = transcripts.map((t: any) => {
         const meeting = meetingMap.get(t.claap_meeting_id);
+        const dateLabel = t.recorded_at ? new Date(t.recorded_at).toISOString().slice(0, 10) : "";
         return {
           title: meeting?.title || "Untitled Call",
           recording_url: meeting?.recording_url,
@@ -5401,6 +5402,15 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           summary: t.summary || meeting?.ai_summary || null,
           transcript_preview: t.transcript_text ? t.transcript_text.slice(0, 2000) : null,
           has_full_transcript: !!t.transcript_text,
+          claap_meeting_id: t.claap_meeting_id,
+          transcript_id: t.id,
+          citation: {
+            type: "claap",
+            id: t.claap_meeting_id,
+            url: meeting?.recording_url || null,
+            label: [meeting?.title || "Claap meeting", dateLabel].filter(Boolean).join(" · "),
+            deal_id: args.deal_id,
+          },
         };
       });
 
@@ -5455,16 +5465,43 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         });
         if (error) return { error: error.message };
 
-        const results = (matches || []).map((r: any) => ({
-          deal_id: r.deal_id,
-          deal_company: r.deal_company,
-          meeting_title: r.meeting_title,
-          recorded_at: r.recorded_at,
-          similarity: Number(r.similarity?.toFixed(3)),
-          passage: r.chunk_text,
-          transcript_id: r.transcript_id,
-          claap_meeting_id: r.claap_meeting_id,
-        }));
+        // Enrich with recording_url so the model can emit clickable citations
+        // pointing straight at the source Claap meeting.
+        const meetingIds = Array.from(
+          new Set((matches || []).map((r: any) => r.claap_meeting_id).filter(Boolean)),
+        );
+        const urlByMeeting = new Map<string, string>();
+        if (meetingIds.length > 0) {
+          const { data: metaRows } = await supabase
+            .from("claap_meetings")
+            .select("id, recording_url")
+            .in("id", meetingIds);
+          for (const row of metaRows || []) {
+            if (row?.recording_url) urlByMeeting.set(row.id as string, row.recording_url as string);
+          }
+        }
+        const results = (matches || []).map((r: any) => {
+          const recording_url = urlByMeeting.get(r.claap_meeting_id) || null;
+          const dateLabel = r.recorded_at ? new Date(r.recorded_at).toISOString().slice(0, 10) : "";
+          return {
+            deal_id: r.deal_id,
+            deal_company: r.deal_company,
+            meeting_title: r.meeting_title,
+            recorded_at: r.recorded_at,
+            similarity: Number(r.similarity?.toFixed(3)),
+            passage: r.chunk_text,
+            transcript_id: r.transcript_id,
+            claap_meeting_id: r.claap_meeting_id,
+            recording_url,
+            citation: {
+              type: "claap",
+              id: r.claap_meeting_id,
+              url: recording_url,
+              label: [r.meeting_title || "Claap meeting", r.deal_company, dateLabel].filter(Boolean).join(" · "),
+              deal_id: r.deal_id,
+            },
+          };
+        });
         return {
           query: args.query,
           match_count: results.length,
@@ -9410,6 +9447,23 @@ ENTITY LINK FORMAT (STRICT — applies to every assistant message, every card, e
 - Apply this in EVERY surface you produce: prose answers, bullet briefings, disambiguation prompts, approval card "description" strings, status reports, follow-up suggestions, and the title/copy of any draft_status_report / update_deal_fields / draft_email / create_task action payload.
 - Approval card example: { "action": "confirm", "action_type": "update_deal_fields", "description": "Update [Turbine](entity://deal/abc-123) — change stage to Term Sheet", "params": { ... } }
 - Do NOT use raw /deals/<id> paths anymore; always use the entity:// scheme so every surface routes through the same EntityLink renderer.
+
+CITATION FORMAT (STRICT — cite every substantive claim you take from a tool result):
+- When ANY factual statement in your answer is grounded in a Claap transcript passage, a deal record, a contact record, a company record, a note, an email, or another retrieved source, append a superscript citation link immediately after that sentence or bullet — before the period is fine, e.g. "…they pushed back on the personal guarantee[¹]."
+- Number citations sequentially per message: [¹], [²], [³], … Each superscript is a markdown link:
+    - Claap meeting passage → link to the recording URL from the tool's \`citation.url\` (falls back to the deal if url missing): [¹](<recording_url>) or [¹](entity://deal/<deal_id>)
+    - Deal-scoped fact (record, write-up, tasks, outstanding items) → [²](entity://deal/<deal_id>)
+    - Contact-scoped fact (activities, emails, notes attached to contact) → [³](entity://contact/<contact_id>)
+    - Company-scoped fact → [⁴](entity://company/<company_id>)
+    - Lender/funding-source-scoped fact → [⁵](entity://funding_source/<lender_id>)
+- Reuse the same number if the same source backs multiple sentences. Do NOT invent citations for things you are inferring; only cite tool-returned data.
+- At the end of the message, add a final "Sources" section (heading level ###) listing each numbered citation on its own line with the label from the tool (\`citation.label\` for Claap; otherwise the entity name), rendered as the same markdown link, in this shape:
+    ### Sources
+    1. [Meeting Title · Deal · 2025-11-14](<recording_url>) — exact quote or 1-line paraphrase from the passage.
+    2. [Deal Name](entity://deal/<uuid>) — which field/section you used ("stage history", "open tasks", "write-up: Financials").
+- For Claap citations, include the short quoted passage or a ≤120-char paraphrase after the link so the reader can verify the source text without opening the recording.
+- If you did not consult any tool for a message (pure clarifying question, chit-chat, disambiguation prompt), omit citations and omit the Sources section.
+- Never fabricate a URL or UUID. If a tool result lacked a URL/id, cite the parent deal/contact entity instead, or drop the citation.
 
 CURRENT CONTEXT:
 - ${todayLine}
