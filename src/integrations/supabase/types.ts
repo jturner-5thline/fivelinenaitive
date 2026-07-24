@@ -5497,6 +5497,7 @@ export type Database = {
           id: string
           lender_matching_config: Json | null
           permission_settings: Json | null
+          referral_source_doc_fields: Json
           stale_alert_config: Json | null
           updated_at: string
         }
@@ -5520,6 +5521,7 @@ export type Database = {
           id?: string
           lender_matching_config?: Json | null
           permission_settings?: Json | null
+          referral_source_doc_fields?: Json
           stale_alert_config?: Json | null
           updated_at?: string
         }
@@ -5543,6 +5545,7 @@ export type Database = {
           id?: string
           lender_matching_config?: Json | null
           permission_settings?: Json | null
+          referral_source_doc_fields?: Json
           stale_alert_config?: Json | null
           updated_at?: string
         }
@@ -6542,6 +6545,7 @@ export type Database = {
           primary_company_id: string | null
           referral_agreement_on_file: boolean
           referral_fee: string | null
+          referral_source_docs: Json
           sdr_owner_id: string | null
           seniority: string | null
           sms_opt_in: boolean | null
@@ -7038,6 +7042,7 @@ export type Database = {
           primary_company_id?: string | null
           referral_agreement_on_file?: boolean
           referral_fee?: string | null
+          referral_source_docs?: Json
           sdr_owner_id?: string | null
           seniority?: string | null
           sms_opt_in?: boolean | null
@@ -7534,6 +7539,7 @@ export type Database = {
           primary_company_id?: string | null
           referral_agreement_on_file?: boolean
           referral_fee?: string | null
+          referral_source_docs?: Json
           sdr_owner_id?: string | null
           seniority?: string | null
           sms_opt_in?: boolean | null
