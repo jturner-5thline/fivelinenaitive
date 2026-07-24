@@ -70,6 +70,7 @@ import {
 import { ClaapApprovalCard } from './ClaapApprovalCard';
 import { ClaapRecordingBundleCard } from './ClaapRecordingBundleCard';
 import { CreateDealApprovalCard } from './CreateDealApprovalCard';
+import { AddOutstandingItemsCard } from './AddOutstandingItemsCard';
 import { ApprovalReviewExpanded } from './ApprovalReviewExpanded';
 import { TaskListEditor, type EditorTask } from './TaskListEditor';
 import { usePipelineContext } from '@/contexts/PipelineContext';
@@ -173,6 +174,7 @@ const TYPE_META: Partial<Record<AiActionType | 'draft_email_bundle' | 'update_fu
   update_funding_source_bundle: { label: 'Funding sources', icon: Building2 },
   terms_issued_bundle: { label: 'Term Sheet Items', icon: FileText },
   escalate: { label: 'Escalation', icon: ShieldAlert },
+  add_outstanding_items: { label: 'Outstanding items', icon: ListChecks },
   reassign_deal: { label: 'Reassign', icon: Briefcase },
   create_new_deal: { label: 'New deal', icon: Briefcase },
 };
@@ -1796,6 +1798,16 @@ function DetailPane({
   // reuses the standard Create Deal dialog for edit + finalize.
   if (item.action_type === 'create_new_deal') {
     return <CreateDealApprovalCard item={item} />;
+  }
+
+  // Inbound lender info-request → dedicated "Add outstanding items" card
+  // where the reviewer confirms/edits the extracted items before insert.
+  if (item.action_type === 'add_outstanding_items') {
+    return (
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <AddOutstandingItemsCard item={item} />
+      </div>
+    );
   }
 
   // Bundle view — multiple "Nudge …" email drafts combined into one queue item.

@@ -241,6 +241,7 @@ const SUPPORTED_ACTION_TYPES = [
   "escalate",
   "reassign_deal",
   "save_to_data_room",
+  "add_outstanding_items",
 ] as const;
 type AdminActionType = typeof SUPPORTED_ACTION_TYPES[number];
 
@@ -258,6 +259,7 @@ const RISK_BY_TYPE: Record<AdminActionType, "low" | "medium" | "high"> = {
   escalate: "high",
   reassign_deal: "high",
   save_to_data_room: "low",
+  add_outstanding_items: "low",
 };
 
 const TARGET_TYPE_BY_ACTION: Record<AdminActionType, string> = {
@@ -274,6 +276,7 @@ const TARGET_TYPE_BY_ACTION: Record<AdminActionType, string> = {
   escalate: "deal",
   reassign_deal: "deal",
   save_to_data_room: "deal",
+  add_outstanding_items: "deal",
 };
 
 interface DealSignalBundle {
@@ -367,6 +370,7 @@ const TERMS_STATUS_RE_EXPORT = /term|ioi|loi|indication|proposal/i;
 const PASS_STATUS_RE_EXPORT = /pass|declin|not[_\s-]?a?[_\s-]?fit|withdraw|dead|lost|reject|no[_\s-]?go/i;
 export function isInDealAdminAgentScope(c: CandidateItem): boolean {
   if (c.action_type === "draft_email") return true;
+  if (c.action_type === "add_outstanding_items") return true;
   if (c.action_type === "save_to_data_room") {
     const pv = (c.proposed_values ?? {}) as Record<string, any>;
     const bundleKey = typeof pv.bundle_key === "string" ? pv.bundle_key : "";
@@ -1920,7 +1924,51 @@ USER SENT CLIENT CONTACT EMAIL, NO REPLY IN 3 BUSINESS DAYS
 - NEVER emit this trigger from an outbound sent by the client to us, from an inbound thread, or when there is no outbound_awaiting_reply payload on any client contact — the rule keys ENTIRELY off outbound_awaiting_reply.
 - NEVER route this trigger to lenders, referral sources, or internal 5th Line teammates — the rule is exclusively for CLIENT contacts on bundle.client_contacts[].`;
 
-const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES + TERMS_ISSUED_RULES + SCHEDULE_CALL_RULES + OUTBOUND_FOLLOWUP_RULES + OUTSTANDING_ITEMS_REMINDER_RULES + CLIENT_FOLLOWUP_RULES;
+const LENDER_INFO_REQUEST_RULES = `
+
+LENDER INFO REQUEST — add_outstanding_items (Rule L-5)
+- TRIGGER: an inbound email from a funding source / lender contact (matched to a funding_sources[] row for this deal) that asks for information, diligence materials, or documents in order to review / underwrite the deal. Detection cues include lead-ins like "to begin our review we'll need", "please provide", "we'll need the following", "can you send", "in order to evaluate", "diligence items required", and enumerated lists (bullets, numbers, letters, or line-separated short phrases) of deliverables. A single concrete ask ("please send updated AR aging") also qualifies.
+- EXCLUDE: pass / not-a-fit / hold / terms emails (handled by Rules L-1 / L-2), scheduling-only messages, generic pleasantries, or replies that only confirm receipt.
+- WHEN TRIGGERED, emit EXACTLY ONE add_outstanding_items proposal per (deal, lender, email) with:
+    action_type       = "add_outstanding_items"
+    target_object_type= "deal"
+    target_object_id  = deal_id
+    item_title        = "Add outstanding items requested by {Lender}"
+    linked_entity_label = "{Lender} on {Deal Name}"
+    proposed_values   = {
+      lender_id: "<funding_sources[].id for this lender or null>",
+      lender_name: "<the funding_sources[].name>",
+      requested_by_contact_name: "<sender display name>",
+      requested_by_contact_email: "<sender email>",
+      source_thread_id: "<gmail/naitive thread id if known>",
+      source_message_id: "<message id if known>",
+      source_summary: "<one-sentence factual summary of what the lender is asking for, grounded strictly in the email>",
+      items: [
+        {
+          description: "<clean, action-led noun phrase suitable for an outstanding-items checklist row — strip bullets/numbering/parentheticals>",
+          due_date: "<ISO YYYY-MM-DD if the email states one, else null>",
+          priority: "low|normal|high|urgent (default normal)",
+          source_quote: "<verbatim sentence/bullet from the email that surfaced this item, <= 240 chars>"
+        }
+        // one entry per requested item, in document order. Cap at 12.
+      ],
+      bundle_key: "add_outstanding_items:{deal_id}:{funding_source_id or 'unknown'}"
+    }
+    rationale_summary = "{Lender} sent a diligence request on {Deal} — {N} item(s) to add. Reviewer confirms before insertion."
+    evidence_summary  = REQUIRED. <= 240 chars, one-line factual summary quoting the lead-in phrase from the email.
+    evidence_references MUST cite the inbound email (kind="email") whose body carried the request. Include the funding_source (kind="funding_source") when resolved.
+    confidence_score >= 0.65.
+- ITEM EXTRACTION RULES:
+    • Extract EVERY item in the lender's list — do not merge, summarize, or drop items.
+    • IGNORE signature blocks, legal disclaimers, "Sent from my iPhone", forwarded-message headers, and quoted prior messages.
+    • NEVER duplicate an item that already exists in bundle.outstanding_items[] (compare semantically — don't add "P&L" if "Year-End P&L" is already open).
+    • Convert relative date phrases ("by Friday", "EOD Tuesday") to absolute ISO dates.
+    • Default priority to "normal"; use "high"/"urgent" only when the email explicitly signals urgency ("ASAP", "blocking", "before tomorrow's call").
+- DEDUPE: at most ONE add_outstanding_items proposal per (deal, funding_source, inbound email) per scan. The bundle_key is the dedupe key.
+- LENDER RESOLUTION: match the sender to a funding_sources[] row via exact email, then contact.email list, then domain. If no match, still emit the proposal with lender_id=null so the reviewer can attribute manually — do NOT invent a funding source.
+- OUT OF SCOPE: NEVER emit a create_followup_task, add_status_note, or update_funding_source from this trigger — the add_outstanding_items card IS the action.`;
+
+const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES + TERMS_ISSUED_RULES + SCHEDULE_CALL_RULES + OUTBOUND_FOLLOWUP_RULES + OUTSTANDING_ITEMS_REMINDER_RULES + CLIENT_FOLLOWUP_RULES + LENDER_INFO_REQUEST_RULES;
 
 function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null): string {
   // Trim large fields to keep prompt compact.
