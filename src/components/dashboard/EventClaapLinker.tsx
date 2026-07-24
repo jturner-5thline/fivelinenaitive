@@ -422,6 +422,10 @@ export function EventClaapLinker({
             recording: selectedRecording,
             confidence: entry?.score ?? 0,
             reasons: entry?.reasons ?? [],
+            meeting_context: {
+              title: eventTitle || null,
+              attendees: (attendeeEmails || []).map((e) => ({ email: e })),
+            },
           },
         });
         await supabase.functions.invoke('claap-sync-recording-content', {
