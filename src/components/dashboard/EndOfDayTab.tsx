@@ -1605,6 +1605,43 @@ function EventDetailPane({
     }
   };
 
+  // Manual full reload: refetch transcript from Claap, then regenerate the AI
+  // summary/action items/takeaways. Used when a matched recording shows blank.
+  const reloadClaapNotes = async () => {
+    if (!claapCtx.recording?.rowId && !claapCtx.recording?.id && !claapCtx.recording?.meetingRowId) {
+      toast.info('No linked Claap recording to reload.');
+      return;
+    }
+    setClaapBackfilling(true);
+    try {
+      try {
+        await supabase.functions.invoke('claap-sync-recording-content', {
+          body: {
+            recording_id: claapCtx.recording?.rowId ?? undefined,
+            external_id: claapCtx.recording?.id ?? undefined,
+          },
+        });
+      } catch (err) {
+        console.warn('claap-sync-recording-content failed', err);
+      }
+      try {
+        await supabase.functions.invoke('claap-backfill-summaries', {
+          body: {
+            recording_id: claapCtx.recording?.rowId ?? undefined,
+            meeting_id: claapCtx.recording?.meetingRowId ?? undefined,
+            force: true,
+          },
+        });
+      } catch (err) {
+        console.warn('claap-backfill-summaries failed', err);
+      }
+      await Promise.all([claapCtx.refetch(), refetchSyncStatus()]);
+      toast.success('Claap notes reloaded');
+    } finally {
+      setClaapBackfilling(false);
+    }
+  };
+
   // Auto-trigger backfill once per meeting when transcript exists but no AI content yet.
   useEffect(() => {
     if (!claapCtx.recording?.meetingRowId) return;
