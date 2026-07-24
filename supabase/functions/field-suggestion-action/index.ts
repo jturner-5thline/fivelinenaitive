@@ -16,6 +16,7 @@ const FIELD_TO_COLUMN: Record<string, string> = {
   department: "department",
   seniority: "seniority",
   linkedin_url: "linkedin_url",
+  contact_type: "contact_type",
 };
 
 async function getUserId(req: Request, supabaseUrl: string, anonKey: string) {

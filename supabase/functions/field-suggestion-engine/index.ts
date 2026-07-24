@@ -18,6 +18,7 @@ const DEFAULT_THRESHOLDS: Record<string, number> = {
   department: 0.70,
   seniority: 0.70,
   linkedin_url: 0.85,
+  contact_type: 0.65,
 };
 
 serve(async (req) => {
@@ -62,6 +63,50 @@ serve(async (req) => {
         JSON.stringify({ error: "Could not determine company_id for contact" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Load the org's active contact_type options + a domain-based heuristic
+    // signal so Claude can propose a contact_type (Lender / Banker / Client /
+    // Referral Source / Prospect / …). The heuristic is: if other contacts on
+    // this org share the new contact's email domain, propose the most common
+    // contact_type among them.
+    const { data: activeTypes } = await supabase
+      .from("contact_types")
+      .select("name")
+      .eq("company_id", resolvedCompanyId)
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+    const allowedTypeNames: string[] = (activeTypes || [])
+      .map((t: any) => String(t.name || "").trim())
+      .filter(Boolean);
+
+    let domainTypeHint: { type: string; count: number; domain: string } | null = null;
+    const contactEmailForDomain = String(contact.email || "").toLowerCase().trim();
+    const domainMatch = contactEmailForDomain.match(/@([^>\s]+)$/);
+    const contactDomain = domainMatch ? domainMatch[1] : "";
+    if (contactDomain && !contact.contact_type) {
+      const { data: siblings } = await supabase
+        .from("contacts")
+        .select("contact_type")
+        .eq("org_company_id", resolvedCompanyId)
+        .ilike("email", `%@${contactDomain}`)
+        .not("contact_type", "is", null)
+        .neq("id", contact_id)
+        .limit(50);
+      const tally = new Map<string, number>();
+      for (const s of siblings || []) {
+        const t = String((s as any).contact_type || "").trim();
+        if (!t) continue;
+        tally.set(t, (tally.get(t) || 0) + 1);
+      }
+      let bestType = "";
+      let bestCount = 0;
+      for (const [t, c] of tally.entries()) {
+        if (c > bestCount) { bestType = t; bestCount = c; }
+      }
+      if (bestType && bestCount >= 1) {
+        domainTypeHint = { type: bestType, count: bestCount, domain: contactDomain };
+      }
     }
 
     // For manual scans (or when no email payload was supplied), assemble recent
@@ -162,22 +207,28 @@ serve(async (req) => {
       department: contact.department,
       seniority: contact.seniority,
       linkedin_url: contact.linkedin_url,
+      contact_type: contact.contact_type,
     };
 
-    const systemPrompt = `You are a CRM data extraction agent. Given an email or activity data and the current contact record, identify any field changes (job_title, email, phone_work, phone_mobile, department, seniority, linkedin_url).
+    const systemPrompt = `You are a CRM data extraction agent. Given an email or activity data and the current contact record, identify any field changes (job_title, email, phone_work, phone_mobile, department, seniority, linkedin_url, contact_type).
 
 Return suggestions ONLY when you detect a clear change from the current value. Do not suggest values that match the current record.
 
 For each suggestion, provide:
-- field_name: one of job_title, email, phone_work, phone_mobile, department, seniority, linkedin_url
+- field_name: one of job_title, email, phone_work, phone_mobile, department, seniority, linkedin_url, contact_type
 - suggested_value: the new value detected
 - confidence: 0.0-1.0 score
 - source_snippet: the exact text excerpt that supports this suggestion
 
-Be conservative. Only suggest changes with real evidence.`;
+Be conservative. Only suggest changes with real evidence.
+
+For contact_type, choose EXACTLY one of the allowed values listed in the user prompt (case-sensitive). Use the email signature, subject, sender domain, and the "domain hint" from other contacts on the same domain as evidence. Only propose contact_type when the current value is empty OR the evidence clearly contradicts it.`;
 
     const userPrompt = `Current contact record:
 ${JSON.stringify(currentFields, null, 2)}
+
+Allowed contact_type values for this org: ${JSON.stringify(allowedTypeNames)}
+Domain hint: ${domainTypeHint ? `${domainTypeHint.count} other contact(s) on @${domainTypeHint.domain} are tagged "${domainTypeHint.type}"` : "(no matching-domain contacts on file)"}
 
 Source type: ${source_type}
 ${email_data ? `Email data:
@@ -212,7 +263,7 @@ Extract any field change suggestions.`;
                   properties: {
                     field_name: {
                       type: "string",
-                      enum: ["job_title", "email", "phone_work", "phone_mobile", "department", "seniority", "linkedin_url"],
+                      enum: ["job_title", "email", "phone_work", "phone_mobile", "department", "seniority", "linkedin_url", "contact_type"],
                     },
                     suggested_value: { type: "string" },
                     confidence: { type: "number" },
