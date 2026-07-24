@@ -19,6 +19,7 @@ import {
   AddToDealCalendarForm,
   type AddToDealCalendarPrefill,
 } from '@/components/calendar/AddToDealCalendarForm';
+import { EventFollowUpTasksPanel } from '@/components/dashboard/EventFollowUpTasksPanel';
 
 interface Props {
   eventId: string;
@@ -111,6 +112,9 @@ export function MeetingCreateFollowUpAction({
         </DialogDescription>
       </DialogHeader>
       <div className="px-4 pb-4 max-h-[70vh] overflow-y-auto">
+        <div className="mb-3">
+          <EventFollowUpTasksPanel eventId={eventId} />
+        </div>
         <AddToDealCalendarForm
           prefill={prefill}
           onClose={() => setOpen(false)}
