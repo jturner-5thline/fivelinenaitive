@@ -28870,6 +28870,12 @@ export type Database = {
       }
       claap_assert_prefill_examples: { Args: never; Returns: undefined }
       claap_assert_tenant_isolation: { Args: never; Returns: Json }
+      claap_daily_link_sync: {
+        Args: { p_lookback_days?: number }
+        Returns: {
+          new_links: number
+        }[]
+      }
       claap_link_orphan_recordings: { Args: never; Returns: Json }
       claap_mark_rate_limited: { Args: never; Returns: undefined }
       claap_mark_unrelated: {
