@@ -233,7 +233,7 @@ export function useDealReferralSources(filters?: {
       const { data, error } = await supabase
         .from('contacts')
         .select('full_name, crm_company:crm_companies!contacts_crm_company_id_fkey(name)')
-        .eq('company_id', company!.id)
+        .eq('org_company_id', company!.id)
         .not('full_name', 'is', null);
       if (error) throw error;
       return (data || []) as Array<{ full_name: string | null; crm_company: { name: string | null } | null }>;
