@@ -370,6 +370,7 @@ const TERMS_STATUS_RE_EXPORT = /term|ioi|loi|indication|proposal/i;
 const PASS_STATUS_RE_EXPORT = /pass|declin|not[_\s-]?a?[_\s-]?fit|withdraw|dead|lost|reject|no[_\s-]?go/i;
 export function isInDealAdminAgentScope(c: CandidateItem): boolean {
   if (c.action_type === "draft_email") return true;
+  if (c.action_type === "add_outstanding_items") return true;
   if (c.action_type === "save_to_data_room") {
     const pv = (c.proposed_values ?? {}) as Record<string, any>;
     const bundleKey = typeof pv.bundle_key === "string" ? pv.bundle_key : "";
