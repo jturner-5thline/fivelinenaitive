@@ -389,6 +389,9 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
                 {tierInfo?.manualOverride && tierInfo.overrideReason && (
                   <p className="text-[10px] text-slate-500 mt-1">Override: {tierInfo.overrideReason}</p>
                 )}
+                <div className="mt-3">
+                  <PartnerTierHistoryPanel partnerId={partner.id} />
+                </div>
               </div>
 
               {/* Fields */}
