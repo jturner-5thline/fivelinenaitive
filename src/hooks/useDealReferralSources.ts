@@ -328,6 +328,14 @@ export function useDealReferralSources(filters?: {
       let derivedCompany: string | null = match?.companyName || null;
       if (!derivedCompany) {
         derivedCompany = contactCompanyLookup.get(key) || null;
+        if (!derivedCompany) {
+          // Referrer may be "Jane Doe @ Firm" or "Jane Doe - Firm"; try the
+          // leading name part before the separator.
+          const stripped = raw.split(/\s*(?:@|\bat\b|\s-\s)\s*/i)[0];
+          if (stripped && stripped !== raw) {
+            derivedCompany = contactCompanyLookup.get(normalize(stripped)) || null;
+          }
+        }
       }
       if (!derivedCompany) {
         derivedCompany = parseFirmFromReferrer(raw);
