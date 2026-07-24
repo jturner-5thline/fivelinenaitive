@@ -48,6 +48,16 @@ function deriveSearchHint(title: string | null | undefined): string | null {
   return tokens[0];
 }
 
+function getClaapSearchWindow(start?: string | null, end?: string | null): { from?: string; to?: string } {
+  const anchor = start ? Date.parse(start) : NaN;
+  if (!Number.isFinite(anchor)) return {};
+  const endMs = end && Number.isFinite(Date.parse(end)) ? Date.parse(end) : anchor;
+  return {
+    from: new Date(anchor - 36 * 60 * 60 * 1000).toISOString(),
+    to: new Date(endMs + 36 * 60 * 60 * 1000).toISOString(),
+  };
+}
+
 interface ExistingLinkRow {
   id: string;
   recording_id: string;
@@ -248,22 +258,97 @@ export function MeetingClaapInlineAction(props: Props) {
     }
   }, [company?.id, eventId, qc]);
 
+  const persistNoMatch = useCallback(async () => {
+    if (!company?.id) return;
+    try {
+      await (supabase.from('event_claap_match_cache') as any).upsert({
+        org_company_id: company.id,
+        event_id: eventId,
+        status: 'none',
+        locked: false,
+        recording_id: null,
+        recording_title: null,
+        recording_url: null,
+        reasons: [],
+        generated_at: new Date().toISOString(),
+      }, { onConflict: 'org_company_id,event_id' });
+      qc.invalidateQueries({ queryKey: ['event-claap-match-cache', eventId, company.id] });
+    } catch (err) {
+      console.warn('claap no-match cache upsert failed', err);
+    }
+  }, [company?.id, eventId, qc]);
+
+  const meetingContext = useCallback(() => ({
+    title: eventTitle || null,
+    start_time: eventStart || null,
+    end_time: eventEnd || null,
+    organizer_email: organizerEmail || null,
+    attendees: (attendees || []).map(a => ({
+      email: a.email || null,
+      name: a.displayName || null,
+      self: !!a.self,
+    })),
+  }), [eventTitle, eventStart, eventEnd, organizerEmail, attendees]);
+
+  const rankRecordings = useCallback(async (list: ClaapRecording[]): Promise<RankedTop | null> => {
+    if (!list.length) return null;
+    const { data, error } = await supabase.functions.invoke(
+      'claap-rank-recordings-for-meeting',
+      { body: { action: 'rank', event_id: eventId, recordings: list, meeting_context: meetingContext() } },
+    );
+    if (error) {
+      console.warn('claap inline rank error', error);
+      return null;
+    }
+    const top = (data?.ranked || [])[0];
+    if (!top || Number(top.score || 0) < 0.65) return null;
+    const rec = list.find(r => r.id === top.external_id);
+    if (!rec) return null;
+    return {
+      recording: rec,
+      score: Number(top.score || 0),
+      reasons: top.reasons || [],
+    };
+  }, [eventId, meetingContext]);
+
   // Explicit generator — ONLY called when there's no stored suggestion OR
-  // the user clicks "Find again". Kicks off a recordings fetch and marks
-  // that we're waiting to rank; a downstream effect performs the actual
-  // ranking once recordings are loaded (avoids stale state closures).
-  const requestGenerate = useCallback(() => {
+  // the user clicks "Find again". It scores the local mirror first (fast),
+  // then falls back to the live Claap list only if the mirror has no plausible
+  // match. This keeps the button responsive while preserving the auto-fetch
+  // behavior for recordings that have not mirrored yet.
+  const requestGenerate = useCallback(async () => {
     if (!eventId) return;
     setRanking(true);
     setSource('fresh');
     setRankPending(true);
-    // Derive a targeted search hint from the event title so the Claap live
-    // list (capped at ~100 recent recordings) surfaces older matches whose
-    // titles reference the attendees (e.g. "Apryl Syed & James Turner"),
-    // not just the last 100 by recency.
-    const hint = deriveSearchHint(eventTitle);
-    fetchRecordings(hint || undefined).catch((err) => console.warn('claap recordings fetch failed', err));
-  }, [eventId, eventTitle, fetchRecordings]);
+    try {
+      // Derive a targeted search hint from the event title so Claap surfaces
+      // older matches whose titles reference attendees (e.g. "Syed").
+      const hint = deriveSearchHint(eventTitle) || undefined;
+      const window = getClaapSearchWindow(eventStart, eventEnd);
+      const fastList = await fetchRecordings(hint, { live: false, ...window, limit: 80 });
+      let top = await rankRecordings(fastList || []);
+
+      if (!top) {
+        const liveList = await fetchRecordings(hint, { live: true, ...window, limit: 80 });
+        top = await rankRecordings(liveList || []);
+      }
+
+      if (!top) {
+        await persistNoMatch();
+        return;
+      }
+
+      setRanked(top);
+      await persistSuggestion(top.recording, top.score, top.reasons, 'suggested', false);
+    } catch (err) {
+      console.warn('claap generate rank threw', err);
+    } finally {
+      setRankPending(false);
+      setRanking(false);
+      if (eventId) markAutoAttempted(eventId);
+    }
+  }, [eventId, eventTitle, eventStart, eventEnd, fetchRecordings, rankRecordings, persistNoMatch, persistSuggestion]);
 
   // Trigger requestGenerate ONLY when: no stored cache, not already linked,
   // and either first mount or an explicit refresh tick. Additionally,
@@ -280,85 +365,9 @@ export function MeetingClaapInlineAction(props: Props) {
     // The `hasStored` check above already prevents repeat fetches once a
     // result (including 'none') is cached in event_claap_match_cache, so
     // we don't need an extra client-side localStorage gate here.
-    requestGenerate();
+    void requestGenerate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId, existing, existingLoading, existingFetching, canonicalLinked, canonicalLoading, cachedLoading, cachedFetching, hasStored, refreshTick]);
-
-  // Perform the actual rank once recordings finish loading for a pending request.
-  useEffect(() => {
-    if (!rankPending) return;
-    if (loadingRecordings) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const list = recordings || [];
-        if (list.length === 0) {
-          if (company?.id) {
-            await (supabase.from('event_claap_match_cache') as any).upsert({
-              org_company_id: company.id,
-              event_id: eventId,
-              status: 'none',
-              locked: false,
-              reasons: [],
-              generated_at: new Date().toISOString(),
-            }, { onConflict: 'org_company_id,event_id' });
-            qc.invalidateQueries({ queryKey: ['event-claap-match-cache', eventId, company.id] });
-          }
-          return;
-        }
-        const meeting_context = {
-          title: eventTitle || null,
-          start_time: eventStart || null,
-          end_time: eventEnd || null,
-          organizer_email: organizerEmail || null,
-          attendees: (attendees || []).map(a => ({
-            email: a.email || null,
-            name: a.displayName || null,
-            self: !!a.self,
-          })),
-        };
-        const { data, error } = await supabase.functions.invoke(
-          'claap-rank-recordings-for-meeting',
-          { body: { action: 'rank', event_id: eventId, recordings: list, meeting_context } },
-        );
-        if (cancelled) return;
-        if (error) { console.warn('claap inline rank error', error); return; }
-        const top = (data?.ranked || [])[0];
-        if (!top) {
-          if (company?.id) {
-            await (supabase.from('event_claap_match_cache') as any).upsert({
-              org_company_id: company.id,
-              event_id: eventId,
-              status: 'none',
-              locked: false,
-              reasons: [],
-              generated_at: new Date().toISOString(),
-            }, { onConflict: 'org_company_id,event_id' });
-            qc.invalidateQueries({ queryKey: ['event-claap-match-cache', eventId, company.id] });
-          }
-          return;
-        }
-        const rec = list.find(r => r.id === top.external_id);
-        if (!rec) return;
-        const score = top.score || 0;
-        const reasons = top.reasons || [];
-        setRanked({ recording: rec, score, reasons });
-        await persistSuggestion(rec, score, reasons, 'suggested', false);
-      } catch (err) {
-        console.warn('claap generate rank threw', err);
-      } finally {
-        if (!cancelled) {
-          setRankPending(false);
-          setRanking(false);
-          // Mark this event as auto-attempted so we don't retry on next
-          // mount unless the user explicitly clicks "Find again".
-          if (eventId) markAutoAttempted(eventId);
-        }
-      }
-    })();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rankPending, loadingRecordings, recordings]);
 
   const handleRefresh = useCallback(() => {
     setUserRejected(false);
