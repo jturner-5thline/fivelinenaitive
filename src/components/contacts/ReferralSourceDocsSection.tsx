@@ -173,6 +173,19 @@ function ManageFieldsDialog({
     });
   };
 
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
+
+  const reorder = (from: number, to: number) => {
+    if (from === to) return;
+    setDraft((d) => {
+      const next = [...d];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
+
   const save = async () => {
     // Normalize ids: keep existing legacy ids, slugify labels for new items with placeholder ids
     const normalized = draft
@@ -220,12 +233,42 @@ function ManageFieldsDialog({
         </DialogHeader>
         <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
           {draft.map((f, i) => (
-            <div key={i} className="flex items-center gap-1.5 rounded-md border border-border/60 p-2">
-              <div className="flex flex-col">
-                <button type="button" onClick={() => move(i, -1)} className="text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i === 0}>
-                  <GripVertical className="h-3 w-3" />
-                </button>
-              </div>
+            <div
+              key={i}
+              draggable
+              onDragStart={(e) => {
+                setDragIdx(i);
+                e.dataTransfer.effectAllowed = 'move';
+                try { e.dataTransfer.setData('text/plain', String(i)); } catch {}
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (overIdx !== i) setOverIdx(i);
+              }}
+              onDragLeave={() => { if (overIdx === i) setOverIdx(null); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const from = dragIdx ?? Number(e.dataTransfer.getData('text/plain'));
+                if (!Number.isNaN(from)) reorder(from, i);
+                setDragIdx(null);
+                setOverIdx(null);
+              }}
+              onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
+              className={cn(
+                'flex items-center gap-1.5 rounded-md border border-border/60 p-2 transition-colors',
+                dragIdx === i && 'opacity-50',
+                overIdx === i && dragIdx !== null && dragIdx !== i && 'border-primary bg-primary/5',
+              )}
+            >
+              <button
+                type="button"
+                aria-label="Drag to reorder"
+                className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <GripVertical className="h-3.5 w-3.5" />
+              </button>
               <Input
                 value={f.label}
                 onChange={(e) => update(i, { label: e.target.value })}
