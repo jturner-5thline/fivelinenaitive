@@ -43,6 +43,7 @@ import { DynamicFieldRenderer } from '@/components/crm/DynamicFieldRenderer';
 import { ContactTasksCard } from '@/components/contacts/ContactTasksCard';
 import { ContactAttachmentsTable } from '@/components/crm/ContactAttachmentsTable';
 import { ReferralSourceDocsSection } from '@/components/contacts/ReferralSourceDocsSection';
+import { useRealtimeInvalidate } from '@/hooks/useRealtimeInvalidate';
 import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
 import { CompanyDomainMatchPrompt } from '@/components/contacts/CompanyDomainMatchPrompt';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -82,6 +83,14 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
   const [showDelete, setShowDelete] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showMoreContactInfo, setShowMoreContactInfo] = useState(false);
+
+  // Keep this contact row live across users/tabs.
+  useRealtimeInvalidate({
+    table: 'contacts',
+    filter: contactId ? `id=eq.${contactId}` : undefined,
+    queryKeys: [['contact', contactId], ['contacts']],
+    enabled: !!contactId,
+  });
 
   const crmCompanyId = (contact as any)?.crm_company_id;
   const { data: crmCompany } = useContactCrmCompany(crmCompanyId);

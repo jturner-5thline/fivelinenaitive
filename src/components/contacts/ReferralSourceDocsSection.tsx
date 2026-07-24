@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { useCompany } from '@/hooks/useCompany';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export type ReferralDocFieldType = 'checkbox' | 'text';
@@ -38,6 +39,21 @@ interface Props {
 export function ReferralSourceDocsSection({ contact, onUpdate }: Props) {
   const { isAdmin } = useCompany();
   const { settings, updateSettings, refetch } = useCompanySettings();
+
+  // Refetch the referral-source doc field config when any admin changes it.
+  useEffect(() => {
+    const companyId = (settings as any)?.company_id;
+    if (!companyId) return;
+    const channel = supabase
+      .channel(`rt:company_settings:${companyId}`)
+      .on(
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'company_settings', filter: `company_id=eq.${companyId}` },
+        () => { refetch(); },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [settings, refetch]);
 
   const fields: ReferralDocField[] = useMemo(() => {
     const raw = (settings as any)?.referral_source_doc_fields;

@@ -28,6 +28,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { contactTypeBadgeClass } from './contactTypeBadge';
 import { cn } from '@/lib/utils';
+import { useRealtimeInvalidate } from '@/hooks/useRealtimeInvalidate';
 
 const SEPARATOR = ' ; ';
 const PROTECTED_TYPES = new Set(['referral source']);
@@ -59,6 +60,12 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
   const { isAdmin, company } = useCompany();
   const queryClient = useQueryClient();
   const { data: types = [] } = useContactTypes({ includeInactive: isAdmin });
+  useRealtimeInvalidate({
+    table: 'contact_types',
+    filter: company?.id ? `company_id=eq.${company.id}` : undefined,
+    queryKeys: [['contact-types']],
+    enabled: !!company?.id,
+  });
   const createType = useCreateContactType();
   const updateType = useUpdateContactType();
   const deleteType = useDeleteContactType();
