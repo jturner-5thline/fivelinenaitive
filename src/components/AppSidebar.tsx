@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, BarChart3, Users, Settings, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, SlidersHorizontal, Contact, Building2, UserCircle, LogOut, Handshake, Landmark, FileText, PieChart, Mail, SlidersHorizontal as SlidersIcon } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Users, Settings, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, SlidersHorizontal, Contact, Building2, UserCircle, LogOut, Handshake, Landmark, FileText, PieChart, Mail, SlidersHorizontal as SlidersIcon, Eye, Check } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCompanyFeatures } from "@/hooks/useCompanyFeatures";
 import { useClaapRoutingTasks } from '@/hooks/useClaapMeetings';
@@ -20,6 +20,7 @@ import { useCanAccessInsights } from "@/hooks/useCanAccessInsights";
 import { DealsFlyoutMenu } from "@/components/sidebar/DealsFlyoutMenu";
 import { InsightsFlyoutMenu } from "@/components/sidebar/InsightsFlyoutMenu";
 import { FeedbackButton } from "@/components/FeedbackButton";
+import { useHighContrast } from "@/hooks/useHighContrast";
 
 
 import {
