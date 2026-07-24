@@ -10,6 +10,7 @@ export type DealInfoFieldId =
   | 'type'
   | 'engagement'
   | 'exclusivity'
+  | 'affiliatedContacts'
   | 'companyUrl'
   | 'businessModel'
   | 'clientContact'
@@ -40,6 +41,7 @@ export const DEAL_INFO_FIELD_DEFINITIONS: DealInfoFieldConfig[] = [
   { id: 'type', label: 'Type', section: 'main', column: 'left', canHide: true },
   { id: 'engagement', label: 'Engagement', section: 'main', column: 'left', canHide: true },
   { id: 'exclusivity', label: 'Exclusivity', section: 'main', column: 'left', canHide: true },
+  { id: 'affiliatedContacts', label: 'Affiliated Contacts', section: 'main', column: 'left', canHide: true },
   { id: 'companyUrl', label: 'Company URL', section: 'main', column: 'right', canHide: true },
   { id: 'businessModel', label: 'Business Model', section: 'main', column: 'right', canHide: true },
   { id: 'clientContact', label: 'Client Contact', section: 'main', column: 'right', canHide: true },
