@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
-import { CheckCircle2, Circle, Loader2, ExternalLink, AlertTriangle, Info } from 'lucide-react';
+import { CheckCircle2, Circle, Loader2, ExternalLink, AlertTriangle, Info, CheckCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
@@ -26,6 +26,7 @@ interface FollowUpTaskRow {
 export function EventFollowUpTasksPanel({ eventId }: { eventId: string }) {
   const qc = useQueryClient();
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [bulkPending, setBulkPending] = useState(false);
 
   const queryKey = ['event-followup-tasks', eventId];
   const { data: tasks = [], isLoading } = useQuery({
@@ -100,6 +101,32 @@ export function EventFollowUpTasksPanel({ eventId }: { eventId: string }) {
     qc.invalidateQueries({ queryKey: ['eod-followup-task-status'] });
   };
 
+  const completeAll = async () => {
+    const open = tasks.filter((t) => t.status !== 'complete');
+    if (open.length === 0) return;
+    setBulkPending(true);
+    const nowIso = new Date().toISOString();
+    const ids = open.map((t) => t.id);
+    qc.setQueryData<FollowUpTaskRow[]>(queryKey, (prev = []) =>
+      prev.map((x) =>
+        ids.includes(x.id) ? { ...x, status: 'complete', completed_at: nowIso } : x,
+      ),
+    );
+    const { error } = await supabase
+      .from('tasks')
+      .update({ status: 'complete', completed_at: nowIso })
+      .in('id', ids);
+    setBulkPending(false);
+    if (error) {
+      toast.error('Could not complete tasks', { description: error.message });
+      qc.invalidateQueries({ queryKey });
+      return;
+    }
+    toast.success(`Marked ${ids.length} follow-up task${ids.length === 1 ? '' : 's'} complete`);
+    qc.invalidateQueries({ queryKey: ['tasks'] });
+    qc.invalidateQueries({ queryKey: ['eod-followup-task-status'] });
+  };
+
   return (
     <div className="rounded-md border border-emerald-500/25 bg-emerald-500/[0.04] px-2.5 py-2 space-y-1.5">
       <div className="flex items-center justify-between gap-2">
@@ -118,6 +145,21 @@ export function EventFollowUpTasksPanel({ eventId }: { eventId: string }) {
           {tasks.length} follow-up tasks are linked to this meeting. Complete or archive extras
           to keep the End of Day view in sync.
         </div>
+      )}
+      {tasks.some((t) => t.status !== 'complete') && (
+        <button
+          type="button"
+          onClick={() => { void completeAll(); }}
+          disabled={bulkPending}
+          className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-100 text-[11px] px-2 py-1 disabled:opacity-50"
+        >
+          {bulkPending ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <CheckCheck className="h-3 w-3" />
+          )}
+          Mark all {tasks.filter((t) => t.status !== 'complete').length} as complete
+        </button>
       )}
       <ul className="space-y-1">
         {tasks.map((t) => {
