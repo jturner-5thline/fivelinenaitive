@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
-import { CheckCircle2, Circle, Loader2, ExternalLink, AlertTriangle, Info } from 'lucide-react';
+import { CheckCircle2, Circle, Loader2, ExternalLink, AlertTriangle, Info, CheckCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
@@ -26,6 +26,7 @@ interface FollowUpTaskRow {
 export function EventFollowUpTasksPanel({ eventId }: { eventId: string }) {
   const qc = useQueryClient();
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [bulkPending, setBulkPending] = useState(false);
 
   const queryKey = ['event-followup-tasks', eventId];
   const { data: tasks = [], isLoading } = useQuery({
@@ -118,6 +119,21 @@ export function EventFollowUpTasksPanel({ eventId }: { eventId: string }) {
           {tasks.length} follow-up tasks are linked to this meeting. Complete or archive extras
           to keep the End of Day view in sync.
         </div>
+      )}
+      {tasks.some((t) => t.status !== 'complete') && (
+        <button
+          type="button"
+          onClick={() => { void completeAll(); }}
+          disabled={bulkPending}
+          className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-100 text-[11px] px-2 py-1 disabled:opacity-50"
+        >
+          {bulkPending ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <CheckCheck className="h-3 w-3" />
+          )}
+          Mark all {tasks.filter((t) => t.status !== 'complete').length} as complete
+        </button>
       )}
       <ul className="space-y-1">
         {tasks.map((t) => {
