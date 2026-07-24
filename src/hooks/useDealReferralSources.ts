@@ -224,6 +224,22 @@ export function useDealReferralSources(filters?: {
     },
   });
 
+  // Contacts (with their linked CRM company) — used to resolve the "Company"
+  // for a referral source by matching the referrer name to a contact.
+  const { data: contactRows = [] } = useQuery({
+    queryKey: ['deal_referral_contacts_with_company', company?.id],
+    enabled: !!company?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('full_name, crm_company:crm_companies!contacts_crm_company_id_fkey(name)')
+        .eq('company_id', company!.id)
+        .not('full_name', 'is', null);
+      if (error) throw error;
+      return (data || []) as Array<{ full_name: string | null; crm_company: { name: string | null } | null }>;
+    },
+  });
+
   // All deals (any date) used purely to compute tier inputs against trailing
   // windows defined by sales_bd_rules. We intentionally don't filter by the
   // header range here — the trailing window is independent.
@@ -281,6 +297,15 @@ export function useDealReferralSources(filters?: {
       }
     }
 
+    // Contact-name → CRM company lookup. Since a referral source is a
+    // contact, its Company should come from the contact's linked company.
+    const contactCompanyLookup = new Map<string, string>();
+    for (const c of contactRows) {
+      const name = c.full_name?.trim();
+      const cname = c.crm_company?.name?.trim();
+      if (name && cname) contactCompanyLookup.set(normalize(name), cname);
+    }
+
     // Pre-compute tier-relevant windows once.
     const now = Date.now();
     const ms = (months: number) => months * 30 * 24 * 60 * 60 * 1000;
@@ -301,6 +326,9 @@ export function useDealReferralSources(filters?: {
 
       // === Derive company ===
       let derivedCompany: string | null = match?.companyName || null;
+      if (!derivedCompany) {
+        derivedCompany = contactCompanyLookup.get(key) || null;
+      }
       if (!derivedCompany) {
         derivedCompany = parseFirmFromReferrer(raw);
       }
@@ -394,7 +422,7 @@ export function useDealReferralSources(filters?: {
     filtered.sort((a, b) => b.totalVolume - a.totalVolume);
 
     return filtered;
-  }, [deals, channelEntries, pipelineMap, filters?.channelFilter, filters?.companyFilter, allDeals, rules]);
+  }, [deals, channelEntries, contactRows, pipelineMap, filters?.channelFilter, filters?.companyFilter, allDeals, rules]);
 
   // Unique companies for filter options
   const companyOptions = useMemo(() => {
