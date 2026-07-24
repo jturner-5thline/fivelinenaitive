@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
-import { CheckCircle2, Circle, Loader2, ExternalLink } from 'lucide-react';
+import { CheckCircle2, Circle, Loader2, ExternalLink, AlertTriangle, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
@@ -54,7 +54,19 @@ export function EventFollowUpTasksPanel({ eventId }: { eventId: string }) {
       </div>
     );
   }
-  if (tasks.length === 0) return null;
+  if (tasks.length === 0) {
+    return (
+      <div className="rounded-md border border-amber-500/30 bg-amber-500/[0.06] px-2.5 py-2 flex items-start gap-2">
+        <Info className="h-3.5 w-3.5 mt-0.5 text-amber-300 shrink-0" />
+        <div className="text-[11px] leading-snug text-amber-100/90">
+          <div className="font-medium text-amber-200">No follow-up task yet</div>
+          <div className="text-amber-100/70">
+            Nothing has been auto-created for this meeting. Use the form below to create one.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const toggle = async (t: FollowUpTaskRow) => {
     const nextComplete = t.status !== 'complete';
@@ -90,9 +102,23 @@ export function EventFollowUpTasksPanel({ eventId }: { eventId: string }) {
 
   return (
     <div className="rounded-md border border-emerald-500/25 bg-emerald-500/[0.04] px-2.5 py-2 space-y-1.5">
-      <div className="text-[10px] uppercase tracking-wide text-emerald-300/80">
-        Existing follow-up {tasks.length > 1 ? `(${tasks.length})` : ''}
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[10px] uppercase tracking-wide text-emerald-300/80">
+          Existing follow-up {tasks.length > 1 ? `(${tasks.length})` : ''}
+        </div>
+        {tasks.length > 1 && (
+          <div className="flex items-center gap-1 text-[10px] text-amber-300">
+            <AlertTriangle className="h-3 w-3" />
+            <span>Multiple tasks linked — review for duplicates</span>
+          </div>
+        )}
       </div>
+      {tasks.length > 1 && (
+        <div className="text-[10px] text-amber-200/80 bg-amber-500/[0.06] border border-amber-500/25 rounded px-1.5 py-1">
+          {tasks.length} follow-up tasks are linked to this meeting. Complete or archive extras
+          to keep the End of Day view in sync.
+        </div>
+      )}
       <ul className="space-y-1">
         {tasks.map((t) => {
           const done = t.status === 'complete';
