@@ -159,21 +159,60 @@ export async function rescheduleFollowupTasksForCompany(opts: {
   //     for lenders on the deal. Case-insensitive.
   const counterpartyByDeal = new Map<string, Set<string>>();
   if (dealIds.length > 0) {
-    const [{ data: dealsRows }, { data: dealLenders }] = await Promise.all([
+    const [{ data: dealsRows }, { data: dealLenders }, { data: contactLinks }] = await Promise.all([
       supabase
         .from("deals")
-        .select("id, contact_email")
+        .select("id, contact_email, contact_info")
         .in("id", dealIds),
       supabase
         .from("deal_lenders")
         .select("deal_id, master_lender_id")
         .in("deal_id", dealIds),
+      supabase
+        .from("contact_deals")
+        .select("deal_id, contact_id")
+        .in("deal_id", dealIds),
     ]);
+    const EMAIL_RE = /[\w.+-]+@[\w-]+\.[\w.-]+/i;
     for (const d of dealsRows || []) {
       const set = counterpartyByDeal.get(d.id) || new Set<string>();
       const ce = String(d.contact_email || "").toLowerCase().trim();
       if (ce) set.add(ce);
+      const info = String(d.contact_info || "");
+      const m = info.match(EMAIL_RE);
+      if (m) set.add(m[0].toLowerCase().trim());
       counterpartyByDeal.set(d.id, set);
+    }
+    // Client contacts linked via contact_deals junction.
+    const contactToDeals = new Map<string, string[]>();
+    for (const cl of contactLinks || []) {
+      if (!cl.contact_id) continue;
+      const arr = contactToDeals.get(cl.contact_id) || [];
+      arr.push(cl.deal_id);
+      contactToDeals.set(cl.contact_id, arr);
+    }
+    const contactIds = Array.from(contactToDeals.keys());
+    if (contactIds.length > 0) {
+      const { data: contactRows } = await supabase
+        .from("contacts")
+        .select("id, email, additional_emails")
+        .in("id", contactIds);
+      for (const c of contactRows || []) {
+        const emails: string[] = [];
+        if (c.email) emails.push(String(c.email));
+        if (Array.isArray(c.additional_emails)) {
+          for (const e of c.additional_emails) if (e) emails.push(String(e));
+        }
+        const dealsForContact = contactToDeals.get(c.id) || [];
+        for (const dealId of dealsForContact) {
+          const set = counterpartyByDeal.get(dealId) || new Set<string>();
+          for (const e of emails) {
+            const norm = e.toLowerCase().trim();
+            if (norm) set.add(norm);
+          }
+          counterpartyByDeal.set(dealId, set);
+        }
+      }
     }
     const lenderToDeals = new Map<string, string[]>();
     for (const dl of dealLenders || []) {
