@@ -233,7 +233,7 @@ export function useDealReferralSources(filters?: {
       const { data, error } = await supabase
         .from('contacts')
         .select('full_name, crm_company:crm_companies!contacts_crm_company_id_fkey(name)')
-        .eq('company_id', company!.id)
+        .eq('org_company_id', company!.id)
         .not('full_name', 'is', null);
       if (error) throw error;
       return (data || []) as Array<{ full_name: string | null; crm_company: { name: string | null } | null }>;
@@ -328,6 +328,14 @@ export function useDealReferralSources(filters?: {
       let derivedCompany: string | null = match?.companyName || null;
       if (!derivedCompany) {
         derivedCompany = contactCompanyLookup.get(key) || null;
+        if (!derivedCompany) {
+          // Referrer may be "Jane Doe @ Firm" or "Jane Doe - Firm"; try the
+          // leading name part before the separator.
+          const stripped = raw.split(/\s*(?:@|\bat\b|\s-\s)\s*/i)[0];
+          if (stripped && stripped !== raw) {
+            derivedCompany = contactCompanyLookup.get(normalize(stripped)) || null;
+          }
+        }
       }
       if (!derivedCompany) {
         derivedCompany = parseFirmFromReferrer(raw);
