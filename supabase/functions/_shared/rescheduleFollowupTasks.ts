@@ -153,37 +153,133 @@ export async function rescheduleFollowupTasksForCompany(opts: {
     }
   }
 
+  // 3b) Fetch counterparty emails per deal so we can also match sent
+  //     messages that haven't been explicitly linked to the deal yet.
+  //     Sources: deals.contact_email (client primary) + lender_contacts
+  //     for lenders on the deal. Case-insensitive.
+  const counterpartyByDeal = new Map<string, Set<string>>();
+  if (dealIds.length > 0) {
+    const [{ data: dealsRows }, { data: dealLenders }] = await Promise.all([
+      supabase
+        .from("deals")
+        .select("id, contact_email")
+        .in("id", dealIds),
+      supabase
+        .from("deal_lenders")
+        .select("deal_id, master_lender_id")
+        .in("deal_id", dealIds),
+    ]);
+    for (const d of dealsRows || []) {
+      const set = counterpartyByDeal.get(d.id) || new Set<string>();
+      const ce = String(d.contact_email || "").toLowerCase().trim();
+      if (ce) set.add(ce);
+      counterpartyByDeal.set(d.id, set);
+    }
+    const lenderToDeals = new Map<string, string[]>();
+    for (const dl of dealLenders || []) {
+      if (!dl.master_lender_id) continue;
+      const arr = lenderToDeals.get(dl.master_lender_id) || [];
+      arr.push(dl.deal_id);
+      lenderToDeals.set(dl.master_lender_id, arr);
+    }
+    const lenderIds = Array.from(lenderToDeals.keys());
+    if (lenderIds.length > 0) {
+      const { data: contactsRows } = await supabase
+        .from("lender_contacts")
+        .select("lender_id, email")
+        .in("lender_id", lenderIds)
+        .not("email", "is", null);
+      for (const lc of contactsRows || []) {
+        const email = String(lc.email || "").toLowerCase().trim();
+        if (!email) continue;
+        const dealsForLender = lenderToDeals.get(lc.lender_id) || [];
+        for (const dealId of dealsForLender) {
+          const set = counterpartyByDeal.get(dealId) || new Set<string>();
+          set.add(email);
+          counterpartyByDeal.set(dealId, set);
+        }
+      }
+    }
+  }
+
+  // 3c) Pre-fetch all SENT emails from the relevant assignees today, once,
+  //     so we can match by counterparty without an N-per-task query.
+  const sentByAssignee = new Map<string, Array<{ gmail_message_id: string; to: string[]; cc: string[] }>>();
+  const assigneesNeedingSent = Array.from(
+    new Set(followupTasks.map((t: any) => t.assigned_to).filter(Boolean)),
+  );
+  for (const uid of assigneesNeedingSent) {
+    const email = emailByUserId.get(uid);
+    if (!email) continue;
+    const { data: sentRows, error: sErr } = await supabase
+      .from("email_cache")
+      .select("gmail_message_id, from_email, to_emails, cc_emails, labels, received_at")
+      .ilike("from_email", email)
+      .gte("received_at", sinceIso);
+    if (sErr) {
+      result.errors.push(`sent fetch (${uid}): ${sErr.message}`);
+      continue;
+    }
+    const filtered = (sentRows || [])
+      .filter((r: any) => Array.isArray(r.labels) && r.labels.some((l: any) => String(l).toUpperCase() === "SENT"))
+      .map((r: any) => ({
+        gmail_message_id: r.gmail_message_id,
+        to: (Array.isArray(r.to_emails) ? r.to_emails : []).map((x: any) => String(x || "").toLowerCase().trim()).filter(Boolean),
+        cc: (Array.isArray(r.cc_emails) ? r.cc_emails : []).map((x: any) => String(x || "").toLowerCase().trim()).filter(Boolean),
+      }));
+    sentByAssignee.set(uid, filtered);
+  }
+
   // 4) For each task, check if today's linked emails include a SENT message
   //    from the assignee.
   for (const task of followupTasks) {
     const dealLinks = linksByDeal.get(task.deal_id) || [];
-    if (dealLinks.length === 0) continue;
-
     const assigneeEmail = emailByUserId.get(task.assigned_to) || "";
     if (!assigneeEmail) continue;
 
-    const gmailIds = dealLinks.map((l) => l.gmail_message_id).filter(Boolean);
-    if (gmailIds.length === 0) continue;
+    // (a) Signal via already-linked deal_emails today.
+    let triggerId: string | null = null;
+    let triggerReason: "linked_email" | "counterparty_match" | null = null;
 
-    // Look up the underlying email_cache rows to confirm it's an outbound
-    // "SENT" from the assignee today (ET).
-    const { data: cacheRows, error: cErr } = await supabase
-      .from("email_cache")
-      .select("gmail_message_id, from_email, labels, received_at, user_id")
-      .in("gmail_message_id", gmailIds)
-      .gte("received_at", sinceIso);
-    if (cErr) {
-      result.errors.push(`email_cache fetch: ${cErr.message}`);
-      continue;
+    if (dealLinks.length > 0) {
+      const gmailIds = dealLinks.map((l) => l.gmail_message_id).filter(Boolean);
+      if (gmailIds.length > 0) {
+        const { data: cacheRows } = await supabase
+          .from("email_cache")
+          .select("gmail_message_id, from_email, labels, received_at")
+          .in("gmail_message_id", gmailIds)
+          .gte("received_at", sinceIso);
+        const found = (cacheRows || []).find((row: any) => {
+          const from = String(row.from_email || "").toLowerCase().trim();
+          const labels: string[] = Array.isArray(row.labels) ? row.labels : [];
+          const isSent = labels.some((l) => String(l).toUpperCase() === "SENT");
+          return from === assigneeEmail && isSent;
+        });
+        if (found) {
+          triggerId = found.gmail_message_id;
+          triggerReason = "linked_email";
+        }
+      }
     }
 
-    const trigger = (cacheRows || []).find((row: any) => {
-      const from = String(row.from_email || "").toLowerCase().trim();
-      const labels: string[] = Array.isArray(row.labels) ? row.labels : [];
-      const isSent = labels.some((l) => String(l).toUpperCase() === "SENT");
-      return from === assigneeEmail && isSent;
-    });
-    if (!trigger) continue;
+    // (b) Signal via counterparty match against the assignee's own SENT
+    //     folder today. Catches cases where auto-linking hasn't run yet.
+    if (!triggerId) {
+      const counterparties = counterpartyByDeal.get(task.deal_id);
+      const sent = sentByAssignee.get(task.assigned_to) || [];
+      if (counterparties && counterparties.size > 0 && sent.length > 0) {
+        const hit = sent.find((s) => {
+          const all = [...s.to, ...s.cc];
+          return all.some((addr) => counterparties.has(addr));
+        });
+        if (hit) {
+          triggerId = hit.gmail_message_id;
+          triggerReason = "counterparty_match";
+        }
+      }
+    }
+
+    if (!triggerId || !triggerReason) continue;
 
     result.matched_tasks++;
 
@@ -211,12 +307,12 @@ export async function rescheduleFollowupTasksForCompany(opts: {
         actor_id: actorId,
         event_type: "auto_rescheduled",
         payload: {
-          reason: "assignee_sent_email_today",
+          reason: triggerReason,
           rule: "followup_task_auto_reschedule",
           old_due_date: task.due_date,
           new_due_date: targetDueDate,
           business_days_added: 2,
-          trigger_gmail_message_id: trigger.gmail_message_id,
+          trigger_gmail_message_id: triggerId,
           deal_id: task.deal_id,
           source: "deal-admin-agent",
         },
@@ -230,7 +326,7 @@ export async function rescheduleFollowupTasksForCompany(opts: {
       title: task.title,
       old_due_date: task.due_date,
       new_due_date: targetDueDate,
-      trigger_gmail_message_id: trigger.gmail_message_id,
+      trigger_gmail_message_id: triggerId,
       assignee_email: assigneeEmail,
     });
   }
