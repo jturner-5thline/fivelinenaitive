@@ -70,6 +70,7 @@ import {
 import { ClaapApprovalCard } from './ClaapApprovalCard';
 import { ClaapRecordingBundleCard } from './ClaapRecordingBundleCard';
 import { CreateDealApprovalCard } from './CreateDealApprovalCard';
+import { AddOutstandingItemsCard } from './AddOutstandingItemsCard';
 import { ApprovalReviewExpanded } from './ApprovalReviewExpanded';
 import { TaskListEditor, type EditorTask } from './TaskListEditor';
 import { usePipelineContext } from '@/contexts/PipelineContext';
