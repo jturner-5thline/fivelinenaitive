@@ -1,9 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Mail, ArrowDownLeft, ArrowUpRight, Loader2, Paperclip } from 'lucide-react';
+import { Mail, ArrowDownLeft, ArrowUpRight, Loader2, Paperclip, Download, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { downloadAttachment, openAttachmentInNewTab } from '@/components/deal/email/useFullEmailMessage';
+import { toast } from 'sonner';
+
+interface EmailAttachmentMeta {
+  id: string;
+  filename: string;
+  content_type: string;
+  size?: number;
+}
 
 interface Props {
   dealId: string;
@@ -21,6 +31,7 @@ interface CommItem {
   direction: 'inbound' | 'outbound' | null;
   sent_at: string | null;
   has_attachments?: boolean;
+  attachments?: EmailAttachmentMeta[];
 }
 
 /**
