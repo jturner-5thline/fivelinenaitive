@@ -454,8 +454,8 @@ export function DealCommunicationsTab({ dealId }: Props) {
         </button>
       </div>
       {threads.map((t) => {
-        // Default: single-message threads open, multi-message threads collapsed.
-        const isOpen = expanded[t.thread_id] ?? (t.msgs.length === 1);
+        // Default: all threads collapsed (including single-message ones).
+        const isOpen = expanded[t.thread_id] ?? false;
         const preview = t.msgs[0];
         return (
         <div key={t.thread_id} className="rounded-lg border border-border/40 bg-card/40">
