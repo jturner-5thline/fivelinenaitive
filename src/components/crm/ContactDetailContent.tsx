@@ -301,32 +301,11 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
           <aside className="space-y-3 min-w-0 lg:sticky lg:top-32">
             {/* Profile card with all core editable fields */}
             <div className="rounded-lg border border-border/60 bg-card p-4 space-y-3 min-w-0">
-              <div className="flex items-start gap-3 min-w-0">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary text-base font-semibold flex-shrink-0">
-                  {initials || <User className="h-5 w-5" />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold leading-tight truncate">{contact.full_name || 'Unnamed Contact'}</p>
-                  {contact.job_title && <p className="text-xs text-muted-foreground truncate">{contact.job_title}</p>}
-                  {crmCompany?.name && (
-                    <button
-                      onClick={() => navigate(`/crm-companies/${crmCompany.id}`)}
-                      className="text-xs text-primary hover:underline truncate block"
-                    >
-                      {crmCompany.name}
-                    </button>
-                  )}
-                </div>
-              </div>
-
               {contact.tags && contact.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {contact.tags.map(tag => <Badge key={tag} variant="outline" className="text-[10px] font-normal">{tag}</Badge>)}
                 </div>
               )}
-
-              <Separator />
-
               {/* Core editable fields — single column for tight rail */}
               <div className="space-y-2 text-sm min-w-0">
                 <EditableField label="First Name" type="text" value={contact.first_name} onSave={(v) => handleQuickUpdate('first_name', v)} />
