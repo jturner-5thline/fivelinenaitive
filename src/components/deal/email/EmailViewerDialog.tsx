@@ -137,11 +137,11 @@ export function EmailViewerDialog({ open, onOpenChange, message, dealId, dealNam
               </div>
             ) : bodyHtml ? (
               <div
-                className="prose prose-sm dark:prose-invert max-w-none break-words [&_a]:text-primary [&_img]:max-w-full"
+                className="prose prose-sm prose-invert max-w-none break-words text-foreground [&_*]:!text-foreground [&_a]:!text-primary [&_blockquote]:!text-foreground/80 [&_img]:max-w-full"
                 dangerouslySetInnerHTML={{ __html: bodyHtml }}
               />
             ) : bodyText ? (
-              <pre className="whitespace-pre-wrap text-sm text-foreground/90 font-sans">{bodyText}</pre>
+              <pre className="whitespace-pre-wrap text-sm text-foreground font-sans">{bodyText}</pre>
             ) : message?.preview ? (
               <div className="text-sm text-foreground/80">{message.preview}</div>
             ) : (
