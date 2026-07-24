@@ -179,11 +179,22 @@ function ManageFieldsDialog({
 
   const reorder = (from: number, to: number) => {
     if (from === to) return;
+    let nextArr: ReferralDocField[] = [];
     setDraft((d) => {
       const next = [...d];
       const [moved] = next.splice(from, 1);
       next.splice(to, 0, moved);
+      nextArr = next;
       return next;
+    });
+    // Persist reorder immediately so it survives refresh without requiring Save
+    Promise.resolve().then(async () => {
+      try {
+        setSaving(true);
+        await onSave(nextArr);
+      } finally {
+        setSaving(false);
+      }
     });
   };
 
