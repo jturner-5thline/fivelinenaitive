@@ -307,7 +307,9 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
               <div className="space-y-2 text-sm min-w-0">
                 <EditableField label="First Name" type="text" value={contact.first_name} onSave={(v) => handleQuickUpdate('first_name', v)} />
                 <EditableField label="Last Name" type="text" value={contact.last_name} onSave={(v) => handleQuickUpdate('last_name', v)} />
-                <EditableField label="Job Title" type="text" value={contact.job_title} onSave={(v) => handleQuickUpdate('job_title', v)} />
+                {!isFieldDisabled('job_title') && (
+                  <EditableField label="Job Title" type="text" value={contact.job_title} onSave={(v) => handleQuickUpdate('job_title', v)} />
+                )}
 
                 {/* Company link (read-only display; managed via Related Records) */}
                 <div>
@@ -340,10 +342,16 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   </Select>
                 </div>
 
-                <EditableField label="LinkedIn" type="url" asLink value={contact.linkedin_url} onSave={(v) => handleQuickUpdate('linkedin_url', v)} placeholder="https://linkedin.com/in/…" />
+                {!isFieldDisabled('linkedin_url') && (
+                  <EditableField label="LinkedIn" type="url" asLink value={contact.linkedin_url} onSave={(v) => handleQuickUpdate('linkedin_url', v)} placeholder="https://linkedin.com/in/…" />
+                )}
                 <EditableField label="Work Email" type="email" asLink value={contact.email} onSave={(v) => handleQuickUpdate('email', v)} />
-                <EditableField label="Mobile" type="tel" value={contact.phone_mobile} onSave={(v) => handleQuickUpdate('phone_mobile', v)} />
-                <EditableField label="Office Phone" type="tel" value={contact.phone_work} onSave={(v) => handleQuickUpdate('phone_work', v)} />
+                {!isFieldDisabled('phone_mobile') && (
+                  <EditableField label="Mobile" type="tel" value={contact.phone_mobile} onSave={(v) => handleQuickUpdate('phone_mobile', v)} />
+                )}
+                {!isFieldDisabled('phone_work') && (
+                  <EditableField label="Office Phone" type="tel" value={contact.phone_work} onSave={(v) => handleQuickUpdate('phone_work', v)} />
+                )}
 
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase mb-1">Location</p>
