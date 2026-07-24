@@ -173,6 +173,7 @@ const TYPE_META: Partial<Record<AiActionType | 'draft_email_bundle' | 'update_fu
   update_funding_source_bundle: { label: 'Funding sources', icon: Building2 },
   terms_issued_bundle: { label: 'Term Sheet Items', icon: FileText },
   escalate: { label: 'Escalation', icon: ShieldAlert },
+  add_outstanding_items: { label: 'Outstanding items', icon: ListChecks },
   reassign_deal: { label: 'Reassign', icon: Briefcase },
   create_new_deal: { label: 'New deal', icon: Briefcase },
 };
