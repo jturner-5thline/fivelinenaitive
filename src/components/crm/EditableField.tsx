@@ -105,7 +105,7 @@ export function EditableField({
   const renderDisplay = () => {
     if (!currentStr) {
       return (
-        <p className={cn('text-xs italic text-muted-foreground/60', editable && 'group-hover:text-muted-foreground')}>
+        <p className={cn('text-xs italic text-foreground/40', editable && 'group-hover:text-foreground/70')}>
           {editable ? (placeholder || 'Add value…') : '—'}
         </p>
       );
@@ -127,9 +127,9 @@ export function EditableField({
     }
     if (type === 'select' && options) {
       const match = options.find((o) => o.value === currentStr);
-      return <p className="text-xs break-words">{match?.label ?? currentStr}</p>;
+      return <p className="text-xs break-words text-foreground">{match?.label ?? currentStr}</p>;
     }
-    return <p className="text-xs break-words whitespace-pre-wrap">{currentStr}</p>;
+    return <p className="text-xs break-words whitespace-pre-wrap text-foreground">{currentStr}</p>;
   };
 
   if (!editable) {
