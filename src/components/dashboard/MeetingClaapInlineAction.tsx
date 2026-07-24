@@ -325,12 +325,12 @@ export function MeetingClaapInlineAction(props: Props) {
       // Derive a targeted search hint from the event title so Claap surfaces
       // older matches whose titles reference attendees (e.g. "Syed").
       const hint = deriveSearchHint(eventTitle) || undefined;
-      const window = getClaapSearchWindow(eventStart, eventEnd);
-      const fastList = await fetchRecordings(hint, { live: false, ...window, limit: 80 });
+      const searchWindow = getClaapSearchWindow(eventStart, eventEnd);
+      const fastList = await fetchRecordings(undefined, { live: false, ...searchWindow, limit: 80 });
       let top = await rankRecordings(fastList || []);
 
       if (!top) {
-        const liveList = await fetchRecordings(hint, { live: true, ...window, limit: 80 });
+        const liveList = await fetchRecordings(hint, { live: true, ...searchWindow, limit: 80 });
         top = await rankRecordings(liveList || []);
       }
 
