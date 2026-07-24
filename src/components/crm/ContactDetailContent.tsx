@@ -335,7 +335,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   </Select>
                 </div>
 
-                <EditableField label="Preferred Channel" type="text" value={contact.preferred_channel} onSave={(v) => handleQuickUpdate('preferred_channel', v)} />
+                <EditableField label="LinkedIn" type="url" asLink value={contact.linkedin_url} onSave={(v) => handleQuickUpdate('linkedin_url', v)} placeholder="https://linkedin.com/in/…" />
                 <EditableField label="Work Email" type="email" asLink value={contact.email} onSave={(v) => handleQuickUpdate('email', v)} />
                 <EditableField label="Mobile" type="tel" value={contact.phone_mobile} onSave={(v) => handleQuickUpdate('phone_mobile', v)} />
                 <EditableField label="Office Phone" type="tel" value={contact.phone_work} onSave={(v) => handleQuickUpdate('phone_work', v)} />
