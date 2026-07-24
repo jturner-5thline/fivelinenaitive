@@ -20,6 +20,7 @@ import { PartnerPromotionDialog, getPromotionMode, type PromotionResult, type Pr
 import { usePartnerPromotionCriteria } from '@/hooks/usePartnerPromotionCriteria';
 import { usePartnerTier } from '@/hooks/usePartnerTier';
 import { PartnerTierBadge, PartnerTier4WarningBadge } from '@/components/partners/PartnerTierBadge';
+import { PartnerTierExplainer } from '@/components/partners/PartnerTierExplainer';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
@@ -52,6 +53,7 @@ function SortablePartnerCard({ partner, owners, onClick }: { partner: Partner; o
       <p className="text-xs text-slate-400 mt-0.5">{partner.firm_type || 'Other'}</p>
       <div className="flex items-center flex-wrap gap-1.5 mt-2">
         <PartnerTierBadge info={tierInfo} />
+        <PartnerTierExplainer info={tierInfo} />
         <PartnerTier4WarningBadge info={tierInfo} />
         <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-700/60 text-slate-300 border border-slate-600/60">
           {criteria?.metCount ?? 0} of 3 AP criteria met
