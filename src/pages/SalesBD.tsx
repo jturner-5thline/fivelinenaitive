@@ -26,10 +26,11 @@ import { SalesBdSearch } from "@/components/partners/SalesBdSearch";
 import { DashboardPage } from "@/components/layout/DashboardPage";
 import { CrmUpdateQueueButton } from "@/components/crm/CrmUpdateQueueButton";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
 import { useCanEditPartnerRules } from "@/hooks/usePartnerRules";
 import { SalesBdDateRangeProvider, useSalesBdDateRange } from "@/contexts/SalesBdDateRangeContext";
 import { InsightsTimeRangeSelector } from "@/components/insights/InsightsTimeRangeSelector";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { PartnerRulesSettings } from "@/components/settings/PartnerRulesSettings";
 
 const PartnersPipeline = lazy(() => import("./PartnersPipeline"));
 
@@ -55,6 +56,7 @@ function SalesBDInner() {
   const [viewPartnerId, setViewPartnerId] = useState<string | null>(null);
   const [viewChannelEntry, setViewChannelEntry] = useState<ChannelEntry | null>(null);
   const [referralSearchSeed, setReferralSearchSeed] = useState<string>('');
+  const [rulesOpen, setRulesOpen] = useState(false);
   const { data: partners = [] } = usePartners();
   const viewPartner = viewPartnerId ? partners.find(p => p.id === viewPartnerId) || null : null;
   const canEditPartnerRules = useCanEditPartnerRules();
@@ -95,10 +97,15 @@ function SalesBDInner() {
                   />
                   <SalesBdHeaderRangeSelector />
                   {canEditPartnerRules && (
-                    <Button asChild variant="outline" size="icon" className="h-8 w-8" title="Rules & Definitions">
-                      <Link to="/settings?tab=sales-bd" aria-label="Rules & Definitions">
-                        <SettingsIcon className="h-3.5 w-3.5" />
-                      </Link>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      title="Rules & Definitions"
+                      aria-label="Rules & Definitions"
+                      onClick={() => setRulesOpen(true)}
+                    >
+                      <SettingsIcon className="h-3.5 w-3.5" />
                     </Button>
                   )}
                   <CrmUpdateQueueButton />
@@ -253,6 +260,19 @@ function SalesBDInner() {
       {viewChannelEntry && (
         <ChannelEntityDetailModal entry={viewChannelEntry} onClose={() => setViewChannelEntry(null)} />
       )}
+      <Dialog open={rulesOpen} onOpenChange={setRulesOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Sales & BD Rules & Definitions</DialogTitle>
+            <DialogDescription>
+              Contact tier rules and partner attribution settings configured for the Sales & BD page.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="pt-2">
+            <PartnerRulesSettings />
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
