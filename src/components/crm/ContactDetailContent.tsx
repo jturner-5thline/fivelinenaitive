@@ -43,6 +43,7 @@ import { DynamicFieldRenderer } from '@/components/crm/DynamicFieldRenderer';
 import { ContactTasksCard } from '@/components/contacts/ContactTasksCard';
 import { ContactAttachmentsTable } from '@/components/crm/ContactAttachmentsTable';
 import { ReferralSourceDocsSection } from '@/components/contacts/ReferralSourceDocsSection';
+import { useRealtimeInvalidate } from '@/hooks/useRealtimeInvalidate';
 import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
 import { CompanyDomainMatchPrompt } from '@/components/contacts/CompanyDomainMatchPrompt';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
