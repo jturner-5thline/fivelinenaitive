@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { downloadAttachment, openAttachmentInNewTab } from '@/components/deal/email/useFullEmailMessage';
 import { toast } from 'sonner';
+import { EmailViewerDialog, type EmailViewerMessage } from '@/components/deal/email/EmailViewerDialog';
 
 interface EmailAttachmentMeta {
   id: string;
@@ -49,6 +50,8 @@ export function DealCommunicationsTab({ dealId }: Props) {
   const [items, setItems] = useState<CommItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [viewer, setViewer] = useState<EmailViewerMessage | null>(null);
+  const [dealMeta, setDealMeta] = useState<{ name: string | null }>({ name: null });
   const toggleThread = useCallback((tid: string) => {
     setExpanded((prev) => ({ ...prev, [tid]: !prev[tid] }));
   }, []);
@@ -88,6 +91,10 @@ export function DealCommunicationsTab({ dealId }: Props) {
             .select('contact_id')
             .eq('deal_id', dealId),
         ]);
+
+        if (!cancelled) {
+          setDealMeta({ name: (dealRes?.data as any)?.company ?? null });
+        }
 
         const fromActivities: CommItem[] = (a.data ?? []).map((r: any) => ({
           key: `al:${r.id}`,
