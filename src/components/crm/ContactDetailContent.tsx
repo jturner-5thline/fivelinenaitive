@@ -226,10 +226,10 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                 {contact.migrated_from_hubspot && <Badge variant="outline" className="text-[10px]">HubSpot</Badge>}
                 {!contact.email_opt_in && <Badge variant="destructive" className="text-[10px]">Opted Out</Badge>}
               </div>
-              <p className="text-sm text-muted-foreground mt-0.5 truncate">
-                {[contact.job_title, crmCompany?.name].filter(Boolean).join(' · ') || 'No title'}
-              </p>
-              <div className="mt-1">
+              <div className="mt-0.5 flex items-center gap-2 flex-wrap min-w-0">
+                <p className="text-sm text-muted-foreground truncate">
+                  {[contact.job_title, crmCompany?.name].filter(Boolean).join(' · ') || 'No title'}
+                </p>
                 <LastContactChip value={(contact as any).last_contact_at} />
               </div>
             </div>
