@@ -1,0 +1,3 @@
+ALTER TABLE public.contacts
+  ADD COLUMN IF NOT EXISTS referral_agreement_on_file BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS w9_on_file BOOLEAN NOT NULL DEFAULT false;

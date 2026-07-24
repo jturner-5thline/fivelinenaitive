@@ -6539,6 +6539,7 @@ export type Database = {
           phone_work: string | null
           preferred_channel: string | null
           primary_company_id: string | null
+          referral_agreement_on_file: boolean
           sdr_owner_id: string | null
           seniority: string | null
           sms_opt_in: boolean | null
@@ -6554,6 +6555,7 @@ export type Database = {
           utm_medium: string | null
           utm_source: string | null
           utm_term: string | null
+          w9_on_file: boolean
           website_url: string | null
         }
         Insert: {
@@ -7031,6 +7033,7 @@ export type Database = {
           phone_work?: string | null
           preferred_channel?: string | null
           primary_company_id?: string | null
+          referral_agreement_on_file?: boolean
           sdr_owner_id?: string | null
           seniority?: string | null
           sms_opt_in?: boolean | null
@@ -7046,6 +7049,7 @@ export type Database = {
           utm_medium?: string | null
           utm_source?: string | null
           utm_term?: string | null
+          w9_on_file?: boolean
           website_url?: string | null
         }
         Update: {
@@ -7523,6 +7527,7 @@ export type Database = {
           phone_work?: string | null
           preferred_channel?: string | null
           primary_company_id?: string | null
+          referral_agreement_on_file?: boolean
           sdr_owner_id?: string | null
           seniority?: string | null
           sms_opt_in?: boolean | null
@@ -7538,6 +7543,7 @@ export type Database = {
           utm_medium?: string | null
           utm_source?: string | null
           utm_term?: string | null
+          w9_on_file?: boolean
           website_url?: string | null
         }
         Relationships: [
