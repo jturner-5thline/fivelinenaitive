@@ -1412,7 +1412,7 @@ const tools = [
     type: "function",
     function: {
       name: "get_contact_full",
-      description: "Fetch the COMPLETE record for a contact in one call: profile (name, title, emails, phones, seniority, owner), associated company, all deals they are linked to, recent activities, and lifecycle/lead source. Pass either contact_id or search (name or email).",
+      description: "Fetch the COMPLETE record for a contact in one call: profile (name, title, emails, phones, seniority, owner), associated company, all deals they are linked to, recent activities, lifecycle/lead source, AND recent Claap meetings the contact participated in (with AI summary, key decisions, next steps, topics, and a transcript excerpt). Pass either contact_id or search (name or email).",
       parameters: {
         type: "object",
         properties: {
@@ -5669,7 +5669,11 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         .from("contacts").select("*").eq("id", contactId).maybeSingle();
       if (!contact) return { error: "Contact not found" };
 
-      const [companyRes, dealsRes, activitiesRes] = await Promise.all([
+      const contactEmails = [contact.email, ...(Array.isArray(contact.additional_emails) ? contact.additional_emails : [])]
+        .map((e: any) => (typeof e === 'string' ? e.trim().toLowerCase() : null))
+        .filter((e): e is string => !!e);
+
+      const [companyRes, dealsRes, activitiesRes, claapPartRes] = await Promise.all([
         contact.company_id || contact.primary_company_id
           ? supabase.from("crm_companies").select("id, name, domain, industry, lifecycle_stage").eq("id", contact.company_id || contact.primary_company_id).maybeSingle()
           : Promise.resolve({ data: null } as any),
@@ -5678,6 +5682,12 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           .select("activity_type, description, occurred_at, created_at")
           .eq("contact_id", contactId)
           .order("created_at", { ascending: false }).limit(20),
+        contactEmails.length
+          ? supabase.from("claap_meeting_participants")
+              .select("meeting_id, email, name, is_internal")
+              .in("email", contactEmails)
+              .limit(200)
+          : Promise.resolve({ data: [] } as any),
       ]);
 
       const dealIds = (dealsRes.data || []).map((d: any) => d.deal_id).filter(Boolean);
@@ -5686,6 +5696,32 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         const { data } = await supabase
           .from("deals").select("id, company, stage, status, value, updated_at").in("id", dealIds);
         deals = data || [];
+      }
+
+      // Digest linked Claap meetings this contact attended (summary + transcript excerpt)
+      let claap_meetings: any[] = [];
+      const meetingIds = Array.from(new Set((claapPartRes.data || []).map((p: any) => p.meeting_id).filter(Boolean)));
+      if (meetingIds.length) {
+        const { data: mtgs } = await supabase
+          .from("claap_meetings")
+          .select("id, claap_id, title, ai_summary, key_decisions, next_steps, topics, transcript, started_at, duration_seconds, deal_id, company_id")
+          .in("id", meetingIds)
+          .order("started_at", { ascending: false })
+          .limit(15);
+        claap_meetings = (mtgs || []).map((m: any) => ({
+          id: m.id,
+          claap_id: m.claap_id,
+          title: m.title,
+          started_at: m.started_at,
+          duration_seconds: m.duration_seconds,
+          deal_id: m.deal_id,
+          summary: m.ai_summary || null,
+          key_decisions: m.key_decisions || null,
+          next_steps: m.next_steps || null,
+          topics: m.topics || null,
+          transcript_excerpt: m.transcript ? String(m.transcript).slice(0, 4000) : null,
+          has_full_transcript: !!m.transcript,
+        }));
       }
 
       return {
@@ -5710,6 +5746,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         company: companyRes?.data || null,
         deals,
         recent_activities: activitiesRes.data || [],
+        claap_meetings,
       };
     }
     case "get_company_full": {
