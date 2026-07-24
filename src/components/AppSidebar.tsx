@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, BarChart3, Users, Settings, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, SlidersHorizontal, Contact, Building2, UserCircle, LogOut, Handshake, Landmark, FileText, PieChart, Mail, SlidersHorizontal as SlidersIcon } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Users, Settings, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, SlidersHorizontal, Contact, Building2, UserCircle, LogOut, Handshake, Landmark, FileText, PieChart, Mail, SlidersHorizontal as SlidersIcon, Eye, Check } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCompanyFeatures } from "@/hooks/useCompanyFeatures";
 import { useClaapRoutingTasks } from '@/hooks/useClaapMeetings';
@@ -20,6 +20,7 @@ import { useCanAccessInsights } from "@/hooks/useCanAccessInsights";
 import { DealsFlyoutMenu } from "@/components/sidebar/DealsFlyoutMenu";
 import { InsightsFlyoutMenu } from "@/components/sidebar/InsightsFlyoutMenu";
 import { FeedbackButton } from "@/components/FeedbackButton";
+import { useHighContrast } from "@/hooks/useHighContrast";
 
 
 import {
@@ -72,6 +73,7 @@ export function AppSidebar() {
   const { isAdmin } = useAdminRole();
   const { hasPageAccess, isPageBeta, isLoading: isAccessLoading } = usePageAccessFlags();
   const { features: companyFeatures } = useCompanyFeatures();
+  const { enabled: highContrast, toggle: toggleHighContrast } = useHighContrast();
   const { data: routingTasks = [] } = useClaapRoutingTasks();
   const { hasAccess: hasNaitivePipelineAccess } = useNaitivePipelineAccess();
   const canAccessInsights = useCanAccessInsights();
@@ -304,6 +306,15 @@ export function AppSidebar() {
                 >
                   <UserCircle className="h-4 w-4" />
                   Account
+                </button>
+                <button
+                  onClick={toggleHighContrast}
+                  aria-pressed={highContrast}
+                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                >
+                  <Eye className="h-4 w-4" />
+                  <span className="flex-1 text-left">High contrast</span>
+                  {highContrast && <Check className="h-3.5 w-3.5 text-primary" />}
                 </button>
                 <button
                   onClick={async () => {

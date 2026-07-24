@@ -4,6 +4,10 @@ import App from "./App.tsx";
 import "./index.css";
 import { markSessionEnd } from "./lib/usageLogger";
 import { initPerfDiagnostics } from "./lib/perfDiagnostics";
+import { initHighContrast } from "./hooks/useHighContrast";
+
+// Apply persisted a11y high-contrast preference before first paint.
+initHighContrast();
 
 // Boot lightweight perf instrumentation. No-op until something asks for
 // the snapshot (Admin → Observability → Performance), but the long-task

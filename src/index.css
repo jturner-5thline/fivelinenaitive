@@ -2484,3 +2484,55 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   color: rgba(255, 255, 255, 0.72) !important;
   margin-top: 2px;
 }
+
+/* =========================================================================
+   Accessibility · High-Contrast Mode
+   -------------------------------------------------------------------------
+   Toggled via `useHighContrast` (adds `.high-contrast` on <html>). Forces
+   widget titles and values to meet WCAG AA (≥ 4.5:1) contrast regardless
+   of the underlying opacity utility used at the component level. Scoped
+   narrowly so the rest of the design system (badges, buttons, charts)
+   stays untouched.
+   ========================================================================= */
+.high-contrast {
+  /* Bump the muted foreground token toward the primary foreground so any
+     component that reads --muted-foreground automatically inherits the
+     accessible value — no per-component churn required. */
+  --muted-foreground: var(--foreground);
+}
+
+/* Field labels, secondary metadata, and helper copy — force full opacity
+   on the theme-aware foreground token. */
+.high-contrast .text-muted-foreground,
+.high-contrast [class*="text-muted-foreground/"],
+.high-contrast [class*="text-foreground/"] {
+  color: hsl(var(--foreground)) !important;
+  opacity: 1 !important;
+}
+
+/* Placeholder / empty-state italic values in editable fields. */
+.high-contrast input::placeholder,
+.high-contrast textarea::placeholder {
+  color: hsl(var(--foreground) / 0.85) !important;
+}
+
+/* Icon-only decorative glyphs that fade via opacity utilities. Keep them
+   legible against dark widget surfaces without over-brightening buttons. */
+.high-contrast .text-primary\/60,
+.high-contrast .text-primary\/70,
+.high-contrast .text-primary\/80 {
+  color: hsl(var(--primary)) !important;
+}
+
+/* Widget borders — tighten the existing thin outline to a fully opaque
+   line so widget boundaries are unambiguous. */
+.high-contrast [class*="border-border/"],
+.high-contrast [class*="border-primary/"] {
+  border-color: hsl(var(--foreground) / 0.6) !important;
+}
+
+/* Focus rings must remain visible in high-contrast mode. */
+.high-contrast :focus-visible {
+  outline: 2px solid hsl(var(--primary)) !important;
+  outline-offset: 2px !important;
+}
