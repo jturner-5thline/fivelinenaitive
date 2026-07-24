@@ -30,6 +30,7 @@ import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
 import { ContactTypeMultiSelect } from '@/components/contacts/ContactTypeMultiSelect';
 import { LastContactChip } from '@/components/contacts/LastContactChip';
 import { EditableField } from '@/components/crm/EditableField';
+import { COUNTRY_OPTIONS } from '@/lib/countries';
 import { supabase } from '@/integrations/supabase/client';
 import {
   useContactCrmCompany, useLinkContactToCompany, useUnlinkContactFromCompany,
