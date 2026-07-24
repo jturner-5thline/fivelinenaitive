@@ -5391,6 +5391,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
       let results = transcripts.map((t: any) => {
         const meeting = meetingMap.get(t.claap_meeting_id);
+        const dateLabel = t.recorded_at ? new Date(t.recorded_at).toISOString().slice(0, 10) : "";
         return {
           title: meeting?.title || "Untitled Call",
           recording_url: meeting?.recording_url,
@@ -5401,6 +5402,15 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           summary: t.summary || meeting?.ai_summary || null,
           transcript_preview: t.transcript_text ? t.transcript_text.slice(0, 2000) : null,
           has_full_transcript: !!t.transcript_text,
+          claap_meeting_id: t.claap_meeting_id,
+          transcript_id: t.id,
+          citation: {
+            type: "claap",
+            id: t.claap_meeting_id,
+            url: meeting?.recording_url || null,
+            label: [meeting?.title || "Claap meeting", dateLabel].filter(Boolean).join(" · "),
+            deal_id: args.deal_id,
+          },
         };
       });
 
