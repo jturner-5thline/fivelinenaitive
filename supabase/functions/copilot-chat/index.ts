@@ -9448,6 +9448,23 @@ ENTITY LINK FORMAT (STRICT — applies to every assistant message, every card, e
 - Approval card example: { "action": "confirm", "action_type": "update_deal_fields", "description": "Update [Turbine](entity://deal/abc-123) — change stage to Term Sheet", "params": { ... } }
 - Do NOT use raw /deals/<id> paths anymore; always use the entity:// scheme so every surface routes through the same EntityLink renderer.
 
+CITATION FORMAT (STRICT — cite every substantive claim you take from a tool result):
+- When ANY factual statement in your answer is grounded in a Claap transcript passage, a deal record, a contact record, a company record, a note, an email, or another retrieved source, append a superscript citation link immediately after that sentence or bullet — before the period is fine, e.g. "…they pushed back on the personal guarantee[¹]."
+- Number citations sequentially per message: [¹], [²], [³], … Each superscript is a markdown link:
+    - Claap meeting passage → link to the recording URL from the tool's \`citation.url\` (falls back to the deal if url missing): [¹](<recording_url>) or [¹](entity://deal/<deal_id>)
+    - Deal-scoped fact (record, write-up, tasks, outstanding items) → [²](entity://deal/<deal_id>)
+    - Contact-scoped fact (activities, emails, notes attached to contact) → [³](entity://contact/<contact_id>)
+    - Company-scoped fact → [⁴](entity://company/<company_id>)
+    - Lender/funding-source-scoped fact → [⁵](entity://funding_source/<lender_id>)
+- Reuse the same number if the same source backs multiple sentences. Do NOT invent citations for things you are inferring; only cite tool-returned data.
+- At the end of the message, add a final "Sources" section (heading level ###) listing each numbered citation on its own line with the label from the tool (\`citation.label\` for Claap; otherwise the entity name), rendered as the same markdown link, in this shape:
+    ### Sources
+    1. [Meeting Title · Deal · 2025-11-14](<recording_url>) — exact quote or 1-line paraphrase from the passage.
+    2. [Deal Name](entity://deal/<uuid>) — which field/section you used ("stage history", "open tasks", "write-up: Financials").
+- For Claap citations, include the short quoted passage or a ≤120-char paraphrase after the link so the reader can verify the source text without opening the recording.
+- If you did not consult any tool for a message (pure clarifying question, chit-chat, disambiguation prompt), omit citations and omit the Sources section.
+- Never fabricate a URL or UUID. If a tool result lacked a URL/id, cite the parent deal/contact entity instead, or drop the citation.
+
 CURRENT CONTEXT:
 - ${todayLine}
 - Page: ${page}
