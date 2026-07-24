@@ -439,6 +439,44 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                     onChange={(v) => handleQuickUpdate('contact_type', v)}
                   />
                   {(() => {
+                    const STATUS_OPTIONS: Array<{ value: string; label: string; dot: string }> = [
+                      { value: 'active', label: 'Active', dot: 'bg-green-500' },
+                      { value: 'inactive', label: 'Inactive', dot: 'bg-blue-500' },
+                      { value: 'went_dark', label: 'Went Dark', dot: 'bg-yellow-500' },
+                      { value: 'do_not_contact', label: 'Do Not Contact', dot: 'bg-red-500' },
+                    ];
+                    const current = String((contact as any).status || '').toLowerCase();
+                    return (
+                      <div className="mt-2">
+                        <p className="text-[10px] text-muted-foreground uppercase mb-1">Status</p>
+                        <Select
+                          value={current || 'unset'}
+                          onValueChange={(v) => handleQuickUpdate('status', v === 'unset' ? null : v)}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Set status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unset">
+                              <span className="inline-flex items-center gap-2">
+                                <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
+                                No status
+                              </span>
+                            </SelectItem>
+                            {STATUS_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                <span className="inline-flex items-center gap-2">
+                                  <span className={cn('h-2 w-2 rounded-full', opt.dot)} />
+                                  {opt.label}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    );
+                  })()}
+                  {(() => {
                     const types = String((contact as any).contact_type || '')
                       .split(/\s*;\s*/)
                       .map((s) => s.trim().toLowerCase())
