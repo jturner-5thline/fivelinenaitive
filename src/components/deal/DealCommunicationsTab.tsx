@@ -166,10 +166,58 @@ export function DealCommunicationsTab({ dealId }: Props) {
           }));
         }
 
+        // Live Nylas fetch: email_cache is populated only from INBOX sync,
+        // so recently-sent outbound messages (before any reply arrives) are
+        // missing. Query Gmail directly across ALL mail for from/to matches
+        // on any client-contact email and merge results in.
+        let fromLive: CommItem[] = [];
+        if (contactEmails.size > 0) {
+          try {
+            const emails = Array.from(contactEmails);
+            const query = emails
+              .flatMap((e) => [`from:${e}`, `to:${e}`, `cc:${e}`, `bcc:${e}`])
+              .join(' OR ');
+            const { data: live } = await supabase.functions.invoke('gmail-messages', {
+              body: {
+                action: 'list',
+                max_results: 50,
+                search_all_mail: true,
+                query,
+              },
+            });
+            const msgs: any[] = Array.isArray((live as any)?.messages) ? (live as any).messages : [];
+            fromLive = msgs.map((m: any) => {
+              const to = Array.isArray(m.to)
+                ? m.to.map((x: any) => x?.email ?? x).filter(Boolean)
+                : Array.isArray(m.to_emails) ? m.to_emails : [];
+              const fromObj = Array.isArray(m.from) ? m.from[0] : m.from;
+              const fromStr = fromObj?.name || fromObj?.email || m.from_email || m.from_name || '';
+              const sentAt = m.date
+                ? new Date(Number(m.date) * 1000).toISOString()
+                : (m.received_at ?? null);
+              const id = m.id || m.gmail_message_id;
+              return {
+                key: `lv:${id}`,
+                source: 'deal_emails' as const,
+                message_id: id ?? null,
+                thread_id: m.thread_id ?? null,
+                subject: m.subject ?? '(no subject)',
+                from: fromStr,
+                to,
+                preview: (m.snippet ?? '').slice(0, 220),
+                direction: null,
+                sent_at: sentAt,
+              };
+            });
+          } catch (err) {
+            console.warn('[DealCommunicationsTab] live nylas fetch failed', err);
+          }
+        }
+
         // Dedupe by message_id (prefer activity_logs row since it has direction/body)
         const seen = new Set<string>();
         const merged: CommItem[] = [];
-        for (const it of [...fromActivities, ...fromGmail, ...fromContacts]) {
+        for (const it of [...fromActivities, ...fromGmail, ...fromContacts, ...fromLive]) {
           const dedupeKey = it.message_id ?? it.key;
           if (seen.has(dedupeKey)) continue;
           seen.add(dedupeKey);
