@@ -10,6 +10,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 export type ReferralDocFieldType = 'checkbox' | 'text';
 
