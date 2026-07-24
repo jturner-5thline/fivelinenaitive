@@ -304,6 +304,20 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
           <aside className="space-y-3 min-w-0 lg:sticky lg:top-32">
             {/* Profile card with all core editable fields */}
             <div className="rounded-lg border border-white/25 bg-card p-4 space-y-3 min-w-0 shadow-[0_0_0_1px_hsl(0_0%_100%/0.12)]">
+              {isFieldAdmin && (
+                <div className="flex justify-end -mt-1 -mr-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowManageFields(true)}
+                    aria-label="Manage contact fields"
+                    title="Manage fields"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
               {contact.tags && contact.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {contact.tags.map(tag => <Badge key={tag} variant="outline" className="text-[10px] font-normal">{tag}</Badge>)}
