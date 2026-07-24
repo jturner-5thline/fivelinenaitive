@@ -12,6 +12,10 @@ import {
 import { useCompany } from '@/hooks/useCompany';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { contactTypeBadgeClass } from './contactTypeBadge';
 import { cn } from '@/lib/utils';
 
@@ -37,7 +41,8 @@ interface Props {
 }
 
 export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
-  const { isAdmin } = useCompany();
+  const { isAdmin, company } = useCompany();
+  const queryClient = useQueryClient();
   const { data: types = [] } = useContactTypes({ includeInactive: isAdmin });
   const createType = useCreateContactType();
   const updateType = useUpdateContactType();
@@ -47,6 +52,11 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
   const [search, setSearch] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<ContactType | null>(null);
+  const [affected, setAffected] = useState<Array<{ id: string; full_name: string | null; contact_type: string | null }>>([]);
+  const [checkingUsage, setCheckingUsage] = useState(false);
+  const [replacements, setReplacements] = useState<string[]>([]);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const selected = useMemo(() => splitContactTypes(value), [value]);
 
   const trimmed = search.trim();
@@ -93,6 +103,77 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
         },
       },
     );
+  };
+
+  const startDelete = async (t: ContactType) => {
+    if (!company?.id) return;
+    setCheckingUsage(true);
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('id, full_name, contact_type')
+        .eq('company_id', company.id)
+        .ilike('contact_type', `%${t.name}%`);
+      if (error) throw error;
+      const rows = (data || []).filter(r => splitContactTypes(r.contact_type).includes(t.name));
+      if (rows.length === 0) {
+        if (confirm(`Delete "${t.name}"? No contacts are currently using this type.`)) {
+          deleteType.mutate(t.id);
+        }
+        return;
+      }
+      setDeleteTarget(t);
+      setAffected(rows);
+      setReplacements([]);
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to check contact type usage');
+    } finally {
+      setCheckingUsage(false);
+    }
+  };
+
+  const confirmDeletion = async () => {
+    if (!deleteTarget) return;
+    setConfirmingDelete(true);
+    try {
+      // Update each affected contact: remove old type, add replacements
+      for (const row of affected) {
+        const current = splitContactTypes(row.contact_type);
+        const next = joinContactTypes([
+          ...current.filter(n => n !== deleteTarget.name),
+          ...replacements,
+        ]);
+        const { error } = await supabase
+          .from('contacts')
+          .update({ contact_type: next as any })
+          .eq('id', row.id);
+        if (error) throw error;
+      }
+      deleteType.mutate(deleteTarget.id, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ['contacts'] });
+          queryClient.invalidateQueries({ queryKey: ['contact'] });
+          setDeleteTarget(null);
+          setAffected([]);
+          setReplacements([]);
+          // reflect change locally if the current record was affected
+          if (selected.includes(deleteTarget.name)) {
+            onChange(joinContactTypes([
+              ...selected.filter(n => n !== deleteTarget.name),
+              ...replacements,
+            ]));
+          }
+        },
+      });
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to reassign contacts');
+    } finally {
+      setConfirmingDelete(false);
+    }
+  };
+
+  const toggleReplacement = (name: string) => {
+    setReplacements(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]);
   };
 
   return (
@@ -187,11 +268,8 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
                         <button
                           type="button"
                           title="Delete"
-                          onClick={() => {
-                            if (confirm(`Delete "${t.name}"? Contacts already assigned will keep their value.`)) {
-                              deleteType.mutate(t.id);
-                            }
-                          }}
+                          disabled={checkingUsage}
+                          onClick={() => startDelete(t)}
                           className="p-1 text-muted-foreground hover:text-destructive"
                         >
                           <Trash2 className="h-3 w-3" />
@@ -252,6 +330,64 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
           )}
         </PopoverContent>
       </Popover>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) { setDeleteTarget(null); setAffected([]); setReplacements([]); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete "{deleteTarget?.name}"?</DialogTitle>
+            <DialogDescription>
+              {affected.length} contact{affected.length === 1 ? '' : 's'} currently {affected.length === 1 ? 'has' : 'have'} this type.
+              Choose replacement type(s) to reassign before deleting. Leave empty to remove this type without a replacement.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <p className="text-[11px] uppercase text-muted-foreground mb-1">Replacement types</p>
+              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                {types.filter(t => t.is_active && t.id !== deleteTarget?.id).map(t => {
+                  const active = replacements.includes(t.name);
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => toggleReplacement(t.name)}
+                      className={cn(
+                        'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] transition',
+                        active
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border/60 text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      {active && <Check className="h-3 w-3" />}
+                      {t.name}
+                    </button>
+                  );
+                })}
+                {types.filter(t => t.is_active && t.id !== deleteTarget?.id).length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">No other active types available.</p>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase text-muted-foreground mb-1">Affected contacts ({affected.length})</p>
+              <div className="max-h-40 overflow-y-auto rounded border border-border/60 divide-y divide-border/40">
+                {affected.slice(0, 200).map(r => (
+                  <div key={r.id} className="px-2 py-1 text-xs truncate">{r.full_name || '(unnamed)'}</div>
+                ))}
+                {affected.length > 200 && (
+                  <div className="px-2 py-1 text-[11px] text-muted-foreground">…and {affected.length - 200} more</div>
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={confirmingDelete}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDeletion} disabled={confirmingDelete}>
+              {confirmingDelete ? 'Reassigning…' : `Reassign & delete`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
