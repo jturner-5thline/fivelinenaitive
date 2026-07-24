@@ -5480,6 +5480,7 @@ export type Database = {
         Row: {
           ai_settings: Json
           company_id: string
+          contact_field_config: Json
           created_at: string
           data_room_default_checklists: Json | null
           deal_info_layout: Json | null
@@ -5504,6 +5505,7 @@ export type Database = {
         Insert: {
           ai_settings?: Json
           company_id: string
+          contact_field_config?: Json
           created_at?: string
           data_room_default_checklists?: Json | null
           deal_info_layout?: Json | null
@@ -5528,6 +5530,7 @@ export type Database = {
         Update: {
           ai_settings?: Json
           company_id?: string
+          contact_field_config?: Json
           created_at?: string
           data_room_default_checklists?: Json | null
           deal_info_layout?: Json | null
