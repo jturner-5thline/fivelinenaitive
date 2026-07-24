@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Eye, FileText, TrendingUp, Loader2, ExternalLink, Download, FileSignature, HelpCircle, X, Bookmark, FileCheck, ScrollText, ArrowDownToLine, Video, Unlink, ArrowRightLeft, Link2 } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
 import { useDealActivityStats, useDealActivityChart } from '@/hooks/useDealActivityStats';
@@ -117,7 +118,7 @@ function useLinkedClaapCalls(dealId: string | undefined) {
 
       const { data: claapMeetings, error } = await supabase
         .from('claap_meetings')
-        .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, transcript, ai_summary, match_status, match_method, match_confidence, match_reason, manually_locked')
+        .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, transcript, ai_summary, match_status, match_method, match_confidence, match_reason, manually_locked, claap_meeting_participants(name, email, is_internal)')
         .eq('deal_id', dealId)
         .order('started_at', { ascending: false });
 
@@ -140,6 +141,7 @@ function useLinkedClaapCalls(dealId: string | undefined) {
           match_confidence: (meeting as any).match_confidence,
           match_reason: (meeting as any).match_reason,
           manually_locked: (meeting as any).manually_locked,
+          participants: (meeting as any).claap_meeting_participants || [],
         },
         user_display_name: null,
         source: 'claap' as const,
@@ -171,7 +173,7 @@ function useActivityDetailsForDate(dealId: string | undefined, date: string | nu
           .order('created_at', { ascending: false }),
         supabase
           .from('claap_meetings')
-          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, transcript, ai_summary, match_status, match_method, match_confidence, match_reason, manually_locked')
+          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, transcript, ai_summary, match_status, match_method, match_confidence, match_reason, manually_locked, claap_meeting_participants(name, email, is_internal)')
           .eq('deal_id', dealId)
           .order('started_at', { ascending: false }),
       ]);
@@ -223,6 +225,7 @@ function useActivityDetailsForDate(dealId: string | undefined, date: string | nu
             match_confidence: (meeting as any).match_confidence,
             match_reason: (meeting as any).match_reason,
             manually_locked: (meeting as any).manually_locked,
+            participants: (meeting as any).claap_meeting_participants || [],
           },
           user_display_name: null,
           source: 'claap' as const,
@@ -465,6 +468,12 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
                           {isCall ? (
                             <div className="mt-1 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
                               <span>{formatCallDuration(meta?.duration_seconds)}</span>
+                              {Array.isArray(meta?.participants) && meta.participants.length > 0 && (
+                                <span className="inline-flex items-center gap-1">
+                                  <Users className="h-3 w-3" />
+                                  {meta.participants.length} attendee{meta.participants.length === 1 ? '' : 's'}
+                                </span>
+                              )}
                               {meta?.recording_url && (
                                 <a
                                   href={meta.recording_url}
@@ -494,6 +503,23 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
                           ) : null}
                           {isCall && meta?.match_reason && (
                             <p className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">{meta.match_reason}</p>
+                          )}
+                          {isCall && Array.isArray(meta?.participants) && meta.participants.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {meta.participants.slice(0, 8).map((p: any, idx: number) => (
+                                <Badge
+                                  key={`${activity.id}-p-${idx}`}
+                                  variant="outline"
+                                  className={`text-[10px] font-normal ${p.is_internal ? 'border-blue-500/30 text-blue-600' : 'border-muted-foreground/20'}`}
+                                  title={p.email || undefined}
+                                >
+                                  {p.name || p.email || 'Unknown'}
+                                </Badge>
+                              ))}
+                              {meta.participants.length > 8 && (
+                                <span className="text-[10px] text-muted-foreground">+{meta.participants.length - 8} more</span>
+                              )}
+                            </div>
                           )}
                           {isCall && expandedTranscriptId === activity.id && transcriptText && (
                             <div className="mt-2 rounded-md border border-border/50 bg-background/80 p-2 text-xs text-muted-foreground whitespace-pre-wrap">
