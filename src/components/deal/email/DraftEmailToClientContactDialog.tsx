@@ -55,6 +55,12 @@ export interface DraftEmailToClientContactDialogProps {
   contactEmail?: string | null;
   /** Optional secondary domain (e.g. company website) used to broaden thread search. */
   companyDomain?: string | null;
+  /** Additional email addresses to prefill in the To: field (e.g. meeting attendees). */
+  initialToRecipients?: string[];
+  /** Optional prefilled subject line. */
+  initialSubject?: string;
+  /** Optional label + subtitle override for the dialog header. */
+  headerTitle?: string;
 }
 
 const EMAIL_RE = /[\w.+-]+@[\w-]+\.[\w.-]+/i;
@@ -111,6 +117,9 @@ export function DraftEmailToClientContactDialog({
   contactName,
   contactEmail,
   companyDomain,
+  initialToRecipients,
+  initialSubject,
+  headerTitle,
 }: DraftEmailToClientContactDialogProps) {
   const signature = useUserEmailSignature();
 
@@ -118,6 +127,19 @@ export function DraftEmailToClientContactDialog({
     () => extractEmail(contactEmail) ?? extractEmail(contactName),
     [contactEmail, contactName],
   );
+  const mergedInitialTo = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const raw of [resolvedEmail, ...(initialToRecipients ?? [])]) {
+      const e = extractEmail(raw ?? null);
+      if (!e) continue;
+      const key = e.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(e);
+    }
+    return out;
+  }, [resolvedEmail, initialToRecipients]);
   const resolvedDomain = useMemo(
     () => companyDomain?.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0] || null,
     [companyDomain],
@@ -125,11 +147,11 @@ export function DraftEmailToClientContactDialog({
 
   // Composer state
   const [recipients, setRecipients] = useState<ComposerRecipients>({
-    to: resolvedEmail ? [resolvedEmail] : [],
+    to: mergedInitialTo,
     cc: [],
     bcc: [],
   });
-  const [subject, setSubject] = useState('');
+  const [subject, setSubject] = useState(initialSubject ?? '');
   const [body, setBody] = useState('');
   const [attachments, setAttachments] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
@@ -148,8 +170,8 @@ export function DraftEmailToClientContactDialog({
   // Reset state every time the dialog opens.
   useEffect(() => {
     if (!open) return;
-    setRecipients({ to: resolvedEmail ? [resolvedEmail] : [], cc: [], bcc: [] });
-    setSubject('');
+    setRecipients({ to: mergedInitialTo, cc: [], bcc: [] });
+    setSubject(initialSubject ?? '');
     setBody('');
     setAttachments([]);
     setFiles([]);
@@ -158,7 +180,7 @@ export function DraftEmailToClientContactDialog({
     setThreads([]);
     setSearchError(null);
     initializedRef.current = false;
-  }, [open, resolvedEmail]);
+  }, [open, mergedInitialTo, initialSubject]);
 
   // Fire thread search in parallel (does not block the popup shell).
   useEffect(() => {
@@ -354,7 +376,7 @@ export function DraftEmailToClientContactDialog({
         <div className="px-5 pt-4 pb-3 border-b border-[hsl(var(--email-border))] shrink-0">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <h2 className="text-sm font-semibold truncate">Draft Email to Client Contact</h2>
+              <h2 className="text-sm font-semibold truncate">{headerTitle ?? 'Draft Email to Client Contact'}</h2>
               <p className="text-xs text-muted-foreground truncate">
                 {contactName || resolvedEmail || 'Client contact'}
                 {dealName ? <> · <span className="text-muted-foreground/80">{dealName}</span></> : null}
