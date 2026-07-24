@@ -30,6 +30,11 @@ import { contactTypeBadgeClass } from './contactTypeBadge';
 import { cn } from '@/lib/utils';
 
 const SEPARATOR = ' ; ';
+const PROTECTED_TYPES = new Set(['referral source']);
+
+function isProtectedType(name: string): boolean {
+  return PROTECTED_TYPES.has(name.trim().toLowerCase());
+}
 
 export function splitContactTypes(value: string | null | undefined): string[] {
   if (!value) return [];
@@ -118,6 +123,10 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
 
   const startDelete = async (t: ContactType) => {
     if (!company?.id) return;
+    if (isProtectedType(t.name)) {
+      toast.error(`"${t.name}" is a system contact type and cannot be deleted.`);
+      return;
+    }
     setCheckingUsage(true);
     try {
       const { data, error } = await supabase
@@ -277,9 +286,9 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
                         <button
                           type="button"
                           title="Delete"
-                          disabled={checkingUsage}
+                          disabled={checkingUsage || isProtectedType(t.name)}
                           onClick={() => startDelete(t)}
-                          className="p-1 text-muted-foreground hover:text-destructive"
+                          className="p-1 text-muted-foreground hover:text-destructive disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-muted-foreground"
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>
