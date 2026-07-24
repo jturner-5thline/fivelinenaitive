@@ -346,7 +346,13 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                     <EditableField label="State" type="text" value={(contact as any).state} onSave={(v) => handleQuickUpdate('state', v)} />
                   </div>
                   <div className="mt-2">
-                    <EditableField label="Country" type="text" value={(contact as any).country} onSave={(v) => handleQuickUpdate('country', v)} />
+                    <EditableField
+                      label="Country"
+                      type="select"
+                      value={(contact as any).country}
+                      onSave={(v) => handleQuickUpdate('country', v)}
+                      options={COUNTRY_OPTIONS}
+                    />
                   </div>
                 </div>
 
