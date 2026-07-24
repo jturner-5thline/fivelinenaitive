@@ -744,6 +744,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
         contactName={contact.full_name || 'this contact'}
         onOpenChange={(open) => !open && setLogDialog(null)}
       />
+      <ManageContactFieldsDialog open={showManageFields} onOpenChange={setShowManageFields} />
     </>
   );
 }
