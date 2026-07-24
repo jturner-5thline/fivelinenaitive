@@ -135,7 +135,7 @@ export function EditableField({
   if (!editable) {
     return (
       <div className={cn('group', className)}>
-        <p className="text-[10px] text-muted-foreground uppercase">{label}</p>
+        <p className="text-[10px] text-foreground/80 uppercase font-semibold tracking-wide">{label}</p>
         {renderDisplay()}
       </div>
     );
@@ -149,7 +149,7 @@ export function EditableField({
         : options;
       return (
         <div className={cn('group', className)}>
-          <p className="text-[10px] text-muted-foreground uppercase mb-1">{label}</p>
+          <p className="text-[10px] text-foreground/80 uppercase font-semibold tracking-wide mb-1">{label}</p>
           <Select
             value={draft || ''}
             onValueChange={async (v) => {
@@ -191,7 +191,7 @@ export function EditableField({
     if (type === 'textarea') {
       return (
         <div className={cn('group', className)}>
-          <p className="text-[10px] text-muted-foreground uppercase mb-1">{label}</p>
+          <p className="text-[10px] text-foreground/80 uppercase font-semibold tracking-wide mb-1">{label}</p>
           <Textarea
             ref={inputRef as any}
             value={draft}
@@ -216,7 +216,7 @@ export function EditableField({
     const inputType = type === 'tel' ? 'tel' : type === 'email' ? 'email' : type === 'url' ? 'url' : type === 'number' ? 'number' : 'text';
     return (
       <div className={cn('group', className)}>
-        <p className="text-[10px] text-muted-foreground uppercase mb-1">{label}</p>
+        <p className="text-[10px] text-foreground/80 uppercase font-semibold tracking-wide mb-1">{label}</p>
         <div className="flex items-center gap-1">
           <Input
             ref={inputRef as any}
@@ -248,7 +248,7 @@ export function EditableField({
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditing(true); } }}
     >
       <div className="flex items-center justify-between">
-        <p className="text-[10px] text-muted-foreground uppercase">{label}</p>
+        <p className="text-[10px] text-foreground/80 uppercase font-semibold tracking-wide">{label}</p>
         <Pencil className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-colors" />
       </div>
       {renderDisplay()}

@@ -323,7 +323,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
 
                 {/* Company link (read-only display; managed via Related Records) */}
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase mb-1">Company</p>
+                  <p className="text-[10px] text-foreground/80 uppercase font-semibold tracking-wide mb-1">Company</p>
                   {crmCompany ? (
                     <button
                       onClick={() => navigate(`/crm-companies/${crmCompany.id}`)}
@@ -339,7 +339,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                 </div>
 
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase mb-1">Owner</p>
+                  <p className="text-[10px] text-foreground/80 uppercase font-semibold tracking-wide mb-1">Owner</p>
                   <Select
                     value={contact.owner_user_id || 'unassigned'}
                     onValueChange={v => handleQuickUpdate('owner_user_id', v === 'unassigned' ? null : v)}
@@ -372,7 +372,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
 
                 {(!isFieldDisabled('city') || !isFieldDisabled('state') || !isFieldDisabled('country')) && (
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase mb-1">Location</p>
+                    <p className="text-[10px] text-foreground/80 uppercase font-semibold tracking-wide mb-1">Location</p>
                     {(!isFieldDisabled('city') || !isFieldDisabled('state')) && (
                       <div className="grid grid-cols-2 gap-2">
                         {!isFieldDisabled('city') && (
@@ -452,7 +452,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                 )}
 
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase mb-1">Contact Type</p>
+                  <p className="text-[10px] text-foreground/80 uppercase font-semibold tracking-wide mb-1">Contact Type</p>
                   <ContactTypeMultiSelect
                     value={(contact as any).contact_type}
                     onChange={(v) => handleQuickUpdate('contact_type', v)}
@@ -467,7 +467,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                     const current = String((contact as any).status || '').toLowerCase();
                     return (
                       <div className="mt-2">
-                        <p className="text-[10px] text-muted-foreground uppercase mb-1">Status</p>
+                        <p className="text-[10px] text-foreground/80 uppercase font-semibold tracking-wide mb-1">Status</p>
                         <Select
                           value={current || 'unset'}
                           onValueChange={(v) => handleQuickUpdate('status', v === 'unset' ? null : v)}
@@ -510,14 +510,14 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
             {/* Related Records — compact card */}
             <div className="rounded-lg border border-primary/25 bg-card p-3 space-y-3 min-w-0 shadow-[0_0_0_1px_hsl(var(--primary)/0.08)]">
               <div className="flex items-center justify-between">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <p className="text-[10px] uppercase tracking-wider text-foreground/80 font-semibold flex items-center gap-1.5">
                   <Users className="h-3 w-3" /> Related Records
                 </p>
               </div>
 
               <div className="space-y-1.5 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Company</p>
+                  <p className="text-[10px] uppercase tracking-wider text-foreground/80 font-semibold">Company</p>
                   <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => { setNeedCompanies(true); setShowLinkCompany(true); }}>
                     <Plus className="h-3 w-3 mr-0.5" /> {crmCompany ? 'Change' : 'Link'}
                   </Button>
@@ -547,7 +547,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
 
               <div className="space-y-1.5 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Deals ({contactDeals.length})</p>
+                  <p className="text-[10px] uppercase tracking-wider text-foreground/80 font-semibold">Deals ({contactDeals.length})</p>
                   <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => { setNeedDeals(true); setShowLinkDeal(true); }}>
                     <Plus className="h-3 w-3 mr-0.5" /> Link
                   </Button>
@@ -601,7 +601,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                     onChange={(_key, nextObj) => handleQuickUpdate('custom_fields', nextObj)}
                   />
                   <div className="pt-1 border-t border-border/40">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Internal Metadata</p>
+                    <p className="text-[10px] uppercase tracking-wider text-foreground/80 font-semibold mb-2">Internal Metadata</p>
                     <DynamicFieldRenderer
                       objectType="contact"
                       record={contact}
@@ -944,7 +944,7 @@ function OverviewBlock({
       onClick={onClick}
       className="text-left p-3 rounded-md border border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors min-h-[88px] flex flex-col"
     >
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">{title}</p>
+      <p className="text-[10px] uppercase tracking-wider text-foreground/80 font-semibold mb-1.5">{title}</p>
       <div className="flex-1 min-w-0">
         {isEmpty && empty ? (
           <p className="text-sm text-muted-foreground">{empty}</p>
@@ -1009,7 +1009,7 @@ function LabeledSelect({
 }) {
   return (
     <div>
-      <p className="text-[10px] text-muted-foreground uppercase mb-1">{label}</p>
+      <p className="text-[10px] text-foreground/80 uppercase font-semibold tracking-wide mb-1">{label}</p>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={placeholder} /></SelectTrigger>
         <SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -1022,7 +1022,7 @@ function ActivityGroup({ label, items, ownerName }: { label: string; items: any[
   if (!items.length) return null;
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">{label}</p>
+      <p className="text-[10px] uppercase tracking-wider text-foreground/80 font-semibold mb-2">{label}</p>
       <ul className="space-y-1">
         {items.map((a) => <ActivityRow key={a.id} activity={a} ownerName={ownerName} />)}
       </ul>
