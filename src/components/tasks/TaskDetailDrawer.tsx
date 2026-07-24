@@ -48,6 +48,9 @@ import { formatDistanceToNow, format, addDays, nextMonday } from 'date-fns';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 import { getAsanaSyncContext, syncTaskToAsana, updateTaskInAsana } from '@/hooks/useAsanaTaskSync';
+import { DraftEmailToClientContactDialog } from '@/components/deal/email/DraftEmailToClientContactDialog';
+import { Mail } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TaskDetailDrawerProps {
   task: Task;
@@ -113,6 +116,56 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
   const [blockerNote, setBlockerNote] = useState((task as any).blocker_note || '');
   const [expandedSubtasks, setExpandedSubtasks] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
+
+  // Follow-up email popover state for calendar_followup tasks.
+  const isCalendarFollowup = (task as any).sync_source === 'calendar_followup';
+  const nylasEventId = (task as any).nylas_event_id as string | null | undefined;
+  const [followupEmailOpen, setFollowupEmailOpen] = useState(false);
+  const [followupRecipients, setFollowupRecipients] = useState<string[]>([]);
+  const [followupSubject, setFollowupSubject] = useState<string>('');
+  const [loadingFollowup, setLoadingFollowup] = useState(false);
+
+  const handleOpenFollowupEmail = useCallback(async () => {
+    if (!nylasEventId) {
+      toast.error('No calendar event linked to this task');
+      return;
+    }
+    setLoadingFollowup(true);
+    try {
+      const { data, error } = await (supabase as any)
+        .from('calendar_events')
+        .select('title, attendees, organizer_email')
+        .eq('nylas_event_id', nylasEventId)
+        .maybeSingle();
+      if (error) throw error;
+      const rawAttendees: any = (data as any)?.attendees;
+      const list: string[] = Array.isArray(rawAttendees)
+        ? rawAttendees
+            .map((a) => (typeof a === 'string' ? a : a?.email))
+            .filter((e: any): e is string => typeof e === 'string' && e.includes('@'))
+        : [];
+      const myEmail = (user?.email || '').toLowerCase();
+      const externals = Array.from(new Set(
+        list.map((e) => e.trim()).filter((e) => e && e.toLowerCase() !== myEmail),
+      ));
+      if (externals.length === 0) {
+        toast.error('No external attendees found for this meeting');
+        return;
+      }
+      const eventTitle = (data as any)?.title
+        || (task as any).source_calendar_event_title
+        || task.title.replace(/^Follow up on\s*/i, '').trim()
+        || 'our meeting';
+      setFollowupRecipients(externals);
+      setFollowupSubject(`Following up: ${eventTitle}`);
+      setFollowupEmailOpen(true);
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not load meeting attendees');
+    } finally {
+      setLoadingFollowup(false);
+    }
+  }, [nylasEventId, task, user?.email]);
   const [asanaSyncing, setAsanaSyncing] = useState(false);
   const isComplete = isTaskCompleted(task);
 
@@ -336,6 +389,21 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
           <span className="text-xs capitalize" style={{ color: '#8b92a5' }}>{task.task_type}</span>
         </div>
         <div className="flex items-center gap-1">
+          {isCalendarFollowup && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 px-2 text-xs"
+              onClick={handleOpenFollowupEmail}
+              disabled={loadingFollowup || !nylasEventId}
+              title="Send follow-up email to meeting attendees"
+            >
+              <Mail className="h-3.5 w-3.5" style={{ color: '#8b92a5' }} />
+              <span style={{ color: '#eef1f6' }}>
+                {loadingFollowup ? 'Loading…' : 'Send follow-up email'}
+              </span>
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -981,6 +1049,19 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {followupEmailOpen && (
+        <DraftEmailToClientContactDialog
+          open={followupEmailOpen}
+          onOpenChange={setFollowupEmailOpen}
+          dealId={task.deal_id ?? null}
+          dealName={(task as any).deal?.name ?? null}
+          contactName={null}
+          contactEmail={followupRecipients[0] ?? null}
+          initialToRecipients={followupRecipients}
+          initialSubject={followupSubject}
+          headerTitle="Send follow-up email"
+        />
+      )}
     </div>
   );
 }
