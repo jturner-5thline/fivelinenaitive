@@ -514,7 +514,7 @@ async function resolveAsanaUserGid(
 
 async function createAsanaTask(
   admin: any,
-  args: { token: string; ownerEmail: string; userId: string; title: string; dueDate: string },
+  args: { token: string; ownerEmail: string; userId: string; title: string; dueDate: string; notes?: string },
 ): Promise<{ gid?: string; error?: string }> {
   const assigneeGid = await resolveAsanaUserGid(admin, args.userId, args.ownerEmail, args.token);
 
@@ -522,6 +522,7 @@ async function createAsanaTask(
     data: {
       name: args.title,
       due_on: args.dueDate,
+      ...(args.notes ? { notes: args.notes } : {}),
       memberships: [
         { project: ASANA_PROJECT_GID, section: ASANA_SECTION_GID },
       ],
@@ -565,4 +566,41 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+// Build a task description that lists the calendar invite attendees so the
+// follow-up task shows who was on the meeting without needing to open the
+// calendar. Owner is separated from external attendees for readability.
+function buildAttendeesDescription(
+  eventTitle: string,
+  attendees: string[],
+  ownerEmail: string,
+): string {
+  const seen = new Set<string>();
+  const clean: string[] = [];
+  for (const raw of attendees || []) {
+    const e = (raw || "").trim();
+    const key = e.toLowerCase();
+    if (!e || !e.includes("@") || seen.has(key)) continue;
+    seen.add(key);
+    clean.push(e);
+  }
+  const owner = (ownerEmail || "").toLowerCase();
+  const external = clean.filter((e) => e.toLowerCase() !== owner && !e.toLowerCase().endsWith(INTERNAL_DOMAIN));
+  const internal = clean.filter((e) => e.toLowerCase() !== owner && e.toLowerCase().endsWith(INTERNAL_DOMAIN));
+
+  const lines: string[] = [`Follow up on "${eventTitle}".`, ""];
+  if (external.length) {
+    lines.push("External attendees:");
+    for (const e of external) lines.push(`• ${e}`);
+  }
+  if (internal.length) {
+    if (external.length) lines.push("");
+    lines.push("Internal attendees:");
+    for (const e of internal) lines.push(`• ${e}`);
+  }
+  if (!external.length && !internal.length) {
+    lines.push("No attendee emails were listed on the calendar invite.");
+  }
+  return lines.join("\n");
 }
