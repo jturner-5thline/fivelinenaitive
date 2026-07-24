@@ -352,7 +352,14 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                 </div>
 
                 {!isFieldDisabled('linkedin_url') && (
-                  <EditableField label="LinkedIn" type="url" asLink value={contact.linkedin_url} onSave={(v) => handleQuickUpdate('linkedin_url', v)} placeholder="https://linkedin.com/in/…" />
+                  <EditableField
+                    label="LinkedIn"
+                    type="url"
+                    asLink
+                    value={contact.linkedin_url}
+                    onSave={(v) => handleQuickUpdate('linkedin_url', normalizeLinkedInUrl(v as string))}
+                    placeholder="https://linkedin.com/in/… or handle"
+                  />
                 )}
                 <EditableField label="Work Email" type="email" asLink value={contact.email} onSave={(v) => handleQuickUpdate('email', v)} />
                 {!isFieldDisabled('phone_mobile') && (
