@@ -400,12 +400,58 @@ export function useContactActivities(contactId: string | undefined) {
       }
 
       const merged = [...activities, ...emailActivities];
-      merged.sort((a: any, b: any) => {
+
+      // Claap recordings where this contact's email is tagged as an attendee.
+      let claapActivities: any[] = [];
+      if (emails.size > 0) {
+        const list = Array.from(emails);
+        const { data: participants } = await supabase
+          .from('claap_meeting_participants')
+          .select('meeting_id, email')
+          .in('email', list);
+        const meetingIds = Array.from(new Set((participants || []).map((p: any) => p.meeting_id).filter(Boolean)));
+        if (meetingIds.length > 0) {
+          const { data: meetings } = await supabase
+            .from('claap_meetings')
+            .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, ai_summary, deal_id, claap_meeting_participants(name, email, is_internal)')
+            .in('id', meetingIds)
+            .order('started_at', { ascending: false });
+          claapActivities = (meetings || []).map((m: any) => {
+            const attendees = (m.claap_meeting_participants || [])
+              .map((p: any) => p.name || p.email)
+              .filter(Boolean);
+            return {
+              id: `claap:${m.id}`,
+              contact_id: contactId,
+              activity_type: 'claap_call',
+              subject: m.title || 'Call recording',
+              body: m.ai_summary || (attendees.length ? `Attendees: ${attendees.join(', ')}` : ''),
+              occurred_at: m.started_at || m.created_at,
+              created_at: m.started_at || m.created_at,
+              source: 'claap',
+              metadata: {
+                claap_meeting_id: m.id,
+                recording_url: m.recording_url,
+                duration_seconds: m.duration_seconds,
+                call_type: m.call_type,
+                deal_id: m.deal_id,
+                attendees: (m.claap_meeting_participants || []).map((p: any) => ({
+                  name: p.name, email: p.email, is_internal: p.is_internal,
+                })),
+              },
+              __readOnly: true,
+            };
+          });
+        }
+      }
+
+      const all = [...merged, ...claapActivities];
+      all.sort((a: any, b: any) => {
         const at = new Date(a.occurred_at || a.created_at || 0).getTime();
         const bt = new Date(b.occurred_at || b.created_at || 0).getTime();
         return bt - at;
       });
-      return merged;
+      return all;
     },
     enabled: !!contactId,
   });
