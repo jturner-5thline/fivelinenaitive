@@ -84,6 +84,14 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showMoreContactInfo, setShowMoreContactInfo] = useState(false);
 
+  // Keep this contact row live across users/tabs.
+  useRealtimeInvalidate({
+    table: 'contacts',
+    filter: contactId ? `id=eq.${contactId}` : undefined,
+    queryKeys: [['contact', contactId], ['contacts']],
+    enabled: !!contactId,
+  });
+
   const crmCompanyId = (contact as any)?.crm_company_id;
   const { data: crmCompany } = useContactCrmCompany(crmCompanyId);
   // Defer loading of large lists until the user actually needs them
