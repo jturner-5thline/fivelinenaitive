@@ -1,9 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Mail, ArrowDownLeft, ArrowUpRight, Loader2, Paperclip } from 'lucide-react';
+import { Mail, ArrowDownLeft, ArrowUpRight, Loader2, Paperclip, Download, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { downloadAttachment, openAttachmentInNewTab } from '@/components/deal/email/useFullEmailMessage';
+import { toast } from 'sonner';
+
+interface EmailAttachmentMeta {
+  id: string;
+  filename: string;
+  content_type: string;
+  size?: number;
+}
 
 interface Props {
   dealId: string;
@@ -21,6 +31,7 @@ interface CommItem {
   direction: 'inbound' | 'outbound' | null;
   sent_at: string | null;
   has_attachments?: boolean;
+  attachments?: EmailAttachmentMeta[];
 }
 
 /**
@@ -140,7 +151,7 @@ export function DealCommunicationsTab({ dealId }: Props) {
           const [cacheRes, gmailRes] = await Promise.all([
             supabase
               .from('email_cache')
-              .select('gmail_message_id, thread_id, subject, from_email, from_name, to_emails, snippet, received_at')
+              .select('gmail_message_id, thread_id, subject, from_email, from_name, to_emails, snippet, received_at, attachments')
               .or([orFrom, orTo, orCc].join(','))
               .order('received_at', { ascending: false, nullsFirst: false })
               .limit(200),
@@ -152,18 +163,23 @@ export function DealCommunicationsTab({ dealId }: Props) {
               .limit(200),
           ]);
           const cmsgs = [...(cacheRes.data ?? []), ...(gmailRes.data ?? [])];
-          fromContacts = cmsgs.map((m: any) => ({
-            key: `cm:${m.gmail_message_id}`,
-            source: 'deal_emails',
-            message_id: m.gmail_message_id,
-            thread_id: m.thread_id ?? null,
-            subject: m.subject ?? '(no subject)',
-            from: m.from_name || m.from_email || '',
-            to: (m.to_emails ?? []) as string[],
-            preview: (m.snippet ?? '').slice(0, 220),
-            direction: null,
-            sent_at: m.received_at ?? null,
-          }));
+          fromContacts = cmsgs.map((m: any) => {
+            const atts = normalizeAttachmentsFromJson(m.attachments);
+            return {
+              key: `cm:${m.gmail_message_id}`,
+              source: 'deal_emails' as const,
+              message_id: m.gmail_message_id,
+              thread_id: m.thread_id ?? null,
+              subject: m.subject ?? '(no subject)',
+              from: m.from_name || m.from_email || '',
+              to: (m.to_emails ?? []) as string[],
+              preview: (m.snippet ?? '').slice(0, 220),
+              direction: null,
+              sent_at: m.received_at ?? null,
+              has_attachments: atts.length > 0,
+              attachments: atts,
+            };
+          });
         }
 
         // Live Nylas fetch: email_cache is populated only from INBOX sync,
@@ -196,6 +212,7 @@ export function DealCommunicationsTab({ dealId }: Props) {
                 ? new Date(Number(m.date) * 1000).toISOString()
                 : (m.received_at ?? null);
               const id = m.id || m.gmail_message_id;
+              const atts = normalizeAttachmentsFromJson(m.attachments ?? m.files);
               return {
                 key: `lv:${id}`,
                 source: 'deal_emails' as const,
@@ -207,6 +224,8 @@ export function DealCommunicationsTab({ dealId }: Props) {
                 preview: (m.snippet ?? '').slice(0, 220),
                 direction: null,
                 sent_at: sentAt,
+                has_attachments: atts.length > 0 || !!m.has_attachments,
+                attachments: atts,
               };
             });
           } catch (err) {
@@ -307,12 +326,8 @@ export function DealCommunicationsTab({ dealId }: Props) {
                   {m.preview && (
                     <div className="text-xs text-foreground/80 mt-1 line-clamp-2">{m.preview}</div>
                   )}
-                  <div className="flex items-center gap-2 mt-1.5">
-                    {m.has_attachments && (
-                      <Badge variant="outline" className="h-4 px-1 text-[10px] gap-0.5">
-                        <Paperclip className="h-2.5 w-2.5" /> attachment
-                      </Badge>
-                    )}
+                  <MessageAttachments item={m} />
+                  <div className="mt-1">
                     <span className="text-[10px] text-muted-foreground/70">{m.source === 'activity_logs' ? 'activity' : 'inbox link'}</span>
                   </div>
                 </div>
@@ -333,6 +348,149 @@ function DirectionIcon({ dir }: { dir: 'inbound' | 'outbound' | null }) {
 
 function stripHtml(s: string): string {
   return s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function normalizeAttachmentsFromJson(raw: any): EmailAttachmentMeta[] {
+  if (!raw) return [];
+  const arr = Array.isArray(raw) ? raw : [];
+  const out: EmailAttachmentMeta[] = [];
+  for (const a of arr) {
+    if (!a || typeof a !== 'object') continue;
+    if (a.is_inline) continue;
+    const id = String(a.id ?? a.attachment_id ?? '');
+    const filename = String(a.filename ?? a.name ?? '');
+    if (!id || !filename) continue;
+    out.push({
+      id,
+      filename,
+      content_type: String(a.content_type ?? a.contentType ?? a.mimeType ?? 'application/octet-stream'),
+      size: typeof a.size === 'number' ? a.size : undefined,
+    });
+  }
+  return out;
+}
+
+function formatBytes(n?: number): string {
+  if (!n || n <= 0) return '';
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function MessageAttachments({ item }: { item: CommItem }) {
+  const [atts, setAtts] = useState<EmailAttachmentMeta[]>(item.attachments ?? []);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState((item.attachments ?? []).length > 0);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const messageId = item.message_id;
+
+  const loadAttachments = useCallback(async () => {
+    if (!messageId || loading) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('gmail-messages', {
+        body: { action: 'get', message_id: messageId },
+      });
+      if (error) throw error;
+      const list = normalizeAttachmentsFromJson((data as any)?.attachments);
+      setAtts(list);
+      setLoaded(true);
+      if (list.length === 0) toast.info('No downloadable attachments on this message.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to load attachments');
+    } finally {
+      setLoading(false);
+    }
+  }, [messageId, loading]);
+
+  const handleAction = useCallback(
+    async (att: EmailAttachmentMeta, mode: 'open' | 'download') => {
+      if (!messageId) return;
+      setBusyId(att.id);
+      try {
+        if (mode === 'open') await openAttachmentInNewTab(messageId, att as any);
+        else await downloadAttachment(messageId, att as any);
+      } catch (err: any) {
+        toast.error(err?.message || 'Attachment action failed');
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [messageId],
+  );
+
+  // Nothing to render for messages known to have no attachments.
+  if (loaded && atts.length === 0) return null;
+  if (!loaded && !item.has_attachments) return null;
+
+  if (!loaded) {
+    return (
+      <div className="mt-1.5 flex items-center gap-2">
+        <Badge variant="outline" className="h-4 px-1 text-[10px] gap-0.5">
+          <Paperclip className="h-2.5 w-2.5" /> attachment
+        </Badge>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 px-2 text-[11px]"
+          onClick={loadAttachments}
+          disabled={loading || !messageId}
+        >
+          {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+          {loading ? 'Loading…' : 'View attachments'}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1.5">
+      {atts.map((att) => (
+        <div
+          key={att.id}
+          className="group inline-flex items-center gap-1 rounded-md border border-border/50 bg-background/60 pl-2 pr-1 py-0.5 text-[11px] max-w-full"
+        >
+          <Paperclip className="h-3 w-3 shrink-0 text-muted-foreground" />
+          <button
+            type="button"
+            onClick={() => handleAction(att, 'open')}
+            className="truncate max-w-[220px] hover:underline text-left"
+            title={`${att.filename}${att.size ? ` · ${formatBytes(att.size)}` : ''}`}
+            disabled={busyId === att.id}
+          >
+            {att.filename}
+          </button>
+          {att.size ? (
+            <span className="text-muted-foreground/70 whitespace-nowrap">· {formatBytes(att.size)}</span>
+          ) : null}
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-5 w-5"
+            title="Open in new tab"
+            onClick={() => handleAction(att, 'open')}
+            disabled={busyId === att.id}
+          >
+            {busyId === att.id ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <ExternalLink className="h-3 w-3" />
+            )}
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-5 w-5"
+            title="Download"
+            onClick={() => handleAction(att, 'download')}
+            disabled={busyId === att.id}
+          >
+            <Download className="h-3 w-3" />
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default DealCommunicationsTab;
