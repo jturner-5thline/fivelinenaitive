@@ -353,22 +353,32 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   <EditableField label="Office Phone" type="tel" value={contact.phone_work} onSave={(v) => handleQuickUpdate('phone_work', v)} />
                 )}
 
-                <div>
-                  <p className="text-[10px] text-muted-foreground uppercase mb-1">Location</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <EditableField label="City" type="text" value={(contact as any).city} onSave={(v) => handleQuickUpdate('city', v)} />
-                    <EditableField label="State" type="text" value={(contact as any).state} onSave={(v) => handleQuickUpdate('state', v)} />
+                {(!isFieldDisabled('city') || !isFieldDisabled('state') || !isFieldDisabled('country')) && (
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase mb-1">Location</p>
+                    {(!isFieldDisabled('city') || !isFieldDisabled('state')) && (
+                      <div className="grid grid-cols-2 gap-2">
+                        {!isFieldDisabled('city') && (
+                          <EditableField label="City" type="text" value={(contact as any).city} onSave={(v) => handleQuickUpdate('city', v)} />
+                        )}
+                        {!isFieldDisabled('state') && (
+                          <EditableField label="State" type="text" value={(contact as any).state} onSave={(v) => handleQuickUpdate('state', v)} />
+                        )}
+                      </div>
+                    )}
+                    {!isFieldDisabled('country') && (
+                      <div className="mt-2">
+                        <EditableField
+                          label="Country"
+                          type="select"
+                          value={(contact as any).country}
+                          onSave={(v) => handleQuickUpdate('country', v)}
+                          options={COUNTRY_OPTIONS}
+                        />
+                      </div>
+                    )}
                   </div>
-                  <div className="mt-2">
-                    <EditableField
-                      label="Country"
-                      type="select"
-                      value={(contact as any).country}
-                      onSave={(v) => handleQuickUpdate('country', v)}
-                      options={COUNTRY_OPTIONS}
-                    />
-                  </div>
-                </div>
+                )}
 
                 <div className="relative group/domain">
                 <EditableField
