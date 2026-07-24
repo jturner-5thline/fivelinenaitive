@@ -216,8 +216,6 @@ Deno.serve(async (req) => {
       if (knownEmails.has(cand.email)) continue;
 
       const { first, last } = splitName(cand.name);
-      const fullName = cand.name || cand.email;
-
       const { data: inserted, error: insErr } = await admin
         .from("contacts")
         .insert({
@@ -225,7 +223,6 @@ Deno.serve(async (req) => {
           email: cand.email,
           first_name: first || null,
           last_name: last || null,
-          full_name: fullName,
           owner_user_id: userId,
           created_by: userId,
           source_system: "gmail_auto",
