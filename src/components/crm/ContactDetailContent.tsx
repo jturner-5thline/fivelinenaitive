@@ -203,15 +203,6 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
       <div className="flex flex-col">
         {/* Sticky header */}
         <header className="sticky top-0 z-20 -mx-1 px-1 bg-background/95 backdrop-blur border-b">
-          <nav className="flex items-center gap-1.5 pt-2 text-xs text-muted-foreground">
-            {!hideBackButton && (
-              <>
-                <button onClick={() => navigate('/contacts')} className="hover:text-foreground transition-colors">Contacts</button>
-                <ChevronRight className="h-3 w-3" />
-              </>
-            )}
-            <span className="text-foreground/80 truncate">{contact.full_name || 'Unnamed Contact'}</span>
-          </nav>
           <div className="py-3 flex items-start justify-between gap-4 flex-wrap">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
