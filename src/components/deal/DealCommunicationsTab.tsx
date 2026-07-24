@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Mail, ArrowDownLeft, ArrowUpRight, Loader2, Paperclip, Download, ExternalLink } from 'lucide-react';
+import { Mail, ArrowDownLeft, ArrowUpRight, Loader2, Paperclip, Download, ExternalLink, ChevronRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +48,16 @@ interface CommItem {
 export function DealCommunicationsTab({ dealId }: Props) {
   const [items, setItems] = useState<CommItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const toggleThread = useCallback((tid: string) => {
+    setExpanded((prev) => ({ ...prev, [tid]: !prev[tid] }));
+  }, []);
+  const setAllExpanded = useCallback((open: boolean) => {
+    setExpanded((prev) => {
+      // Only used via the header buttons; caller passes the full set below.
+      return open ? { ...prev, __all: true } : {};
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -362,17 +372,54 @@ export function DealCommunicationsTab({ dealId }: Props) {
 
   return (
     <div className="space-y-3 min-w-0">
-      {threads.map((t) => (
+      <div className="flex items-center justify-end gap-2 -mb-1 text-[11px]">
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+          onClick={() => setExpanded(Object.fromEntries(threads.map((t) => [t.thread_id, true])))}
+        >
+          Expand all
+        </button>
+        <span className="text-muted-foreground/50">·</span>
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+          onClick={() => setExpanded({})}
+        >
+          Collapse all
+        </button>
+      </div>
+      {threads.map((t) => {
+        // Default: single-message threads open, multi-message threads collapsed.
+        const isOpen = expanded[t.thread_id] ?? (t.msgs.length === 1);
+        const preview = t.msgs[0];
+        return (
         <div key={t.thread_id} className="rounded-lg border border-border/40 bg-card/40">
-          <div className="px-4 py-2.5 border-b border-border/30 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => toggleThread(t.thread_id)}
+            aria-expanded={isOpen}
+            className="w-full px-4 py-2.5 border-b border-border/30 flex items-center gap-2 text-left hover:bg-muted/30 transition-colors"
+          >
+            <ChevronRight
+              className={cn(
+                'h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform',
+                isOpen && 'rotate-90',
+              )}
+            />
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium truncate">{t.subject}</div>
-              <div className="text-[11px] text-muted-foreground mt-0.5">
+              <div className="text-[11px] text-muted-foreground mt-0.5 truncate">
                 {t.msgs.length} message{t.msgs.length === 1 ? '' : 's'}
                 {t.latest ? ` · last activity ${formatDistanceToNow(new Date(t.latest), { addSuffix: true })}` : ''}
+                {!isOpen && preview?.from ? ` · ${preview.from}` : ''}
               </div>
             </div>
-          </div>
+            <Badge variant="outline" className="h-5 px-1.5 text-[10px] shrink-0">
+              {t.msgs.length}
+            </Badge>
+          </button>
+          {isOpen && (
           <div className="divide-y divide-border/30">
             {t.msgs.map((m) => (
               <div key={m.key} className="px-4 py-3 flex items-start gap-3">
@@ -394,8 +441,10 @@ export function DealCommunicationsTab({ dealId }: Props) {
               </div>
             ))}
           </div>
+          )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
