@@ -380,6 +380,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   </div>
                 )}
 
+                {!isFieldDisabled('website_url') && (
                 <div className="relative group/domain">
                 <EditableField
                   label="Domain"
@@ -431,6 +432,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   </button>
                 )}
                 </div>
+                )}
 
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase mb-1">Contact Type</p>
