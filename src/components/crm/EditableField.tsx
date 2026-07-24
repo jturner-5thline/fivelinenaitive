@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, X, Pencil, Loader2, AlertCircle } from 'lucide-react';
+import { Check, X, Pencil, Loader2, AlertCircle, Copy } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -153,20 +153,31 @@ export function EditableField({
       const href = type === 'email' ? `mailto:${currentStr}` : currentStr;
       const text = type === 'url' ? currentStr.replace(/^https?:\/\//, '').replace(/\/$/, '') : currentStr;
       return (
-        <a
-          href={href}
-          target={type === 'url' ? '_blank' : undefined}
-          rel={type === 'url' ? 'noopener noreferrer' : undefined}
-          className="text-primary text-sm hover:underline truncate block"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {text}
-        </a>
+        <div className="flex items-center gap-1 min-w-0">
+          <a
+            href={href}
+            target={type === 'url' ? '_blank' : undefined}
+            rel={type === 'url' ? 'noopener noreferrer' : undefined}
+            className="text-primary text-sm hover:underline truncate min-w-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {text}
+          </a>
+          <CopyButton value={currentStr} label={label} />
+        </div>
       );
     }
     if (type === 'select' && options) {
       const match = options.find((o) => o.value === currentStr);
       return <p className="text-xs break-words text-foreground">{match?.label ?? currentStr}</p>;
+    }
+    if (type === 'email' || type === 'tel' || type === 'url') {
+      return (
+        <div className="flex items-center gap-1 min-w-0">
+          <p className="text-xs break-words whitespace-pre-wrap text-foreground truncate min-w-0">{currentStr}</p>
+          <CopyButton value={currentStr} label={label} />
+        </div>
+      );
     }
     return <p className="text-xs break-words whitespace-pre-wrap text-foreground">{currentStr}</p>;
   };
@@ -327,5 +338,31 @@ export function EditableField({
       </div>
       {renderDisplay()}
     </div>
+  );
+}
+
+function CopyButton({ value, label }: { value: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      toast.success(`${label} copied`);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {
+      toast.error('Copy failed');
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      aria-label={`Copy ${label}`}
+      className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted flex-shrink-0"
+    >
+      {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
+    </button>
   );
 }
