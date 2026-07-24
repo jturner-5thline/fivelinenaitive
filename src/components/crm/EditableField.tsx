@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, X, Pencil } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -67,10 +67,14 @@ export function EditableField({
 }: EditableFieldProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<string>(value == null ? '' : String(value));
+  const [selectQuery, setSelectQuery] = useState('');
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
-    if (!editing) setDraft(value == null ? '' : String(value));
+    if (!editing) {
+      setDraft(value == null ? '' : String(value));
+      setSelectQuery('');
+    }
   }, [value, editing]);
 
   useEffect(() => {
@@ -139,6 +143,10 @@ export function EditableField({
 
   if (editing) {
     if (type === 'select' && options) {
+      const q = selectQuery.trim().toLowerCase();
+      const filtered = q
+        ? options.filter((o) => o.label.toLowerCase().includes(q) || o.value.toLowerCase().includes(q))
+        : options;
       return (
         <div className={cn('group', className)}>
           <p className="text-[10px] text-muted-foreground uppercase mb-1">{label}</p>
@@ -155,9 +163,25 @@ export function EditableField({
           >
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={placeholder || 'Select…'} /></SelectTrigger>
             <SelectContent>
-              {options.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-              ))}
+              {options.length > 8 && (
+                <div className="p-1 sticky top-0 bg-popover z-10">
+                  <Input
+                    autoFocus
+                    value={selectQuery}
+                    onChange={(e) => setSelectQuery(e.target.value)}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    placeholder="Search…"
+                    className="h-7 text-xs"
+                  />
+                </div>
+              )}
+              {filtered.length === 0 ? (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">No results</div>
+              ) : (
+                filtered.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         </div>

@@ -1,4 +1,10 @@
-export const COUNTRY_OPTIONS = [
+const PRIORITY = [
+  { value: 'United States of America', label: 'United States / USA' },
+  { value: 'Canada', label: 'Canada' },
+  { value: 'United Kingdom (U.K / Great Britain / England)', label: 'United Kingdom (U.K / Great Britain / England)' },
+];
+
+const REST = [
   'Albania',
   'Andorra',
   'Antigua and Barbuda',
@@ -12,7 +18,6 @@ export const COUNTRY_OPTIONS = [
   'Belize',
   'Bosnia and Herzegovina',
   'Bulgaria',
-  'Canada',
   'Costa Rica',
   'Croatia',
   'Cuba',
@@ -70,8 +75,10 @@ export const COUNTRY_OPTIONS = [
   'Trinidad and Tobago',
   'Turkey',
   'Ukraine',
-  'United Kingdom (U.K / Great Britain / England)',
   'Scotland',
-  'United States of America',
   'Vatican City (Holy See)',
-].map((c) => ({ value: c, label: c }));
+]
+  .sort((a, b) => a.localeCompare(b))
+  .map((c) => ({ value: c, label: c }));
+
+export const COUNTRY_OPTIONS = [...PRIORITY, ...REST];
