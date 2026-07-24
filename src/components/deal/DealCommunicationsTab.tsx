@@ -135,13 +135,24 @@ export function DealCommunicationsTab({ dealId }: Props) {
           const orFrom = `from_email.in.(${emails.map((e) => `"${e}"`).join(',')})`;
           const orTo = `to_emails.ov.{${emails.join(',')}}`;
           const orCc = `cc_emails.ov.{${emails.join(',')}}`;
-          const { data: cmsgs } = await supabase
-            .from('gmail_messages')
-            .select('gmail_message_id, thread_id, subject, from_email, from_name, to_emails, snippet, received_at')
-            .or([orFrom, orTo, orCc].join(','))
-            .order('received_at', { ascending: false, nullsFirst: false })
-            .limit(200);
-          fromContacts = (cmsgs ?? []).map((m: any) => ({
+          // Query BOTH tables: `email_cache` holds real synced Nylas/Gmail
+          // messages, `gmail_messages` holds a legacy/demo mirror. Same shape.
+          const [cacheRes, gmailRes] = await Promise.all([
+            supabase
+              .from('email_cache')
+              .select('gmail_message_id, thread_id, subject, from_email, from_name, to_emails, snippet, received_at')
+              .or([orFrom, orTo, orCc].join(','))
+              .order('received_at', { ascending: false, nullsFirst: false })
+              .limit(200),
+            supabase
+              .from('gmail_messages')
+              .select('gmail_message_id, thread_id, subject, from_email, from_name, to_emails, snippet, received_at')
+              .or([orFrom, orTo, orCc].join(','))
+              .order('received_at', { ascending: false, nullsFirst: false })
+              .limit(200),
+          ]);
+          const cmsgs = [...(cacheRes.data ?? []), ...(gmailRes.data ?? [])];
+          fromContacts = cmsgs.map((m: any) => ({
             key: `cm:${m.gmail_message_id}`,
             source: 'deal_emails',
             message_id: m.gmail_message_id,
