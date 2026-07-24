@@ -126,7 +126,7 @@ export function ContactTasksCard({ contactId, contactName, crmCompanyId, externa
 
   return (
     <>
-      <Card>
+      <Card className="border-primary/25 shadow-[0_0_0_1px_hsl(var(--primary)/0.08)]">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center justify-between">
             <span className="flex items-center gap-1.5">
