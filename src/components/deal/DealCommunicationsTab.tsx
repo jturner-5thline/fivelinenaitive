@@ -70,7 +70,7 @@ export function DealCommunicationsTab({ dealId }: Props) {
             .limit(200),
           supabase
             .from('deals')
-            .select('contact_info')
+            .select('contact_info, company, company_url')
             .eq('id', dealId)
             .maybeSingle(),
           supabase
@@ -140,27 +140,78 @@ export function DealCommunicationsTab({ dealId }: Props) {
           });
         }
 
+        // Derive corporate domains from client-contact emails (skip freemail
+        // providers so "gmail.com" doesn't match the whole world), plus a
+        // company_url domain when set on the deal. Emails from/to any
+        // address at those domains are treated as deal-related.
+        const FREEMAIL = new Set([
+          'gmail.com','googlemail.com','yahoo.com','yahoo.co.uk','hotmail.com','outlook.com','live.com','msn.com',
+          'icloud.com','me.com','mac.com','aol.com','proton.me','protonmail.com','pm.me','gmx.com','gmx.net',
+          'ymail.com','fastmail.com','hey.com','zoho.com','yandex.com','mail.com','duck.com','tutanota.com',
+        ]);
+        const contactDomains = new Set<string>();
+        for (const e of contactEmails) {
+          const d = e.split('@')[1]?.trim().toLowerCase();
+          if (d && !FREEMAIL.has(d)) contactDomains.add(d);
+        }
+        const cu = (dealRes?.data as any)?.company_url;
+        if (typeof cu === 'string') {
+          const d = cu.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].split('?')[0].trim();
+          if (d && !FREEMAIL.has(d) && /\./.test(d)) contactDomains.add(d);
+        }
+
+        // Subject-line tokens: deal.company (deal name) plus any word ≥4 chars
+        // out of it (dropping generic connectors). Lets threads whose subject
+        // mentions the company/deal (but that never went to a known contact)
+        // still surface here — e.g. internal FWDs, intro threads, etc.
+        const STOP = new Set(['deal','client','company','the','and','llc','inc','corp','group','holdings','capital','partners','ltd']);
+        const subjectTokens = new Set<string>();
+        const dealName = String((dealRes?.data as any)?.company ?? '').trim();
+        if (dealName.length >= 3) subjectTokens.add(dealName.toLowerCase());
+        for (const w of dealName.split(/[^\p{L}\p{N}]+/u)) {
+          const lw = w.toLowerCase();
+          if (lw.length >= 4 && !STOP.has(lw)) subjectTokens.add(lw);
+        }
+
+        // Escape ilike wildcards / commas / parens in tokens for PostgREST
+        // `.or()` composition. Commas would split the OR list; percent/
+        // underscore would broaden ilike matches beyond the token itself.
+        const escToken = (s: string) => s.replace(/[\\%_,()]/g, '\\$&');
+
         let fromContacts: CommItem[] = [];
-        if (contactEmails.size > 0) {
+        if (contactEmails.size > 0 || contactDomains.size > 0 || subjectTokens.size > 0) {
           const emails = Array.from(contactEmails);
-          const orFrom = `from_email.in.(${emails.map((e) => `"${e}"`).join(',')})`;
-          const orTo = `to_emails.ov.{${emails.join(',')}}`;
-          const orCc = `cc_emails.ov.{${emails.join(',')}}`;
+          const orParts: string[] = [];
+          if (emails.length > 0) {
+            orParts.push(`from_email.in.(${emails.map((e) => `"${e}"`).join(',')})`);
+            orParts.push(`to_emails.ov.{${emails.join(',')}}`);
+            orParts.push(`cc_emails.ov.{${emails.join(',')}}`);
+          }
+          for (const d of contactDomains) {
+            orParts.push(`from_email.ilike.*@${escToken(d)}`);
+            // Array wildcard match on to/cc isn't expressible in PostgREST;
+            // domain-side to/cc coverage is picked up by the live Nylas
+            // fetch below (which supports Gmail's `to:` operator).
+          }
+          for (const t of subjectTokens) {
+            orParts.push(`subject.ilike.*${escToken(t)}*`);
+          }
+          const orExpr = orParts.join(',');
           // Query BOTH tables: `email_cache` holds real synced Nylas/Gmail
           // messages, `gmail_messages` holds a legacy/demo mirror. Same shape.
           const [cacheRes, gmailRes] = await Promise.all([
             supabase
               .from('email_cache')
               .select('gmail_message_id, thread_id, subject, from_email, from_name, to_emails, snippet, received_at, attachments')
-              .or([orFrom, orTo, orCc].join(','))
+              .or(orExpr)
               .order('received_at', { ascending: false, nullsFirst: false })
-              .limit(200),
+              .limit(300),
             supabase
               .from('gmail_messages')
               .select('gmail_message_id, thread_id, subject, from_email, from_name, to_emails, snippet, received_at')
-              .or([orFrom, orTo, orCc].join(','))
+              .or(orExpr)
               .order('received_at', { ascending: false, nullsFirst: false })
-              .limit(200),
+              .limit(300),
           ]);
           const cmsgs = [...(cacheRes.data ?? []), ...(gmailRes.data ?? [])];
           fromContacts = cmsgs.map((m: any) => {
@@ -187,16 +238,25 @@ export function DealCommunicationsTab({ dealId }: Props) {
         // missing. Query Gmail directly across ALL mail for from/to matches
         // on any client-contact email and merge results in.
         let fromLive: CommItem[] = [];
-        if (contactEmails.size > 0) {
+        if (contactEmails.size > 0 || contactDomains.size > 0 || subjectTokens.size > 0) {
           try {
             const emails = Array.from(contactEmails);
-            const query = emails
-              .flatMap((e) => [`from:${e}`, `to:${e}`, `cc:${e}`, `bcc:${e}`])
-              .join(' OR ');
+            const parts: string[] = [];
+            for (const e of emails) {
+              parts.push(`from:${e}`, `to:${e}`, `cc:${e}`, `bcc:${e}`);
+            }
+            for (const d of contactDomains) {
+              parts.push(`from:@${d}`, `to:@${d}`, `cc:@${d}`, `bcc:@${d}`);
+            }
+            for (const t of subjectTokens) {
+              // Quote so multi-word deal names match as a phrase.
+              parts.push(`subject:"${t.replace(/"/g, '')}"`);
+            }
+            const query = parts.join(' OR ');
             const { data: live } = await supabase.functions.invoke('gmail-messages', {
               body: {
                 action: 'list',
-                max_results: 50,
+                max_results: 100,
                 search_all_mail: true,
                 query,
               },
