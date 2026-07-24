@@ -1412,7 +1412,7 @@ const tools = [
     type: "function",
     function: {
       name: "get_contact_full",
-      description: "Fetch the COMPLETE record for a contact in one call: profile (name, title, emails, phones, seniority, owner), associated company, all deals they are linked to, recent activities, and lifecycle/lead source. Pass either contact_id or search (name or email).",
+      description: "Fetch the COMPLETE record for a contact in one call: profile (name, title, emails, phones, seniority, owner), associated company, all deals they are linked to, recent activities, lifecycle/lead source, AND recent Claap meetings the contact participated in (with AI summary, key decisions, next steps, topics, and a transcript excerpt). Pass either contact_id or search (name or email).",
       parameters: {
         type: "object",
         properties: {
