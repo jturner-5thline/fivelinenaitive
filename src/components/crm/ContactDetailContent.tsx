@@ -44,6 +44,9 @@ import { DynamicFieldRenderer } from '@/components/crm/DynamicFieldRenderer';
 import { ContactTasksCard } from '@/components/contacts/ContactTasksCard';
 import { ContactAttachmentsTable } from '@/components/crm/ContactAttachmentsTable';
 import { ReferralSourceDocsSection } from '@/components/contacts/ReferralSourceDocsSection';
+import { ManageContactFieldsDialog } from '@/components/contacts/ManageContactFieldsDialog';
+import { CustomContactFieldsSection } from '@/components/contacts/CustomContactFieldsSection';
+import { useContactFieldConfig } from '@/hooks/useContactFieldConfig';
 import { useRealtimeInvalidate } from '@/hooks/useRealtimeInvalidate';
 import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
 import { CompanyDomainMatchPrompt } from '@/components/contacts/CompanyDomainMatchPrompt';
@@ -84,6 +87,8 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
   const [showDelete, setShowDelete] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showMoreContactInfo, setShowMoreContactInfo] = useState(false);
+  const [showManageFields, setShowManageFields] = useState(false);
+  const { config: fieldConfig, isDisabled: isFieldDisabled, isAdmin: isFieldAdmin } = useContactFieldConfig();
 
   // Keep this contact row live across users/tabs.
   useRealtimeInvalidate({
@@ -302,7 +307,9 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
               <div className="space-y-2 text-sm min-w-0">
                 <EditableField label="First Name" type="text" value={contact.first_name} onSave={(v) => handleQuickUpdate('first_name', v)} />
                 <EditableField label="Last Name" type="text" value={contact.last_name} onSave={(v) => handleQuickUpdate('last_name', v)} />
-                <EditableField label="Job Title" type="text" value={contact.job_title} onSave={(v) => handleQuickUpdate('job_title', v)} />
+                {!isFieldDisabled('job_title') && (
+                  <EditableField label="Job Title" type="text" value={contact.job_title} onSave={(v) => handleQuickUpdate('job_title', v)} />
+                )}
 
                 {/* Company link (read-only display; managed via Related Records) */}
                 <div>
@@ -335,28 +342,45 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   </Select>
                 </div>
 
-                <EditableField label="LinkedIn" type="url" asLink value={contact.linkedin_url} onSave={(v) => handleQuickUpdate('linkedin_url', v)} placeholder="https://linkedin.com/in/…" />
+                {!isFieldDisabled('linkedin_url') && (
+                  <EditableField label="LinkedIn" type="url" asLink value={contact.linkedin_url} onSave={(v) => handleQuickUpdate('linkedin_url', v)} placeholder="https://linkedin.com/in/…" />
+                )}
                 <EditableField label="Work Email" type="email" asLink value={contact.email} onSave={(v) => handleQuickUpdate('email', v)} />
-                <EditableField label="Mobile" type="tel" value={contact.phone_mobile} onSave={(v) => handleQuickUpdate('phone_mobile', v)} />
-                <EditableField label="Office Phone" type="tel" value={contact.phone_work} onSave={(v) => handleQuickUpdate('phone_work', v)} />
+                {!isFieldDisabled('phone_mobile') && (
+                  <EditableField label="Mobile" type="tel" value={contact.phone_mobile} onSave={(v) => handleQuickUpdate('phone_mobile', v)} />
+                )}
+                {!isFieldDisabled('phone_work') && (
+                  <EditableField label="Office Phone" type="tel" value={contact.phone_work} onSave={(v) => handleQuickUpdate('phone_work', v)} />
+                )}
 
-                <div>
-                  <p className="text-[10px] text-muted-foreground uppercase mb-1">Location</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <EditableField label="City" type="text" value={(contact as any).city} onSave={(v) => handleQuickUpdate('city', v)} />
-                    <EditableField label="State" type="text" value={(contact as any).state} onSave={(v) => handleQuickUpdate('state', v)} />
+                {(!isFieldDisabled('city') || !isFieldDisabled('state') || !isFieldDisabled('country')) && (
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase mb-1">Location</p>
+                    {(!isFieldDisabled('city') || !isFieldDisabled('state')) && (
+                      <div className="grid grid-cols-2 gap-2">
+                        {!isFieldDisabled('city') && (
+                          <EditableField label="City" type="text" value={(contact as any).city} onSave={(v) => handleQuickUpdate('city', v)} />
+                        )}
+                        {!isFieldDisabled('state') && (
+                          <EditableField label="State" type="text" value={(contact as any).state} onSave={(v) => handleQuickUpdate('state', v)} />
+                        )}
+                      </div>
+                    )}
+                    {!isFieldDisabled('country') && (
+                      <div className="mt-2">
+                        <EditableField
+                          label="Country"
+                          type="select"
+                          value={(contact as any).country}
+                          onSave={(v) => handleQuickUpdate('country', v)}
+                          options={COUNTRY_OPTIONS}
+                        />
+                      </div>
+                    )}
                   </div>
-                  <div className="mt-2">
-                    <EditableField
-                      label="Country"
-                      type="select"
-                      value={(contact as any).country}
-                      onSave={(v) => handleQuickUpdate('country', v)}
-                      options={COUNTRY_OPTIONS}
-                    />
-                  </div>
-                </div>
+                )}
 
+                {!isFieldDisabled('website_url') && (
                 <div className="relative group/domain">
                 <EditableField
                   label="Domain"
@@ -408,6 +432,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   </button>
                 )}
                 </div>
+                )}
 
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase mb-1">Contact Type</p>
@@ -536,25 +561,28 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
             <div className="rounded-lg border border-border/60 bg-card px-3 py-1 min-w-0">
               <DetailGroup title="Additional Details">
                 <div className="space-y-3 text-sm min-w-0">
-                  <EditableField label="Department" type="text" value={contact.department} onSave={(v) => handleQuickUpdate('department', v)} />
-                  <EditableField label="LinkedIn URL" type="url" asLink value={contact.linkedin_url} onSave={(v) => handleQuickUpdate('linkedin_url', v)} />
-                  <EditableField label="Timezone" type="text" value={contact.timezone} onSave={(v) => handleQuickUpdate('timezone', v)} />
-                  <EditableField label="Lead Source" type="text" value={contact.lead_source} onSave={(v) => handleQuickUpdate('lead_source', v)} />
-                  <EditableField label="Source System" type="text" value={contact.source_system} onSave={(v) => handleQuickUpdate('source_system', v)} />
-                  {contact.custom_fields && Object.keys(contact.custom_fields).length > 0 && (
-                    <div className="space-y-2 pt-1 border-t border-border/40">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Custom Fields</p>
-                      {Object.entries(contact.custom_fields).map(([key, value]) => (
-                        <EditableField
-                          key={key}
-                          label={key}
-                          type="text"
-                          value={value == null ? '' : String(value)}
-                          onSave={(v) => handleQuickUpdate('custom_fields', { ...(contact.custom_fields || {}), [key]: v })}
-                        />
-                      ))}
-                    </div>
+                  {isFieldAdmin && (
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => setShowManageFields(true)}>
+                      <Pencil className="h-3 w-3 mr-1.5" /> Manage fields
+                    </Button>
                   )}
+                  {!isFieldDisabled('department') && (
+                    <EditableField label="Department" type="text" value={contact.department} onSave={(v) => handleQuickUpdate('department', v)} />
+                  )}
+                  {!isFieldDisabled('timezone') && (
+                    <EditableField label="Timezone" type="text" value={contact.timezone} onSave={(v) => handleQuickUpdate('timezone', v)} />
+                  )}
+                  {!isFieldDisabled('lead_source') && (
+                    <EditableField label="Lead Source" type="text" value={contact.lead_source} onSave={(v) => handleQuickUpdate('lead_source', v)} />
+                  )}
+                  {!isFieldDisabled('source_system') && (
+                    <EditableField label="Source System" type="text" value={contact.source_system} onSave={(v) => handleQuickUpdate('source_system', v)} />
+                  )}
+                  <CustomContactFieldsSection
+                    fields={fieldConfig.custom}
+                    values={(contact as any).custom_fields || {}}
+                    onChange={(_key, nextObj) => handleQuickUpdate('custom_fields', nextObj)}
+                  />
                   <div className="pt-1 border-t border-border/40">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Internal Metadata</p>
                     <DynamicFieldRenderer
@@ -716,6 +744,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
         contactName={contact.full_name || 'this contact'}
         onOpenChange={(open) => !open && setLogDialog(null)}
       />
+      <ManageContactFieldsDialog open={showManageFields} onOpenChange={setShowManageFields} />
     </>
   );
 }
