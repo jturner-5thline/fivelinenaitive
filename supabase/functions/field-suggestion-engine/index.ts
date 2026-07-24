@@ -300,6 +300,19 @@ Extract any field change suggestions.`;
     // 4. Process suggestions
     const created: any[] = [];
     let supersededCount = 0;
+    const applied: any[] = [];
+
+    // Map field_name -> contacts column (auto-apply target)
+    const FIELD_TO_COLUMN: Record<string, string> = {
+      job_title: "job_title",
+      email: "email",
+      phone_work: "phone_work",
+      phone_mobile: "phone_mobile",
+      department: "department",
+      seniority: "seniority",
+      linkedin_url: "linkedin_url",
+      contact_type: "contact_type",
+    };
 
     for (const s of suggestions.slice(0, 10)) {
       // Check threshold
@@ -330,7 +343,23 @@ Extract any field change suggestions.`;
         dedupeKey = `${contact_id}:${s.field_name}:${s.suggested_value.toLowerCase().trim()}`;
       }
 
-      // Upsert suggestion
+      // AUTO-APPLY: write the suggested value directly onto the contact,
+      // then record an accepted suggestion + audit row so the history/UI
+      // still shows what changed. No approval queue step.
+      const column = FIELD_TO_COLUMN[s.field_name];
+      if (!column) continue;
+
+      const { error: contactUpdateErr } = await supabase
+        .from("contacts")
+        .update({ [column]: s.suggested_value })
+        .eq("id", contact_id);
+
+      if (contactUpdateErr) {
+        console.error("Auto-apply contact update error:", contactUpdateErr);
+        continue;
+      }
+
+      const nowIso = new Date().toISOString();
       const { data: upserted, error: upsertError } = await supabase
         .from("contact_field_suggestions")
         .upsert(
@@ -344,7 +373,8 @@ Extract any field change suggestions.`;
             source_type,
             source_id: source_id || null,
             source_snippet: s.source_snippet,
-            status: "pending",
+            status: "accepted",
+            acted_at: nowIso,
             dedupe_key: dedupeKey,
           },
           { onConflict: "dedupe_key" }
@@ -354,10 +384,27 @@ Extract any field change suggestions.`;
 
       if (upsertError) {
         console.error("Upsert error:", upsertError);
-        continue;
       }
 
-      created.push({
+      await supabase.from("contact_field_suggestion_audit").insert({
+        suggestion_id: upserted?.id ?? null,
+        contact_id,
+        field_name: s.field_name,
+        old_value: currentVal,
+        new_value: s.suggested_value,
+        action: "auto_accepted",
+        actor_user_id: null,
+      });
+
+      // Supersede any older pending suggestions for the same contact+field
+      await supabase
+        .from("contact_field_suggestions")
+        .update({ status: "superseded" })
+        .eq("contact_id", contact_id)
+        .eq("field_name", s.field_name)
+        .eq("status", "pending");
+
+      applied.push({
         id: upserted?.id,
         field_name: s.field_name,
         current_value: currentVal,
@@ -365,13 +412,25 @@ Extract any field change suggestions.`;
         confidence: s.confidence,
         source_snippet: s.source_snippet,
       });
+      created.push({
+        id: upserted?.id,
+        field_name: s.field_name,
+        current_value: currentVal,
+        suggested_value: s.suggested_value,
+        confidence: s.confidence,
+        source_snippet: s.source_snippet,
+        auto_applied: true,
+      });
     }
 
     return new Response(
       JSON.stringify({
         suggestions_created: created.length,
         suggestions_superseded: supersededCount,
+        suggestions_auto_applied: applied.length,
         suggestions: created,
+        applied,
+        auto_apply: true,
         scanned_at: new Date().toISOString(),
         scan_context: scanContext,
       }),
