@@ -1374,6 +1374,23 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "search_claap_transcripts",
+      description: "Semantic (meaning-based) search across ALL Claap call transcripts. Use whenever the user asks what was discussed, said, promised, agreed, objected to, or mentioned in ANY call — even when they don't know exact keywords, or want to look across multiple deals. Returns the most relevant transcript passages with meeting title, deal, timestamp, and a link back to the transcript.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Natural language question or topic (e.g. 'objections about personal guarantees', 'discussion of ARR growth')." },
+          deal_id: { type: "string", description: "Optional: restrict search to a single deal." },
+          limit: { type: "number", description: "Max passages to return. Default 8, max 20." },
+          min_similarity: { type: "number", description: "Cosine similarity floor 0-1. Default 0.3." },
+        },
+        required: ["query"],
+      },
+    },
+  },
   // ── Kitchen-sink read tools ─────────────────────────────────
   // These return EVERYTHING the AI could need about an entity in
   // a single round-trip. Use them whenever the user asks any
