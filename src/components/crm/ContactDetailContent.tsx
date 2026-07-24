@@ -548,7 +548,36 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
               onExternalShowCreateChange={setShowCreateTask}
             />
 
-            <ContactFieldSuggestions contactId={contact.id} companyId={(contact as any)?.org_company_id} />
+            {/* Notes */}
+            <Section id="notes" title="Notes" icon={MessageSquare}>
+              <div className="flex gap-2">
+                <Textarea
+                  placeholder="Add a note…"
+                  value={newNote}
+                  onChange={e => setNewNote(e.target.value)}
+                  className="text-sm min-h-[64px]"
+                />
+                <Button size="sm" onClick={handleAddNote} disabled={!newNote.trim()}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="mt-4 space-y-3">
+                {contact.description && (
+                  <EditableField
+                    label="Pinned"
+                    type="textarea"
+                    value={contact.description}
+                    placeholder="Add notes about this contact…"
+                    onSave={(v) => handleQuickUpdate('description', v)}
+                  />
+                )}
+                {activities.filter((a: any) => a.activity_type === 'note').length === 0 && !contact.description ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">No notes yet</p>
+                ) : (
+                  <NotesList notes={activities.filter((a: any) => a.activity_type === 'note')} ownerName={ownerName} />
+                )}
+              </div>
+            </Section>
 
             {/* Activity Timeline */}
             <Section
@@ -581,36 +610,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
               <ClaapCallsSection entityType="contact" entityId={contact.id} entityEmail={contact.email} />
             </Section>
 
-            {/* Notes */}
-            <Section id="notes" title="Notes" icon={MessageSquare}>
-              <div className="flex gap-2">
-                <Textarea
-                  placeholder="Add a note…"
-                  value={newNote}
-                  onChange={e => setNewNote(e.target.value)}
-                  className="text-sm min-h-[64px]"
-                />
-                <Button size="sm" onClick={handleAddNote} disabled={!newNote.trim()}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="mt-4 space-y-3">
-                {contact.description && (
-                  <EditableField
-                    label="Pinned"
-                    type="textarea"
-                    value={contact.description}
-                    placeholder="Add notes about this contact…"
-                    onSave={(v) => handleQuickUpdate('description', v)}
-                  />
-                )}
-                {activities.filter((a: any) => a.activity_type === 'note').length === 0 && !contact.description ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">No notes yet</p>
-                ) : (
-                  <NotesList notes={activities.filter((a: any) => a.activity_type === 'note')} ownerName={ownerName} />
-                )}
-              </div>
-            </Section>
+            <ContactFieldSuggestions contactId={contact.id} companyId={(contact as any)?.org_company_id} />
 
             {/* Attachments */}
             <Section id="attachments" title="Attachments" icon={Paperclip}>
