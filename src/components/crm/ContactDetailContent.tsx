@@ -42,6 +42,7 @@ import { ContactFieldSuggestions } from '@/components/contacts/ContactFieldSugge
 import { DynamicFieldRenderer } from '@/components/crm/DynamicFieldRenderer';
 import { ContactTasksCard } from '@/components/contacts/ContactTasksCard';
 import { ContactAttachmentsTable } from '@/components/crm/ContactAttachmentsTable';
+import { ReferralSourceDocsSection } from '@/components/contacts/ReferralSourceDocsSection';
 import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
 import { CompanyDomainMatchPrompt } from '@/components/contacts/CompanyDomainMatchPrompt';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -434,61 +435,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                       .map((s) => s.trim().toLowerCase())
                       .filter(Boolean);
                     if (!types.includes('referral source')) return null;
-                    const refAgreement = Boolean((contact as any).referral_agreement_on_file);
-                    const w9 = Boolean((contact as any).w9_on_file);
-                    return (
-                      <div className="mt-2 rounded-md border border-border/60 bg-muted/20 p-2 space-y-1.5">
-                        <p className="text-[10px] text-muted-foreground uppercase">Referral Source Docs</p>
-                        <label className="flex items-center gap-2 text-xs cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={refAgreement}
-                            onChange={(e) => handleQuickUpdate('referral_agreement_on_file', e.target.checked)}
-                            className="h-3.5 w-3.5 rounded border-border accent-primary"
-                          />
-                          Referral Agreement on file
-                        </label>
-                        <label className="flex items-center gap-2 text-xs cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={w9}
-                            onChange={(e) => handleQuickUpdate('w9_on_file', e.target.checked)}
-                            className="h-3.5 w-3.5 rounded border-border accent-primary"
-                          />
-                          W-9 on file
-                        </label>
-                        <div className="grid grid-cols-2 gap-2 pt-1">
-                          <div>
-                            <p className="text-[10px] text-muted-foreground mb-0.5">Referral Fee</p>
-                            <Input
-                              defaultValue={(contact as any).referral_fee || ''}
-                              onBlur={(e) => {
-                                const v = e.target.value.trim();
-                                if (v !== ((contact as any).referral_fee || '')) {
-                                  handleQuickUpdate('referral_fee', v || null);
-                                }
-                              }}
-                              placeholder="e.g. 1%"
-                              className="h-7 text-xs"
-                            />
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-muted-foreground mb-0.5">Lender Referred %</p>
-                            <Input
-                              defaultValue={(contact as any).lender_referred_pct || ''}
-                              onBlur={(e) => {
-                                const v = e.target.value.trim();
-                                if (v !== ((contact as any).lender_referred_pct || '')) {
-                                  handleQuickUpdate('lender_referred_pct', v || null);
-                                }
-                              }}
-                              placeholder="e.g. 50%"
-                              className="h-7 text-xs"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    );
+                    return <ReferralSourceDocsSection contact={contact} onUpdate={handleQuickUpdate} />;
                   })()}
                 </div>
               </div>
