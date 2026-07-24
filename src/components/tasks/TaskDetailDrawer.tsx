@@ -136,7 +136,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
       const { data, error } = await (supabase as any)
         .from('calendar_events')
         .select('title, attendees, organizer_email')
-        .eq('nylas_event_id', nylasEventId)
+        .eq('event_id', nylasEventId)
         .maybeSingle();
       if (error) throw error;
       const rawAttendees: any = (data as any)?.attendees;
