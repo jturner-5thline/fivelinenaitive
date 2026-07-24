@@ -23,6 +23,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { runDealAdminAgentAnalysis } from "../_shared/dealAdminAgentIntelligence.ts";
+import { rescheduleFollowupTasksForCompany } from "../_shared/rescheduleFollowupTasks.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -145,6 +146,16 @@ Deno.serve(async (req) => {
       dryRun: true,
     });
 
+    // Deterministic follow-up reschedule: if a follow-up-style task's
+    // assignee already sent an email tied to the deal today (ET), push the
+    // task's due_date to today+2 business days. This runs live (not
+    // dry-run) because it's a direct UPDATE, not a queue proposal.
+    const reschedule = await rescheduleFollowupTasksForCompany({
+      supabase: admin,
+      companyId: companyId!,
+      activatedUserIds: [dealManagerId],
+    });
+
     return new Response(
       JSON.stringify({
         ok: true,
@@ -158,6 +169,7 @@ Deno.serve(async (req) => {
           candidates_filtered: intel.candidates_filtered,
           candidates_merged: intel.candidates_merged,
           would_insert: intel.queue_rows_inserted,
+          reschedule,
         },
         errors: intel.errors ?? [],
         preview_rows: intel.preview_rows ?? [],
