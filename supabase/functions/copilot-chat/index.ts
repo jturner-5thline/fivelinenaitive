@@ -5439,22 +5439,13 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
       const limit = Math.min(Math.max(Number(args.limit) || 8, 1), 20);
       const minSim = Math.min(Math.max(Number(args.min_similarity) || 0.3, 0), 1);
+      // Scale HNSW recall with requested limit so quality stays consistent
+      // as the transcript corpus grows. Clamp to a sane ceiling.
+      const efSearch = Math.min(Math.max(Number(args.ef_search) || 80, limit * 4, 40), 400);
 
       try {
-        const embResp = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${lovableApiKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "openai/text-embedding-3-small",
-            input: String(args.query).slice(0, 4000),
-          }),
-        });
-        if (!embResp.ok) {
-          const t = await embResp.text();
-          return { error: `Embedding failed: ${embResp.status}`, detail: t.slice(0, 300) };
-        }
-        const embJson = await embResp.json();
-        const qEmb = embJson.data?.[0]?.embedding;
+        const qText = String(args.query).slice(0, 4000);
+        const qEmb = await getQueryEmbedding(qText, lovableApiKey);
         if (!qEmb) return { error: "No embedding returned" };
 
         const { data: matches, error } = await supabase.rpc("match_claap_chunks", {
@@ -5462,6 +5453,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           match_count: limit,
           filter_deal_id: args.deal_id || null,
           min_similarity: minSim,
+          ef_search: efSearch,
         });
         if (error) return { error: error.message };
 
