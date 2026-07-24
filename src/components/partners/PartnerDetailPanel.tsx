@@ -16,6 +16,12 @@ import { PartnerPromotionDialog, getPromotionMode, type PromotionMode, type Prom
 import { PartnerTierBadge, PartnerTier4WarningBadge } from '@/components/partners/PartnerTierBadge';
 import { PartnerTierExplainer } from '@/components/partners/PartnerTierExplainer';
 import { usePartnerTier, PARTNER_TIER_OVERRIDE_EMAILS, type AutoTier } from '@/hooks/usePartnerTier';
+import { PartnerTierHistoryPanel } from '@/components/partners/PartnerTierHistoryPanel';
+import {
+  useRecordPartnerTierAuto,
+  recordPartnerTierOverride,
+  recordPartnerTierOverrideCleared,
+} from '@/hooks/usePartnerTierHistory';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
@@ -66,6 +72,7 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
 
   // Tier override
   const { data: tierInfo } = usePartnerTier(partner);
+  useRecordPartnerTierAuto(partner?.id, tierInfo);
   const canOverrideTier = !!user?.email && PARTNER_TIER_OVERRIDE_EMAILS.includes(user.email.toLowerCase());
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [overrideTier, setOverrideTier] = useState<string>('');
@@ -91,7 +98,41 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
     updatePartner.mutate(
       { id: partner.id, metadata: meta },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
+          try {
+            if (clear) {
+              await recordPartnerTierOverrideCleared({
+                partnerId: partner.id,
+                fallbackTier: (tierInfo?.tier || 4) as AutoTier,
+                thresholds: tierInfo
+                  ? {
+                      qualifiedTrailing3mo: tierInfo.qualifiedTrailing3mo,
+                      signedTrailing3mo: tierInfo.signedTrailing3mo,
+                      addedToBoardTrailing3mo: tierInfo.addedToBoardTrailing3mo,
+                      addedToBoardTrailing12mo: tierInfo.addedToBoardTrailing12mo,
+                      totalDeals: tierInfo.totalDeals,
+                    }
+                  : null,
+              });
+            } else {
+              await recordPartnerTierOverride({
+                partnerId: partner.id,
+                toTier: Number(overrideTier) as AutoTier,
+                reason: overrideReason.trim(),
+                thresholds: tierInfo
+                  ? {
+                      qualifiedTrailing3mo: tierInfo.qualifiedTrailing3mo,
+                      signedTrailing3mo: tierInfo.signedTrailing3mo,
+                      addedToBoardTrailing3mo: tierInfo.addedToBoardTrailing3mo,
+                      addedToBoardTrailing12mo: tierInfo.addedToBoardTrailing12mo,
+                      totalDeals: tierInfo.totalDeals,
+                    }
+                  : null,
+              });
+            }
+          } catch {
+            /* best-effort */
+          }
           toast.success(clear ? 'Tier override cleared' : 'Tier override applied');
           setOverrideOpen(false);
           setOverrideReason('');
@@ -348,6 +389,9 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
                 {tierInfo?.manualOverride && tierInfo.overrideReason && (
                   <p className="text-[10px] text-slate-500 mt-1">Override: {tierInfo.overrideReason}</p>
                 )}
+                <div className="mt-3">
+                  <PartnerTierHistoryPanel partnerId={partner.id} />
+                </div>
               </div>
 
               {/* Fields */}

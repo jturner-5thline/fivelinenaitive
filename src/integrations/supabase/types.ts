@@ -20525,6 +20525,48 @@ export type Database = {
           },
         ]
       }
+      partner_tier_history: {
+        Row: {
+          changed_by: string | null
+          changed_by_email: string | null
+          company_id: string
+          created_at: string
+          from_tier: number | null
+          id: string
+          partner_id: string
+          reason: string | null
+          source: string
+          thresholds: Json | null
+          to_tier: number
+        }
+        Insert: {
+          changed_by?: string | null
+          changed_by_email?: string | null
+          company_id: string
+          created_at?: string
+          from_tier?: number | null
+          id?: string
+          partner_id: string
+          reason?: string | null
+          source: string
+          thresholds?: Json | null
+          to_tier: number
+        }
+        Update: {
+          changed_by?: string | null
+          changed_by_email?: string | null
+          company_id?: string
+          created_at?: string
+          from_tier?: number | null
+          id?: string
+          partner_id?: string
+          reason?: string | null
+          source?: string
+          thresholds?: Json | null
+          to_tier?: number
+        }
+        Relationships: []
+      }
       partners: {
         Row: {
           company_id: string
@@ -29296,6 +29338,16 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      record_partner_tier: {
+        Args: {
+          _partner_id: string
+          _reason: string
+          _source: string
+          _thresholds: Json
+          _to_tier: number
+        }
+        Returns: string
       }
       refresh_deal_stage_metrics: { Args: never; Returns: undefined }
       reject_join_request: {
