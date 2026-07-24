@@ -307,7 +307,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
           {/* LEFT RAIL — contact profile, core fields, related records, additional details */}
           <aside className="space-y-3 min-w-0 lg:sticky lg:top-32">
             {/* Profile card with all core editable fields */}
-            <div className="rounded-lg border border-primary/25 bg-card p-4 space-y-3 min-w-0 shadow-[0_0_0_1px_hsl(var(--primary)/0.08)]">
+            <div className="rounded-lg border border-white/25 bg-card p-4 space-y-3 min-w-0 shadow-[0_0_0_1px_hsl(0_0%_100%/0.12)]">
               {contact.tags && contact.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {contact.tags.map(tag => <Badge key={tag} variant="outline" className="text-[10px] font-normal">{tag}</Badge>)}
@@ -508,7 +508,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
             </div>
 
             {/* Related Records — compact card */}
-            <div className="rounded-lg border border-primary/25 bg-card p-3 space-y-3 min-w-0 shadow-[0_0_0_1px_hsl(var(--primary)/0.08)]">
+            <div className="rounded-lg border border-white/25 bg-card p-3 space-y-3 min-w-0 shadow-[0_0_0_1px_hsl(0_0%_100%/0.12)]">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] uppercase tracking-wider text-foreground/80 font-semibold flex items-center gap-1.5">
                   <Users className="h-3 w-3" /> Related Records
@@ -575,7 +575,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
             </div>
 
             {/* Additional Details — accordion */}
-            <div className="rounded-lg border border-primary/25 bg-card px-3 py-1 min-w-0 shadow-[0_0_0_1px_hsl(var(--primary)/0.08)]">
+            <div className="rounded-lg border border-white/25 bg-card px-3 py-1 min-w-0 shadow-[0_0_0_1px_hsl(0_0%_100%/0.12)]">
               <DetailGroup title="Additional Details">
                 <div className="space-y-3 text-sm min-w-0">
                   {isFieldAdmin && (
