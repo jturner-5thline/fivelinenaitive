@@ -55,6 +55,7 @@ import { extractEmailDomain, normalizeDomain } from '@/lib/extractEmailDomain';
 import { cn } from '@/lib/utils';
 import { format, isToday, isThisWeek } from 'date-fns';
 import { Loader2, Copy, Check } from 'lucide-react';
+import { normalizeLinkedInUrl } from '@/lib/linkedin';
 import { toast } from 'sonner';
 
 interface ContactDetailContentProps {
