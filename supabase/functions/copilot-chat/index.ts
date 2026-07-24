@@ -2450,6 +2450,8 @@ function selectToolsWithScopes(
     // Always-available Claap meeting intelligence & routing.
     "get_claap_meeting_full", "list_unmatched_claap_meetings",
     "get_claap_routing_queue", "list_claap_skipped_calls", "get_claap_webhook_errors",
+    // Always-available Claap transcripts for any deal (searchable summaries + full transcript).
+    "get_deal_call_transcripts", "get_deal_claap_recordings",
     // Always-available FinServ ops (5th Line internal pipeline).
     "get_finserv_pipeline_summary", "list_finserv_deals", "get_finserv_deal_full",
     "get_finserv_revenue_summary", "list_finserv_milestones",
@@ -6249,8 +6251,9 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       }
     }
     case "get_recent_meetings": {
-      const limit = Math.min(Math.max(Number(args.limit) || 10, 1), 30);
-      const sinceDays = Math.min(Math.max(Number(args.since_days) || 30, 1), 365);
+      const limit = Math.min(Math.max(Number(args.limit) || 10, 1), 50);
+      // Extended window so Ask nAItive can retrieve any Claap recording, not just the last month.
+      const sinceDays = Math.min(Math.max(Number(args.since_days) || (args.query ? 365 : 30), 1), 1095);
       const sinceIso = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString();
       const includeTranscript = !!args.include_transcript;
 
