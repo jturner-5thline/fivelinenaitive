@@ -73,6 +73,7 @@ export function AppSidebar() {
   const { isAdmin } = useAdminRole();
   const { hasPageAccess, isPageBeta, isLoading: isAccessLoading } = usePageAccessFlags();
   const { features: companyFeatures } = useCompanyFeatures();
+  const { enabled: highContrast, toggle: toggleHighContrast } = useHighContrast();
   const { data: routingTasks = [] } = useClaapRoutingTasks();
   const { hasAccess: hasNaitivePipelineAccess } = useNaitivePipelineAccess();
   const canAccessInsights = useCanAccessInsights();
