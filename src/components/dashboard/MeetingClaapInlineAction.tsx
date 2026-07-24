@@ -276,8 +276,10 @@ export function MeetingClaapInlineAction(props: Props) {
     if (existing || canonicalLinked) return;      // already linked upstream
     if (hasStored && refreshTick === 0) return;   // stored answer — read only
     if (ranking || rankPending) return;
-    // Session-persistent gate: don't auto-retry if we've already attempted.
-    if (refreshTick === 0 && readAutoAttempted().has(eventId)) return;
+    // NOTE: auto-fetch always runs when there is no stored suggestion.
+    // The `hasStored` check above already prevents repeat fetches once a
+    // result (including 'none') is cached in event_claap_match_cache, so
+    // we don't need an extra client-side localStorage gate here.
     requestGenerate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId, existing, existingLoading, existingFetching, canonicalLinked, canonicalLoading, cachedLoading, cachedFetching, hasStored, refreshTick]);
