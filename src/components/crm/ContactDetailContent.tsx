@@ -457,6 +457,36 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                           />
                           W-9 on file
                         </label>
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <div>
+                            <p className="text-[10px] text-muted-foreground mb-0.5">Referral Fee</p>
+                            <Input
+                              defaultValue={(contact as any).referral_fee || ''}
+                              onBlur={(e) => {
+                                const v = e.target.value.trim();
+                                if (v !== ((contact as any).referral_fee || '')) {
+                                  handleQuickUpdate('referral_fee', v || null);
+                                }
+                              }}
+                              placeholder="e.g. 1%"
+                              className="h-7 text-xs"
+                            />
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground mb-0.5">Lender Referred %</p>
+                            <Input
+                              defaultValue={(contact as any).lender_referred_pct || ''}
+                              onBlur={(e) => {
+                                const v = e.target.value.trim();
+                                if (v !== ((contact as any).lender_referred_pct || '')) {
+                                  handleQuickUpdate('lender_referred_pct', v || null);
+                                }
+                              }}
+                              placeholder="e.g. 50%"
+                              className="h-7 text-xs"
+                            />
+                          </div>
+                        </div>
                       </div>
                     );
                   })()}

@@ -6522,6 +6522,7 @@ export type Database = {
           lead_source_latest: string | null
           lead_source_original: string | null
           lead_status: string | null
+          lender_referred_pct: string | null
           lifecycle_stage: string | null
           linkedin_url: string | null
           locale: string | null
@@ -6540,6 +6541,7 @@ export type Database = {
           preferred_channel: string | null
           primary_company_id: string | null
           referral_agreement_on_file: boolean
+          referral_fee: string | null
           sdr_owner_id: string | null
           seniority: string | null
           sms_opt_in: boolean | null
@@ -7016,6 +7018,7 @@ export type Database = {
           lead_source_latest?: string | null
           lead_source_original?: string | null
           lead_status?: string | null
+          lender_referred_pct?: string | null
           lifecycle_stage?: string | null
           linkedin_url?: string | null
           locale?: string | null
@@ -7034,6 +7037,7 @@ export type Database = {
           preferred_channel?: string | null
           primary_company_id?: string | null
           referral_agreement_on_file?: boolean
+          referral_fee?: string | null
           sdr_owner_id?: string | null
           seniority?: string | null
           sms_opt_in?: boolean | null
@@ -7510,6 +7514,7 @@ export type Database = {
           lead_source_latest?: string | null
           lead_source_original?: string | null
           lead_status?: string | null
+          lender_referred_pct?: string | null
           lifecycle_stage?: string | null
           linkedin_url?: string | null
           locale?: string | null
@@ -7528,6 +7533,7 @@ export type Database = {
           preferred_channel?: string | null
           primary_company_id?: string | null
           referral_agreement_on_file?: boolean
+          referral_fee?: string | null
           sdr_owner_id?: string | null
           seniority?: string | null
           sms_opt_in?: boolean | null
