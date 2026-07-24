@@ -219,9 +219,13 @@ export function EventClaapLinker({
 
   // Auto-fetch recordings on open
   useEffect(() => {
-    if (open && recordings.length === 0 && !loadingRecordings) {
-      fetchRecordings();
-    }
+    if (!open || recordings.length > 0 || loadingRecordings) return;
+    let cancelled = false;
+    (async () => {
+      await fetchRecordings(undefined, { live: false });
+      if (!cancelled) void fetchRecordings(undefined, { live: true });
+    })();
+    return () => { cancelled = true; };
   }, [open, recordings.length, loadingRecordings, fetchRecordings]);
 
   // Reset internal state on open/close
