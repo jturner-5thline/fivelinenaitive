@@ -6251,8 +6251,9 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       }
     }
     case "get_recent_meetings": {
-      const limit = Math.min(Math.max(Number(args.limit) || 10, 1), 30);
-      const sinceDays = Math.min(Math.max(Number(args.since_days) || 30, 1), 365);
+      const limit = Math.min(Math.max(Number(args.limit) || 10, 1), 50);
+      // Extended window so Ask nAItive can retrieve any Claap recording, not just the last month.
+      const sinceDays = Math.min(Math.max(Number(args.since_days) || (args.query ? 365 : 30), 1), 1095);
       const sinceIso = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString();
       const includeTranscript = !!args.include_transcript;
 
