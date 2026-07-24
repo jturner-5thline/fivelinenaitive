@@ -1003,8 +1003,9 @@ export default function DealDetail() {
           milestoneFee: prev.milestoneFee,
           successFeePercent: prev.successFeePercent,
           totalFee: prev.totalFee,
-          preSigningHours: prev.preSigningHours,
-          postSigningHours: prev.postSigningHours,
+          // Hours are written through the AddHours dialog which triggers
+          // refreshDeals(); always take the DB value so new entries show up
+          // without needing a manual reload.
         };
       });
     }
