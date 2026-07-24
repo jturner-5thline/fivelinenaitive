@@ -45,8 +45,11 @@ export function CreateDealApprovalCard({ item }: Props) {
   const rows: Array<{ label: string; value: string }> = [
     { label: 'Company / Deal name', value: payload.dealName || source.company_name || '—' },
     { label: 'Deal amount', value: payload.dealAmount ? `$${Number(payload.dealAmount).toLocaleString()}` : '—' },
-    { label: 'Client contact', value: payload.contactName || '—' },
+    { label: 'Client contact', value: payload.contactName || payload.contactInfo || '—' },
     { label: 'Client email', value: payload.contactInfo || '—' },
+    ...(Array.isArray(payload.additionalContactEmails) && payload.additionalContactEmails.length
+      ? [{ label: 'Other attendees', value: (payload.additionalContactEmails as string[]).join(', ') }]
+      : []),
     { label: 'Deal status', value: payload.dealStatusNote || '—' },
     { label: 'Narrative', value: payload.narrative || '—' },
     { label: 'Referred by', value: payload.referralName || '—' },

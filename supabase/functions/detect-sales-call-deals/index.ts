@@ -175,6 +175,26 @@ Deno.serve(async (req) => {
           }
           const hostEmail = organizerEmailRaw || ownerEmail;
 
+          // External attendees from the calendar event = the client contacts.
+          // Nylas v3 returns them under `participants`; each has { email, name, status }.
+          const participants: any[] = Array.isArray(ev?.participants) ? ev.participants : [];
+          const externalAttendees = participants
+            .map((p) => ({
+              email: String(p?.email || "").toLowerCase().trim(),
+              name: String(p?.name || "").trim(),
+            }))
+            .filter((p) =>
+              p.email &&
+              !p.email.endsWith(INTERNAL_DOMAIN) &&
+              p.email !== hostEmail &&
+              !ALLOWED_OWNER_EMAILS.has(p.email),
+            );
+          const primaryExternal = externalAttendees[0] || null;
+          const additionalExternalEmails = externalAttendees
+            .slice(1)
+            .map((p) => p.email)
+            .filter(Boolean);
+
           const endMs = extractEndMs(ev.when);
           if (endMs == null) continue;
           // Only events that ended already AND ended ≥5 min ago.
@@ -284,8 +304,13 @@ Deno.serve(async (req) => {
             // Fields consumed by CreateDealDialog `initialValues`.
             dealName: drafted.dealName || company,
             dealAmount: drafted.dealAmount || "",
-            contactName: drafted.contactName || "",
-            contactInfo: drafted.contactInfo || "",
+            // Client contact auto-fills from the external attendees on the
+            // [COMPANY] <> 5th Line Financing Review calendar event.
+            // Attendee data always wins over AI-drafted names/emails because
+            // it's authoritative (came from the actual invite).
+            contactName: primaryExternal?.name || drafted.contactName || "",
+            contactInfo: primaryExternal?.email || drafted.contactInfo || "",
+            additionalContactEmails: additionalExternalEmails,
             dealStatusNote:
               drafted.dealStatusNote ||
               `Auto-drafted from Claap recording of "${title}".`,
@@ -305,6 +330,7 @@ Deno.serve(async (req) => {
             event_start: new Date(startMs).toISOString(),
             event_end: new Date(endMs).toISOString(),
             organizer_email: hostEmail,
+            external_attendees: externalAttendees,
             claap_meeting_id: claap?.id ?? null,
             claap_id: claap?.claap_id ?? null,
             claap_matched_by: claap ? "title" : null,
