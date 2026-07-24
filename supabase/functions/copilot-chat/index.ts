@@ -16,6 +16,45 @@ import {
 } from "../_shared/adminAgentFormat.ts";
 import { buildUserDealCountBlock } from "./userDealCountBlock.ts";
 
+// ── Ask nAItive query-embedding cache ─────────────────────────────
+// Warm Deno isolates reuse this map, so repeated / follow-up questions
+// (same wording) skip the embeddings round-trip entirely. Bounded LRU
+// so long-lived instances don't grow unbounded.
+const QUERY_EMBED_CACHE = new Map<string, number[]>();
+const QUERY_EMBED_CACHE_MAX = 256;
+
+export async function getQueryEmbedding(
+  text: string,
+  apiKey: string,
+  model = "openai/text-embedding-3-small",
+): Promise<number[] | null> {
+  const key = `${model}:${text}`;
+  const hit = QUERY_EMBED_CACHE.get(key);
+  if (hit) {
+    // LRU refresh
+    QUERY_EMBED_CACHE.delete(key);
+    QUERY_EMBED_CACHE.set(key, hit);
+    return hit;
+  }
+  const resp = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model, input: text }),
+  });
+  if (!resp.ok) {
+    throw new Error(`Embedding ${resp.status}: ${(await resp.text()).slice(0, 300)}`);
+  }
+  const json = await resp.json();
+  const vec = json?.data?.[0]?.embedding as number[] | undefined;
+  if (!vec) return null;
+  QUERY_EMBED_CACHE.set(key, vec);
+  if (QUERY_EMBED_CACHE.size > QUERY_EMBED_CACHE_MAX) {
+    const firstKey = QUERY_EMBED_CACHE.keys().next().value as string | undefined;
+    if (firstKey) QUERY_EMBED_CACHE.delete(firstKey);
+  }
+  return vec;
+}
+
 // ── Enum catalogs for schema-valid field edits ────────────────────
 // Any Copilot action proposing a change to one of these fields MUST
 // pick a value from these catalogs. The propose-time handlers below
