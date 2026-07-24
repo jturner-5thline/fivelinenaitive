@@ -308,6 +308,15 @@ export function AppSidebar() {
                   Account
                 </button>
                 <button
+                  onClick={toggleHighContrast}
+                  aria-pressed={highContrast}
+                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                >
+                  <Eye className="h-4 w-4" />
+                  <span className="flex-1 text-left">High contrast</span>
+                  {highContrast && <Check className="h-3.5 w-3.5 text-primary" />}
+                </button>
+                <button
                   onClick={async () => {
                     await signOut();
                     navigate("/login", { replace: true });
