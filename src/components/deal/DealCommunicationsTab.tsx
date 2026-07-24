@@ -429,7 +429,33 @@ export function DealCommunicationsTab({ dealId }: Props) {
           {isOpen && (
           <div className="divide-y divide-border/30">
             {t.msgs.map((m) => (
-              <div key={m.key} className="px-4 py-3 flex items-start gap-3">
+              <div
+                key={m.key}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  if (!m.message_id) {
+                    toast.info('This message has no linked mailbox record to open.');
+                    return;
+                  }
+                  setViewer({
+                    message_id: m.message_id,
+                    thread_id: m.thread_id,
+                    subject: m.subject,
+                    from: m.from,
+                    to: m.to,
+                    sent_at: m.sent_at,
+                    preview: m.preview,
+                  });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    (e.currentTarget as HTMLDivElement).click();
+                  }
+                }}
+                className="px-4 py-3 flex items-start gap-3 cursor-pointer hover:bg-muted/40 transition-colors focus:outline-none focus-visible:bg-muted/40"
+              >
                 <DirectionIcon dir={m.direction} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
@@ -440,7 +466,9 @@ export function DealCommunicationsTab({ dealId }: Props) {
                   {m.preview && (
                     <div className="text-xs text-foreground/80 mt-1 line-clamp-2">{m.preview}</div>
                   )}
-                  <MessageAttachments item={m} />
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <MessageAttachments item={m} />
+                  </div>
                   <div className="mt-1">
                     <span className="text-[10px] text-muted-foreground/70">{m.source === 'activity_logs' ? 'activity' : 'inbox link'}</span>
                   </div>
@@ -452,6 +480,13 @@ export function DealCommunicationsTab({ dealId }: Props) {
         </div>
         );
       })}
+      <EmailViewerDialog
+        open={!!viewer}
+        onOpenChange={(o) => { if (!o) setViewer(null); }}
+        message={viewer}
+        dealId={dealId}
+        dealName={dealMeta.name}
+      />
     </div>
   );
 }
