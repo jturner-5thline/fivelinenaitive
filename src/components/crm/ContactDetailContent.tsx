@@ -44,6 +44,9 @@ import { DynamicFieldRenderer } from '@/components/crm/DynamicFieldRenderer';
 import { ContactTasksCard } from '@/components/contacts/ContactTasksCard';
 import { ContactAttachmentsTable } from '@/components/crm/ContactAttachmentsTable';
 import { ReferralSourceDocsSection } from '@/components/contacts/ReferralSourceDocsSection';
+import { ManageContactFieldsDialog } from '@/components/contacts/ManageContactFieldsDialog';
+import { CustomContactFieldsSection } from '@/components/contacts/CustomContactFieldsSection';
+import { useContactFieldConfig } from '@/hooks/useContactFieldConfig';
 import { useRealtimeInvalidate } from '@/hooks/useRealtimeInvalidate';
 import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
 import { CompanyDomainMatchPrompt } from '@/components/contacts/CompanyDomainMatchPrompt';
@@ -84,6 +87,8 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
   const [showDelete, setShowDelete] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showMoreContactInfo, setShowMoreContactInfo] = useState(false);
+  const [showManageFields, setShowManageFields] = useState(false);
+  const { config: fieldConfig, isDisabled: isFieldDisabled, isAdmin: isFieldAdmin } = useContactFieldConfig();
 
   // Keep this contact row live across users/tabs.
   useRealtimeInvalidate({
