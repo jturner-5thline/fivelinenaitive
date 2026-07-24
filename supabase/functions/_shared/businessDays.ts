@@ -77,3 +77,14 @@ export function subtractBusinessDays(from: Date, n: number): Date {
   }
   return cursor;
 }
+
+/** Add N business days to `from` and return the resulting Date (start-of-day). */
+export function addBusinessDays(from: Date, n: number): Date {
+  const cursor = startOfDay(from);
+  let remaining = n;
+  while (remaining > 0) {
+    cursor.setDate(cursor.getDate() + 1);
+    if (isBusinessDay(cursor)) remaining--;
+  }
+  return cursor;
+}
