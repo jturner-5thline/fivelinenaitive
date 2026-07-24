@@ -13,6 +13,16 @@ import { useCompany } from '@/hooks/useCompany';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -57,6 +67,7 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
   const [checkingUsage, setCheckingUsage] = useState(false);
   const [replacements, setReplacements] = useState<string[]>([]);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [simpleDeleteTarget, setSimpleDeleteTarget] = useState<ContactType | null>(null);
   const selected = useMemo(() => splitContactTypes(value), [value]);
 
   const trimmed = search.trim();
@@ -117,9 +128,7 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
       if (error) throw error;
       const rows = (data || []).filter(r => splitContactTypes(r.contact_type).includes(t.name));
       if (rows.length === 0) {
-        if (confirm(`Delete "${t.name}"? No contacts are currently using this type.`)) {
-          deleteType.mutate(t.id);
-        }
+        setSimpleDeleteTarget(t);
         return;
       }
       setDeleteTarget(t);
@@ -388,6 +397,32 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!simpleDeleteTarget}
+        onOpenChange={(o) => { if (!o) setSimpleDeleteTarget(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{simpleDeleteTarget?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              No contacts are currently using this type. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (simpleDeleteTarget) deleteType.mutate(simpleDeleteTarget.id);
+                setSimpleDeleteTarget(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
