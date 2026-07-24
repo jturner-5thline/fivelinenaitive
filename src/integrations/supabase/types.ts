@@ -4662,6 +4662,50 @@ export type Database = {
         }
         Relationships: []
       }
+      claap_transcript_chunks: {
+        Row: {
+          chunk_index: number
+          chunk_text: string
+          claap_meeting_id: string
+          created_at: string
+          deal_id: string
+          embedding: string | null
+          id: string
+          token_estimate: number | null
+          transcript_id: string
+        }
+        Insert: {
+          chunk_index: number
+          chunk_text: string
+          claap_meeting_id: string
+          created_at?: string
+          deal_id: string
+          embedding?: string | null
+          id?: string
+          token_estimate?: number | null
+          transcript_id: string
+        }
+        Update: {
+          chunk_index?: number
+          chunk_text?: string
+          claap_meeting_id?: string
+          created_at?: string
+          deal_id?: string
+          embedding?: string | null
+          id?: string
+          token_estimate?: number | null
+          transcript_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_transcript_chunks_transcript_id_fkey"
+            columns: ["transcript_id"]
+            isOneToOne: false
+            referencedRelation: "claap_transcripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       claap_transcripts: {
         Row: {
           call_type: string | null
@@ -29310,6 +29354,26 @@ export type Database = {
           similarity: number
           tags: string[]
           title: string
+        }[]
+      }
+      match_claap_chunks: {
+        Args: {
+          filter_deal_id?: string
+          match_count?: number
+          min_similarity?: number
+          query_embedding: string
+        }
+        Returns: {
+          chunk_id: string
+          chunk_index: number
+          chunk_text: string
+          claap_meeting_id: string
+          deal_company: string
+          deal_id: string
+          meeting_title: string
+          recorded_at: string
+          similarity: number
+          transcript_id: string
         }[]
       }
       match_lenders_by_narrative: {

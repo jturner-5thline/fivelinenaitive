@@ -31,6 +31,8 @@ project_id = "tgkksvazruzbghssnxde"
     verify_jwt = false
   [functions.copilot-chat]
     verify_jwt = false
+  [functions.embed-claap-transcripts]
+    verify_jwt = false
   [functions.daily-crm-update-scan]
     verify_jwt = false
   [functions.dashboard-chat]

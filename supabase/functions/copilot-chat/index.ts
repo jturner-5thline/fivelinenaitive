@@ -1374,6 +1374,23 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "search_claap_transcripts",
+      description: "Semantic (meaning-based) search across ALL Claap call transcripts. Use whenever the user asks what was discussed, said, promised, agreed, objected to, or mentioned in ANY call — even when they don't know exact keywords, or want to look across multiple deals. Returns the most relevant transcript passages with meeting title, deal, timestamp, and a link back to the transcript.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Natural language question or topic (e.g. 'objections about personal guarantees', 'discussion of ARR growth')." },
+          deal_id: { type: "string", description: "Optional: restrict search to a single deal." },
+          limit: { type: "number", description: "Max passages to return. Default 8, max 20." },
+          min_similarity: { type: "number", description: "Cosine similarity floor 0-1. Default 0.3." },
+        },
+        required: ["query"],
+      },
+    },
+  },
   // ── Kitchen-sink read tools ─────────────────────────────────
   // These return EVERYTHING the AI could need about an entity in
   // a single round-trip. Use them whenever the user asks any
@@ -2451,7 +2468,7 @@ function selectToolsWithScopes(
     "get_claap_meeting_full", "list_unmatched_claap_meetings",
     "get_claap_routing_queue", "list_claap_skipped_calls", "get_claap_webhook_errors",
     // Always-available Claap transcripts for any deal (searchable summaries + full transcript).
-    "get_deal_call_transcripts", "get_deal_claap_recordings",
+    "get_deal_call_transcripts", "get_deal_claap_recordings", "search_claap_transcripts",
     // Always-available FinServ ops (5th Line internal pipeline).
     "get_finserv_pipeline_summary", "list_finserv_deals", "get_finserv_deal_full",
     "get_finserv_revenue_summary", "list_finserv_milestones",
@@ -5402,6 +5419,61 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         total_calls: results.length,
         calls: results,
       };
+    }
+    case "search_claap_transcripts": {
+      if (!args.query || typeof args.query !== "string") {
+        return { error: "query is required" };
+      }
+      const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+      if (!lovableApiKey) return { error: "Semantic search unavailable (missing gateway key)" };
+
+      const limit = Math.min(Math.max(Number(args.limit) || 8, 1), 20);
+      const minSim = Math.min(Math.max(Number(args.min_similarity) || 0.3, 0), 1);
+
+      try {
+        const embResp = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${lovableApiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "openai/text-embedding-3-small",
+            input: String(args.query).slice(0, 4000),
+          }),
+        });
+        if (!embResp.ok) {
+          const t = await embResp.text();
+          return { error: `Embedding failed: ${embResp.status}`, detail: t.slice(0, 300) };
+        }
+        const embJson = await embResp.json();
+        const qEmb = embJson.data?.[0]?.embedding;
+        if (!qEmb) return { error: "No embedding returned" };
+
+        const { data: matches, error } = await supabase.rpc("match_claap_chunks", {
+          query_embedding: JSON.stringify(qEmb),
+          match_count: limit,
+          filter_deal_id: args.deal_id || null,
+          min_similarity: minSim,
+        });
+        if (error) return { error: error.message };
+
+        const results = (matches || []).map((r: any) => ({
+          deal_id: r.deal_id,
+          deal_company: r.deal_company,
+          meeting_title: r.meeting_title,
+          recorded_at: r.recorded_at,
+          similarity: Number(r.similarity?.toFixed(3)),
+          passage: r.chunk_text,
+          transcript_id: r.transcript_id,
+          claap_meeting_id: r.claap_meeting_id,
+        }));
+        return {
+          query: args.query,
+          match_count: results.length,
+          results,
+          note: results.length === 0 ? "No matching passages. Transcript may still be embedding; try again shortly." : undefined,
+        };
+      } catch (e) {
+        return { error: String((e as Error).message || e) };
+      }
     }
     case "get_deal_full": {
       // Resolve deal id (by id or by name search)
@@ -9438,7 +9510,7 @@ EDITING A PENDING TASK DRAFT (apply when the LAST assistant turn already emitted
 - Signals that the user is correcting a pending draft (treat ANY of these as correction intent when the previous assistant turn contained a create_task card that hasn't been confirmed): "change the assignee to <name>", "assign it/that/them to <name> instead", "reassign to <name>", "make it due <date>", "change the due date to <date>", "move it to <date>", "call it '<new title>'" / "title it '<new title>'" / "rename it to '<new title>'", "link it to <deal>", "add a note that <…>", "not <old value>, <new value>", "actually, <field> should be <value>", and similar short mutations of a specific field. When in doubt between "correction of pending draft" and "brand new task with a similar name", prefer correction — the client replace-in-place is safe because it keys on (title, deal_id).
 
 DELETING / CANCELLING A COPILOT-CREATED TASK (apply when the user asks to delete, cancel, remove, undo, retract, or "never mind" a task — e.g. "delete that task", "cancel the last task", "remove the task I just made for James", "undo the reminder about the daily briefing", "actually kill that task", "nevermind, don't do that one"):
-- STATE OF THE WORLD: The `tasks` DB table is the ONLY source of truth. Do NOT rely on conversation memory to decide whether a task exists. A task the model "remembers" proposing may already be PERSISTED — create_task writes to the DB the moment the user clicks Confirm & create on the approval card, even if the model never sees an explicit "I approved it" turn.
+- STATE OF THE WORLD: The \`tasks\` DB table is the ONLY source of truth. Do NOT rely on conversation memory to decide whether a task exists. A task the model "remembers" proposing may already be PERSISTED — create_task writes to the DB the moment the user clicks Confirm & create on the approval card, even if the model never sees an explicit "I approved it" turn.
 - REQUIRED FLOW:
   1. Call find_recent_copilot_tasks FIRST — filter by the user's clues (title fragment, assignee, deal). Default window is the last 3 hours; widen with within_minutes only if the user says "the one from yesterday" etc.
   2. If ONE match → call delete_task with that task_id in the same turn. The tool returns a confirm card the user must approve; the task is only deleted after the click.
@@ -10150,7 +10222,7 @@ READ TOOLS:
 - get_outstanding_items, get_deal_milestones, get_data_room_documents, get_deal_memo, get_deal_writeup, get_activity_log, get_deal_lenders, get_tasks, get_deals_task_coverage, get_deal, search_deals, search_lenders, get_pipeline_summary, get_deal_health
 
 PORTFOLIO TASK-COVERAGE QUERIES:
-- For any portfolio-scope task question ("which deals need tasks?", "what deals don't have tasks?", "deals with no open tasks", "deals with overdue tasks", "top deals by task count"), call get_deals_task_coverage ONCE with the right `has` filter — never loop search_deals + get_tasks per deal.
+- For any portfolio-scope task question ("which deals need tasks?", "what deals don't have tasks?", "deals with no open tasks", "deals with overdue tasks", "top deals by task count"), call get_deals_task_coverage ONCE with the right \`has\` filter — never loop search_deals + get_tasks per deal.
 - Answer as a short bullet list of deal names (add "— <n> open" or "— no tasks" when helpful). Keep it concise; no tables, no JSON, no per-deal paragraphs. If the list is long, show the first 15 and note the total remaining.
 
 ADMIN AGENT — DUTY 1 (VERIFY DEAL INFORMATION):
