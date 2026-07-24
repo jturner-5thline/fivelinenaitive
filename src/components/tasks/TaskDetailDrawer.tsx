@@ -1049,6 +1049,19 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {followupEmailOpen && (
+        <DraftEmailToClientContactDialog
+          open={followupEmailOpen}
+          onOpenChange={setFollowupEmailOpen}
+          dealId={task.deal_id ?? null}
+          dealName={(task as any).deal?.name ?? null}
+          contactName={null}
+          contactEmail={followupRecipients[0] ?? null}
+          initialToRecipients={followupRecipients}
+          initialSubject={followupSubject}
+          headerTitle="Send follow-up email"
+        />
+      )}
     </div>
   );
 }
