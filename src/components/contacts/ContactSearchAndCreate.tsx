@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, Loader2, Plus, Search, UserPlus } from 'lucide-react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,9 +35,7 @@ interface Props {
 export function ContactSearchAndCreate({ open, onSelect, selectedName, autoFocus }: Props) {
   const { company } = useCompany();
   const [search, setSearch] = useState('');
-  const [results, setResults] = useState<PickedContact[]>([]);
-  const [loading, setLoading] = useState(false);
-  const searchAbort = useRef(0);
+  const [debounced, setDebounced] = useState('');
   const createContact = useCreateContact();
   const [showCreate, setShowCreate] = useState(false);
   const [newFirst, setNewFirst] = useState('');
@@ -46,7 +45,7 @@ export function ContactSearchAndCreate({ open, onSelect, selectedName, autoFocus
   useEffect(() => {
     if (!open) {
       setSearch('');
-      setResults([]);
+      setDebounced('');
       setShowCreate(false);
       setNewFirst('');
       setNewLast('');
@@ -55,34 +54,37 @@ export function ContactSearchAndCreate({ open, onSelect, selectedName, autoFocus
   }, [open]);
 
   useEffect(() => {
-    if (!open || !company?.id) return;
-    const q = search.trim();
-    const myToken = ++searchAbort.current;
-    setLoading(true);
-    const t = setTimeout(async () => {
-      try {
-        let query = supabase
-          .from('contacts')
-          .select('id, first_name, last_name, full_name, email')
-          .eq('org_company_id', company.id)
-          .order('full_name', { ascending: true })
-          .limit(10);
-        if (q.length > 0) {
-          const escaped = q.replace(/[\\%_,()]/g, (m) => '\\' + m);
-          const pat = `%${escaped}%`;
-          query = query.or(
-            `full_name.ilike.${pat},first_name.ilike.${pat},last_name.ilike.${pat},email.ilike.${pat}`,
-          );
-        }
-        const { data } = await query;
-        if (myToken !== searchAbort.current) return;
-        setResults((data || []) as PickedContact[]);
-      } finally {
-        if (myToken === searchAbort.current) setLoading(false);
-      }
-    }, 150);
+    const t = setTimeout(() => setDebounced(search.trim()), 250);
     return () => clearTimeout(t);
-  }, [search, open, company?.id]);
+  }, [search]);
+
+  const { data: results = [], isFetching } = useQuery<PickedContact[]>({
+    queryKey: ['contact-search-and-create', company?.id, debounced.toLowerCase()],
+    enabled: open && !!company?.id,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const q = debounced;
+      let query = supabase
+        .from('contacts')
+        .select('id, first_name, last_name, full_name, email')
+        .eq('org_company_id', company!.id)
+        .limit(10);
+      if (q.length > 0) {
+        const escaped = q.replace(/[\\%_,()]/g, (m) => '\\' + m);
+        const pat = `%${escaped}%`;
+        // Search only full_name + email — narrower OR is much faster than
+        // fanning across first/last/full/email on a large contacts table.
+        query = query.or(`full_name.ilike.${pat},email.ilike.${pat}`);
+      } else {
+        query = query.order('full_name', { ascending: true });
+      }
+      const { data } = await query;
+      return (data || []) as PickedContact[];
+    },
+  });
+  const loading = isFetching && results.length === 0;
 
   const openCreate = () => {
     const q = search.trim();
