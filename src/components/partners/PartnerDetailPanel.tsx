@@ -14,6 +14,7 @@ import { PartnerMemoModal } from '@/components/partners/PartnerMemoModal';
 import { PartnerLinkedCompanyContacts } from '@/components/partners/PartnerLinkedCompanyContacts';
 import { PartnerPromotionDialog, getPromotionMode, type PromotionMode, type PromotionResult } from '@/components/partners/PartnerPromotionDialog';
 import { PartnerTierBadge, PartnerTier4WarningBadge } from '@/components/partners/PartnerTierBadge';
+import { PartnerTierExplainer } from '@/components/partners/PartnerTierExplainer';
 import { usePartnerTier, PARTNER_TIER_OVERRIDE_EMAILS, type AutoTier } from '@/hooks/usePartnerTier';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -298,6 +299,7 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
                 <p className="text-xs text-slate-500 mt-1">Added {format(new Date(partner.created_at), 'MMM d, yyyy')}</p>
                 <div className="mt-3 flex items-center flex-wrap gap-1.5">
                   <PartnerTierBadge info={tierInfo} size="md" />
+                  <PartnerTierExplainer info={tierInfo} />
                   <PartnerTier4WarningBadge info={tierInfo} />
                   {canOverrideTier && (
                     <Popover open={overrideOpen} onOpenChange={setOverrideOpen}>
