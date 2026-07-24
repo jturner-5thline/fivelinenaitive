@@ -403,6 +403,18 @@ export function MeetingClaapInlineAction(props: Props) {
       );
       if (error) throw error;
       const canonicalId = (data as any)?.recording_id as string | undefined;
+      // Pull transcript / notes for the newly-linked recording so the meeting
+      // surfaces Claap notes immediately (matching the auto-match path).
+      try {
+        await supabase.functions.invoke('claap-sync-recording-content', {
+          body: {
+            recording_id: canonicalId || undefined,
+            external_id: ranked.recording.id,
+          },
+        });
+      } catch (err) {
+        console.warn('claap-sync-recording-content failed', err);
+      }
       // Write event_claap_recordings mirror (org-scoped) so the inline button shows "Linked".
       if (company?.id) {
         try {
