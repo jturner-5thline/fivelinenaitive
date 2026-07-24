@@ -36,13 +36,20 @@ export function PartnerTierBadge({
   }
   const s = TIER_STYLES[info.tier];
   const sizing = size === 'md' ? 'px-2 py-0.5 text-xs' : 'px-1.5 py-0.5 text-[10px]';
+  const isNewTier4 = info.tier === 4 && !info.manualOverride && info.totalDeals === 0;
   return (
     <span
       className={`inline-flex items-center gap-1 rounded font-semibold border ${sizing} ${s.className}`}
-      title={info.manualOverride ? `Manual override${info.overrideReason ? `: ${info.overrideReason}` : ''}` : undefined}
+      title={
+        info.manualOverride
+          ? `Manual override${info.overrideReason ? `: ${info.overrideReason}` : ''}`
+          : isNewTier4
+            ? 'New partner — no attributed deals yet. Tier updates automatically as deals are sent.'
+            : undefined
+      }
     >
       {info.tier === 4 && <Clock className="h-3 w-3" />}
-      {s.label}
+      {isNewTier4 ? `${s.label} (new)` : s.label}
       {info.manualOverride && <Shield className="h-3 w-3 opacity-80" />}
     </span>
   );
