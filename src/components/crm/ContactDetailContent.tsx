@@ -214,9 +214,6 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-semibold tracking-tight">{contact.full_name || 'Unnamed Contact'}</h1>
-                <Badge className={cn('text-[10px]', lifecycleColors[contact.lifecycle_stage] || 'bg-muted text-muted-foreground')}>
-                  {LIFECYCLE_STAGES.find(s => s.value === contact.lifecycle_stage)?.label}
-                </Badge>
                 {contact.buying_role && (
                   <Badge variant="outline" className="text-[10px]">
                     {BUYING_ROLES.find(r => r.value === contact.buying_role)?.label}
