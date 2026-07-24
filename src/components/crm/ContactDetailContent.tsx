@@ -235,6 +235,15 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
 
             <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-xs text-muted-foreground hidden md:inline">Owner · {ownerName}</span>
+              {contact.linkedin_url && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(contact.linkedin_url!, '_blank', 'noopener,noreferrer')}
+                >
+                  <Linkedin className="h-3.5 w-3.5 mr-1" /> Open LinkedIn
+                </Button>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button size="sm">
