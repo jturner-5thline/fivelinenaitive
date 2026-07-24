@@ -151,7 +151,7 @@ export function DealCommunicationsTab({ dealId }: Props) {
           const [cacheRes, gmailRes] = await Promise.all([
             supabase
               .from('email_cache')
-              .select('gmail_message_id, thread_id, subject, from_email, from_name, to_emails, snippet, received_at')
+              .select('gmail_message_id, thread_id, subject, from_email, from_name, to_emails, snippet, received_at, attachments')
               .or([orFrom, orTo, orCc].join(','))
               .order('received_at', { ascending: false, nullsFirst: false })
               .limit(200),
@@ -163,18 +163,23 @@ export function DealCommunicationsTab({ dealId }: Props) {
               .limit(200),
           ]);
           const cmsgs = [...(cacheRes.data ?? []), ...(gmailRes.data ?? [])];
-          fromContacts = cmsgs.map((m: any) => ({
-            key: `cm:${m.gmail_message_id}`,
-            source: 'deal_emails',
-            message_id: m.gmail_message_id,
-            thread_id: m.thread_id ?? null,
-            subject: m.subject ?? '(no subject)',
-            from: m.from_name || m.from_email || '',
-            to: (m.to_emails ?? []) as string[],
-            preview: (m.snippet ?? '').slice(0, 220),
-            direction: null,
-            sent_at: m.received_at ?? null,
-          }));
+          fromContacts = cmsgs.map((m: any) => {
+            const atts = normalizeAttachmentsFromJson(m.attachments);
+            return {
+              key: `cm:${m.gmail_message_id}`,
+              source: 'deal_emails' as const,
+              message_id: m.gmail_message_id,
+              thread_id: m.thread_id ?? null,
+              subject: m.subject ?? '(no subject)',
+              from: m.from_name || m.from_email || '',
+              to: (m.to_emails ?? []) as string[],
+              preview: (m.snippet ?? '').slice(0, 220),
+              direction: null,
+              sent_at: m.received_at ?? null,
+              has_attachments: atts.length > 0,
+              attachments: atts,
+            };
+          });
         }
 
         // Live Nylas fetch: email_cache is populated only from INBOX sync,
@@ -207,6 +212,7 @@ export function DealCommunicationsTab({ dealId }: Props) {
                 ? new Date(Number(m.date) * 1000).toISOString()
                 : (m.received_at ?? null);
               const id = m.id || m.gmail_message_id;
+              const atts = normalizeAttachmentsFromJson(m.attachments ?? m.files);
               return {
                 key: `lv:${id}`,
                 source: 'deal_emails' as const,
@@ -218,6 +224,8 @@ export function DealCommunicationsTab({ dealId }: Props) {
                 preview: (m.snippet ?? '').slice(0, 220),
                 direction: null,
                 sent_at: sentAt,
+                has_attachments: atts.length > 0 || !!m.has_attachments,
+                attachments: atts,
               };
             });
           } catch (err) {
