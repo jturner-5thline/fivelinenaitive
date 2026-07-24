@@ -133,7 +133,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
     }
     setLoadingFollowup(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('calendar_events')
         .select('title, attendees, organizer_email')
         .eq('nylas_event_id', nylasEventId)
