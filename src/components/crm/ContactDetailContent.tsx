@@ -134,7 +134,10 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
   const filteredActivities = useMemo(
     () => (activityFilter === 'all'
       ? activities
-      : activities.filter((a: any) => a.activity_type === activityFilter)),
+      : activities.filter((a: any) => (
+          a.activity_type === activityFilter
+          || (activityFilter === 'meeting' && a.activity_type === 'claap_call')
+        ))),
     [activities, activityFilter],
   );
   const grouped = useMemo(() => {
