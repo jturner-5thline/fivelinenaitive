@@ -72,7 +72,14 @@ export function useRecordPartnerTierAuto(
           _reason: null,
           _thresholds: thresholdsSnapshot(tierInfo),
         });
-        if (data) qc.invalidateQueries({ queryKey: ['partner_tier_history', partnerId] });
+        if (data) {
+          qc.invalidateQueries({ queryKey: ['partner_tier_history', partnerId] });
+          // Fan out in-app + email notifications for auto tier changes.
+          // The edge function itself filters out baseline (first-ever) snapshots.
+          supabase.functions
+            .invoke('notify-partner-tier-change', { body: { historyId: data } })
+            .catch(() => {/* best-effort */});
+        }
       } catch {
         // best-effort
       }
