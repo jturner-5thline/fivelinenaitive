@@ -5455,16 +5455,43 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         });
         if (error) return { error: error.message };
 
-        const results = (matches || []).map((r: any) => ({
-          deal_id: r.deal_id,
-          deal_company: r.deal_company,
-          meeting_title: r.meeting_title,
-          recorded_at: r.recorded_at,
-          similarity: Number(r.similarity?.toFixed(3)),
-          passage: r.chunk_text,
-          transcript_id: r.transcript_id,
-          claap_meeting_id: r.claap_meeting_id,
-        }));
+        // Enrich with recording_url so the model can emit clickable citations
+        // pointing straight at the source Claap meeting.
+        const meetingIds = Array.from(
+          new Set((matches || []).map((r: any) => r.claap_meeting_id).filter(Boolean)),
+        );
+        const urlByMeeting = new Map<string, string>();
+        if (meetingIds.length > 0) {
+          const { data: metaRows } = await supabase
+            .from("claap_meetings")
+            .select("id, recording_url")
+            .in("id", meetingIds);
+          for (const row of metaRows || []) {
+            if (row?.recording_url) urlByMeeting.set(row.id as string, row.recording_url as string);
+          }
+        }
+        const results = (matches || []).map((r: any) => {
+          const recording_url = urlByMeeting.get(r.claap_meeting_id) || null;
+          const dateLabel = r.recorded_at ? new Date(r.recorded_at).toISOString().slice(0, 10) : "";
+          return {
+            deal_id: r.deal_id,
+            deal_company: r.deal_company,
+            meeting_title: r.meeting_title,
+            recorded_at: r.recorded_at,
+            similarity: Number(r.similarity?.toFixed(3)),
+            passage: r.chunk_text,
+            transcript_id: r.transcript_id,
+            claap_meeting_id: r.claap_meeting_id,
+            recording_url,
+            citation: {
+              type: "claap",
+              id: r.claap_meeting_id,
+              url: recording_url,
+              label: [r.meeting_title || "Claap meeting", r.deal_company, dateLabel].filter(Boolean).join(" · "),
+              deal_id: r.deal_id,
+            },
+          };
+        });
         return {
           query: args.query,
           match_count: results.length,
