@@ -198,7 +198,8 @@ export type AiActionType =
   | 'draft_email'
   | 'escalate'
   | 'reassign_deal'
-  | 'create_new_deal';
+  | 'create_new_deal'
+  | 'add_outstanding_items';
 
 export type AiActionStatus =
   | 'pending'
