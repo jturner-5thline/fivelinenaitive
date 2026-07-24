@@ -166,20 +166,38 @@ const liveRecordingsCache = new Map<string, {
   promise?: Promise<ClaapRecording[]>;
 }>();
 
+function recordingMatchesSearch(recording: ClaapRecording, search?: string): boolean {
+  const q = search?.trim().toLowerCase();
+  if (!q) return true;
+  const participants = recording.meeting?.participants || [];
+  return (
+    recording.title?.toLowerCase().includes(q) ||
+    recording.recorder?.name?.toLowerCase().includes(q) ||
+    recording.recorder?.email?.toLowerCase().includes(q) ||
+    participants.some((p) => p.name?.toLowerCase().includes(q) || p.email?.toLowerCase().includes(q)) ||
+    recording.labels?.some((l) => l.toLowerCase().includes(q))
+  );
+}
+
 async function fetchLiveRecordings(search?: string): Promise<ClaapRecording[]> {
-  const cacheKey = (search || '').trim().toLowerCase();
+  // The Claap list endpoint only returns recent recordings; the edge function
+  // filters the same list when `search` is supplied. Fetch the live list once
+  // per minute and filter locally so multiple meeting cards do not fire one
+  // live Claap request per distinct meeting title.
+  const cacheKey = '__all__';
   const cached = liveRecordingsCache.get(cacheKey);
   const now = Date.now();
 
-  if (cached?.promise) return cached.promise;
-  if (cached && now - cached.at < LIVE_RECORDINGS_CACHE_TTL_MS) return cached.recordings;
+  if (cached?.promise) return (await cached.promise).filter((r) => recordingMatchesSearch(r, search));
+  if (cached && now - cached.at < LIVE_RECORDINGS_CACHE_TTL_MS) {
+    return cached.recordings.filter((r) => recordingMatchesSearch(r, search));
+  }
 
   const promise = (async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return [];
 
     const params = new URLSearchParams({ action: 'list', limit: '100' });
-    if (search && search.trim().length > 0) params.set('search', search.trim());
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claap-recordings?${params.toString()}`;
     const response = await fetch(url, {
       headers: {
@@ -201,7 +219,7 @@ async function fetchLiveRecordings(search?: string): Promise<ClaapRecording[]> {
   try {
     const recordings = await promise;
     liveRecordingsCache.set(cacheKey, { at: Date.now(), recordings });
-    return recordings;
+    return recordings.filter((r) => recordingMatchesSearch(r, search));
   } catch (err) {
     liveRecordingsCache.delete(cacheKey);
     throw err;
