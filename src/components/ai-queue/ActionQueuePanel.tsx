@@ -1799,6 +1799,16 @@ function DetailPane({
     return <CreateDealApprovalCard item={item} />;
   }
 
+  // Inbound lender info-request → dedicated "Add outstanding items" card
+  // where the reviewer confirms/edits the extracted items before insert.
+  if (item.action_type === 'add_outstanding_items') {
+    return (
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <AddOutstandingItemsCard item={item} />
+      </div>
+    );
+  }
+
   // Bundle view — multiple "Nudge …" email drafts combined into one queue item.
   const bundleChildren = (item as any).__bundle as QueuedAiAction[] | undefined;
   if (bundleChildren && bundleChildren.length > 0) {
