@@ -392,7 +392,10 @@ function MessageAttachments({ item }: { item: CommItem }) {
         body: { action: 'get', message_id: messageId },
       });
       if (error) throw error;
-      const list = normalizeAttachmentsFromJson((data as any)?.attachments);
+      const payload = data as any;
+      const list = normalizeAttachmentsFromJson(
+        payload?.message?.attachments ?? payload?.attachments,
+      );
       setAtts(list);
       setLoaded(true);
       if (list.length === 0) toast.info('No downloadable attachments on this message.');
