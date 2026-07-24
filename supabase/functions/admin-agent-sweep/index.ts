@@ -28,6 +28,7 @@ import {
 } from "../_shared/adminAgentAudit.ts";
 import { enqueueAdminAgentSelections } from "../_shared/adminAgentQueue.ts";
 import { runDealAdminAgentAnalysis } from "../_shared/dealAdminAgentIntelligence.ts";
+import { rescheduleFollowupTasksForCompany } from "../_shared/rescheduleFollowupTasks.ts";
 import {
   AGENT_KEYS,
   isAgentEnabledForCompany,
@@ -342,6 +343,25 @@ Deno.serve(async (req) => {
         perCompany.new_queue_rows += intel.queue_rows_inserted;
       } catch (e) {
         (perCompany as any).intelligence_error = (e as Error)?.message ?? "unknown";
+      }
+
+      // Deterministic follow-up task auto-reschedule (runs every sweep for
+      // every activated user; independent of the LLM pass).
+      try {
+        const reschedule = await rescheduleFollowupTasksForCompany({
+          supabase,
+          companyId,
+          activatedUserIds: Array.from(activatedUserIds ?? []),
+        });
+        (perCompany as any).reschedule = {
+          scanned: reschedule.scanned_tasks,
+          matched: reschedule.matched_tasks,
+          rescheduled: reschedule.rescheduled_tasks,
+          skipped_already_future: reschedule.skipped_already_future,
+          errors: reschedule.errors.length,
+        };
+      } catch (e) {
+        (perCompany as any).reschedule_error = (e as Error)?.message ?? "unknown";
       }
     } catch (e) {
       perCompany.error = (e as Error)?.message ?? "unknown error";
