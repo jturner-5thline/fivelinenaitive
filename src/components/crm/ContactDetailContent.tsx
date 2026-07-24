@@ -428,6 +428,38 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                     value={(contact as any).contact_type}
                     onChange={(v) => handleQuickUpdate('contact_type', v)}
                   />
+                  {(() => {
+                    const types = String((contact as any).contact_type || '')
+                      .split(/\s*;\s*/)
+                      .map((s) => s.trim().toLowerCase())
+                      .filter(Boolean);
+                    if (!types.includes('referral source')) return null;
+                    const refAgreement = Boolean((contact as any).referral_agreement_on_file);
+                    const w9 = Boolean((contact as any).w9_on_file);
+                    return (
+                      <div className="mt-2 rounded-md border border-border/60 bg-muted/20 p-2 space-y-1.5">
+                        <p className="text-[10px] text-muted-foreground uppercase">Referral Source Docs</p>
+                        <label className="flex items-center gap-2 text-xs cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={refAgreement}
+                            onChange={(e) => handleQuickUpdate('referral_agreement_on_file', e.target.checked)}
+                            className="h-3.5 w-3.5 rounded border-border accent-primary"
+                          />
+                          Referral Agreement on file
+                        </label>
+                        <label className="flex items-center gap-2 text-xs cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={w9}
+                            onChange={(e) => handleQuickUpdate('w9_on_file', e.target.checked)}
+                            className="h-3.5 w-3.5 rounded border-border accent-primary"
+                          />
+                          W-9 on file
+                        </label>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
