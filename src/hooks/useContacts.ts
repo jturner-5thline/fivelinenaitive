@@ -357,6 +357,12 @@ export function useContactActivities(contactId: string | undefined) {
       }
 
       let emailActivities: any[] = [];
+      // Skip emails already tagged as activities in the DB (from back-fill or prior tagging).
+      const taggedMsgIds = new Set<string>(
+        activities
+          .map((a: any) => a?.metadata?.gmail_message_id)
+          .filter((x: any): x is string => typeof x === 'string' && x.length > 0),
+      );
       if (emails.size > 0) {
         const list = Array.from(emails);
         const inList = list.map((e) => `"${e}"`).join(',');
@@ -367,7 +373,9 @@ export function useContactActivities(contactId: string | undefined) {
           .or(`from_email.in.(${inList}),to_emails.ov.${arrList},cc_emails.ov.${arrList}`)
           .order('received_at', { ascending: false, nullsFirst: false })
           .limit(300);
-        emailActivities = (msgs || []).map((m: any) => {
+        emailActivities = (msgs || [])
+          .filter((m: any) => !taggedMsgIds.has(m.gmail_message_id))
+          .map((m: any) => {
           const fromLc = String(m.from_email || '').toLowerCase();
           const isInbound = emails.has(fromLc);
           return {
