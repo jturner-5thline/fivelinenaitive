@@ -209,8 +209,8 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
     <>
       <div className="flex flex-col">
         {/* Sticky header */}
-        <header className="sticky top-0 z-20 -mx-1 px-1 bg-background/95 backdrop-blur border-b">
-          <div className="py-3 flex items-start justify-between gap-4 flex-wrap">
+        <header className="sticky top-0 z-20 rounded-lg border border-blue-500/25 bg-gradient-to-br from-[hsl(220,30%,10%)] to-[hsl(260,15%,5%)] shadow-md backdrop-blur">
+          <div className="px-4 py-3 flex items-start justify-between gap-4 flex-wrap">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-semibold tracking-tight">{contact.full_name || 'Unnamed Contact'}</h1>
