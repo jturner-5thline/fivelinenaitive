@@ -85,6 +85,7 @@ export function EventFollowUpTasksPanel({ eventId }: { eventId: string }) {
     }
     toast.success(nextComplete ? 'Marked complete' : 'Reopened task');
     qc.invalidateQueries({ queryKey: ['tasks'] });
+    qc.invalidateQueries({ queryKey: ['eod-followup-task-status'] });
   };
 
   return (

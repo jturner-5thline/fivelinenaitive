@@ -631,6 +631,43 @@ export function EndOfDayTab({
   //   4. Any non-internal attendee's email domain matches the deal's
   //      company URL domain or the deal's client-contact email domain.
   const visibleEventIds = useMemo(() => outstanding.map(e => e.id), [outstanding]);
+  // Sync EOD item status with linked "Follow up on …" tasks. When the task
+  // is marked complete anywhere (task drawer, tasks page, this panel), the
+  // corresponding EOD event auto-resolves so the two surfaces stay in sync.
+  const { data: completedFollowUpEventIds = [] } = useQuery<string[]>({
+    queryKey: ['eod-followup-task-status', userId, visibleEventIds.join(',')],
+    enabled: !!userId && visibleEventIds.length > 0,
+    staleTime: 15_000,
+    queryFn: async () => {
+      const orFilter = visibleEventIds
+        .flatMap(id => [`source_calendar_event_id.eq.${id}`, `nylas_event_id.eq.${id}`])
+        .join(',');
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('source_calendar_event_id, nylas_event_id, status')
+        .or(orFilter)
+        .eq('status', 'complete')
+        .is('archived_at', null);
+      if (error) return [];
+      const visSet = new Set(visibleEventIds);
+      const hits = new Set<string>();
+      for (const r of (data || []) as Array<{ source_calendar_event_id: string | null; nylas_event_id: string | null }>) {
+        if (r.source_calendar_event_id && visSet.has(r.source_calendar_event_id)) hits.add(r.source_calendar_event_id);
+        if (r.nylas_event_id && visSet.has(r.nylas_event_id)) hits.add(r.nylas_event_id);
+      }
+      return Array.from(hits);
+    },
+  });
+  useEffect(() => {
+    for (const id of completedFollowUpEventIds) {
+      if (!isResolved(id)) {
+        clearResolved(id);
+        activity.append(id, { kind: 'resolved', by: userId, detail: 'Follow-up task completed' });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completedFollowUpEventIds]);
+
   const { data: dealLinkedEventIds } = useQuery<Set<string>>({
     queryKey: ['eod-deal-linked-events', company?.id, visibleEventIds.join(',')],
     enabled: !!company?.id && visibleEventIds.length > 0,
