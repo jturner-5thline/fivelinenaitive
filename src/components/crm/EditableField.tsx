@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, X, Pencil } from 'lucide-react';
+import { Check, X, Pencil, Loader2, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export type EditableFieldType =
   | 'text'
@@ -49,6 +50,20 @@ function normalize(value: string, type: EditableFieldType): string | number | nu
   return trimmed;
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const URL_RE = /^(https?:\/\/)?([\w-]+\.)+[\w-]{2,}(\/[^\s]*)?$/i;
+const TEL_RE = /^[+\d][\d\s().-]{5,}$/;
+
+function validate(raw: string, type: EditableFieldType): string | null {
+  const v = raw.trim();
+  if (v === '') return null;
+  if (type === 'email' && !EMAIL_RE.test(v)) return 'Enter a valid email address';
+  if (type === 'url' && !URL_RE.test(v)) return 'Enter a valid URL';
+  if (type === 'tel' && !TEL_RE.test(v)) return 'Enter a valid phone number';
+  if (type === 'number' && !Number.isFinite(Number(v))) return 'Enter a valid number';
+  return null;
+}
+
 /**
  * Inline editable detail-row field. Click to edit; Enter to save; Esc to cancel.
  * Multi-line + select variants render explicit Save/Cancel buttons.
@@ -68,12 +83,16 @@ export function EditableField({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<string>(value == null ? '' : String(value));
   const [selectQuery, setSelectQuery] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [internalSaving, setInternalSaving] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     if (!editing) {
       setDraft(value == null ? '' : String(value));
       setSelectQuery('');
+      setError(null);
     }
   }, [value, editing]);
 
@@ -85,20 +104,40 @@ export function EditableField({
   }, [editing]);
 
   const currentStr = value == null || value === '' ? '' : String(value);
+  const isSaving = saving || internalSaving;
 
   const commit = async () => {
+    const validationError = validate(draft, type);
+    if (validationError) {
+      setError(validationError);
+      inputRef.current?.focus();
+      return;
+    }
     const next = normalize(draft, type);
     const prev = value == null || value === '' ? null : (type === 'number' ? Number(value) : String(value));
     if (next === prev) {
       setEditing(false);
       return;
     }
-    await onSave(next);
-    setEditing(false);
+    try {
+      setInternalSaving(true);
+      setError(null);
+      await onSave(next);
+      setEditing(false);
+      setJustSaved(true);
+      window.setTimeout(() => setJustSaved(false), 1500);
+    } catch (e: any) {
+      const msg = e?.message || 'Failed to save';
+      setError(msg);
+      toast.error(`Couldn't save ${label}`, { description: msg });
+    } finally {
+      setInternalSaving(false);
+    }
   };
 
   const cancel = () => {
     setDraft(currentStr);
+    setError(null);
     setEditing(false);
   };
 
@@ -155,7 +194,18 @@ export function EditableField({
             onValueChange={async (v) => {
               setDraft(v);
               const prev = value == null || value === '' ? null : String(value);
-              if (v !== prev) await onSave(v === '' ? null : v);
+              if (v !== prev) {
+                try {
+                  setInternalSaving(true);
+                  await onSave(v === '' ? null : v);
+                  setJustSaved(true);
+                  window.setTimeout(() => setJustSaved(false), 1500);
+                } catch (e: any) {
+                  toast.error(`Couldn't save ${label}`, { description: e?.message || 'Failed to save' });
+                } finally {
+                  setInternalSaving(false);
+                }
+              }
               setEditing(false);
             }}
             open
@@ -195,18 +245,25 @@ export function EditableField({
           <Textarea
             ref={inputRef as any}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => { setDraft(e.target.value); if (error) setError(null); }}
             rows={4}
-            className="text-xs"
+            className={cn('text-xs', error && 'border-destructive focus-visible:ring-destructive')}
             placeholder={placeholder}
             onKeyDown={(e) => { if (e.key === 'Escape') cancel(); }}
+            aria-invalid={!!error}
+            aria-describedby={error ? `${label}-error` : undefined}
           />
+          {error && (
+            <p id={`${label}-error`} className="mt-1 flex items-center gap-1 text-[11px] text-destructive">
+              <AlertCircle className="h-3 w-3" /> {error}
+            </p>
+          )}
           <div className="flex justify-end gap-1 mt-1">
-            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancel} aria-label="Cancel">
+            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancel} aria-label="Cancel" disabled={isSaving}>
               <X className="h-3 w-3" />
             </Button>
-            <Button size="icon" className="h-6 w-6" onClick={commit} disabled={saving} aria-label="Save">
-              <Check className="h-3 w-3" />
+            <Button size="icon" className="h-6 w-6" onClick={commit} disabled={isSaving} aria-label="Save">
+              {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
             </Button>
           </div>
         </div>
@@ -222,19 +279,30 @@ export function EditableField({
             ref={inputRef as any}
             type={inputType}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            className="h-7 text-xs"
+            onChange={(e) => { setDraft(e.target.value); if (error) setError(null); }}
+            className={cn('h-7 text-xs', error && 'border-destructive focus-visible:ring-destructive')}
             placeholder={placeholder}
+            aria-invalid={!!error}
+            aria-describedby={error ? `${label}-error` : undefined}
             onKeyDown={(e) => {
               if (e.key === 'Enter') { e.preventDefault(); commit(); }
               if (e.key === 'Escape') { e.preventDefault(); cancel(); }
             }}
-            onBlur={() => { commit(); }}
+            onBlur={() => { if (!error) commit(); }}
           />
-          <Button size="icon" variant="ghost" className="h-6 w-6" onMouseDown={(e) => { e.preventDefault(); cancel(); }} aria-label="Cancel">
-            <X className="h-3 w-3" />
-          </Button>
+          {isSaving ? (
+            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+          ) : (
+            <Button size="icon" variant="ghost" className="h-6 w-6" onMouseDown={(e) => { e.preventDefault(); cancel(); }} aria-label="Cancel">
+              <X className="h-3 w-3" />
+            </Button>
+          )}
         </div>
+        {error && (
+          <p id={`${label}-error`} className="mt-1 flex items-center gap-1 text-[11px] text-destructive">
+            <AlertCircle className="h-3 w-3" /> {error}
+          </p>
+        )}
       </div>
     );
   }
@@ -249,7 +317,13 @@ export function EditableField({
     >
       <div className="flex items-center justify-between">
         <p className="text-[10px] text-foreground/80 uppercase font-semibold tracking-wide">{label}</p>
-        <Pencil className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-colors" />
+        {isSaving ? (
+          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+        ) : justSaved ? (
+          <Check className="h-3 w-3 text-emerald-500" />
+        ) : (
+          <Pencil className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-colors" />
+        )}
       </div>
       {renderDisplay()}
     </div>
