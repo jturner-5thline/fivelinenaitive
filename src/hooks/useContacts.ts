@@ -332,13 +332,80 @@ export function useContactActivities(contactId: string | undefined) {
     queryKey: ['contact-activities', contactId],
     queryFn: async () => {
       if (!contactId) return [];
-      const { data, error } = await supabase
-        .from('contact_activities')
-        .select('*')
-        .eq('contact_id', contactId)
-        .order('occurred_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
+      // Load logged activities + the contact's email addresses in parallel.
+      const [actRes, ctcRes] = await Promise.all([
+        supabase
+          .from('contact_activities')
+          .select('*')
+          .eq('contact_id', contactId)
+          .order('occurred_at', { ascending: false }),
+        supabase
+          .from('contacts')
+          .select('email, additional_emails')
+          .eq('id', contactId)
+          .maybeSingle(),
+      ]);
+      if (actRes.error) throw actRes.error;
+      const activities = actRes.data || [];
+
+      // Merge in emails to/from any address associated with the contact.
+      const emails = new Set<string>();
+      const c: any = ctcRes.data;
+      if (c?.email) emails.add(String(c.email).toLowerCase());
+      if (Array.isArray(c?.additional_emails)) {
+        for (const e of c.additional_emails) if (e) emails.add(String(e).toLowerCase());
+      }
+
+      let emailActivities: any[] = [];
+      // Skip emails already tagged as activities in the DB (from back-fill or prior tagging).
+      const taggedMsgIds = new Set<string>(
+        activities
+          .map((a: any) => a?.metadata?.gmail_message_id)
+          .filter((x: any): x is string => typeof x === 'string' && x.length > 0),
+      );
+      if (emails.size > 0) {
+        const list = Array.from(emails);
+        const inList = list.map((e) => `"${e}"`).join(',');
+        const arrList = `{${list.join(',')}}`;
+        const { data: msgs } = await supabase
+          .from('email_cache')
+          .select('gmail_message_id, thread_id, subject, snippet, from_email, from_name, to_emails, cc_emails, received_at')
+          .or(`from_email.in.(${inList}),to_emails.ov.${arrList},cc_emails.ov.${arrList}`)
+          .order('received_at', { ascending: false, nullsFirst: false })
+          .limit(300);
+        emailActivities = (msgs || [])
+          .filter((m: any) => !taggedMsgIds.has(m.gmail_message_id))
+          .map((m: any) => {
+          const fromLc = String(m.from_email || '').toLowerCase();
+          const isInbound = emails.has(fromLc);
+          return {
+            id: `email:${m.gmail_message_id}`,
+            contact_id: contactId,
+            activity_type: 'email',
+            subject: m.subject || '(no subject)',
+            body: m.snippet || '',
+            occurred_at: m.received_at,
+            created_at: m.received_at,
+            source: 'email_cache',
+            metadata: {
+              gmail_message_id: m.gmail_message_id,
+              thread_id: m.thread_id,
+              direction: isInbound ? 'inbound' : 'outbound',
+              from: m.from_name || m.from_email,
+              to: m.to_emails || [],
+            },
+            __readOnly: true,
+          };
+        });
+      }
+
+      const merged = [...activities, ...emailActivities];
+      merged.sort((a: any, b: any) => {
+        const at = new Date(a.occurred_at || a.created_at || 0).getTime();
+        const bt = new Date(b.occurred_at || b.created_at || 0).getTime();
+        return bt - at;
+      });
+      return merged;
     },
     enabled: !!contactId,
   });
