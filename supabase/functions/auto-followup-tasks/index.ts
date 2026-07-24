@@ -113,11 +113,13 @@ Deno.serve(async (req) => {
       const eventTitle = (ev.title || "Untitled event").trim();
       const dueDate = (ev.start_time || ev.end_time || new Date().toISOString()).slice(0, 10);
       const taskTitle = `Follow up on ${eventTitle}`;
+      const description = buildAttendeesDescription(eventTitle, attendees, ownerEmail);
 
       const { data: inserted, error: insErr } = await admin
         .from("tasks")
         .insert({
           title: taskTitle,
+          description,
           assigned_to: ev.user_id,
           assigned_by: ev.user_id,
           created_by: ev.user_id,
@@ -149,6 +151,7 @@ Deno.serve(async (req) => {
           userId: ev.user_id,
           title: taskTitle,
           dueDate,
+          notes: description,
         });
         await admin.from("tasks").update({
           asana_task_gid: asanaResult.gid ?? null,
@@ -315,11 +318,16 @@ async function scanNylasForInternalUsers(
           const taskTitle = `Follow up on ${eventTitle}`;
           const startMs = extractStartMs(ev.when) ?? endMs;
           const dueDate = new Date(startMs).toISOString().slice(0, 10);
+          const attendeeEmails = participants
+            .map((p: any) => (p?.email || "").trim())
+            .filter((e: string) => !!e);
+          const description = buildAttendeesDescription(eventTitle, attendeeEmails, ownerEmail);
 
           const { data: inserted, error: insErr } = await admin
             .from("tasks")
             .insert({
               title: taskTitle,
+              description,
               assigned_to: tok.user_id,
               assigned_by: tok.user_id,
               created_by: tok.user_id,
@@ -348,6 +356,7 @@ async function scanNylasForInternalUsers(
               userId: tok.user_id,
               title: taskTitle,
               dueDate,
+              notes: description,
             });
             await admin.from("tasks").update({
               asana_task_gid: asanaResult.gid ?? null,
