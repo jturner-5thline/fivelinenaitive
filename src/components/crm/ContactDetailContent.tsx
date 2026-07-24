@@ -561,25 +561,28 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
             <div className="rounded-lg border border-border/60 bg-card px-3 py-1 min-w-0">
               <DetailGroup title="Additional Details">
                 <div className="space-y-3 text-sm min-w-0">
-                  <EditableField label="Department" type="text" value={contact.department} onSave={(v) => handleQuickUpdate('department', v)} />
-                  <EditableField label="LinkedIn URL" type="url" asLink value={contact.linkedin_url} onSave={(v) => handleQuickUpdate('linkedin_url', v)} />
-                  <EditableField label="Timezone" type="text" value={contact.timezone} onSave={(v) => handleQuickUpdate('timezone', v)} />
-                  <EditableField label="Lead Source" type="text" value={contact.lead_source} onSave={(v) => handleQuickUpdate('lead_source', v)} />
-                  <EditableField label="Source System" type="text" value={contact.source_system} onSave={(v) => handleQuickUpdate('source_system', v)} />
-                  {contact.custom_fields && Object.keys(contact.custom_fields).length > 0 && (
-                    <div className="space-y-2 pt-1 border-t border-border/40">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Custom Fields</p>
-                      {Object.entries(contact.custom_fields).map(([key, value]) => (
-                        <EditableField
-                          key={key}
-                          label={key}
-                          type="text"
-                          value={value == null ? '' : String(value)}
-                          onSave={(v) => handleQuickUpdate('custom_fields', { ...(contact.custom_fields || {}), [key]: v })}
-                        />
-                      ))}
-                    </div>
+                  {isFieldAdmin && (
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => setShowManageFields(true)}>
+                      <Pencil className="h-3 w-3 mr-1.5" /> Manage fields
+                    </Button>
                   )}
+                  {!isFieldDisabled('department') && (
+                    <EditableField label="Department" type="text" value={contact.department} onSave={(v) => handleQuickUpdate('department', v)} />
+                  )}
+                  {!isFieldDisabled('timezone') && (
+                    <EditableField label="Timezone" type="text" value={contact.timezone} onSave={(v) => handleQuickUpdate('timezone', v)} />
+                  )}
+                  {!isFieldDisabled('lead_source') && (
+                    <EditableField label="Lead Source" type="text" value={contact.lead_source} onSave={(v) => handleQuickUpdate('lead_source', v)} />
+                  )}
+                  {!isFieldDisabled('source_system') && (
+                    <EditableField label="Source System" type="text" value={contact.source_system} onSave={(v) => handleQuickUpdate('source_system', v)} />
+                  )}
+                  <CustomContactFieldsSection
+                    fields={fieldConfig.custom}
+                    values={(contact as any).custom_fields || {}}
+                    onChange={(_key, nextObj) => handleQuickUpdate('custom_fields', nextObj)}
+                  />
                   <div className="pt-1 border-t border-border/40">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Internal Metadata</p>
                     <DynamicFieldRenderer
