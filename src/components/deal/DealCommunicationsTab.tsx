@@ -44,7 +44,7 @@ export function DealCommunicationsTab({ dealId }: Props) {
     (async () => {
       setIsLoading(true);
       try {
-        const [a, b] = await Promise.all([
+        const [a, b, dealRes, linksRes] = await Promise.all([
           supabase
             .from('activity_logs')
             .select('id, message_id, thread_id, subject, from_address, to_addresses, body, direction, sent_at, created_at, description')
@@ -57,6 +57,15 @@ export function DealCommunicationsTab({ dealId }: Props) {
             .select('gmail_message_id')
             .eq('deal_id', dealId)
             .limit(200),
+          supabase
+            .from('deals')
+            .select('contact_info')
+            .eq('id', dealId)
+            .maybeSingle(),
+          supabase
+            .from('contact_deals')
+            .select('contact_id')
+            .eq('deal_id', dealId),
         ]);
 
         const fromActivities: CommItem[] = (a.data ?? []).map((r: any) => ({
@@ -94,10 +103,62 @@ export function DealCommunicationsTab({ dealId }: Props) {
           }));
         }
 
+        // Client-contact emails: gmail messages exchanged with any email
+        // associated with this deal's client contacts (contact_deals →
+        // contacts.email/additional_emails) plus the legacy free-text
+        // deals.contact_info email.
+        const contactEmails = new Set<string>();
+        const ci = (dealRes?.data as any)?.contact_info;
+        if (typeof ci === 'string') {
+          const m = ci.match(/[\w.+-]+@[\w-]+\.[\w.-]+/g);
+          m?.forEach((e) => contactEmails.add(e.toLowerCase()));
+        } else if (ci && typeof ci === 'object') {
+          const e = (ci as any).email;
+          if (typeof e === 'string') contactEmails.add(e.toLowerCase());
+        }
+        const contactIds = (linksRes?.data ?? []).map((r: any) => r.contact_id).filter(Boolean);
+        if (contactIds.length > 0) {
+          const { data: ctcs } = await supabase
+            .from('contacts')
+            .select('email, additional_emails')
+            .in('id', contactIds);
+          (ctcs ?? []).forEach((c: any) => {
+            if (c.email) contactEmails.add(String(c.email).toLowerCase());
+            const add = c.additional_emails;
+            if (Array.isArray(add)) add.forEach((e: any) => e && contactEmails.add(String(e).toLowerCase()));
+          });
+        }
+
+        let fromContacts: CommItem[] = [];
+        if (contactEmails.size > 0) {
+          const emails = Array.from(contactEmails);
+          const orFrom = `from_email.in.(${emails.map((e) => `"${e}"`).join(',')})`;
+          const orTo = `to_emails.ov.{${emails.join(',')}}`;
+          const orCc = `cc_emails.ov.{${emails.join(',')}}`;
+          const { data: cmsgs } = await supabase
+            .from('gmail_messages')
+            .select('gmail_message_id, thread_id, subject, from_email, from_name, to_emails, snippet, received_at')
+            .or([orFrom, orTo, orCc].join(','))
+            .order('received_at', { ascending: false, nullsFirst: false })
+            .limit(200);
+          fromContacts = (cmsgs ?? []).map((m: any) => ({
+            key: `cm:${m.gmail_message_id}`,
+            source: 'deal_emails',
+            message_id: m.gmail_message_id,
+            thread_id: m.thread_id ?? null,
+            subject: m.subject ?? '(no subject)',
+            from: m.from_name || m.from_email || '',
+            to: (m.to_emails ?? []) as string[],
+            preview: (m.snippet ?? '').slice(0, 220),
+            direction: null,
+            sent_at: m.received_at ?? null,
+          }));
+        }
+
         // Dedupe by message_id (prefer activity_logs row since it has direction/body)
         const seen = new Set<string>();
         const merged: CommItem[] = [];
-        for (const it of [...fromActivities, ...fromGmail]) {
+        for (const it of [...fromActivities, ...fromGmail, ...fromContacts]) {
           const dedupeKey = it.message_id ?? it.key;
           if (seen.has(dedupeKey)) continue;
           seen.add(dedupeKey);
