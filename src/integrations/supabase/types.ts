@@ -29356,26 +29356,48 @@ export type Database = {
           title: string
         }[]
       }
-      match_claap_chunks: {
-        Args: {
-          filter_deal_id?: string
-          match_count?: number
-          min_similarity?: number
-          query_embedding: string
-        }
-        Returns: {
-          chunk_id: string
-          chunk_index: number
-          chunk_text: string
-          claap_meeting_id: string
-          deal_company: string
-          deal_id: string
-          meeting_title: string
-          recorded_at: string
-          similarity: number
-          transcript_id: string
-        }[]
-      }
+      match_claap_chunks:
+        | {
+            Args: {
+              filter_deal_id?: string
+              match_count?: number
+              min_similarity?: number
+              query_embedding: string
+            }
+            Returns: {
+              chunk_id: string
+              chunk_index: number
+              chunk_text: string
+              claap_meeting_id: string
+              deal_company: string
+              deal_id: string
+              meeting_title: string
+              recorded_at: string
+              similarity: number
+              transcript_id: string
+            }[]
+          }
+        | {
+            Args: {
+              ef_search?: number
+              filter_deal_id?: string
+              match_count?: number
+              min_similarity?: number
+              query_embedding: string
+            }
+            Returns: {
+              chunk_id: string
+              chunk_index: number
+              chunk_text: string
+              claap_meeting_id: string
+              deal_company: string
+              deal_id: string
+              meeting_title: string
+              recorded_at: string
+              similarity: number
+              transcript_id: string
+            }[]
+          }
       match_lenders_by_narrative: {
         Args: {
           caller_company_id?: string
