@@ -4,6 +4,7 @@ import {
   Mail, Phone, Calendar, MessageSquare, Plus, Pencil, User, Building2,
   Briefcase, Trash2, X, CheckSquare, MoreHorizontal, ChevronRight, ChevronDown,
   MapPin, Globe, Linkedin, Paperclip, Activity as ActivityIcon, Users, Link2,
+  Video, ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -1042,9 +1043,17 @@ function ActivityGroup({ label, items, ownerName }: { label: string; items: any[
 
 function ActivityRow({ activity, ownerName }: { activity: any; ownerName: string }) {
   const [open, setOpen] = useState(false);
-  const typeIcons: Record<string, any> = { email: Mail, call: Phone, meeting: Calendar, note: MessageSquare };
+  const typeIcons: Record<string, any> = { email: Mail, call: Phone, meeting: Calendar, note: MessageSquare, claap_call: Video };
   const Icon = typeIcons[activity.activity_type] || MessageSquare;
   const hasBody = !!activity.body;
+  const meta = activity.metadata || {};
+  const isClaap = activity.activity_type === 'claap_call';
+  const durationSec: number | undefined = meta.duration_seconds;
+  const durationLabel = durationSec
+    ? durationSec >= 3600
+      ? `${Math.floor(durationSec / 3600)}h ${Math.floor((durationSec % 3600) / 60)}m`
+      : `${Math.max(1, Math.floor(durationSec / 60))}m`
+    : null;
   return (
     <li className="border-b border-border/40 last:border-0">
       <button
@@ -1060,8 +1069,45 @@ function ActivityRow({ activity, ownerName }: { activity: any; ownerName: string
               {format(new Date(activity.occurred_at), 'MMM d · h:mm a')}
             </span>
           </div>
+          {isClaap && (
+            <div className="mt-0.5 flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground">
+              {durationLabel && <span>{durationLabel}</span>}
+              {meta.call_type && <Badge variant="outline" className="text-[10px] font-normal">{meta.call_type}</Badge>}
+              {Array.isArray(meta.attendees) && meta.attendees.length > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <Users className="h-3 w-3" />
+                  {meta.attendees.length} attendee{meta.attendees.length === 1 ? '' : 's'}
+                </span>
+              )}
+              {meta.recording_url && (
+                <a
+                  href={meta.recording_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 text-primary hover:underline"
+                >
+                  <ExternalLink className="h-3 w-3" /> Open recording
+                </a>
+              )}
+            </div>
+          )}
           {hasBody && !open && <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{activity.body}</p>}
           {hasBody && open && <p className="text-sm text-foreground/80 mt-1 whitespace-pre-wrap">{activity.body}</p>}
+          {isClaap && open && Array.isArray(meta.attendees) && meta.attendees.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {meta.attendees.map((a: any, i: number) => (
+                <Badge
+                  key={i}
+                  variant="outline"
+                  className={cn('text-[10px] font-normal', a.is_internal ? 'border-blue-500/30 text-blue-600' : 'border-muted-foreground/20')}
+                  title={a.email || undefined}
+                >
+                  {a.name || a.email || 'Unknown'}
+                </Badge>
+              ))}
+            </div>
+          )}
           <p className="text-[10px] text-muted-foreground mt-1">{ownerName}</p>
         </div>
       </button>
