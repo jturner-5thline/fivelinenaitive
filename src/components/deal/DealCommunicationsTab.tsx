@@ -441,8 +441,10 @@ export function DealCommunicationsTab({ dealId }: Props) {
               </div>
             ))}
           </div>
+          )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
