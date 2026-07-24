@@ -2077,6 +2077,22 @@ function EventDetailPane({
                 label: eventTitle,
               }}
             >
+              {claapCtx.recording && (
+                <div className="flex items-center justify-end mb-0.5">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 text-[10px] text-white/70 hover:text-white underline disabled:opacity-60"
+                    disabled={claapBackfilling}
+                    onClick={() => { void reloadClaapNotes(); }}
+                    title="Refetch transcript and regenerate Claap summary"
+                  >
+                    {claapBackfilling
+                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                      : <RefreshCw className="h-3 w-3" />}
+                    {claapBackfilling ? 'Reloading…' : 'Reload Claap notes'}
+                  </button>
+                </div>
+              )}
               <ClaapNoteEditor
                 value={noteDraft}
                 onChange={(next) => { setNoteDraft(next); setNoteDirty(true); }}
