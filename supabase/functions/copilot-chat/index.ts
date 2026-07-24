@@ -5420,6 +5420,61 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         calls: results,
       };
     }
+    case "search_claap_transcripts": {
+      if (!args.query || typeof args.query !== "string") {
+        return { error: "query is required" };
+      }
+      const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+      if (!lovableApiKey) return { error: "Semantic search unavailable (missing gateway key)" };
+
+      const limit = Math.min(Math.max(Number(args.limit) || 8, 1), 20);
+      const minSim = Math.min(Math.max(Number(args.min_similarity) || 0.3, 0), 1);
+
+      try {
+        const embResp = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${lovableApiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "openai/text-embedding-3-small",
+            input: String(args.query).slice(0, 4000),
+          }),
+        });
+        if (!embResp.ok) {
+          const t = await embResp.text();
+          return { error: `Embedding failed: ${embResp.status}`, detail: t.slice(0, 300) };
+        }
+        const embJson = await embResp.json();
+        const qEmb = embJson.data?.[0]?.embedding;
+        if (!qEmb) return { error: "No embedding returned" };
+
+        const { data: matches, error } = await supabase.rpc("match_claap_chunks", {
+          query_embedding: JSON.stringify(qEmb),
+          match_count: limit,
+          filter_deal_id: args.deal_id || null,
+          min_similarity: minSim,
+        });
+        if (error) return { error: error.message };
+
+        const results = (matches || []).map((r: any) => ({
+          deal_id: r.deal_id,
+          deal_company: r.deal_company,
+          meeting_title: r.meeting_title,
+          recorded_at: r.recorded_at,
+          similarity: Number(r.similarity?.toFixed(3)),
+          passage: r.chunk_text,
+          transcript_id: r.transcript_id,
+          claap_meeting_id: r.claap_meeting_id,
+        }));
+        return {
+          query: args.query,
+          match_count: results.length,
+          results,
+          note: results.length === 0 ? "No matching passages. Transcript may still be embedding; try again shortly." : undefined,
+        };
+      } catch (e) {
+        return { error: String((e as Error).message || e) };
+      }
+    }
     case "get_deal_full": {
       // Resolve deal id (by id or by name search)
       let dealId: string | null = args.deal_id || null;
