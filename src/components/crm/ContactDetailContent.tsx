@@ -422,9 +422,6 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                 )}
                 </div>
 
-                <LabeledSelect label="Lifecycle Stage" value={contact.lifecycle_stage} onChange={v => handleQuickUpdate('lifecycle_stage', v)} options={LIFECYCLE_STAGES} />
-                <LabeledSelect label="Status" value={contact.status} onChange={v => handleQuickUpdate('status', v)} options={CONTACT_STATUSES} />
-                <LabeledSelect label="Buying Role" value={contact.buying_role || ''} onChange={v => handleQuickUpdate('buying_role', v)} options={BUYING_ROLES} placeholder="Select role" />
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase mb-1">Contact Type</p>
                   <ContactTypeMultiSelect
