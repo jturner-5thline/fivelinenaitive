@@ -1215,53 +1215,20 @@
  */
 .deal-glass {
   position: relative;
-  /* Tiles sit barely above the page canvas — same navy family, only a
-     whisper of brightness and a thin cool-blue rim for separation. No
-     bright card fill, no glow, no purple. */
-  /* Near-flat fill — gradient reduced to a whisper for subtle depth only. */
-  background:
-    linear-gradient(180deg,
-      rgba(150, 195, 245, 0.070) 0%,
-      rgba(150, 195, 245, 0.062) 100%
-    ) !important;
+  background: transparent !important;
   border: 1px solid rgba(150, 195, 245, 0.26) !important;
   border-radius: 10px !important;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  /* Layered premium shadow — one tight close shadow + one wider soft
-     bloom underneath. Whisper-soft inner top highlight, no rim glow. */
-  box-shadow:
-    inset 0 1px 0 0 rgba(200, 225, 255, 0.09),
-    0 1px 2px rgba(0, 0, 0, 0.32),
-    0 12px 32px -16px rgba(0, 0, 0, 0.62);
-  /* No overflow:hidden — corner overlays (notification dot) must be able
-     to overhang the tile edge. Inner content that needs clipping handles
-     its own overflow locally. */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
 }
 .deal-glass:hover {
-  background:
-    linear-gradient(180deg,
-      rgba(160, 205, 250, 0.095) 0%,
-      rgba(160, 205, 250, 0.085) 100%
-    ) !important;
+  background: transparent !important;
   border-color: rgba(165, 210, 252, 0.38) !important;
-  box-shadow:
-    inset 0 1px 0 0 rgba(200, 225, 255, 0.12),
-    0 1px 2px rgba(0, 0, 0, 0.36),
-    0 18px 40px -16px rgba(0, 0, 0, 0.70);
+  box-shadow: none !important;
 }
 .deal-glass::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: linear-gradient(
-    135deg,
-    rgba(180, 220, 255, 0.04) 0%,
-    rgba(255, 255, 255, 0.00) 55%
-  );
-  z-index: 0;
+  content: none !important;
 }
 /* Ensure widget contents render above the sheen overlay */
 .deal-glass > * {
@@ -1282,16 +1249,14 @@
    tiles still feel like dense workflow objects rather than glossy cards.
    ───────────────────────────────────────────────────────────────────── */
 .deal-tile.deal-glass {
-  background:
-    linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%) !important;
+  background: transparent !important;
   border-color: rgba(190, 220, 255, 0.34) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   color: #ffffff !important;
 }
 .deal-tile.deal-glass:hover {
-  background:
-    linear-gradient(180deg, #142547 0%, #0f1d38 100%) !important;
+  background: transparent !important;
 }
 .deal-tile.deal-glass::before {
   display: none !important;
