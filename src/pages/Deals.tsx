@@ -622,7 +622,13 @@ export default function Dashboard() {
           content="Manage your deal pipeline with advanced filtering, sorting, and status tracking."
         />
       </Helmet>
-      <div className="deals-surface contents">
+      <div
+        className="deals-surface flex-1 flex flex-col min-h-full rounded-xl overflow-hidden"
+        style={{
+          background:
+            'linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%)',
+        }}
+      >
       {/*
         Page surface — routed through the shared `<WorkspacePage>` primitive
         so this page and the Directory can never drift apart on
@@ -1113,7 +1119,6 @@ export default function Dashboard() {
                 )}
                 style={{
                    animation: 'fadeInUp 0.4s ease-out 0.3s forwards',
-                   background: 'linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%)',
                  }}
               >
               {showInlineDetail && selectedDeal ? (
@@ -1125,7 +1130,7 @@ export default function Dashboard() {
                  * own header / content / workbook-tab strip.
                  */
                 <div
-                  className="hidden lg:flex flex-1 min-h-0 overflow-hidden"
+                  className="hidden lg:flex flex-1 min-h-0 rounded-2xl border border-white/[0.08] overflow-hidden bg-gradient-to-b from-white/[0.03] to-transparent"
                 >
                   <div
                     ref={leftListColumnRef}
@@ -1176,8 +1181,7 @@ export default function Dashboard() {
                   </div>
                   <aside
                     ref={detailAsideRef}
-                    className="flex-1 min-w-0 h-full flex flex-col overflow-hidden"
-                    style={{ background: 'linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%)' }}
+                    className="flex-1 min-w-0 h-full flex flex-col overflow-hidden bg-transparent"
                     aria-label="Selected deal summary"
                   >
                     <DealRundownMemoView
