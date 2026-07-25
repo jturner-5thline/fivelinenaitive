@@ -623,7 +623,7 @@ export function DealsHeader() {
           </div>
         </div>
       </div>
-      {isFifthLine && isDashboardOpen && (
+      {isDashboardOpen && (
         <DashboardModalLazyHost
           open={isDashboardOpen}
           onOpenChange={(o) => {
