@@ -2544,3 +2544,40 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   outline: 2px solid hsl(var(--primary)) !important;
   outline-offset: 2px !important;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   CRM Companies table — match the Deals page tile surface exactly
+   --------------------------------------------------------------------
+   Reuses the same solid navy gradient fill used by `.deal-tile.deal-glass`
+   so the table container, header row, body, and rows read as the same
+   surface as deal tiles. All text inside the surface renders white; only
+   hyperlinks (`a`) keep their link color and hover behavior.
+   ───────────────────────────────────────────────────────────────────── */
+.crm-companies-table,
+.crm-companies-table thead tr,
+.crm-companies-table thead th,
+.crm-companies-table tbody,
+.crm-companies-table tbody tr,
+.crm-companies-table tbody td {
+  background: linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%) !important;
+  background-color: transparent;
+}
+.crm-companies-table thead th,
+.crm-companies-table tbody td,
+.crm-companies-table tbody tr {
+  background: transparent !important;
+}
+/* Whiten all text inside the table area and its surrounding filter row /
+   pagination count — but never override anchor colors. */
+.crm-companies-surface,
+.crm-companies-surface *:not(a):not(a *) {
+  color: #ffffff;
+}
+.crm-companies-surface .text-muted-foreground,
+.crm-companies-surface [class*="text-muted"] {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+/* Row hover — keep subtle contrast on the navy fill. */
+.crm-companies-table tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
