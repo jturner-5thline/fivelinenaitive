@@ -175,6 +175,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   const showWorkspaceLogo = WORKSPACE_LOGO_ROUTES.some(
     (r) => location.pathname === r || location.pathname.startsWith(`${r}/`),
   );
+  const isDealsRoute = location.pathname === '/deals' || location.pathname.startsWith('/deals/');
 
   if (isEmbedded) {
     return (
@@ -217,7 +218,13 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
         }}
       />
 
-      <div className="flex w-full h-full min-h-0 bg-transparent pt-2 pb-2 pl-2 pr-0 gap-1" style={{ isolation: 'auto' }}>
+      <div
+        className={cn(
+          'flex w-full h-full min-h-0 bg-transparent pt-2 pl-2 pr-0 gap-1',
+          isDealsRoute ? 'pb-0' : 'pb-2',
+        )}
+        style={{ isolation: 'auto' }}
+      >
         <AppSidebar />
         <MainContent
           className={mainClassName}
