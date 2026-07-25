@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LayoutDashboard, BarChart3, Pencil, AlertTriangle, AlertCircle, Clock, Briefcase, Inbox } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Pencil, AlertTriangle, AlertCircle, Clock, Briefcase, Inbox, ListChecks } from 'lucide-react';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
@@ -37,7 +37,7 @@ export interface DashboardModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Which tab to land on when the modal opens. Defaults to 'dashboard'. */
-  initialTab?: 'dashboard' | 'analytics';
+  initialTab?: 'dashboard' | 'analytics' | 'queue' | 'tasks';
   /**
    * When true, render the dashboard body inline (no Dialog wrapper) so the
    * same content can be hosted as a tab inside another modal (e.g. the
@@ -68,6 +68,7 @@ const AnalyticsTabContent = lazy(() => import('@/pages/Analytics'));
 const NikiPerformanceTab = lazy(() =>
   import('@/components/dashboard/NikiPerformanceTab').then(m => ({ default: m.NikiPerformanceTab })),
 );
+const TasksTabContent = lazy(() => import('@/pages/Tasks'));
 
 export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'dashboard', embedded = false }: DashboardModalProps) {
   const open = embedded ? true : openProp;
@@ -76,7 +77,7 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
     user?.email === 'nheikali@5thline.co' || user?.email === 'jturner@5thline.co';
   const { enabled: queueEnabled } = useApprovalQueueAccess();
   const { data: queueItems = [] } = useAiActionQueue();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'performance' | 'queue'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'performance' | 'queue' | 'tasks'>(initialTab);
   useEffect(() => {
     if (open) setActiveTab(initialTab);
   }, [open, initialTab]);
@@ -437,7 +438,7 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
           <style dangerouslySetInnerHTML={{ __html: DASHBOARD_CSS }} />
           <Tabs
             value={activeTab}
-            onValueChange={(v) => setActiveTab(v as 'dashboard' | 'analytics' | 'performance' | 'queue')}
+            onValueChange={(v) => setActiveTab(v as 'dashboard' | 'analytics' | 'performance' | 'queue' | 'tasks')}
             className="flex flex-col flex-1 min-h-0"
           >
             <div className="px-5 pt-2 pb-1 shrink-0">
@@ -462,6 +463,10 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
                     Approval Queue
                   </TabsTrigger>
                 )}
+                <TabsTrigger value="tasks" className="gap-1.5">
+                  <ListChecks className="h-3.5 w-3.5" />
+                  Tasks
+                </TabsTrigger>
               </TabsList>
             </div>
 
@@ -817,6 +822,20 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
                 <ActionQueuePanel items={queueItems} onClose={() => setActiveTab('dashboard')} />
               </TabsContent>
             )}
+            <TabsContent
+              value="tasks"
+              className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-hidden data-[state=inactive]:hidden bg-transparent flex flex-col"
+            >
+              <Suspense
+                fallback={
+                  <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
+                    Loading tasks…
+                  </div>
+                }
+              >
+                <TasksTabContent overlayMode />
+              </Suspense>
+            </TabsContent>
           </Tabs>
         </div>
       {editingPlan && (

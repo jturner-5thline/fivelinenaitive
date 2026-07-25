@@ -126,7 +126,7 @@ export function DealsHeader() {
   const isDealsRoute = location.pathname === '/deals';
   const { pipelineId: naitivePipelineId, stages: naitiveStages, refetch: refetchNaitive } = useNaitivePipelineData();
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
-  const [dashboardInitialTab, setDashboardInitialTab] = useState<'dashboard' | 'analytics'>('dashboard');
+  const [dashboardInitialTab, setDashboardInitialTab] = useState<'dashboard' | 'analytics' | 'queue' | 'tasks'>('dashboard');
 
   // /analytics now redirects to /deals?dashboard=analytics — when we land
   // here with that param, auto-open the Dashboard modal on the Analytics
@@ -375,8 +375,20 @@ export function DealsHeader() {
     { label: 'Calendar' as const, isOpen: isCalendarOpen, open: () => setIsCalendarOpen(true), close: () => setIsCalendarOpen(false), available: true },
     { label: 'Mail' as const, isOpen: isMailOpen, open: () => setIsMailOpen(true), close: () => setIsMailOpen(false), available: true },
     { label: 'Dashboard' as const, isOpen: isBriefingOpen, open: () => setIsBriefingOpen(true), close: () => setIsBriefingOpen(false), available: canSeeBriefingHeaderItems },
-    { label: 'Tasks' as const, isOpen: isTasksListOpen, open: () => setIsTasksListOpen(true), close: () => setIsTasksListOpen(false), available: true },
-    { label: 'Approval Queue' as const, isOpen: isActionQueueOpen, open: () => { setIsActionQueueOpen(true); refetchActionQueue(); }, close: () => setIsActionQueueOpen(false), available: approvalQueueEnabled },
+    {
+      label: 'Tasks' as const,
+      isOpen: isDashboardOpen && dashboardInitialTab === 'tasks',
+      open: () => { setDashboardInitialTab('tasks'); setIsDashboardOpen(true); },
+      close: () => setIsDashboardOpen(false),
+      available: true,
+    },
+    {
+      label: 'Approval Queue' as const,
+      isOpen: isDashboardOpen && dashboardInitialTab === 'queue',
+      open: () => { setDashboardInitialTab('queue'); setIsDashboardOpen(true); refetchActionQueue(); },
+      close: () => setIsDashboardOpen(false),
+      available: approvalQueueEnabled,
+    },
   ].filter(o => o.available);
 
   const currentOverlay = overlayRegistry.find(o => o.isOpen) ?? null;
@@ -611,7 +623,7 @@ export function DealsHeader() {
           </div>
         </div>
       </div>
-      {isFifthLine && isDashboardOpen && (
+      {isDashboardOpen && (
         <DashboardModalLazyHost
           open={isDashboardOpen}
           onOpenChange={(o) => {
