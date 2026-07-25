@@ -14,8 +14,8 @@ import { cn } from '@/lib/utils';
  */
 
 export const GLASS_CARD_STYLE: React.CSSProperties = {
-  background: 'rgba(255, 255, 255, 0.06)',
-  border: '0.5px solid rgba(255, 255, 255, 0.14)',
+  background: 'linear-gradient(180deg, #0a1730 0%, #0b1d3d 100%)',
+  border: '0.5px solid rgba(255, 255, 255, 0.08)',
   borderRadius: '12px',
 };
 
