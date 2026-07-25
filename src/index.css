@@ -1356,46 +1356,48 @@ button[role="combobox"] {
 .insights-glass-skin {
   /* tabular numbers everywhere keep KPI columns visually stable */
   font-variant-numeric: tabular-nums;
+
+  /* ────────────────────────────────────────────────────────────────────
+     Single source of truth for the Insights widget surface.
+     Values mirror `glassStyle` in SalesDashboardV2.tsx verbatim so every
+     widget on every Insights dashboard — Card-based, glass-module-based,
+     or the Sales V2 inline shells — resolves to the exact same tokens.
+     SalesDashboardV2's `glassStyle` consumes these variables directly.
+     ──────────────────────────────────────────────────────────────────── */
+  --insights-widget-bg:
+    linear-gradient(135deg, hsl(220, 45%, 17%) 0%, hsl(245, 38%, 12%) 50%, hsl(265, 32%, 8%) 100%);
+  --insights-widget-border: 1px solid rgba(255, 255, 255, 0.38);
+  --insights-widget-radius: 8px;
+  --insights-widget-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+    0 0 0 1px rgba(0, 0, 0, 0.55),
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 18px 40px -14px rgba(0, 0, 0, 0.8);
 }
 
-/* Halve corner radius for chart/widget surfaces on the Insights page. */
+/* Every widget container on Insights renders through this fill —
+   shadcn `<Card>` (`[data-slot="card"]`), the `.glass-module` utility,
+   and any component that opts in via the `.insights-widget-surface`
+   utility class (e.g. Sales V2 inline shells). */
+.dark .insights-glass-skin [data-slot="card"],
 .insights-glass-skin .glass-module,
-.insights-glass-skin .glass-module-interactive {
-  border-radius: 6px !important;
-}
-
-/* Card surfaces — only inside the dark theme, only inside the skin */
-.dark .insights-glass-skin [data-slot="card"] {
-  /* Match the Deal Details `.deal-glass` surface verbatim so Insights chart
-     containers visually read as the same dark glass family — no lighter
-     gray tint, near-flat dark fill with a thin cool-blue rim. */
-  background:
-    linear-gradient(180deg,
-      rgba(150, 195, 245, 0.070) 0%,
-      rgba(150, 195, 245, 0.062) 100%
-    ) !important;
-  border: 1px solid rgba(150, 195, 245, 0.26) !important;
-  border-radius: 6px !important;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow:
-    inset 0 1px 0 0 rgba(200, 225, 255, 0.09),
-    0 1px 2px rgba(0, 0, 0, 0.32),
-    0 12px 32px -16px rgba(0, 0, 0, 0.62) !important;
+.insights-glass-skin .glass-module-interactive,
+.insights-glass-skin .insights-widget-surface {
+  background: var(--insights-widget-bg) !important;
+  border: var(--insights-widget-border) !important;
+  border-radius: var(--insights-widget-radius) !important;
+  box-shadow: var(--insights-widget-shadow) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   position: relative;
   overflow: hidden;
 }
-.dark .insights-glass-skin [data-slot="card"]:hover {
-  background:
-    linear-gradient(180deg,
-      rgba(160, 205, 250, 0.095) 0%,
-      rgba(160, 205, 250, 0.085) 100%
-    ) !important;
-  border-color: rgba(165, 210, 252, 0.38) !important;
-  box-shadow:
-    inset 0 1px 0 0 rgba(200, 225, 255, 0.12),
-    0 1px 2px rgba(0, 0, 0, 0.36),
-    0 18px 40px -16px rgba(0, 0, 0, 0.70) !important;
+.dark .insights-glass-skin [data-slot="card"]:hover,
+.insights-glass-skin .glass-module-interactive:hover {
+  /* Keep the base fill on hover — the shared surface has no hover variant. */
+  background: var(--insights-widget-bg) !important;
+  border: var(--insights-widget-border) !important;
+  box-shadow: var(--insights-widget-shadow) !important;
 }
 /* Scrub any lingering light-gray inner surfaces inside chart containers
    (muted backgrounds, light card fills) so chart bodies sit flat on the
