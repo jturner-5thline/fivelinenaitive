@@ -276,11 +276,8 @@
   body {
     @apply bg-background text-foreground font-sans;
     min-height: 100vh;
-    background-color: #030310;
-    background-image: linear-gradient(180deg, #030310 0%, #030b1e 10%, #051a39 25%, #063765 50%, #065193 75%, #076cc1 100%);
-    background-attachment: fixed;
-    background-repeat: no-repeat;
-    background-size: cover;
+    background-color: #0b1830;
+    background-image: none;
   }
 
   .recharts-default-tooltip {
@@ -316,11 +313,8 @@
   }
 
   .dark body {
-    background-color: #030310 !important;
-    background-image: linear-gradient(180deg, #030310 0%, #030b1e 10%, #051a39 25%, #063765 50%, #065193 75%, #076cc1 100%) !important;
-    background-attachment: fixed !important;
-    background-repeat: no-repeat !important;
-    background-size: cover !important;
+    background-color: #0b1830 !important;
+    background-image: none !important;
   }
 
   /* Smooth transitions — but exclude performance-heavy properties */
