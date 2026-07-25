@@ -200,7 +200,7 @@ const Sidebar = React.forwardRef<
         <SheetContent
           data-sidebar="sidebar"
           data-mobile="true"
-          className="w-[--sidebar-width] bg-background p-0 text-sidebar-foreground [&>button]:hidden"
+          className="!left-0 !top-0 !bottom-0 !h-svh w-[--sidebar-width] !rounded-none bg-background !p-0 text-sidebar-foreground !shadow-none !backdrop-blur-none before:!hidden [&>button]:hidden"
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -253,13 +253,12 @@ const Sidebar = React.forwardRef<
           side === "left"
             ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
             : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-          "p-2 pr-[3px]",
+          "p-0",
           className,
         )}
         style={{
-          // Match deal tile fill: solid, fully opaque dark navy.
-          background: 'linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%)',
-          borderRadius: '12px',
+          background: 'transparent',
+          borderRadius: 0,
           willChange: 'width',
           transform: 'translateZ(0)',
           contain: 'layout paint',
@@ -273,10 +272,9 @@ const Sidebar = React.forwardRef<
             "flex h-full w-full flex-col rounded-xl transition-colors duration-100 relative",
             "border border-[rgba(255,255,255,0.07)]",
             "shadow-[inset_-1px_0_0_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.04)]",
-            isHovering && state === "collapsed" && "shadow-xl",
             className,
           )}
-          style={{ background: 'transparent' }}
+          style={{ background: 'linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%)' }}
         >
           {children}
         </div>

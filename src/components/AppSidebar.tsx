@@ -119,7 +119,7 @@ export function AppSidebar() {
 
 
   return (
-    <Sidebar side="left" collapsible="icon" className="h-[calc(100vh-1rem)]" data-tour="sidebar">
+    <Sidebar side="left" collapsible="icon" data-tour="sidebar">
       {/* NOTE: avoid `backdrop-blur` here — it re-samples and blurs the
           entire underlying layer on every animation frame, which made the
           sidebar slide-in/out janky and slowed the whole app. Use a solid
