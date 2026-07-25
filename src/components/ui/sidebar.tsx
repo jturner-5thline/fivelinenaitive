@@ -243,7 +243,7 @@ const Sidebar = React.forwardRef<
       {/* Actual sidebar container - expands on hover */}
       <div
         className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width] duration-150 ease-out md:flex",
+          "fixed top-2 bottom-2 z-10 hidden h-[calc(100svh-16px)] transition-[left,right,width] duration-150 ease-out md:flex",
           effectiveState === "expanded" ? "w-[--sidebar-width]" : "",
           state === "collapsed" && !isHovering
             ? variant === "floating" || variant === "inset"
