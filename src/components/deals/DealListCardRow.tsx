@@ -141,7 +141,7 @@ function DealListCardRowImpl({
   return (
     <div
       className={cn(
-        'deal-glass group flex items-center gap-3 p-3 min-h-[68px] cursor-pointer transition-all duration-200 hover:-translate-y-0.5',
+        'deal-glass deal-tile group flex items-center gap-3 p-3 min-h-[68px] cursor-pointer transition-all duration-200 hover:-translate-y-0.5',
         isSelected && 'ring-2 ring-primary',
       )}
       data-deal-open-id={deal.id}
