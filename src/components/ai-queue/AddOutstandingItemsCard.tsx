@@ -11,7 +11,7 @@
  * tagged as the requester.
  */
 import { useMemo, useState } from 'react';
-import { Building2, ListChecks, Mail, Trash2 } from 'lucide-react';
+import { Building2, ListChecks, Mail, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -236,6 +236,13 @@ export function AddOutstandingItemsCard({ item }: { item: QueuedAiAction }) {
       </div>
 
       <div className="space-y-2">
+        <div className="flex items-start gap-2 rounded-md border border-[#5ecdf5]/25 bg-[#5ecdf5]/[0.06] px-2.5 py-2 text-[11.5px] text-[#ecedf4]/80">
+          <Pencil className="h-3.5 w-3.5 mt-[1px] shrink-0 text-[#5ecdf5]" />
+          <span>
+            <span className="font-medium text-[#ecedf4]">Review &amp; edit before approving.</span>{' '}
+            Each line below was parsed from the lender's email — click any description, due date, or priority to change it, uncheck to skip, or use <span className="font-medium">+ Add item</span> for anything missing. Only checked lines will be added to Outstanding Items.
+          </span>
+        </div>
         <div className="flex items-center justify-between">
           <div className="text-[10px] uppercase tracking-wide text-[#ecedf4]/55">
             Items to add ({confirmed.length}/{rows.length})
