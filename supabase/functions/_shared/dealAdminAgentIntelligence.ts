@@ -458,6 +458,39 @@ export interface AnalyzeResult {
 
 const LOOKBACK_DAYS = 30;
 
+/**
+ * Strip HTML tags/entities from an email body_html payload so the LLM can
+ * read the underlying text. Gmail sync frequently stores only body_html
+ * (no text/plain part), and without this fallback Rule L-5 and other
+ * body-content rules silently see empty bodies. Bounded to keep prompt
+ * budget reasonable; downstream trim() caps per-field lengths further.
+ */
+function stripHtmlForPrompt(html: string | null | undefined): string {
+  if (!html || typeof html !== "string") return "";
+  return html
+    // Drop <style>/<script> blocks entirely.
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    // Preserve line breaks for block-level tags.
+    .replace(/<\/(p|div|li|tr|br|h[1-6])>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    // Drop all remaining tags.
+    .replace(/<[^>]+>/g, " ")
+    // Common HTML entities.
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&[a-z]+;/gi, " ")
+    // Collapse whitespace.
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, 8000);
+}
+
 async function gatherSignalsForDeal(
   supabase: SupabaseClient,
   deal: any,
