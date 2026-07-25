@@ -124,8 +124,8 @@ export function AppSidebar() {
           entire underlying layer on every animation frame, which made the
           sidebar slide-in/out janky and slowed the whole app. Use a solid
           translucent fill + gradient overlay instead. */}
-      <SidebarHeader className="relative overflow-hidden px-2 py-3 rounded-t-[11px] rounded-b-lg border-b border-[rgba(126,184,247,0.35)] text-foreground opacity-100 shadow-none before:content-none before:hidden">
-        <div className="relative z-[1] flex items-center gap-2">
+      <SidebarHeader className="relative overflow-hidden px-2 py-3 rounded-t-[11px] rounded-b-lg border-b border-[rgba(126,184,247,0.35)] text-foreground opacity-100 shadow-none before:content-none before:hidden group-data-[effective-state=collapsed]:px-0">
+        <div className="relative z-[1] flex items-center gap-2 group-data-[effective-state=collapsed]:justify-center group-data-[effective-state=collapsed]:gap-0">
           <button 
             onClick={toggleSidebar} 
             className="h-9 w-9 rounded-md flex-shrink-0 flex items-center justify-center hover:bg-[rgba(126,184,247,0.2)] transition-colors"
