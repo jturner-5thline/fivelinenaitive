@@ -224,7 +224,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
         style={{
           minHeight: '100vh',
           background:
-            'radial-gradient(ellipse 80% 50% at 45% 105%, rgba(40, 120, 220, 0.45) 0%, rgba(20, 80, 180, 0.18) 40%, rgba(0, 20, 60, 0) 75%), linear-gradient(180deg, #02040c 0%, #041024 30%, #0a2f6e 65%, #1560c4 100%)',
+            'linear-gradient(180deg, #030310 0%, #030b1e 10%, #051a39 25%, #063765 50%, #065193 75%, #076cc1 100%)',
         }}
       />
 
