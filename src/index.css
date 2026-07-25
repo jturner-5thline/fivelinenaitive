@@ -615,9 +615,7 @@
   .panel-shell {
     border-radius: 0.75rem;
     border: 1px solid rgba(var(--panel-border-rgb), 0.6);
-    background-color: rgba(8, 20, 44, 0.42);
-    backdrop-filter: blur(24px) saturate(140%);
-    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    background-image: linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%);
     overflow: hidden;
   }
   .panel-divider-b {
@@ -666,20 +664,15 @@
    */
   .glass-module {
     position: relative;
-    /* Deep midnight navy with faint indigo undertone — premium glassy tile.
-       Slightly lighter top-left, darker bottom-right, ~75% opacity so the
-       page gradient still whispers through. */
-    background:
-      radial-gradient(120% 100% at 0% 0%, rgba(40, 46, 96, 0.28) 0%, rgba(0,0,0,0) 60%),
-      linear-gradient(135deg, rgba(18, 22, 48, 0.78) 0%, rgba(10, 12, 30, 0.82) 100%) !important;
-    border: 1px solid rgba(120, 130, 200, 0.14) !important;
+    /* Lifted one luminance step above the page gradient for a subtle
+       elevation cue, with a thin crisp neutral border and inset top-edge
+       highlight so tiles read as luminous without brightening the page. */
+    background: rgba(172, 200, 232, 0.92) !important;
+    border: 1px solid rgba(230, 244, 255, 0.88) !important;
     border-radius: 12px !important;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    box-shadow:
-      0 12px 40px rgba(0, 0, 0, 0.45),
-      0 0 32px rgba(90, 110, 200, 0.06),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
     overflow: hidden;
   }
   .glass-module::before {
@@ -688,7 +681,7 @@
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
-    background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.00) 55%);
+    background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.00) 55%);
     z-index: 0;
   }
   .glass-module > * {
@@ -885,7 +878,7 @@
   .popup-shell-surface {
     --approval-queue-flat-surface: #020208;
     background:
-      linear-gradient(180deg, #030310 0%, #031026 15%, #05264a 35%, #073b6c 55%, #065193 75%, #0760ae 90%, #046cc1 100%) !important;
+      linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
     backdrop-filter: blur(18px) saturate(135%);
     -webkit-backdrop-filter: blur(18px) saturate(135%);
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
@@ -1213,16 +1206,19 @@
  */
 .deal-glass {
   position: relative;
-  /* Fully opaque deep midnight navy with faint indigo undertone.
-     Slightly lighter top-left, darker bottom-right — matches the
-     KPI card treatment. */
+  /* Tiles sit barely above the page canvas — same navy family, only a
+     whisper of brightness and a thin cool-blue rim for separation. No
+     bright card fill, no glow, no purple. */
+  /* Near-flat fill — gradient reduced to a whisper for subtle depth only. */
   background:
-    radial-gradient(120% 100% at 0% 0%, #1a2148 0%, rgba(0,0,0,0) 60%),
-    linear-gradient(135deg, #121736 0%, #0a0d22 100%) !important;
-  border: 1px solid rgba(120, 130, 200, 0.22) !important;
+    linear-gradient(180deg,
+      rgba(150, 195, 245, 0.070) 0%,
+      rgba(150, 195, 245, 0.062) 100%
+    ) !important;
+  border: 1px solid rgba(150, 195, 245, 0.26) !important;
   border-radius: 10px !important;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   /* Layered premium shadow — one tight close shadow + one wider soft
      bloom underneath. Whisper-soft inner top highlight, no rim glow. */
   box-shadow:
@@ -1235,9 +1231,11 @@
 }
 .deal-glass:hover {
   background:
-    radial-gradient(120% 100% at 0% 0%, #202a5c 0%, rgba(0,0,0,0) 60%),
-    linear-gradient(135deg, #161c40 0%, #0c0f28 100%) !important;
-  border-color: rgba(140, 155, 220, 0.32) !important;
+    linear-gradient(180deg,
+      rgba(160, 205, 250, 0.095) 0%,
+      rgba(160, 205, 250, 0.085) 100%
+    ) !important;
+  border-color: rgba(165, 210, 252, 0.38) !important;
   box-shadow:
     inset 0 1px 0 0 rgba(200, 225, 255, 0.12),
     0 1px 2px rgba(0, 0, 0, 0.36),
@@ -1276,15 +1274,19 @@
    ───────────────────────────────────────────────────────────────────── */
 .deal-tile.deal-glass {
   background:
-    radial-gradient(120% 100% at 0% 0%, #1a2148 0%, rgba(0,0,0,0) 60%),
-    linear-gradient(135deg, #121736 0%, #0a0d22 100%) !important;
-  border-color: rgba(120, 130, 200, 0.22) !important;
+    linear-gradient(180deg,
+      rgba(190, 220, 255, 0.16) 0%,
+      rgba(190, 220, 255, 0.14) 100%
+    ) !important;
+  border-color: rgba(190, 220, 255, 0.34) !important;
   color: #ffffff !important;
 }
 .deal-tile.deal-glass:hover {
   background:
-    radial-gradient(120% 100% at 0% 0%, #202a5c 0%, rgba(0,0,0,0) 60%),
-    linear-gradient(135deg, #161c40 0%, #0c0f28 100%) !important;
+    linear-gradient(180deg,
+      rgba(200, 228, 255, 0.20) 0%,
+      rgba(200, 228, 255, 0.18) 100%
+    ) !important;
 }
 /* Brighten text inside deal tiles for stronger readability */
 .deal-tile.deal-glass,
@@ -1600,7 +1602,7 @@ button[role="combobox"] {
   position: relative;
   border-radius: 14px;
   background:
-    linear-gradient(180deg, #030310 0%, #031026 15%, #05264a 35%, #073b6c 55%, #065193 75%, #0760ae 90%, #046cc1 100%);
+    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%);
   border: 1px solid rgba(255, 255, 255, 0.10);
   backdrop-filter: blur(18px) saturate(135%);
   -webkit-backdrop-filter: blur(18px) saturate(135%);
@@ -1612,7 +1614,7 @@ button[role="combobox"] {
   position: relative;
   border-radius: 12px;
   background:
-    linear-gradient(180deg, #030310 0%, #031026 15%, #05264a 35%, #073b6c 55%, #065193 75%, #0760ae 90%, #046cc1 100%);
+    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%);
   border: 1px solid rgba(255, 255, 255, 0.10);
   backdrop-filter: blur(16px) saturate(135%);
   -webkit-backdrop-filter: blur(16px) saturate(135%);
@@ -1668,7 +1670,7 @@ button[role="combobox"] {
   transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }
 .lg-input:hover {
-  background: transparent !important;
+  background: rgba(255, 255, 255, 0.06) !important;
   border-color: rgba(255, 255, 255, 0.14) !important;
 }
 .lg-input:focus-visible {
@@ -1869,7 +1871,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .create-deal-compact button[role="combobox"],
 .create-deal-compact [data-slot="select-trigger"],
 .create-deal-compact .create-deal-dropdown-trigger {
-  background: linear-gradient(180deg, #031026 0%, #073b6c 50%, #046cc1 100%) !important;
+  background: linear-gradient(135deg, #0a1224 0%, #060b18 50%, #04060f 100%) !important;
   border: 1px solid rgba(255,255,255,0.18) !important;
   color: rgba(255,255,255,0.95) !important;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.3) !important;
@@ -1918,7 +1920,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 [data-create-deal-popover],
 .create-deal-dropdown-content,
 [data-radix-popper-content-wrapper]:has(> [data-create-deal-popover]) > * {
-  background: linear-gradient(180deg, #031026 0%, #073b6c 50%, #046cc1 100%) !important;
+  background: linear-gradient(135deg, #0a1224 0%, #060b18 50%, #04060f 100%) !important;
   border: 1px solid rgba(255,255,255,0.18) !important;
   box-shadow: 0 16px 40px rgba(0,0,0,0.55) !important;
   backdrop-filter: none !important;
@@ -1991,14 +1993,13 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    slate-blue dashboard tint. */
 .popup-shell-surface .glass-module,
 .popup-shell-surface .glass-module-interactive {
-  background: transparent !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  backdrop-filter: blur(20px) saturate(140%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+  background:
+    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
   border-radius: 6px !important;
   box-shadow:
-    0 12px 32px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    0 12px 32px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
 }
 .popup-shell-surface .glass-module::before {
   background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.00) 60%) !important;
@@ -2018,7 +2019,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .popup-shell-surface [data-radix-select-trigger],
 .popup-shell-surface button[role="combobox"] {
   background:
-    linear-gradient(180deg, #031026 0%, #073b6c 50%, #046cc1 100%) !important;
+    linear-gradient(135deg, #050d1f 0%, #02080f 50%, #040008 100%) !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
   color: rgb(226, 232, 240) !important;
 }
@@ -2059,7 +2060,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 [data-radix-hover-card-content],
 [cmdk-root][role="dialog"] {
   background:
-    linear-gradient(180deg, #030310 0%, #031026 15%, #05264a 35%, #073b6c 55%, #065193 75%, #0760ae 90%, #046cc1 100%) !important;
+    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
   background-color: transparent !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   color: hsl(0 0% 98%) !important;
@@ -2142,7 +2143,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .bg-stone-50, .bg-stone-100, .bg-stone-200 {
   background-color: transparent !important;
   background-image:
-    linear-gradient(180deg, #030310 0%, #031026 15%, #05264a 35%, #073b6c 55%, #065193 75%, #0760ae 90%, #046cc1 100%) !important;
+    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
   color: hsl(0 0% 96%);
 }
 
@@ -2166,7 +2167,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .sales-bd-page .glass-module,
 .sales-bd-page .glass-module-interactive {
   background:
-    linear-gradient(180deg, #030310 0%, #031026 15%, #05264a 35%, #073b6c 55%, #065193 75%, #0760ae 90%, #046cc1 100%) !important;
+    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.10) !important;
   box-shadow:
     0 12px 32px rgba(0, 0, 0, 0.45),
@@ -2185,7 +2186,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .sales-bd-page [class*="bg-muted/30"],
 .sales-bd-page [class*="bg-background/60"] {
   background:
-    linear-gradient(180deg, #031026 0%, #073b6c 50%, #046cc1 100%) !important;
+    linear-gradient(135deg, #050d1f 0%, #02080f 50%, #040008 100%) !important;
   border-color: rgba(255, 255, 255, 0.10) !important;
 }
 .sales-bd-page [class*="hover\\:bg-background/30"]:hover,
@@ -2196,7 +2197,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 /* Partner Insights Feed wrapper (uses inline bg-card + dark:bg variant) */
 .sales-bd-page .bg-card {
   background:
-    linear-gradient(180deg, #030310 0%, #031026 15%, #05264a 35%, #073b6c 55%, #065193 75%, #0760ae 90%, #046cc1 100%) !important;
+    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
   border-color: rgba(255, 255, 255, 0.10) !important;
 }
 
@@ -2226,7 +2227,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .naitive-pipeline-page .glass-module,
 .naitive-pipeline-page .glass-module-interactive {
   background:
-    linear-gradient(180deg, #030310 0%, #031026 15%, #05264a 35%, #073b6c 55%, #065193 75%, #0760ae 90%, #046cc1 100%) !important;
+    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.10) !important;
   box-shadow:
     0 12px 32px rgba(0, 0, 0, 0.45),
@@ -2242,7 +2243,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .naitive-pipeline-page .bg-card,
 .naitive-pipeline-page [class*="bg-card"] {
   background:
-    linear-gradient(180deg, #030310 0%, #031026 15%, #05264a 35%, #073b6c 55%, #065193 75%, #0760ae 90%, #046cc1 100%) !important;
+    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
   border-color: rgba(255, 255, 255, 0.10) !important;
 }
 
@@ -2251,7 +2252,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .naitive-pipeline-page [class*="bg-background/60"],
 .naitive-pipeline-page [class*="bg-background/40"] {
   background:
-    linear-gradient(180deg, #031026 0%, #073b6c 50%, #046cc1 100%) !important;
+    linear-gradient(135deg, #050d1f 0%, #02080f 50%, #040008 100%) !important;
   border-color: rgba(255, 255, 255, 0.10) !important;
 }
 
@@ -2268,7 +2269,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .naitive-pipeline-page [data-radix-select-trigger],
 .naitive-pipeline-page button[role="combobox"] {
   background:
-    linear-gradient(180deg, #031026 0%, #073b6c 50%, #046cc1 100%) !important;
+    linear-gradient(135deg, #050d1f 0%, #02080f 50%, #040008 100%) !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
   color: rgb(226, 232, 240) !important;
 }
@@ -2324,7 +2325,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .popup-shell-surface.create-deal-compact [data-slot="select-trigger"].create-deal-dropdown-trigger,
 .popup-shell-surface.create-deal-compact [data-radix-select-trigger].create-deal-dropdown-trigger {
   background-color: #060b18 !important;
-  background-image: linear-gradient(180deg, #031026 0%, #073b6c 52%, #046cc1 100%) !important;
+  background-image: linear-gradient(135deg, #0a1224 0%, #060b18 52%, #04060f 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.20) !important;
   color: rgba(255, 255, 255, 0.95) !important;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 1px 2px rgba(0,0,0,0.35) !important;
@@ -2348,7 +2349,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 [data-radix-popper-content-wrapper] .create-deal-dropdown-content,
 .popup-shell-surface.create-deal-compact .create-deal-dropdown-content {
   background-color: #060b18 !important;
-  background-image: linear-gradient(180deg, #031026 0%, #073b6c 52%, #046cc1 100%) !important;
+  background-image: linear-gradient(135deg, #0a1224 0%, #060b18 52%, #04060f 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.20) !important;
   color: rgba(255, 255, 255, 0.95) !important;
   box-shadow: 0 18px 44px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.07) !important;
@@ -2390,7 +2391,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .app-dropdown-surface,
 [data-radix-popper-content-wrapper] .app-dropdown-surface {
   background-color: #060b18 !important;
-  background-image: linear-gradient(180deg, #031026 0%, #073b6c 52%, #046cc1 100%) !important;
+  background-image: linear-gradient(135deg, #0a1224 0%, #060b18 52%, #04060f 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.20) !important;
   color: rgba(255, 255, 255, 0.95) !important;
   box-shadow: 0 18px 44px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.07) !important;
@@ -2449,7 +2450,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .revenue-per-hour-tooltip.revenue-per-hour-tooltip {
   background-color: #020208 !important;
   background-image:
-    linear-gradient(180deg, #030310 0%, #031026 15%, #05264a 35%, #073b6c 55%, #065193 75%, #0760ae 90%, #046cc1 100%) !important;
+    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.14) !important;
   border-radius: 8px !important;
   box-shadow:
@@ -2534,77 +2535,4 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .high-contrast :focus-visible {
   outline: 2px solid hsl(var(--primary)) !important;
   outline-offset: 2px !important;
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Dashboard pop-up surface — matches the deal tile / KPI card
-   midnight-navy radial + diagonal gradient. Scoped so it only
-   overrides the shared .popup-shell-surface treatment inside
-   the Dashboard modal (and every one of its tabs).
-   ───────────────────────────────────────────────────────────── */
-.popup-shell-surface.dashboard-modal-surface,
-.popup-shell-surface.dashboard-modal-surface:has([data-approval-queue-panel]) {
-  background:
-    radial-gradient(120% 100% at 0% 0%, #1a2148 0%, rgba(0,0,0,0) 60%),
-    linear-gradient(135deg, #121736 0%, #0a0d22 100%) !important;
-  background-color: transparent !important;
-  background-image:
-    radial-gradient(120% 100% at 0% 0%, #1a2148 0%, rgba(0,0,0,0) 60%),
-    linear-gradient(135deg, #121736 0%, #0a0d22 100%) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: 1px solid rgba(120, 130, 200, 0.22) !important;
-}
-
-/* Every tab panel inside the dashboard modal must stay transparent
-   so the shell gradient shows through uniformly. */
-.dashboard-modal-surface .db-tab-panel,
-.dashboard-modal-surface .db-root,
-.dashboard-modal-surface [data-approval-queue-panel],
-.dashboard-modal-surface [data-approval-queue-detail] {
-  background:
-    radial-gradient(120% 100% at 0% 0%, #1a2148 0%, rgba(0,0,0,0) 60%),
-    linear-gradient(135deg, #121736 0%, #0a0d22 100%) !important;
-  background-color: transparent !important;
-  background-image:
-    radial-gradient(120% 100% at 0% 0%, #1a2148 0%, rgba(0,0,0,0) 60%),
-    linear-gradient(135deg, #121736 0%, #0a0d22 100%) !important;
-}
-
-/* Inner dashboard tab cards were previously neutralized by the shared popup
-   rule above. Force them to the exact same surface as `.deal-tile.deal-glass`:
-   same opacity, coloring, gradient direction, border, and shadow. */
-.dashboard-modal-surface .glass-module,
-.dashboard-modal-surface .glass-module-interactive,
-.dashboard-modal-surface > div,
-.dashboard-modal-surface [role="tablist"],
-.dashboard-modal-surface .glass-surface-1,
-.dashboard-modal-surface .glass-divider-b,
-.dashboard-modal-surface .db-r,
-.dashboard-modal-surface .db-analytics-host,
-.dashboard-modal-surface [data-approval-queue-panel] :is(section, article, div):not([role="tablist"]):not([role="tab"]),
-.dashboard-modal-surface [data-approval-queue-detail] :is(section, article, div) {
-  background:
-    radial-gradient(120% 100% at 0% 0%, #1a2148 0%, rgba(0,0,0,0) 60%),
-    linear-gradient(135deg, #121736 0%, #0a0d22 100%) !important;
-  background-color: transparent !important;
-  background-image:
-    radial-gradient(120% 100% at 0% 0%, #1a2148 0%, rgba(0,0,0,0) 60%),
-    linear-gradient(135deg, #121736 0%, #0a0d22 100%) !important;
-  border-color: rgba(120, 130, 200, 0.22) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  box-shadow:
-    inset 0 1px 0 0 rgba(200, 225, 255, 0.09),
-    0 1px 2px rgba(0, 0, 0, 0.32),
-    0 12px 32px -16px rgba(0, 0, 0, 0.62) !important;
-}
-
-.dashboard-modal-surface [class*="bg-white/"],
-.dashboard-modal-surface [class*="bg-white\\/"],
-.dashboard-modal-surface [class*="bg-background"],
-.dashboard-modal-surface [class*="bg-card"],
-.dashboard-modal-surface [class*="bg-muted"] {
-  background-color: transparent !important;
-  background-image: none !important;
 }
