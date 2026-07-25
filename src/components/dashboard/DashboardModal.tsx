@@ -438,7 +438,7 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
           <style dangerouslySetInnerHTML={{ __html: DASHBOARD_CSS }} />
           <Tabs
             value={activeTab}
-            onValueChange={(v) => setActiveTab(v as 'dashboard' | 'analytics' | 'performance' | 'queue')}
+            onValueChange={(v) => setActiveTab(v as 'dashboard' | 'analytics' | 'performance' | 'queue' | 'tasks')}
             className="flex flex-col flex-1 min-h-0"
           >
             <div className="px-5 pt-2 pb-1 shrink-0">
@@ -463,6 +463,10 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
                     Approval Queue
                   </TabsTrigger>
                 )}
+                <TabsTrigger value="tasks" className="gap-1.5">
+                  <ListChecks className="h-3.5 w-3.5" />
+                  Tasks
+                </TabsTrigger>
               </TabsList>
             </div>
 
