@@ -531,10 +531,8 @@ export default function Settings() {
 
       <div className="settings-surface bg-transparent min-h-full">
         <div className="flex w-full">
-          {/* Sidebar — desktop (hidden; nav is reached via the header menu +
-              ⌘K palette so the Settings content shell spans the same width
-              as the Deals page WorkspacePage main region). */}
-          <aside className="hidden w-56 shrink-0 border-r border-white/[0.06] sticky top-0 self-start h-screen overflow-y-auto bg-transparent">
+          {/* Sidebar — desktop */}
+          <aside className="hidden md:block w-56 shrink-0 border-r border-white/[0.06] sticky top-0 self-start h-screen overflow-y-auto bg-transparent">
             <div className="px-4 pt-5 pb-4">
               <h1 className="text-base font-semibold tracking-tight">Settings</h1>
               <button
@@ -555,8 +553,8 @@ export default function Settings() {
 
           {/* Content pane */}
           <main className="flex-1 min-w-0">
-            {/* Settings header — always visible; menu opens the nav sheet. */}
-            <div className="sticky top-0 z-20 flex items-center justify-between gap-2 px-4 py-3 border-b border-white/[0.06] bg-background/60 backdrop-blur-xl">
+            {/* Mobile header */}
+            <div className="md:hidden sticky top-0 z-20 flex items-center justify-between gap-2 px-4 py-3 border-b border-white/[0.06] bg-background/60 backdrop-blur-xl">
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                 <SheetTrigger asChild>
                   <Button variant="ghost" size="icon">
@@ -578,7 +576,7 @@ export default function Settings() {
               </Button>
             </div>
 
-            <div className="w-full px-4 sm:px-6 pt-5 pb-3">
+            <div className="w-full px-4 sm:px-8 pt-6 sm:pt-8 pb-12">
               {/* Section header */}
               {activeSection && (
                 <header className="mb-5">
