@@ -199,7 +199,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
   const deleteTarget = contacts.find(c => c.id === deleteContactId);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 crm-companies-surface">
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -279,11 +279,11 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
       {/* Table — fixed height to always show ~25 rows */}
       <div
         className={cn(
-          'rounded-xl overflow-hidden bg-card/40 dark:bg-white/[0.015]',
+          'crm-companies-table rounded-xl overflow-hidden',
           'ring-1 ring-border/40 shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
           '[&_table]:border-separate [&_table]:border-spacing-0',
           '[&_th]:h-10 [&_th]:px-3 [&_th]:py-0 [&_th]:bg-transparent [&_th]:font-medium [&_th]:text-[11px] [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground/80 [&_th]:whitespace-nowrap',
-          '[&_thead_tr]:bg-transparent [&_thead_th]:border-b [&_thead_th]:border-border/40 [&_thead_th]:backdrop-blur-sm [&_thead_th]:bg-background/70',
+          '[&_thead_tr]:bg-transparent [&_thead_th]:border-b [&_thead_th]:border-border/40',
           '[&_td]:px-3 [&_td]:align-middle [&_td]:border-b [&_td]:border-border/25 [&_td]:whitespace-nowrap',
           '[&_tbody_tr:last-child_td]:border-b-0',
         )}
