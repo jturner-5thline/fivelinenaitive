@@ -52,7 +52,7 @@ export function WorkspacePage({
   headerActions,
 }: WorkspacePageProps) {
   return (
-    <div className="relative bg-transparent">
+    <div className="relative bg-transparent flex-1 flex flex-col min-h-full">
       {headerActions && (
         <div
           className="absolute right-3 sm:right-4 -top-[88px] h-28 z-20 flex items-center pointer-events-auto"
@@ -60,7 +60,7 @@ export function WorkspacePage({
           {headerActions}
         </div>
       )}
-      <main className="w-full px-4 pt-5 pb-3 sm:px-6">
+      <main className="w-full px-4 pt-5 pb-3 sm:px-6 flex-1">
         {beforeContent}
         <div className={cn('space-y-5', contentClassName)}>{children}</div>
       </main>
