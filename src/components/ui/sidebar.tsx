@@ -251,7 +251,7 @@ const Sidebar = React.forwardRef<
               : "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
             : "w-[--sidebar-width]",
           side === "left"
-            ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
+            ? "left-2 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
             : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
           "p-0",
           className,
