@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LayoutDashboard, BarChart3, Pencil, AlertTriangle, AlertCircle, Clock, Briefcase, Inbox } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Pencil, AlertTriangle, AlertCircle, Clock, Briefcase, Inbox, ListChecks } from 'lucide-react';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
@@ -37,7 +37,7 @@ export interface DashboardModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Which tab to land on when the modal opens. Defaults to 'dashboard'. */
-  initialTab?: 'dashboard' | 'analytics';
+  initialTab?: 'dashboard' | 'analytics' | 'queue' | 'tasks';
   /**
    * When true, render the dashboard body inline (no Dialog wrapper) so the
    * same content can be hosted as a tab inside another modal (e.g. the
@@ -68,6 +68,7 @@ const AnalyticsTabContent = lazy(() => import('@/pages/Analytics'));
 const NikiPerformanceTab = lazy(() =>
   import('@/components/dashboard/NikiPerformanceTab').then(m => ({ default: m.NikiPerformanceTab })),
 );
+const TasksTabContent = lazy(() => import('@/pages/Tasks'));
 
 export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'dashboard', embedded = false }: DashboardModalProps) {
   const open = embedded ? true : openProp;
@@ -76,7 +77,7 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
     user?.email === 'nheikali@5thline.co' || user?.email === 'jturner@5thline.co';
   const { enabled: queueEnabled } = useApprovalQueueAccess();
   const { data: queueItems = [] } = useAiActionQueue();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'performance' | 'queue'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'performance' | 'queue' | 'tasks'>(initialTab);
   useEffect(() => {
     if (open) setActiveTab(initialTab);
   }, [open, initialTab]);
