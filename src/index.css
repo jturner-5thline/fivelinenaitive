@@ -2535,3 +2535,34 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   outline: 2px solid hsl(var(--primary)) !important;
   outline-offset: 2px !important;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Dashboard pop-up surface — matches the deal tile / KPI card
+   midnight-navy radial + diagonal gradient. Scoped so it only
+   overrides the shared .popup-shell-surface treatment inside
+   the Dashboard modal (and every one of its tabs).
+   ───────────────────────────────────────────────────────────── */
+.popup-shell-surface.dashboard-modal-surface,
+.popup-shell-surface.dashboard-modal-surface:has([data-approval-queue-panel]) {
+  background:
+    radial-gradient(120% 100% at 0% 0%, #1a2148 0%, rgba(0,0,0,0) 60%),
+    linear-gradient(135deg, #121736 0%, #0a0d22 100%) !important;
+  background-color: transparent !important;
+  background-image:
+    radial-gradient(120% 100% at 0% 0%, #1a2148 0%, rgba(0,0,0,0) 60%),
+    linear-gradient(135deg, #121736 0%, #0a0d22 100%) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(120, 130, 200, 0.22) !important;
+}
+
+/* Every tab panel inside the dashboard modal must stay transparent
+   so the shell gradient shows through uniformly. */
+.dashboard-modal-surface .db-tab-panel,
+.dashboard-modal-surface .db-root,
+.dashboard-modal-surface [data-approval-queue-panel],
+.dashboard-modal-surface [data-approval-queue-detail] {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
