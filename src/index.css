@@ -668,7 +668,7 @@
     position: relative;
     /* True liquid glass: translucent so the page gradient reads through,
        with a thin luminous border and inset top-edge highlight. */
-    background: linear-gradient(180deg, #0a1730 0%, #0b1d3d 100%) !important;
+    background: transparent !important;
     border: 1px solid rgba(255, 255, 255, 0.14) !important;
     border-radius: 12px !important;
     backdrop-filter: blur(20px);
@@ -1671,7 +1671,7 @@ button[role="combobox"] {
   transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }
 .lg-input:hover {
-  background: linear-gradient(180deg, #0a1730 0%, #0b1d3d 100%) !important;
+  background: transparent !important;
   border-color: rgba(255, 255, 255, 0.14) !important;
 }
 .lg-input:focus-visible {
@@ -1994,7 +1994,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    slate-blue dashboard tint. */
 .popup-shell-surface .glass-module,
 .popup-shell-surface .glass-module-interactive {
-  background: linear-gradient(180deg, #0a1730 0%, #0b1d3d 100%) !important;
+  background: transparent !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   backdrop-filter: blur(20px) saturate(140%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
