@@ -622,13 +622,7 @@ export default function Dashboard() {
           content="Manage your deal pipeline with advanced filtering, sorting, and status tracking."
         />
       </Helmet>
-      <div
-        className="deals-surface flex-1 flex flex-col min-h-full rounded-xl overflow-hidden"
-        style={{
-          background:
-            'linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%)',
-        }}
-      >
+      <div className="deals-surface contents">
       {/*
         Page surface — routed through the shared `<WorkspacePage>` primitive
         so this page and the Directory can never drift apart on
