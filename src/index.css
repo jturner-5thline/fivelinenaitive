@@ -2570,12 +2570,18 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 /* Whiten all text inside the table area and its surrounding filter row /
    pagination count — but never override anchor colors. */
 .crm-companies-surface,
-.crm-companies-surface *:not(a):not(a *) {
+.crm-companies-surface * {
   color: #ffffff;
 }
 .crm-companies-surface .text-muted-foreground,
 .crm-companies-surface [class*="text-muted"] {
   color: rgba(255, 255, 255, 0.85) !important;
+}
+/* Preserve hyperlink color + hover — anchors keep whatever color utility
+   they were given (e.g. `.text-primary`) instead of inheriting white. */
+.crm-companies-surface a,
+.crm-companies-surface a * {
+  color: hsl(var(--primary)) !important;
 }
 /* Row hover — keep subtle contrast on the navy fill. */
 .crm-companies-table tbody tr:hover td {
