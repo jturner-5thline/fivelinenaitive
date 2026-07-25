@@ -822,6 +822,20 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
                 <ActionQueuePanel items={queueItems} onClose={() => setActiveTab('dashboard')} />
               </TabsContent>
             )}
+            <TabsContent
+              value="tasks"
+              className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-hidden data-[state=inactive]:hidden bg-transparent flex flex-col"
+            >
+              <Suspense
+                fallback={
+                  <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
+                    Loading tasks…
+                  </div>
+                }
+              >
+                <TasksTabContent overlayMode />
+              </Suspense>
+            </TabsContent>
           </Tabs>
         </div>
       {editingPlan && (
