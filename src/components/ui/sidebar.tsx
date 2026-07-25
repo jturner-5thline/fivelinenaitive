@@ -257,10 +257,8 @@ const Sidebar = React.forwardRef<
           className,
         )}
         style={{
-          // Avoid backdrop-filter here: this element changes width during
-          // sidebar open/close, and blurring behind it forces expensive
-          // per-frame re-sampling of the full app surface.
-          background: 'rgba(10, 12, 20, 0.94)',
+          // Match deal tile fill: solid, fully opaque dark navy.
+          background: 'linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%)',
           borderRadius: '12px',
           willChange: 'width',
           transform: 'translateZ(0)',
@@ -275,7 +273,6 @@ const Sidebar = React.forwardRef<
             "flex h-full w-full flex-col rounded-xl transition-colors duration-100 relative",
             "border border-[rgba(255,255,255,0.07)]",
             "shadow-[inset_-1px_0_0_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.04)]",
-            "before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(315deg,rgba(126,184,247,0.03)_0%,transparent_50%)]",
             isHovering && state === "collapsed" && "shadow-xl",
             className,
           )}
