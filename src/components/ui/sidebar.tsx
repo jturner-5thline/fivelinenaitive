@@ -257,8 +257,13 @@ const Sidebar = React.forwardRef<
           className,
         )}
         style={{
-          background: 'transparent',
+          background: 'linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%)',
+          opacity: 1,
           borderRadius: 0,
+          boxShadow: 'none',
+          filter: 'none',
+          backdropFilter: 'none',
+          WebkitBackdropFilter: 'none',
           willChange: 'width',
           transform: 'translateZ(0)',
           contain: 'layout paint',
@@ -269,12 +274,18 @@ const Sidebar = React.forwardRef<
           data-sidebar="sidebar"
           data-effective-state={effectiveState}
           className={cn(
-            "flex h-full w-full flex-col rounded-xl transition-colors duration-100 relative",
+            "flex h-full w-full flex-col rounded-xl transition-colors duration-100 relative opacity-100 backdrop-blur-none",
             "border border-[rgba(255,255,255,0.07)]",
-            "shadow-[inset_-1px_0_0_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.04)]",
             className,
           )}
-          style={{ background: 'linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%)' }}
+          style={{
+            background: 'linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%)',
+            opacity: 1,
+            boxShadow: 'none',
+            filter: 'none',
+            backdropFilter: 'none',
+            WebkitBackdropFilter: 'none',
+          }}
         >
           {children}
         </div>
