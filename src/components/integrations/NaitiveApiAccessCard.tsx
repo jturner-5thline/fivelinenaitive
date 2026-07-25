@@ -92,10 +92,21 @@ export function NaitiveApiAccessCard() {
               MCP client list <ExternalLink className="h-3.5 w-3.5" />
             </a>
           </Button>
-          <Button asChild size="sm" variant="ghost">
-            <a href="https://claude.ai/settings/connectors" target="_blank" rel="noreferrer" className="gap-1.5">
-              Add to Claude <ExternalLink className="h-3.5 w-3.5" />
-            </a>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="gap-1.5"
+            onClick={() => {
+              // Open in a top-level tab so the Lovable preview iframe's
+              // sandbox doesn't get an X-Frame-Options refusal from claude.ai.
+              window.open(
+                "https://claude.ai/settings/connectors",
+                "_blank",
+                "noopener,noreferrer",
+              );
+            }}
+          >
+            Add to Claude <ExternalLink className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
