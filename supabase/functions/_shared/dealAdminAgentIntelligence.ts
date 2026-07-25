@@ -2056,8 +2056,15 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
     calendar: bundle.calendar_items,
     emails: bundle.emails.map((e: any) => ({
       id: e.id, gmail_message_id: e.gmail_message_id,
-      from: e.from_address, subject: e.subject,
-      snippet: trim(e.snippet, 280), received_at: e.received_at,
+      from: e.from_address || (e.from_name ? `${e.from_name} <${e.from_email}>` : e.from_email) || null,
+      from_email: e.from_email ?? null,
+      subject: e.subject,
+      snippet: trim(e.snippet, 280),
+      // Include full body so Rule L-5 (lender info request) can enumerate
+      // diligence items from linked inbound emails even when the thread
+      // isn't classified in email_threads yet.
+      body_excerpt: trim(e.body_text, 2200),
+      received_at: e.received_at,
       notes: trim(e.notes, 160),
     })),
     open_tasks: bundle.open_tasks,
@@ -2086,7 +2093,7 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
         from: m.from_name ? `${m.from_name} <${m.from_email}>` : m.from_email,
         subject: m.subject,
         snippet: trim(m.snippet, 320),
-        body_excerpt: trim(m.body_text, 1200),
+        body_excerpt: trim(m.body_text, 2200),
         received_at: m.received_at,
       })),
     })),
