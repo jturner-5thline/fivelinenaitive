@@ -576,7 +576,7 @@ export default function Settings() {
               </Button>
             </div>
 
-            <div className="max-w-5xl mx-auto px-4 sm:px-8 pt-6 sm:pt-8 pb-12">
+            <div className="w-full px-4 sm:px-8 pt-6 sm:pt-8 pb-12">
               {/* Section header */}
               {activeSection && (
                 <header className="mb-5">
