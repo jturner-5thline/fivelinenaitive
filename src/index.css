@@ -615,7 +615,9 @@
   .panel-shell {
     border-radius: 0.75rem;
     border: 1px solid rgba(var(--panel-border-rgb), 0.6);
-    background-image: linear-gradient(180deg, #030310 0%, #031026 15%, #05264a 35%, #073b6c 55%, #065193 75%, #0760ae 90%, #046cc1 100%);
+    background-color: rgba(8, 20, 44, 0.42);
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
     overflow: hidden;
   }
   .panel-divider-b {
@@ -664,15 +666,14 @@
    */
   .glass-module {
     position: relative;
-    /* Lifted one luminance step above the page gradient for a subtle
-       elevation cue, with a thin crisp neutral border and inset top-edge
-       highlight so tiles read as luminous without brightening the page. */
-    background: rgba(172, 200, 232, 0.92) !important;
-    border: 1px solid rgba(230, 244, 255, 0.88) !important;
+    /* True liquid glass: translucent so the page gradient reads through,
+       with a thin luminous border and inset top-edge highlight. */
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
     border-radius: 12px !important;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
     overflow: hidden;
   }
   .glass-module::before {
@@ -1993,13 +1994,14 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    slate-blue dashboard tint. */
 .popup-shell-surface .glass-module,
 .popup-shell-surface .glass-module-interactive {
-  background:
-    linear-gradient(180deg, #030310 0%, #031026 15%, #05264a 35%, #073b6c 55%, #065193 75%, #0760ae 90%, #046cc1 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(20px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
   border-radius: 6px !important;
   box-shadow:
-    0 12px 32px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    0 12px 32px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
 }
 .popup-shell-surface .glass-module::before {
   background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.00) 60%) !important;
