@@ -1213,19 +1213,13 @@
  */
 .deal-glass {
   position: relative;
-  /* Tiles sit barely above the page canvas — same navy family, only a
-     whisper of brightness and a thin cool-blue rim for separation. No
-     bright card fill, no glow, no purple. */
-  /* Near-flat fill — gradient reduced to a whisper for subtle depth only. */
+  /* Fully opaque deep midnight navy fill — no transparency. */
   background:
-    linear-gradient(180deg,
-      rgba(150, 195, 245, 0.070) 0%,
-      rgba(150, 195, 245, 0.062) 100%
-    ) !important;
+    linear-gradient(180deg, #0f1330 0%, #0a0d24 100%) !important;
   border: 1px solid rgba(150, 195, 245, 0.26) !important;
   border-radius: 10px !important;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   /* Layered premium shadow — one tight close shadow + one wider soft
      bloom underneath. Whisper-soft inner top highlight, no rim glow. */
   box-shadow:
@@ -1238,10 +1232,7 @@
 }
 .deal-glass:hover {
   background:
-    linear-gradient(180deg,
-      rgba(160, 205, 250, 0.095) 0%,
-      rgba(160, 205, 250, 0.085) 100%
-    ) !important;
+    linear-gradient(180deg, #131838 0%, #0d112c 100%) !important;
   border-color: rgba(165, 210, 252, 0.38) !important;
   box-shadow:
     inset 0 1px 0 0 rgba(200, 225, 255, 0.12),
