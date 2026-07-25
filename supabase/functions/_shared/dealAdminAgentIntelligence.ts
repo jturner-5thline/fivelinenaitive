@@ -1987,21 +1987,22 @@ USER SENT CLIENT CONTACT EMAIL, NO REPLY IN 3 BUSINESS DAYS
 const LENDER_INFO_REQUEST_RULES = `
 
 LENDER INFO REQUEST — add_outstanding_items (Rule L-5)
-- TRIGGER: an inbound email from a funding source / lender contact (matched to a funding_sources[] row for this deal) that asks for information, diligence materials, or documents in order to review / underwrite the deal. Detection cues include lead-ins like "to begin our review we'll need", "please provide", "we'll need the following", "can you send", "in order to evaluate", "diligence items required", and enumerated lists (bullets, numbers, letters, or line-separated short phrases) of deliverables. A single concrete ask ("please send updated AR aging") also qualifies.
+- SOURCE OF TRUTH: iterate STRICTLY over bundle.lender_inbound_messages[]. Every entry there is already pre-filtered to messages whose from_email maps to a funding_sources[] row on this deal (via exact contact email or contact domain). DO NOT scan emails[] / email_threads[].messages[] / unlinked_terms_emails[] for L-5 — those bundles mix internal, client, and lender traffic, and a lender's request often gets diluted by a later internal reply that makes the thread look "resolved". EVALUATE EACH lender_inbound_messages[] entry IN ISOLATION using only its own subject + body_excerpt. IGNORE whether later messages in the same thread appear to answer the request — the reviewer still has to confirm which items become tracked outstanding items.
+- TRIGGER: a lender_inbound_messages[] entry whose subject or body_excerpt asks for information, diligence materials, or documents in order to review / underwrite the deal. Detection cues include lead-ins like "to begin our review we'll need", "please provide", "we'll need the following", "can you send", "in order to evaluate", "diligence items required", "here's what we'll need", and enumerated lists (bullets, numbers, letters, or line-separated short phrases) of deliverables. A single concrete ask ("please send updated AR aging") also qualifies.
 - EXCLUDE: pass / not-a-fit / hold / terms emails (handled by Rules L-1 / L-2), scheduling-only messages, generic pleasantries, or replies that only confirm receipt.
-- WHEN TRIGGERED, emit EXACTLY ONE add_outstanding_items proposal per (deal, lender, email) with:
+- WHEN TRIGGERED, emit EXACTLY ONE add_outstanding_items proposal per (deal, lender_inbound_messages[] entry) with:
     action_type       = "add_outstanding_items"
     target_object_type= "deal"
     target_object_id  = deal_id
     item_title        = "Add outstanding items requested by {Lender}"
     linked_entity_label = "{Lender} on {Deal Name}"
     proposed_values   = {
-      lender_id: "<funding_sources[].id for this lender or null>",
-      lender_name: "<the funding_sources[].name>",
+      lender_id: "<lender_inbound_messages[].funding_source_id — REQUIRED, never null since the entry is pre-matched>",
+      lender_name: "<lender_inbound_messages[].funding_source_name>",
       requested_by_contact_name: "<sender display name>",
-      requested_by_contact_email: "<sender email>",
-      source_thread_id: "<gmail/naitive thread id if known>",
-      source_message_id: "<message id if known>",
+      requested_by_contact_email: "<lender_inbound_messages[].from_email>",
+      source_thread_id: "<lender_inbound_messages[].thread_id if present>",
+      source_message_id: "<lender_inbound_messages[].message_id if present>",
       source_summary: "<one-sentence factual summary of what the lender is asking for, grounded strictly in the email>",
       items: [
         {
@@ -2012,11 +2013,11 @@ LENDER INFO REQUEST — add_outstanding_items (Rule L-5)
         }
         // one entry per requested item, in document order. Cap at 12.
       ],
-      bundle_key: "add_outstanding_items:{deal_id}:{funding_source_id or 'unknown'}"
+      bundle_key: "add_outstanding_items:{deal_id}:{funding_source_id}:{source_message_id or source_thread_id or received_at}"
     }
     rationale_summary = "{Lender} sent a diligence request on {Deal} — {N} item(s) to add. Reviewer confirms before insertion."
     evidence_summary  = REQUIRED. <= 240 chars, one-line factual summary quoting the lead-in phrase from the email.
-    evidence_references MUST cite the inbound email (kind="email") whose body carried the request. Include the funding_source (kind="funding_source") when resolved.
+    evidence_references MUST cite the inbound email (kind="email", label="{Lender} → us: {subject}") whose body carried the request AND the funding_source (kind="funding_source") — both are always known because the entry came from lender_inbound_messages[].
     confidence_score >= 0.65.
 - ITEM EXTRACTION RULES:
     • Extract EVERY item in the lender's list — do not merge, summarize, or drop items.
@@ -2024,8 +2025,8 @@ LENDER INFO REQUEST — add_outstanding_items (Rule L-5)
     • NEVER duplicate an item that already exists in bundle.outstanding_items[] (compare semantically — don't add "P&L" if "Year-End P&L" is already open).
     • Convert relative date phrases ("by Friday", "EOD Tuesday") to absolute ISO dates.
     • Default priority to "normal"; use "high"/"urgent" only when the email explicitly signals urgency ("ASAP", "blocking", "before tomorrow's call").
-- DEDUPE: at most ONE add_outstanding_items proposal per (deal, funding_source, inbound email) per scan. The bundle_key is the dedupe key.
-- LENDER RESOLUTION: match the sender to a funding_sources[] row via exact email, then contact.email list, then domain. If no match, still emit the proposal with lender_id=null so the reviewer can attribute manually — do NOT invent a funding source.
+- DEDUPE: at most ONE add_outstanding_items proposal per (deal, funding_source, inbound message) per scan. The bundle_key above is the dedupe key. If the same lender sent multiple qualifying inbound messages in the window, emit ONE proposal PER inbound message — each request is independently reviewable — do NOT collapse them.
+- LENDER RESOLUTION: pre-computed. lender_id / lender_name come directly from lender_inbound_messages[].funding_source_id / .funding_source_name. If lender_inbound_messages[] is empty, the rule DOES NOT FIRE this scan — do not try to re-derive lender attribution from other bundles.
 - OUT OF SCOPE: NEVER emit a create_followup_task, add_status_note, or update_funding_source from this trigger — the add_outstanding_items card IS the action.`;
 
 const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES + TERMS_ISSUED_RULES + SCHEDULE_CALL_RULES + OUTBOUND_FOLLOWUP_RULES + OUTSTANDING_ITEMS_REMINDER_RULES + CLIENT_FOLLOWUP_RULES + LENDER_INFO_REQUEST_RULES;
@@ -2034,6 +2035,77 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
   // Trim large fields to keep prompt compact.
   const trim = (s: any, n = 240) =>
     typeof s === "string" ? (s.length > n ? s.slice(0, n) + "…" : s) : s;
+  // ---------- Rule L-5 support: per-lender inbound message filter ----------
+  // Build an index from every funding_sources[].contacts[].email (and their
+  // domain) → funding_sources[].id / .name. Rule L-5 (LENDER INFO REQUEST)
+  // must evaluate each inbound-from-lender message in isolation, regardless of
+  // whether later replies in the same thread appear to "resolve" it. To make
+  // that reliable we surface a dedicated `lender_inbound_messages[]` array on
+  // the prompt payload containing only messages whose `from_email` maps to a
+  // funding source on this deal.
+  const lenderEmailIndex = new Map<string, { id: string; name: string }>();
+  const lenderDomainIndex = new Map<string, { id: string; name: string }>();
+  for (const f of bundle.funding_sources ?? []) {
+    const contacts: any[] = Array.isArray((f as any).contacts) ? (f as any).contacts : [];
+    for (const c of contacts) {
+      const raw = typeof c?.email === "string" ? c.email.trim().toLowerCase() : "";
+      if (!raw) continue;
+      lenderEmailIndex.set(raw, { id: (f as any).id, name: (f as any).name });
+      const at = raw.lastIndexOf("@");
+      if (at > 0) {
+        const dom = raw.slice(at + 1);
+        // Skip obviously-generic providers so we don't misattribute gmail.com etc.
+        if (dom && !/^(gmail|yahoo|hotmail|outlook|icloud|aol|proton(mail)?|me|msn)\./.test(dom + ".") && !/^(gmail\.com|yahoo\.com|hotmail\.com|outlook\.com|icloud\.com|aol\.com|proton(mail)?\.com|me\.com|msn\.com)$/.test(dom)) {
+          if (!lenderDomainIndex.has(dom)) lenderDomainIndex.set(dom, { id: (f as any).id, name: (f as any).name });
+        }
+      }
+    }
+  }
+  const resolveLender = (fromEmailRaw: any): { id: string; name: string } | null => {
+    const e = typeof fromEmailRaw === "string" ? fromEmailRaw.trim().toLowerCase() : "";
+    if (!e) return null;
+    const direct = lenderEmailIndex.get(e);
+    if (direct) return direct;
+    const at = e.lastIndexOf("@");
+    if (at <= 0) return null;
+    const dom = e.slice(at + 1);
+    return lenderDomainIndex.get(dom) ?? null;
+  };
+  const lenderInbound: any[] = [];
+  const seenMsgKeys = new Set<string>();
+  const pushLenderInbound = (source: string, m: any, parent?: { thread_id?: string | null; id?: string | null; subject?: string | null }) => {
+    const fromEmail = m?.from_email ?? (typeof m?.from === "string" ? (m.from.match(/<([^>]+)>/)?.[1] ?? m.from) : null);
+    const match = resolveLender(fromEmail);
+    if (!match) return;
+    const key = String(m?.gmail_message_id ?? m?.id ?? `${fromEmail}|${m?.received_at ?? ""}|${m?.subject ?? ""}`);
+    if (seenMsgKeys.has(key)) return;
+    seenMsgKeys.add(key);
+    lenderInbound.push({
+      source,
+      message_id: m?.gmail_message_id ?? m?.id ?? null,
+      thread_id: m?.thread_id ?? parent?.thread_id ?? null,
+      parent_thread_naitive_id: parent?.id ?? null,
+      parent_thread_subject: parent?.subject ?? null,
+      subject: m?.subject ?? parent?.subject ?? null,
+      from: m?.from_name ? `${m.from_name} <${fromEmail}>` : fromEmail,
+      from_email: fromEmail,
+      received_at: m?.received_at ?? null,
+      funding_source_id: match.id,
+      funding_source_name: match.name,
+      snippet: trim(m?.snippet, 320),
+      body_excerpt: trim(m?.body_text ?? m?.body_excerpt, 2200),
+      attachments: m?.attachments ?? [],
+    });
+  };
+  for (const e of bundle.emails ?? []) pushLenderInbound("emails", e);
+  for (const t of bundle.email_threads ?? []) {
+    const parent = { thread_id: (t as any).thread_id, id: (t as any).id, subject: (t as any).subject };
+    for (const m of (t as any).messages ?? []) pushLenderInbound("email_threads", m, parent);
+  }
+  for (const m of bundle.unlinked_terms_emails ?? []) pushLenderInbound("unlinked_terms_emails", m);
+  // Keep the newest 20 for prompt-size safety.
+  lenderInbound.sort((a, b) => String(b.received_at ?? "").localeCompare(String(a.received_at ?? "")));
+  const lenderInboundCapped = lenderInbound.slice(0, 20);
   const compact = {
     deal: {
       id: bundle.deal_id,
@@ -2193,6 +2265,7 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
       })),
     })),
     configured_milestone_titles: bundle.configured_milestone_titles ?? [],
+    lender_inbound_messages: lenderInboundCapped,
   };
   const fp = fingerprint && fingerprint.trim().length > 0
     ? `\nuser_style_fingerprint (recent edits this user made to the agent's drafts — mimic their voice):\n${fingerprint.trim()}\n`
