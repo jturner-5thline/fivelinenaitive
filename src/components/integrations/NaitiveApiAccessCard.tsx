@@ -89,6 +89,7 @@ export function NaitiveApiAccessCard() {
             <li>get_deal_document</li>
             <li>search_deal_emails</li>
             <li>search_deal_recordings</li>
+            <li>list_deal_funding_sources</li>
           </ul>
           <div className="pt-2 font-medium text-foreground text-[13px]">Example prompts</div>
           <ul className="space-y-1 text-[11px] list-disc pl-4">
@@ -97,6 +98,7 @@ export function NaitiveApiAccessCard() {
             <li>"Search recent activity for the last lender touchpoint on Deal 123."</li>
             <li>"Find meeting transcripts tied to this deal."</li>
             <li>"Summarize the latest email thread with the client on Deal Y."</li>
+            <li>"Which lenders are on Deal X and what's their status?"</li>
           </ul>
         </div>
 

@@ -560,13 +560,37 @@ var search_deal_recordings_default = defineTool18({
   }
 });
 
+// src/lib/mcp/tools/list-deal-funding-sources.ts
+import { defineTool as defineTool19 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z19 } from "npm:zod@^3.23.0";
+var list_deal_funding_sources_default = defineTool19({
+  name: "list_deal_funding_sources",
+  title: "List deal funding sources / lenders",
+  description: "List all funding sources (lenders) attached to a specific deal \u2014 the same records shown in the deal's Funding Sources tab. Returns each entry's stage/status, tracking bucket (active, on-deck, on-hold, passed, excluded), quote amount / rate / term, pass reason, and status-change timestamps (submitted, approved, declined, passed, on-deck, on-hold, excluded). Returns an empty list when the deal has no funding sources.",
+  inputSchema: {
+    deal_id: z19.string().uuid()
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ deal_id }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const { data, error } = await sb.from("deal_lenders").select(
+      "id, deal_id, name, stage, substage, tracking_status, tags, score, notes, pass_reason, quote_amount, quote_rate, quote_term, submitted_at, approved_at, declined_at, passed_at, on_deck_at, on_hold_at, excluded_at, last_status_change_at, last_contact_at, master_lender_id, selected_contact_id, created_at, updated_at"
+    ).eq("deal_id", deal_id).order("last_status_change_at", { ascending: false, nullsFirst: false });
+    if (error) return errorResult(error.message);
+    const rows = data ?? [];
+    return textResult(rows, { count: rows.length });
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "tgkksvazruzbghssnxde";
 var mcp_default = defineMcp({
   name: "naitive-api",
   title: "naitive API",
   version: "0.1.0",
-  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals, `update_deal` to move stage or edit fields, `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups, `search_lenders`/`add_lender_to_deal` for the funding-source directory, and \u2014 for deep deal context \u2014 `search_deal_notes`, `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal.",
+  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals, `update_deal` to move stage or edit fields, `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups, `search_lenders`/`add_lender_to_deal` for the funding-source directory, `list_deal_funding_sources` to read the lenders attached to a specific deal (matches the deal's Funding Sources tab), and \u2014 for deep deal context \u2014 `search_deal_notes`, `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
@@ -589,7 +613,8 @@ var mcp_default = defineMcp({
     search_deal_documents_default,
     get_deal_document_default,
     search_deal_emails_default,
-    search_deal_recordings_default
+    search_deal_recordings_default,
+    list_deal_funding_sources_default
   ]
 });
 
