@@ -360,15 +360,17 @@ const C = {
   hairline: 'rgba(255,255,255,0.12)',
 };
 
+// Consumes the shared `--insights-widget-*` custom properties defined in
+// `src/index.css` under `.insights-glass-skin`. This is the single source of
+// truth for the Insights widget surface — every widget (Card-based,
+// glass-module-based, and these inline shells) resolves to the same tokens.
 const glassStyle: React.CSSProperties = {
-  background:
-    'linear-gradient(135deg, hsl(220, 45%, 17%) 0%, hsl(245, 38%, 12%) 50%, hsl(265, 32%, 8%) 100%)',
-  border: `1px solid rgba(255,255,255,0.38)`,
+  background: 'var(--insights-widget-bg)',
+  border: 'var(--insights-widget-border)',
+  borderRadius: 'var(--insights-widget-radius)',
+  boxShadow: 'var(--insights-widget-shadow)',
   backdropFilter: 'blur(10px)',
   WebkitBackdropFilter: 'blur(10px)',
-  borderRadius: 8,
-  boxShadow:
-    'inset 0 1px 0 0 rgba(255,255,255,0.12), 0 0 0 1px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.5), 0 18px 40px -14px rgba(0,0,0,0.8)',
 };
 
 // ============================================================
