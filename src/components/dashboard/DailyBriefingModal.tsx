@@ -2176,7 +2176,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
       <DialogContent
         className={cn(
           useCarouselSwipeClass(),
-          'popup-shell-surface w-[min(95vw,1600px)] max-w-[95vw] h-[min(92dvh,1000px)] max-h-[92dvh] p-0 overflow-hidden rounded-2xl border-transparent',
+          'popup-shell-surface dashboard-modal-surface w-[min(95vw,1600px)] max-w-[95vw] h-[min(92dvh,1000px)] max-h-[92dvh] p-0 overflow-hidden rounded-2xl border-transparent',
           // Fast, no-shudder open: skip zoom/slide and run a brief fade only.
           // The base Dialog applies zoom-in-95 + slide-in + duration-200; we
           // override with explicit identity transforms and a shorter duration
