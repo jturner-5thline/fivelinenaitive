@@ -529,7 +529,7 @@ export default function Settings() {
         <meta name="description" content="Manage application settings" />
       </Helmet>
 
-      <div className="bg-transparent min-h-full">
+      <div className="settings-surface bg-transparent min-h-full">
         <div className="flex w-full">
           {/* Sidebar — desktop */}
           <aside className="hidden md:block w-56 shrink-0 border-r border-white/[0.06] sticky top-0 self-start h-screen overflow-y-auto bg-transparent">
