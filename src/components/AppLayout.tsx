@@ -58,26 +58,15 @@ function MainContent({
         overflowX: 'hidden',
         scrollbarWidth: 'thin',
         scrollbarColor: 'rgba(255,255,255,0.15) transparent',
-        // Keep the main shell cheap to composite while the sidebar width
-        // animates; backdrop blur here repaints the largest app surface.
-        background: 'rgba(8, 10, 18, 0.28)',
-        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-        borderLeft: '1px solid rgba(255, 255, 255, 0.06)',
-        borderRight: '1px solid rgba(255, 255, 255, 0.04)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), inset 1px 0 0 rgba(255,255,255,0.03)',
+        // Fully transparent intermediate shell so deal tiles sit directly
+        // on the app-wide gradient background — no fill, border, or overlay.
+        background: 'transparent',
+        border: 'none',
+        boxShadow: 'none',
       }}
       onClick={handleMainClick}
     >
-      {/* Noise texture overlay for glass grain */}
-      <div
-        className="pointer-events-none absolute inset-0 rounded-[inherit] z-0"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E")`,
-          backgroundRepeat: 'repeat',
-          backgroundSize: '200px 200px',
-        }}
-      />
+      {/* Noise overlay removed — intermediate shell is fully transparent. */}
       <DealsHeader />
       {showWorkspaceLogo && (
         <div
