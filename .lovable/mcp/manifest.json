@@ -743,6 +743,31 @@
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
+      },
+      {
+        "name": "list_deal_funding_sources",
+        "title": "List deal funding sources / lenders",
+        "description": "List all funding sources (lenders) attached to a specific deal — the same records shown in the deal's Funding Sources tab. Returns each entry's stage/status, tracking bucket (active, on-deck, on-hold, passed, excluded), quote amount / rate / term, pass reason, and status-change timestamps (submitted, approved, declined, passed, on-deck, on-hold, excluded). Returns an empty list when the deal has no funding sources.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "deal_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
       }
     ]
   }
