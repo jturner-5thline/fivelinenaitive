@@ -243,7 +243,7 @@ const Sidebar = React.forwardRef<
       {/* Actual sidebar container - expands on hover */}
       <div
         className={cn(
-          "fixed top-2 bottom-2 z-10 hidden h-[calc(100svh-16px)] transition-[left,right,width] duration-150 ease-out md:flex",
+          "fixed top-1 bottom-1 z-10 hidden h-[calc(100svh-8px)] transition-[left,right,width] duration-150 ease-out md:flex",
           effectiveState === "expanded" ? "w-[--sidebar-width]" : "",
           state === "collapsed" && !isHovering
             ? variant === "floating" || variant === "inset"
@@ -251,7 +251,7 @@ const Sidebar = React.forwardRef<
               : "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
             : "w-[--sidebar-width]",
           side === "left"
-            ? "left-2 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
+            ? "left-1 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
             : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
           "p-0",
           className,

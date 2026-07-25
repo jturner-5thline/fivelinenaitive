@@ -220,8 +220,8 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
 
       <div
         className={cn(
-          'flex w-full h-full min-h-0 bg-transparent pt-2 pl-2 pr-0 gap-0',
-          isDealsRoute ? 'pb-0' : 'pb-2',
+          'flex w-full h-full min-h-0 bg-transparent pt-1 pl-1 pr-1 gap-0',
+          isDealsRoute ? 'pb-0' : 'pb-1',
         )}
         style={{ isolation: 'auto' }}
       >
