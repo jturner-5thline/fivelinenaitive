@@ -83,6 +83,20 @@ export function NaitiveApiAccessCard() {
             <li>create_company</li>
             <li>search_lenders</li>
             <li>add_lender_to_deal</li>
+            <li>search_deal_notes</li>
+            <li>list_deal_activity</li>
+            <li>search_deal_documents</li>
+            <li>get_deal_document</li>
+            <li>search_deal_emails</li>
+            <li>search_deal_recordings</li>
+          </ul>
+          <div className="pt-2 font-medium text-foreground text-[13px]">Example prompts</div>
+          <ul className="space-y-1 text-[11px] list-disc pl-4">
+            <li>"Find all notes for the ABC deal."</li>
+            <li>"Show me files related to the XYZ borrower."</li>
+            <li>"Search recent activity for the last lender touchpoint on Deal 123."</li>
+            <li>"Find meeting transcripts tied to this deal."</li>
+            <li>"Summarize the latest email thread with the client on Deal Y."</li>
           </ul>
         </div>
 
