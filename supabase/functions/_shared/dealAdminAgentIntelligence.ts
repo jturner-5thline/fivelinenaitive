@@ -552,6 +552,24 @@ async function gatherSignalsForDeal(
       ...e,
       ...(byId.get(e.gmail_message_id) ?? {}),
     }));
+    // ALSO hydrate body_text from email_cache so Rule L-5 (lender info request)
+    // can inspect the full inbound body — snippet alone truncates the enumerated
+    // list of diligence items and Rule L-5 silently no-ops.
+    const { data: ec } = await supabase
+      .from("email_cache")
+      .select("gmail_message_id, body_text, from_email, from_name")
+      .in("gmail_message_id", msgIds);
+    const ecById = new Map<string, any>((ec ?? []).map((r: any) => [r.gmail_message_id, r]));
+    emailRows = emailRows.map((e) => {
+      const cache = ecById.get(e.gmail_message_id);
+      if (!cache) return e;
+      return {
+        ...e,
+        body_text: cache.body_text ?? null,
+        from_email: e.from_email ?? cache.from_email ?? null,
+        from_name: e.from_name ?? cache.from_name ?? null,
+      };
+    });
   }
 
   // Hydrate matched email threads with their latest gmail messages.
