@@ -207,17 +207,6 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   return (
     <SidebarProvider defaultOpen={false} className="h-svh" style={{ isolation: 'auto' } as React.CSSProperties}>
       <BodyScrollLock />
-      {/* App background — diagonal gradient */}
-      <div
-        className="pointer-events-none fixed inset-0 z-0"
-        aria-hidden="true"
-        style={{
-          minHeight: '100vh',
-          background:
-            'linear-gradient(180deg, #030310 0%, #030b1e 10%, #051a39 25%, #063765 50%, #065193 75%, #076cc1 100%)',
-        }}
-      />
-
       <div
         className={cn(
           'flex w-full h-full min-h-0 bg-transparent pt-1 pl-1 pr-1 gap-0',
