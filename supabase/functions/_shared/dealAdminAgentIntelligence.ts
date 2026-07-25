@@ -458,6 +458,39 @@ export interface AnalyzeResult {
 
 const LOOKBACK_DAYS = 30;
 
+/**
+ * Strip HTML tags/entities from an email body_html payload so the LLM can
+ * read the underlying text. Gmail sync frequently stores only body_html
+ * (no text/plain part), and without this fallback Rule L-5 and other
+ * body-content rules silently see empty bodies. Bounded to keep prompt
+ * budget reasonable; downstream trim() caps per-field lengths further.
+ */
+function stripHtmlForPrompt(html: string | null | undefined): string {
+  if (!html || typeof html !== "string") return "";
+  return html
+    // Drop <style>/<script> blocks entirely.
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    // Preserve line breaks for block-level tags.
+    .replace(/<\/(p|div|li|tr|br|h[1-6])>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    // Drop all remaining tags.
+    .replace(/<[^>]+>/g, " ")
+    // Common HTML entities.
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&[a-z]+;/gi, " ")
+    // Collapse whitespace.
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, 8000);
+}
+
 async function gatherSignalsForDeal(
   supabase: SupabaseClient,
   deal: any,
@@ -552,6 +585,27 @@ async function gatherSignalsForDeal(
       ...e,
       ...(byId.get(e.gmail_message_id) ?? {}),
     }));
+    // ALSO hydrate body_text from email_cache so Rule L-5 (lender info request)
+    // can inspect the full inbound body — snippet alone truncates the enumerated
+    // list of diligence items and Rule L-5 silently no-ops.
+    const { data: ec } = await supabase
+      .from("email_cache")
+      .select("gmail_message_id, body_text, body_html, from_email, from_name")
+      .in("gmail_message_id", msgIds);
+    const ecById = new Map<string, any>((ec ?? []).map((r: any) => [r.gmail_message_id, r]));
+    emailRows = emailRows.map((e) => {
+      const cache = ecById.get(e.gmail_message_id);
+      if (!cache) return e;
+      const body = (cache.body_text && cache.body_text.length > 0)
+        ? cache.body_text
+        : stripHtmlForPrompt(cache.body_html);
+      return {
+        ...e,
+        body_text: body,
+        from_email: e.from_email ?? cache.from_email ?? null,
+        from_name: e.from_name ?? cache.from_name ?? null,
+      };
+    });
   }
 
   // Hydrate matched email threads with their latest gmail messages.
@@ -576,13 +630,19 @@ async function gatherSignalsForDeal(
     // the truncated snippet only.
     const { data: ecThread } = await supabase
       .from("email_cache")
-      .select("gmail_message_id, thread_id, subject, snippet, body_text, from_email, from_name, received_at")
+      .select("gmail_message_id, thread_id, subject, snippet, body_text, body_html, from_email, from_name, received_at")
       .in("thread_id", threadIds)
       .order("received_at", { ascending: false })
       .limit(80);
     for (const m of ecThread ?? []) {
       const tid = (m as any).thread_id as string;
       if (!threadMessages[tid]) threadMessages[tid] = [];
+      // Prefer body_text; fall back to stripped body_html when Gmail sync
+      // only cached HTML (common — text/plain part is often missing).
+      const bt = ((m as any).body_text && (m as any).body_text.length > 0)
+        ? (m as any).body_text
+        : stripHtmlForPrompt((m as any).body_html);
+      (m as any).body_text = bt;
       // Skip duplicates by gmail_message_id; otherwise add up to 6 per thread.
       const exists = threadMessages[tid].some(
         (x: any) => x.gmail_message_id === (m as any).gmail_message_id,
@@ -595,7 +655,7 @@ async function gatherSignalsForDeal(
           (x: any) => x.gmail_message_id === (m as any).gmail_message_id,
         );
         if (idx >= 0 && !(threadMessages[tid][idx] as any).body_text) {
-          threadMessages[tid][idx] = { ...threadMessages[tid][idx], body_text: (m as any).body_text };
+          threadMessages[tid][idx] = { ...threadMessages[tid][idx], body_text: bt };
         }
       }
     }
@@ -2038,8 +2098,15 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
     calendar: bundle.calendar_items,
     emails: bundle.emails.map((e: any) => ({
       id: e.id, gmail_message_id: e.gmail_message_id,
-      from: e.from_address, subject: e.subject,
-      snippet: trim(e.snippet, 280), received_at: e.received_at,
+      from: e.from_address || (e.from_name ? `${e.from_name} <${e.from_email}>` : e.from_email) || null,
+      from_email: e.from_email ?? null,
+      subject: e.subject,
+      snippet: trim(e.snippet, 280),
+      // Include full body so Rule L-5 (lender info request) can enumerate
+      // diligence items from linked inbound emails even when the thread
+      // isn't classified in email_threads yet.
+      body_excerpt: trim(e.body_text, 2200),
+      received_at: e.received_at,
       notes: trim(e.notes, 160),
     })),
     open_tasks: bundle.open_tasks,
@@ -2068,7 +2135,7 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
         from: m.from_name ? `${m.from_name} <${m.from_email}>` : m.from_email,
         subject: m.subject,
         snippet: trim(m.snippet, 320),
-        body_excerpt: trim(m.body_text, 1200),
+        body_excerpt: trim(m.body_text, 2200),
         received_at: m.received_at,
       })),
     })),

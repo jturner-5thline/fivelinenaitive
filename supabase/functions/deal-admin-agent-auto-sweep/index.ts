@@ -23,6 +23,10 @@ import { AGENT_KEYS, isAgentEnabledForCompany } from "../_shared/agentEntitlemen
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+// EdgeRuntime is provided by the Supabase Edge Runtime; declare so TS is happy.
+// deno-lint-ignore no-explicit-any
+declare const EdgeRuntime: any;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -42,6 +46,11 @@ Deno.serve(async (req) => {
   const maxQueueRows: number = typeof body?.max_queue_rows === "number" ? body.max_queue_rows : 40;
   const minConfidence: number =
     typeof body?.min_confidence === "number" ? body.min_confidence : 0.65;
+  // When true, the sweep runs the specified companies inline (blocking).
+  // When false (default cron path with no company_id), the sweep fans out
+  // one self-invocation per enabled company so each gets its own 150s
+  // request budget and the top-level call returns instantly.
+  const inline: boolean = body?.inline === true || !!onlyCompanyId;
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -57,6 +66,48 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ ok: false, error: `settings query: ${settingsErr.message}` }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  // Fan-out mode: dispatch one background invocation per company so each
+  // company gets its own 150s edge-function budget. This prevents a broad
+  // scan from timing out after ~15 companies as it did previously.
+  if (!inline) {
+    const companies = (settingsRows ?? []).map((r: any) => r.company_id as string);
+    const selfUrl = `${SUPABASE_URL}/functions/v1/deal-admin-agent-auto-sweep`;
+    const dispatched: string[] = [];
+    for (const cid of companies) {
+      const p = fetch(selfUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SERVICE_ROLE}`,
+          apikey: SERVICE_ROLE,
+        },
+        body: JSON.stringify({
+          company_id: cid,
+          inline: true,
+          deal_ids: dealIds,
+          max_deals: maxDeals,
+          max_queue_rows: maxQueueRows,
+          min_confidence: minConfidence,
+        }),
+      }).catch((e) => {
+        console.error("[deal-admin-agent-auto-sweep] fan-out failed:", cid, e);
+      });
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+        EdgeRuntime.waitUntil(p);
+      }
+      dispatched.push(cid);
+    }
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        mode: "fanout",
+        dispatched_companies: dispatched.length,
+        company_ids: dispatched,
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 
