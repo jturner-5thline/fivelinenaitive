@@ -2589,3 +2589,67 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .crm-companies-table tbody tr:hover td {
   background: rgba(255, 255, 255, 0.04) !important;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Settings surface — every widget/module/card/panel/section container in
+   the Settings area must resolve to the exact same solid navy gradient
+   used by `.deal-tile.deal-glass` on the Deals page. Deal tile fill is the
+   single source of truth; no approximations.
+   ───────────────────────────────────────────────────────────────────── */
+.settings-surface [data-slot="card"],
+.settings-surface .glass-card,
+.settings-surface .glass-module,
+.settings-surface .glass-border-soft,
+.settings-surface .insights-widget-surface,
+.settings-surface [data-settings-panel],
+.settings-surface [role="tabpanel"],
+.settings-surface .bg-card,
+.settings-surface .bg-muted,
+.settings-surface .bg-muted\/30,
+.settings-surface .bg-muted\/50,
+.settings-surface .bg-background,
+.settings-surface .bg-background\/50,
+.settings-surface .bg-background\/60,
+.settings-surface .bg-background\/80,
+.settings-surface .bg-white\/\[0\.02\],
+.settings-surface .bg-white\/\[0\.03\],
+.settings-surface .bg-white\/\[0\.04\],
+.settings-surface .bg-white\/\[0\.05\],
+.settings-surface .bg-white\/\[0\.06\] {
+  background: linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%) !important;
+  background-color: transparent;
+  border-color: rgba(190, 220, 255, 0.34) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+/* Preserve interactive form controls — their outlined treatment must not
+   inherit the panel fill. */
+.settings-surface input,
+.settings-surface textarea,
+.settings-surface select,
+.settings-surface [role="combobox"],
+.settings-surface [data-slot="select-trigger"],
+.settings-surface [data-slot="input"],
+.settings-surface [data-slot="textarea"],
+.settings-surface button {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+/* Restore fills for primary/destructive/secondary action buttons and
+   selected/active nav pills that legitimately need a colored surface. */
+.settings-surface button[data-variant="default"],
+.settings-surface .bg-primary,
+.settings-surface .bg-destructive,
+.settings-surface .bg-secondary,
+.settings-surface .bg-accent,
+.settings-surface [data-state="active"] {
+  background: revert !important;
+  background-color: revert !important;
+}
+/* Hover shade on tile-styled panels stays subtle instead of switching to a
+   lighter glass tone. */
+.settings-surface [data-slot="card"]:hover,
+.settings-surface .glass-card:hover,
+.settings-surface .glass-module:hover {
+  background: linear-gradient(180deg, #142547 0%, #0f1d38 100%) !important;
+}
