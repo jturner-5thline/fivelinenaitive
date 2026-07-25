@@ -597,13 +597,19 @@ async function gatherSignalsForDeal(
     // the truncated snippet only.
     const { data: ecThread } = await supabase
       .from("email_cache")
-      .select("gmail_message_id, thread_id, subject, snippet, body_text, from_email, from_name, received_at")
+      .select("gmail_message_id, thread_id, subject, snippet, body_text, body_html, from_email, from_name, received_at")
       .in("thread_id", threadIds)
       .order("received_at", { ascending: false })
       .limit(80);
     for (const m of ecThread ?? []) {
       const tid = (m as any).thread_id as string;
       if (!threadMessages[tid]) threadMessages[tid] = [];
+      // Prefer body_text; fall back to stripped body_html when Gmail sync
+      // only cached HTML (common — text/plain part is often missing).
+      const bt = ((m as any).body_text && (m as any).body_text.length > 0)
+        ? (m as any).body_text
+        : stripHtmlForPrompt((m as any).body_html);
+      (m as any).body_text = bt;
       // Skip duplicates by gmail_message_id; otherwise add up to 6 per thread.
       const exists = threadMessages[tid].some(
         (x: any) => x.gmail_message_id === (m as any).gmail_message_id,
@@ -616,7 +622,7 @@ async function gatherSignalsForDeal(
           (x: any) => x.gmail_message_id === (m as any).gmail_message_id,
         );
         if (idx >= 0 && !(threadMessages[tid][idx] as any).body_text) {
-          threadMessages[tid][idx] = { ...threadMessages[tid][idx], body_text: (m as any).body_text };
+          threadMessages[tid][idx] = { ...threadMessages[tid][idx], body_text: bt };
         }
       }
     }
