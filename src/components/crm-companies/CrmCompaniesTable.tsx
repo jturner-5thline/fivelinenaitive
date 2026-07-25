@@ -334,7 +334,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
   );
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 crm-companies-surface">
       <div className="flex items-center gap-2 flex-wrap">
         <Select value={lifecycleFilter} onValueChange={setLifecycleFilter}>
           <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Lifecycle" /></SelectTrigger>
@@ -400,7 +400,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
 
       <div
         className={cn(
-          'rounded-xl overflow-hidden bg-card/40 dark:bg-white/[0.015]',
+          'crm-companies-table rounded-xl overflow-hidden',
           'ring-1 ring-border/40 shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
           // Lighter, more refined table internals
           '[&_table]:border-separate [&_table]:border-spacing-0',
