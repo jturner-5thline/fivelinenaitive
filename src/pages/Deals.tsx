@@ -1113,6 +1113,7 @@ export default function Dashboard() {
                 )}
                 style={{
                    animation: 'fadeInUp 0.4s ease-out 0.3s forwards',
+                   background: 'linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%)',
                  }}
               >
               {showInlineDetail && selectedDeal ? (
@@ -1124,7 +1125,7 @@ export default function Dashboard() {
                  * own header / content / workbook-tab strip.
                  */
                 <div
-                  className="hidden lg:flex flex-1 min-h-0 rounded-2xl border border-white/[0.08] overflow-hidden bg-gradient-to-b from-white/[0.03] to-transparent"
+                  className="hidden lg:flex flex-1 min-h-0 overflow-hidden"
                 >
                   <div
                     ref={leftListColumnRef}
