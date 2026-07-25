@@ -2034,6 +2034,77 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
   // Trim large fields to keep prompt compact.
   const trim = (s: any, n = 240) =>
     typeof s === "string" ? (s.length > n ? s.slice(0, n) + "…" : s) : s;
+  // ---------- Rule L-5 support: per-lender inbound message filter ----------
+  // Build an index from every funding_sources[].contacts[].email (and their
+  // domain) → funding_sources[].id / .name. Rule L-5 (LENDER INFO REQUEST)
+  // must evaluate each inbound-from-lender message in isolation, regardless of
+  // whether later replies in the same thread appear to "resolve" it. To make
+  // that reliable we surface a dedicated `lender_inbound_messages[]` array on
+  // the prompt payload containing only messages whose `from_email` maps to a
+  // funding source on this deal.
+  const lenderEmailIndex = new Map<string, { id: string; name: string }>();
+  const lenderDomainIndex = new Map<string, { id: string; name: string }>();
+  for (const f of bundle.funding_sources ?? []) {
+    const contacts: any[] = Array.isArray((f as any).contacts) ? (f as any).contacts : [];
+    for (const c of contacts) {
+      const raw = typeof c?.email === "string" ? c.email.trim().toLowerCase() : "";
+      if (!raw) continue;
+      lenderEmailIndex.set(raw, { id: (f as any).id, name: (f as any).name });
+      const at = raw.lastIndexOf("@");
+      if (at > 0) {
+        const dom = raw.slice(at + 1);
+        // Skip obviously-generic providers so we don't misattribute gmail.com etc.
+        if (dom && !/^(gmail|yahoo|hotmail|outlook|icloud|aol|proton(mail)?|me|msn)\./.test(dom + ".") && !/^(gmail\.com|yahoo\.com|hotmail\.com|outlook\.com|icloud\.com|aol\.com|proton(mail)?\.com|me\.com|msn\.com)$/.test(dom)) {
+          if (!lenderDomainIndex.has(dom)) lenderDomainIndex.set(dom, { id: (f as any).id, name: (f as any).name });
+        }
+      }
+    }
+  }
+  const resolveLender = (fromEmailRaw: any): { id: string; name: string } | null => {
+    const e = typeof fromEmailRaw === "string" ? fromEmailRaw.trim().toLowerCase() : "";
+    if (!e) return null;
+    const direct = lenderEmailIndex.get(e);
+    if (direct) return direct;
+    const at = e.lastIndexOf("@");
+    if (at <= 0) return null;
+    const dom = e.slice(at + 1);
+    return lenderDomainIndex.get(dom) ?? null;
+  };
+  const lenderInbound: any[] = [];
+  const seenMsgKeys = new Set<string>();
+  const pushLenderInbound = (source: string, m: any, parent?: { thread_id?: string | null; id?: string | null; subject?: string | null }) => {
+    const fromEmail = m?.from_email ?? (typeof m?.from === "string" ? (m.from.match(/<([^>]+)>/)?.[1] ?? m.from) : null);
+    const match = resolveLender(fromEmail);
+    if (!match) return;
+    const key = String(m?.gmail_message_id ?? m?.id ?? `${fromEmail}|${m?.received_at ?? ""}|${m?.subject ?? ""}`);
+    if (seenMsgKeys.has(key)) return;
+    seenMsgKeys.add(key);
+    lenderInbound.push({
+      source,
+      message_id: m?.gmail_message_id ?? m?.id ?? null,
+      thread_id: m?.thread_id ?? parent?.thread_id ?? null,
+      parent_thread_naitive_id: parent?.id ?? null,
+      parent_thread_subject: parent?.subject ?? null,
+      subject: m?.subject ?? parent?.subject ?? null,
+      from: m?.from_name ? `${m.from_name} <${fromEmail}>` : fromEmail,
+      from_email: fromEmail,
+      received_at: m?.received_at ?? null,
+      funding_source_id: match.id,
+      funding_source_name: match.name,
+      snippet: trim(m?.snippet, 320),
+      body_excerpt: trim(m?.body_text ?? m?.body_excerpt, 2200),
+      attachments: m?.attachments ?? [],
+    });
+  };
+  for (const e of bundle.emails ?? []) pushLenderInbound("emails", e);
+  for (const t of bundle.email_threads ?? []) {
+    const parent = { thread_id: (t as any).thread_id, id: (t as any).id, subject: (t as any).subject };
+    for (const m of (t as any).messages ?? []) pushLenderInbound("email_threads", m, parent);
+  }
+  for (const m of bundle.unlinked_terms_emails ?? []) pushLenderInbound("unlinked_terms_emails", m);
+  // Keep the newest 20 for prompt-size safety.
+  lenderInbound.sort((a, b) => String(b.received_at ?? "").localeCompare(String(a.received_at ?? "")));
+  const lenderInboundCapped = lenderInbound.slice(0, 20);
   const compact = {
     deal: {
       id: bundle.deal_id,
@@ -2193,6 +2264,7 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
       })),
     })),
     configured_milestone_titles: bundle.configured_milestone_titles ?? [],
+    lender_inbound_messages: lenderInboundCapped,
   };
   const fp = fingerprint && fingerprint.trim().length > 0
     ? `\nuser_style_fingerprint (recent edits this user made to the agent's drafts — mimic their voice):\n${fingerprint.trim()}\n`
