@@ -11,6 +11,12 @@ import createContact from "./tools/create-contact";
 import createCompany from "./tools/create-company";
 import searchLenders from "./tools/search-lenders";
 import addLenderToDeal from "./tools/add-lender-to-deal";
+import searchDealNotes from "./tools/search-deal-notes";
+import listDealActivity from "./tools/list-deal-activity";
+import searchDealDocuments from "./tools/search-deal-documents";
+import getDealDocument from "./tools/get-deal-document";
+import searchDealEmails from "./tools/search-deal-emails";
+import searchDealRecordings from "./tools/search-deal-recordings";
 
 // The OAuth issuer MUST be the direct Supabase host (see cloud-auth-oauth-server).
 // SUPABASE_URL on Lovable Cloud is a `.lovable.cloud` proxy; the token issuer is
@@ -23,7 +29,7 @@ export default defineMcp({
   title: "naitive API",
   version: "0.1.0",
   instructions:
-    "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals, `update_deal` to move stage or edit fields, `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups, and `search_lenders`/`add_lender_to_deal` to work with the funding-source directory.",
+    "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals, `update_deal` to move stage or edit fields, `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups, `search_lenders`/`add_lender_to_deal` for the funding-source directory, and — for deep deal context — `search_deal_notes`, `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
@@ -41,5 +47,11 @@ export default defineMcp({
     createCompany,
     searchLenders,
     addLenderToDeal,
+    searchDealNotes,
+    listDealActivity,
+    searchDealDocuments,
+    getDealDocument,
+    searchDealEmails,
+    searchDealRecordings,
   ],
 });

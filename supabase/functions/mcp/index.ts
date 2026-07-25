@@ -371,13 +371,202 @@ var add_lender_to_deal_default = defineTool12({
   }
 });
 
+// src/lib/mcp/tools/search-deal-notes.ts
+import { defineTool as defineTool13 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z13 } from "npm:zod@^3.23.0";
+var search_deal_notes_default = defineTool13({
+  name: "search_deal_notes",
+  title: "Search deal notes",
+  description: "Search notes attached to a specific deal (deal space notes). Optionally filter by a text query against title/content/tags. Returns id, title, content, folder, tags, is_pinned, user_id, updated_at.",
+  inputSchema: {
+    deal_id: z13.string().uuid(),
+    query: z13.string().trim().min(1).max(200).optional(),
+    limit: z13.number().int().min(1).max(100).default(25)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ deal_id, query, limit }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    let q = sb.from("deal_space_notes").select("id, deal_id, title, content, folder, tags, is_pinned, user_id, created_at, updated_at").eq("deal_id", deal_id).order("updated_at", { ascending: false }).limit(limit);
+    if (query) {
+      const like = `%${query}%`;
+      q = q.or(`title.ilike.${like},content.ilike.${like}`);
+    }
+    const { data, error } = await q;
+    if (error) return errorResult(error.message);
+    return textResult(data ?? [], { count: data?.length ?? 0 });
+  }
+});
+
+// src/lib/mcp/tools/list-deal-activity.ts
+import { defineTool as defineTool14 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z14 } from "npm:zod@^3.23.0";
+var list_deal_activity_default = defineTool14({
+  name: "list_deal_activity",
+  title: "List deal activity",
+  description: "List recent activity/timeline events for a deal \u2014 stage changes, field updates, emails, calls, notes, and other logged actions. Combines deal_activity (structured field changes) with activity_logs (rich events including emails). Returns items ordered by most recent first.",
+  inputSchema: {
+    deal_id: z14.string().uuid(),
+    activity_type: z14.string().trim().min(1).max(60).optional().describe("Optional activity_type filter for activity_logs (e.g. 'email', 'call', 'note', 'stage_change')."),
+    limit: z14.number().int().min(1).max(200).default(50)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ deal_id, activity_type, limit }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    let logsQ = sb.from("activity_logs").select(
+      "id, activity_type, description, user_display_name, direction, subject, from_address, to_addresses, sent_at, thread_id, provider, metadata, created_at"
+    ).eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(limit);
+    if (activity_type) logsQ = logsQ.eq("activity_type", activity_type);
+    const [logsRes, changesRes] = await Promise.all([
+      logsQ,
+      sb.from("deal_activity").select("id, source, action_type, before, after, user_id, created_at").eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(limit)
+    ]);
+    if (logsRes.error) return errorResult(logsRes.error.message);
+    if (changesRes.error) return errorResult(changesRes.error.message);
+    return textResult({
+      activity_logs: logsRes.data ?? [],
+      field_changes: changesRes.data ?? []
+    });
+  }
+});
+
+// src/lib/mcp/tools/search-deal-documents.ts
+import { defineTool as defineTool15 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z15 } from "npm:zod@^3.23.0";
+var search_deal_documents_default = defineTool15({
+  name: "search_deal_documents",
+  title: "Search deal documents",
+  description: "Search files/documents attached to a specific deal (virtual data room). Optionally filter by name, category, or a text query against name/source_subject/extracted_text. Returns id, name, category, size_bytes, content_type, source, source_subject, created_at.",
+  inputSchema: {
+    deal_id: z15.string().uuid(),
+    query: z15.string().trim().min(1).max(200).optional(),
+    category: z15.string().trim().min(1).max(100).optional(),
+    limit: z15.number().int().min(1).max(100).default(25)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ deal_id, query, category, limit }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    let q = sb.from("deal_attachments").select(
+      "id, deal_id, name, category, size_bytes, content_type, source, source_subject, source_sender, extraction_status, created_at, user_id"
+    ).eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(limit);
+    if (category) q = q.eq("category", category);
+    if (query) {
+      const like = `%${query}%`;
+      q = q.or(`name.ilike.${like},source_subject.ilike.${like},extracted_text.ilike.${like}`);
+    }
+    const { data, error } = await q;
+    if (error) return errorResult(error.message);
+    return textResult(data ?? [], { count: data?.length ?? 0 });
+  }
+});
+
+// src/lib/mcp/tools/get-deal-document.ts
+import { defineTool as defineTool16 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z16 } from "npm:zod@^3.23.0";
+var get_deal_document_default = defineTool16({
+  name: "get_deal_document",
+  title: "Get deal document",
+  description: "Fetch a single deal document/attachment record by id, including extracted_text when available. Use search_deal_documents first to find the id.",
+  inputSchema: {
+    document_id: z16.string().uuid(),
+    include_extracted_text: z16.boolean().default(true)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ document_id, include_extracted_text }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const cols = include_extracted_text ? "id, deal_id, name, category, size_bytes, content_type, file_path, source, source_email_id, source_thread_id, source_subject, source_sender, extraction_status, extraction_error, extracted_text, extracted_at, created_at, user_id" : "id, deal_id, name, category, size_bytes, content_type, file_path, source, source_email_id, source_thread_id, source_subject, source_sender, extraction_status, extraction_error, extracted_at, created_at, user_id";
+    const { data, error } = await sb.from("deal_attachments").select(cols).eq("id", document_id).maybeSingle();
+    if (error) return errorResult(error.message);
+    if (!data) return errorResult("Document not found or you do not have access.");
+    return textResult(data);
+  }
+});
+
+// src/lib/mcp/tools/search-deal-emails.ts
+import { defineTool as defineTool17 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z17 } from "npm:zod@^3.23.0";
+var search_deal_emails_default = defineTool17({
+  name: "search_deal_emails",
+  title: "Search deal emails",
+  description: "Search email/communication history logged against a deal. Queries activity_logs where activity_type = 'email' for the deal, optionally filtered by a text query against subject, body, from, or to addresses. Returns subject, direction, from/to, sent_at, thread_id, and body snippet.",
+  inputSchema: {
+    deal_id: z17.string().uuid(),
+    query: z17.string().trim().min(1).max(200).optional(),
+    direction: z17.enum(["inbound", "outbound"]).optional(),
+    limit: z17.number().int().min(1).max(100).default(25)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ deal_id, query, direction, limit }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    let q = sb.from("activity_logs").select(
+      "id, subject, body, direction, from_address, to_addresses, cc_addresses, sent_at, thread_id, message_id, provider, user_display_name, created_at"
+    ).eq("deal_id", deal_id).eq("activity_type", "email").order("sent_at", { ascending: false, nullsFirst: false }).limit(limit);
+    if (direction) q = q.eq("direction", direction);
+    if (query) {
+      const like = `%${query}%`;
+      q = q.or(`subject.ilike.${like},body.ilike.${like},from_address.ilike.${like}`);
+    }
+    const { data, error } = await q;
+    if (error) return errorResult(error.message);
+    return textResult(data ?? [], { count: data?.length ?? 0 });
+  }
+});
+
+// src/lib/mcp/tools/search-deal-recordings.ts
+import { defineTool as defineTool18 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z18 } from "npm:zod@^3.23.0";
+var search_deal_recordings_default = defineTool18({
+  name: "search_deal_recordings",
+  title: "Search deal meeting recordings",
+  description: "List Claap meeting recordings and transcripts linked to a deal. Returns recording title, duration, recorder, thumbnail/url, and \u2014 when include_transcript is true \u2014 the transcript text and summary from claap_transcripts. Optional query filters recording title/summary/transcript.",
+  inputSchema: {
+    deal_id: z18.string().uuid(),
+    query: z18.string().trim().min(1).max(200).optional(),
+    include_transcript: z18.boolean().default(false),
+    limit: z18.number().int().min(1).max(50).default(20)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ deal_id, query, include_transcript, limit }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    let recQ = sb.from("deal_claap_recordings").select(
+      "id, recording_id, recording_title, recording_url, thumbnail_url, duration_seconds, recorder_name, recorder_email, linked_at, notes, created_at"
+    ).eq("deal_id", deal_id).order("linked_at", { ascending: false, nullsFirst: false }).limit(limit);
+    if (query) recQ = recQ.ilike("recording_title", `%${query}%`);
+    const { data: recordings, error } = await recQ;
+    if (error) return errorResult(error.message);
+    let transcripts = [];
+    if (include_transcript) {
+      let tQ = sb.from("claap_transcripts").select("id, claap_meeting_id, transcript_text, summary, participants, duration_seconds, recorded_at, call_type").eq("deal_id", deal_id).order("recorded_at", { ascending: false, nullsFirst: false }).limit(limit);
+      if (query) {
+        const like = `%${query}%`;
+        tQ = tQ.or(`transcript_text.ilike.${like},summary.ilike.${like}`);
+      }
+      const tRes = await tQ;
+      if (tRes.error) return errorResult(tRes.error.message);
+      transcripts = tRes.data ?? [];
+    }
+    return textResult({ recordings: recordings ?? [], transcripts });
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "tgkksvazruzbghssnxde";
 var mcp_default = defineMcp({
   name: "naitive-api",
   title: "naitive API",
   version: "0.1.0",
-  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals, `update_deal` to move stage or edit fields, `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups, and `search_lenders`/`add_lender_to_deal` to work with the funding-source directory.",
+  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals, `update_deal` to move stage or edit fields, `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups, `search_lenders`/`add_lender_to_deal` for the funding-source directory, and \u2014 for deep deal context \u2014 `search_deal_notes`, `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
@@ -394,7 +583,13 @@ var mcp_default = defineMcp({
     create_contact_default,
     create_company_default,
     search_lenders_default,
-    add_lender_to_deal_default
+    add_lender_to_deal_default,
+    search_deal_notes_default,
+    list_deal_activity_default,
+    search_deal_documents_default,
+    get_deal_document_default,
+    search_deal_emails_default,
+    search_deal_recordings_default
   ]
 });
 
