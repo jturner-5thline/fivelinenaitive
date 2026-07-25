@@ -631,6 +631,8 @@ export default function Dashboard() {
         OUTSIDE the `space-y-*` rhythm of the main page sections.
       */}
       <WorkspacePage
+        mainClassName="flex min-h-0 flex-col pb-0"
+        contentClassName="flex min-h-0 flex-1 flex-col"
         beforeContent={
           <>
             <OnboardingModal open={showOnboarding} onComplete={completeOnboarding} />
@@ -1106,7 +1108,7 @@ export default function Dashboard() {
               <div
                 ref={boardScrollContainerRef}
                 className={cn(
-                  'opacity-0',
+                  'opacity-0 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain',
                   showInlineDetail && 'relative',
                 )}
                 style={{
@@ -1122,7 +1124,7 @@ export default function Dashboard() {
                  * own header / content / workbook-tab strip.
                  */
                 <div
-                  className="hidden lg:flex rounded-2xl border border-white/[0.08] overflow-hidden bg-gradient-to-b from-white/[0.03] to-transparent h-[calc(100vh-9rem)]"
+                  className="hidden lg:flex flex-1 min-h-0 rounded-2xl border border-white/[0.08] overflow-hidden bg-gradient-to-b from-white/[0.03] to-transparent"
                 >
                   <div
                     ref={leftListColumnRef}
@@ -1194,7 +1196,8 @@ export default function Dashboard() {
               ) : null}
               <div
                 className={cn(
-                  showInlineDetail ? 'lg:hidden' : 'contents',
+                  'flex min-h-0 flex-1 flex-col',
+                  showInlineDetail && 'lg:hidden',
                 )}
               >
               {/*

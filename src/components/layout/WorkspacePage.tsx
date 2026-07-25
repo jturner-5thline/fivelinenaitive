@@ -26,6 +26,8 @@ export interface WorkspacePageProps {
   beforeContent?: React.ReactNode;
   /** Optional override for the inner `space-y-*` rhythm. */
   contentClassName?: string;
+  /** Optional override for the padded main viewport. */
+  mainClassName?: string;
   /**
    * Optional action cluster rendered in the top-right of the workspace
    * module, vertically aligned with the persistent naitive logo brand
@@ -48,6 +50,7 @@ export function WorkspacePage({
   children,
   beforeContent,
   contentClassName,
+  mainClassName,
   afterMain,
   headerActions,
 }: WorkspacePageProps) {
@@ -60,7 +63,7 @@ export function WorkspacePage({
           {headerActions}
         </div>
       )}
-      <main className="w-full px-4 pt-5 pb-3 sm:px-6 flex-1">
+      <main className={cn('w-full px-4 pt-5 pb-3 sm:px-6 flex-1', mainClassName)}>
         {beforeContent}
         <div className={cn('space-y-5', contentClassName)}>{children}</div>
       </main>
