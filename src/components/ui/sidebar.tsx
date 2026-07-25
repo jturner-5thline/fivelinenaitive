@@ -259,7 +259,8 @@ const Sidebar = React.forwardRef<
         style={{
           background: 'linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%)',
           opacity: 1,
-          borderRadius: 0,
+          borderRadius: 12,
+          overflow: 'hidden',
           boxShadow: 'none',
           filter: 'none',
           backdropFilter: 'none',
