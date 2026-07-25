@@ -1276,19 +1276,15 @@
    ───────────────────────────────────────────────────────────────────── */
 .deal-tile.deal-glass {
   background:
-    linear-gradient(180deg,
-      rgba(190, 220, 255, 0.16) 0%,
-      rgba(190, 220, 255, 0.14) 100%
-    ) !important;
-  border-color: rgba(190, 220, 255, 0.34) !important;
+    radial-gradient(120% 100% at 0% 0%, #1a2148 0%, rgba(0,0,0,0) 60%),
+    linear-gradient(135deg, #121736 0%, #0a0d22 100%) !important;
+  border-color: rgba(120, 130, 200, 0.22) !important;
   color: #ffffff !important;
 }
 .deal-tile.deal-glass:hover {
   background:
-    linear-gradient(180deg,
-      rgba(200, 228, 255, 0.20) 0%,
-      rgba(200, 228, 255, 0.18) 100%
-    ) !important;
+    radial-gradient(120% 100% at 0% 0%, #202a5c 0%, rgba(0,0,0,0) 60%),
+    linear-gradient(135deg, #161c40 0%, #0c0f28 100%) !important;
 }
 /* Brighten text inside deal tiles for stronger readability */
 .deal-tile.deal-glass,
