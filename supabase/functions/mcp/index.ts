@@ -451,6 +451,8 @@ var search_deal_notes_default = defineTool13({
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
+    const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_notes");
+    if (denied) return denied;
     let q = sb.from("deal_space_notes").select("id, deal_id, title, content, folder, tags, is_pinned, user_id, created_at, updated_at").eq("deal_id", deal_id).order("updated_at", { ascending: false }).limit(limit);
     if (query) {
       const like = `%${query}%`;
