@@ -8212,6 +8212,90 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_rundown_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          initiated_by: string
+          item_id: string | null
+          payload: Json | null
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          initiated_by?: string
+          item_id?: string | null
+          payload?: Json | null
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          initiated_by?: string
+          item_id?: string | null
+          payload?: Json | null
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      daily_rundown_items: {
+        Row: {
+          completed_at: string | null
+          content: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          sort_order: number
+          source: string
+          status: Database["public"]["Enums"]["daily_rundown_status"]
+          title: string
+          updated_at: string
+          updated_by: string | null
+          user_email: string
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          sort_order?: number
+          source?: string
+          status?: Database["public"]["Enums"]["daily_rundown_status"]
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+          user_email: string
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          sort_order?: number
+          source?: string
+          status?: Database["public"]["Enums"]["daily_rundown_status"]
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_email?: string
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: []
+      }
       dashboard_grid_layouts: {
         Row: {
           company_id: string | null
@@ -29311,6 +29395,7 @@ export type Database = {
       is_fifth_line_internal_admin: { Args: never; Returns: boolean }
       is_flex_hidden_stage: { Args: { p_stage: string }; Returns: boolean }
       is_freemail_domain: { Args: { d: string }; Returns: boolean }
+      is_rundown_authorized_user: { Args: never; Returns: boolean }
       is_same_company_as_user: {
         Args: { _current_user_id: string; _deal_owner_id: string }
         Returns: boolean
@@ -29585,6 +29670,7 @@ export type Database = {
         | "behavior"
         | "domain_knowledge"
       copilot_preference_source: "manual" | "thumbs_down" | "chat_command"
+      daily_rundown_status: "pending" | "complete"
       data_access_scope: "all" | "team" | "own" | "none"
       deal_access_request_status: "pending" | "approved" | "declined"
       deal_calendar_item_type: "meeting" | "deadline" | "reminder" | "note"
@@ -29869,6 +29955,7 @@ export const Constants = {
         "domain_knowledge",
       ],
       copilot_preference_source: ["manual", "thumbs_down", "chat_command"],
+      daily_rundown_status: ["pending", "complete"],
       data_access_scope: ["all", "team", "own", "none"],
       deal_access_request_status: ["pending", "approved", "declined"],
       deal_calendar_item_type: ["meeting", "deadline", "reminder", "note"],
