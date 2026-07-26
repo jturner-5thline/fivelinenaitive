@@ -818,110 +818,130 @@ export default function Dashboard() {
                             { value: 'referredBy', label: 'Referred By' },
                           ];
                           const toggleGroup = (v: string) => setGroupBy(prev => (prev === v ? null : v));
-                          return (
-                            <Popover>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <PopoverTrigger asChild>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="gap-1.5 h-9 px-2.5 shrink-0 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
-                                      aria-label="View options"
-                                    >
-                                      {viewIcon}
-                                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-                                    </Button>
-                                  </PopoverTrigger>
-                                </TooltipTrigger>
+                           const layoutOptions: Array<{ value: 'grid'|'list'|'pipeline'|'timeline'; label: string; icon: JSX.Element }> = [
+                             { value: 'grid', label: 'Grid', icon: <LayoutGrid className="h-4 w-4 opacity-70" /> },
+                             { value: 'list', label: 'List', icon: <List className="h-4 w-4 opacity-70" /> },
+                             { value: 'pipeline', label: 'Pipeline', icon: <Kanban className="h-4 w-4 opacity-70" /> },
+                             ...(companyFeatures.timeline_view_enabled ? [{ value: 'timeline' as const, label: 'Timeline', icon: <ChartGantt className="h-4 w-4 opacity-70" /> }] : []),
+                           ];
+                           const activeLayoutLabel = layoutOptions.find(o => o.value === viewMode)?.label;
+                           const activeSortLabel = sortOptions.find(o => o.value === sortField)?.label;
+                           const activeGroupLabel = groupBy ? (groupOptions.find(o => o.value === groupBy)?.label ?? 'None') : 'None';
+                           return (
+                             <DropdownMenu>
+                               <Tooltip>
+                                 <TooltipTrigger asChild>
+                                   <DropdownMenuTrigger asChild>
+                                     <Button
+                                       variant="outline"
+                                       size="sm"
+                                       className="gap-1.5 h-9 px-2.5 shrink-0 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
+                                       aria-label="View options"
+                                     >
+                                       {viewIcon}
+                                       <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                                     </Button>
+                                   </DropdownMenuTrigger>
+                                 </TooltipTrigger>
                                  <TooltipContent>Layout, sort & group</TooltipContent>
-                              </Tooltip>
-                              <PopoverContent align="start" className="w-64 p-0">
-                                <div className="max-h-[70vh] overflow-y-auto py-2">
-                                  <div className="px-2 pb-2">
-                                    <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Layout</div>
-                                    {([
-                                      { value: 'grid', label: 'Grid', icon: <LayoutGrid className="h-4 w-4 opacity-70" /> },
-                                      { value: 'list', label: 'List', icon: <List className="h-4 w-4 opacity-70" /> },
-                                      { value: 'pipeline', label: 'Pipeline', icon: <Kanban className="h-4 w-4 opacity-70" /> },
-                                      ...(companyFeatures.timeline_view_enabled ? [{ value: 'timeline' as const, label: 'Timeline', icon: <ChartGantt className="h-4 w-4 opacity-70" /> }] : []),
-                                    ] as Array<{ value: 'grid'|'list'|'pipeline'|'timeline'; label: string; icon: JSX.Element }>).map(opt => (
-                                      <button
-                                        key={opt.value}
-                                        onClick={() => setViewMode(opt.value)}
-                                        className={cn(
-                                          "w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent",
-                                          viewMode === opt.value && "bg-accent"
-                                        )}
-                                      >
-                                        {opt.icon}
-                                        <span>{opt.label}</span>
-                                      </button>
-                                    ))}
-                                  </div>
-                                  <div className="mx-2 my-1 h-px bg-border" />
-                                  <div className="px-2 pb-2">
-                                    <div className="flex items-center justify-between px-2 py-1">
-                                      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Sort</div>
-                                      {!isDefaultSort && (
-                                        <button
-                                          onClick={() => { setSortField('updatedAt'); setSortDirection('desc'); }}
-                                          className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-                                        >
-                                          <RotateCcw className="h-3 w-3" /> Reset
-                                        </button>
-                                      )}
-                                    </div>
-                                    {sortOptions.map(opt => (
-                                      <button
-                                        key={opt.value}
-                                        onClick={() => toggleSort(opt.value)}
-                                        className={cn(
-                                          "w-full flex items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-accent",
-                                          sortField === opt.value && "bg-accent"
-                                        )}
-                                      >
-                                        <span className="inline-flex items-center gap-2"><ArrowUpDown className="h-3.5 w-3.5 opacity-70" />{opt.label}</span>
-                                        {sortField === opt.value && (
-                                          <span className="text-xs text-muted-foreground">{sortDirection === 'desc' ? '↓' : '↑'}</span>
-                                        )}
-                                      </button>
-                                    ))}
-                                  </div>
-                                  {viewMode === 'grid' && (
-                                    <>
-                                      <div className="mx-2 my-1 h-px bg-border" />
-                                      <div className="px-2 pb-2">
-                                        <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Group by</div>
-                                        <button
-                                          onClick={() => setGroupBy(null)}
-                                          className={cn(
-                                            "w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent",
-                                            !groupBy && "bg-accent"
-                                          )}
-                                        >
-                                          None
-                                        </button>
-                                        {groupOptions.map(opt => (
-                                          <button
-                                            key={opt.value}
-                                            onClick={() => toggleGroup(opt.value)}
-                                            className={cn(
-                                              "w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent",
-                                              groupBy === opt.value && "bg-accent"
-                                            )}
-                                          >
-                                            <Layers className="h-3.5 w-3.5 opacity-70" />
-                                            {opt.label}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    </>
-                                  )}
-                                </div>
-                              </PopoverContent>
-                            </Popover>
-                          );
+                               </Tooltip>
+                               <DropdownMenuContent align="start" className="w-56">
+                                 <DropdownMenuSub>
+                                   <DropdownMenuSubTrigger className="flex items-center justify-between">
+                                     <span className="inline-flex items-center gap-2">
+                                       {viewIcon}
+                                       <span>Layout</span>
+                                     </span>
+                                     {activeLayoutLabel && (
+                                       <span className="ml-2 text-xs text-muted-foreground">{activeLayoutLabel}</span>
+                                     )}
+                                   </DropdownMenuSubTrigger>
+                                   <DropdownMenuSubContent className="w-48" collisionPadding={8}>
+                                     {layoutOptions.map(opt => (
+                                       <DropdownMenuItem
+                                         key={opt.value}
+                                         onClick={() => setViewMode(opt.value)}
+                                         className={cn(viewMode === opt.value && "bg-accent")}
+                                       >
+                                         {opt.icon}
+                                         <span className="ml-2">{opt.label}</span>
+                                       </DropdownMenuItem>
+                                     ))}
+                                   </DropdownMenuSubContent>
+                                 </DropdownMenuSub>
+                                 <DropdownMenuSub>
+                                   <DropdownMenuSubTrigger className="flex items-center justify-between">
+                                     <span className="inline-flex items-center gap-2">
+                                       <ArrowUpDown className="h-4 w-4 opacity-70" />
+                                       <span>Sort</span>
+                                     </span>
+                                     {activeSortLabel && (
+                                       <span className="ml-2 text-xs text-muted-foreground">
+                                         {activeSortLabel} {sortDirection === 'desc' ? '↓' : '↑'}
+                                       </span>
+                                     )}
+                                   </DropdownMenuSubTrigger>
+                                   <DropdownMenuSubContent className="w-56" collisionPadding={8}>
+                                     {!isDefaultSort && (
+                                       <>
+                                         <DropdownMenuItem
+                                           onClick={() => { setSortField('updatedAt'); setSortDirection('desc'); }}
+                                         >
+                                           <RotateCcw className="h-3.5 w-3.5 opacity-70" />
+                                           <span className="ml-2">Reset to default</span>
+                                         </DropdownMenuItem>
+                                         <DropdownMenuSeparator />
+                                       </>
+                                     )}
+                                     {sortOptions.map(opt => (
+                                       <DropdownMenuItem
+                                         key={opt.value}
+                                         onClick={() => toggleSort(opt.value)}
+                                         className={cn("justify-between", sortField === opt.value && "bg-accent")}
+                                       >
+                                         <span className="inline-flex items-center gap-2">
+                                           <ArrowUpDown className="h-3.5 w-3.5 opacity-70" />
+                                           {opt.label}
+                                         </span>
+                                         {sortField === opt.value && (
+                                           <span className="text-xs text-muted-foreground">{sortDirection === 'desc' ? '↓' : '↑'}</span>
+                                         )}
+                                       </DropdownMenuItem>
+                                     ))}
+                                   </DropdownMenuSubContent>
+                                 </DropdownMenuSub>
+                                 {viewMode === 'grid' && (
+                                   <DropdownMenuSub>
+                                     <DropdownMenuSubTrigger className="flex items-center justify-between">
+                                       <span className="inline-flex items-center gap-2">
+                                         <Layers className="h-4 w-4 opacity-70" />
+                                         <span>Group by</span>
+                                       </span>
+                                       <span className="ml-2 text-xs text-muted-foreground">{activeGroupLabel}</span>
+                                     </DropdownMenuSubTrigger>
+                                     <DropdownMenuSubContent className="w-48" collisionPadding={8}>
+                                       <DropdownMenuItem
+                                         onClick={() => setGroupBy(null)}
+                                         className={cn(!groupBy && "bg-accent")}
+                                       >
+                                         <span>None</span>
+                                       </DropdownMenuItem>
+                                       {groupOptions.map(opt => (
+                                         <DropdownMenuItem
+                                           key={opt.value}
+                                           onClick={() => toggleGroup(opt.value)}
+                                           className={cn(groupBy === opt.value && "bg-accent")}
+                                         >
+                                           <Layers className="h-3.5 w-3.5 opacity-70" />
+                                           <span className="ml-2">{opt.label}</span>
+                                         </DropdownMenuItem>
+                                       ))}
+                                     </DropdownMenuSubContent>
+                                   </DropdownMenuSub>
+                                 )}
+                               </DropdownMenuContent>
+                             </DropdownMenu>
+                           );
                         })()
                       }
                     />
