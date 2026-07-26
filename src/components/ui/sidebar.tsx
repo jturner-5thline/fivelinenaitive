@@ -16,7 +16,11 @@ const SIDEBAR_COOKIE_NAME = "sidebar:state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = "14rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem";
-const SIDEBAR_WIDTH_ICON = "3rem";
+// Collapsed-rail icon width. Reduced 25% from prior 3rem (64px total rail
+// including the +spacing.4 gutter) to 2rem so the collapsed rail is 48px.
+// Menu buttons are size-8 (32px) and centered via mx-auto, keeping 8px of
+// symmetric padding on each side of the icon within the 48px rail.
+const SIDEBAR_WIDTH_ICON = "2rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
 type SidebarContext = {
