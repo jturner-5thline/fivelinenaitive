@@ -610,6 +610,8 @@ var search_deal_recordings_default = defineTool18({
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
+    const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_recordings");
+    if (denied) return denied;
     let recQ = sb.from("deal_claap_recordings").select(
       "id, recording_id, recording_title, recording_url, thumbnail_url, duration_seconds, recorder_name, recorder_email, linked_at, notes, created_at"
     ).eq("deal_id", deal_id).order("linked_at", { ascending: false, nullsFirst: false }).limit(limit);
