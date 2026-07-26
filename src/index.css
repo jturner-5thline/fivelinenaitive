@@ -1281,19 +1281,28 @@
    the same surface. Kept ~10–15% more restrained than the widget so the
    tiles still feel like dense workflow objects rather than glossy cards.
    ───────────────────────────────────────────────────────────────────── */
-.deal-tile.deal-glass {
+.deal-tile.deal-glass,
+.deal-glass.deal-tile,
+div.deal-tile.deal-glass,
+.deal-tile[class*="deal-glass"] {
   background:
     linear-gradient(180deg, #050d20 0%, #020611 50%, #000208 100%) !important;
+  background-color: #020611 !important;
   border-color: rgba(190, 220, 255, 0.34) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   color: #ffffff !important;
 }
-.deal-tile.deal-glass:hover {
+.deal-tile.deal-glass:hover,
+.deal-glass.deal-tile:hover,
+div.deal-tile.deal-glass:hover,
+.deal-tile[class*="deal-glass"]:hover {
   background:
     linear-gradient(180deg, #08132c 0%, #04091c 50%, #01030c 100%) !important;
+  background-color: #04091c !important;
 }
-.deal-tile.deal-glass::before {
+.deal-tile.deal-glass::before,
+.deal-glass.deal-tile::before {
   display: none !important;
 }
 /* Brighten text inside deal tiles for stronger readability */
