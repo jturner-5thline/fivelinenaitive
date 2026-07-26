@@ -74,6 +74,7 @@ import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
 import { ShareReportDialog } from '@/components/deals/ShareReportDialog';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
+import { DealsViewMenu } from '@/components/deals/DealsViewMenu';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import { usePipelineDealTasks } from '@/hooks/usePipelineDealTasks';
 import { useAutoStaleFlags } from '@/hooks/useAutoStaleFlags';
