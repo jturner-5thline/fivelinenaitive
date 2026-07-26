@@ -632,7 +632,7 @@ export default function Dashboard() {
       */}
       <WorkspacePage
         mainClassName="flex min-h-0 flex-col pb-0"
-        contentClassName="flex min-h-0 flex-1 flex-col"
+        contentClassName="flex min-h-0 flex-1 flex-col space-y-0"
         beforeContent={
           <>
             <OnboardingModal open={showOnboarding} onComplete={completeOnboarding} />
