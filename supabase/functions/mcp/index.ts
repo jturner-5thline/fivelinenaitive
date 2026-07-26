@@ -576,6 +576,8 @@ var search_deal_emails_default = defineTool17({
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
+    const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_emails");
+    if (denied) return denied;
     let q = sb.from("activity_logs").select(
       "id, subject, body, direction, from_address, to_addresses, cc_addresses, sent_at, thread_id, message_id, provider, user_display_name, created_at"
     ).eq("deal_id", deal_id).eq("activity_type", "email").order("sent_at", { ascending: false, nullsFirst: false }).limit(limit);
