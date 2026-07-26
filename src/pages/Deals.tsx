@@ -65,6 +65,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
@@ -183,7 +187,7 @@ export default function Dashboard() {
   const { isLoading: widgetsLoading } = useWidgets();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
-  const { activePipelineId, pipelines } = usePipelineContext();
+  const { activePipelineId, pipelines, setActivePipelineId } = usePipelineContext();
   const { company } = useCompany();
   const activePipelineName = pipelines.find(p => p.id === activePipelineId)?.name ?? null;
   const [shareReportOpen, setShareReportOpen] = useState(false);
@@ -689,58 +693,63 @@ export default function Dashboard() {
         }
         headerActions={
           <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 rounded-md"
-                  aria-label="Customize widgets"
-                  onClick={() => window.dispatchEvent(new Event('toggle-widgets-edit-mode'))}
-                >
-                  <Settings2 className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Customize widgets</TooltipContent>
-            </Tooltip>
             <LatestUpdatesDropdown />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-md" aria-label="Export deals">
-                      <Download className="h-4 w-4" />
+                    <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-md" aria-label="Actions">
+                      <Settings2 className="h-4 w-4" />
+                      <span className="hidden sm:inline">Actions</span>
+                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Export deals</TooltipContent>
+                  <TooltipContent>Actions</TooltipContent>
                 </Tooltip>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => {
-                  exportPipelineToCSV(deals);
-                  toast({ title: "CSV exported", description: `${deals.length} deals exported to CSV.` });
-                }}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Export as CSV
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => setShowMilestones(!showMilestones)}>
+                  <Target className="h-4 w-4 mr-2" />
+                  {showMilestones ? 'Hide milestones' : 'Show milestones'}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                  exportPipelineToPDF(deals);
-                  toast({ title: "PDF exported", description: `${deals.length} deals exported to PDF.` });
-                }}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Export as PDF
+                <DropdownMenuItem onClick={() => window.dispatchEvent(new Event('toggle-widgets-edit-mode'))}>
+                  <Settings2 className="h-4 w-4 mr-2" />
+                  Customize widgets
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={async () => {
-                  await exportPipelineToWord(deals);
-                  toast({ title: "Word document exported", description: `${deals.length} deals exported to Word.` });
-                }}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Export as Word
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShareReportOpen(true)}>
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share Report
-                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export deals
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={() => {
+                      exportPipelineToCSV(deals);
+                      toast({ title: "CSV exported", description: `${deals.length} deals exported to CSV.` });
+                    }}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Export as CSV
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      exportPipelineToPDF(deals);
+                      toast({ title: "PDF exported", description: `${deals.length} deals exported to PDF.` });
+                    }}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Export as PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={async () => {
+                      await exportPipelineToWord(deals);
+                      toast({ title: "Word document exported", description: `${deals.length} deals exported to Word.` });
+                    }}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Export as Word
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShareReportOpen(true)}>
+                      <Share2 className="h-4 w-4 mr-2" />
+                      Share Report
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
               </DropdownMenuContent>
             </DropdownMenu>
             <CreateDealDialog />
@@ -851,169 +860,156 @@ export default function Dashboard() {
                 </TooltipProvider>
                 )}
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          aria-label="Sort deals"
-                          className="relative h-9 w-9 shrink-0 rounded-md"
-                        >
-                          <ArrowUpDown className="h-3.5 w-3.5" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Sort deals</TooltipContent>
-                    </Tooltip>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {(() => {
-                      const isDefaultSort = sortField === 'updatedAt' && sortDirection === 'desc';
-                      return (
-                        <>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              if (isDefaultSort) return;
-                              setSortField('updatedAt');
-                              setSortDirection('desc');
-                            }}
-                            disabled={isDefaultSort}
-                            className="gap-2"
-                            title={isDefaultSort ? 'No active sort to clear' : undefined}
-                            aria-disabled={isDefaultSort}
-                          >
-                            <RotateCcw className="h-3.5 w-3.5" />
-                            Clear sort
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                        </>
-                      );
-                    })()}
-                    <DropdownMenuItem onClick={() => toggleSort('updatedAt')} className={sortField === 'updatedAt' ? 'bg-accent' : ''}>
-                      Last Updated {sortField === 'updatedAt' && (sortDirection === 'desc' ? '↓' : '↑')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toggleSort('createdAt')} className={sortField === 'createdAt' ? 'bg-accent' : ''}>
-                      Created Date {sortField === 'createdAt' && (sortDirection === 'desc' ? '↓' : '↑')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toggleSort('value')} className={sortField === 'value' ? 'bg-accent' : ''}>
-                      Deal Value {sortField === 'value' && (sortDirection === 'desc' ? '↓' : '↑')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toggleSort('name')} className={sortField === 'name' ? 'bg-accent' : ''}>
-                      Name {sortField === 'name' && (sortDirection === 'desc' ? '↓' : '↑')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toggleSort('status')} className={sortField === 'status' ? 'bg-accent' : ''}>
-                      Status {sortField === 'status' && (sortDirection === 'desc' ? '↓' : '↑')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toggleSort('stage')} className={sortField === 'stage' ? 'bg-accent' : ''}>
-                      Stage {sortField === 'stage' && (sortDirection === 'desc' ? '↓' : '↑')}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {viewMode === 'grid' && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                {/* Unified View control — consolidates Pipeline, View mode, Sort, and Group */}
+                {(() => {
+                  const isDefaultSort = sortField === 'updatedAt' && sortDirection === 'desc';
+                  const viewIcon =
+                    viewMode === 'grid' ? <LayoutGrid className="h-4 w-4" /> :
+                    viewMode === 'list' ? <List className="h-4 w-4" /> :
+                    viewMode === 'pipeline' ? <Kanban className="h-4 w-4" /> :
+                    <ChartGantt className="h-4 w-4" />;
+                  const sortOptions: Array<{ value: SortField; label: string }> = [
+                    { value: 'updatedAt', label: 'Last Updated' },
+                    { value: 'createdAt', label: 'Created Date' },
+                    { value: 'value', label: 'Deal Value' },
+                    { value: 'name', label: 'Name' },
+                    { value: 'status', label: 'Status' },
+                    { value: 'stage', label: 'Stage' },
+                  ];
+                  const groupOptions: Array<{ value: string; label: string }> = [
+                    { value: 'status', label: 'Status' },
+                    { value: 'stage', label: 'Stage' },
+                    { value: 'engagementType', label: 'Engagement Type' },
+                    { value: 'manager', label: 'Manager' },
+                    { value: 'lender', label: 'Lender' },
+                    { value: 'referredBy', label: 'Referred By' },
+                  ];
+                  const toggleGroup = (v: string) => setGroupBy(prev => (prev === v ? null : v));
+                  return (
+                    <Popover>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 rounded-md" aria-label="Group deals">
-                            <Layers className="h-4 w-4" />
-                          </Button>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-9 gap-1.5 rounded-md shrink-0"
+                              aria-label="View options"
+                            >
+                              {viewIcon}
+                              <span className="hidden sm:inline">View</span>
+                              <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                            </Button>
+                          </PopoverTrigger>
                         </TooltipTrigger>
-                        <TooltipContent>Group deals</TooltipContent>
+                        <TooltipContent>Pipeline, layout, sort & group</TooltipContent>
                       </Tooltip>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {(() => {
-                        // Clicking the currently-active option toggles grouping off.
-                        const toggle = (value: string) => setGroupBy(prev => (prev === value ? null : value));
-                        const options: Array<{ value: string; label: string }> = [
-                          { value: 'status', label: 'Status' },
-                          { value: 'stage', label: 'Stage' },
-                          { value: 'engagementType', label: 'Engagement Type' },
-                          { value: 'manager', label: 'Manager' },
-                          { value: 'lender', label: 'Lender' },
-                          { value: 'referredBy', label: 'Referred By' },
-                        ];
-                        return (
-                          <>
-                            <DropdownMenuItem onClick={() => setGroupBy(null)} className={!groupBy ? 'bg-accent' : ''}>
-                              None
-                            </DropdownMenuItem>
-                            {options.map(opt => (
-                              <DropdownMenuItem
+                      <PopoverContent align="end" className="w-64 p-0">
+                        <div className="max-h-[70vh] overflow-y-auto py-2">
+                          {pipelines.length > 0 && (
+                            <div className="px-2 pb-2">
+                              <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Pipeline</div>
+                              {pipelines.map(p => (
+                                <button
+                                  key={p.id}
+                                  onClick={() => setActivePipelineId(p.id)}
+                                  className={cn(
+                                    "w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent",
+                                    p.id === activePipelineId && "bg-accent"
+                                  )}
+                                >
+                                  <Layers className="h-4 w-4 opacity-70" />
+                                  <span className="truncate">{p.name}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          <div className="mx-2 my-1 h-px bg-border" />
+                          <div className="px-2 pb-2">
+                            <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Layout</div>
+                            {([
+                              { value: 'grid', label: 'Grid', icon: <LayoutGrid className="h-4 w-4 opacity-70" /> },
+                              { value: 'list', label: 'List', icon: <List className="h-4 w-4 opacity-70" /> },
+                              { value: 'pipeline', label: 'Pipeline', icon: <Kanban className="h-4 w-4 opacity-70" /> },
+                              ...(companyFeatures.timeline_view_enabled ? [{ value: 'timeline' as const, label: 'Timeline', icon: <ChartGantt className="h-4 w-4 opacity-70" /> }] : []),
+                            ] as Array<{ value: 'grid'|'list'|'pipeline'|'timeline'; label: string; icon: JSX.Element }>).map(opt => (
+                              <button
                                 key={opt.value}
-                                onClick={() => toggle(opt.value)}
-                                className={groupBy === opt.value ? 'bg-accent' : ''}
+                                onClick={() => setViewMode(opt.value)}
+                                className={cn(
+                                  "w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent",
+                                  viewMode === opt.value && "bg-accent"
+                                )}
                               >
-                                {opt.label}
-                              </DropdownMenuItem>
+                                {opt.icon}
+                                <span>{opt.label}</span>
+                              </button>
                             ))}
-                          </>
-                        );
-                      })()}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-
-                {/* View Mode Dropdown */}
-                <Select value={viewMode} onValueChange={(val: 'grid' | 'list' | 'pipeline' | 'timeline') => setViewMode(val)}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <SelectTrigger aria-label="Change view" className="h-9 w-9 p-0 justify-center [&>svg:last-child]:hidden shrink-0 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground">
-                        {viewMode === 'grid' && <LayoutGrid className="h-4 w-4" />}
-                        {viewMode === 'list' && <List className="h-4 w-4" />}
-                        {viewMode === 'pipeline' && <Kanban className="h-4 w-4" />}
-                        {viewMode === 'timeline' && <ChartGantt className="h-4 w-4" />}
-                      </SelectTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent>{`View: ${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)}`}</TooltipContent>
-                  </Tooltip>
-                  <SelectContent>
-                    <SelectItem value="grid">
-                      <div className="flex items-center gap-2">
-                        <LayoutGrid className="h-4 w-4" />
-                        Grid
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="list">
-                      <div className="flex items-center gap-2">
-                        <List className="h-4 w-4" />
-                        List
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="pipeline">
-                      <div className="flex items-center gap-2">
-                        <Kanban className="h-4 w-4" />
-                        Pipeline
-                      </div>
-                    </SelectItem>
-                    {companyFeatures.timeline_view_enabled && (
-                      <SelectItem value="timeline">
-                        <div className="flex items-center gap-2">
-                          <ChartGantt className="h-4 w-4" />
-                          Timeline
+                          </div>
+                          <div className="mx-2 my-1 h-px bg-border" />
+                          <div className="px-2 pb-2">
+                            <div className="flex items-center justify-between px-2 py-1">
+                              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Sort</div>
+                              {!isDefaultSort && (
+                                <button
+                                  onClick={() => { setSortField('updatedAt'); setSortDirection('desc'); }}
+                                  className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                                >
+                                  <RotateCcw className="h-3 w-3" /> Reset
+                                </button>
+                              )}
+                            </div>
+                            {sortOptions.map(opt => (
+                              <button
+                                key={opt.value}
+                                onClick={() => toggleSort(opt.value)}
+                                className={cn(
+                                  "w-full flex items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-accent",
+                                  sortField === opt.value && "bg-accent"
+                                )}
+                              >
+                                <span className="inline-flex items-center gap-2"><ArrowUpDown className="h-3.5 w-3.5 opacity-70" />{opt.label}</span>
+                                {sortField === opt.value && (
+                                  <span className="text-xs text-muted-foreground">{sortDirection === 'desc' ? '↓' : '↑'}</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                          {viewMode === 'grid' && (
+                            <>
+                              <div className="mx-2 my-1 h-px bg-border" />
+                              <div className="px-2 pb-2">
+                                <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Group by</div>
+                                <button
+                                  onClick={() => setGroupBy(null)}
+                                  className={cn(
+                                    "w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent",
+                                    !groupBy && "bg-accent"
+                                  )}
+                                >
+                                  None
+                                </button>
+                                {groupOptions.map(opt => (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() => toggleGroup(opt.value)}
+                                    className={cn(
+                                      "w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent",
+                                      groupBy === opt.value && "bg-accent"
+                                    )}
+                                  >
+                                    <Layers className="h-3.5 w-3.5 opacity-70" />
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          )}
                         </div>
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-9 w-9 p-0 shrink-0 rounded-md"
-                      onClick={() => setShowMilestones(!showMilestones)}
-                      aria-label="Milestones"
-                    >
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round">
-                        <path d="M12 2L22 12L12 22L2 12L12 2Z" />
-                      </svg>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{showMilestones ? 'Hide milestones' : 'Show milestones'}</TooltipContent>
-                </Tooltip>
+                      </PopoverContent>
+                    </Popover>
+                  );
+                })()}
                 <div className="relative self-center">
                   <DealSavedViewsMenu
                     views={savedViews}
