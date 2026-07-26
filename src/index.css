@@ -1283,7 +1283,7 @@
    ───────────────────────────────────────────────────────────────────── */
 .deal-tile.deal-glass {
   background:
-    linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%) !important;
+    linear-gradient(180deg, #0a1834 0%, #070f28 55%, #04091b 100%) !important;
   border-color: rgba(190, 220, 255, 0.34) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -1291,7 +1291,7 @@
 }
 .deal-tile.deal-glass:hover {
   background:
-    linear-gradient(180deg, #142547 0%, #0f1d38 100%) !important;
+    linear-gradient(180deg, #0e1f40 0%, #0a1633 55%, #060e24 100%) !important;
 }
 .deal-tile.deal-glass::before {
   display: none !important;
