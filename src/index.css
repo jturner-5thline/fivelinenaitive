@@ -1283,25 +1283,15 @@
    ───────────────────────────────────────────────────────────────────── */
 .deal-tile.deal-glass {
   background:
-    radial-gradient(120% 90% at 100% 0%, rgba(20, 130, 170, 0.26) 0%, rgba(15, 90, 130, 0.10) 35%, rgba(6, 9, 26, 0) 65%),
-    linear-gradient(135deg, #0f172a 0%, #0b5c7d 55%, #020617 100%),
-    #06091a !important;
-  border-color: rgba(255, 255, 255, 0.10) !important;
+    linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%) !important;
+  border-color: rgba(190, 220, 255, 0.34) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   color: #ffffff !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    inset 0 0 40px rgba(30, 110, 150, 0.08),
-    0 1px 2px rgba(0, 0, 0, 0.4),
-    0 8px 24px -12px rgba(0, 0, 0, 0.6) !important;
 }
 .deal-tile.deal-glass:hover {
   background:
-    radial-gradient(120% 90% at 100% 0%, rgba(30, 150, 195, 0.32) 0%, rgba(18, 105, 150, 0.14) 35%, rgba(6, 9, 26, 0) 65%),
-    linear-gradient(135deg, #111c33 0%, #0d6a90 55%, #030a1c 100%),
-    #080b1e !important;
-  border-color: rgba(255, 255, 255, 0.14) !important;
+    linear-gradient(180deg, #142547 0%, #0f1d38 100%) !important;
 }
 .deal-tile.deal-glass::before {
   display: none !important;
