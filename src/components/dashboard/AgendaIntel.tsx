@@ -1313,7 +1313,10 @@ export function AgendaIntel() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {filterBar}
+      {/* Filter bar (Today/Next 3/Next 7 + All/External/Internal) intentionally
+          removed per Daily Rundown styling refresh. State defaults ('today' +
+          'all') are preserved so all filtering behavior remains functionally
+          identical. */}
       <div
         className={cn(
           'min-h-0 flex-1 pt-3 h-[calc(100vh-260px)] min-h-[520px] gap-2',
