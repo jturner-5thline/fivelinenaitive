@@ -518,6 +518,8 @@ var search_deal_documents_default = defineTool15({
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
+    const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_documents");
+    if (denied) return denied;
     let q = sb.from("deal_attachments").select(
       "id, deal_id, name, category, size_bytes, content_type, source, source_subject, source_sender, extraction_status, created_at, user_id"
     ).eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(limit);
