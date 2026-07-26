@@ -65,6 +65,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
@@ -183,7 +187,7 @@ export default function Dashboard() {
   const { isLoading: widgetsLoading } = useWidgets();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
-  const { activePipelineId, pipelines } = usePipelineContext();
+  const { activePipelineId, pipelines, setActivePipelineId } = usePipelineContext();
   const { company } = useCompany();
   const activePipelineName = pipelines.find(p => p.id === activePipelineId)?.name ?? null;
   const [shareReportOpen, setShareReportOpen] = useState(false);
