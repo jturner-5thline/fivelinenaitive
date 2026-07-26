@@ -479,6 +479,8 @@ var list_deal_activity_default = defineTool14({
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
+    const denied = await assertDealAccess(sb, ctx, deal_id, "list_deal_activity");
+    if (denied) return denied;
     let logsQ = sb.from("activity_logs").select(
       "id, activity_type, description, user_display_name, direction, subject, from_address, to_addresses, sent_at, thread_id, provider, metadata, created_at"
     ).eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(limit);
