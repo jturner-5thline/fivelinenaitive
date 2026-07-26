@@ -16,7 +16,11 @@ const SIDEBAR_COOKIE_NAME = "sidebar:state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = "14rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem";
-const SIDEBAR_WIDTH_ICON = "3rem";
+// Collapsed-rail icon width. Reduced 25% from prior 3rem (64px total rail
+// including the +spacing.4 gutter) to 2rem so the collapsed rail is 48px.
+// Menu buttons are size-8 (32px) and centered via mx-auto, keeping 8px of
+// symmetric padding on each side of the icon within the 48px rail.
+const SIDEBAR_WIDTH_ICON = "2rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
 type SidebarContext = {
@@ -382,12 +386,26 @@ const SidebarInput = React.forwardRef<React.ElementRef<typeof Input>, React.Comp
 SidebarInput.displayName = "SidebarInput";
 
 const SidebarHeader = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(({ className, ...props }, ref) => {
-  return <div ref={ref} data-sidebar="header" className={cn("flex flex-col gap-2 p-2", className)} {...props} />;
+  return (
+    <div
+      ref={ref}
+      data-sidebar="header"
+      className={cn("flex flex-col gap-2 p-2 group-data-[collapsible=icon]:px-0", className)}
+      {...props}
+    />
+  );
 });
 SidebarHeader.displayName = "SidebarHeader";
 
 const SidebarFooter = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(({ className, ...props }, ref) => {
-  return <div ref={ref} data-sidebar="footer" className={cn("flex flex-col gap-2 p-2", className)} {...props} />;
+  return (
+    <div
+      ref={ref}
+      data-sidebar="footer"
+      className={cn("flex flex-col gap-2 p-2 group-data-[collapsible=icon]:px-0", className)}
+      {...props}
+    />
+  );
 });
 SidebarFooter.displayName = "SidebarFooter";
 
@@ -425,7 +443,14 @@ const SidebarGroup = React.forwardRef<HTMLDivElement, React.ComponentProps<"div"
     <div
       ref={ref}
       data-sidebar="group"
-      className={cn("relative flex w-full min-w-0 flex-col p-2", className)}
+      className={cn(
+        "relative flex w-full min-w-0 flex-col p-2",
+        // In the narrowed collapsed rail, drop horizontal padding so the
+        // size-8 menu buttons center perfectly inside the 48px rail
+        // (8px equal padding on each side around the 32px button).
+        "group-data-[collapsible=icon]:px-0",
+        className,
+      )}
       {...props}
     />
   );
