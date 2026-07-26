@@ -22,8 +22,38 @@ export default defineTool({
       )
       .eq("deal_id", deal_id)
       .order("last_status_change_at", { ascending: false, nullsFirst: false });
-    if (error) return errorResult(error.message);
+    if (error) {
+      console.error("[list_deal_funding_sources] query error", {
+        deal_id,
+        user_id: ctx.getUserId?.(),
+        message: error.message,
+      });
+      return errorResult(error.message);
+    }
     const rows = data ?? [];
-    return textResult(rows, { count: rows.length });
+    // Probe the parent deal so an empty result is diagnosable: distinguishes
+    // "deal has no lenders" from "RLS hid the deal (wrong tenant / no access)".
+    let deal_visible = true;
+    if (rows.length === 0) {
+      const { data: deal } = await sb
+        .from("deals")
+        .select("id, company, user_id, company_id")
+        .eq("id", deal_id)
+        .maybeSingle();
+      deal_visible = !!deal;
+      console.log("[list_deal_funding_sources] empty result", {
+        deal_id,
+        user_id: ctx.getUserId?.(),
+        deal_visible,
+        deal_company: deal?.company ?? null,
+      });
+    } else {
+      console.log("[list_deal_funding_sources] ok", {
+        deal_id,
+        user_id: ctx.getUserId?.(),
+        count: rows.length,
+      });
+    }
+    return textResult(rows, { count: rows.length, deal_id, deal_visible });
   },
 });
