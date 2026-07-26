@@ -834,29 +834,10 @@ export default function Dashboard() {
                                     </Button>
                                   </PopoverTrigger>
                                 </TooltipTrigger>
-                                <TooltipContent>Pipeline, layout, sort & group</TooltipContent>
+                                 <TooltipContent>Layout, sort & group</TooltipContent>
                               </Tooltip>
                               <PopoverContent align="start" className="w-64 p-0">
                                 <div className="max-h-[70vh] overflow-y-auto py-2">
-                                  {pipelines.length > 0 && (
-                                    <div className="px-2 pb-2">
-                                      <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Pipeline</div>
-                                      {pipelines.map(p => (
-                                        <button
-                                          key={p.id}
-                                          onClick={() => setActivePipelineId(p.id)}
-                                          className={cn(
-                                            "w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent",
-                                            p.id === activePipelineId && "bg-accent"
-                                          )}
-                                        >
-                                          <Layers className="h-4 w-4 opacity-70" />
-                                          <span className="truncate">{p.name}</span>
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
-                                  <div className="mx-2 my-1 h-px bg-border" />
                                   <div className="px-2 pb-2">
                                     <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Layout</div>
                                     {([
