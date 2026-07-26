@@ -247,7 +247,7 @@ const Sidebar = React.forwardRef<
       {/* Actual sidebar container - expands on hover */}
       <div
         className={cn(
-          "fixed top-1 bottom-1 z-10 hidden h-[calc(100svh-8px)] transition-[left,right,width] duration-150 ease-out md:flex",
+          "fixed top-0 bottom-0 z-10 hidden h-svh transition-[left,right,width] duration-150 ease-out md:flex",
           effectiveState === "expanded" ? "w-[--sidebar-width]" : "",
           state === "collapsed" && !isHovering
             ? variant === "floating" || variant === "inset"
@@ -255,7 +255,7 @@ const Sidebar = React.forwardRef<
               : "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
             : "w-[--sidebar-width]",
           side === "left"
-            ? "left-1 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
+            ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
             : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
           "p-0",
           className,
@@ -390,7 +390,7 @@ const SidebarHeader = React.forwardRef<HTMLDivElement, React.ComponentProps<"div
     <div
       ref={ref}
       data-sidebar="header"
-      className={cn("flex flex-col gap-2 p-2 group-data-[collapsible=icon]:px-0", className)}
+      className={cn("flex flex-col gap-2 px-2 py-0 group-data-[collapsible=icon]:px-0", className)}
       {...props}
     />
   );
@@ -402,7 +402,7 @@ const SidebarFooter = React.forwardRef<HTMLDivElement, React.ComponentProps<"div
     <div
       ref={ref}
       data-sidebar="footer"
-      className={cn("flex flex-col gap-2 p-2 group-data-[collapsible=icon]:px-0", className)}
+      className={cn("flex flex-col gap-2 px-2 py-0 group-data-[collapsible=icon]:px-0", className)}
       {...props}
     />
   );
