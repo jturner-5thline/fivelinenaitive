@@ -2574,7 +2574,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .crm-companies-table tbody,
 .crm-companies-table tbody tr,
 .crm-companies-table tbody td {
-  background: linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%) !important;
+  background: linear-gradient(180deg, #050d20 0%, #020611 50%, #000208 100%) !important;
   background-color: transparent;
 }
 .crm-companies-table thead th,
