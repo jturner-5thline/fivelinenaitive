@@ -750,7 +750,8 @@ export default function Dashboard() {
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
               </DropdownMenuContent>
-            </DropdownMenu>
+              </DropdownMenu>
+            </Tooltip>
             <CreateDealDialog />
             <ShareReportDialog
               open={shareReportOpen}
