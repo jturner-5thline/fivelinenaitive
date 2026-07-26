@@ -578,9 +578,33 @@ var list_deal_funding_sources_default = defineTool19({
     const { data, error } = await sb.from("deal_lenders").select(
       "id, deal_id, name, stage, substage, tracking_status, tags, score, notes, pass_reason, quote_amount, quote_rate, quote_term, submitted_at, approved_at, declined_at, passed_at, on_deck_at, on_hold_at, excluded_at, last_status_change_at, last_contact_at, master_lender_id, selected_contact_id, created_at, updated_at"
     ).eq("deal_id", deal_id).order("last_status_change_at", { ascending: false, nullsFirst: false });
-    if (error) return errorResult(error.message);
+    if (error) {
+      console.error("[list_deal_funding_sources] query error", {
+        deal_id,
+        user_id: ctx.getUserId?.(),
+        message: error.message
+      });
+      return errorResult(error.message);
+    }
     const rows = data ?? [];
-    return textResult(rows, { count: rows.length });
+    let deal_visible = true;
+    if (rows.length === 0) {
+      const { data: deal } = await sb.from("deals").select("id, company, user_id, company_id").eq("id", deal_id).maybeSingle();
+      deal_visible = !!deal;
+      console.log("[list_deal_funding_sources] empty result", {
+        deal_id,
+        user_id: ctx.getUserId?.(),
+        deal_visible,
+        deal_company: deal?.company ?? null
+      });
+    } else {
+      console.log("[list_deal_funding_sources] ok", {
+        deal_id,
+        user_id: ctx.getUserId?.(),
+        count: rows.length
+      });
+    }
+    return textResult(rows, { count: rows.length, deal_id, deal_visible });
   }
 });
 
