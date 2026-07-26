@@ -140,6 +140,8 @@ var get_deal_default = defineTool2({
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
+    const denied = await assertDealAccess(sb, ctx, deal_id, "get_deal");
+    if (denied) return denied;
     const { data: deal, error } = await sb.from("deals").select("*").eq("id", deal_id).maybeSingle();
     if (error) return errorResult(error.message);
     if (!deal) return errorResult("Deal not found or you do not have access.");
