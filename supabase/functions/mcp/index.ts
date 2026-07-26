@@ -35,6 +35,67 @@ function textResult(payload, structured) {
 function errorResult(message) {
   return { content: [{ type: "text", text: message }], isError: true };
 }
+async function assertDealAccess(sb, ctx, deal_id, toolName) {
+  const caller_uid = ctx.getUserId?.() ?? null;
+  const { data: deal, error } = await sb.from("deals").select("id, company, user_id, company_id").eq("id", deal_id).maybeSingle();
+  if (error) {
+    console.error(`[${toolName}] deal access probe error`, {
+      deal_id,
+      caller_uid,
+      message: error.message
+    });
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(
+            { error: "forbidden", reason: error.message, deal_id },
+            null,
+            2
+          )
+        }
+      ],
+      structuredContent: { error: "forbidden", reason: error.message, deal_id },
+      isError: true
+    };
+  }
+  if (!deal) {
+    console.warn(`[${toolName}] rls-denied`, {
+      deal_id,
+      caller_uid,
+      deal_visible: false
+    });
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(
+            {
+              error: "forbidden",
+              reason: "caller lacks RLS access to this deal's company",
+              deal_id
+            },
+            null,
+            2
+          )
+        }
+      ],
+      structuredContent: {
+        error: "forbidden",
+        reason: "caller lacks RLS access to this deal's company",
+        deal_id
+      },
+      isError: true
+    };
+  }
+  console.log(`[${toolName}] deal access ok`, {
+    deal_id,
+    caller_uid,
+    deal_company_id: deal.company_id ?? null,
+    deal_owner_uid: deal.user_id ?? null
+  });
+  return null;
+}
 
 // src/lib/mcp/tools/list-deals.ts
 var list_deals_default = defineTool({
@@ -575,6 +636,8 @@ var list_deal_funding_sources_default = defineTool19({
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
+    const denied = await assertDealAccess(sb, ctx, deal_id, "list_deal_funding_sources");
+    if (denied) return denied;
     const { data, error } = await sb.from("deal_lenders").select(
       "id, deal_id, name, stage, substage, tracking_status, tags, score, notes, pass_reason, quote_amount, quote_rate, quote_term, submitted_at, approved_at, declined_at, passed_at, on_deck_at, on_hold_at, excluded_at, last_status_change_at, last_contact_at, master_lender_id, selected_contact_id, created_at, updated_at"
     ).eq("deal_id", deal_id).order("last_status_change_at", { ascending: false, nullsFirst: false });
@@ -587,24 +650,12 @@ var list_deal_funding_sources_default = defineTool19({
       return errorResult(error.message);
     }
     const rows = data ?? [];
-    let deal_visible = true;
-    if (rows.length === 0) {
-      const { data: deal } = await sb.from("deals").select("id, company, user_id, company_id").eq("id", deal_id).maybeSingle();
-      deal_visible = !!deal;
-      console.log("[list_deal_funding_sources] empty result", {
-        deal_id,
-        user_id: ctx.getUserId?.(),
-        deal_visible,
-        deal_company: deal?.company ?? null
-      });
-    } else {
-      console.log("[list_deal_funding_sources] ok", {
-        deal_id,
-        user_id: ctx.getUserId?.(),
-        count: rows.length
-      });
-    }
-    return textResult(rows, { count: rows.length, deal_id, deal_visible });
+    console.log("[list_deal_funding_sources] ok", {
+      deal_id,
+      user_id: ctx.getUserId?.(),
+      count: rows.length
+    });
+    return textResult(rows, { count: rows.length, deal_id, deal_visible: true });
   }
 });
 
