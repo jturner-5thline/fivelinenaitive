@@ -119,7 +119,7 @@ export function NaitiveDealCard({ deal, children, disableLink, onDeleted }: { de
   };
 
   const inner = (
-    <Card className="deal-glass group cursor-pointer transition-all duration-200 hover:-translate-y-0.5 p-3 space-y-2">
+    <Card className="deal-glass deal-tile group cursor-pointer transition-all duration-200 hover:-translate-y-0.5 p-3 space-y-2">
         {onDeleted && (
           <button
             type="button"
