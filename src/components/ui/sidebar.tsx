@@ -429,7 +429,14 @@ const SidebarGroup = React.forwardRef<HTMLDivElement, React.ComponentProps<"div"
     <div
       ref={ref}
       data-sidebar="group"
-      className={cn("relative flex w-full min-w-0 flex-col p-2", className)}
+      className={cn(
+        "relative flex w-full min-w-0 flex-col p-2",
+        // In the narrowed collapsed rail, drop horizontal padding so the
+        // size-8 menu buttons center perfectly inside the 48px rail
+        // (8px equal padding on each side around the 32px button).
+        "group-data-[collapsible=icon]:px-0",
+        className,
+      )}
       {...props}
     />
   );
