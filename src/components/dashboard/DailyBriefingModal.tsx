@@ -1802,9 +1802,9 @@ function DailyRundownTab({
 
   return (
     <div className="flex flex-col h-[78vh] min-h-[500px] min-w-0">
-      {/* Sub-tab strip + gear */}
-      <div className="flex items-center gap-2 mb-3 min-w-0">
-        <div className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
+      {/* Sub-tab strip (folder / browser-style tabs) + gear */}
+      <div className="flex items-end gap-2 min-w-0 border-b border-white/10 pl-1">
+        <div className="flex items-end gap-1 flex-wrap min-w-0 flex-1 -mb-px">
           {visible.map(k => {
             const meta = DAILY_RUNDOWN_SUBS.find(s => s.key === k)!;
             const Icon = meta.icon;
@@ -1814,18 +1814,26 @@ function DailyRundownTab({
                 key={k}
                 onClick={() => setActive(k)}
                 className={cn(
-                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                  'relative inline-flex items-center gap-1.5 px-3.5 pt-2 pb-2 text-xs font-medium transition-colors',
+                  'rounded-t-md border border-b-0 -mb-px',
                   isActive
-                    ? 'bg-primary/15 text-primary border-primary/30'
-                    : 'bg-white/[0.03] text-muted-foreground/70 glass-border-soft hover:bg-white/[0.06] hover:text-foreground/80',
+                    ? 'bg-[#0a1428] text-foreground border-white/15 shadow-[0_-1px_0_0_rgba(190,220,255,0.08)_inset]'
+                    : 'bg-white/[0.02] text-muted-foreground/70 border-transparent hover:bg-white/[0.05] hover:text-foreground/80',
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
                 {meta.label}
+                {isActive && (
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-0 right-0 -bottom-px h-px bg-[#0a1428]"
+                  />
+                )}
               </button>
             );
           })}
         </div>
+        <div className="pb-1.5">
         <div className="relative shrink-0">
           <button
             type="button"
@@ -1910,6 +1918,7 @@ function DailyRundownTab({
               </div>
             </>
           )}
+        </div>
         </div>
       </div>
 

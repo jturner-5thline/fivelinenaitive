@@ -1168,45 +1168,10 @@ export function AgendaIntel() {
     );
   }
 
-  const filterBar = (
-    <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-border/30">
-      <div className="inline-flex items-center bg-muted/40 rounded-lg p-0.5">
-        {(['today', '3d', '7d'] as RangeKey[]).map(r => (
-          <button
-            key={r}
-            onClick={() => setRange(r)}
-            className={cn(
-              'px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
-              range === r
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {r === 'today' ? 'Today' : r === '3d' ? 'Next 3 days' : 'Next 7 days'}
-          </button>
-        ))}
-      </div>
-      <div className="inline-flex items-center bg-muted/40 rounded-lg p-0.5">
-        {(['all', 'external', 'internal'] as AudienceKey[]).map(a => (
-          <button
-            key={a}
-            onClick={() => setAudience(a)}
-            className={cn(
-              'px-2.5 py-1 rounded-md text-xs font-medium capitalize transition-colors',
-              audience === a
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {a === 'all' ? 'All' : a === 'external' ? 'External' : 'Internal'}
-          </button>
-        ))}
-      </div>
-      <div className="ml-auto text-[10px] text-muted-foreground/70">
-        {visible.length} meeting{visible.length === 1 ? '' : 's'}
-      </div>
-    </div>
-  );
+  // Filter bar removed per Daily Rundown styling refresh; range/audience
+  // state defaults ('today' + 'all') are preserved so functionality is
+  // unchanged. `setRange` / `setAudience` remain wired for future use.
+  void setRange; void setAudience;
 
   const masterPane = (
     <div className="flex flex-col h-full min-w-0 rounded-xl border border-white/10 bg-background/40">
@@ -1313,7 +1278,10 @@ export function AgendaIntel() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {filterBar}
+      {/* Filter bar (Today/Next 3/Next 7 + All/External/Internal) intentionally
+          removed per Daily Rundown styling refresh. State defaults ('today' +
+          'all') are preserved so all filtering behavior remains functionally
+          identical. */}
       <div
         className={cn(
           'min-h-0 flex-1 pt-3 h-[calc(100vh-260px)] min-h-[520px] gap-2',
