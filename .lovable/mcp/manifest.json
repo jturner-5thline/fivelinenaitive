@@ -768,6 +768,201 @@
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
+      },
+      {
+        "name": "get_daily_rundown",
+        "title": "Get daily rundown",
+        "description": "Read the signed-in user's daily rundown items in display order. Restricted to jturner@5thline.co.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "complete",
+                "all"
+              ],
+              "default": "all"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_daily_rundown_item",
+        "title": "Add daily rundown item",
+        "description": "Append a new item to the signed-in user's daily rundown. Restricted to jturner@5thline.co. sort_order defaults to the end of the list.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "content": {
+              "type": "string",
+              "maxLength": 10000
+            },
+            "sort_order": {
+              "type": "integer"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 50,
+              "description": "Origin marker, e.g. 'openclaw' or 'user'."
+            }
+          },
+          "required": [
+            "title"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_daily_rundown_item",
+        "title": "Update daily rundown item",
+        "description": "Edit an existing rundown item's title, content, sort_order, or source. Restricted to jturner@5thline.co and their own rows.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "content": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 10000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sort_order": {
+              "type": "integer"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 50
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "complete_daily_rundown_item",
+        "title": "Complete or reopen daily rundown item",
+        "description": "Mark a rundown item as complete or pending. Restricted to jturner@5thline.co and their own rows.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "complete": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "reorder_daily_rundown_items",
+        "title": "Reorder daily rundown items",
+        "description": "Apply a new display order to rundown items. Accepts an array of {id, sort_order} — only rows owned by the signed-in user (jturner@5thline.co) are updated.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "sort_order": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "sort_order"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 200
+            }
+          },
+          "required": [
+            "items"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
       }
     ]
   }

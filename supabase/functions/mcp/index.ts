@@ -671,13 +671,196 @@ var list_deal_funding_sources_default = defineTool19({
   }
 });
 
+// src/lib/mcp/tools/get-daily-rundown.ts
+import { defineTool as defineTool20 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z20 } from "npm:zod@^3.23.0";
+
+// src/lib/mcp/rundownAccess.ts
+var RUNDOWN_ALLOWED_EMAIL = "jturner@5thline.co";
+function requireRundownAccess(ctx) {
+  if (!ctx.isAuthenticated()) {
+    return errorResult("Not authenticated");
+  }
+  const email = (ctx.getUserEmail?.() ?? "").toLowerCase();
+  if (email !== RUNDOWN_ALLOWED_EMAIL) {
+    return errorResult(
+      `Daily rundown access is restricted. Signed-in user must be ${RUNDOWN_ALLOWED_EMAIL}.`
+    );
+  }
+  return null;
+}
+async function logRundownAudit(ctx, action, payload = {}, itemId = null, initiatedBy = "openclaw") {
+  try {
+    const sb = supabaseForUser(ctx);
+    await sb.from("daily_rundown_audit_log").insert({
+      user_id: ctx.getUserId(),
+      user_email: ctx.getUserEmail?.() ?? null,
+      action,
+      initiated_by: initiatedBy,
+      item_id: itemId,
+      payload
+    });
+  } catch (err) {
+    console.error("[rundown-audit] failed to write audit row", err);
+  }
+}
+
+// src/lib/mcp/tools/get-daily-rundown.ts
+var get_daily_rundown_default = defineTool20({
+  name: "get_daily_rundown",
+  title: "Get daily rundown",
+  description: "Read the signed-in user's daily rundown items in display order. Restricted to jturner@5thline.co.",
+  inputSchema: {
+    status: z20.enum(["pending", "complete", "all"]).default("all"),
+    limit: z20.number().int().min(1).max(200).default(100)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ status, limit }, ctx) => {
+    const gate = requireRundownAccess(ctx);
+    if (gate) return gate;
+    const sb = supabaseForUser(ctx);
+    let q = sb.from("daily_rundown_items").select("id, title, content, status, sort_order, source, completed_at, created_at, updated_at").order("sort_order", { ascending: true }).order("created_at", { ascending: true }).limit(limit);
+    if (status !== "all") q = q.eq("status", status);
+    const { data, error } = await q;
+    if (error) return errorResult(error.message);
+    await logRundownAudit(ctx, "get_daily_rundown", { status, count: data?.length ?? 0 });
+    return textResult(data ?? [], { count: data?.length ?? 0 });
+  }
+});
+
+// src/lib/mcp/tools/add-daily-rundown-item.ts
+import { defineTool as defineTool21 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z21 } from "npm:zod@^3.23.0";
+var add_daily_rundown_item_default = defineTool21({
+  name: "add_daily_rundown_item",
+  title: "Add daily rundown item",
+  description: "Append a new item to the signed-in user's daily rundown. Restricted to jturner@5thline.co. sort_order defaults to the end of the list.",
+  inputSchema: {
+    title: z21.string().trim().min(1).max(500),
+    content: z21.string().max(1e4).optional(),
+    sort_order: z21.number().int().optional(),
+    source: z21.string().max(50).optional().describe("Origin marker, e.g. 'openclaw' or 'user'.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async ({ title, content, sort_order, source }, ctx) => {
+    const gate = requireRundownAccess(ctx);
+    if (gate) return gate;
+    const sb = supabaseForUser(ctx);
+    const userId = ctx.getUserId();
+    let nextOrder = sort_order;
+    if (nextOrder === void 0) {
+      const { data: tail } = await sb.from("daily_rundown_items").select("sort_order").order("sort_order", { ascending: false }).limit(1);
+      nextOrder = (tail?.[0]?.sort_order ?? 0) + 10;
+    }
+    const { data, error } = await sb.from("daily_rundown_items").insert({
+      user_id: userId,
+      user_email: RUNDOWN_ALLOWED_EMAIL,
+      title,
+      content: content ?? null,
+      sort_order: nextOrder,
+      source: source ?? "openclaw",
+      created_by: userId,
+      updated_by: userId
+    }).select().maybeSingle();
+    if (error) return errorResult(error.message);
+    await logRundownAudit(ctx, "add_daily_rundown_item", { title, sort_order: nextOrder }, data?.id ?? null);
+    return textResult(data, { item_id: data?.id });
+  }
+});
+
+// src/lib/mcp/tools/update-daily-rundown-item.ts
+import { defineTool as defineTool22 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z22 } from "npm:zod@^3.23.0";
+var update_daily_rundown_item_default = defineTool22({
+  name: "update_daily_rundown_item",
+  title: "Update daily rundown item",
+  description: "Edit an existing rundown item's title, content, sort_order, or source. Restricted to jturner@5thline.co and their own rows.",
+  inputSchema: {
+    id: z22.string().uuid(),
+    title: z22.string().trim().min(1).max(500).optional(),
+    content: z22.string().max(1e4).nullable().optional(),
+    sort_order: z22.number().int().optional(),
+    source: z22.string().max(50).optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async ({ id, ...patch }, ctx) => {
+    const gate = requireRundownAccess(ctx);
+    if (gate) return gate;
+    const sb = supabaseForUser(ctx);
+    const update = { updated_by: ctx.getUserId() };
+    for (const [k, v] of Object.entries(patch)) if (v !== void 0) update[k] = v;
+    const { data, error } = await sb.from("daily_rundown_items").update(update).eq("id", id).select().maybeSingle();
+    if (error) return errorResult(error.message);
+    if (!data) return errorResult("Rundown item not found or not accessible.");
+    await logRundownAudit(ctx, "update_daily_rundown_item", { id, patch }, id);
+    return textResult(data, { item_id: id });
+  }
+});
+
+// src/lib/mcp/tools/complete-daily-rundown-item.ts
+import { defineTool as defineTool23 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z23 } from "npm:zod@^3.23.0";
+var complete_daily_rundown_item_default = defineTool23({
+  name: "complete_daily_rundown_item",
+  title: "Complete or reopen daily rundown item",
+  description: "Mark a rundown item as complete or pending. Restricted to jturner@5thline.co and their own rows.",
+  inputSchema: {
+    id: z23.string().uuid(),
+    complete: z23.boolean().default(true)
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ id, complete }, ctx) => {
+    const gate = requireRundownAccess(ctx);
+    if (gate) return gate;
+    const sb = supabaseForUser(ctx);
+    const { data, error } = await sb.from("daily_rundown_items").update({ status: complete ? "complete" : "pending", updated_by: ctx.getUserId() }).eq("id", id).select().maybeSingle();
+    if (error) return errorResult(error.message);
+    if (!data) return errorResult("Rundown item not found or not accessible.");
+    await logRundownAudit(
+      ctx,
+      complete ? "complete_daily_rundown_item" : "reopen_daily_rundown_item",
+      { id },
+      id
+    );
+    return textResult(data, { item_id: id, status: data.status });
+  }
+});
+
+// src/lib/mcp/tools/reorder-daily-rundown-items.ts
+import { defineTool as defineTool24 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z24 } from "npm:zod@^3.23.0";
+var reorder_daily_rundown_items_default = defineTool24({
+  name: "reorder_daily_rundown_items",
+  title: "Reorder daily rundown items",
+  description: "Apply a new display order to rundown items. Accepts an array of {id, sort_order} \u2014 only rows owned by the signed-in user (jturner@5thline.co) are updated.",
+  inputSchema: {
+    items: z24.array(z24.object({ id: z24.string().uuid(), sort_order: z24.number().int() })).min(1).max(200)
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ items }, ctx) => {
+    const gate = requireRundownAccess(ctx);
+    if (gate) return gate;
+    const sb = supabaseForUser(ctx);
+    const userId = ctx.getUserId();
+    const results = [];
+    for (const it of items) {
+      const { error } = await sb.from("daily_rundown_items").update({ sort_order: it.sort_order, updated_by: userId }).eq("id", it.id);
+      results.push({ id: it.id, ok: !error, ...error ? { error: error.message } : {} });
+    }
+    const failed = results.filter((r) => !r.ok);
+    if (failed.length === items.length) return errorResult(`All updates failed: ${failed[0].error ?? "unknown"}`);
+    await logRundownAudit(ctx, "reorder_daily_rundown_items", { count: items.length, failed: failed.length });
+    return textResult({ updated: items.length - failed.length, failed }, { count: items.length });
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "tgkksvazruzbghssnxde";
 var mcp_default = defineMcp({
   name: "naitive-api",
   title: "naitive API",
   version: "0.1.0",
-  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals, `update_deal` to move stage or edit fields, `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups, `search_lenders`/`add_lender_to_deal` for the funding-source directory, `list_deal_funding_sources` to read the lenders attached to a specific deal (matches the deal's Funding Sources tab), and \u2014 for deep deal context \u2014 `search_deal_notes`, `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal.",
+  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals, `update_deal` to move stage or edit fields, `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups, `search_lenders`/`add_lender_to_deal` for the funding-source directory, `list_deal_funding_sources` to read the lenders attached to a specific deal (matches the deal's Funding Sources tab), and \u2014 for deep deal context \u2014 `search_deal_notes`, `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal. Daily rundown tools (`get_daily_rundown`, `add_daily_rundown_item`, `update_daily_rundown_item`, `complete_daily_rundown_item`, `reorder_daily_rundown_items`) manage the personal dashboard rundown \u2014 access is restricted to jturner@5thline.co and enforced at the database (RLS) and edge-function layers.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
@@ -701,7 +884,12 @@ var mcp_default = defineMcp({
     get_deal_document_default,
     search_deal_emails_default,
     search_deal_recordings_default,
-    list_deal_funding_sources_default
+    list_deal_funding_sources_default,
+    get_daily_rundown_default,
+    add_daily_rundown_item_default,
+    update_daily_rundown_item_default,
+    complete_daily_rundown_item_default,
+    reorder_daily_rundown_items_default
   ]
 });
 
