@@ -1,6 +1,6 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-import { supabaseForUser, requireAuth, textResult, errorResult } from "../supabase";
+import { supabaseForUser, requireAuth, textResult, errorResult, assertDealAccess } from "../supabase";
 
 export default defineTool({
   name: "list_deal_funding_sources",
@@ -15,6 +15,8 @@ export default defineTool({
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
+    const denied = await assertDealAccess(sb, ctx, deal_id, "list_deal_funding_sources");
+    if (denied) return denied;
     const { data, error } = await sb
       .from("deal_lenders")
       .select(
@@ -31,29 +33,11 @@ export default defineTool({
       return errorResult(error.message);
     }
     const rows = data ?? [];
-    // Probe the parent deal so an empty result is diagnosable: distinguishes
-    // "deal has no lenders" from "RLS hid the deal (wrong tenant / no access)".
-    let deal_visible = true;
-    if (rows.length === 0) {
-      const { data: deal } = await sb
-        .from("deals")
-        .select("id, company, user_id, company_id")
-        .eq("id", deal_id)
-        .maybeSingle();
-      deal_visible = !!deal;
-      console.log("[list_deal_funding_sources] empty result", {
-        deal_id,
-        user_id: ctx.getUserId?.(),
-        deal_visible,
-        deal_company: deal?.company ?? null,
-      });
-    } else {
-      console.log("[list_deal_funding_sources] ok", {
-        deal_id,
-        user_id: ctx.getUserId?.(),
-        count: rows.length,
-      });
-    }
-    return textResult(rows, { count: rows.length, deal_id, deal_visible });
+    console.log("[list_deal_funding_sources] ok", {
+      deal_id,
+      user_id: ctx.getUserId?.(),
+      count: rows.length,
+    });
+    return textResult(rows, { count: rows.length, deal_id, deal_visible: true });
   },
 });

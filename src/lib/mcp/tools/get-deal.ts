@@ -1,6 +1,6 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-import { supabaseForUser, requireAuth, textResult, errorResult } from "../supabase";
+import { supabaseForUser, requireAuth, textResult, errorResult, assertDealAccess } from "../supabase";
 
 export default defineTool({
   name: "get_deal",
@@ -16,6 +16,8 @@ export default defineTool({
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
+    const denied = await assertDealAccess(sb, ctx, deal_id, "get_deal");
+    if (denied) return denied;
     const { data: deal, error } = await sb.from("deals").select("*").eq("id", deal_id).maybeSingle();
     if (error) return errorResult(error.message);
     if (!deal) return errorResult("Deal not found or you do not have access.");
