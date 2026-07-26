@@ -694,19 +694,18 @@ export default function Dashboard() {
         headerActions={
           <div className="flex items-center gap-1.5 flex-wrap shrink-0">
             <LatestUpdatesDropdown />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Tooltip>
-                  <TooltipTrigger asChild>
+            <Tooltip>
+              <DropdownMenu>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-md" aria-label="Actions">
                       <Settings2 className="h-4 w-4" />
                       <span className="hidden sm:inline">Actions</span>
                       <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Actions</TooltipContent>
-                </Tooltip>
-              </DropdownMenuTrigger>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Actions</TooltipContent>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuItem onClick={() => setShowMilestones(!showMilestones)}>
                   <Target className="h-4 w-4 mr-2" />
