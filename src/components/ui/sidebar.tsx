@@ -16,11 +16,11 @@ const SIDEBAR_COOKIE_NAME = "sidebar:state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = "14rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem";
-// Collapsed-rail icon width. Reduced 25% from prior 3rem (64px total rail
-// including the +spacing.4 gutter) to 2rem so the collapsed rail is 48px.
-// Menu buttons are size-8 (32px) and centered via mx-auto, keeping 8px of
-// symmetric padding on each side of the icon within the 48px rail.
-const SIDEBAR_WIDTH_ICON = "2rem";
+// Collapsed-rail icon width. Rail = this value + spacing.4 (16px).
+// 2.3125rem (37px) + 16px = 53px total rail — a 10% bump from the prior
+// 48px collapsed rail. Menu buttons remain size-8 (32px), centered via
+// mx-auto with symmetric 10.5px padding on each side.
+const SIDEBAR_WIDTH_ICON = "2.3125rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
 type SidebarContext = {
