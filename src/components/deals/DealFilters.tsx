@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,12 +32,19 @@ interface DealFiltersProps {
    * toggle takes its place).
    */
   hideStatusFilter?: boolean;
+  /**
+   * Optional slot rendered between the Search control and the FiltersPopover
+   * (filter icon). Used by the Deals page to co-locate the "View" control
+   * with the other left-group icon buttons.
+   */
+  afterSearchSlot?: ReactNode;
 }
 
 export function DealFilters({
   filters,
   onFilterChange,
   hideStatusFilter = false,
+  afterSearchSlot,
 }: DealFiltersProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const filterConfigs = useFilterConfigs();
@@ -190,6 +197,8 @@ export function DealFilters({
           value={filters.search}
           onChange={(value) => onFilterChange({ search: value })}
         />
+
+        {afterSearchSlot}
 
         {/* Consolidated Filters Popover */}
         <HintTooltip
