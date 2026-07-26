@@ -17,7 +17,7 @@ import { MultiSelectFilter } from './MultiSelectFilter';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { CollapsibleSearch } from './CollapsibleSearch';
-import { PipelineSelector } from './PipelineSelector';
+// PipelineSelector consolidated into the Deals page "View" popover.
 
 
 const PINNED_FILTERS_KEY = 'deals-pinned-filters';
@@ -185,9 +185,6 @@ export function DealFilters({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        {/* Pipeline selector — icon-only, sits to the left of the search icon */}
-        <PipelineSelector iconOnly />
-
         {/* Search */}
         <CollapsibleSearch
           value={filters.search}
