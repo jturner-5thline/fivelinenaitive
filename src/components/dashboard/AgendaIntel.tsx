@@ -58,6 +58,7 @@ import ReactMarkdown from 'react-markdown';
 import { QuickCreateTaskDialog } from '@/components/tasks/QuickCreateTaskDialog';
 import { EmailComposerCard, type ComposerRecipients, type ComposerSendOptions } from '@/components/deal/email/EmailComposerCard';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { MyRundownPanel } from './MyRundownPanel';
 import { useMyTasks } from '@/hooks/useTasks';
 import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useGmail } from '@/hooks/useGmail';
@@ -1278,6 +1279,7 @@ export function AgendaIntel() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
+      <MyRundownPanel />
       {/* Filter bar (Today/Next 3/Next 7 + All/External/Internal) intentionally
           removed per Daily Rundown styling refresh. State defaults ('today' +
           'all') are preserved so all filtering behavior remains functionally
