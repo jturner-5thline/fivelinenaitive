@@ -32,3 +32,82 @@ export function textResult(payload: unknown, structured?: Record<string, unknown
 export function errorResult(message: string) {
   return { content: [{ type: "text" as const, text: message }], isError: true as const };
 }
+
+/**
+ * Distinguish "deal doesn't exist / RLS hides it from this caller" from
+ * "deal exists and is empty". Returns a forbidden result payload when the
+ * caller cannot see the parent deal, or null when access is confirmed.
+ *
+ * Logs auth.uid(), the deal's company_id, and the outcome so membership
+ * mismatches surface in edge-function logs.
+ */
+export async function assertDealAccess(
+  sb: ReturnType<typeof supabaseForUser>,
+  ctx: ToolContext,
+  deal_id: string,
+  toolName: string,
+) {
+  const caller_uid = ctx.getUserId?.() ?? null;
+  const { data: deal, error } = await sb
+    .from("deals")
+    .select("id, company, user_id, company_id")
+    .eq("id", deal_id)
+    .maybeSingle();
+  if (error) {
+    console.error(`[${toolName}] deal access probe error`, {
+      deal_id,
+      caller_uid,
+      message: error.message,
+    });
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            { error: "forbidden", reason: error.message, deal_id },
+            null,
+            2,
+          ),
+        },
+      ],
+      structuredContent: { error: "forbidden", reason: error.message, deal_id },
+      isError: true as const,
+    };
+  }
+  if (!deal) {
+    console.warn(`[${toolName}] rls-denied`, {
+      deal_id,
+      caller_uid,
+      deal_visible: false,
+    });
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              error: "forbidden",
+              reason: "caller lacks RLS access to this deal's company",
+              deal_id,
+            },
+            null,
+            2,
+          ),
+        },
+      ],
+      structuredContent: {
+        error: "forbidden",
+        reason: "caller lacks RLS access to this deal's company",
+        deal_id,
+      },
+      isError: true as const,
+    };
+  }
+  console.log(`[${toolName}] deal access ok`, {
+    deal_id,
+    caller_uid,
+    deal_company_id: deal.company_id ?? null,
+    deal_owner_uid: deal.user_id ?? null,
+  });
+  return null;
+}
