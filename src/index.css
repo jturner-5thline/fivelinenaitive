@@ -2349,7 +2349,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .popup-shell-surface.create-deal-compact [data-radix-select-trigger].create-deal-dropdown-trigger {
   background-color: #060b18 !important;
   background-image: linear-gradient(135deg, #0a1224 0%, #060b18 52%, #04060f 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.20) !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
   color: rgba(255, 255, 255, 0.95) !important;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 1px 2px rgba(0,0,0,0.35) !important;
   backdrop-filter: none !important;
