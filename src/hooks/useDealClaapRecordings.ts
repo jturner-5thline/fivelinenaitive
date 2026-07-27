@@ -62,7 +62,9 @@ export function useDealClaapRecordings(dealId: string) {
             recording_title: recording.title,
             recording_url: recording.url,
             thumbnail_url: recording.thumbnailUrl,
-            duration_seconds: recording.durationSeconds,
+            duration_seconds: Number.isFinite(recording.durationSeconds)
+              ? Math.round(recording.durationSeconds)
+              : 0,
             recorder_name: recording.recorder?.name,
             recorder_email: recording.recorder?.email,
             linked_by: user?.id,
