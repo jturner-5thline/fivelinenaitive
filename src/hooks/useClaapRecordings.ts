@@ -186,7 +186,7 @@ async function fetchLiveRecordings(search?: string, bypassCache = false): Promis
   // filters the same list when `search` is supplied. Fetch the live list once
   // per minute and filter locally so multiple meeting cards do not fire one
   // live Claap request per distinct meeting title.
-  const cacheKey = '__all__';
+  const cacheKey = search && search.trim() ? `search:${search.trim().toLowerCase()}` : '__all__';
   const cached = liveRecordingsCache.get(cacheKey);
   const now = Date.now();
 
