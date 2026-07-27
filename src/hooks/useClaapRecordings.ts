@@ -192,16 +192,22 @@ async function fetchLiveRecordings(search?: string, bypassCache = false): Promis
 
   if (!bypassCache && cached?.promise) return (await cached.promise).filter((r) => recordingMatchesSearch(r, search));
   if (!bypassCache && cached && now - cached.at < LIVE_RECORDINGS_CACHE_TTL_MS) {
-    return cached.recordings.filter((r) => recordingMatchesSearch(r, search));
+    const filtered = cached.recordings.filter((r) => recordingMatchesSearch(r, search));
+    // If a search returns no cached hits, fall through to a fresh fetch —
+    // the meeting may live outside the previously-cached window.
+    if (!search || filtered.length > 0) return filtered;
   }
 
   const promise = (async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return [];
 
-    // Bump to 200 so today's meetings on busy workspaces (>100 recordings/week)
-    // are still reachable through the "Add meeting" picker.
-    const params = new URLSearchParams({ action: 'list', limit: '200' });
+    // Pull a wider window (500) so older recordings the user searches for
+    // (e.g. a kick-off call from a few weeks back) are still reachable
+    // through the "Add meeting" picker. When a search term is supplied we
+    // also forward it so the edge function filters server-side.
+    const params = new URLSearchParams({ action: 'list', limit: '500' });
+    if (search && search.trim()) params.set('search', search.trim());
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claap-recordings?${params.toString()}`;
     const response = await fetch(url, {
       headers: {
