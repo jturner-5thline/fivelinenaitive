@@ -50,20 +50,26 @@ export function useDealClaapRecordings(dealId: string) {
       // Linking a Claap recording is a lightweight association — it must NOT
       // create a fake Deal Space note / meeting "event". The recording surfaces
       // in the deal's Meetings section via `deal_claap_recordings` directly.
+      // Use upsert on (deal_id, recording_id) so a second click on the same
+      // meeting (e.g. from the picker) is a no-op success instead of a
+      // silent unique-constraint failure.
       const { error } = await supabase
         .from('deal_claap_recordings')
-        .insert({
-          deal_id: dealId,
-          recording_id: recording.id,
-          recording_title: recording.title,
-          recording_url: recording.url,
-          thumbnail_url: recording.thumbnailUrl,
-          duration_seconds: recording.durationSeconds,
-          recorder_name: recording.recorder?.name,
-          recorder_email: recording.recorder?.email,
-          linked_by: user?.id,
-          notes: null,
-        });
+        .upsert(
+          {
+            deal_id: dealId,
+            recording_id: recording.id,
+            recording_title: recording.title,
+            recording_url: recording.url,
+            thumbnail_url: recording.thumbnailUrl,
+            duration_seconds: recording.durationSeconds,
+            recorder_name: recording.recorder?.name,
+            recorder_email: recording.recorder?.email,
+            linked_by: user?.id,
+            notes: null,
+          },
+          { onConflict: 'deal_id,recording_id', ignoreDuplicates: true },
+        );
 
       if (error) throw error;
 
