@@ -189,7 +189,8 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const [files, setFiles] = useState<DriveFile[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [crumbs, setCrumbs] = useState<Crumb[]>([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(defaultSearchQuery);
+  const [didAutoSearch, setDidAutoSearch] = useState(false);
   const [searching, setSearching] = useState(false);
   const [progress, setProgress] = useState<ImportItem[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -219,6 +220,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     setCrumbs([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]); setMode('browse');
     setProgress([]); setShowResults(false); setUrlError(null); setPreviewingId(null);
     setLastFinishedAt(null);
+    setDidAutoSearch(false);
   };
 
   const browse = useCallback(async (folderId: string, name?: string, replace?: boolean) => {
