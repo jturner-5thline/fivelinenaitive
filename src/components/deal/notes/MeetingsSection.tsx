@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useClaapRecordings } from '@/hooks/useClaapRecordings';
 import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
 import { useClaapIntegration } from '@/hooks/useClaapIntegration';
+import { extractClaapRecordingId, formatClaapTitleFromUrl } from '@/lib/claap-url';
 import { format } from 'date-fns';
 
 interface MeetingsSectionProps {
@@ -43,22 +44,12 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
     };
   }, [search, open, isEnabled, fetchRecordings]);
 
-  // Parse a Claap URL or bare ID. Claap share/watch URLs typically look like
-  // `https://app.claap.io/…/UcJHxNIAwpa0` — the last path segment is the id.
+  // Parse a Claap URL or bare ID. Claap share URLs often look like
+  // `https://app.claap.io/.../meeting-title-c-<containerId>-<recordingId>`.
   // NOTE: this useMemo MUST stay above any early return so hook order is
   // stable across renders (Rules of Hooks).
   const extractedId = useMemo(() => {
-    const raw = pasteUrl.trim();
-    if (!raw) return '';
-    try {
-      const u = new URL(raw);
-      const parts = u.pathname.split('/').filter(Boolean);
-      const last = parts[parts.length - 1] || '';
-      // Claap ids are ~12 char alphanum tokens
-      return /^[A-Za-z0-9_-]{8,32}$/.test(last) ? last : '';
-    } catch {
-      return /^[A-Za-z0-9_-]{8,32}$/.test(raw) ? raw : '';
-    }
+    return extractClaapRecordingId(pasteUrl);
   }, [pasteUrl]);
 
   if (!isEnabled) return null;
@@ -75,9 +66,10 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
       } else {
         // Fall back to a minimal stub — enough to insert the link row so the
         // meeting appears on the deal even when Claap is rate-limited.
+        const pasted = pasteUrl.trim();
         await linkRecording({
           id: extractedId,
-          title: 'Claap recording',
+          title: formatClaapTitleFromUrl(pasted),
           createdAt: '',
           durationSeconds: 0,
           labels: [],
@@ -85,7 +77,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
           state: 'ready',
           thumbnailUrl: '',
           transcripts: [],
-          url: pasteUrl.trim(),
+          url: pasted,
         });
       }
       setPasteUrl('');
