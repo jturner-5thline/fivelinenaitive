@@ -61,27 +61,25 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
     setPasteBusy(true);
     try {
       const rec = await getRecording(extractedId);
-      if (rec) {
-        await linkRecording(rec);
-      } else {
-        // Fall back to a minimal stub — enough to insert the link row so the
-        // meeting appears on the deal even when Claap is rate-limited.
-        const pasted = pasteUrl.trim();
-        await linkRecording({
-          id: extractedId,
-          title: formatClaapTitleFromUrl(pasted),
-          createdAt: '',
-          durationSeconds: 0,
-          labels: [],
-          recorder: { attended: false, email: '', id: '', name: '' },
-          state: 'ready',
-          thumbnailUrl: '',
-          transcripts: [],
-          url: pasted,
-        });
+      const linked = rec
+        ? await linkRecording(rec)
+        : await linkRecording({
+            id: extractedId,
+            title: formatClaapTitleFromUrl(pasteUrl.trim()),
+            createdAt: '',
+            durationSeconds: 0,
+            labels: [],
+            recorder: { attended: false, email: '', id: '', name: '' },
+            state: 'ready',
+            thumbnailUrl: '',
+            transcripts: [],
+            url: pasteUrl.trim(),
+          });
+
+      if (linked) {
+        setPasteUrl('');
+        setOpen(false);
       }
-      setPasteUrl('');
-      setOpen(false);
     } finally {
       setPasteBusy(false);
     }
@@ -89,26 +87,30 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
 
   return (
     <div className="border-b">
-      <button
-        type="button"
-        onClick={() => setExpanded(v => !v)}
-        className="w-full px-3 py-2 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted/40"
-      >
-        {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        <Video className="h-3 w-3" />
-        Meetings
-        {linkedRecordings.length > 0 && (
-          <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">{linkedRecordings.length}</Badge>
-        )}
+      <div className="w-full px-3 py-2 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted/40">
+        <button
+          type="button"
+          onClick={() => setExpanded(v => !v)}
+          className="min-w-0 flex flex-1 items-center gap-1.5 text-left"
+        >
+          {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          <Video className="h-3 w-3" />
+          Meetings
+          {linkedRecordings.length > 0 && (
+            <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">{linkedRecordings.length}</Badge>
+          )}
+        </button>
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
-            <span
-              role="button"
-              className="ml-auto inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] text-primary hover:bg-primary/10"
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-5 px-1.5 text-[10px] text-primary hover:bg-primary/10"
               onClick={(e) => { e.stopPropagation(); setOpen(true); }}
             >
               <Plus className="h-3 w-3" /> Add
-            </span>
+            </Button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80 p-0" onClick={(e) => e.stopPropagation()}>
             <div className="p-2 border-b">
@@ -136,13 +138,15 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
               ) : (
                 <div className="py-1">
                   {available
-                    .filter(r => !search || r.title?.toLowerCase().includes(search.toLowerCase()))
                     .map(r => (
                       <button
                         key={r.id}
                         type="button"
                         className="w-full text-left px-2 py-1.5 hover:bg-muted/60 flex items-start gap-2"
-                        onClick={() => { linkRecording(r); setOpen(false); }}
+                        onClick={async () => {
+                          const linked = await linkRecording(r);
+                          if (linked) setOpen(false);
+                        }}
                       >
                         <Video className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
                         <div className="min-w-0 flex-1">
@@ -184,7 +188,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
             </div>
           </PopoverContent>
         </Popover>
-      </button>
+      </div>
 
       {expanded && (
         <div className="pb-1">

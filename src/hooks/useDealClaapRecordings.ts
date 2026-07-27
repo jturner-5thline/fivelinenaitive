@@ -44,7 +44,7 @@ export function useDealClaapRecordings(dealId: string) {
     fetchLinkedRecordings();
   }, [fetchLinkedRecordings]);
 
-  const linkRecording = useCallback(async (recording: ClaapRecording) => {
+  const linkRecording = useCallback(async (recording: ClaapRecording): Promise<boolean> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       // Linking a Claap recording is a lightweight association — it must NOT
@@ -68,7 +68,7 @@ export function useDealClaapRecordings(dealId: string) {
             linked_by: user?.id,
             notes: null,
           },
-          { onConflict: 'deal_id,recording_id', ignoreDuplicates: true },
+          { onConflict: 'deal_id,recording_id' },
         );
 
       if (error) throw error;
@@ -78,12 +78,13 @@ export function useDealClaapRecordings(dealId: string) {
         description: `"${recording.title || 'Recording'}" is linked to this deal.`,
       });
 
-      fetchLinkedRecordings();
+      await fetchLinkedRecordings();
 
       // NOTE: Per project memory ("AI writes require explicit human approval"),
       // we do NOT auto-run analysis or auto-post summaries / tasks here.
       // The user opens "Analyze Recording" on the Data Room entry to review
       // and confirm the AI draft before anything is written to the deal.
+      return true;
     } catch (err: any) {
       console.error('Error linking recording:', err);
       toast({
@@ -91,6 +92,7 @@ export function useDealClaapRecordings(dealId: string) {
         description: err.message || 'Failed to link recording',
         variant: 'destructive',
       });
+      return false;
     }
   }, [dealId, toast, fetchLinkedRecordings]);
 
