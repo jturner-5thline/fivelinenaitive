@@ -84,6 +84,8 @@ interface Props {
   defaultFolderPath?: string;
   /** Ordered list of Internal folder names available as mapping targets. */
   internalFolders?: string[];
+  /** Prefill the browse search box (e.g. deal name) and auto-run once on open. */
+  defaultSearchQuery?: string;
 }
 
 function extNameFromMime(name: string, mime: string): string {
@@ -179,7 +181,7 @@ function autoMatchTarget(driveFolderName: string, internalFolders: string[]): st
   return contains[0]?.name ?? null;
 }
 
-export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFolderPath = '/', internalFolders = [] }: Props) {
+export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFolderPath = '/', internalFolders = [], defaultSearchQuery = '' }: Props) {
   const [mode, setMode] = useState<'browse' | 'url'>('browse');
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
