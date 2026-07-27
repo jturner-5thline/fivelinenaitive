@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Video, Search, Plus, ExternalLink, Unlink, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Video, Search, Plus, ExternalLink, Unlink, Loader2, ChevronDown, ChevronRight, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -16,11 +16,13 @@ interface MeetingsSectionProps {
 
 export function MeetingsSection({ dealId }: MeetingsSectionProps) {
   const { isEnabled } = useClaapIntegration();
-  const { recordings, loading, fetchRecordings } = useClaapRecordings();
+  const { recordings, loading, fetchRecordings, getRecording } = useClaapRecordings();
   const { linkedRecordings, linkedRecordingIds, linkRecording, unlinkRecording } = useDealClaapRecordings(dealId);
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const [search, setSearch] = useState('');
+  const [pasteUrl, setPasteUrl] = useState('');
+  const [pasteBusy, setPasteBusy] = useState(false);
 
   // On open: refetch fresh (bypass 60s live cache) so today's meetings show up.
   useEffect(() => {
@@ -44,6 +46,52 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
   if (!isEnabled) return null;
 
   const available = recordings.filter(r => !linkedRecordingIds.includes(r.id));
+
+  // Parse a Claap URL or bare ID. Claap share/watch URLs typically look like
+  // `https://app.claap.io/…/UcJHxNIAwpa0` — the last path segment is the id.
+  const extractedId = useMemo(() => {
+    const raw = pasteUrl.trim();
+    if (!raw) return '';
+    try {
+      const u = new URL(raw);
+      const parts = u.pathname.split('/').filter(Boolean);
+      const last = parts[parts.length - 1] || '';
+      // Claap ids are ~12 char alphanum tokens
+      return /^[A-Za-z0-9_-]{8,32}$/.test(last) ? last : '';
+    } catch {
+      return /^[A-Za-z0-9_-]{8,32}$/.test(raw) ? raw : '';
+    }
+  }, [pasteUrl]);
+
+  const handlePasteLink = async () => {
+    if (!extractedId || pasteBusy) return;
+    setPasteBusy(true);
+    try {
+      const rec = await getRecording(extractedId);
+      if (rec) {
+        await linkRecording(rec);
+      } else {
+        // Fall back to a minimal stub — enough to insert the link row so the
+        // meeting appears on the deal even when Claap is rate-limited.
+        await linkRecording({
+          id: extractedId,
+          title: 'Claap recording',
+          createdAt: '',
+          durationSeconds: 0,
+          labels: [],
+          recorder: { attended: false, email: '', id: '', name: '' },
+          state: 'ready',
+          thumbnailUrl: '',
+          transcripts: [],
+          url: pasteUrl.trim(),
+        });
+      }
+      setPasteUrl('');
+      setOpen(false);
+    } finally {
+      setPasteBusy(false);
+    }
+  };
 
   return (
     <div className="border-b">
@@ -88,7 +136,9 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
               ) : available.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">No recordings found</p>
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  No recordings found. Paste a Claap URL below to link directly.
+                </p>
               ) : (
                 <div className="py-1">
                   {available
@@ -113,6 +163,31 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
                 </div>
               )}
             </ScrollArea>
+            <div className="border-t p-2 space-y-1.5">
+              <p className="text-[10px] text-muted-foreground">
+                Can't find it? Paste the Claap URL:
+              </p>
+              <div className="flex items-center gap-1">
+                <div className="relative flex-1">
+                  <Link2 className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    value={pasteUrl}
+                    onChange={e => setPasteUrl(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && extractedId) handlePasteLink(); }}
+                    placeholder="https://app.claap.io/…"
+                    className="h-7 pl-7 text-xs"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  disabled={!extractedId || pasteBusy}
+                  onClick={handlePasteLink}
+                >
+                  {pasteBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Link'}
+                </Button>
+              </div>
+            </div>
           </PopoverContent>
         </Popover>
       </button>
