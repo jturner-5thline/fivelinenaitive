@@ -43,12 +43,10 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
     };
   }, [search, open, isEnabled, fetchRecordings]);
 
-  if (!isEnabled) return null;
-
-  const available = recordings.filter(r => !linkedRecordingIds.includes(r.id));
-
   // Parse a Claap URL or bare ID. Claap share/watch URLs typically look like
   // `https://app.claap.io/…/UcJHxNIAwpa0` — the last path segment is the id.
+  // NOTE: this useMemo MUST stay above any early return so hook order is
+  // stable across renders (Rules of Hooks).
   const extractedId = useMemo(() => {
     const raw = pasteUrl.trim();
     if (!raw) return '';
@@ -62,6 +60,10 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
       return /^[A-Za-z0-9_-]{8,32}$/.test(raw) ? raw : '';
     }
   }, [pasteUrl]);
+
+  if (!isEnabled) return null;
+
+  const available = recordings.filter(r => !linkedRecordingIds.includes(r.id));
 
   const handlePasteLink = async () => {
     if (!extractedId || pasteBusy) return;
