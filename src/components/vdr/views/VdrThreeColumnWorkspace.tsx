@@ -1876,6 +1876,7 @@ export function VdrThreeColumnWorkspace({
           if (ok === false) throw new Error(`Failed to save ${file.name}`);
         }}
         internalFolders={internalCategoryNames}
+        defaultSearchQuery={currentDeal?.company || ''}
       />
     )}
     </>

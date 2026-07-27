@@ -84,6 +84,8 @@ interface Props {
   defaultFolderPath?: string;
   /** Ordered list of Internal folder names available as mapping targets. */
   internalFolders?: string[];
+  /** Prefill the browse search box (e.g. deal name) and auto-run once on open. */
+  defaultSearchQuery?: string;
 }
 
 function extNameFromMime(name: string, mime: string): string {
@@ -179,7 +181,7 @@ function autoMatchTarget(driveFolderName: string, internalFolders: string[]): st
   return contains[0]?.name ?? null;
 }
 
-export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFolderPath = '/', internalFolders = [] }: Props) {
+export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFolderPath = '/', internalFolders = [], defaultSearchQuery = '' }: Props) {
   const [mode, setMode] = useState<'browse' | 'url'>('browse');
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
@@ -187,7 +189,8 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const [files, setFiles] = useState<DriveFile[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [crumbs, setCrumbs] = useState<Crumb[]>([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(defaultSearchQuery);
+  const [didAutoSearch, setDidAutoSearch] = useState(false);
   const [searching, setSearching] = useState(false);
   const [progress, setProgress] = useState<ImportItem[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -217,6 +220,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     setCrumbs([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]); setMode('browse');
     setProgress([]); setShowResults(false); setUrlError(null); setPreviewingId(null);
     setLastFinishedAt(null);
+    setDidAutoSearch(false);
   };
 
   const browse = useCallback(async (folderId: string, name?: string, replace?: boolean) => {
@@ -250,9 +254,41 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
 
   useEffect(() => {
     if (open && mode === 'browse' && files.length === 0 && crumbs.length === 1) {
-      browse(ROOT_FOLDER_ID, ROOT_FOLDER_NAME, true);
+      if (defaultSearchQuery && !didAutoSearch) {
+        setDidAutoSearch(true);
+        setSearch(defaultSearchQuery);
+        // Fire a search scoped to the shared drive root using the deal name.
+        (async () => {
+          setSearching(true); setSelected(new Set());
+          try {
+            const { data, error } = await supabase.functions.invoke('drive-folder-import', {
+              body: { action: 'search', query: defaultSearchQuery, folderId: ROOT_FOLDER_ID },
+            });
+            if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+            setFiles(data?.files ?? []);
+            setCrumbs([
+              { id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME },
+              { id: '__search', name: `Search: ${defaultSearchQuery}` },
+            ]);
+          } catch (err) {
+            console.error(err);
+            // Fall back to root browse if search fails.
+            browse(ROOT_FOLDER_ID, ROOT_FOLDER_NAME, true);
+          } finally {
+            setSearching(false);
+          }
+        })();
+      } else {
+        browse(ROOT_FOLDER_ID, ROOT_FOLDER_NAME, true);
+      }
     }
-  }, [open, mode, browse, files.length, crumbs.length]);
+  }, [open, mode, browse, files.length, crumbs.length, defaultSearchQuery, didAutoSearch]);
+
+  // Reset the one-shot auto-search flag whenever the dialog closes.
+  useEffect(() => {
+    if (!open) setDidAutoSearch(false);
+  }, [open]);
 
   const handleSearch = async () => {
     const q = search.trim();
