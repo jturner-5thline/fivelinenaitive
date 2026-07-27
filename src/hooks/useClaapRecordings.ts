@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { extractClaapRecordingCandidates } from '@/lib/claap-url';
 
 export interface FetchClaapRecordingsOptions {
   live?: boolean;
@@ -83,6 +84,39 @@ function mapLocalRecording(row: any): ClaapRecording {
       startingAt: row.started_at || undefined,
     },
   } as ClaapRecording;
+}
+
+async function findLocalRecordingByCandidates(candidates: string[]): Promise<ClaapRecording | null> {
+  const ids = Array.from(new Set(candidates.map((id) => id.trim()).filter(Boolean))).slice(0, 6);
+  if (ids.length === 0) return null;
+
+  try {
+    const { data: byId, error: byIdError } = await supabase
+      .from('claap_recordings')
+      .select('external_id, title, started_at, organizer_email, participants, source_payload, transcript_url, recording_url')
+      .in('external_id', ids)
+      .order('started_at', { ascending: false, nullsFirst: false })
+      .limit(1);
+
+    if (!byIdError && byId?.[0]) return mapLocalRecording(byId[0]);
+
+    for (const id of ids) {
+      const safeToken = id.replace(/[%,]/g, '').trim();
+      if (!safeToken) continue;
+      const { data: byUrl, error: byUrlError } = await supabase
+        .from('claap_recordings')
+        .select('external_id, title, started_at, organizer_email, participants, source_payload, transcript_url, recording_url')
+        .ilike('recording_url', `%${safeToken}%`)
+        .order('started_at', { ascending: false, nullsFirst: false })
+        .limit(1);
+
+      if (!byUrlError && byUrl?.[0]) return mapLocalRecording(byUrl[0]);
+    }
+  } catch (err) {
+    console.warn('[Claap] local recording lookup failed', err);
+  }
+
+  return null;
 }
 
 function mapApiRecording(r: any): ClaapRecording | null {
@@ -270,20 +304,25 @@ export function useClaapRecordings() {
       if (qErr) throw qErr;
 
       const localRecordings: ClaapRecording[] = (data || []).map(mapLocalRecording);
-      setRecordings(localRecordings);
+      const directCandidates = search ? extractClaapRecordingCandidates(search).map((candidate) => candidate.id) : [];
+      const directLocal = localRecordings.length === 0 && directCandidates.length > 0
+        ? await findLocalRecordingByCandidates(directCandidates)
+        : null;
+      const hydratedLocalRecordings = directLocal ? [directLocal] : localRecordings;
+      setRecordings(hydratedLocalRecordings);
 
-      if (!live) return localRecordings;
+      if (!live) return hydratedLocalRecordings;
 
       // Also hydrate from the live Claap API. The local mirror can lag behind
       // when someone else on the team owned the recorder, but the current user
       // was an attendee; merging live results lets them find and link/sync it.
       const liveRecordings = await fetchLiveRecordings(search, bypassLiveCache);
       if (liveRecordings.length > 0) {
-        const merged = mergeByRecordingId(localRecordings, liveRecordings);
+        const merged = mergeByRecordingId(hydratedLocalRecordings, liveRecordings);
         setRecordings(merged);
         return merged;
       }
-      return localRecordings;
+      return hydratedLocalRecordings;
     } catch (err: any) {
       console.error('Error fetching Claap recordings:', err);
       setError(err.message);
@@ -303,6 +342,9 @@ export function useClaapRecordings() {
 
   const getRecording = useCallback(async (recordingId: string): Promise<ClaapRecording | null> => {
     try {
+      const localRecording = await findLocalRecordingByCandidates([recordingId]);
+      if (localRecording) return localRecording;
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Not authenticated');
