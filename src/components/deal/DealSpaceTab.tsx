@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DollarSign, FileText, StickyNote, Presentation } from 'lucide-react';
+import { DollarSign, FileText, StickyNote } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { DealSpaceAskAITab } from './DealSpaceAskAITab';
 import { DealSpaceDocumentsTab } from './DealSpaceDocumentsTab';
 import { DealSpaceNotesTab } from './DealSpaceNotesTab';
-import { GammaIntegrationPanel } from './GammaIntegrationPanel';
 import { SaaSModelTab } from './saas-model/SaaSModelTab';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
-import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 
 interface DealSpaceTabProps {
   dealId: string;
@@ -27,8 +25,6 @@ interface DealSpaceTabProps {
 
 export function DealSpaceTab({ dealId, dealData }: DealSpaceTabProps) {
   const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
-  const { features } = useCompanyFeatures();
-  const gammaEnabled = !!features.gamma_enabled;
   // Controlled value lets React batch the tab-switch render correctly
   // and avoids the synchronous re-mount cost we get with `defaultValue`
   // when the panel contents are heavy.
@@ -56,12 +52,6 @@ export function DealSpaceTab({ dealId, dealData }: DealSpaceTabProps) {
           <FileText className="h-3.5 w-3.5" />
           Documents
         </TabsTrigger>
-        {gammaEnabled && (
-          <TabsTrigger value="gamma" className={triggerCls}>
-            <Presentation className="h-3.5 w-3.5" />
-            Gamma
-          </TabsTrigger>
-        )}
       </TabsList>
 
       <TabsContent value="ask-ai">
@@ -86,16 +76,6 @@ export function DealSpaceTab({ dealId, dealData }: DealSpaceTabProps) {
       <TabsContent value="documents">
         <DealSpaceDocumentsTab dealId={dealId} />
       </TabsContent>
-
-      {gammaEnabled && (
-        <TabsContent value="gamma">
-          {dealData ? (
-            <GammaIntegrationPanel dealId={dealId} dealData={dealData} />
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">Deal data not available</div>
-          )}
-        </TabsContent>
-      )}
     </Tabs>
   );
 }
