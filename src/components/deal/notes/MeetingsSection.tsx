@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Video, Search, Plus, ExternalLink, Unlink, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,9 +22,24 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
   const [expanded, setExpanded] = useState(true);
   const [search, setSearch] = useState('');
 
+  // On open: refetch fresh (bypass 60s live cache) so today's meetings show up.
   useEffect(() => {
-    if (open && isEnabled) fetchRecordings();
+    if (open && isEnabled) fetchRecordings('', { bypassLiveCache: true });
   }, [open, isEnabled, fetchRecordings]);
+
+  // Debounced live re-search as the user types so recordings the local mirror
+  // doesn't have yet still surface without requiring an Enter press.
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!open || !isEnabled) return;
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      fetchRecordings(search);
+    }, 300);
+    return () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    };
+  }, [search, open, isEnabled, fetchRecordings]);
 
   if (!isEnabled) return null;
 

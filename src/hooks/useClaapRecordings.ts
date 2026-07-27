@@ -7,6 +7,8 @@ export interface FetchClaapRecordingsOptions {
   from?: string;
   to?: string;
   limit?: number;
+  /** Skip the 60s live-list cache and refetch from Claap right now. */
+  bypassLiveCache?: boolean;
 }
 
 export interface ClaapParticipant {
@@ -179,7 +181,7 @@ function recordingMatchesSearch(recording: ClaapRecording, search?: string): boo
   );
 }
 
-async function fetchLiveRecordings(search?: string): Promise<ClaapRecording[]> {
+async function fetchLiveRecordings(search?: string, bypassCache = false): Promise<ClaapRecording[]> {
   // The Claap list endpoint only returns recent recordings; the edge function
   // filters the same list when `search` is supplied. Fetch the live list once
   // per minute and filter locally so multiple meeting cards do not fire one
@@ -188,8 +190,8 @@ async function fetchLiveRecordings(search?: string): Promise<ClaapRecording[]> {
   const cached = liveRecordingsCache.get(cacheKey);
   const now = Date.now();
 
-  if (cached?.promise) return (await cached.promise).filter((r) => recordingMatchesSearch(r, search));
-  if (cached && now - cached.at < LIVE_RECORDINGS_CACHE_TTL_MS) {
+  if (!bypassCache && cached?.promise) return (await cached.promise).filter((r) => recordingMatchesSearch(r, search));
+  if (!bypassCache && cached && now - cached.at < LIVE_RECORDINGS_CACHE_TTL_MS) {
     return cached.recordings.filter((r) => recordingMatchesSearch(r, search));
   }
 
@@ -197,7 +199,9 @@ async function fetchLiveRecordings(search?: string): Promise<ClaapRecording[]> {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return [];
 
-    const params = new URLSearchParams({ action: 'list', limit: '100' });
+    // Bump to 200 so today's meetings on busy workspaces (>100 recordings/week)
+    // are still reachable through the "Add meeting" picker.
+    const params = new URLSearchParams({ action: 'list', limit: '200' });
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claap-recordings?${params.toString()}`;
     const response = await fetch(url, {
       headers: {
@@ -233,7 +237,7 @@ export function useClaapRecordings() {
   const { toast } = useToast();
 
   const fetchRecordings = useCallback(async (search?: string, options: FetchClaapRecordingsOptions = {}) => {
-    const { live = true, from, to, limit = 200 } = options;
+    const { live = true, from, to, limit = 200, bypassLiveCache = false } = options;
     setLoading(true);
     setError(null);
     
@@ -267,7 +271,7 @@ export function useClaapRecordings() {
       // Also hydrate from the live Claap API. The local mirror can lag behind
       // when someone else on the team owned the recorder, but the current user
       // was an attendee; merging live results lets them find and link/sync it.
-      const liveRecordings = await fetchLiveRecordings(search);
+      const liveRecordings = await fetchLiveRecordings(search, bypassLiveCache);
       if (liveRecordings.length > 0) {
         const merged = mergeByRecordingId(localRecordings, liveRecordings);
         setRecordings(merged);
