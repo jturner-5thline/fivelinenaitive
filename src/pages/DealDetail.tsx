@@ -116,6 +116,7 @@ const DealManagementTab = lazy(loadDealManagementTab);
 import { CreateTaskButton } from '@/components/deal/CreateTaskButton';
 import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
 import { LenderFollowUpPopover } from '@/components/deal/LenderFollowUpPopover';
+import { LogLenderActivityPopover } from '@/components/deal/LogLenderActivityPopover';
 import { DealWeeklyHoursChart } from '@/components/deal/DealWeeklyHoursChart';
 import { SortableAttachmentTile } from '@/components/deal/SortableAttachmentTile';
 import { DroppableAttachmentFolder } from '@/components/deal/DroppableAttachmentFolder';
@@ -5202,6 +5203,13 @@ export default function DealDetail() {
                                             lenderUpdatedAt={lender.updatedAt}
                                             onSent={() => refreshDeals?.()}
                                           />
+                                          <LogLenderActivityPopover
+                                            dealId={deal.id}
+                                            dealLenderId={lender.id}
+                                            lenderName={lender.name}
+                                            currentNotes={lender.notes}
+                                            onLogged={() => refreshDeals?.()}
+                                          />
                                           <CreateLenderTaskButton
                                             dealId={deal.id}
                                             lenderId={lender.id}
@@ -5263,6 +5271,13 @@ export default function DealDetail() {
                                              lenderNotes={lender.notes}
                                              lenderUpdatedAt={lender.updatedAt}
                                              onSent={() => refreshDeals?.()}
+                                           />
+                                           <LogLenderActivityPopover
+                                             dealId={deal.id}
+                                             dealLenderId={lender.id}
+                                             lenderName={lender.name}
+                                             currentNotes={lender.notes}
+                                             onLogged={() => refreshDeals?.()}
                                            />
                                            <CreateLenderTaskButton
                                              dealId={deal.id}
