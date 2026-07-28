@@ -1892,7 +1892,8 @@ export default function Lenders() {
                 {/* List View - Virtualized */}
                 {!isLoading && !showDuplicatesOnly && viewMode === 'list' && sortedLenders.length > 0 && (
                   <Virtuoso
-                    style={{ height: 'calc(100vh - 280px)' }}
+                    className="flex-1 min-h-0"
+                    style={{ height: '100%' }}
                     totalCount={sortedLenders.length}
                     endReached={() => loadMore()}
                     computeItemKey={(index) => sortedLenders[index]?.id ?? index}
@@ -1948,7 +1949,8 @@ export default function Lenders() {
                 {/* Grid View - Virtualized */}
                 {!isLoading && !showDuplicatesOnly && viewMode === 'grid' && sortedLenders.length > 0 && (
                   <VirtuosoGrid
-                    style={{ height: 'calc(100vh - 280px)' }}
+                    className="flex-1 min-h-0"
+                    style={{ height: '100%' }}
                     totalCount={sortedLenders.length}
                     endReached={() => loadMore()}
                     computeItemKey={(index) => sortedLenders[index]?.id ?? index}
