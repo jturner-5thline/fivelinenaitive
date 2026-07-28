@@ -304,6 +304,63 @@ function SimpleFilters({
 
 export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: LenderFiltersProps) {
   const [isOpen, setIsOpen] = useState(false);
+  return (
+    <LenderFiltersPanelInner
+      filters={filters}
+      onFiltersChange={onFiltersChange}
+      lenders={lenders}
+      isOpen={isOpen}
+      setIsOpen={setIsOpen}
+    />
+  );
+}
+
+/**
+ * Body-only variant — renders just the filter controls (no collapsible
+ * chrome, no outer border). Use this when embedding filters inside a
+ * Popover / Sheet trigger from the parent toolbar.
+ */
+export function LenderFiltersBody({ filters, onFiltersChange, lenders }: LenderFiltersProps) {
+  return (
+    <LenderFiltersPanelInner
+      filters={filters}
+      onFiltersChange={onFiltersChange}
+      lenders={lenders}
+      isOpen={true}
+      setIsOpen={() => {}}
+      bodyOnly
+    />
+  );
+}
+
+interface LenderFiltersInnerProps extends LenderFiltersProps {
+  isOpen: boolean;
+  setIsOpen: (v: boolean) => void;
+  bodyOnly?: boolean;
+}
+
+export function countActiveLenderFilters(filters: LenderFilters): number {
+  const filterMode = filters.filterMode || 'simple';
+  let count = 0;
+  if (filters.searchQuery) count++;
+  if (filterMode === 'advanced') {
+    count += (filters.advancedConditions || []).length;
+  } else {
+    if (filters.tiers?.length) count++;
+    if (filters.dealSize) count++;
+    if (filters.minDealSize) count++;
+    if (filters.maxDealSize) count++;
+    if (filters.minRevenue) count++;
+    if (filters.loanTypes?.length) count++;
+    if (filters.industries?.length) count++;
+    if (filters.geographies?.length) count++;
+    if (filters.sponsorship) count++;
+    if (filters.cashBurn) count++;
+  }
+  return count;
+}
+
+function LenderFiltersPanelInner({ filters, onFiltersChange, lenders, isOpen, setIsOpen, bodyOnly }: LenderFiltersInnerProps) {
   
   // Ensure filterMode has a default
   const filterMode = filters.filterMode || 'simple';
@@ -384,6 +441,79 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
     return summaries;
   }, [filters]);
 
+  const body = (
+    <div className={bodyOnly ? '' : 'px-3 pb-3 space-y-3'}>
+      {bodyOnly && (
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-sm font-medium flex items-center gap-2">
+            <Filter className="h-4 w-4" />
+            Filters
+            {activeFilterCount > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{activeFilterCount}</Badge>
+            )}
+          </div>
+          <Tabs value={filterMode} onValueChange={handleModeChange}>
+            <TabsList className="h-7">
+              <TabsTrigger value="simple" className="text-[11px] px-2.5 h-6">Simple</TabsTrigger>
+              <TabsTrigger value="advanced" className="text-[11px] px-2.5 h-6">Advanced</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      )}
+
+      {activeFilterCount > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {filters.searchQuery && (
+            <Badge variant="secondary" className="gap-1 pr-1">
+              Search: "{filters.searchQuery}"
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+          {filterMode === 'advanced' && conditionSummaries.map(({ id, summary }) => (
+            <Badge key={id} variant="secondary" className="gap-1 pr-1 max-w-[200px] truncate">
+              {summary}
+              <button
+                type="button"
+                onClick={() => {
+                  handleConditionsChange(
+                    (filters.advancedConditions || []).filter((c) => c.id !== id)
+                  );
+                }}
+                className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors shrink-0"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+          {filterMode === 'simple' && simpleFilterSummaries.map(({ key, label }) => (
+            <Badge key={key} variant="secondary" className="gap-1 max-w-[200px] truncate">
+              {label}
+            </Badge>
+          ))}
+          <Button variant="ghost" size="sm" onClick={handleClearAll} className="h-6 text-xs">Clear All</Button>
+        </div>
+      )}
+
+      {filterMode === 'simple' ? (
+        <SimpleFilters filters={filters} onFiltersChange={onFiltersChange} lenders={lenders} />
+      ) : (
+        <AdvancedFilterBuilder
+          conditions={filters.advancedConditions || []}
+          onConditionsChange={handleConditionsChange}
+          lenders={lenders}
+        />
+      )}
+    </div>
+  );
+
+  if (bodyOnly) return body;
+
   return (
     <div className="border border-white/10 rounded-lg bg-transparent">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -413,72 +543,7 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
           )}
         </div>
 
-        <CollapsibleContent>
-          <div className="px-3 pb-3 space-y-3">
-
-            {/* Active Filters Summary */}
-            {activeFilterCount > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {filters.searchQuery && (
-                  <Badge variant="secondary" className="gap-1 pr-1">
-                    Search: "{filters.searchQuery}"
-                    <button
-                      type="button"
-                      onClick={clearSearch}
-                      className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                )}
-                {filterMode === 'advanced' && conditionSummaries.map(({ id, summary }) => (
-                  <Badge key={id} variant="secondary" className="gap-1 pr-1 max-w-[200px] truncate">
-                    {summary}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleConditionsChange(
-                          (filters.advancedConditions || []).filter((c) => c.id !== id)
-                        );
-                      }}
-                      className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors shrink-0"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                {filterMode === 'simple' && simpleFilterSummaries.map(({ key, label }) => (
-                  <Badge key={key} variant="secondary" className="gap-1 max-w-[200px] truncate">
-                    {label}
-                  </Badge>
-                ))}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClearAll}
-                  className="h-6 text-xs"
-                >
-                  Clear All
-                </Button>
-              </div>
-            )}
-
-            {/* Filter Content Based on Mode */}
-            {filterMode === 'simple' ? (
-              <SimpleFilters
-                filters={filters}
-                onFiltersChange={onFiltersChange}
-                lenders={lenders}
-              />
-            ) : (
-              <AdvancedFilterBuilder
-                conditions={filters.advancedConditions || []}
-                onConditionsChange={handleConditionsChange}
-                lenders={lenders}
-              />
-            )}
-          </div>
-        </CollapsibleContent>
+        <CollapsibleContent>{body}</CollapsibleContent>
       </Collapsible>
     </div>
   );

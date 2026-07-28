@@ -68,7 +68,9 @@ import { DuplicateLendersDialog } from '@/components/lenders/DuplicateLendersDia
 import { SideBySideMergeDialog } from '@/components/lenders/SideBySideMergeDialog';
 import { NonBankLendersImportButton } from '@/components/lenders/NonBankLendersImportButton';
 import { BankLendersImportButton } from '@/components/lenders/BankLendersImportButton';
-import { LenderFiltersPanel, applyLenderFilters, emptyFilters, LenderFilters } from '@/components/lenders/LenderFilters';
+import { LenderFiltersPanel, LenderFiltersBody, countActiveLenderFilters, applyLenderFilters, emptyFilters, LenderFilters } from '@/components/lenders/LenderFilters';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Filter as FilterIcon, MoreHorizontal } from 'lucide-react';
 import { LendersListSkeleton } from '@/components/lenders/LenderCardSkeleton';
 import { LenderGridCard } from '@/components/lenders/LenderGridCard';
 import { LenderListCard } from '@/components/lenders/LenderListCard';
@@ -285,6 +287,7 @@ export default function Lenders() {
   const [showSyncPanel, setShowSyncPanel] = useState(false);
   const [showBankImportConfirm, setShowBankImportConfirm] = useState(false);
   const [showNonBankImportConfirm, setShowNonBankImportConfirm] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [selectedLenderIds, setSelectedLenderIds] = useState<Set<string>>(new Set());
   const [isPushingSelectedToFlex, setIsPushingSelectedToFlex] = useState(false);
 
@@ -1443,44 +1446,155 @@ export default function Lenders() {
         so Directory and Deals can never drift apart on canvas tone,
         header chrome, or padding rhythm.
       */}
-      <WorkspacePage contentClassName="space-y-6">
-            <div className="lg-toolbar flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-              <div>
-                <h1 className="text-base font-semibold flex items-center gap-2 text-foreground tracking-tight">
-                  <Building2 className="h-4 w-4 text-foreground/80" />
-                  Directory
-                  <BetaBadge featureKey="page_lenders" />
-                </h1>
-                <p className="text-xs text-muted-foreground mt-0.5">Manage your funding source directory</p>
+      <WorkspacePage contentClassName="space-y-2">
+            {/* Compact single-band toolbar — title + all controls in one row so
+                the funding sources grid becomes the dominant vertical region. */}
+            <div className="lg-toolbar flex flex-wrap items-center gap-2 px-3 py-2">
+              <h1 className="text-sm font-semibold flex items-center gap-2 text-foreground tracking-tight mr-2">
+                <Building2 className="h-4 w-4 text-foreground/80" />
+                Directory
+                <BetaBadge featureKey="page_lenders" />
+                <span className="ml-1 text-[11px] text-muted-foreground tabular-nums font-normal">
+                  {sortedLenders.length.toLocaleString()}
+                  {debouncedSearchQuery && masterLenders.length !== sortedLenders.length
+                    ? ` / ${masterLenders.length.toLocaleString()}`
+                    : ''}
+                </span>
+              </h1>
+
+              <div className="flex-1 min-w-[180px] max-w-md relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search funding sources…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="lg-input h-8 pl-8 pr-7 text-sm"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 hover:bg-muted transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                )}
               </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {/* Import dropdown */}
+
+              <div className="flex flex-wrap items-center gap-1.5 ml-auto">
+                {/* Filters — opens off-canvas sheet */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="lg-pill gap-1.5 h-8"
+                  onClick={() => setIsFiltersOpen(true)}
+                >
+                  <FilterIcon className="h-3.5 w-3.5" />
+                  Filters
+                  {countActiveLenderFilters(advancedFilters) > 0 && (
+                    <Badge variant="secondary" className="ml-0.5 h-4 min-w-4 rounded-full text-[10px] px-1.5">
+                      {countActiveLenderFilters(advancedFilters)}
+                    </Badge>
+                  )}
+                </Button>
+
+                {/* Active Deals quick-toggle */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={`gap-1.5 h-8 whitespace-nowrap ${showActiveDealsOnly ? 'lg-cta' : 'lg-pill'}`}
+                  onClick={() => setShowActiveDealsOnly(!showActiveDealsOnly)}
+                >
+                  <Zap className="h-3.5 w-3.5" />
+                  Active
+                  {showActiveDealsOnly && <X className="h-3 w-3" />}
+                </Button>
+
+                {/* Duplicates quick-toggle */}
+                {duplicateIndex.groups.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`gap-1.5 h-8 whitespace-nowrap ${showDuplicatesOnly ? 'lg-cta' : 'lg-pill'}`}
+                    onClick={() => setShowDuplicatesOnly(!showDuplicatesOnly)}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Dupes
+                    <Badge variant="secondary" className="ml-0.5 h-4 min-w-4 rounded-full text-[10px] px-1.5">
+                      {duplicateIndex.groups.length}
+                    </Badge>
+                    {showDuplicatesOnly && <X className="h-3 w-3" />}
+                  </Button>
+                )}
+
+                {/* Sync Requests compact pill */}
+                {canSeeFlexSync && syncPendingCount > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="lg-pill gap-1.5 h-8"
+                    onClick={() => setShowSyncPanel(true)}
+                  >
+                    <Bell className="h-3.5 w-3.5" />
+                    Sync
+                    <Badge variant="destructive" className="ml-0.5 h-4 min-w-4 rounded-full text-[10px] px-1.5">
+                      {syncPendingCount}
+                    </Badge>
+                  </Button>
+                )}
+
+                {/* Sort */}
+                <Select value={sortOption} onValueChange={(value: SortOption) => setSortOption(value)}>
+                  <SelectTrigger className="lg-input h-8 w-[150px] text-xs">
+                    <ArrowUpDown className="h-3.5 w-3.5 mr-1" />
+                    <SelectValue placeholder="Sort" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+                    <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                    <SelectItem value="deals-desc">Most Active Deals</SelectItem>
+                    <SelectItem value="deals-asc">Fewest Active Deals</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* View toggle */}
+                <div className="lg-segmented h-8">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" data-active={viewMode === 'list'} onClick={() => handleViewModeChange('list')} title="List">
+                    <List className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" data-active={viewMode === 'grid'} onClick={() => handleViewModeChange('grid')} title="Grid">
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" data-active={viewMode === 'spreadsheet'} onClick={() => handleViewModeChange('spreadsheet')} title="Spreadsheet">
+                    <Table2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+
+                {/* Primary CTA */}
+                <Button onClick={openAddDialog} size="sm" className="lg-cta gap-1 h-8">
+                  <Plus className="h-3.5 w-3.5" />
+                  Add
+                </Button>
+
+                {/* Consolidated Actions dropdown — Import, Merge, Sync, Config, Analytics */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="lg-pill gap-1">
-                      <Upload className="h-4 w-4" />
-                      Import
-                      <ChevronDown className="h-3 w-3 ml-1" />
+                    <Button variant="outline" size="sm" className="lg-pill h-8 w-8 p-0" aria-label="More actions">
+                      <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-popover">
+                  <DropdownMenuContent align="end" className="bg-popover w-56">
                     <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        accept=".csv"
-                        onChange={handleImport}
-                        className="hidden"
-                      />
+                      <input type="file" accept=".csv" onChange={handleImport} className="hidden" />
                       <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                         <Upload className="h-4 w-4 mr-2" />
-                        Import
+                        Import CSV
                       </DropdownMenuItem>
                     </label>
                     <DropdownMenuItem onClick={handleExport}>
                       <Download className="h-4 w-4 mr-2" />
-                      Export
+                      Export CSV
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => setIsImportDialogOpen(true)}>
                       <Database className="h-4 w-4 mr-2" />
                       Import Master Database
@@ -1493,237 +1607,52 @@ export default function Lenders() {
                       <Users className="h-4 w-4 mr-2" />
                       Import Non-Banks
                     </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Merge dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="lg-pill gap-1">
-                      <Columns className="h-4 w-4" />
-                      Merge
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-popover">
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => setIsSideBySideMergeOpen(true)}>
                       <Columns className="h-4 w-4 mr-2" />
-                      {advancedFilters.tiers.length > 0 
+                      {advancedFilters.tiers.length > 0
                         ? `Merge ${advancedFilters.tiers.join(', ')} (${sortedLenders.length})`
-                        : 'Merge Side-by-Side'
-                      }
+                        : 'Merge Side-by-Side'}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setIsDuplicatesDialogOpen(true)}>
-                      <Users className="h-4 w-4 mr-2" />
+                      <GitMerge className="h-4 w-4 mr-2" />
                       Quick Merge
                     </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Sync dropdown - only for ppina and 5th Line admins */}
-                {canSeeFlexSync && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="outline"
-                      size="sm" 
-                      className="lg-pill gap-1 relative"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      Sync
-                      {syncPendingCount > 0 && (
-                        <Badge variant="secondary" className="ml-1 h-5 min-w-5 rounded-full text-xs px-1.5 bg-white/10 text-foreground border-0">
-                          {syncPendingCount}
-                        </Badge>
-                      )}
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-popover">
-                    <DropdownMenuItem onClick={() => setShowSyncPanel(!showSyncPanel)}>
-                      <Bell className="h-4 w-4 mr-2" />
-                      Sync Requests
-                      {syncPendingCount > 0 && (
-                        <Badge variant="destructive" className="ml-2 h-5 min-w-5 rounded-full text-xs px-1.5">
-                          {syncPendingCount}
-                        </Badge>
-                      )}
+                    {canSeeFlexSync && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setShowSyncPanel(true)}>
+                          <Bell className="h-4 w-4 mr-2" />
+                          Sync Requests
+                          {syncPendingCount > 0 && (
+                            <Badge variant="destructive" className="ml-auto h-4 min-w-4 rounded-full text-[10px] px-1.5">{syncPendingCount}</Badge>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleSyncToFlex} disabled={isSyncingToFlex || masterLenders.length === 0}>
+                          {isSyncingToFlex ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                          {isSyncingToFlex ? 'Syncing…' : 'Sync to FLEx'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate('/lenders/sync-history')}>
+                          <History className="h-4 w-4 mr-2" />
+                          Sync History
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/lenders/config')}>
+                      <Settings className="h-4 w-4 mr-2" />
+                      Configuration
                     </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={handleSyncToFlex}
-                      disabled={isSyncingToFlex || masterLenders.length === 0}
-                    >
-                      {isSyncingToFlex ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                      )}
-                      {isSyncingToFlex ? 'Syncing...' : 'Sync to FLEx'}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/lenders/sync-history')}>
-                      <History className="h-4 w-4 mr-2" />
-                      Sync History
+                    <DropdownMenuItem onClick={(e) => { analyticsOrigin.capture(e as any); setIsAnalyticsOpen(true); }}>
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Analytics
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                )}
-                <Button variant="outline" size="sm" className="lg-pill gap-1" onClick={() => navigate('/lenders/config')}>
-                  <Settings className="h-4 w-4" />
-                  Configuration
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="lg-pill gap-1"
-                  onClick={(e) => { analyticsOrigin.capture(e); setIsAnalyticsOpen(true); }}
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  Analytics
-                </Button>
-                <Button
-                  onClick={openAddDialog}
-                  size="sm"
-                  className="lg-cta gap-1"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Funding Source
-                </Button>
               </div>
             </div>
 
-            <div className="lg-shell px-4 py-4 space-y-4">
-                {/* Flex Sync Requests Panel - show when toggled or has pending requests */}
-                {canSeeFlexSync && (showSyncPanel || syncPendingCount > 0) && (
-                  <LenderSyncRequestsPanel onLenderApproved={refetchMasterLenders} />
-                )}
-                
-                {/* Advanced Filters Panel */}
-                <LenderFiltersPanel
-                  filters={advancedFilters}
-                  onFiltersChange={setAdvancedFilters}
-                  lenders={masterLenders}
-                />
-                {/* Search and Sort Controls */}
-                <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="lg-input h-10 pl-9 pr-24"
-                        />
-                        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                          {searchQuery && searchQuery !== debouncedSearchQuery && (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-label="Searching" />
-                          )}
-                          {debouncedSearchQuery && (
-                            <span
-                              className="hidden sm:inline-flex items-center rounded-md border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground tabular-nums"
-                              title={`${sortedLenders.length.toLocaleString()} of ${masterLenders.length.toLocaleString()} lenders match`}
-                            >
-                              {sortedLenders.length.toLocaleString()} / {masterLenders.length.toLocaleString()}
-                            </span>
-                          )}
-                          {searchQuery && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={() => setSearchQuery('')}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs">
-                      Type sectors, products, deal names, geographies, or decision reasons to find matching lenders across profiles and deal history.
-                    </TooltipContent>
-                  </Tooltip>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={`gap-2 whitespace-nowrap h-10 ${showActiveDealsOnly ? 'lg-cta' : 'lg-pill'}`}
-                    onClick={() => setShowActiveDealsOnly(!showActiveDealsOnly)}
-                  >
-                    <Zap className="h-4 w-4" />
-                    Active Deals
-                    {showActiveDealsOnly && (
-                      <X className="h-3 w-3 ml-1" />
-                    )}
-                  </Button>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={`gap-2 whitespace-nowrap h-10 ${showDuplicatesOnly ? 'lg-cta' : 'lg-pill'}`}
-                        onClick={() => setShowDuplicatesOnly(!showDuplicatesOnly)}
-                      >
-                        <Copy className="h-4 w-4" />
-                        {showDuplicatesOnly
-                          ? `Duplicates (${duplicateIndex.groups.length} group${duplicateIndex.groups.length === 1 ? '' : 's'})`
-                          : 'Duplicates'}
-                        {!showDuplicatesOnly && duplicateIndex.groups.length > 0 && (
-                          <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
-                            {duplicateIndex.groups.length}
-                          </Badge>
-                        )}
-                        {showDuplicatesOnly && (
-                          <X className="h-3 w-3 ml-1" />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs">
-                      Show only funding sources that look like duplicates of another entry (exact, near-match suffix, or substring). Use the Merge button above to clean them up.
-                    </TooltipContent>
-                  </Tooltip>
-                  <Select value={sortOption} onValueChange={(value: SortOption) => setSortOption(value)}>
-                    <SelectTrigger className="lg-input h-10 w-full sm:w-[180px]">
-                      <ArrowUpDown className="h-4 w-4 mr-2" />
-                      <SelectValue placeholder="Sort by" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="name-asc">Name (A-Z)</SelectItem>
-                      <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-                      <SelectItem value="deals-desc">Most Active Deals</SelectItem>
-                      <SelectItem value="deals-asc">Fewest Active Deals</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <div className="lg-segmented">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      data-active={viewMode === 'list'}
-                      onClick={() => handleViewModeChange('list')}
-                      title="List view"
-                    >
-                      <List className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      data-active={viewMode === 'grid'}
-                      onClick={() => handleViewModeChange('grid')}
-                      title="Grid view"
-                    >
-                      <LayoutGrid className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      data-active={viewMode === 'spreadsheet'}
-                      onClick={() => handleViewModeChange('spreadsheet')}
-                      title="Spreadsheet view"
-                    >
-                      <Table2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+            <div className="lg-shell px-3 py-3 space-y-3">
 
                 {/* AI-driven filter banner */}
                 {aiFilter && (
@@ -2137,6 +2066,36 @@ export default function Lenders() {
                 )}
             </div>
       </WorkspacePage>
+
+      {/* Filters — off-canvas sheet */}
+      <Sheet open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Filters</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4">
+            <LenderFiltersBody
+              filters={advancedFilters}
+              onFiltersChange={setAdvancedFilters}
+              lenders={masterLenders}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Sync Requests — off-canvas sheet (5th Line only) */}
+      {canSeeFlexSync && (
+        <Sheet open={showSyncPanel} onOpenChange={setShowSyncPanel}>
+          <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>FLEx Sync Requests</SheetTitle>
+            </SheetHeader>
+            <div className="mt-4">
+              <LenderSyncRequestsPanel onLenderApproved={refetchMasterLenders} />
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
 
       {/* Add/Edit Funding Source Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
