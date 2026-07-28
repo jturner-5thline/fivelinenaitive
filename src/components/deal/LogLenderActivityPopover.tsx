@@ -38,12 +38,12 @@ export function LogLenderActivityPopover({
 }: Props) {
   const { updateLender } = useDealsContext();
   const [open, setOpen] = useState(false);
-  const [kind, setKind] = useState<ActivityKind>('call_meeting');
+  const [kind, setKind] = useState<ActivityKind>('email_follow_up');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
 
   const reset = () => {
-    setKind('call_meeting');
+    setKind('email_follow_up');
     setNote('');
   };
 
