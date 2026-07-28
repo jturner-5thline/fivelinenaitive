@@ -10,6 +10,7 @@ import { checkStageChangeWorkflows } from '@/lib/emailWorkflowTrigger';
 import { isFlexHiddenStage, prettyStageLabel } from '@/lib/flexVisibility';
 import { syncFinServValuePatch, warnIfFinServValueMismatch } from '@/lib/finservValue';
 import { seedDemoDealFundingSources } from '@/utils/seedDemoDealFundingSources';
+import { applyLifecycleFollowUp } from '@/lib/deals/lifecycleFollowUp';
 
 type MilestoneTimingType = 'from_creation' | 'after_previous';
 type WebhookEventType = 'INSERT' | 'UPDATE' | 'DELETE';
