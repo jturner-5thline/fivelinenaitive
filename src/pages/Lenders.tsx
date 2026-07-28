@@ -287,6 +287,7 @@ export default function Lenders() {
   const [showSyncPanel, setShowSyncPanel] = useState(false);
   const [showBankImportConfirm, setShowBankImportConfirm] = useState(false);
   const [showNonBankImportConfirm, setShowNonBankImportConfirm] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [selectedLenderIds, setSelectedLenderIds] = useState<Set<string>>(new Set());
   const [isPushingSelectedToFlex, setIsPushingSelectedToFlex] = useState(false);
 
