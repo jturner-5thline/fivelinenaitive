@@ -1655,7 +1655,7 @@ export default function Lenders() {
               </div>
             </div>
 
-            <div className="lg-shell px-3 pt-3 pb-0 space-y-3 flex-1 min-h-0 flex flex-col">
+            <div className="lg-shell px-3 pt-3 pb-0 flex-1 min-h-0 flex flex-col gap-3">
 
                 {/* AI-driven filter banner */}
                 {aiFilter && (
@@ -1901,7 +1901,7 @@ export default function Lenders() {
                     itemContent={(index) => {
                       const lender = sortedLenders[index];
                       return (
-                        <div className="pb-3" data-lender-row={lender.id}>
+                        <div className={index === sortedLenders.length - 1 ? '' : 'pb-3'} data-lender-row={lender.id}>
                           <LenderListCard
                             lender={lender}
                             activeDealCount={activeDealCounts[lender.name] || 0}
@@ -1920,28 +1920,6 @@ export default function Lenders() {
                           />
                         </div>
                       );
-                    }}
-                    components={{
-                      Footer: () => (
-                        <div className="py-4 text-center text-sm text-muted-foreground border-t border-border/50 mt-2">
-                          {loadingMore ? (
-                            <span className="inline-flex items-center gap-2">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Loading more lenders... ({sortedLenders.length.toLocaleString()}{totalCount ? ` / ${totalCount.toLocaleString()}` : ''})
-                            </span>
-                          ) : hasMore ? (
-                            <span className="inline-flex items-center gap-2">
-                              <Building2 className="h-4 w-4" />
-                              Scroll to load more ({sortedLenders.length.toLocaleString()}{totalCount ? ` / ${totalCount.toLocaleString()}` : ''})
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-2">
-                              <Building2 className="h-4 w-4" />
-                              Showing all {sortedLenders.length.toLocaleString()} lenders
-                            </span>
-                          )}
-                        </div>
-                      ),
                     }}
                   />
                 )}
@@ -1977,28 +1955,6 @@ export default function Lenders() {
                           onQuickUpload={handleQuickUploadStable}
                         />
                       );
-                    }}
-                    components={{
-                      Footer: () => (
-                        <div className="col-span-full py-4 text-center text-sm text-muted-foreground border-t border-border/50 mt-2">
-                          {loadingMore ? (
-                            <span className="inline-flex items-center gap-2">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Loading more lenders... ({sortedLenders.length.toLocaleString()}{totalCount ? ` / ${totalCount.toLocaleString()}` : ''})
-                            </span>
-                          ) : hasMore ? (
-                            <span className="inline-flex items-center gap-2">
-                              <Building2 className="h-4 w-4" />
-                              Scroll to load more ({sortedLenders.length.toLocaleString()}{totalCount ? ` / ${totalCount.toLocaleString()}` : ''})
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-2">
-                              <Building2 className="h-4 w-4" />
-                              Showing all {sortedLenders.length.toLocaleString()} lenders
-                            </span>
-                          )}
-                        </div>
-                      ),
                     }}
                   />
                 )}
@@ -2067,6 +2023,31 @@ export default function Lenders() {
                       <Plus className="h-4 w-4" />
                       Add Funding Source
                     </Button>
+                  </div>
+                )}
+                {/*
+                  Bottom status bar — rendered as a shrink-0 sibling of the
+                  virtualized list so it sits flush against the bottom edge
+                  of the shell with no phantom gap beneath the last row.
+                */}
+                {!isLoading && sortedLenders.length > 0 && viewMode !== 'spreadsheet' && !showDuplicatesOnly && (
+                  <div className="shrink-0 flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground border-t border-border/40">
+                    {loadingMore ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Loading more lenders... ({sortedLenders.length.toLocaleString()}{totalCount ? ` / ${totalCount.toLocaleString()}` : ''})
+                      </>
+                    ) : hasMore ? (
+                      <>
+                        <Building2 className="h-3.5 w-3.5" />
+                        Scroll to load more ({sortedLenders.length.toLocaleString()}{totalCount ? ` / ${totalCount.toLocaleString()}` : ''})
+                      </>
+                    ) : (
+                      <>
+                        <Building2 className="h-3.5 w-3.5" />
+                        Showing all {sortedLenders.length.toLocaleString()} lenders
+                      </>
+                    )}
                   </div>
                 )}
             </div>
