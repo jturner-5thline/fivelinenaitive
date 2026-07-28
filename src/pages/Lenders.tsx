@@ -1446,7 +1446,10 @@ export default function Lenders() {
         so Directory and Deals can never drift apart on canvas tone,
         header chrome, or padding rhythm.
       */}
-      <WorkspacePage contentClassName="space-y-2">
+      <WorkspacePage
+        mainClassName="w-full px-4 pt-5 pb-0 sm:px-6 flex-1 flex flex-col min-h-0"
+        contentClassName="space-y-2 flex-1 flex flex-col min-h-0"
+      >
             {/* Compact single-band toolbar — title + all controls in one row so
                 the funding sources grid becomes the dominant vertical region. */}
             <div className="lg-toolbar flex flex-wrap items-center gap-2 px-3 py-2">
@@ -1652,7 +1655,7 @@ export default function Lenders() {
               </div>
             </div>
 
-            <div className="lg-shell px-3 py-3 space-y-3">
+            <div className="lg-shell px-3 pt-3 pb-0 space-y-3 flex-1 min-h-0 flex flex-col">
 
                 {/* AI-driven filter banner */}
                 {aiFilter && (
@@ -1829,7 +1832,7 @@ export default function Lenders() {
 
                 {/* Grouped Duplicates View */}
                 {!isLoading && showDuplicatesOnly && viewMode !== 'spreadsheet' && duplicateGroupsView.length > 0 && (
-                  <div className="space-y-4" style={{ maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
+                  <div className="space-y-4 flex-1 min-h-0 overflow-y-auto">
                     {duplicateGroupsView.map(({ groupId, lenders: groupLenders }) => {
                       const ids = groupLenders.map((l) => l.id);
                       const displayName = groupLenders[0]?.name || groupId;
