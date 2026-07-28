@@ -61,14 +61,31 @@ const StatusChangeGateContext = createContext<
   ((req: StatusChangeRequest) => Promise<boolean>) | null
 >(null);
 
+/**
+ * Returns the status-change requester. When the provider is not mounted
+ * (e.g. an isolated preview or a surface rendered outside the app shell),
+ * this returns a no-op that logs a warning instead of throwing so the
+ * host UI can still render in a read-only state.
+ */
 export function useRequestStatusChange() {
   const ctx = useContext(StatusChangeGateContext);
   if (!ctx) {
-    throw new Error(
-      'useRequestStatusChange must be used within <StatusChangeGateProvider>',
-    );
+    if (typeof console !== 'undefined') {
+      console.warn(
+        '[useRequestStatusChange] StatusChangeGateProvider is not mounted; status changes are disabled on this surface.',
+      );
+    }
+    return async (_req: StatusChangeRequest) => false;
   }
   return ctx;
+}
+
+/**
+ * Non-throwing variant that lets callers detect whether the gate is
+ * available and render a disabled / read-only fallback when it isn't.
+ */
+export function useOptionalRequestStatusChange() {
+  return useContext(StatusChangeGateContext);
 }
 
 function labelFor(status: DealStatus | null | undefined): string {
