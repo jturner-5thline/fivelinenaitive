@@ -68,7 +68,9 @@ import { DuplicateLendersDialog } from '@/components/lenders/DuplicateLendersDia
 import { SideBySideMergeDialog } from '@/components/lenders/SideBySideMergeDialog';
 import { NonBankLendersImportButton } from '@/components/lenders/NonBankLendersImportButton';
 import { BankLendersImportButton } from '@/components/lenders/BankLendersImportButton';
-import { LenderFiltersPanel, applyLenderFilters, emptyFilters, LenderFilters } from '@/components/lenders/LenderFilters';
+import { LenderFiltersPanel, LenderFiltersBody, countActiveLenderFilters, applyLenderFilters, emptyFilters, LenderFilters } from '@/components/lenders/LenderFilters';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Filter as FilterIcon, MoreHorizontal } from 'lucide-react';
 import { LendersListSkeleton } from '@/components/lenders/LenderCardSkeleton';
 import { LenderGridCard } from '@/components/lenders/LenderGridCard';
 import { LenderListCard } from '@/components/lenders/LenderListCard';
