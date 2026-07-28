@@ -1173,8 +1173,14 @@ export function useDealsDatabase() {
         }
       }
 
-      // Auto-dismiss notifications when deal moves to archived or in_development
-      if (updates.status && ['archived', 'in_development'].includes(updates.status)) {
+      // Auto-dismiss notifications when deal moves to archived / on-hold /
+      // In Development pipeline. The full 5th-Line lifecycle follow-up
+      // (clear task due dates + create "Follow Up on [DEAL]" task) is
+      // handled below in applyLifecycleFollowUp.
+      if (
+        (updates.status && ['archived', 'on-hold'].includes(updates.status)) ||
+        (updates.pipelineId !== undefined && updates.pipelineId !== previousDeal?.pipelineId)
+      ) {
         // Mark all activity_logs-based notifications as seen by updating localStorage
         const lastReadKey = 'latest-updates-last-read-at';
         const now = new Date().toISOString();
@@ -1183,16 +1189,37 @@ export function useDealsDatabase() {
         // Also mark deal-specific updates as seen
         const seenKey = `deal_updates_seen_${dealId}`;
         localStorage.setItem(seenKey, now);
-        
-        // Dismiss flex_info_notifications for this deal
-        supabase
-          .from('flex_info_notifications')
-          .update({ status: 'dismissed' })
-          .eq('deal_id', dealId)
-          .in('status', ['pending', 'read'])
-          .then(({ error: dismissError }) => {
-            if (dismissError) console.error('Error dismissing notifications:', dismissError);
-          });
+      }
+
+      // 5th Line lifecycle automation: clear notifications + task due dates
+      // and schedule a "Follow Up on [DEAL NAME]" task for the deal manager.
+      if (userId && previousDeal) {
+        (async () => {
+          try {
+            const { data: mem } = await supabase
+              .from('company_members')
+              .select('company_id')
+              .eq('user_id', userId)
+              .maybeSingle();
+            const managerId =
+              (updates.dealOwner ?? (previousDeal as any).dealOwner) ||
+              (updates.manager ?? previousDeal.manager) ||
+              null;
+            await applyLifecycleFollowUp({
+              dealId,
+              dealName: previousDeal.company || '',
+              managerUserId: typeof managerId === 'string' && managerId ? managerId : null,
+              currentUserId: userId,
+              companyId: (mem as any)?.company_id ?? null,
+              previousStatus: previousDeal.status ?? null,
+              nextStatus: updates.status !== undefined ? (updates.status ?? null) : (previousDeal.status ?? null),
+              previousPipelineId: previousDeal.pipelineId ?? null,
+              nextPipelineId: updates.pipelineId !== undefined ? updates.pipelineId : previousDeal.pipelineId,
+            });
+          } catch (err) {
+            console.error('[updateDeal] lifecycle follow-up failed', err);
+          }
+        })();
       }
 
       // Trigger workflows for stage changes
