@@ -1,5 +1,10 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { claapGetRecording, hasClaapToken } from '../_shared/claap-api.ts';
+import { hasClaapToken } from '../_shared/claap-api.ts';
+import {
+  claapFetchRecording,
+  shouldDefer,
+  getQuotaStatus,
+} from '../_shared/claap-quota.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,7 +46,53 @@ type RecordingRow = {
 async function syncOneRecording(admin: any, row: RecordingRow) {
   const attempts = (row.sync_attempts ?? 0) + 1;
   try {
-    const normalized = await claapGetRecording(row.external_id);
+    const fetched = await claapFetchRecording({
+      externalId: row.external_id,
+      recordingRowId: row.id,
+      priority: 'low',
+    });
+    if (fetched.skipped === 'already_hydrated') {
+      // Row is already hydrated in Supabase — do NOT call Claap again.
+      await admin.from('claap_recordings').update({
+        sync_attempts: 0,
+        last_sync_error: null,
+        last_sync_status: 'ok',
+        next_sync_at: null,
+      }).eq('id', row.id);
+      return { ok: true, status: 200, recording_id: row.id, skipped: 'already_hydrated' };
+    }
+    if (fetched.skipped === 'out_of_quota' || fetched.skipped === 'quota_protect') {
+      // Push retry past the quota reset so we stop hammering the API today.
+      await admin.from('claap_recordings').update({
+        last_sync_status: fetched.skipped,
+        next_sync_at: new Date(Date.now() + 6 * 60 * 60_000).toISOString(),
+      }).eq('id', row.id);
+      return { ok: false, status: 429, recording_id: row.id, deferred: fetched.skipped };
+    }
+    if (fetched.rateLimited) {
+      await admin.from('claap_sync_errors').insert({
+        recording_id: row.id,
+        recording_external_id: row.external_id,
+        org_company_id: row.org_company_id,
+        error_code: 'rate_limited',
+        error_message: fetched.error || '429',
+        attempts,
+      });
+      await admin.from('claap_recordings').update({
+        sync_attempts: attempts,
+        last_sync_error: (fetched.error || '429').slice(0, 500),
+        last_sync_status: 'rate_limited',
+        // Retry after the next UTC midnight — quota resets daily.
+        next_sync_at: new Date(Date.UTC(
+          new Date().getUTCFullYear(),
+          new Date().getUTCMonth(),
+          new Date().getUTCDate() + 1,
+          0, 5, 0,
+        )).toISOString(),
+      }).eq('id', row.id);
+      return { ok: false, status: 429, recording_id: row.id };
+    }
+    const normalized = fetched.recording;
     if (!normalized) {
       // 404 from Claap -> log + back off.
       await admin.from('claap_sync_errors').insert({
@@ -242,6 +293,21 @@ Deno.serve(async (req) => {
     const { data: rows, error } = await query;
     if (error) throw error;
 
+    // Quota gate: this is a LOW-priority backfill. If we're already in
+    // protect mode (>=80% of daily budget) or out of quota, bail out so we
+    // don't burn what's left on historical rows and starve user-triggered
+    // syncs. This is the guard that was missing when this job ran every 10
+    // minutes and steamrolled the Claap API by mid-morning.
+    const gate = await shouldDefer('low');
+    if (gate.defer) {
+      return json({
+        ok: false,
+        deferred: true,
+        reason: gate.quota.outOfQuota ? 'out_of_quota' : 'quota_protect',
+        quota: gate.quota,
+      });
+    }
+
     const now = Date.now();
     const eligible = (rows ?? []).filter((r: any) => {
       // Treat the call as "ended" if started_at < now - 30min or ended_at < now.
@@ -254,6 +320,12 @@ Deno.serve(async (req) => {
 
     const results: any[] = [];
     for (const row of eligible) {
+      // Mid-batch quota re-check — stop the second we cross the threshold.
+      const q = await getQuotaStatus();
+      if (q.outOfQuota) {
+        results.push({ ok: false, deferred: 'out_of_quota', recording_id: (row as any).id });
+        break;
+      }
       const r = await syncOneRecording(admin, row as RecordingRow);
       results.push(r);
     }
