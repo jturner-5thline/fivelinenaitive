@@ -771,7 +771,6 @@ export function useDealsDatabase() {
           stage: ((dbDeal as any).stage || '') as DealStage,
           status: ((dbDeal as any).status || null) as DealStatus | null,
           engagementType: 'advisory',
-          manager: '',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           pipelineId: ((dbDeal as any).pipeline_id as string | null) || undefined,
