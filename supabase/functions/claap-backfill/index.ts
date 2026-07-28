@@ -1,6 +1,19 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { shouldDefer, getQuotaStatus } from "../_shared/claap-quota.ts";
 
+// Also count list-endpoint pulls against the daily Claap quota — every
+// /v1/recordings page consumes a real API call and needs to be visible to
+// the quota gate, otherwise cron jobs silently blow through the budget.
+async function recordClaapListCall() {
+  try {
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    await admin.rpc("claap_record_api_call", { _count: 1 });
+  } catch (_) { /* best-effort */ }
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -611,6 +624,7 @@ Deno.serve(async (req) => {
     const claapResp = await fetch(apiUrl.toString(), {
       headers: { "X-Claap-Key": claapApiKey, "Content-Type": "application/json" },
     });
+    await recordClaapListCall();
 
     if (!claapResp.ok) {
       const errText = await claapResp.text();
