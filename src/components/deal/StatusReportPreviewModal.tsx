@@ -401,7 +401,13 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     const PRINT_ID = 'naitive-status-report-printroot';
     node.setAttribute('id', PRINT_ID);
     const prevTitle = document.title;
-    document.title = `${deal.company} — Status Report`;
+    const account = isFifthLine ? '5th Line' : (brandName || 'Account');
+    const d = new Date();
+    const yy = String(d.getFullYear()).slice(-2);
+    const dateStr = `${d.getMonth() + 1}-${d.getDate()}-${yy}`;
+    const dealName = (deal.company || deal.name || 'Deal').toString().trim();
+    // Browsers use document.title as the default PDF filename for window.print().
+    document.title = `${dealName}-${account} Status Report ${dateStr}`;
     const style = document.createElement('style');
     style.id = 'naitive-status-report-print-style';
     style.textContent = `
