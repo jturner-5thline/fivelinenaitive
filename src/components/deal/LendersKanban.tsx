@@ -22,6 +22,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { SaveIndicator } from '@/components/ui/save-indicator';
 import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
 import { LenderFollowUpPopover } from '@/components/deal/LenderFollowUpPopover';
+import { LogLenderActivityPopover } from '@/components/deal/LogLenderActivityPopover';
 import { getLenderStatusTheme } from '@/components/deal/lenderStatusTheme';
 import { LenderRowBoundary } from '@/components/deal/LenderRowBoundary';
 import { bucketLender, isExcludedFromClientReport } from '@/lib/lenderStatusBuckets';
@@ -185,6 +186,15 @@ function DraggableLenderTile({
             lenderNotes={lender.notes}
             lenderUpdatedAt={lender.updatedAt}
             onSent={onFollowUpSent}
+          />
+        )}
+        {dealId && (
+          <LogLenderActivityPopover
+            dealId={dealId}
+            dealLenderId={lender.id}
+            lenderName={lender.name}
+            currentNotes={lender.notes}
+            onLogged={onFollowUpSent}
           />
         )}
         {isSaving && <SaveIndicator isSaving={true} size="sm" />}
