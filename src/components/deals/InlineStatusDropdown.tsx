@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useRequestStatusChange } from '@/components/deal/StatusChangeGate';
+import { useOptionalRequestStatusChange } from '@/components/deal/StatusChangeGate';
 
 interface InlineStatusDropdownProps {
   dealId: string;
@@ -24,7 +24,7 @@ interface InlineStatusDropdownProps {
 }
 
 export function InlineStatusDropdown({ dealId, status, onStatusChange, className = '' }: InlineStatusDropdownProps) {
-  const requestStatusChange = useRequestStatusChange();
+  const requestStatusChange = useOptionalRequestStatusChange();
   const [open, setOpen] = useState(false);
   const statusConfig = status ? STATUS_CONFIG[status] : null;
 
@@ -34,6 +34,7 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
     // selection — never overlapping/layered behind the dropdown.
     setOpen(false);
     if (next === status) return;
+    if (!requestStatusChange) return;
     // Gate enforces the new-note requirement and writes status+notes
     // together in a single update. We ignore onStatusChange so external
     // call paths can't bypass the gate.
@@ -54,6 +55,27 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
     e.stopPropagation();
     e.preventDefault();
   };
+
+  // No provider available: render a read-only badge so the page still
+  // loads instead of crashing with a missing-context error.
+  if (!requestStatusChange) {
+    return statusConfig ? (
+      <Badge
+        variant="outline"
+        style={onTrackStyle}
+        className={`${status === 'on-track' ? '' : `${statusConfig.badgeColor} border-0`} text-xs rounded-lg font-semibold ${className}`}
+      >
+        {statusConfig.label}
+      </Badge>
+    ) : (
+      <span
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium border border-white/15 bg-white/10 text-foreground/80 dark:!text-[#c3c4d0] ${className}`}
+      >
+        <CircleDashed className="h-3 w-3" />
+        No status
+      </span>
+    );
+  }
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
