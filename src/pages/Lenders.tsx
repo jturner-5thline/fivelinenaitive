@@ -2067,6 +2067,36 @@ export default function Lenders() {
             </div>
       </WorkspacePage>
 
+      {/* Filters — off-canvas sheet */}
+      <Sheet open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Filters</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4">
+            <LenderFiltersBody
+              filters={advancedFilters}
+              onFiltersChange={setAdvancedFilters}
+              lenders={masterLenders}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Sync Requests — off-canvas sheet (5th Line only) */}
+      {canSeeFlexSync && (
+        <Sheet open={showSyncPanel} onOpenChange={setShowSyncPanel}>
+          <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>FLEx Sync Requests</SheetTitle>
+            </SheetHeader>
+            <div className="mt-4">
+              <LenderSyncRequestsPanel onLenderApproved={refetchMasterLenders} />
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
+
       {/* Add/Edit Funding Source Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-lg w-[calc(100dvw-2rem)] sm:w-full max-h-[calc(100dvh-2rem)] overflow-hidden flex flex-col top-4 translate-y-0 sm:top-[50%] sm:translate-y-[-50%]">
