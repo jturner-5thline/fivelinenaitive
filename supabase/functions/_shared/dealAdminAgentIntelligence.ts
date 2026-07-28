@@ -1393,7 +1393,7 @@ async function gatherClientContactsForDeal(
       // Most recent outbound to this client contact.
       const { data: outRows } = await supabase
         .from("gmail_sent_messages")
-        .select("id, gmail_message_id, thread_id, subject, body_text, sent_at, created_at, to_emails")
+        .select("id, gmail_message_id, subject, body_text, sent_at, created_at, to_emails")
         .contains("to_emails", [email])
         .order("sent_at", { ascending: false, nullsFirst: false })
         .limit(1);
@@ -1449,7 +1449,7 @@ async function gatherClientContactsForDeal(
       const ninetyAgo = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
       const { data: threadRows } = await supabase
         .from("gmail_sent_messages")
-        .select("thread_id, subject, sent_at")
+        .select("subject, sent_at")
         .contains("to_emails", [email])
         .gte("sent_at", ninetyAgo)
         .order("sent_at", { ascending: false })
@@ -1466,7 +1466,7 @@ async function gatherClientContactsForDeal(
       const candidateThreads: any[] = [];
       const merged = [
         ...((threadRows ?? []) as any[]).map((t) => ({
-          thread_id: typeof t.thread_id === "string" ? t.thread_id : null,
+          thread_id: null as string | null,
           subject: t.subject ?? null,
           latest_message_at: t.sent_at ?? null,
         })),
