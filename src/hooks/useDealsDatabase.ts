@@ -751,7 +751,7 @@ export function useDealsDatabase() {
     if (!previousDeal) {
       const { data: dbDeal, error: previousDealError } = await supabase
         .from('deals')
-        .select('id, company, deal_class, mrr, one_time_revenue, value, stage, status, pipeline_id')
+        .select('id, company, deal_class, mrr, one_time_revenue, value, stage, status, pipeline_id, manager, deal_owner')
         .eq('id', dealId)
         .maybeSingle();
 
@@ -778,6 +778,8 @@ export function useDealsDatabase() {
           dealClass: (((dbDeal as any).deal_class || 'standard') as Deal['dealClass']) || 'standard',
           mrr: (dbDeal as any).mrr ?? null,
           oneTimeRevenue: (dbDeal as any).one_time_revenue ?? null,
+          manager: ((dbDeal as any).manager as string | null) || '',
+          dealOwner: ((dbDeal as any).deal_owner as string | null) || undefined,
         } as Deal;
       }
     }
