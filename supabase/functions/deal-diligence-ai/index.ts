@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { buildDealContext, renderDealContextBlock, DEAL_CONTEXT_SYSTEM_FRAGMENT } from "../_shared/dealContext.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,60 +40,29 @@ Deno.serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    // Fetch deal info
-    const { data: deal } = await supabase
-      .from("deals")
-      .select("company, value, stage, deal_type, notes")
-      .eq("id", dealId)
-      .single();
-
-    // Fetch financial documents
-    const { data: financials } = await supabase
-      .from("deal_space_financials")
-      .select("*")
-      .eq("deal_id", dealId)
-      .order("created_at", { ascending: false });
-
-    // Fetch deal documents
-    const { data: documents } = await supabase
-      .from("deal_space_documents")
-      .select("name, content_type, notes, created_at")
-      .eq("deal_id", dealId)
-      .order("created_at", { ascending: false })
-      .limit(20);
-
-    // Build context
-    const financialsContext = (financials || []).map((f: any) => {
-      let info = `- ${f.name}`;
-      if (f.fiscal_year && f.fiscal_period) info += ` (${f.fiscal_period} ${f.fiscal_year})`;
-      if (f.notes) info += `: ${f.notes}`;
-      return info;
-    }).join("\n");
-
-    const documentsContext = (documents || []).map((d: any) => `- ${d.name}${d.notes ? `: ${d.notes}` : ""}`).join("\n");
+    // Deterministically fetch structured deal context once and reuse it for
+    // every downstream action (section generation, extraction, chat) instead
+    // of re-querying and re-formatting per branch.
+    const context = await buildDealContext(supabase, dealId, {
+      include: { emails: false, recordings: false },
+    });
+    const deal = context.deal;
+    const contextBlock = renderDealContextBlock(context);
 
     if (action === "generate_section") {
       const { sectionTitle, sectionId, metricsContext } = await req.json().catch(() => ({}));
       
-      const sectionPrompt = `You are a senior credit analyst writing an IC screening memo for ${deal?.company || "a company"}.
-Deal Value: $${deal?.value ? (deal.value / 1e6).toFixed(1) + "MM" : "N/A"}
-Stage: ${deal?.stage || "N/A"}
+      const sectionPrompt = `${DEAL_CONTEXT_SYSTEM_FRAGMENT}
 
-Available Financial Data:
-${financialsContext || "No files uploaded"}
+You are a senior credit analyst writing the "${sectionTitle || "Executive Summary"}" section of an IC screening memo. Use ONLY facts from the payload below.
 
-Documents:
-${documentsContext || "No documents"}
+${contextBlock}
 
-${metricsContext ? `Key Metrics:\n${metricsContext}` : ""}
-
-Write the "${sectionTitle || "Executive Summary"}" section of a deal screening memo.
-- Use institutional-grade language appropriate for an Investment Committee
-- Be specific with numbers and data points where available
-- Clearly flag any estimates vs. confirmed data
-- Keep it concise but thorough (2-4 paragraphs)
-- Do not include the section title in your response
-- Use plain text, no markdown headers`;
+${metricsContext ? `Additional user-supplied metrics:\n${metricsContext}\n\n` : ""}Rules:
+- Institutional-grade language, IC-ready.
+- Be specific with numbers from the payload; flag estimates vs. confirmed data.
+- 2-4 concise paragraphs; do not include the section title; plain text, no markdown headers.
+- Cite supporting rows with [cite:<id>] when quoting a document, note, or funding source.`;
 
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -186,31 +156,19 @@ Return ONLY valid JSON, no markdown code fences.`;
     }
 
     // Chat action (default)
-    const systemPrompt = `You are a senior financial analyst AI for private credit and PE deal diligence. You help analyze deals with institutional-grade rigor.
+    const systemPrompt = `${DEAL_CONTEXT_SYSTEM_FRAGMENT}
 
-Context:
-- Deal: ${deal?.company || "Unknown Company"}
-- Deal Value: $${deal?.value ? (deal.value / 1000000).toFixed(1) + "MM" : "N/A"}
-- Stage: ${deal?.stage || "N/A"}
-- Type: ${deal?.deal_type || "N/A"}
+You are a senior financial analyst for private credit and PE deal diligence. Every fact must come from the JSON payload below — do not invent lenders, numbers, or documents.
 
-Available Financial Files:
-${financialsContext || "No financial files uploaded yet."}
-
-Available Documents:
-${documentsContext || "No documents uploaded yet."}
+${contextBlock}
 
 Instructions:
-1. Provide analysis with the rigor of a seasoned investor
-2. Use clear headings and structured formatting
-3. CRITICAL SOURCE CITATION RULE: For EVERY financial number, metric, or data point you reference, you MUST include an inline source citation in the format: *(Source: [filename] → [sheet name] → [cell/row reference])*. Example: "Revenue was $3.47M *(Source: UPFLEX Model.xlsx → P&L → Row 12, Col D)*"
-4. Be transparent about confidence levels - clearly distinguish between data you have vs estimates
-5. When asked for ratios or calculations, show the formula and inputs with source references
-6. Flag any data quality concerns proactively
-7. For stress tests, clearly state assumptions and show step-by-step impacts
-8. Structure responses for IC-ready consumption: Executive Summary → Detail → Key Risks
-9. Use markdown formatting: tables for numbers, bold for key metrics, bullet points for observations
-10. ONLY use data from the financial files listed above. Do NOT mix in or confuse data from other documents.
+1. Provide analysis with the rigor of a seasoned investor; be transparent about confidence levels.
+2. CITATION RULE: for every fact you reference, include an inline citation using the payload's source ids: [cite:doc:<id>], [cite:note:<id>], [cite:lender:<id>], etc. Additionally, when you name a specific file, mention the filename inline so the reader can locate it.
+3. For ratios/calculations, show the formula and inputs alongside the citations.
+4. Flag data-quality concerns proactively; distinguish payload facts from estimates.
+5. For stress tests, state assumptions and step-by-step impacts.
+6. Structure IC-ready: Executive Summary → Detail → Key Risks. Use markdown (tables, bold, bullets).
 
 IMPORTANT: At the end of your response, on a new line, include a JSON block wrapped in <actions> tags suggesting 1-3 follow-up actions the user might want to take. Each action has a label, type, and optional prompt. Types: "add_to_report", "create_chart", "stress_test", "explain".
 Example:
