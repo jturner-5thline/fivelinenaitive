@@ -21,6 +21,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { buildSystemBlocks, getModeTemplate } from "./prompts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,6 +40,27 @@ interface ClaudeRequest {
   temperature?: number;
   max_tokens?: number;
   context?: string;
+  /**
+   * Prompt-cache mode selector. Picks one of the stable templates in
+   * ./prompts.ts. The selected template is placed FIRST in the system
+   * blocks and marked as a cache breakpoint so identical repeated prefixes
+   * hit Anthropic's prompt cache. Optional — omit for freeform chat.
+   */
+  promptMode?: string;
+  /**
+   * Stable, byte-identical addition to the system prefix (feature/route
+   * rules that never change per request). Appended AFTER the mode template
+   * and BEFORE the cache breakpoint. Do not put timestamps or user input
+   * here — that breaks cache reuse.
+   */
+  staticSystem?: string;
+  /**
+   * Dynamic system text (timestamps, ad-hoc UI state, one-off variables).
+   * Placed AFTER the cache breakpoint so it never invalidates the cached
+   * prefix. Prefer putting the user's latest question in `messages`; use
+   * this only for per-request context that must live outside the turn.
+   */
+  dynamicSystem?: string;
   /**
    * Optional response-cache metadata. Callers set this to opt into the
    * server-side cache for repeatable outputs (deal summaries, deal Q&A over
@@ -342,9 +364,17 @@ serve(async (req) => {
     const cacheBypass = body.cache?.bypass === true;
     // System prompt participates in signature (feature gating may inject
     // Copilot Instructions later, but those are company-scoped and the
-    // signature already includes company_id).
+    // signature already includes company_id). We include the promptMode and
+    // static/dynamic split so callers migrating to the new fields don't
+    // collide with legacy-`system` cache entries.
+    const sigSystem = [
+      body.promptMode ?? "",
+      body.staticSystem ?? "",
+      body.dynamicSystem ?? "",
+      body.system ?? "",
+    ].join("\u0001");
     const signature = cacheMode
-      ? await computeCacheSignature(companyId, userId!, body.system ?? "", body)
+      ? await computeCacheSignature(companyId, userId!, sigSystem, body)
       : null;
 
     if (signature && !cacheBypass) {
@@ -419,17 +449,48 @@ serve(async (req) => {
     const maxTokens = Math.min(body.max_tokens ?? aiConfig?.max_tokens ?? 4096, 8192);
 
     // ── Build Anthropic request ──────────────────────────
+    // Anthropic's prompt cache keys on byte-identical prefixes, so build
+    // `system` as an ordered block array: stable templates first (mode,
+    // copilot, static caller extras), a cache_control marker on the last
+    // stable block, and only then the dynamic text. Anything request-
+    // specific — the user's latest question, changing timestamps, ad-hoc
+    // UI state — travels either in `dynamicSystem` (after the breakpoint)
+    // or in the `messages` array so cache reuse survives across requests.
+    const copilotPrefix = compileCopilotInstructions(aiConfig?.copilot_instructions);
+    const sys = buildSystemBlocks({
+      mode: body.promptMode ?? null,
+      copilotPrefix,
+      staticSystem: body.staticSystem,
+      dynamicSystem: body.dynamicSystem,
+      legacySystem: body.system,
+    });
+
     const anthropicBody: any = {
       model,
       max_tokens: maxTokens,
       temperature,
       messages: body.messages.map((m) => ({ role: m.role, content: m.content })),
     };
-    const copilotPrefix = compileCopilotInstructions(aiConfig?.copilot_instructions);
-    const composedSystem = [copilotPrefix, body.system?.trim()].filter(Boolean).join("\n\n");
-    if (composedSystem) {
-      anthropicBody.system = composedSystem;
+    if (sys.blocks.length > 0) {
+      anthropicBody.system = sys.blocks;
     }
+
+    // Prompt-composition log — surfaces cacheable vs dynamic byte split so
+    // regressions (dynamic text creeping into the static prefix) are visible
+    // in edge-function logs without needing an Anthropic dashboard.
+    const dynamicMsgChars = body.messages.reduce(
+      (n, m) => n + (m.content?.length ?? 0),
+      0,
+    );
+    console.log(
+      `[claude-gateway] prompt_composition mode=${body.promptMode ?? "none"}` +
+        ` template=${getModeTemplate(body.promptMode) ? "yes" : "no"}` +
+        ` stable_chars=${sys.stableChars}` +
+        ` dynamic_system_chars=${sys.dynamicChars}` +
+        ` dynamic_message_chars=${dynamicMsgChars}` +
+        ` cache_breakpoint=${sys.breakpointIndex}` +
+        ` blocks=${sys.blocks.length}`,
+    );
 
     // ── Call Anthropic with timeout ──────────────────────
     const controller = new AbortController();
@@ -442,6 +503,9 @@ serve(async (req) => {
         headers: {
           "x-api-key": ANTHROPIC_API_KEY,
           "anthropic-version": "2023-06-01",
+          // Prompt-caching header. Safe to leave on for all requests; the
+          // API ignores it when no `cache_control` markers are present.
+          "anthropic-beta": "prompt-caching-2024-07-31",
           "Content-Type": "application/json",
         },
         body: JSON.stringify(anthropicBody),
@@ -493,7 +557,16 @@ serve(async (req) => {
     const usage = {
       input_tokens: data.usage?.input_tokens || 0,
       output_tokens: data.usage?.output_tokens || 0,
+      cache_creation_input_tokens: data.usage?.cache_creation_input_tokens || 0,
+      cache_read_input_tokens: data.usage?.cache_read_input_tokens || 0,
     };
+
+    console.log(
+      `[claude-gateway] anthropic_usage input=${usage.input_tokens}` +
+        ` output=${usage.output_tokens}` +
+        ` cache_create=${usage.cache_creation_input_tokens}` +
+        ` cache_read=${usage.cache_read_input_tokens}`,
+    );
 
     // ── Log successful usage ─────────────────────────────
     if (companyId && userId) {
@@ -501,7 +574,15 @@ serve(async (req) => {
         supabase, companyId, userId, feature,
         data.model || model, usage.input_tokens, usage.output_tokens,
         "success",
-        signature ? `cache_${cacheStatus}:${cacheMode}` : undefined,
+        [
+          signature ? `cache_${cacheStatus}:${cacheMode}` : null,
+          usage.cache_read_input_tokens
+            ? `prompt_cache_read=${usage.cache_read_input_tokens}`
+            : null,
+          usage.cache_creation_input_tokens
+            ? `prompt_cache_create=${usage.cache_creation_input_tokens}`
+            : null,
+        ].filter(Boolean).join(" ") || undefined,
       );
     }
 
