@@ -1174,22 +1174,15 @@ export function useDealsDatabase() {
         }
       }
 
-      // Auto-dismiss notifications when deal moves to archived / on-hold /
-      // In Development pipeline. The full 5th-Line lifecycle follow-up
-      // (clear task due dates + create "Follow Up on [DEAL]" task) is
-      // handled below in applyLifecycleFollowUp.
-      if (
-        (updates.status && ['archived', 'on-hold'].includes(updates.status)) ||
-        (updates.pipelineId !== undefined && updates.pipelineId !== previousDeal?.pipelineId)
-      ) {
-        // Mark all activity_logs-based notifications as seen by updating localStorage
-        const lastReadKey = 'latest-updates-last-read-at';
-        const now = new Date().toISOString();
-        localStorage.setItem(lastReadKey, now);
-        
-        // Also mark deal-specific updates as seen
+      // Auto-dismiss notifications when a deal moves to archived / on-hold.
+      // Only stamp the per-deal seen key — never the global
+      // `latest-updates-last-read-at` cutoff, which would silence unread
+      // badges for every OTHER deal's activity too. Pipeline reassignment
+      // is intentionally NOT a trigger for this: moving a deal between
+      // pipelines should not clear unread indicators anywhere.
+      if (updates.status && ['archived', 'on-hold'].includes(updates.status)) {
         const seenKey = `deal_updates_seen_${dealId}`;
-        localStorage.setItem(seenKey, now);
+        localStorage.setItem(seenKey, new Date().toISOString());
       }
 
       // 5th Line lifecycle automation: clear notifications + task due dates

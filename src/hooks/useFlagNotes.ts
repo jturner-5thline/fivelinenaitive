@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { notifyDealFlagged } from '@/utils/notifyDealFlagged';
+import { toast } from 'sonner';
 
 export interface FlagNote {
   id: string;
@@ -63,7 +64,17 @@ export function useFlagNotes(dealId: string | null) {
           resolved: false,
         });
 
-      if (error) throw error;
+      if (error) {
+        // RLS rejection is the most common failure here (flagging a deal the
+        // user has no access to). Surface it so users don't get a silent no-op.
+        const isRls = /row-level security|violates row-level|permission denied/i.test(error.message || '');
+        toast.error(
+          isRls
+            ? "You don't have permission to flag this deal."
+            : `Couldn't add flag: ${error.message}`,
+        );
+        throw error;
+      }
       await fetchFlagNotes();
 
       // Fire the deal_flagged notification. Recipient resolution + dispatch

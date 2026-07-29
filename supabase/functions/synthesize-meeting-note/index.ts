@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
       }
 
       const { data: deal } = meeting?.deal_id
-        ? await admin.from('deals').select('name, company').eq('id', meeting.deal_id).maybeSingle()
+        ? await admin.from('deals').select('company').eq('id', meeting.deal_id).maybeSingle()
         : { data: null };
 
       const attendeeNames = Array.from(new Set([
@@ -251,7 +251,7 @@ Deno.serve(async (req) => {
         organizerEmail: recording?.organizer_email || meeting?.organizer_email || linkedEvent?.organizer_email || null,
         attendees: attendeeNames,
         transcript: null,
-        dealName: deal?.name || deal?.company || null,
+        dealName: deal?.company || null,
         savedNote: eventLink?.notes || null,
       });
 
