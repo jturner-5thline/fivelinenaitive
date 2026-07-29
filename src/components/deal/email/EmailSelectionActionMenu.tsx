@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { sendClaudeMessage } from '@/services/claude';
 
 /**
  * Structured commands surfaced from highlighted email-body text. Each
