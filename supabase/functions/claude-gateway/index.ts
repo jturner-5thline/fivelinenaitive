@@ -154,12 +154,11 @@ async function lookupCachedResponse(signature: string, companyId: string | undef
     if ((data.company_id ?? null) !== (companyId ?? null)) return null;
     if (data.user_id !== userId) return null;
     if (new Date(data.expires_at).getTime() <= Date.now()) return null;
-    // best-effort hit_count bump
+    // best-effort touch (non-atomic hit_count bump is fine here)
     svc.from("claude_response_cache")
-      .update({ hit_count: (undefined as unknown as number), updated_at: new Date().toISOString() })
+      .update({ hit_count: ((data as any).hit_count ?? 0) + 1, updated_at: new Date().toISOString() })
       .eq("signature", signature)
-      .then(() => {})
-      .catch(() => {});
+      .then(() => {}, () => {});
     return data;
   } catch (err) {
     console.error("cache lookup failed:", err);
