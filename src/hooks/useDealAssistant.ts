@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef } from 'react';
-import { sendClaudeMessage } from '@/services/claude';
+import { useState, useCallback, useRef, useMemo } from 'react';
+import { sendClaudeMessage, isStaleClaudeResponse } from '@/services/claude';
 import { executeDealOperation, matchStageOrStatus, VALID_DEAL_STAGES, VALID_DEAL_STATUSES, VALID_LENDER_STAGES } from '@/services/dealOperations';
 import { toast } from '@/hooks/use-toast';
 
@@ -117,9 +117,11 @@ export function useDealAssistant() {
   const [isLoading, setIsLoading] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Per-instance panel key for the client-side Claude request manager.
+  const panelKey = useMemo(() => `deal-assistant:${crypto.randomUUID()}`, []);
 
   const sendMessage = useCallback(async (content: string, dealContext: DealContext) => {
-    if (!content.trim()) return;
+    if (!content.trim() || isLoading) return;
 
     const userMessage: Message = {
       role: 'user',
@@ -207,7 +209,11 @@ export function useDealAssistant() {
         context: 'deal-assistant' as any,
         temperature: 0.5,
         max_tokens: 2000,
+        requestManager: { panelKey },
       });
+
+      // Superseded by a newer question — drop silently.
+      if (isStaleClaudeResponse(result)) return;
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to get response');
@@ -242,7 +248,7 @@ export function useDealAssistant() {
     } finally {
       setIsLoading(false);
     }
-  }, [messages]);
+  }, [messages, isLoading, panelKey]);
 
   const executeAction = useCallback(async (messageIndex: number, actionId: string) => {
     setIsExecuting(true);

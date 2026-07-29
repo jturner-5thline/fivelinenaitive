@@ -27,7 +27,7 @@ import { ArrowDownRight, ArrowUpRight, Calculator, Loader2, Sparkles } from 'luc
 import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { sendClaudeMessage } from '@/services/claude';
+import { sendClaudeMessage, isStaleClaudeResponse } from '@/services/claude';
 import { useQuickBooksInvoices, useQuickBooksPayments } from '@/hooks/useQuickBooks';
 import { useQuickBooksExpanded } from '@/hooks/useQuickBooksExpanded';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
@@ -185,7 +185,9 @@ Write 2-4 sentences explaining what changed for this ${labels.entityLabel.toLowe
         messages: [{ role: 'user', content: prompt }],
         context: 'chat',
         usage: { feature_subtype: 'insights_driver_drilldown' },
+        requestManager: { panelKey: `insights:driver:${contributorName ?? 'none'}` },
       });
+      if (isStaleClaudeResponse(resp)) return;
       if (!resp.success) throw new Error(resp.error || 'AI failed');
       setExplanation(resp.response.trim());
     } catch (err) {

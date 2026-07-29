@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, MessageCircleQuestion, Send, Sparkles, Trash2, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { sendClaudeMessage } from '@/services/claude';
+import { sendClaudeMessage, isStaleClaudeResponse } from '@/services/claude';
 import {
   formatDeltaValue,
   useInsightsComparison,
@@ -163,7 +163,9 @@ export function AskAboutPeriodChat() {
         ],
         context: 'chat',
         usage: { feature_subtype: 'insights_ask_about_period' },
+        requestManager: { panelKey: 'insights:ask-about-period' },
       });
+      if (isStaleClaudeResponse(resp)) return;
       if (!resp.success) throw new Error(resp.error || 'AI failed');
       setMessages(m => [
         ...m,
