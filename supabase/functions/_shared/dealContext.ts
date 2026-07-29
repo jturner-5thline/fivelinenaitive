@@ -52,16 +52,14 @@ export interface DealContextPayload {
     id: string;
     name: string;
     content_type?: string | null;
-    fiscal_period?: string | null;
-    fiscal_year?: number | null;
-    notes_excerpt?: string | null;
+    text_excerpt?: string | null;
   }>;
   recordings: Array<{
     id: string;
     title: string;
     duration_seconds?: number | null;
     happened_at?: string | null;
-    transcript_excerpt?: string | null;
+    notes_excerpt?: string | null;
   }>;
   emails: Array<{
     id: string;
@@ -73,7 +71,7 @@ export interface DealContextPayload {
   activity: Array<{
     id: string;
     type: string;
-    description: string;
+    summary: string;
     happened_at: string | null;
   }>;
   /** Flat list of all cite-able rows for Claude to reference by id. */
@@ -148,7 +146,7 @@ export async function buildDealContext(
     include.fundingSources
       ? supabase
           .from("deal_lenders")
-          .select("id, lender_name, stage, tracking_status, score, notes")
+          .select("id, name, stage, tracking_status, score, notes, updated_at")
           .eq("deal_id", dealId)
           .order("updated_at", { ascending: false })
           .limit(limits.fundingSources)
@@ -164,7 +162,7 @@ export async function buildDealContext(
     include.documents
       ? supabase
           .from("deal_space_documents")
-          .select("id, name, content_type, notes, created_at")
+          .select("id, name, content_type, extracted_text, created_at")
           .eq("deal_id", dealId)
           .order("created_at", { ascending: false })
           .limit(limits.documents)
@@ -172,23 +170,23 @@ export async function buildDealContext(
     include.recordings
       ? supabase
           .from("deal_claap_recordings")
-          .select("id, title, duration_seconds, recorded_at, transcript_excerpt")
+          .select("id, recording_title, duration_seconds, linked_at, notes")
           .eq("deal_id", dealId)
-          .order("recorded_at", { ascending: false })
+          .order("linked_at", { ascending: false })
           .limit(limits.recordings)
       : Promise.resolve({ data: [] }),
     include.emails
       ? supabase
           .from("deal_emails")
-          .select("id, subject, from_email, snippet, received_at")
+          .select("id, gmail_message_id, notes, linked_at, gmail_messages(subject, from_email, snippet, received_at)")
           .eq("deal_id", dealId)
-          .order("received_at", { ascending: false })
+          .order("linked_at", { ascending: false })
           .limit(limits.emails)
       : Promise.resolve({ data: [] }),
     include.activity
       ? supabase
           .from("deal_activity")
-          .select("id, activity_type, description, created_at")
+          .select("id, action_type, source, before, after, created_at")
           .eq("deal_id", dealId)
           .order("created_at", { ascending: false })
           .limit(limits.activity)
@@ -205,10 +203,10 @@ export async function buildDealContext(
   ];
 
   const funding_sources = ((fsRes as any).data ?? []).map((r: any) => {
-    sources.push({ id: `lender:${r.id}`, kind: "funding_source", label: r.lender_name });
+    sources.push({ id: `lender:${r.id}`, kind: "funding_source", label: r.name });
     return {
       id: `lender:${r.id}`,
-      name: r.lender_name,
+      name: r.name,
       stage: r.stage ?? null,
       tracking_status: r.tracking_status ?? null,
       score: r.score ?? null,
@@ -232,40 +230,44 @@ export async function buildDealContext(
       id: `doc:${r.id}`,
       name: r.name,
       content_type: r.content_type ?? null,
-      fiscal_period: r.fiscal_period ?? null,
-      fiscal_year: r.fiscal_year ?? null,
-      notes_excerpt: r.notes ? trim(r.notes, limits.excerptChars) : null,
+      text_excerpt: r.extracted_text ? trim(r.extracted_text, limits.excerptChars) : null,
     };
   });
 
   const recordings = ((recRes as any).data ?? []).map((r: any) => {
-    sources.push({ id: `rec:${r.id}`, kind: "recording", label: r.title ?? "Recording" });
+    sources.push({ id: `rec:${r.id}`, kind: "recording", label: r.recording_title ?? "Recording" });
     return {
       id: `rec:${r.id}`,
-      title: r.title ?? "Untitled",
+      title: r.recording_title ?? "Untitled",
       duration_seconds: r.duration_seconds ?? null,
-      happened_at: r.recorded_at ?? null,
-      transcript_excerpt: r.transcript_excerpt ? trim(r.transcript_excerpt, limits.excerptChars) : null,
+      happened_at: r.linked_at ?? null,
+      notes_excerpt: r.notes ? trim(r.notes, limits.excerptChars) : null,
     };
   });
 
   const emails = ((emailRes as any).data ?? []).map((r: any) => {
-    sources.push({ id: `email:${r.id}`, kind: "email", label: r.subject ?? "Email" });
+    const gm = Array.isArray(r.gmail_messages) ? r.gmail_messages[0] : r.gmail_messages;
+    const subject = gm?.subject ?? null;
+    sources.push({ id: `email:${r.id}`, kind: "email", label: subject ?? "Email" });
     return {
       id: `email:${r.id}`,
-      subject: r.subject ?? null,
-      from: r.from_email ?? null,
-      happened_at: r.received_at ?? null,
-      excerpt: trim(r.snippet, limits.excerptChars),
+      subject,
+      from: gm?.from_email ?? null,
+      happened_at: gm?.received_at ?? r.linked_at ?? null,
+      excerpt: trim(gm?.snippet ?? r.notes ?? "", limits.excerptChars),
     };
   });
 
   const activity = ((actRes as any).data ?? []).map((r: any) => {
-    sources.push({ id: `act:${r.id}`, kind: "activity", label: r.activity_type ?? "Activity" });
+    const summary = `${r.action_type ?? "change"}${r.source ? ` (${r.source})` : ""}`;
+    sources.push({ id: `act:${r.id}`, kind: "activity", label: summary });
+    const diff = r.before || r.after
+      ? `before=${JSON.stringify(r.before ?? null)} after=${JSON.stringify(r.after ?? null)}`
+      : "";
     return {
       id: `act:${r.id}`,
-      type: r.activity_type ?? "activity",
-      description: trim(r.description, limits.excerptChars),
+      type: r.action_type ?? "activity",
+      summary: trim(`${summary}${diff ? ` — ${diff}` : ""}`, limits.excerptChars),
       happened_at: r.created_at ?? null,
     };
   });
