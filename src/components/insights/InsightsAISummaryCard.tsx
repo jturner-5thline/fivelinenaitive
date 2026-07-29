@@ -233,7 +233,9 @@ export function InsightsAISummaryCard() {
         messages: [{ role: 'user', content: prompt }],
         context: 'chat',
         usage: { feature_subtype: 'insights_ai_summary' },
+        requestManager: { panelKey: `insights:ai-summary:${periodKey}` },
       });
+      if (isStaleClaudeResponse(resp)) return;
       if (!resp.success) throw new Error(resp.error || 'AI failed');
       setNarrative(resp.response.trim());
       setIsLocked(false);

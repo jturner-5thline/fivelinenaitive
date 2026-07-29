@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Brain, TrendingUp, AlertTriangle, Lightbulb, FileText, RefreshCw } from 'lucide-react';
-import { sendClaudeMessage, SYSTEM_PROMPTS } from '@/services/claude';
+import { sendClaudeMessage, SYSTEM_PROMPTS, isStaleClaudeResponse } from '@/services/claude';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
@@ -42,6 +42,7 @@ export function ClaudeFinancialAnalysis({ dealId, financials, className }: Claud
   const [isLoading, setIsLoading] = useState(false);
 
   const runAnalysis = async () => {
+    if (isLoading) return;
     setIsLoading(true);
     try {
       const financialContext = Object.entries(financials)
@@ -57,7 +58,10 @@ export function ClaudeFinancialAnalysis({ dealId, financials, className }: Claud
         system: SYSTEM_PROMPTS.financialAnalysis,
         context: 'financial-analysis',
         temperature: 0.3,
+        requestManager: { panelKey: `financial-analysis:${dealId}` },
       });
+
+      if (isStaleClaudeResponse(result)) return;
 
       if (!result.success) {
         throw new Error(result.error || 'Analysis failed');

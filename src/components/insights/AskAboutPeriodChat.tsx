@@ -163,7 +163,9 @@ export function AskAboutPeriodChat() {
         ],
         context: 'chat',
         usage: { feature_subtype: 'insights_ask_about_period' },
+        requestManager: { panelKey: 'insights:ask-about-period' },
       });
+      if (isStaleClaudeResponse(resp)) return;
       if (!resp.success) throw new Error(resp.error || 'AI failed');
       setMessages(m => [
         ...m,
