@@ -145,7 +145,7 @@ async function lookupCachedResponse(signature: string, companyId: string | undef
     const svc = serviceClient();
     const { data } = await svc
       .from("claude_response_cache")
-      .select("signature, response, model, input_tokens, output_tokens, company_id, user_id, expires_at")
+      .select("signature, response, model, input_tokens, output_tokens, company_id, user_id, expires_at, hit_count")
       .eq("signature", signature)
       .maybeSingle();
     if (!data) return null;
