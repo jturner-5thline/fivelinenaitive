@@ -1202,9 +1202,9 @@ Deno.serve(async (req) => {
           gateCompanyId = dealRow?.company_id || null;
         }
         if (!gateCompanyId) {
-          const { data: prof } = await supabaseAdmin
-            .from("profiles").select("company_id").eq("user_id", taskAssignee).maybeSingle();
-          gateCompanyId = (prof as any)?.company_id || null;
+          const { data: mem } = await supabaseAdmin
+            .from("company_members").select("company_id").eq("user_id", taskAssignee).maybeSingle();
+          gateCompanyId = (mem as any)?.company_id || null;
         }
         if (gateCompanyId) {
           const { data: agentRow } = await supabaseAdmin
