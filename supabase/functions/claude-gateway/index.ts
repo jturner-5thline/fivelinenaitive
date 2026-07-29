@@ -1,3 +1,24 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// claude-gateway — canonical server-side proxy for every Claude/Anthropic call
+// originating from the naitive frontend.
+//
+// The frontend MUST NEVER call api.anthropic.com directly. All React code
+// routes through `src/services/claude.ts` (`sendClaudeMessage`), which invokes
+// this function. ANTHROPIC_API_KEY lives only in Supabase project secrets.
+//
+// This function replaces the prior `claude-ai` edge function as the frontend
+// entrypoint. `claude-ai` remains deployed for backwards-compatibility with
+// server-to-server callers and legacy references; new frontend code must
+// target `claude-gateway`.
+//
+// Responsibilities:
+//   - Auth: verify Supabase JWT (401 if missing/invalid)
+//   - Request validation: shape + length caps (400 on violation)
+//   - Feature gating: honor per-company ai_configuration.features_enabled
+//   - Firm-level Copilot instructions injection
+//   - Anthropic call with timeout + normalized error handling
+//   - Response logging: ai_usage_logs (success + error)
+// ─────────────────────────────────────────────────────────────────────────────
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
