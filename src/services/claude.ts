@@ -251,6 +251,33 @@ async function executeClaudeRequest(
   const startedAt = Date.now();
   const { usage: usageHint, requestManager: _rm, ...edgeOptions } = options;
 
+  // Client-side pre-flight cap. The edge function enforces its own 100k-char
+  // ceiling; we refuse locally at 90k so callers see a fast, actionable
+  // error instead of a slow round-trip. Per-workflow budgets in
+  // `historyCompaction.ts` should keep us well under this in practice.
+  const CLIENT_MAX_TOTAL_CHARS = 90_000;
+  const msgChars = (edgeOptions.messages ?? []).reduce(
+    (n, m) => n + (m.content?.length ?? 0),
+    0,
+  );
+  const sysChars =
+    (edgeOptions.system?.length ?? 0) +
+    (edgeOptions.staticSystem?.length ?? 0) +
+    (edgeOptions.dynamicSystem?.length ?? 0);
+  const totalChars = msgChars + sysChars;
+  if (totalChars > CLIENT_MAX_TOTAL_CHARS) {
+    console.warn(
+      `[claude] payload too large (${totalChars} chars > ${CLIENT_MAX_TOTAL_CHARS}); ` +
+        `messages=${msgChars} system=${sysChars}. Refusing to send.`,
+    );
+    return {
+      success: false,
+      response: "",
+      error:
+        "Request too large to send. Ask a more focused question or clear older messages.",
+    };
+  }
+
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const controller = new AbortController();
