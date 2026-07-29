@@ -2352,6 +2352,69 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_jobs: {
+        Row: {
+          attempts: number
+          company_id: string | null
+          completed_at: string | null
+          created_at: string
+          dedupe_key: string | null
+          entity_id: string | null
+          entity_type: string | null
+          error: string | null
+          id: string
+          input: Json
+          job_type: string
+          max_attempts: number
+          output: Json | null
+          priority: number
+          requested_by: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["ai_job_status"]
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          company_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          dedupe_key?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          error?: string | null
+          id?: string
+          input?: Json
+          job_type: string
+          max_attempts?: number
+          output?: Json | null
+          priority?: number
+          requested_by?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["ai_job_status"]
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          company_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          dedupe_key?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          error?: string | null
+          id?: string
+          input?: Json
+          job_type?: string
+          max_attempts?: number
+          output?: Json | null
+          priority?: number
+          requested_by?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["ai_job_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_prompts: {
         Row: {
           created_at: string
@@ -28980,6 +29043,36 @@ export type Database = {
         }
         Returns: undefined
       }
+      ai_jobs_claim_batch: {
+        Args: { _limit?: number }
+        Returns: {
+          attempts: number
+          company_id: string | null
+          completed_at: string | null
+          created_at: string
+          dedupe_key: string | null
+          entity_id: string | null
+          entity_type: string | null
+          error: string | null
+          id: string
+          input: Json
+          job_type: string
+          max_attempts: number
+          output: Json | null
+          priority: number
+          requested_by: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["ai_job_status"]
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "ai_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      ai_jobs_reap_stuck: { Args: never; Returns: number }
       approve_join_request: {
         Args: {
           _request_id: string
@@ -29683,6 +29776,7 @@ export type Database = {
         | "executive_sponsor"
         | "competitive_win"
         | "other"
+      ai_job_status: "queued" | "running" | "completed" | "failed" | "cancelled"
       app_role: "admin" | "moderator" | "user" | "support_admin"
       blog_post_status: "draft" | "published" | "disabled"
       channel_type:
@@ -29963,6 +30057,7 @@ export const Constants = {
         "competitive_win",
         "other",
       ],
+      ai_job_status: ["queued", "running", "completed", "failed", "cancelled"],
       app_role: ["admin", "moderator", "user", "support_admin"],
       blog_post_status: ["draft", "published", "disabled"],
       channel_type: [
