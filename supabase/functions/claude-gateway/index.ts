@@ -335,6 +335,47 @@ serve(async (req) => {
 
     feature = body.context || "chat";
 
+    // ── Response cache lookup ────────────────────────────
+    // Compute the deterministic signature first so both hit and miss paths
+    // can log the cache_status consistently.
+    const cacheMode = body.cache?.mode;
+    const cacheBypass = body.cache?.bypass === true;
+    // System prompt participates in signature (feature gating may inject
+    // Copilot Instructions later, but those are company-scoped and the
+    // signature already includes company_id).
+    const signature = cacheMode
+      ? await computeCacheSignature(companyId, userId!, body.system ?? "", body)
+      : null;
+
+    if (signature && !cacheBypass) {
+      const hit = await lookupCachedResponse(signature, companyId, userId!);
+      if (hit) {
+        console.log(`[claude-gateway] cache_status=hit mode=${cacheMode} sig=${signature.slice(0, 12)}`);
+        if (companyId && userId) {
+          await logUsage(
+            supabase, companyId, userId, feature,
+            hit.model || model, 0, 0, "success",
+            `cache_hit:${cacheMode}`,
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            success: true,
+            response: hit.response,
+            usage: { input_tokens: 0, output_tokens: 0 },
+            model: hit.model || model,
+            cache_status: "hit",
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
+    const cacheStatus: "miss" | "refresh" | "off" =
+      !signature ? "off" : cacheBypass ? "refresh" : "miss";
+    if (signature) {
+      console.log(`[claude-gateway] cache_status=${cacheStatus} mode=${cacheMode} sig=${signature.slice(0, 12)}`);
+    }
+
     // ── Feature gating (server-side enforcement) ─────────
     let aiConfig: any = null;
     if (companyId) {
@@ -459,8 +500,28 @@ serve(async (req) => {
       await logUsage(
         supabase, companyId, userId, feature,
         data.model || model, usage.input_tokens, usage.output_tokens,
-        "success"
+        "success",
+        signature ? `cache_${cacheStatus}:${cacheMode}` : undefined,
       );
+    }
+
+    // ── Cache write (best effort) ────────────────────────
+    if (signature && cacheMode) {
+      const ttl = body.cache?.ttlSeconds
+        ?? DEFAULT_TTL_SECONDS[cacheMode]
+        ?? 5 * 60;
+      await writeCachedResponse({
+        signature,
+        companyId,
+        userId: userId!,
+        mode: cacheMode,
+        dealId: body.cache?.dealId ?? null,
+        response: responseText,
+        model: data.model || model,
+        inputTokens: usage.input_tokens,
+        outputTokens: usage.output_tokens,
+        ttlSeconds: ttl,
+      });
     }
 
     return new Response(
@@ -469,6 +530,7 @@ serve(async (req) => {
         response: responseText,
         usage,
         model: data.model || model,
+        cache_status: cacheStatus,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
