@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, MessageCircleQuestion, Send, Sparkles, Trash2, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { sendClaudeMessage } from '@/services/claude';
+import { sendClaudeMessage, isStaleClaudeResponse } from '@/services/claude';
 import {
   formatDeltaValue,
   useInsightsComparison,
