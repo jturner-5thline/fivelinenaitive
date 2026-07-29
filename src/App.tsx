@@ -179,6 +179,7 @@ const Finance = lazy(lazyRetry(() => import("./pages/Finance")));
 const Contacts = lazy(lazyRetry(() => import("./pages/Contacts")));
 const ContactDetail = lazy(lazyRetry(() => import("./pages/ContactDetail")));
 const ContactCompanySync = lazy(lazyRetry(() => import("./pages/admin/ContactCompanySync")));
+const ClaudeUsageAdmin = lazy(lazyRetry(() => import("./pages/admin/ClaudeUsageAdmin")));
 const NotFound = lazy(lazyRetry(() => import("./pages/NotFound")));
 const CrmCompanies = lazy(lazyRetry(() => import("./pages/CrmCompanies")));
 const CrmCompanyDetail = lazy(lazyRetry(() => import("./pages/CrmCompanyDetail")));
@@ -432,6 +433,7 @@ const App = () => (
                             <Route path="/contacts" element={<Contacts />} />
                             <Route path="/contacts/:id" element={<ContactDetail />} />
                             <Route path="/admin/contact-company-sync" element={<ContactCompanySync />} />
+                            <Route path="/admin/claude-usage" element={<ClaudeUsageAdmin />} />
                             <Route path="/crm-companies" element={<CrmCompanies />} />
                             <Route path="/crm-companies/:id" element={<CrmCompanyDetail />} />
                             <Route path="/field-layout-editor" element={<FieldLayoutEditorPage />} />

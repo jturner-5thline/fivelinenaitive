@@ -290,6 +290,59 @@ async function logUsage(
   }
 }
 
+// ── Claude usage observability log ───────────────────────────────────────
+// Rich per-request row for the internal admin analytics view. Writes go
+// through the service-role client because `claude_usage_logs` has no
+// authenticated-INSERT policy (read-only for 5th Line internal admins).
+// Best-effort — never blocks the response.
+interface ClaudeUsageRow {
+  userId?: string;
+  companyId?: string;
+  dealId?: string | null;
+  feature: string;
+  promptMode?: string | null;
+  signature?: string | null;
+  cacheMode?: string | null;
+  cacheStatus: "hit" | "miss" | "refresh" | "off";
+  cacheHit: boolean;
+  model?: string | null;
+  latencyMs: number;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  promptCacheReadTokens?: number | null;
+  promptCacheCreateTokens?: number | null;
+  status: "success" | "error";
+  httpStatus?: number | null;
+  errorMessage?: string | null;
+}
+async function logClaudeUsage(row: ClaudeUsageRow) {
+  try {
+    const svc = serviceClient();
+    await svc.from("claude_usage_logs").insert({
+      user_id: row.userId ?? null,
+      company_id: row.companyId ?? null,
+      deal_id: row.dealId ?? null,
+      feature: row.feature,
+      prompt_mode: row.promptMode ?? null,
+      signature: row.signature ?? null,
+      cache_mode: row.cacheMode ?? null,
+      cache_status: row.cacheStatus,
+      cache_hit: row.cacheHit,
+      model: row.model ?? null,
+      latency_ms: Math.max(0, Math.round(row.latencyMs)),
+      input_tokens: row.inputTokens ?? null,
+      output_tokens: row.outputTokens ?? null,
+      prompt_cache_read_tokens: row.promptCacheReadTokens ?? null,
+      prompt_cache_create_tokens: row.promptCacheCreateTokens ?? null,
+      status: row.status,
+      http_status: row.httpStatus ?? null,
+      error_message: row.errorMessage ?? null,
+    });
+  } catch (err) {
+    console.error("Failed to log claude usage:", err);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -300,6 +353,12 @@ serve(async (req) => {
   let companyId: string | undefined;
   let feature = "chat";
   let model = "claude-sonnet-4-5-20250929";
+  let promptMode: string | undefined;
+  let cacheModeOuter: string | undefined;
+  let signatureOuter: string | null = null;
+  let dealIdOuter: string | null = null;
+  const startedAt = Date.now();
+  const elapsed = () => Date.now() - startedAt;
 
   try {
     // ── Auth ──────────────────────────────────────────────
@@ -356,12 +415,15 @@ serve(async (req) => {
     }
 
     feature = body.context || "chat";
+    promptMode = body.promptMode;
+    dealIdOuter = body.cache?.dealId ?? null;
 
     // ── Response cache lookup ────────────────────────────
     // Compute the deterministic signature first so both hit and miss paths
     // can log the cache_status consistently.
     const cacheMode = body.cache?.mode;
     const cacheBypass = body.cache?.bypass === true;
+    cacheModeOuter = cacheMode;
     // System prompt participates in signature (feature gating may inject
     // Copilot Instructions later, but those are company-scoped and the
     // signature already includes company_id). We include the promptMode and
@@ -376,6 +438,7 @@ serve(async (req) => {
     const signature = cacheMode
       ? await computeCacheSignature(companyId, userId!, sigSystem, body)
       : null;
+    signatureOuter = signature;
 
     if (signature && !cacheBypass) {
       const hit = await lookupCachedResponse(signature, companyId, userId!);
@@ -388,6 +451,13 @@ serve(async (req) => {
             `cache_hit:${cacheMode}`,
           );
         }
+        await logClaudeUsage({
+          userId, companyId, dealId: dealIdOuter, feature,
+          promptMode, signature, cacheMode, cacheStatus: "hit", cacheHit: true,
+          model: hit.model || model, latencyMs: elapsed(),
+          inputTokens: 0, outputTokens: 0,
+          status: "success", httpStatus: 200,
+        });
         return new Response(
           JSON.stringify({
             success: true,
@@ -424,6 +494,13 @@ serve(async (req) => {
         if (companyId && userId) {
           await logUsage(supabase, companyId, userId, feature, model, 0, 0, "error", `Feature ${feature} disabled`);
         }
+        await logClaudeUsage({
+          userId, companyId, dealId: dealIdOuter, feature,
+          promptMode, signature, cacheMode, cacheStatus, cacheHit: false,
+          model, latencyMs: elapsed(),
+          status: "error", httpStatus: 403,
+          errorMessage: `Feature ${feature} disabled`,
+        });
         return new Response(
           JSON.stringify({ success: false, error: `AI ${feature} feature is disabled for your organization` }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -437,6 +514,13 @@ serve(async (req) => {
       if (companyId && userId) {
         await logUsage(supabase, companyId, userId, feature, model, 0, 0, "error", "ANTHROPIC_API_KEY not configured");
       }
+      await logClaudeUsage({
+        userId, companyId, dealId: dealIdOuter, feature,
+        promptMode, signature, cacheMode, cacheStatus, cacheHit: false,
+        model, latencyMs: elapsed(),
+        status: "error", httpStatus: 500,
+        errorMessage: "ANTHROPIC_API_KEY not configured",
+      });
       return new Response(
         JSON.stringify({ success: false, error: "AI service is not configured. Contact your administrator." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -520,6 +604,12 @@ serve(async (req) => {
       if (companyId && userId) {
         await logUsage(supabase, companyId, userId, feature, model, 0, 0, "error", errMsg);
       }
+      await logClaudeUsage({
+        userId, companyId, dealId: dealIdOuter, feature,
+        promptMode, signature, cacheMode, cacheStatus, cacheHit: false,
+        model, latencyMs: elapsed(),
+        status: "error", httpStatus: 504, errorMessage: errMsg,
+      });
       return new Response(
         JSON.stringify({ success: false, error: errMsg }),
         { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -539,6 +629,13 @@ serve(async (req) => {
       if (companyId && userId) {
         await logUsage(supabase, companyId, userId, feature, model, 0, 0, "error", `Anthropic ${response.status}: ${errorText.slice(0, 200)}`);
       }
+      await logClaudeUsage({
+        userId, companyId, dealId: dealIdOuter, feature,
+        promptMode, signature, cacheMode, cacheStatus, cacheHit: false,
+        model, latencyMs: elapsed(),
+        status: "error", httpStatus: response.status,
+        errorMessage: `Anthropic ${response.status}: ${errorText.slice(0, 200)}`,
+      });
 
       return new Response(
         JSON.stringify({ success: false, error: errMsg }),
@@ -585,6 +682,15 @@ serve(async (req) => {
         ].filter(Boolean).join(" ") || undefined,
       );
     }
+    await logClaudeUsage({
+      userId, companyId, dealId: dealIdOuter, feature,
+      promptMode, signature, cacheMode, cacheStatus, cacheHit: false,
+      model: data.model || model, latencyMs: elapsed(),
+      inputTokens: usage.input_tokens, outputTokens: usage.output_tokens,
+      promptCacheReadTokens: usage.cache_read_input_tokens,
+      promptCacheCreateTokens: usage.cache_creation_input_tokens,
+      status: "success", httpStatus: 200,
+    });
 
     // ── Cache write (best effort) ────────────────────────
     if (signature && cacheMode) {
@@ -628,6 +734,13 @@ serve(async (req) => {
         await logUsage(supabase, companyId, userId, feature, model, 0, 0, "error", errMsg);
       } catch (_) { /* swallow */ }
     }
+    await logClaudeUsage({
+      userId, companyId, dealId: dealIdOuter, feature,
+      promptMode, signature: signatureOuter, cacheMode: cacheModeOuter,
+      cacheStatus: signatureOuter ? "miss" : "off", cacheHit: false,
+      model, latencyMs: elapsed(),
+      status: "error", httpStatus: 500, errorMessage: errMsg,
+    });
 
     return new Response(
       JSON.stringify({ success: false, error: errMsg }),

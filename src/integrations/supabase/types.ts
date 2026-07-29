@@ -4944,6 +4944,75 @@ export type Database = {
         }
         Relationships: []
       }
+      claude_usage_logs: {
+        Row: {
+          cache_hit: boolean
+          cache_mode: string | null
+          cache_status: string
+          company_id: string | null
+          created_at: string
+          deal_id: string | null
+          error_message: string | null
+          feature: string
+          http_status: number | null
+          id: string
+          input_tokens: number | null
+          latency_ms: number | null
+          model: string | null
+          output_tokens: number | null
+          prompt_cache_create_tokens: number | null
+          prompt_cache_read_tokens: number | null
+          prompt_mode: string | null
+          signature: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          cache_hit?: boolean
+          cache_mode?: string | null
+          cache_status?: string
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          error_message?: string | null
+          feature?: string
+          http_status?: number | null
+          id?: string
+          input_tokens?: number | null
+          latency_ms?: number | null
+          model?: string | null
+          output_tokens?: number | null
+          prompt_cache_create_tokens?: number | null
+          prompt_cache_read_tokens?: number | null
+          prompt_mode?: string | null
+          signature?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          cache_hit?: boolean
+          cache_mode?: string | null
+          cache_status?: string
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          error_message?: string | null
+          feature?: string
+          http_status?: number | null
+          id?: string
+          input_tokens?: number | null
+          latency_ms?: number | null
+          model?: string | null
+          output_tokens?: number | null
+          prompt_cache_create_tokens?: number | null
+          prompt_cache_read_tokens?: number | null
+          prompt_mode?: string | null
+          signature?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       client_error_log: {
         Row: {
           company_id: string | null
@@ -29184,6 +29253,48 @@ export type Database = {
       claap_upsert_transcript_for_deal: {
         Args: { p_deal_id: string; p_meeting_id: string }
         Returns: undefined
+      }
+      claude_usage_daily_by_feature: {
+        Args: { _days?: number }
+        Returns: {
+          avg_latency_ms: number
+          cache_hits: number
+          day: string
+          error_count: number
+          feature: string
+          input_tokens: number
+          output_tokens: number
+          request_count: number
+        }[]
+      }
+      claude_usage_top_signatures: {
+        Args: { _days?: number; _limit?: number }
+        Returns: {
+          avg_latency_ms: number
+          cache_hits: number
+          cache_mode: string
+          distinct_deals: number
+          distinct_users: number
+          feature: string
+          last_seen_at: string
+          prompt_mode: string
+          request_count: number
+          signature: string
+          total_output_tokens: number
+        }[]
+      }
+      claude_usage_totals: {
+        Args: { _days?: number }
+        Returns: {
+          avg_latency_ms: number
+          cache_hits: number
+          distinct_features: number
+          distinct_users: number
+          error_count: number
+          input_tokens: number
+          output_tokens: number
+          request_count: number
+        }[]
       }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
       clone_demo_tenant: {
