@@ -39,11 +39,165 @@ interface ClaudeRequest {
   temperature?: number;
   max_tokens?: number;
   context?: string;
+  /**
+   * Optional response-cache metadata. Callers set this to opt into the
+   * server-side cache for repeatable outputs (deal summaries, deal Q&A over
+   * unchanged context, document summaries keyed to a version/hash, and the
+   * daily rundown). Cache signatures are always scoped to company + user so
+   * cached responses never leak across tenants or permission boundaries.
+   */
+  cache?: {
+    /** One of: deal_summary | deal_qa | document_summary | daily_rundown */
+    mode?: string;
+    dealId?: string | null;
+    documentIds?: string[];
+    noteIds?: string[];
+    emailIds?: string[];
+    /** File hash / version tag for document_summary invalidation. */
+    documentVersion?: string | null;
+    /**
+     * Opaque scope tag (e.g. daily rundown refresh date bucket) that lets
+     * callers pin a cache entry to a logical scheduling window.
+     */
+    scopeTag?: string | null;
+    /** Force a refresh: skip lookup but still write the fresh entry. */
+    bypass?: boolean;
+    /** Override TTL in seconds (optional; defaults follow mode). */
+    ttlSeconds?: number;
+  };
 }
 
 // Feature key normalisation: "financial-analysis" → "financial_analysis"
 function normalizeFeatureKey(context: string): string {
   return context.replace(/-/g, "_");
+}
+
+// ── Response cache ──────────────────────────────────────────────────────────
+// Server-side cache for repeatable Claude outputs. Cache keys are derived
+// from a deterministic signature that includes the company + user scope so
+// results never cross tenant or permission boundaries. Frontend callers opt
+// in per-request via ClaudeRequest.cache; when omitted, no cache is used.
+//
+// TTLs are chosen per mode:
+//   deal_summary      → 10 minutes
+//   deal_qa           → 5 minutes  (invalidates naturally if selected doc/
+//                                    note/email ids change)
+//   document_summary  → 7 days     (bounded by documentVersion in signature —
+//                                    a version bump forces a fresh entry)
+//   daily_rundown     → 24 hours   (bounded by scopeTag = refresh date; the
+//                                    next scheduled refresh yields a new key)
+const DEFAULT_TTL_SECONDS: Record<string, number> = {
+  deal_summary: 10 * 60,
+  deal_qa: 5 * 60,
+  document_summary: 7 * 24 * 60 * 60,
+  daily_rundown: 24 * 60 * 60,
+};
+
+function normalizePrompt(messages: ClaudeMessage[]): string {
+  return messages
+    .map((m) => `${m.role}:${(m.content ?? "").trim().replace(/\s+/g, " ")}`)
+    .join("\n");
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const bytes = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function computeCacheSignature(
+  companyId: string | undefined,
+  userId: string,
+  system: string,
+  body: ClaudeRequest,
+): Promise<string | null> {
+  const c = body.cache;
+  if (!c || !c.mode) return null;
+  const payload = {
+    v: 1,
+    company: companyId ?? null,
+    user: userId, // user-scope keeps permission boundaries strict
+    mode: c.mode,
+    context: body.context ?? null,
+    dealId: c.dealId ?? null,
+    docs: [...(c.documentIds ?? [])].sort(),
+    notes: [...(c.noteIds ?? [])].sort(),
+    emails: [...(c.emailIds ?? [])].sort(),
+    documentVersion: c.documentVersion ?? null,
+    scopeTag: c.scopeTag ?? null,
+    system,
+    prompt: normalizePrompt(body.messages),
+  };
+  return sha256Hex(JSON.stringify(payload));
+}
+
+/** service-role client for cache table access (bypasses RLS deliberately). */
+function serviceClient() {
+  const url = Deno.env.get("SUPABASE_URL")!;
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  return createClient(url, key);
+}
+
+async function lookupCachedResponse(signature: string, companyId: string | undefined, userId: string) {
+  try {
+    const svc = serviceClient();
+    const { data } = await svc
+      .from("claude_response_cache")
+      .select("signature, response, model, input_tokens, output_tokens, company_id, user_id, expires_at")
+      .eq("signature", signature)
+      .maybeSingle();
+    if (!data) return null;
+    // Defensive: reject any cross-tenant / cross-user match (should be
+    // impossible because signature already includes both).
+    if ((data.company_id ?? null) !== (companyId ?? null)) return null;
+    if (data.user_id !== userId) return null;
+    if (new Date(data.expires_at).getTime() <= Date.now()) return null;
+    // best-effort hit_count bump
+    svc.from("claude_response_cache")
+      .update({ hit_count: (undefined as unknown as number), updated_at: new Date().toISOString() })
+      .eq("signature", signature)
+      .then(() => {})
+      .catch(() => {});
+    return data;
+  } catch (err) {
+    console.error("cache lookup failed:", err);
+    return null;
+  }
+}
+
+async function writeCachedResponse(params: {
+  signature: string;
+  companyId: string | undefined;
+  userId: string;
+  mode: string;
+  dealId: string | null;
+  response: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  ttlSeconds: number;
+}) {
+  try {
+    const svc = serviceClient();
+    const expiresAt = new Date(Date.now() + params.ttlSeconds * 1000).toISOString();
+    await svc.from("claude_response_cache").upsert({
+      signature: params.signature,
+      company_id: params.companyId ?? null,
+      user_id: params.userId,
+      mode: params.mode,
+      deal_id: params.dealId,
+      response: params.response,
+      model: params.model,
+      input_tokens: params.inputTokens,
+      output_tokens: params.outputTokens,
+      expires_at: expiresAt,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "signature" });
+  } catch (err) {
+    console.error("cache write failed:", err);
+  }
 }
 
 // Compile firm-level Copilot Instructions into a system-prompt prefix.
