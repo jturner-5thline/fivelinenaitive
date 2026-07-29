@@ -133,70 +133,85 @@ export function useDealAssistant() {
     setIsLoading(true);
 
     try {
-      // First, if user is asking for live data, fetch it from deal-operations
-      let enrichedContext = '';
-      const lower = content.toLowerCase();
+      // Deterministically fetch the facts Claude might need BEFORE calling it.
+      // Everything is normalized into a compact JSON <deal_facts> block; the
+      // model interprets, it does not lookup. This keeps prompts small and
+      // stable, and lets the model cite exact ids the UI already renders.
+      const factsPayload: Record<string, unknown> = {
+        deal: {
+          id: dealContext.id ?? null,
+          name: dealContext.company,
+          value_usd: dealContext.value ?? null,
+          stage: dealContext.stage,
+          status: dealContext.status,
+          manager: dealContext.manager ?? null,
+          notes_excerpt: dealContext.notes ? dealContext.notes.slice(0, 400) : null,
+        },
+        funding_sources: [] as unknown[],
+        outstanding_items: [] as unknown[],
+      };
 
-      if (dealContext.id && (
-        lower.includes('lender') || lower.includes('outstanding') || lower.includes('item') ||
-        lower.includes('status') || lower.includes('stage') || lower.includes('info') ||
-        lower.includes('tell me') || lower.includes('what') || lower.includes('how many') ||
-        lower.includes('show') || lower.includes('list') || lower.includes('detail')
-      )) {
-        // Fetch live deal data
-        const dealResult = await executeDealOperation('get_deal', { name_or_id: dealContext.id });
-        if (dealResult.success && dealResult.data?.found) {
-          enrichedContext += `\n\n## Live Deal Data (from database):\n`;
-          const d = dealResult.data.deal;
-          enrichedContext += `- Name: ${d.name}\n- Value: $${(d.value / 1000000).toFixed(2)}M\n- Stage: ${d.stage}\n- Status: ${d.status}\n`;
-          enrichedContext += `- Manager: ${d.manager || 'Not assigned'}\n- Deal Owner: ${d.deal_owner || 'Not assigned'}\n`;
-          enrichedContext += `- Lenders: ${d.lender_count}\n- Outstanding Items: ${d.outstanding_items_count}\n`;
-          enrichedContext += `- Milestones: ${d.milestones_completed}/${d.milestones_total} completed\n`;
-          enrichedContext += `- Flagged: ${d.is_flagged ? 'Yes - ' + (d.flag_notes || '') : 'No'}\n`;
-          enrichedContext += `- Notes: ${d.notes ? d.notes.substring(0, 500) : 'None'}\n`;
-          enrichedContext += `- Created: ${d.created_at}\n- Last Updated: ${d.updated_at}\n`;
-          if (d.closing_date) enrichedContext += `- Closing Date: ${d.closing_date}\n`;
+      if (dealContext.id) {
+        const [dealRes, lendersRes, itemsRes] = await Promise.all([
+          executeDealOperation('get_deal', { name_or_id: dealContext.id }),
+          executeDealOperation('get_deal_lenders', { deal_id: dealContext.id }),
+          executeDealOperation('get_outstanding_items', { deal_id: dealContext.id }),
+        ]);
+
+        if (dealRes.success && dealRes.data?.found) {
+          const d = dealRes.data.deal;
+          (factsPayload.deal as Record<string, unknown>) = {
+            ...(factsPayload.deal as Record<string, unknown>),
+            id: d.id ?? dealContext.id,
+            name: d.name,
+            value_usd: d.value,
+            stage: d.stage,
+            status: d.status,
+            manager: d.manager ?? null,
+            deal_owner: d.deal_owner ?? null,
+            lender_count: d.lender_count,
+            outstanding_items_count: d.outstanding_items_count,
+            milestones: { completed: d.milestones_completed, total: d.milestones_total },
+            flagged: d.is_flagged ? { note: d.flag_notes ?? null } : false,
+            notes_excerpt: d.notes ? d.notes.slice(0, 500) : null,
+            closing_date: d.closing_date ?? null,
+            created_at: d.created_at,
+            updated_at: d.updated_at,
+          };
         }
 
-        // Fetch lenders if relevant
-        if (lower.includes('lender')) {
-          const lendersResult = await executeDealOperation('get_deal_lenders', { deal_id: dealContext.id });
-          if (lendersResult.success && lendersResult.data?.lenders?.length > 0) {
-            enrichedContext += `\n## Lenders on this deal:\n`;
-            lendersResult.data.lenders.forEach((l: any) => {
-              enrichedContext += `- ${l.name}: Stage=${l.stage}, Status=${l.tracking_status}`;
-              if (l.score) enrichedContext += `, Score=${l.score}`;
-              if (l.notes) enrichedContext += `, Notes: ${l.notes.substring(0, 100)}`;
-              enrichedContext += '\n';
-            });
-          }
+        if (lendersRes.success && Array.isArray(lendersRes.data?.lenders)) {
+          factsPayload.funding_sources = lendersRes.data.lenders.map((l: any) => ({
+            id: `lender:${l.id ?? l.name}`,
+            name: l.name,
+            stage: l.stage,
+            tracking_status: l.tracking_status,
+            score: l.score ?? null,
+            notes_excerpt: l.notes ? String(l.notes).slice(0, 200) : null,
+          }));
         }
 
-        // Fetch outstanding items if relevant
-        if (lower.includes('outstanding') || lower.includes('item') || lower.includes('missing') || lower.includes('document') || lower.includes('required')) {
-          const itemsResult = await executeDealOperation('get_outstanding_items', { deal_id: dealContext.id });
-          if (itemsResult.success && itemsResult.data?.items?.length > 0) {
-            enrichedContext += `\n## Outstanding Items:\n`;
-            itemsResult.data.items.forEach((item: any) => {
-              enrichedContext += `- [${item.status}] ${item.description}`;
-              if (item.priority !== 'medium') enrichedContext += ` (${item.priority})`;
-              if (item.due_date) enrichedContext += ` Due: ${item.due_date}`;
-              enrichedContext += '\n';
-            });
-          }
+        if (itemsRes.success && Array.isArray(itemsRes.data?.items)) {
+          factsPayload.outstanding_items = itemsRes.data.items.map((item: any) => ({
+            id: `item:${item.id}`,
+            status: item.status,
+            priority: item.priority,
+            description: item.description,
+            due_date: item.due_date ?? null,
+          }));
         }
       }
 
-      const systemPrompt = DEAL_ASSISTANT_SYSTEM_PROMPT +
-        `\n\n## Current Deal Context:\n` +
-        `- Deal ID: ${dealContext.id || 'unknown'}\n` +
-        `- Name: ${dealContext.company}\n` +
-        `- Value: $${(dealContext.value / 1000000).toFixed(2)}M\n` +
-        `- Stage: ${dealContext.stage}\n` +
-        `- Status: ${dealContext.status}\n` +
-        (dealContext.manager ? `- Manager: ${dealContext.manager}\n` : '') +
-        (dealContext.notes ? `- Notes: ${dealContext.notes.substring(0, 300)}\n` : '') +
-        enrichedContext;
+      const systemPrompt = `${DEAL_ASSISTANT_SYSTEM_PROMPT}
+
+## Deal facts (authoritative — do not invent additions)
+You are given a compact JSON snapshot below. Only interpret these facts; if
+the answer isn't in the snapshot, say so. When you cite a lender, item, or
+the deal itself, reference its \`id\` inline as [cite:<id>].
+
+<deal_facts>
+${JSON.stringify(factsPayload)}
+</deal_facts>`;
 
       const apiMessages = [...messages, userMessage].map(m => ({
         role: m.role as 'user' | 'assistant',

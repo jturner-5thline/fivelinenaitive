@@ -45,15 +45,40 @@ export function ClaudeFinancialAnalysis({ dealId, financials, className }: Claud
     if (isLoading) return;
     setIsLoading(true);
     try {
-      const financialContext = Object.entries(financials)
-        .filter(([_, v]) => v != null && v !== '')
-        .map(([k, v]) => `- ${k.replace(/([A-Z])/g, ' $1').trim()}: ${typeof v === 'number' ? `$${v.toLocaleString()}` : v}`)
-        .join('\n');
+      // Assemble the facts deterministically as a compact JSON payload so
+      // Claude interprets structured data instead of parsing a prose dump.
+      const facts = Object.fromEntries(
+        Object.entries(financials).filter(([, v]) => v != null && v !== ''),
+      );
 
       const result = await sendClaudeMessage({
         messages: [{
           role: 'user',
-          content: `Analyze the following deal financial data and provide a comprehensive assessment:\n\n${financialContext}\n\nProvide your analysis in this exact format:\n\n## Summary\n[Executive overview in 2-3 sentences]\n\n## Strengths\n- [Strength 1]\n- [Strength 2]\n...\n\n## Risks\n- [Risk 1]\n- [Risk 2]\n...\n\n## Recommendations\n- [Recommendation 1]\n- [Recommendation 2]\n...\n\n## Key Metrics\n[Any important ratios or figures worth highlighting]`,
+          content: `Analyze the deal financials in the JSON payload below. Interpret only these facts — do not invent numbers, comps, or metrics that aren't present. If a common ratio can't be computed from the payload, say so.
+
+<deal_financials>
+${JSON.stringify({ deal_id: dealId, ...facts })}
+</deal_financials>
+
+Return your analysis in this exact format:
+
+## Summary
+[Executive overview in 2-3 sentences]
+
+## Strengths
+- [Strength 1]
+- [Strength 2]
+
+## Risks
+- [Risk 1]
+- [Risk 2]
+
+## Recommendations
+- [Recommendation 1]
+- [Recommendation 2]
+
+## Key Metrics
+[Important ratios/figures with the input numbers you used]`,
         }],
         system: SYSTEM_PROMPTS.financialAnalysis,
         context: 'financial-analysis',

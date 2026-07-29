@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { buildDealContext, renderDealContextBlock, DEAL_CONTEXT_SYSTEM_FRAGMENT } from "../_shared/dealContext.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,66 +49,36 @@ Deno.serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Fetch financial documents for this deal (RLS will enforce access control)
-    const { data: financials, error: financialsError } = await supabase
-      .from("deal_space_financials")
-      .select("*")
-      .eq("deal_id", dealId)
-      .order("created_at", { ascending: false });
+    // Deterministically build a compact, citable JSON snapshot of the deal
+    // (financial docs, notes, activity) BEFORE calling the model. This keeps
+    // token usage predictable and makes Claude's answers cite real rows.
+    const context = await buildDealContext(supabase, dealId, {
+      include: { recordings: false, emails: false },
+    });
 
-    if (financialsError) {
-      console.error("Error fetching financials:", financialsError);
-      throw new Error("Failed to fetch financial documents");
-    }
-
-    if (!financials || financials.length === 0) {
+    if (context.documents.length === 0) {
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           content: "No financial documents have been uploaded yet. Please upload some financial files first.",
-          error: null 
+          error: null,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Fetch deal info for context (RLS will enforce access control)
-    const { data: deal } = await supabase
-      .from("deals")
-      .select("company, value, stage")
-      .eq("id", dealId)
-      .single();
+    const systemPrompt = `${DEAL_CONTEXT_SYSTEM_FRAGMENT}
 
-    // Build context about the financials
-    const financialsContext = financials.map(f => {
-      let info = `- ${f.name}`;
-      if (f.fiscal_year && f.fiscal_period) {
-        info += ` (${f.fiscal_period} ${f.fiscal_year})`;
-      }
-      if (f.notes) {
-        info += `: ${f.notes}`;
-      }
-      return info;
-    }).join("\n");
+You are a financial-analyst assistant. Interpret the deal's financial documents (see \`documents[]\` in the payload) with institutional rigor. When you quote a metric or observation from a document, cite it with [cite:doc:<id>]. If a specific number the user asks about is not in the payload, say the document must be processed further rather than guessing.
 
-    const systemPrompt = `You are a financial analyst AI assistant helping analyze deal financials. 
+${renderDealContextBlock(context)}`;
 
-Context:
-- Deal: ${deal?.company || "Unknown Company"}
-- Deal Value: $${deal?.value?.toLocaleString() || "N/A"}
-- Stage: ${deal?.stage || "N/A"}
-
-Uploaded Financial Documents:
-${financialsContext}
-
-Important notes:
-1. You have information about which documents are uploaded but cannot read their actual content yet
-2. Base your analysis on the document names, fiscal periods, and any notes provided
-3. Be helpful in suggesting what insights could be gained from these documents
-4. When users ask specific questions about numbers, remind them that you can see document metadata but detailed analysis requires the documents to be processed
-5. Provide financial analysis frameworks and suggest what to look for
-6. Be concise but thorough in your responses`;
-
-    console.log('Deal space financials AI request:', { userId: user.id, dealId, messageCount: messages?.length || 0 });
+    console.log('Deal space financials AI request:', {
+      userId: user.id,
+      dealId,
+      messageCount: messages?.length || 0,
+      contextChars: context.approx_chars,
+      docs: context.documents.length,
+    });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
