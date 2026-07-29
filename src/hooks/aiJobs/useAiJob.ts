@@ -77,8 +77,7 @@ export function useEnqueueAiJob() {
 
       // supabase-js maps 409 to error; unwrap the body so we can detect dedupe.
       if (error) {
-        // @ts-expect-error — FunctionsHttpError has context
-        const ctx = error.context;
+        const ctx = (error as unknown as { context?: { text?: () => Promise<string> } }).context;
         if (ctx?.text) {
           try {
             const parsed = JSON.parse(await ctx.text());
