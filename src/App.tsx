@@ -433,6 +433,7 @@ const App = () => (
                             <Route path="/contacts" element={<Contacts />} />
                             <Route path="/contacts/:id" element={<ContactDetail />} />
                             <Route path="/admin/contact-company-sync" element={<ContactCompanySync />} />
+                            <Route path="/admin/claude-usage" element={<ClaudeUsageAdmin />} />
                             <Route path="/crm-companies" element={<CrmCompanies />} />
                             <Route path="/crm-companies/:id" element={<CrmCompanyDetail />} />
                             <Route path="/field-layout-editor" element={<FieldLayoutEditorPage />} />
