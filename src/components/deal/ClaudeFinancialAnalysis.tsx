@@ -45,16 +45,27 @@ export function ClaudeFinancialAnalysis({ dealId, financials, className }: Claud
     if (isLoading) return;
     setIsLoading(true);
     try {
-      // Assemble the facts deterministically as a compact JSON payload so
-      // Claude interprets structured data instead of parsing a prose dump.
-      const facts = Object.fromEntries(
-        Object.entries(financials).filter(([, v]) => v != null && v !== ''),
-      );
+      // Whitelist the fields we send — never dump the full `financials`
+      // object (it's typed `[key: string]: any` and can drag along raw
+      // extraction blobs). Claude gets exactly the compact reference set.
+      const WHITELIST: (keyof DealFinancials)[] = [
+        'dealName', 'dealValue', 'dealStage', 'dealType',
+        'revenue', 'expenses', 'margins', 'growthRate', 'lenderCount',
+      ];
+      const facts: Record<string, unknown> = {};
+      for (const k of WHITELIST) {
+        const v = financials[k];
+        if (v != null && v !== '') facts[k as string] = v;
+      }
+      // Notes get a hard 400-char excerpt — never the full body.
+      if (financials.notes) {
+        facts.notes_excerpt = String(financials.notes).slice(0, 400);
+      }
 
       const result = await sendClaudeMessage({
         messages: [{
           role: 'user',
-          content: `Analyze the deal financials in the JSON payload below. Interpret only these facts — do not invent numbers, comps, or metrics that aren't present. If a common ratio can't be computed from the payload, say so.
+          content: `Analyze the deal financials in <deal_financials>. Interpret only these facts — do not invent numbers, comps, or metrics that aren't present. If a common ratio can't be computed from the payload, say so.
 
 <deal_financials>
 ${JSON.stringify({ deal_id: dealId, ...facts })}
@@ -80,7 +91,10 @@ Return your analysis in this exact format:
 ## Key Metrics
 [Important ratios/figures with the input numbers you used]`,
         }],
-        system: SYSTEM_PROMPTS.financialAnalysis,
+        // Stable analyst instructions → cacheable prefix. The per-request
+        // financial JSON travels only in the user message above.
+        promptMode: 'financial_analysis',
+        staticSystem: SYSTEM_PROMPTS.financialAnalysis,
         context: 'financial-analysis',
         temperature: 0.3,
         requestManager: { panelKey: `financial-analysis:${dealId}` },
