@@ -14,6 +14,39 @@ export interface ClaudeRequestOptions {
   max_tokens?: number;
   context?: "chat" | "financial-analysis" | "agent" | "workflow" | "deal-assistant";
   /**
+   * Prompt-cache mode selector. Picks a stable server-side template in
+   * `claude-gateway/prompts.ts` — e.g. "deal_assistant", "deal_qa",
+   * "deal_summary", "financial_analysis", "document_summary",
+   * "daily_rundown". The template is placed first in the system prefix
+   * and marked as a cache breakpoint so byte-identical prefixes reuse
+   * Anthropic's prompt cache across requests.
+   */
+  promptMode?:
+    | "chat"
+    | "deal_assistant"
+    | "deal_qa"
+    | "deal_summary"
+    | "financial_analysis"
+    | "document_summary"
+    | "daily_rundown"
+    | "agent"
+    | "workflow";
+  /**
+   * Stable, byte-identical addition to the system prefix (feature-scoped
+   * rules that never change per request). Sits BEFORE the cache
+   * breakpoint. Never put timestamps, ids, or the user's question here —
+   * that would invalidate the cache on every call.
+   */
+  staticSystem?: string;
+  /**
+   * Dynamic system text (per-request timestamps, ad-hoc UI state, one-off
+   * variables). Sits AFTER the cache breakpoint so it never invalidates
+   * the cached prefix. Prefer putting the user's latest question in
+   * `messages`; use this only for per-request context that must live
+   * outside the turn.
+   */
+  dynamicSystem?: string;
+  /**
    * Opt into the server-side response cache in `claude-gateway`. Set `mode`
    * to one of the TTL-governed cache buckets:
    *   - `deal_summary`      → 10 min
