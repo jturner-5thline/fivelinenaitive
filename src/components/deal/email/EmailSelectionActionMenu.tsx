@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { sendClaudeMessage } from '@/services/claude';
 
 /**
  * Structured commands surfaced from highlighted email-body text. Each
@@ -212,29 +213,29 @@ export function EmailSelectionActionMenu({
     if (command === 'summarize') {
       setSummary({ loading: true });
       try {
-        const { data, error } = await supabase.functions.invoke('claude-ai', {
-          body: {
-            context: 'email_selection',
-            system:
-              'You summarize email excerpts. Reply with 2-4 crisp bullet points, plus a one-line "Why it matters" if relevant. No preamble, no markdown headers.',
-            messages: [{
-              role: 'user',
-              content:
-                `Summarize the following selection from an email.\n\n` +
-                `Subject: ${context.subject || '(none)'}\n` +
-                `From: ${context.fromName || context.fromEmail || '(unknown)'}\n` +
-                `Deal: ${context.dealName || '(none)'}\n\n` +
-                `--- Selection ---\n${selectedText}\n--- End selection ---`,
-            }],
-            temperature: 0.2,
-            max_tokens: 400,
-          },
+        // Previously invoked the `claude-ai` edge function directly. All
+        // frontend Claude calls now flow through `sendClaudeMessage`, which
+        // targets the `claude-gateway` edge function (server-side Anthropic
+        // proxy — key never exposed to the browser).
+        const result = await sendClaudeMessage({
+          context: 'chat',
+          system:
+            'You summarize email excerpts. Reply with 2-4 crisp bullet points, plus a one-line "Why it matters" if relevant. No preamble, no markdown headers.',
+          messages: [{
+            role: 'user',
+            content:
+              `Summarize the following selection from an email.\n\n` +
+              `Subject: ${context.subject || '(none)'}\n` +
+              `From: ${context.fromName || context.fromEmail || '(unknown)'}\n` +
+              `Deal: ${context.dealName || '(none)'}\n\n` +
+              `--- Selection ---\n${selectedText}\n--- End selection ---`,
+          }],
+          temperature: 0.2,
+          max_tokens: 400,
+          usage: { feature_subtype: 'email_selection_summary' },
         });
-        if (error) throw error;
-        const text =
-          (data as any)?.content?.[0]?.text ||
-          (data as any)?.text ||
-          (typeof data === 'string' ? data : null);
+        if (!result.success) throw new Error(result.error || 'No summary returned');
+        const text = result.response;
         if (!text) throw new Error('No summary returned');
         setSummary({ loading: false, text });
       } catch (err: any) {

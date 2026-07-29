@@ -54,7 +54,12 @@ export async function sendClaudeMessage(
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-      const { data, error } = await supabase.functions.invoke("claude-ai", {
+      // Routes through the `claude-gateway` edge function (server-side wrapper
+      // around the Anthropic API). Prior to the gateway refactor this invoked
+      // `claude-ai` directly — that function is kept only for legacy
+      // server-to-server callers. Frontend code MUST NEVER call Anthropic
+      // directly; ANTHROPIC_API_KEY lives only in project secrets.
+      const { data, error } = await supabase.functions.invoke("claude-gateway", {
         body: edgeOptions,
       });
 
