@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { sendClaudeMessage, isStaleClaudeResponse } from '@/services/claude';
 import { executeDealOperation, matchStageOrStatus, VALID_DEAL_STAGES, VALID_DEAL_STATUSES, VALID_LENDER_STAGES } from '@/services/dealOperations';
+import { prepareHistoryForClaude } from '@/lib/claude/historyCompaction';
 import { toast } from '@/hooks/use-toast';
 
 export interface DealAction {
@@ -35,7 +36,12 @@ interface DealContext {
   notes?: string;
 }
 
-const DEAL_ASSISTANT_SYSTEM_PROMPT = `You are an AI deal operations assistant for the naitive platform. You can both answer questions AND perform real operations on deals.
+// STATIC prefix — byte-identical across every call. This is what the
+// claude-gateway marks with a prompt-cache breakpoint. Do NOT interpolate
+// per-request values here (no deal id, no user text, no timestamps). The
+// enum lists below only change on deploy, which is the correct cache
+// invalidation boundary.
+const DEAL_ASSISTANT_STATIC_PROMPT = `You are an AI deal operations assistant for the naitive platform. You can both answer questions AND perform real operations on deals.
 
 ## Available Operations
 When the user asks you to DO something (change, update, add, remove, move, set, mark), you MUST respond with a structured JSON action block. When they ask questions, answer normally.
@@ -81,7 +87,8 @@ ${VALID_LENDER_STAGES.map(s => `- "${s.id}" = ${s.label}`).join('\n')}
 - Format informational responses with clear headings and bullet points
 - When listing lenders or items, use clean structured formatting
 - If you're unsure which deal the user means, ask for clarification
-- Never make up data. Use only what's provided in context.`;
+- Never make up data. Use only what's provided in context.
+- The <deal_facts> JSON block is authoritative. If a field is missing there, treat it as unknown and say so — do not guess or re-fetch.`;
 
 function parseActions(content: string): { cleanContent: string; actions: DealAction[] } {
   const actions: DealAction[] = [];
@@ -135,8 +142,9 @@ export function useDealAssistant() {
     try {
       // Deterministically fetch the facts Claude might need BEFORE calling it.
       // Everything is normalized into a compact JSON <deal_facts> block; the
-      // model interprets, it does not lookup. This keeps prompts small and
-      // stable, and lets the model cite exact ids the UI already renders.
+      // model interprets, it does not lookup. Payloads are capped hard —
+      // Claude gets references (id, name, stage) plus short excerpts, NEVER
+      // full raw notes or transcripts.
       const factsPayload: Record<string, unknown> = {
         deal: {
           id: dealContext.id ?? null,
@@ -145,7 +153,7 @@ export function useDealAssistant() {
           stage: dealContext.stage,
           status: dealContext.status,
           manager: dealContext.manager ?? null,
-          notes_excerpt: dealContext.notes ? dealContext.notes.slice(0, 400) : null,
+          notes_excerpt: dealContext.notes ? dealContext.notes.slice(0, 300) : null,
         },
         funding_sources: [] as unknown[],
         outstanding_items: [] as unknown[],
@@ -173,7 +181,7 @@ export function useDealAssistant() {
             outstanding_items_count: d.outstanding_items_count,
             milestones: { completed: d.milestones_completed, total: d.milestones_total },
             flagged: d.is_flagged ? { note: d.flag_notes ?? null } : false,
-            notes_excerpt: d.notes ? d.notes.slice(0, 500) : null,
+            notes_excerpt: d.notes ? d.notes.slice(0, 300) : null,
             closing_date: d.closing_date ?? null,
             created_at: d.created_at,
             updated_at: d.updated_at,
@@ -181,46 +189,84 @@ export function useDealAssistant() {
         }
 
         if (lendersRes.success && Array.isArray(lendersRes.data?.lenders)) {
-          factsPayload.funding_sources = lendersRes.data.lenders.map((l: any) => ({
+          // Cap at 20 funding sources; prioritize non-terminal (still active)
+          // stages so the model sees what's live. Terminal stages get a
+          // reference-only stub (id + stage) so counts stay accurate.
+          const all = lendersRes.data.lenders as any[];
+          const terminal = new Set(['passed', 'declined', 'excluded', 'withdrawn']);
+          const active = all.filter((l) => !terminal.has(String(l.stage ?? '')));
+          const inactive = all.filter((l) => terminal.has(String(l.stage ?? '')));
+          const activeSlice = active.slice(0, 20).map((l: any) => ({
             id: `lender:${l.id ?? l.name}`,
             name: l.name,
             stage: l.stage,
             tracking_status: l.tracking_status,
             score: l.score ?? null,
-            notes_excerpt: l.notes ? String(l.notes).slice(0, 200) : null,
+            notes_excerpt: l.notes ? String(l.notes).slice(0, 140) : null,
           }));
+          const inactiveRefs = inactive.slice(0, 10).map((l: any) => ({
+            id: `lender:${l.id ?? l.name}`,
+            name: l.name,
+            stage: l.stage,
+          }));
+          factsPayload.funding_sources = [...activeSlice, ...inactiveRefs];
+          if (all.length > activeSlice.length + inactiveRefs.length) {
+            (factsPayload as any).funding_sources_omitted =
+              all.length - activeSlice.length - inactiveRefs.length;
+          }
         }
 
         if (itemsRes.success && Array.isArray(itemsRes.data?.items)) {
-          factsPayload.outstanding_items = itemsRes.data.items.map((item: any) => ({
+          const items = itemsRes.data.items as any[];
+          factsPayload.outstanding_items = items.slice(0, 25).map((item: any) => ({
             id: `item:${item.id}`,
             status: item.status,
             priority: item.priority,
-            description: item.description,
+            description: item.description
+              ? String(item.description).slice(0, 200)
+              : null,
             due_date: item.due_date ?? null,
           }));
+          if (items.length > 25) {
+            (factsPayload as any).outstanding_items_omitted = items.length - 25;
+          }
         }
       }
 
-      const systemPrompt = `${DEAL_ASSISTANT_SYSTEM_PROMPT}
-
-## Deal facts (authoritative — do not invent additions)
-You are given a compact JSON snapshot below. Only interpret these facts; if
-the answer isn't in the snapshot, say so. When you cite a lender, item, or
-the deal itself, reference its \`id\` inline as [cite:<id>].
+      // Dynamic (per-request) system suffix — sits AFTER the cache
+      // breakpoint. Only the facts JSON goes here; the assistant rules and
+      // enum lists stay in the stable staticSystem so the prefix caches.
+      const dynamicSystem = `## Deal facts (authoritative — do not invent additions)
+Interpret only the JSON snapshot below. If the answer isn't in it, say so.
+When you cite a lender, item, or the deal, reference its \`id\` inline as
+[cite:<id>].
 
 <deal_facts>
 ${JSON.stringify(factsPayload)}
 </deal_facts>`;
 
-      const apiMessages = [...messages, userMessage].map(m => ({
+      // Compact + trim + hard-cap the message history so we don't resend an
+      // ever-growing transcript. The <deal_facts> block above carries the
+      // real context; older turns are collapsed into a topic summary.
+      const rawHistory = [...messages, userMessage].map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       }));
+      const prepared = prepareHistoryForClaude(rawHistory, 'deal_assistant');
+      console.log(
+        `[deal-assistant] history in=${prepared.stats.inputTurns} turns/` +
+          `${prepared.stats.inputChars} chars → out=${prepared.stats.outputTurns} turns/` +
+          `${prepared.stats.outputChars} chars ` +
+          `(compacted=${prepared.stats.compactedTurns}, dropped=${prepared.stats.droppedByCap}) ` +
+          `facts_chars=${dynamicSystem.length}`,
+      );
 
       const result = await sendClaudeMessage({
-        messages: apiMessages,
-        system: systemPrompt,
+        messages: prepared.messages,
+        // staticSystem is byte-stable → prompt-cached by claude-gateway.
+        promptMode: 'deal_assistant',
+        staticSystem: DEAL_ASSISTANT_STATIC_PROMPT,
+        dynamicSystem,
         context: 'deal-assistant' as any,
         temperature: 0.5,
         max_tokens: 2000,
