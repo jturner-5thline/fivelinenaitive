@@ -16,7 +16,7 @@ import { useQuickBooksExpanded } from '@/hooks/useQuickBooksExpanded';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { sendClaudeMessage } from '@/services/claude';
+import { sendClaudeMessage, isStaleClaudeResponse } from '@/services/claude';
 import { toast } from 'sonner';
 import {
   formatDeltaValue,
@@ -226,7 +226,9 @@ Write 1-2 short paragraphs in plain English: explain WHY the metric moved, namin
         messages: [{ role: 'user', content: prompt }],
         context: 'chat',
         usage: { feature_subtype: 'insights_delta_drilldown' },
+        requestManager: { panelKey: `insights:delta:${delta?.label ?? 'x'}:${comparison}` },
       });
+      if (isStaleClaudeResponse(resp)) return;
       if (!resp.success) throw new Error(resp.error || 'AI failed');
       setNarrative(resp.response.trim());
     } catch (err) {

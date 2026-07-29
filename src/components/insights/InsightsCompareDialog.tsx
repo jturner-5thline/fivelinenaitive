@@ -22,7 +22,7 @@ import { useMetricsData } from '@/hooks/useMetricsData';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
 import { useReportDefinitions } from '@/hooks/useReportDefinitions';
 import { formatDeltaValue } from '@/hooks/useInsightsComparison';
-import { sendClaudeMessage } from '@/services/claude';
+import { sendClaudeMessage, isStaleClaudeResponse } from '@/services/claude';
 import { toast } from 'sonner';
 
 // Tiny inline 2-point sparkline that visualises Period A → Period B for a Top Mover row.
@@ -183,7 +183,9 @@ Write 2 short paragraphs of plain-English commentary. Lead with the biggest diff
         messages: [{ role: 'user', content: prompt }],
         context: 'chat',
         usage: { feature_subtype: 'insights_compare_periods' },
+        requestManager: { panelKey: `insights:compare:${periodA}:${periodB}` },
       });
+      if (isStaleClaudeResponse(resp)) return;
       if (!resp.success) throw new Error(resp.error || 'AI failed');
       setNarrative(resp.response.trim());
     } catch (err) {
