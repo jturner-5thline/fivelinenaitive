@@ -1,3 +1,9 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// claude-ai — LEGACY entrypoint. Retained ONLY for server-to-server callers
+// (other edge functions) and any historical references. Frontend code MUST
+// call `claude-gateway` instead — see `src/services/claude.ts`.
+// Do not add new frontend usage here.
+// ─────────────────────────────────────────────────────────────────────────────
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
