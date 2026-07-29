@@ -13,6 +13,33 @@ export interface ClaudeRequestOptions {
   temperature?: number;
   max_tokens?: number;
   context?: "chat" | "financial-analysis" | "agent" | "workflow" | "deal-assistant";
+  /**
+   * Opt into the server-side response cache in `claude-gateway`. Set `mode`
+   * to one of the TTL-governed cache buckets:
+   *   - `deal_summary`      → 10 min
+   *   - `deal_qa`           → 5 min (invalidates automatically when the
+   *                                   selected doc/note/email ids change)
+   *   - `document_summary`  → keyed by `documentVersion`; reused until the
+   *                            document's version/hash changes
+   *   - `daily_rundown`     → until the next refresh window (pass a
+   *                            `scopeTag` like today's ET date bucket)
+   *
+   * Cache signatures always include the current company + user, so entries
+   * never cross tenant or permission boundaries. Set `bypass: true` for an
+   * explicit "regenerate" action — the cache is skipped for lookup but the
+   * fresh response is still written.
+   */
+  cache?: {
+    mode: "deal_summary" | "deal_qa" | "document_summary" | "daily_rundown";
+    dealId?: string | null;
+    documentIds?: string[];
+    noteIds?: string[];
+    emailIds?: string[];
+    documentVersion?: string | null;
+    scopeTag?: string | null;
+    bypass?: boolean;
+    ttlSeconds?: number;
+  };
   /** Optional usage-logging hints. Not sent to the AI. */
   usage?: {
     feature_subtype?: string;
@@ -48,6 +75,8 @@ export interface ClaudeResponse {
     output_tokens: number;
   };
   model?: string;
+  /** Server-side cache signal: hit | miss | refresh | off. */
+  cache_status?: "hit" | "miss" | "refresh" | "off";
   error?: string;
 }
 

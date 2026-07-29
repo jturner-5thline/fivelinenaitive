@@ -4833,6 +4833,54 @@ export type Database = {
         }
         Relationships: []
       }
+      claude_response_cache: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          deal_id: string | null
+          expires_at: string
+          hit_count: number
+          input_tokens: number | null
+          mode: string
+          model: string | null
+          output_tokens: number | null
+          response: string
+          signature: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          expires_at: string
+          hit_count?: number
+          input_tokens?: number | null
+          mode: string
+          model?: string | null
+          output_tokens?: number | null
+          response: string
+          signature: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          expires_at?: string
+          hit_count?: number
+          input_tokens?: number | null
+          mode?: string
+          model?: string | null
+          output_tokens?: number | null
+          response?: string
+          signature?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       client_error_log: {
         Row: {
           company_id: string | null
