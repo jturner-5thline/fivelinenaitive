@@ -137,7 +137,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
               type="button"
               variant="ghost"
               size="sm"
-              className="ml-auto h-5 px-1.5 text-[10px] text-primary hover:bg-primary/10"
+              className="ml-auto h-5 shrink-0 whitespace-nowrap px-1.5 text-[10px] text-primary hover:bg-primary/10"
               onClick={(e) => { e.stopPropagation(); setOpen(true); }}
             >
               <Plus className="h-3 w-3" /> Add meeting
