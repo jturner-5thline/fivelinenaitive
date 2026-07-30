@@ -137,7 +137,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
               type="button"
               variant="ghost"
               size="sm"
-              className="ml-auto h-5 px-1.5 text-[10px] text-primary hover:bg-primary/10"
+              className="ml-auto h-5 shrink-0 whitespace-nowrap px-1.5 text-[10px] text-primary hover:bg-primary/10"
               onClick={(e) => { e.stopPropagation(); setOpen(true); }}
             >
               <Plus className="h-3 w-3" /> Add meeting
@@ -252,9 +252,18 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
       {expanded && (
         <div className="pb-1">
           {linkedRecordings.length === 0 ? (
-            <p className="px-3 py-2 text-[11px] text-muted-foreground italic">
-              No meetings linked yet.
-            </p>
+            <div className="px-3 py-2 flex flex-wrap items-center gap-2">
+              <p className="text-[11px] text-muted-foreground italic">No meetings linked yet.</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-6 px-2 text-[10px]"
+                onClick={() => setOpen(true)}
+              >
+                <Plus className="h-3 w-3" /> Add meeting
+              </Button>
+            </div>
           ) : (
             linkedRecordings.map(r => (
               <div key={r.id} className="group px-3 py-1.5 flex items-start gap-2 hover:bg-muted/40">
