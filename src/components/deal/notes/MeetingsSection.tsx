@@ -7,7 +7,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useClaapRecordings } from '@/hooks/useClaapRecordings';
 import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
-import { useClaapIntegration } from '@/hooks/useClaapIntegration';
 import { extractClaapRecordingCandidates, extractClaapRecordingId, formatClaapTitleFromUrl } from '@/lib/claap-url';
 import { format } from 'date-fns';
 
@@ -23,7 +22,6 @@ function formatDuration(seconds?: number | null) {
 }
 
 export function MeetingsSection({ dealId }: MeetingsSectionProps) {
-  const { isEnabled } = useClaapIntegration();
   const { recordings, loading, fetchRecordings, getRecording } = useClaapRecordings();
   const { linkedRecordings, linkedRecordingIds, linkRecording, unlinkRecording } = useDealClaapRecordings(dealId);
   const [open, setOpen] = useState(false);
@@ -36,14 +34,14 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
 
   // On open: refetch fresh (bypass 60s live cache) so today's meetings show up.
   useEffect(() => {
-    if (open && isEnabled) fetchRecordings('', { bypassLiveCache: true });
-  }, [open, isEnabled, fetchRecordings]);
+    if (open) fetchRecordings('', { bypassLiveCache: true });
+  }, [open, fetchRecordings]);
 
   // Debounced live re-search as the user types so recordings the local mirror
   // doesn't have yet still surface without requiring an Enter press.
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!open || !isEnabled) return;
+    if (!open) return;
     if (searchTimer.current) clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() => {
       fetchRecordings(search);
@@ -51,7 +49,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
     return () => {
       if (searchTimer.current) clearTimeout(searchTimer.current);
     };
-  }, [search, open, isEnabled, fetchRecordings]);
+  }, [search, open, fetchRecordings]);
 
   // Parse a Claap URL or bare ID. Claap share URLs often look like
   // `https://app.claap.io/.../meeting-title-c-<containerId>-<recordingId>`.
@@ -63,7 +61,10 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
 
   const pasteCandidates = useMemo(() => extractClaapRecordingCandidates(pasteUrl).map(c => c.id), [pasteUrl]);
 
-  if (!isEnabled) return null;
+  // NOTE: the Meetings section is always rendered. The `integrations` row that
+  // backs `isEnabled` is per-user, so gating on it hid the "Add meeting" button
+  // for teammates on a workspace where Claap is connected. Recordings live in
+  // the shared company mirror, so everyone can search and link them.
 
   // Keep already-linked recordings visible (marked "Linked") so the picker
   // never looks empty and duplicates are obvious.
@@ -139,7 +140,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
               className="ml-auto h-5 px-1.5 text-[10px] text-primary hover:bg-primary/10"
               onClick={(e) => { e.stopPropagation(); setOpen(true); }}
             >
-              <Plus className="h-3 w-3" /> Add
+              <Plus className="h-3 w-3" /> Add meeting
             </Button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80 p-0" onClick={(e) => e.stopPropagation()}>

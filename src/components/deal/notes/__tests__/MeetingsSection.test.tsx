@@ -51,9 +51,10 @@ describe('MeetingsSection', () => {
     unlinkRecording.mockReset();
   });
 
-  it('keeps hook order stable when Claap integration becomes enabled', () => {
+  it('always renders the Meetings section with an add action', () => {
     const { rerender } = render(<MeetingsSection dealId="deal-1" />);
-    expect(screen.queryByText('Meetings')).toBeNull();
+    expect(screen.getByText('Meetings')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Add meeting/i })).toBeInTheDocument();
 
     claapEnabled = true;
     expect(() => rerender(<MeetingsSection dealId="deal-1" />)).not.toThrow();
