@@ -7,7 +7,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useClaapRecordings } from '@/hooks/useClaapRecordings';
 import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
-import { useClaapIntegration } from '@/hooks/useClaapIntegration';
 import { extractClaapRecordingCandidates, extractClaapRecordingId, formatClaapTitleFromUrl } from '@/lib/claap-url';
 import { format } from 'date-fns';
 
@@ -23,7 +22,6 @@ function formatDuration(seconds?: number | null) {
 }
 
 export function MeetingsSection({ dealId }: MeetingsSectionProps) {
-  const { isEnabled } = useClaapIntegration();
   const { recordings, loading, fetchRecordings, getRecording } = useClaapRecordings();
   const { linkedRecordings, linkedRecordingIds, linkRecording, unlinkRecording } = useDealClaapRecordings(dealId);
   const [open, setOpen] = useState(false);
@@ -142,7 +140,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
               className="ml-auto h-5 px-1.5 text-[10px] text-primary hover:bg-primary/10"
               onClick={(e) => { e.stopPropagation(); setOpen(true); }}
             >
-              <Plus className="h-3 w-3" /> Add
+              <Plus className="h-3 w-3" /> Add meeting
             </Button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80 p-0" onClick={(e) => e.stopPropagation()}>
