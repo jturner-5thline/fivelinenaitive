@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Video, Search, Plus, ExternalLink, Unlink, Loader2, ChevronDown, ChevronRight, Link2 } from 'lucide-react';
+import { Video, Search, Plus, ExternalLink, Unlink, Loader2, ChevronDown, ChevronRight, Link2, Check, RefreshCw, Copy, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -8,11 +8,18 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useClaapRecordings } from '@/hooks/useClaapRecordings';
 import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
 import { useClaapIntegration } from '@/hooks/useClaapIntegration';
-import { extractClaapRecordingId, formatClaapTitleFromUrl } from '@/lib/claap-url';
+import { extractClaapRecordingCandidates, extractClaapRecordingId, formatClaapTitleFromUrl } from '@/lib/claap-url';
 import { format } from 'date-fns';
 
 interface MeetingsSectionProps {
   dealId: string;
+}
+
+function formatDuration(seconds?: number | null) {
+  if (!seconds || seconds < 60) return '';
+  const mins = Math.round(seconds / 60);
+  if (mins < 60) return `${mins}m`;
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
 }
 
 export function MeetingsSection({ dealId }: MeetingsSectionProps) {
@@ -24,6 +31,8 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
   const [search, setSearch] = useState('');
   const [pasteUrl, setPasteUrl] = useState('');
   const [pasteBusy, setPasteBusy] = useState(false);
+  const [linkingId, setLinkingId] = useState<string | null>(null);
+  const [justLinked, setJustLinked] = useState<string[]>([]);
 
   // On open: refetch fresh (bypass 60s live cache) so today's meetings show up.
   useEffect(() => {
@@ -52,15 +61,36 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
     return extractClaapRecordingId(pasteUrl);
   }, [pasteUrl]);
 
+  const pasteCandidates = useMemo(() => extractClaapRecordingCandidates(pasteUrl).map(c => c.id), [pasteUrl]);
+
   if (!isEnabled) return null;
 
-  const available = recordings.filter(r => !linkedRecordingIds.includes(r.id));
+  // Keep already-linked recordings visible (marked "Linked") so the picker
+  // never looks empty and duplicates are obvious.
+  const results = recordings;
+
+  const handleLinkRecording = async (rec: Parameters<typeof linkRecording>[0]) => {
+    if (linkingId) return;
+    setLinkingId(rec.id);
+    try {
+      const linked = await linkRecording(rec);
+      if (linked) setJustLinked(prev => (prev.includes(rec.id) ? prev : [...prev, rec.id]));
+    } finally {
+      setLinkingId(null);
+    }
+  };
 
   const handlePasteLink = async () => {
     if (!extractedId || pasteBusy) return;
     setPasteBusy(true);
     try {
-      const rec = await getRecording(extractedId);
+      // Try each candidate id parsed out of the share URL — Claap URLs embed
+      // both a container id and the recording id, and either may resolve.
+      let rec = null as Awaited<ReturnType<typeof getRecording>>;
+      for (const candidate of pasteCandidates.slice(0, 3)) {
+        rec = await getRecording(candidate);
+        if (rec) break;
+      }
       const linked = rec
         ? await linkRecording(rec)
         : await linkRecording({
@@ -78,7 +108,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
 
       if (linked) {
         setPasteUrl('');
-        setOpen(false);
+        setJustLinked(prev => [...prev, extractedId]);
       }
     } finally {
       setPasteBusy(false);
@@ -114,39 +144,57 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80 p-0" onClick={(e) => e.stopPropagation()}>
             <div className="p-2 border-b">
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  autoFocus
-                  placeholder="Search Claap recordings…"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') fetchRecordings(search); }}
-                  className="h-7 pl-7 text-xs"
-                />
+              <div className="flex items-center gap-1">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    autoFocus
+                    placeholder="Search by title, host or attendee…"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') fetchRecordings(search, { bypassLiveCache: true }); }}
+                    className="h-7 pl-7 text-xs"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 shrink-0"
+                  title="Refresh from Claap"
+                  disabled={loading}
+                  onClick={() => fetchRecordings(search, { bypassLiveCache: true })}
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+                </Button>
               </div>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Link as many meetings as you need — the picker stays open.
+              </p>
             </div>
             <ScrollArea className="max-h-72">
-              {loading && available.length === 0 ? (
+              {loading && results.length === 0 ? (
                 <div className="flex items-center justify-center py-6">
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
-              ) : available.length === 0 ? (
+              ) : results.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-4">
                   No recordings found. Paste a Claap URL below to link directly.
                 </p>
               ) : (
                 <div className="py-1">
-                  {available
-                    .map(r => (
+                  {results.map(r => {
+                    const isLinked = linkedRecordingIds.includes(r.id) || justLinked.includes(r.id);
+                    const isLinking = linkingId === r.id;
+                    const duration = formatDuration(r.durationSeconds);
+                    const attendees = r.meeting?.participants?.length || 0;
+                    return (
                       <button
                         key={r.id}
                         type="button"
-                        className="w-full text-left px-2 py-1.5 hover:bg-muted/60 flex items-start gap-2"
-                        onClick={async () => {
-                          const linked = await linkRecording(r);
-                          if (linked) setOpen(false);
-                        }}
+                        disabled={isLinked || isLinking}
+                        className="w-full text-left px-2 py-1.5 hover:bg-muted/60 flex items-start gap-2 disabled:opacity-70 disabled:hover:bg-transparent"
+                        onClick={() => handleLinkRecording(r)}
                       >
                         <Video className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
                         <div className="min-w-0 flex-1">
@@ -154,10 +202,20 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
                           <p className="text-[10px] text-muted-foreground truncate">
                             {r.createdAt ? format(new Date(r.createdAt), 'MMM d, yyyy') : ''}
                             {r.recorder?.name ? ` · ${r.recorder.name}` : ''}
+                            {duration ? ` · ${duration}` : ''}
+                            {attendees ? ` · ${attendees} attendees` : ''}
                           </p>
                         </div>
+                        {isLinking ? (
+                          <Loader2 className="h-3.5 w-3.5 mt-0.5 animate-spin text-muted-foreground shrink-0" />
+                        ) : isLinked ? (
+                          <span className="mt-0.5 shrink-0 inline-flex items-center gap-0.5 text-[10px] text-emerald-500">
+                            <Check className="h-3 w-3" /> Linked
+                          </span>
+                        ) : null}
                       </button>
-                    ))}
+                    );
+                  })}
                 </div>
               )}
             </ScrollArea>
