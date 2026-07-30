@@ -78,23 +78,44 @@ export function FeedbackTable() {
       if (error) throw error;
       const userIds = [...new Set((data ?? []).map((f) => f.user_id))];
       const companyIds = [...new Set((data ?? []).map((f) => f.company_id).filter(Boolean) as string[])];
-      const [{ data: profiles }, { data: companies }] = await Promise.all([
+      const [{ data: profiles }, { data: members }, { data: companies }] = await Promise.all([
         userIds.length
-          ? supabase.from("profiles").select("user_id, display_name, email, company_id").in("user_id", userIds)
+          ? supabase.from("profiles").select("user_id, display_name, email").in("user_id", userIds)
+          : Promise.resolve({ data: [] as any[] }),
+        userIds.length
+          ? supabase.from("company_members").select("user_id, company_id").in("user_id", userIds)
           : Promise.resolve({ data: [] as any[] }),
         companyIds.length
           ? supabase.from("companies").select("id, name").in("id", companyIds)
           : Promise.resolve({ data: [] as any[] }),
       ]);
       const pmap = new Map((profiles ?? []).map((p) => [p.user_id, p]));
+      const memberCompany = new Map((members ?? []).map((m: any) => [m.user_id, m.company_id]));
       const cmap = new Map((companies ?? []).map((c) => [c.id, c.name]));
+      const missingCompanyIds = [
+        ...new Set(
+          [...memberCompany.values()].filter((id): id is string => !!id && !cmap.has(id)),
+        ),
+      ];
+      if (missingCompanyIds.length) {
+        const { data: extra } = await supabase
+          .from("companies")
+          .select("id, name")
+          .in("id", missingCompanyIds);
+        (extra ?? []).forEach((c: any) => cmap.set(c.id, c.name));
+      }
       return (data ?? []).map((item) => {
         const p = pmap.get(item.user_id);
+        const fallbackCompanyId = memberCompany.get(item.user_id);
         return {
           ...item,
           user_email: p?.email,
           user_name: p?.display_name,
-          company_name: item.company_id ? cmap.get(item.company_id) : (p?.company_id ? cmap.get(p.company_id) : undefined),
+          company_name: item.company_id
+            ? cmap.get(item.company_id)
+            : fallbackCompanyId
+              ? cmap.get(fallbackCompanyId)
+              : undefined,
         } as FeedbackItem;
       });
     },
