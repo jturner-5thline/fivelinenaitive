@@ -286,22 +286,37 @@ export function useClaapRecordings() {
       // claap sync edge function). This is ~10–100x faster than hitting
       // the Claap API on every picker open. Single recording details and
       // transcripts still go through the edge function on demand.
-      let query = supabase
-        .from('claap_recordings')
-        .select('external_id, title, started_at, organizer_email, participants, source_payload, transcript_url, recording_url')
-        .order('started_at', { ascending: false, nullsFirst: false })
-        .limit(limit);
+      // Search title, organizer, attendee names/emails AND the recording URL
+      // via an RPC — plain PostgREST `.or()` can't reach into the
+      // `participants` jsonb column, so attendee-based lookups were missed.
+      const trimmedSearch = search?.trim() ? search.trim().replace(/[%,]/g, ' ') : null;
+      let data: any[] | null = null;
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('search_claap_recordings', {
+        _q: trimmedSearch,
+        _from: from ?? null,
+        _to: to ?? null,
+        _limit: limit,
+      });
 
-      if (from) query = query.gte('started_at', from);
-      if (to) query = query.lte('started_at', to);
-
-      if (search && search.trim().length > 0) {
-        const q = search.trim().replace(/[%,]/g, ' ');
-        query = query.or(`title.ilike.%${q}%,organizer_email.ilike.%${q}%`);
+      if (rpcErr) {
+        // Fallback to the plain table query if the RPC is unavailable.
+        console.warn('[Claap] search RPC failed, falling back to table query', rpcErr);
+        let query = supabase
+          .from('claap_recordings')
+          .select('external_id, title, started_at, organizer_email, participants, source_payload, transcript_url, recording_url')
+          .order('started_at', { ascending: false, nullsFirst: false })
+          .limit(limit);
+        if (from) query = query.gte('started_at', from);
+        if (to) query = query.lte('started_at', to);
+        if (trimmedSearch) {
+          query = query.or(`title.ilike.%${trimmedSearch}%,organizer_email.ilike.%${trimmedSearch}%`);
+        }
+        const { data: fallbackData, error: qErr } = await query;
+        if (qErr) throw qErr;
+        data = fallbackData;
+      } else {
+        data = rpcData as any[] | null;
       }
-
-      const { data, error: qErr } = await query;
-      if (qErr) throw qErr;
 
       const localRecordings: ClaapRecording[] = (data || []).map(mapLocalRecording);
       const directCandidates = search ? extractClaapRecordingCandidates(search).map((candidate) => candidate.id) : [];
