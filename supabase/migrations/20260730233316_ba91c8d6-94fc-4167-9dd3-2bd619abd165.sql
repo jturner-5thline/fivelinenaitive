@@ -1,0 +1,1 @@
+ALTER TABLE public.claap_recordings ALTER COLUMN org_company_id SET NOT NULL;

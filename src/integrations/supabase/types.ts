@@ -4329,7 +4329,7 @@ export type Database = {
           last_sync_error: string | null
           last_sync_status: string | null
           next_sync_at: string | null
-          org_company_id: string | null
+          org_company_id: string
           organizer_email: string | null
           participants: Json
           recording_url: string | null
@@ -4364,7 +4364,7 @@ export type Database = {
           last_sync_error?: string | null
           last_sync_status?: string | null
           next_sync_at?: string | null
-          org_company_id?: string | null
+          org_company_id: string
           organizer_email?: string | null
           participants?: Json
           recording_url?: string | null
@@ -4399,7 +4399,7 @@ export type Database = {
           last_sync_error?: string | null
           last_sync_status?: string | null
           next_sync_at?: string | null
-          org_company_id?: string | null
+          org_company_id?: string
           organizer_email?: string | null
           participants?: Json
           recording_url?: string | null
