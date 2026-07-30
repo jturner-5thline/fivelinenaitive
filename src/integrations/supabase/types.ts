@@ -29807,6 +29807,19 @@ export type Database = {
         Args: { _company_id: string; _config_key: string; _config_value: Json }
         Returns: undefined
       }
+      search_claap_recordings: {
+        Args: { _from?: string; _limit?: number; _q?: string; _to?: string }
+        Returns: {
+          external_id: string
+          organizer_email: string
+          participants: Json
+          recording_url: string
+          source_payload: Json
+          started_at: string
+          title: string
+          transcript_url: string
+        }[]
+      }
       search_contacts_fast: {
         Args: { _limit?: number; _offset?: number; _search: string }
         Returns: {
