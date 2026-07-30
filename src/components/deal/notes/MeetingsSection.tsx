@@ -274,9 +274,21 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
                   <p className="text-[10px] text-muted-foreground truncate">
                     {r.linked_at ? format(new Date(r.linked_at), 'MMM d, yyyy') : ''}
                     {r.recorder_name ? ` · ${r.recorder_name}` : ''}
+                    {formatDuration(r.duration_seconds) ? ` · ${formatDuration(r.duration_seconds)}` : ''}
                   </p>
                 </div>
                 <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 shrink-0">
+                  {r.recording_url && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-5 w-5"
+                      onClick={() => navigator.clipboard?.writeText(r.recording_url!)}
+                      title="Copy Claap link"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  )}
                   {r.recording_url && (
                     <Button
                       size="icon"
