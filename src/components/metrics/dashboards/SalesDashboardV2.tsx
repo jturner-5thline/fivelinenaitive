@@ -2307,7 +2307,7 @@ function OnBoardToProposalDrilldown({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>Deals-on-Board to Proposal</DialogTitle>
+          <DialogTitle>Deals-on-Board to Proposal (MSQL)</DialogTitle>
           <DialogDescription>
             Distinct deals entering each stage, sourced from stage-change history.
           </DialogDescription>
@@ -4995,7 +4995,7 @@ export function SalesDashboardV2({ reportMode = false }: { reportMode?: boolean 
               })()}
             />
             <ConversionCard
-              title="Deals-on-Board to Proposal"
+              title="Deals-on-Board to Proposal (MSQL)"
               Icon={FileText}
               sparkData={onBoardToProposalSpark}
               sparkFormatter={(v) => `${(v * 100).toFixed(0)}%`}
