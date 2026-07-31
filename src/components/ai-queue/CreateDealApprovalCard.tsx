@@ -7,8 +7,8 @@
  * Create Deal to finalize. On successful create the queue item is marked
  * approved.
  */
-import { useState } from 'react';
-import { Video, Calendar, Building2, Sparkles } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Video, Calendar, Building2, Sparkles, Loader2, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
@@ -73,6 +73,51 @@ export function CreateDealApprovalCard({ item }: Props) {
     : (fallbackMeeting?.title ?? null);
   const hasClaapMatch = !!source.claap_meeting_id || !!fallbackMeeting;
 
+  // The narrative (and other AI-drafted fields) are only filled by the
+  // detector when a Claap recording existed at sweep time. When the
+  // recording syncs later the payload stays blank — so draft it on demand
+  // here as soon as a recording is resolvable.
+  const [drafting, setDrafting] = useState(false);
+  const autoDrafted = useRef(false);
+
+  async function draftFromClaap(manual = false) {
+    if (drafting) return;
+    setDrafting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('draft-deal-from-claap', {
+        body: {
+          queue_id: item.id,
+          claap_meeting_id: source.claap_meeting_id || fallbackMeeting?.id || null,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.ok) {
+        qc.invalidateQueries({ queryKey: ['ai-action-queue'] });
+        if (manual) toast.success('Drafted deal details from the Claap recording');
+      } else if (manual) {
+        const reason = (data as any)?.reason;
+        toast.error(
+          reason === 'no_transcript'
+            ? 'That recording has no transcript or summary synced yet'
+            : 'Could not draft from the recording',
+        );
+      }
+    } catch (e: any) {
+      if (manual) toast.error(e?.message || 'Could not draft from the recording');
+    } finally {
+      setDrafting(false);
+    }
+  }
+
+  useEffect(() => {
+    if (autoDrafted.current) return;
+    if (payload.narrative) return;
+    if (!hasClaapMatch) return;
+    autoDrafted.current = true;
+    void draftFromClaap(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasClaapMatch, payload.narrative]);
+
   const rows: Array<{ label: string; value: string }> = [
     { label: 'Company / Deal name', value: payload.dealName || source.company_name || '—' },
     { label: 'Deal amount', value: payload.dealAmount ? `$${Number(payload.dealAmount).toLocaleString()}` : '—' },
@@ -82,7 +127,7 @@ export function CreateDealApprovalCard({ item }: Props) {
       ? [{ label: 'Other attendees', value: (payload.additionalContactEmails as string[]).join(', ') }]
       : []),
     { label: 'Deal status', value: payload.dealStatusNote || '—' },
-    { label: 'Narrative', value: payload.narrative || '—' },
+    { label: 'Narrative', value: payload.narrative || (drafting ? 'Drafting from the recording…' : '—') },
     { label: 'Referred by', value: payload.referralName || '—' },
   ];
 
@@ -235,6 +280,12 @@ export function CreateDealApprovalCard({ item }: Props) {
         >
           Review &amp; Create Deal
         </Button>
+        {hasClaapMatch ? (
+          <Button variant="outline" disabled={drafting} onClick={() => void draftFromClaap(true)}>
+            {drafting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+            {payload.narrative ? 'Re-draft from recording' : 'Draft from recording'}
+          </Button>
+        ) : null}
       </div>
 
       <CreateDealDialog
