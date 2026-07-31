@@ -264,6 +264,7 @@ export default function Lenders() {
   const [quickUploadTarget, setQuickUploadTarget] = useState<{ lenderName: string; category: 'nda' | 'marketing_materials' } | null>(null);
   const [isQuickUploading, setIsQuickUploading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [companyLinkTarget, setCompanyLinkTarget] = useState<FundingSourceCompanyTarget | null>(null);
   const [editingLenderId, setEditingLenderId] = useState<string | null>(null);
   const [form, setForm] = useState<LenderForm>(emptyForm);
   const [searchQuery, setSearchQuery] = useState('');
