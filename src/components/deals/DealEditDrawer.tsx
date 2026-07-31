@@ -22,7 +22,6 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
-import { useAdminRole } from '@/hooks/useAdminRole';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { usePipelineContext } from '@/contexts/PipelineContext';
@@ -53,7 +52,6 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
   const { formatCurrencyValue, preferences } = usePreferences();
   const { dealTypes } = useDealTypes();
   const { getStageConfig } = useDealStages();
-  const { isAdmin } = useAdminRole();
   const { toast } = useToast();
   const { pipelines } = usePipelineContext();
   const { getStageConfigForDeal } = usePipelineStageConfig();
@@ -775,17 +773,15 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                     Archive
                   </Button>
                 )}
-                {isAdmin && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDelete}
-                    className="flex-1 text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </Button>
-                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDelete}
+                  className="flex-1 text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
               </div>
             </div>
             <MoveToPipelineDialog
