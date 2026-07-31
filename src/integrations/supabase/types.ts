@@ -18434,6 +18434,7 @@ export type Database = {
           contact_phone: string | null
           contact_title: string | null
           created_at: string
+          crm_company_id: string | null
           deal_structure_notes: string | null
           ebitda_min: number | null
           email: string | null
@@ -18486,6 +18487,7 @@ export type Database = {
           contact_phone?: string | null
           contact_title?: string | null
           created_at?: string
+          crm_company_id?: string | null
           deal_structure_notes?: string | null
           ebitda_min?: number | null
           email?: string | null
@@ -18538,6 +18540,7 @@ export type Database = {
           contact_phone?: string | null
           contact_title?: string | null
           created_at?: string
+          crm_company_id?: string | null
           deal_structure_notes?: string | null
           ebitda_min?: number | null
           email?: string | null
@@ -18584,6 +18587,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "master_lenders_crm_company_id_fkey"
+            columns: ["crm_company_id"]
+            isOneToOne: false
+            referencedRelation: "crm_companies"
             referencedColumns: ["id"]
           },
         ]
