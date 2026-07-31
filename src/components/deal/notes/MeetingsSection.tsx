@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useClaapRecordings } from '@/hooks/useClaapRecordings';
 import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
 import { extractClaapRecordingCandidates, extractClaapRecordingId, formatClaapTitleFromUrl } from '@/lib/claap-url';
@@ -31,6 +32,8 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
   const [pasteBusy, setPasteBusy] = useState(false);
   const [linkingId, setLinkingId] = useState<string | null>(null);
   const [justLinked, setJustLinked] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   // On open: refetch fresh (bypass 60s live cache) so today's meetings show up.
   useEffect(() => {
@@ -78,6 +81,25 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
       if (linked) setJustLinked(prev => (prev.includes(rec.id) ? prev : [...prev, rec.id]));
     } finally {
       setLinkingId(null);
+    }
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds(prev => (prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]));
+  };
+
+  const handleLinkSelected = async () => {
+    if (bulkBusy || selectedIds.length === 0) return;
+    setBulkBusy(true);
+    try {
+      const toLink = results.filter(r => selectedIds.includes(r.id));
+      for (const rec of toLink) {
+        const linked = await linkRecording(rec);
+        if (linked) setJustLinked(prev => (prev.includes(rec.id) ? prev : [...prev, rec.id]));
+      }
+      setSelectedIds([]);
+    } finally {
+      setBulkBusy(false);
     }
   };
 
@@ -170,8 +192,33 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
                 </Button>
               </div>
               <p className="mt-1 text-[10px] text-muted-foreground">
-                Link as many meetings as you need — the picker stays open.
+                Select multiple meetings, then link them all at once.
               </p>
+              {selectedIds.length > 0 && (
+                <div className="mt-1.5 flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    className="h-6 flex-1 px-2 text-[11px]"
+                    disabled={bulkBusy}
+                    onClick={handleLinkSelected}
+                  >
+                    {bulkBusy ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      `Link ${selectedIds.length} selected`
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-[11px]"
+                    disabled={bulkBusy}
+                    onClick={() => setSelectedIds([])}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
             </div>
             <ScrollArea className="max-h-72">
               {loading && results.length === 0 ? (
@@ -186,7 +233,8 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
                 <div className="py-1">
                   {results.map(r => {
                     const isLinked = linkedRecordingIds.includes(r.id) || justLinked.includes(r.id);
-                    const isLinking = linkingId === r.id;
+                    const isLinking = linkingId === r.id || (bulkBusy && selectedIds.includes(r.id));
+                    const isSelected = selectedIds.includes(r.id);
                     const duration = formatDuration(r.durationSeconds);
                     const attendees = r.meeting?.participants?.length || 0;
                     return (
@@ -194,10 +242,18 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
                         key={r.id}
                         type="button"
                         disabled={isLinked || isLinking}
-                        className="w-full text-left px-2 py-1.5 hover:bg-muted/60 flex items-start gap-2 disabled:opacity-70 disabled:hover:bg-transparent"
-                        onClick={() => handleLinkRecording(r)}
+                        className={`w-full text-left px-2 py-1.5 hover:bg-muted/60 flex items-start gap-2 disabled:opacity-70 disabled:hover:bg-transparent ${isSelected ? 'bg-muted/50' : ''}`}
+                        onClick={() => toggleSelected(r.id)}
+                        onDoubleClick={() => handleLinkRecording(r)}
                       >
-                        <Video className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+                        {isLinked ? (
+                          <Video className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+                        ) : (
+                          <Checkbox
+                            checked={isSelected}
+                            className="mt-0.5 h-3.5 w-3.5 shrink-0 pointer-events-none"
+                          />
+                        )}
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-medium truncate">{r.title || 'Untitled recording'}</p>
                           <p className="text-[10px] text-muted-foreground truncate">
