@@ -114,6 +114,7 @@ Deno.serve(async (req) => {
   const startedAt = new Date();
   const summary: any[] = [];
 
+  const runInline = async () => {
   for (const row of settingsRows ?? []) {
     const companyId = (row as any).company_id as string;
     const perCompany: any = {
@@ -187,6 +188,30 @@ Deno.serve(async (req) => {
 
     summary.push(perCompany);
   }
+  };
+
+  // Run the (potentially minutes-long) per-company analysis as a background
+  // task so the request never hits the ~150s gateway wall-clock limit (504).
+  // Callers that need the full result can pass { await_result: true }.
+  const awaitResult: boolean = body?.await_result === true;
+  if (!awaitResult && typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+    EdgeRuntime.waitUntil(
+      runInline().catch((e) =>
+        console.error("[deal-admin-agent-auto-sweep] background run failed:", e),
+      ),
+    );
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        mode: "background",
+        accepted_companies: (settingsRows ?? []).length,
+        ran_at: startedAt.toISOString(),
+      }),
+      { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  await runInline();
 
   const totals = summary.reduce(
     (acc, s) => {
