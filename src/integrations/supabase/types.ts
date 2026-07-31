@@ -4771,6 +4771,7 @@ export type Database = {
       }
       claap_transcripts: {
         Row: {
+          action_items: Json | null
           call_type: string | null
           claap_meeting_id: string
           created_at: string
@@ -4784,6 +4785,7 @@ export type Database = {
           transcript_text: string | null
         }
         Insert: {
+          action_items?: Json | null
           call_type?: string | null
           claap_meeting_id: string
           created_at?: string
@@ -4797,6 +4799,7 @@ export type Database = {
           transcript_text?: string | null
         }
         Update: {
+          action_items?: Json | null
           call_type?: string | null
           claap_meeting_id?: string
           created_at?: string
