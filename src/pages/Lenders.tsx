@@ -57,6 +57,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
+import { FundingSourceCompanyLinkDialog, FundingSourceCompanyTarget } from '@/components/lenders/FundingSourceCompanyLinkDialog';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
 import { useAuth } from '@/contexts/AuthContext';
@@ -1129,6 +1130,18 @@ export default function Lenders() {
         const newLender = await addMasterLender(lenderData);
         lenderId = newLender?.id ?? null;
         toast({ title: 'Lender added', description: `${lenderData.name} has been added.` });
+        if (lenderId) {
+          setCompanyLinkTarget({
+            lenderId,
+            name: lenderData.name,
+            website: lenderData.website ?? null,
+            email: lenderData.email ?? null,
+            linkedinUrl: lenderData.linkedin_url ?? null,
+            phone: lenderData.phone ?? null,
+            address: lenderData.address ?? null,
+            description: lenderData.deal_structure_notes ?? null,
+          });
+        }
       }
 
       // Insert contacts into lender_contacts
