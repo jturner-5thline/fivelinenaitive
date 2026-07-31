@@ -57,6 +57,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
+import { FundingSourceCompanyLinkDialog, FundingSourceCompanyTarget } from '@/components/lenders/FundingSourceCompanyLinkDialog';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
 import { useAuth } from '@/contexts/AuthContext';
@@ -263,6 +264,7 @@ export default function Lenders() {
   const [quickUploadTarget, setQuickUploadTarget] = useState<{ lenderName: string; category: 'nda' | 'marketing_materials' } | null>(null);
   const [isQuickUploading, setIsQuickUploading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [companyLinkTarget, setCompanyLinkTarget] = useState<FundingSourceCompanyTarget | null>(null);
   const [editingLenderId, setEditingLenderId] = useState<string | null>(null);
   const [form, setForm] = useState<LenderForm>(emptyForm);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1129,6 +1131,18 @@ export default function Lenders() {
         const newLender = await addMasterLender(lenderData);
         lenderId = newLender?.id ?? null;
         toast({ title: 'Lender added', description: `${lenderData.name} has been added.` });
+        if (lenderId) {
+          setCompanyLinkTarget({
+            lenderId,
+            name: lenderData.name,
+            website: lenderData.website ?? null,
+            email: lenderData.email ?? null,
+            linkedinUrl: lenderData.linkedin_url ?? null,
+            phone: lenderData.phone ?? null,
+            address: lenderData.address ?? null,
+            description: lenderData.deal_structure_notes ?? null,
+          });
+        }
       }
 
       // Insert contacts into lender_contacts
@@ -2405,6 +2419,11 @@ export default function Lenders() {
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
         onImport={importLenders}
+      />
+
+      <FundingSourceCompanyLinkDialog
+        target={companyLinkTarget}
+        onClose={() => setCompanyLinkTarget(null)}
       />
 
       <LenderAnalyticsDialog
