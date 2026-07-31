@@ -15,7 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import type { QueuedAiAction } from '@/hooks/useAiActionQueue';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
 
@@ -41,6 +41,37 @@ export function CreateDealApprovalCard({ item }: Props) {
   const stageList = (activePipeline?.stages?.length ? activePipeline.stages : globalStages) as Array<{ id: string; label: string }>;
   const defaultNdaStageId = findNdaStageId(stageList);
   const [selectedStageId, setSelectedStageId] = useState<string>(payload.dealStage || defaultNdaStageId || '');
+
+  // The queue item is drafted right after the call, often before the Claap
+  // recording has synced — so `source.claap_meeting_id` can be empty even
+  // though a matching meeting exists. Resolve it live by title/start time.
+  const eventTitle: string = source.event_title || '';
+  const eventStart: string | null = source.event_start || null;
+  const { data: fallbackMeeting } = useQuery({
+    queryKey: ['create-deal-claap-fallback', item.id, eventTitle, eventStart],
+    enabled: !source.claap_meeting_id && !!eventTitle,
+    staleTime: 60_000,
+    queryFn: async () => {
+      let q = supabase
+        .from('claap_meetings')
+        .select('id, claap_id, title, started_at, recording_url')
+        .ilike('title', eventTitle.trim())
+        .order('started_at', { ascending: false })
+        .limit(1);
+      if (eventStart) {
+        const t = new Date(eventStart).getTime();
+        q = q
+          .gte('started_at', new Date(t - 12 * 60 * 60 * 1000).toISOString())
+          .lte('started_at', new Date(t + 12 * 60 * 60 * 1000).toISOString());
+      }
+      const { data } = await q.maybeSingle();
+      return data ?? null;
+    },
+  });
+  const matchedClaapTitle: string | null = source.claap_meeting_id
+    ? (source.claap_meeting_title || null)
+    : (fallbackMeeting?.title ?? null);
+  const hasClaapMatch = !!source.claap_meeting_id || !!fallbackMeeting;
 
   const rows: Array<{ label: string; value: string }> = [
     { label: 'Company / Deal name', value: payload.dealName || source.company_name || '—' },
@@ -145,10 +176,10 @@ export function CreateDealApprovalCard({ item }: Props) {
               {source.event_title}
             </span>
           ) : null}
-          {source.claap_meeting_id ? (
+          {hasClaapMatch ? (
             <span className="inline-flex items-center gap-1">
               <Video className="h-3 w-3" />
-              Claap recording matched
+              {matchedClaapTitle ? `Claap: ${matchedClaapTitle}` : 'Claap recording matched'}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 text-amber-300/80">
