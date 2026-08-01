@@ -437,29 +437,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   // Initialize edit form when entering edit mode or when lender changes
   useEffect(() => {
     if (lender && isEditMode) {
-      setEditForm({
-        name: lender.name || '',
-        contactName: lender.contact.name || '',
-        contactPhone: lender.contact.phone || '',
-        email: lender.contact.email || '',
-        lenderType: lender.lenderType || '',
-        minDeal: lender.minDeal?.toString() || '',
-        maxDeal: lender.maxDeal?.toString() || '',
-        geo: lender.geo || '',
-        industries: lender.industries?.join(', ') || '',
-        loanTypes: lender.loanTypes?.join(', ') || '',
-        description: lender.description || '',
-        minRevenue: lender.minRevenue?.toString() || '',
-        ebitdaMin: lender.ebitdaMin?.toString() || '',
-        companyRequirements: lender.companyRequirements || '',
-        lenderNotes: lender.lenderNotes || '',
-        tier: lender.tier?.replace(/^T/, '') || '',
-        relationshipOwners: lender.relationshipOwners || '',
-        websiteUrl: lender.websiteUrl || '',
-        linkedinUrl: lender.linkedinUrl || '',
-        address: lender.address || '',
-        phoneMain: lender.phoneMain || '',
-      });
+      setEditForm(buildEditForm(lender));
     }
   }, [lender, isEditMode]);
 
@@ -474,29 +452,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
 
   const handleEnterEditMode = () => {
     if (lender) {
-      setEditForm({
-        name: lender.name || '',
-        contactName: lender.contact.name || '',
-        contactPhone: lender.contact.phone || '',
-        email: lender.contact.email || '',
-        lenderType: lender.lenderType || '',
-        minDeal: lender.minDeal?.toString() || '',
-        maxDeal: lender.maxDeal?.toString() || '',
-        geo: lender.geo || '',
-        industries: lender.industries?.join(', ') || '',
-        loanTypes: lender.loanTypes?.join(', ') || '',
-        description: lender.description || '',
-        minRevenue: lender.minRevenue?.toString() || '',
-        ebitdaMin: lender.ebitdaMin?.toString() || '',
-        companyRequirements: lender.companyRequirements || '',
-        lenderNotes: lender.lenderNotes || '',
-        tier: lender.tier?.replace(/^T/, '') || '',
-        relationshipOwners: lender.relationshipOwners || '',
-        websiteUrl: lender.websiteUrl || '',
-        linkedinUrl: lender.linkedinUrl || '',
-        address: lender.address || '',
-        phoneMain: lender.phoneMain || '',
-      });
+      setEditForm(buildEditForm(lender));
       setIsEditMode(true);
     }
   };
