@@ -470,23 +470,45 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-3 space-y-3">
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {company.description || 'No internal summary yet — use Edit Company to add a short brief about positioning, traction, and current status.'}
-                </p>
+                <EditableKV
+                  label="Description"
+                  value={company.description}
+                  type="textarea"
+                  placeholder="Add a short brief about positioning, traction, and current status…"
+                  onSave={(v) => handleQuickUpdate('description', v)}
+                  hideLabel
+                />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 pt-2 border-t">
-                  <KV label="Industry" value={company.industry} />
-                  <KV label="Type" value={typeLabel} />
-                  <KV label="Employees" value={company.employee_range || company.employee_count?.toLocaleString()} />
-                  <KV label="HQ" value={[company.hq_city, company.hq_country].filter(Boolean).join(', ')} />
-                  <KV label="Domain" value={company.domain} link />
-                  <KV
+                  <EditableKV label="Industry" value={company.industry} onSave={(v) => handleQuickUpdate('industry', v)} />
+                  <EditableKV
+                    label="Type"
+                    value={company.company_type}
+                    display={typeLabel}
+                    type="select"
+                    options={CRM_COMPANY_TYPES.map(t => ({ value: t.value, label: t.label }))}
+                    onSave={(v) => handleQuickUpdate('company_type', v)}
+                  />
+                  <EditableKV
+                    label="Employees"
+                    value={company.employee_range}
+                    display={company.employee_range || company.employee_count?.toLocaleString()}
+                    type="select"
+                    options={EMPLOYEE_RANGE_OPTIONS.map(o => ({ value: o, label: o }))}
+                    onSave={(v) => handleQuickUpdate('employee_range', v)}
+                  />
+                  <EditableKV label="HQ city" value={company.hq_city} onSave={(v) => handleQuickUpdate('hq_city', v)} />
+                  <EditableKV label="HQ country" value={company.hq_country} onSave={(v) => handleQuickUpdate('hq_country', v)} />
+                  <EditableKV label="Domain" value={company.domain} link onSave={(v) => handleQuickUpdate('domain', v)} />
+                  <EditableKV
                     label="LinkedIn"
-                    value={normalizeLinkedInCompanyUrl(company.linkedin_url)}
+                    value={company.linkedin_url}
+                    href={normalizeLinkedInCompanyUrl(company.linkedin_url)}
                     display={formatLinkedInLabel(company.linkedin_url)}
                     link
+                    onSave={(v) => handleQuickUpdate('linkedin_url', v)}
                   />
-                  <KV label="Phone" value={company.phone} />
-                  <KV label="Primary email" value={company.main_contact_email} />
+                  <EditableKV label="Phone" value={company.phone} onSave={(v) => handleQuickUpdate('phone', v)} />
+                  <EditableKV label="Primary email" value={company.main_contact_email} onSave={(v) => handleQuickUpdate('main_contact_email', v)} />
                 </div>
               </CardContent>
             </Card>
