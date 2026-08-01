@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { differenceInDays } from 'date-fns';
 import { Deal, DealStage, DealStatus, EngagementType } from '@/types/deal';
 import { useDealsContext } from '@/contexts/DealsContext';
@@ -114,6 +114,11 @@ export function useDeals(options?: UseDealsOptions) {
   const [sortDirection, setSortDirection] = useState<SortDirection>(options?.initialSortDirection ?? 'desc');
   const aiRules = useAiDealFilterStore((s) => s.rules);
   const aiMatchMode = useAiDealFilterStore((s) => s.matchMode);
+  // Frozen display order per sort key — see note in the sort memo below.
+  const orderSnapshotRef = useRef<{ key: string; order: Map<string, number> }>({
+    key: '',
+    order: new Map(),
+  });
 
   const filteredAndSortedDeals = useMemo(() => {
     let result = [...deals];
@@ -316,6 +321,38 @@ export function useDeals(options?: UseDealsOptions) {
 
       return sortDirection === 'asc' ? comparison : -comparison;
     });
+
+    // ── Stabilize ordering ────────────────────────────────────────────────
+    // Background refreshes (realtime, agent writes) constantly bump
+    // `updated_at`, which made the list visibly re-shuffle every few
+    // seconds. Freeze the resolved order per sort key: rows keep the slot
+    // they were first given, and only newly appearing deals are inserted at
+    // their freshly-computed position. Changing sort field/direction (or
+    // re-applying the same sort) resets the snapshot.
+    const key = `${sortField}:${sortDirection}`;
+    const snapshot = orderSnapshotRef.current;
+    if (snapshot.key !== key) {
+      snapshot.key = key;
+      snapshot.order = new Map();
+    }
+    const prevOrder = snapshot.order;
+    const effective = new Map<string, number>();
+    let lastIndex = -1;
+    result.forEach((deal) => {
+      const known = prevOrder.get(deal.id);
+      if (known !== undefined) {
+        lastIndex = known;
+        effective.set(deal.id, known);
+      } else {
+        lastIndex = lastIndex + 0.5;
+        effective.set(deal.id, lastIndex);
+      }
+    });
+    result.sort((a, b) => (effective.get(a.id)! - effective.get(b.id)!));
+
+    const nextOrder = new Map(prevOrder);
+    result.forEach((deal, i) => nextOrder.set(deal.id, i));
+    snapshot.order = nextOrder;
 
     return result;
   }, [deals, filters, sortField, sortDirection, stages, aiRules, aiMatchMode]);
