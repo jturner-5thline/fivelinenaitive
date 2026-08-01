@@ -1,0 +1,1 @@
+ALTER TABLE public.company_settings ADD COLUMN IF NOT EXISTS company_field_config jsonb NOT NULL DEFAULT '{"disabled": [], "custom": []}'::jsonb;
