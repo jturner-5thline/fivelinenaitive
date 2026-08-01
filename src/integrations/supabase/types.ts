@@ -5706,6 +5706,7 @@ export type Database = {
       company_settings: {
         Row: {
           ai_settings: Json
+          company_field_config: Json
           company_id: string
           contact_field_config: Json
           created_at: string
@@ -5731,6 +5732,7 @@ export type Database = {
         }
         Insert: {
           ai_settings?: Json
+          company_field_config?: Json
           company_id: string
           contact_field_config?: Json
           created_at?: string
@@ -5756,6 +5758,7 @@ export type Database = {
         }
         Update: {
           ai_settings?: Json
+          company_field_config?: Json
           company_id?: string
           contact_field_config?: Json
           created_at?: string
