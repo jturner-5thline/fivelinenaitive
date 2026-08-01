@@ -54,6 +54,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { normalizeLinkedInCompanyUrl, formatLinkedInLabel } from '@/lib/linkedin';
+import { EMPLOYEE_RANGE_OPTIONS } from '@/constants/employeeRanges';
 
 interface CompanyDetailContentProps {
   companyId: string;
