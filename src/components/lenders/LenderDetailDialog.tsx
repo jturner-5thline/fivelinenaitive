@@ -51,6 +51,43 @@ import { format } from 'date-fns';
 import { formatLenderCurrency, formatCurrencyInput } from '@/utils/formatLenderCurrency';
 import { toast } from 'sonner';
 
+const CRITERIA_YES_NO = ['Yes', 'No'] as const;
+const B2B_B2C_OPTIONS = ['B2B', 'B2C', 'Both'] as const;
+const CRITERIA_NONE = '__none__';
+
+function CriteriaSelect({
+  value,
+  onChange,
+  options,
+  placeholder = 'Select…',
+}: {
+  value?: string;
+  onChange: (next: string) => void;
+  options: readonly string[];
+  placeholder?: string;
+}) {
+  const current = (value || '').trim();
+  const allOptions = current && !options.some(o => o.toLowerCase() === current.toLowerCase())
+    ? [...options, current]
+    : [...options];
+  return (
+    <Select
+      value={current || CRITERIA_NONE}
+      onValueChange={(v) => onChange(v === CRITERIA_NONE ? '' : v)}
+    >
+      <SelectTrigger className="text-sm h-9">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent className="app-dropdown-surface lender-edit-popover">
+        <SelectItem value={CRITERIA_NONE}>—</SelectItem>
+        {allOptions.map(opt => (
+          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 const LENDER_TYPE_OPTIONS = [
   'Alternative',
   'Asset-Based Lender',
@@ -1413,56 +1450,52 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Sponsorship</Label>
-                        <Input
-                          value={editForm.sponsorship || ''}
-                          onChange={(e) => setEditForm({ ...editForm, sponsorship: e.target.value })}
-                          placeholder="e.g., Sponsored & non-sponsored"
-                          className="text-sm"
+                        <CriteriaSelect
+                          value={editForm.sponsorship}
+                          onChange={(v) => setEditForm({ ...editForm, sponsorship: v })}
+                          options={CRITERIA_YES_NO}
+                          placeholder="Sponsorship required?"
                         />
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Cash Burn</Label>
-                        <Input
-                          value={editForm.cashBurn || ''}
-                          onChange={(e) => setEditForm({ ...editForm, cashBurn: e.target.value })}
-                          placeholder="e.g., OK if path to profitability"
-                          className="text-sm"
+                        <CriteriaSelect
+                          value={editForm.cashBurn}
+                          onChange={(v) => setEditForm({ ...editForm, cashBurn: v })}
+                          options={CRITERIA_YES_NO}
+                          placeholder="Cash burn OK?"
                         />
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Sub Debt</Label>
-                        <Input
-                          value={editForm.subDebt || ''}
-                          onChange={(e) => setEditForm({ ...editForm, subDebt: e.target.value })}
-                          placeholder="e.g., Yes / No"
-                          className="text-sm"
+                        <CriteriaSelect
+                          value={editForm.subDebt}
+                          onChange={(v) => setEditForm({ ...editForm, subDebt: v })}
+                          options={CRITERIA_YES_NO}
                         />
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Refinancing</Label>
-                        <Input
-                          value={editForm.refinancing || ''}
-                          onChange={(e) => setEditForm({ ...editForm, refinancing: e.target.value })}
-                          placeholder="e.g., Yes / No"
-                          className="text-sm"
+                        <CriteriaSelect
+                          value={editForm.refinancing}
+                          onChange={(v) => setEditForm({ ...editForm, refinancing: v })}
+                          options={CRITERIA_YES_NO}
                         />
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">B2B / B2C</Label>
-                        <Input
-                          value={editForm.b2bB2c || ''}
-                          onChange={(e) => setEditForm({ ...editForm, b2bB2c: e.target.value })}
-                          placeholder="e.g., B2B"
-                          className="text-sm"
+                        <CriteriaSelect
+                          value={editForm.b2bB2c}
+                          onChange={(v) => setEditForm({ ...editForm, b2bB2c: v })}
+                          options={B2B_B2C_OPTIONS}
                         />
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">NDA</Label>
-                        <Input
-                          value={editForm.nda || ''}
-                          onChange={(e) => setEditForm({ ...editForm, nda: e.target.value })}
-                          placeholder="e.g., Signed 01/2026"
-                          className="text-sm"
+                        <CriteriaSelect
+                          value={editForm.nda}
+                          onChange={(v) => setEditForm({ ...editForm, nda: v })}
+                          options={CRITERIA_YES_NO}
                         />
                       </div>
                     </div>
