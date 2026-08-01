@@ -463,9 +463,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 pt-2 border-t">
                   <KV label="Industry" value={company.industry} />
-                  <KV label="Sub-industry" value={company.sub_industry} />
                   <KV label="Type" value={typeLabel} />
-                  <KV label="Segment" value={company.segment} />
                   <KV label="Employees" value={company.employee_count?.toLocaleString() || company.employee_range} />
                   <KV label="HQ" value={[company.hq_city, company.hq_country].filter(Boolean).join(', ')} />
                   <KV label="Domain" value={company.domain} link />
