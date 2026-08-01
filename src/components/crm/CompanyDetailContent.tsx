@@ -464,10 +464,22 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
           <div className="col-span-12 lg:col-span-8 space-y-4 min-w-0">
             {/* 1. Snapshot */}
             <Card id="overview" className="border-border/70 scroll-mt-24">
-              <CardHeader className="pb-2 border-b">
+              <CardHeader className="pb-2 border-b flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-sm flex items-center gap-1.5">
                   <Building2 className="h-4 w-4 text-muted-foreground" /> Company Snapshot
                 </CardTitle>
+                {snapshotFields.isAdmin && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground"
+                    onClick={() => setShowManageSnapshotFields(true)}
+                    aria-label="Manage snapshot fields"
+                    title="Manage snapshot fields"
+                  >
+                    <Settings className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </CardHeader>
               <CardContent className="pt-3 space-y-3">
                 <EditableKV
@@ -479,7 +491,10 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                   hideLabel
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 pt-2 border-t">
+                  {!snapshotFields.isDisabled('industry') && (
                   <EditableKV label="Industry" value={company.industry} onSave={(v) => handleQuickUpdate('industry', v)} />
+                  )}
+                  {!snapshotFields.isDisabled('owner_user_id') && (
                   <EditableKV
                     label="Company owner"
                     value={(company as any).owner_user_id}
@@ -488,6 +503,8 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                     options={teamMembers.map(m => ({ value: m.id, label: m.display_name }))}
                     onSave={(v) => handleQuickUpdate('owner_user_id', v)}
                   />
+                  )}
+                  {!snapshotFields.isDisabled('company_type') && (
                   <EditableKV
                     label="Type"
                     value={company.company_type}
@@ -496,6 +513,8 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                     options={CRM_COMPANY_TYPES.map(t => ({ value: t.value, label: t.label }))}
                     onSave={(v) => handleQuickUpdate('company_type', v)}
                   />
+                  )}
+                  {!snapshotFields.isDisabled('employee_range') && (
                   <EditableKV
                     label="Employees"
                     value={company.employee_range}
@@ -504,9 +523,17 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                     options={EMPLOYEE_RANGE_OPTIONS.map(o => ({ value: o, label: o }))}
                     onSave={(v) => handleQuickUpdate('employee_range', v)}
                   />
-                  <EditableKV label="HQ city" value={company.hq_city} onSave={(v) => handleQuickUpdate('hq_city', v)} />
-                  <EditableKV label="Country" value={company.hq_country} onSave={(v) => handleQuickUpdate('hq_country', v)} />
-                  <EditableKV label="Domain" value={company.domain} link onSave={(v) => handleQuickUpdate('domain', v)} />
+                  )}
+                  {!snapshotFields.isDisabled('hq_city') && (
+                    <EditableKV label="HQ city" value={company.hq_city} onSave={(v) => handleQuickUpdate('hq_city', v)} />
+                  )}
+                  {!snapshotFields.isDisabled('hq_country') && (
+                    <EditableKV label="Country" value={company.hq_country} onSave={(v) => handleQuickUpdate('hq_country', v)} />
+                  )}
+                  {!snapshotFields.isDisabled('domain') && (
+                    <EditableKV label="Domain" value={company.domain} link onSave={(v) => handleQuickUpdate('domain', v)} />
+                  )}
+                  {!snapshotFields.isDisabled('linkedin_url') && (
                   <EditableKV
                     label="LinkedIn"
                     value={company.linkedin_url}
@@ -515,8 +542,33 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                     link
                     onSave={(v) => handleQuickUpdate('linkedin_url', v)}
                   />
-                  <EditableKV label="Phone" value={company.phone} onSave={(v) => handleQuickUpdate('phone', v)} />
-                  <EditableKV label="Primary email" value={company.main_contact_email} onSave={(v) => handleQuickUpdate('main_contact_email', v)} />
+                  )}
+                  {!snapshotFields.isDisabled('phone') && (
+                    <EditableKV label="Phone" value={company.phone} onSave={(v) => handleQuickUpdate('phone', v)} />
+                  )}
+                  {!snapshotFields.isDisabled('main_contact_email') && (
+                    <EditableKV label="Primary email" value={company.main_contact_email} onSave={(v) => handleQuickUpdate('main_contact_email', v)} />
+                  )}
+                  {snapshotFields.config.custom.map((f) => (
+                    f.type === 'multiselect' ? (
+                      <MultiSelectKV
+                        key={f.key}
+                        label={f.label}
+                        values={Array.isArray(customFieldValues[f.key]) ? customFieldValues[f.key] : []}
+                        options={f.options || []}
+                        onSave={(vals) => handleCustomFieldUpdate(f.key, vals)}
+                      />
+                    ) : (
+                      <EditableKV
+                        key={f.key}
+                        label={f.label}
+                        value={customFieldValues[f.key] != null ? String(customFieldValues[f.key]) : null}
+                        type={f.type === 'select' ? 'select' : 'text'}
+                        options={(f.options || []).map(o => ({ value: o, label: o }))}
+                        onSave={(v) => handleCustomFieldUpdate(f.key, v)}
+                      />
+                    )
+                  ))}
                 </div>
               </CardContent>
             </Card>
