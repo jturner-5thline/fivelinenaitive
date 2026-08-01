@@ -2414,6 +2414,10 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    white-text contrast.
    ============================================================ */
 .app-dropdown-surface,
+/* Tripled class bumps specificity to (0,3,0) so this opaque surface beats the
+   global overlay/nested-neutralizer rules that would otherwise leave popovers
+   opened inside dialogs see-through. */
+.app-dropdown-surface.app-dropdown-surface.app-dropdown-surface,
 [data-radix-popper-content-wrapper] .app-dropdown-surface {
   background-color: #060b18 !important;
   background-image: linear-gradient(135deg, #0a1224 0%, #060b18 52%, #04060f 100%) !important;
