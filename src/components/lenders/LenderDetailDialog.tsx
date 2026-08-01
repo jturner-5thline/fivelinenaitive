@@ -152,12 +152,53 @@ export interface LenderEditData {
 interface LenderDetailDialogProps {
   lender: LenderInfo | null;
   open: boolean;
-  open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit?: (lenderName: string) => void;
   onDelete?: (lenderName: string) => void;
   onSave?: (lenderId: string, data: LenderEditData) => Promise<void>;
   initialEditMode?: boolean;
+}
+
+function buildEditForm(lender: LenderInfo): LenderEditData {
+  return {
+    name: lender.name || '',
+    contactName: lender.contact.name || '',
+    contactPhone: lender.contact.phone || '',
+    email: lender.contact.email || '',
+    lenderType: lender.lenderType || '',
+    minDeal: lender.minDeal?.toString() || '',
+    maxDeal: lender.maxDeal?.toString() || '',
+    geo: lender.geo || '',
+    industries: lender.industries?.join(', ') || '',
+    loanTypes: lender.loanTypes?.join(', ') || '',
+    description: lender.description || '',
+    minRevenue: lender.minRevenue?.toString() || '',
+    ebitdaMin: lender.ebitdaMin?.toString() || '',
+    companyRequirements: lender.companyRequirements || '',
+    lenderNotes: lender.lenderNotes || '',
+    tier: lender.tier?.replace(/^T/, '') || '',
+    relationshipOwners: lender.relationshipOwners || '',
+    websiteUrl: lender.websiteUrl || '',
+    linkedinUrl: lender.linkedinUrl || '',
+    address: lender.address || '',
+    phoneMain: lender.phoneMain || '',
+    contactTitle: lender.contact.title || '',
+    b2bB2c: lender.b2bB2c || '',
+    sponsorship: lender.sponsorship || '',
+    cashBurn: lender.cashBurn || '',
+    subDebt: lender.subDebt || '',
+    refinancing: lender.refinancing || '',
+    industriesToAvoid: lender.industriesToAvoid?.join(', ') || '',
+    nda: lender.nda || '',
+    referralLender: lender.referralLender || '',
+    referralFeeOffered: lender.referralFeeOffered || '',
+    referralAgreement: lender.referralAgreement || '',
+    aboutNotes: lender.aboutNotes || '',
+    fundingSourceNotes: lender.fundingSourceNotes || '',
+    lenderOnePagerUrl: lender.lenderOnePagerUrl || '',
+    upfrontChecklist: lender.upfrontChecklist || '',
+    postTermSheetChecklist: lender.postTermSheetChecklist || '',
+  };
 }
 
 function formatFileSize(bytes: number): string {
