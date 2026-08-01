@@ -58,6 +58,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { FundingSourceCompanyLinkDialog, FundingSourceCompanyTarget } from '@/components/lenders/FundingSourceCompanyLinkDialog';
+import { FundingSourceNameField, LinkedCrmCompany } from '@/components/lenders/FundingSourceNameField';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
 import { useAuth } from '@/contexts/AuthContext';
@@ -289,6 +290,7 @@ export default function Lenders() {
   const [isQuickUploading, setIsQuickUploading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [companyLinkTarget, setCompanyLinkTarget] = useState<FundingSourceCompanyTarget | null>(null);
+  const [linkedCrmCompany, setLinkedCrmCompany] = useState<LinkedCrmCompany | null>(null);
   const [editingLenderId, setEditingLenderId] = useState<string | null>(null);
   const [form, setForm] = useState<LenderForm>(emptyForm);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1132,9 +1134,13 @@ export default function Lenders() {
       ebitda_min: form.ebitdaMin ? parseFloat(form.ebitdaMin) : null,
       company_requirements: form.companyRequirements.trim() || null,
     };
+    if (linkedCrmCompany) {
+      (lenderData as any).crm_company_id = linkedCrmCompany.id;
+    }
 
     try {
       let lenderId = editingLenderId;
+      let pendingCompanyTarget: FundingSourceCompanyTarget | null = null;
 
       if (editingLenderId) {
         const existingLender = masterLenders.find(l => l.id === editingLenderId);
@@ -1155,8 +1161,8 @@ export default function Lenders() {
         const newLender = await addMasterLender(lenderData);
         lenderId = newLender?.id ?? null;
         toast({ title: 'Lender added', description: `${lenderData.name} has been added.` });
-        if (lenderId) {
-          setCompanyLinkTarget({
+        if (lenderId && !linkedCrmCompany) {
+          pendingCompanyTarget = {
             lenderId,
             name: lenderData.name,
             website: lenderData.website ?? null,
@@ -1165,11 +1171,12 @@ export default function Lenders() {
             phone: lenderData.phone ?? null,
             address: lenderData.address ?? null,
             description: lenderData.deal_structure_notes ?? null,
-          });
+          };
         }
       }
 
       // Insert contacts into lender_contacts
+      const affiliatedContactIds: string[] = [];
       if (lenderId) {
         const resolved = await Promise.all(
           form.contacts
@@ -1198,6 +1205,7 @@ export default function Lenders() {
                   contactId = created?.id ?? null;
                 }
               }
+              if (contactId) affiliatedContactIds.push(contactId);
               return {
                 lender_id: lenderId!,
                 contact_id: contactId,
@@ -1215,8 +1223,21 @@ export default function Lenders() {
         }
       }
 
+      // Every funding source is also a company: affiliate its contacts with it.
+      if (linkedCrmCompany && affiliatedContactIds.length > 0) {
+        await supabase
+          .from('contacts')
+          .update({ crm_company_id: linkedCrmCompany.id } as any)
+          .in('id', affiliatedContactIds)
+          .is('crm_company_id', null);
+      }
+      if (pendingCompanyTarget) {
+        setCompanyLinkTarget({ ...pendingCompanyTarget, contactIds: affiliatedContactIds });
+      }
+
       setIsDialogOpen(false);
       setForm(emptyForm);
+      setLinkedCrmCompany(null);
       setEditingLenderId(null);
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to save lender', variant: 'destructive' });
@@ -2150,11 +2171,17 @@ export default function Lenders() {
               <div className="grid grid-cols-[1fr_auto] gap-4 items-end">
                 <div className="space-y-2">
                   <Label htmlFor="name">Funding Source Name *</Label>
-                  <Input
+                  <FundingSourceNameField
                     id="name"
                     value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="Enter lender name"
+                    onChange={(name) => setForm((prev) => ({ ...prev, name }))}
+                    linkedCompany={linkedCrmCompany}
+                    onLinkCompany={(c) => {
+                      setLinkedCrmCompany(c);
+                      if (c && !form.website.trim() && (c.website_url || c.domain)) {
+                        setForm((prev) => ({ ...prev, website: c.website_url || c.domain || '' }));
+                      }
+                    }}
                   />
                 </div>
                 <div className="space-y-2">

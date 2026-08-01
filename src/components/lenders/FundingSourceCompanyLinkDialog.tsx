@@ -19,6 +19,8 @@ export interface FundingSourceCompanyTarget {
   phone?: string | null;
   address?: string | null;
   description?: string | null;
+  /** CRM contacts to affiliate with the resolved company. */
+  contactIds?: string[];
 }
 
 interface Props {
@@ -85,6 +87,14 @@ export function FundingSourceCompanyLinkDialog({ target, onClose }: Props) {
         .update({ crm_company_id: companyId } as any)
         .eq('id', target.lenderId);
       if (linkErr) throw linkErr;
+
+      if (target.contactIds?.length) {
+        await supabase
+          .from('contacts')
+          .update({ crm_company_id: companyId } as any)
+          .in('id', target.contactIds)
+          .is('crm_company_id', null);
+      }
 
       toast({
         title: choice === 'new' ? 'Company created' : 'Linked to existing company',
