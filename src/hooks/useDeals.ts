@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { differenceInDays } from 'date-fns';
 import { Deal, DealStage, DealStatus, EngagementType } from '@/types/deal';
 import { useDealsContext } from '@/contexts/DealsContext';
@@ -114,6 +114,11 @@ export function useDeals(options?: UseDealsOptions) {
   const [sortDirection, setSortDirection] = useState<SortDirection>(options?.initialSortDirection ?? 'desc');
   const aiRules = useAiDealFilterStore((s) => s.rules);
   const aiMatchMode = useAiDealFilterStore((s) => s.matchMode);
+  // Frozen display order per sort key — see note in the sort memo below.
+  const orderSnapshotRef = useRef<{ key: string; order: Map<string, number> }>({
+    key: '',
+    order: new Map(),
+  });
 
   const filteredAndSortedDeals = useMemo(() => {
     let result = [...deals];
