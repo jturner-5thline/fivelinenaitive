@@ -1684,7 +1684,40 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                   </div>
                                 </div>
                               )}
-                              {!lender.minDeal && !lender.maxDeal && !lender.geo && (!lender.industries || lender.industries.length === 0) && (!lender.loanTypes || lender.loanTypes.length === 0) && !lender.minRevenue && !lender.ebitdaMin && !lender.companyRequirements && !lender.b2bB2c && (
+                              {([
+                                ['Sponsorship', lender.sponsorship],
+                                ['Cash Burn', lender.cashBurn],
+                                ['Sub Debt', lender.subDebt],
+                                ['Refinancing', lender.refinancing],
+                                ['NDA', lender.nda],
+                                ['Referral Funding Source', lender.referralLender],
+                                ['Referral Fee Offered', lender.referralFeeOffered],
+                                ['Referral Agreement', lender.referralAgreement],
+                              ] as [string, string | null | undefined][]).filter(([, v]) => v && v.trim()).map(([label, value]) => (
+                                <div key={label} className="flex items-start gap-3">
+                                  <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium">{label}: </span>
+                                    <span className="text-sm">{value}</span>
+                                  </div>
+                                </div>
+                              ))}
+                              {lender.industriesToAvoid && lender.industriesToAvoid.length > 0 && (
+                                <div className="flex items-start gap-3">
+                                  <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium block mb-1.5">Industries to Avoid:</span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {lender.industriesToAvoid.map((industry, idx) => (
+                                        <Badge key={idx} variant="destructive" className="text-xs">
+                                          {industry}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                              {!lender.minDeal && !lender.maxDeal && !lender.geo && (!lender.industries || lender.industries.length === 0) && (!lender.loanTypes || lender.loanTypes.length === 0) && !lender.minRevenue && !lender.ebitdaMin && !lender.companyRequirements && !lender.b2bB2c && !lender.sponsorship && !lender.cashBurn && !lender.subDebt && !lender.refinancing && !lender.nda && !lender.referralLender && !lender.referralFeeOffered && !lender.referralAgreement && (!lender.industriesToAvoid || lender.industriesToAvoid.length === 0) && (
                                 <p className="text-muted-foreground text-sm">No lending criteria specified</p>
                               )}
                             </div>
