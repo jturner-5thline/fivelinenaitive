@@ -9,17 +9,21 @@ export interface AffiliatedDealRow {
   value: number | null;
   closing_date: string | null;
   /** How the deal is related to this company */
-  via: 'company' | 'contact';
+  via: 'company' | 'contact' | 'name';
 }
 
 /**
  * Deals tagged to a CRM company — either linked directly (deals.crm_company_id)
  * or affiliated through one of the company's contacts (contact_deals).
  */
-export function useCompanyAffiliatedDeals(companyId?: string, contactIds: string[] = []) {
+export function useCompanyAffiliatedDeals(
+  companyId?: string,
+  contactIds: string[] = [],
+  companyName?: string | null
+) {
   const idsKey = [...contactIds].sort().join(',');
   return useQuery({
-    queryKey: ['company-affiliated-deals', companyId, idsKey],
+    queryKey: ['company-affiliated-deals', companyId, idsKey, companyName ?? ''],
     enabled: !!companyId,
     staleTime: 60_000,
     queryFn: async (): Promise<AffiliatedDealRow[]> => {
@@ -51,6 +55,18 @@ export function useCompanyAffiliatedDeals(companyId?: string, contactIds: string
           for (const d of viaContacts || []) {
             if (!byId.has((d as any).id)) byId.set((d as any).id, { ...(d as any), via: 'contact' });
           }
+        }
+      }
+
+      // Fallback: deals whose company name matches this CRM company but were never linked.
+      const trimmed = (companyName || '').trim();
+      if (trimmed.length >= 3) {
+        const { data: byName } = await supabase
+          .from('deals')
+          .select(select)
+          .ilike('company', trimmed);
+        for (const d of byName || []) {
+          if (!byId.has((d as any).id)) byId.set((d as any).id, { ...(d as any), via: 'name' });
         }
       }
 
