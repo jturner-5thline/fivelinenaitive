@@ -57,6 +57,7 @@ export function useLinkContactToDeal() {
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['contact-deals', vars.contactId] });
       queryClient.invalidateQueries({ queryKey: ['crm-company-deals'] });
+      queryClient.invalidateQueries({ queryKey: ['company-affiliated-deals'] });
       toast.success('Contact linked to deal');
     },
     onError: (err: any) => toast.error(err.message || 'Failed to link contact to deal'),
@@ -98,6 +99,7 @@ export function useLinkDealToCompany() {
       queryClient.invalidateQueries({ queryKey: ['deals'] });
       queryClient.invalidateQueries({ queryKey: ['deal', vars.dealId] });
       queryClient.invalidateQueries({ queryKey: ['crm-company-deals', vars.companyId] });
+      queryClient.invalidateQueries({ queryKey: ['company-affiliated-deals'] });
       toast.success('Deal linked to company');
     },
     onError: (err: any) => toast.error(err.message || 'Failed to link deal'),
@@ -119,6 +121,7 @@ export function useUnlinkDealFromCompany() {
       queryClient.invalidateQueries({ queryKey: ['deals'] });
       queryClient.invalidateQueries({ queryKey: ['deal', vars.dealId] });
       queryClient.invalidateQueries({ queryKey: ['crm-company-deals'] });
+      queryClient.invalidateQueries({ queryKey: ['company-affiliated-deals'] });
       toast.success('Deal unlinked from company');
     },
     onError: (err: any) => toast.error(err.message || 'Failed to unlink deal'),
