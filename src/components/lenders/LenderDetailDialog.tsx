@@ -152,6 +152,7 @@ export interface LenderEditData {
 interface LenderDetailDialogProps {
   lender: LenderInfo | null;
   open: boolean;
+  open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit?: (lenderName: string) => void;
   onDelete?: (lenderName: string) => void;
