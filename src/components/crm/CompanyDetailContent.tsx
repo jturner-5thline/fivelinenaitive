@@ -863,7 +863,7 @@ function KV({ label, value, link, display }: { label: string; value: string | nu
       {link && value ? (
         <a
           href={value.startsWith('http') ? value : `https://${value}`}
-          target="_blank" rel="noreferrer"
+          target="_blank" rel="noopener noreferrer"
           className="text-sm text-primary hover:underline truncate block"
         >
           {display || value}
