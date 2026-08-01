@@ -699,6 +699,60 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
               {/* Attachments — dedicated module (sidebar width) */}
               <CompanyAttachmentsTable crmCompanyId={company.id} companyName={company.name} />
 
+              {/* Affiliated Deals */}
+              <Card id="deals" className="border-border/70 scroll-mt-24">
+                <CardHeader className="pb-2 border-b flex flex-row items-center justify-between gap-2">
+                  <CardTitle className="text-sm flex items-center gap-1.5">
+                    <Target className="h-4 w-4 text-muted-foreground" /> Deals
+                    <Badge variant="secondary" className="text-[10px] font-normal ml-1">{affiliatedDeals.length}</Badge>
+                  </CardTitle>
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setShowLinkDeal(true)}>
+                    <LinkIcon className="h-3.5 w-3.5" />
+                  </Button>
+                </CardHeader>
+                <CardContent className="pt-3">
+                  {affiliatedDeals.length === 0 ? (
+                    <div className="py-4 text-center text-xs text-muted-foreground">
+                      No deals linked yet.
+                      <div className="mt-2">
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowLinkDeal(true)}>
+                          <LinkIcon className="h-3 w-3 mr-1" /> Link deal
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {affiliatedDeals.map((d: any) => (
+                        <li key={d.id} className="flex items-center justify-between gap-2 rounded-md border px-2 py-1.5 hover:bg-muted/30">
+                          <button className="text-left min-w-0 flex-1" onClick={() => navigate(`/deals/${d.id}`)}>
+                            <p className="text-xs font-medium text-primary hover:underline truncate">{d.company || 'Untitled deal'}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {[d.stage ? formatSlug(d.stage) : null, d.value ? formatUSD(d.value) : null]
+                                .filter(Boolean)
+                                .join(' · ') || '—'}
+                            </p>
+                          </button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {d.via === 'contact' && (
+                              <Badge variant="outline" className="text-[9px] font-normal">via contact</Badge>
+                            )}
+                            {d.via === 'company' && (
+                              <Button
+                                variant="ghost" size="icon" className="h-5 w-5"
+                                aria-label="Unlink deal"
+                                onClick={() => unlinkDeal.mutate({ dealId: d.id })}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+
             </div>
           </aside>
         </div>
