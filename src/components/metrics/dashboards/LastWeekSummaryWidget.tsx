@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { CalendarClock, Loader2 } from 'lucide-react';
+import { CalendarClock, Loader2, Maximize2 } from 'lucide-react';
+const LazySalesDashboardV2 = lazy(() =>
+  import('@/components/metrics/dashboards/SalesDashboardV2').then((m) => ({ default: m.SalesDashboardV2 })),
+);
+
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import {
