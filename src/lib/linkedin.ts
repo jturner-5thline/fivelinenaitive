@@ -49,3 +49,25 @@ export function normalizeLinkedInUrl(input: string | null | undefined): string |
 
   return s;
 }
+
+/**
+ * Same as normalizeLinkedInUrl but bare handles resolve to /company/ instead of /in/.
+ */
+export function normalizeLinkedInCompanyUrl(input: string | null | undefined): string | null {
+  if (!input) return null;
+  const s = String(input).trim().replace(/^["'\s]+|["'\s]+$/g, '').replace(/^@+/, '');
+  if (!s) return null;
+  if (/^[a-zA-Z0-9\-_.%]+$/.test(s) && !/^https?:/i.test(s)) {
+    return `https://www.linkedin.com/company/${s}`;
+  }
+  return normalizeLinkedInUrl(s);
+}
+
+/**
+ * Compact display label for a LinkedIn URL, e.g. "linkedin.com/company/acme".
+ */
+export function formatLinkedInLabel(input: string | null | undefined): string | null {
+  const url = normalizeLinkedInUrl(input);
+  if (!url) return null;
+  return url.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/+$/, '');
+}
