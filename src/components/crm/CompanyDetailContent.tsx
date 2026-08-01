@@ -4,7 +4,7 @@ import {
   Mail, Phone, Calendar, MessageSquare, Plus, Building2, Users,
   Globe, Trash2, X, CheckSquare, Pencil, Upload, MoreHorizontal,
   TrendingUp, AlertTriangle, FileText, Clock,
-  Activity as ActivityIcon, Paperclip, Target, ShieldAlert, Link as LinkIcon,
+  Activity as ActivityIcon, Paperclip, Target, ShieldAlert, Link as LinkIcon, Settings, Check,
 } from 'lucide-react';
 import { DynamicFieldRenderer } from '@/components/crm/DynamicFieldRenderer';
 import { EditableField } from '@/components/crm/EditableField';
@@ -55,6 +55,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { normalizeLinkedInCompanyUrl, formatLinkedInLabel } from '@/lib/linkedin';
 import { EMPLOYEE_RANGE_OPTIONS } from '@/constants/employeeRanges';
+import { useCompanySnapshotFieldConfig } from '@/hooks/useCompanySnapshotFieldConfig';
+import { ManageCompanyFieldsDialog } from '@/components/crm/ManageCompanyFieldsDialog';
 
 interface CompanyDetailContentProps {
   companyId: string;
@@ -100,6 +102,8 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   const [showLinkDeal, setShowLinkDeal] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
+  const [showManageSnapshotFields, setShowManageSnapshotFields] = useState(false);
+  const snapshotFields = useCompanySnapshotFieldConfig();
   const autoNameAttemptedRef = useRef<string | null>(null);
 
   // Auto-resolve the real company name from the website when the current name
@@ -172,6 +176,19 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   };
 
   const handleLogActivity = (type: string) => {
+    return handleLogActivityImpl(type);
+  };
+
+  const customFieldValues: Record<string, any> = ((company as any)?.custom_fields ?? {}) as Record<string, any>;
+
+  const handleCustomFieldUpdate = (key: string, value: any) => {
+    const next = { ...customFieldValues };
+    if (value == null || (Array.isArray(value) && value.length === 0) || value === '') delete next[key];
+    else next[key] = value;
+    update.mutate({ id: company.id, custom_fields: next } as any);
+  };
+
+  const handleLogActivityImpl = (type: string) => {
     createActivity.mutate({
       crm_company_id: company.id,
       activity_type: type,
