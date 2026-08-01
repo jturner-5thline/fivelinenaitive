@@ -957,6 +957,8 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ManageCompanyFieldsDialog open={showManageSnapshotFields} onOpenChange={setShowManageSnapshotFields} />
     </>
   );
 }
