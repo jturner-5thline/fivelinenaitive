@@ -505,7 +505,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                     onSave={(v) => handleQuickUpdate('employee_range', v)}
                   />
                   <EditableKV label="HQ city" value={company.hq_city} onSave={(v) => handleQuickUpdate('hq_city', v)} />
-                  <EditableKV label="HQ country" value={company.hq_country} onSave={(v) => handleQuickUpdate('hq_country', v)} />
+                  <EditableKV label="Country" value={company.hq_country} onSave={(v) => handleQuickUpdate('hq_country', v)} />
                   <EditableKV label="Domain" value={company.domain} link onSave={(v) => handleQuickUpdate('domain', v)} />
                   <EditableKV
                     label="LinkedIn"
