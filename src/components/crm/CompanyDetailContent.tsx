@@ -46,6 +46,8 @@ import { CompanyAttachmentsTable } from '@/components/crm/CompanyAttachmentsTabl
 import { useCrmCompanyAttachments } from '@/hooks/useCrmCompanyAttachments';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useCompanyFundingSource } from '@/hooks/useCompanyFundingSource';
+import { useCompanyAffiliatedDeals } from '@/hooks/useCompanyAffiliatedDeals';
+import { formatUSD } from '@/lib/formatters/currency';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -72,6 +74,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   const { data: contactActivities = [] } = useCrmCompanyContactActivities(contactIds);
   const { data: subsidiaries = [] } = useCrmSubsidiaries(companyId);
   const { data: companyDeals = [] } = useCrmCompanyDeals(companyId);
+  const { data: affiliatedDeals = [] } = useCompanyAffiliatedDeals(companyId, contactIds);
   const deleteCompany = useDeleteCrmCompany();
   const teamMembers = useTeamMembers();
   const { data: allContactsResult } = useContacts({ pageSize: 1000 });
