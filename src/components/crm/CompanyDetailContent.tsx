@@ -856,7 +856,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   );
 }
 
-function KV({ label, value, link }: { label: string; value: string | null | undefined; link?: boolean }) {
+function KV({ label, value, link, display }: { label: string; value: string | null | undefined; link?: boolean; display?: string | null }) {
   return (
     <div className="min-w-0">
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
@@ -866,10 +866,10 @@ function KV({ label, value, link }: { label: string; value: string | null | unde
           target="_blank" rel="noreferrer"
           className="text-sm text-primary hover:underline truncate block"
         >
-          {value}
+          {display || value}
         </a>
       ) : (
-        <p className="text-sm truncate">{value || '—'}</p>
+        <p className="text-sm truncate">{display || value || '—'}</p>
       )}
     </div>
   );
