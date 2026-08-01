@@ -2684,3 +2684,19 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
+
+/* ---- Sales Dashboard pop-up ------------------------------------------
+   Mirrors the /insights page shell: same navy gradient backdrop and the
+   shared Insights widget skin so widgets keep clear, visible borders. */
+.sales-dashboard-popup {
+  background-color: #030310 !important;
+  background-image: linear-gradient(180deg, #030310 0%, #030b1e 10%, #051a39 25%, #063765 50%, #065193 75%, #076cc1 100%) !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+}
+.sales-dashboard-popup .insights-glass-skin [data-slot="card"],
+.sales-dashboard-popup .insights-glass-skin .glass-module,
+.sales-dashboard-popup .insights-glass-skin .glass-module-interactive,
+.sales-dashboard-popup .insights-glass-skin .insights-widget-surface {
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+}
