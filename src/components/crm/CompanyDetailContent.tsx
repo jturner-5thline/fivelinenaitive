@@ -903,6 +903,130 @@ function KV({ label, value, link, display }: { label: string; value: string | nu
   );
 }
 
+function EditableKV({
+  label, value, display, link, href, type = 'text', options, placeholder, hideLabel, onSave,
+}: {
+  label: string;
+  value: string | null | undefined;
+  display?: string | null;
+  link?: boolean;
+  href?: string | null;
+  type?: 'text' | 'textarea' | 'select';
+  options?: { value: string; label: string }[];
+  placeholder?: string;
+  hideLabel?: boolean;
+  onSave: (value: string | null) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value ?? '');
+
+  useEffect(() => {
+    if (!editing) setDraft(value ?? '');
+  }, [value, editing]);
+
+  const commit = (next?: string) => {
+    const raw = (next ?? draft).trim();
+    setEditing(false);
+    if (raw === (value ?? '').trim()) return;
+    onSave(raw ? raw : null);
+  };
+
+  const linkHref = href || (value ? (value.startsWith('http') ? value : `https://${value}`) : null);
+
+  return (
+    <div className="min-w-0 group">
+      {!hideLabel && (
+        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      )}
+      {editing ? (
+        type === 'select' ? (
+          <Select
+            defaultOpen
+            value={draft || undefined}
+            onValueChange={(v) => { setDraft(v); commit(v); }}
+          >
+            <SelectTrigger className="h-7 text-sm"><SelectValue placeholder={`Select ${label.toLowerCase()}`} /></SelectTrigger>
+            <SelectContent>
+              {options?.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        ) : type === 'textarea' ? (
+          <Textarea
+            autoFocus
+            value={draft}
+            placeholder={placeholder}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={() => commit()}
+            onKeyDown={(e) => { if (e.key === 'Escape') { setDraft(value ?? ''); setEditing(false); } }}
+            className="text-sm min-h-[70px]"
+          />
+        ) : (
+          <input
+            autoFocus
+            value={draft}
+            placeholder={placeholder}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={() => commit()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commit();
+              if (e.key === 'Escape') { setDraft(value ?? ''); setEditing(false); }
+            }}
+            className="w-full h-7 rounded-md border border-input bg-background px-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+          />
+        )
+      ) : (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setEditing(true)}
+          onKeyDown={(e) => { if (e.key === 'Enter') setEditing(true); }}
+          className={cn(
+            'cursor-text rounded-sm -mx-1 px-1 py-0.5 hover:bg-muted/40 transition-colors',
+            hideLabel && 'min-h-[24px]',
+          )}
+        >
+          {link && value && linkHref ? (
+            <a
+              href={linkHref}
+              target="_blank" rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-sm text-primary hover:underline truncate block"
+            >
+              {display || value}
+            </a>
+          ) : (
+            <p className={cn(
+              hideLabel ? 'text-sm text-muted-foreground leading-relaxed' : 'text-sm truncate',
+              !value && 'text-muted-foreground',
+            )}>
+              {display || value || (hideLabel ? (placeholder || 'Click to add…') : '—')}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UnusedKV({ label, value, link, display }: { label: string; value: string | null | undefined; link?: boolean; display?: string | null }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      {link && value ? (
+        <a
+          href={value.startsWith('http') ? value : `https://${value}`}
+          target="_blank" rel="noopener noreferrer"
+          className="text-sm text-primary hover:underline truncate block"
+        >
+          {display || value}
+        </a>
+      ) : (
+        <p className="text-sm truncate">{display || value || '—'}</p>
+      )}
+    </div>
+  );
+}
+
 function Kpi({
   label, value, hint, valueClassName,
 }: { label: string; value: string; hint?: string; valueClassName?: string }) {
