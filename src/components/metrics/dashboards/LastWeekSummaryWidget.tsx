@@ -151,6 +151,7 @@ export function LastWeekSummaryWidget() {
   const range = useMemo(() => weekRange(weekOffset), [weekOffset]);
   const priorRange = useMemo(() => weekRange(weekOffset + 1), [weekOffset]);
   const [drilldown, setDrilldown] = useState<StageKey | null>(null);
+  const [salesOpen, setSalesOpen] = useState(false);
 
   const fetchWindow = async (start: Date, end: Date, stage: StageConfig) => {
     const { data: rows, error } = await supabase
@@ -240,6 +241,20 @@ export function LastWeekSummaryWidget() {
           <div className="inline-flex items-center gap-0.5 -mr-1.5">
             <button
               type="button"
+              onClick={() => setSalesOpen(true)}
+              aria-label="Open Sales Dashboard"
+              title="Open Sales Dashboard"
+              className={cn(
+                'inline-flex items-center gap-1 h-5 px-1.5 mr-1 rounded transition-colors',
+                'text-[10px] font-semibold uppercase tracking-wide',
+                'text-muted-foreground/80 hover:text-foreground hover:bg-primary/10 border border-border/40',
+              )}
+            >
+              <Maximize2 className="h-3 w-3" />
+              Sales
+            </button>
+            <button
+              type="button"
               onClick={() => canGoBack && setWeekOffset((w) => w + 1)}
               disabled={!canGoBack}
               aria-label="Previous week"
@@ -294,6 +309,27 @@ export function LastWeekSummaryWidget() {
       companyId={companyId}
       onClose={() => setDrilldown(null)}
     />
+    <Dialog open={salesOpen} onOpenChange={setSalesOpen}>
+      <DialogContent className="max-w-[97vw] w-[97vw] h-[95vh] p-0 overflow-hidden flex flex-col">
+        <DialogHeader className="px-4 pt-4 pb-2 shrink-0">
+          <DialogTitle>Sales Dashboard</DialogTitle>
+          <DialogDescription className="sr-only">Full Sales Dashboard</DialogDescription>
+        </DialogHeader>
+        <div className="flex-1 min-h-0 overflow-auto px-4 pb-4">
+          {salesOpen && (
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center py-24">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              }
+            >
+              <LazySalesDashboardV2 />
+            </Suspense>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
     </>
   );
 }
