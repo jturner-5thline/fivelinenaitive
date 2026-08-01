@@ -95,6 +95,18 @@ interface LenderInfo {
   linkedinUrl?: string | null;
   address?: string | null;
   phoneMain?: string | null;
+  sponsorship?: string | null;
+  cashBurn?: string | null;
+  subDebt?: string | null;
+  refinancing?: string | null;
+  industriesToAvoid?: string[] | null;
+  nda?: string | null;
+  referralLender?: string | null;
+  referralFeeOffered?: string | null;
+  referralAgreement?: string | null;
+  aboutNotes?: string | null;
+  fundingSourceNotes?: string | null;
+  lenderOnePagerUrl?: string | null;
 }
 
 export interface LenderEditData {
@@ -119,6 +131,22 @@ export interface LenderEditData {
   linkedinUrl: string;
   address: string;
   phoneMain: string;
+  contactTitle?: string;
+  b2bB2c?: string;
+  sponsorship?: string;
+  cashBurn?: string;
+  subDebt?: string;
+  refinancing?: string;
+  industriesToAvoid?: string;
+  nda?: string;
+  referralLender?: string;
+  referralFeeOffered?: string;
+  referralAgreement?: string;
+  aboutNotes?: string;
+  fundingSourceNotes?: string;
+  lenderOnePagerUrl?: string;
+  upfrontChecklist?: string;
+  postTermSheetChecklist?: string;
 }
 
 interface LenderDetailDialogProps {
