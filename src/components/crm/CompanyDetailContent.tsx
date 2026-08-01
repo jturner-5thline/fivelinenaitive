@@ -467,6 +467,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                   <KV label="Employees" value={company.employee_count?.toLocaleString() || company.employee_range} />
                   <KV label="HQ" value={[company.hq_city, company.hq_country].filter(Boolean).join(', ')} />
                   <KV label="Domain" value={company.domain} link />
+                  <KV label="LinkedIn" value={company.linkedin_url} link />
                   <KV label="Phone" value={company.phone} />
                   <KV label="Primary email" value={company.main_contact_email} />
                 </div>
