@@ -50,6 +50,7 @@ import { useDealStages } from '@/contexts/DealStagesContext';
 import { format } from 'date-fns';
 import { formatLenderCurrency, formatCurrencyInput } from '@/utils/formatLenderCurrency';
 import { toast } from 'sonner';
+import { useLenderCriteriaOptions } from '@/hooks/useLenderCriteriaOptions';
 
 const CRITERIA_YES_NO = ['Yes', 'No'] as const;
 const B2B_B2C_OPTIONS = ['B2B', 'B2C', 'Both'] as const;
@@ -67,9 +68,10 @@ function CriteriaSelect({
   placeholder?: string;
 }) {
   const current = (value || '').trim();
-  const allOptions = current && !options.some(o => o.toLowerCase() === current.toLowerCase())
-    ? [...options, current]
-    : [...options];
+  const base = options.length ? options : CRITERIA_YES_NO;
+  const allOptions = current && !base.some(o => o.toLowerCase() === current.toLowerCase())
+    ? [...base, current]
+    : [...base];
   return (
     <Select
       value={current || CRITERIA_NONE}
@@ -446,6 +448,7 @@ function EditableDealTile({
 export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelete, onSave, initialEditMode = false }: LenderDetailDialogProps) {
   const { deals, updateLender: updateDealLender } = useDealsContext();
   const { stages } = useDealStages();
+  const criteriaOptions = useLenderCriteriaOptions();
   const { user } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1453,7 +1456,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         <CriteriaSelect
                           value={editForm.sponsorship}
                           onChange={(v) => setEditForm({ ...editForm, sponsorship: v })}
-                          options={CRITERIA_YES_NO}
+                          options={criteriaOptions.sponsorship}
                           placeholder="Sponsorship required?"
                         />
                       </div>
@@ -1462,7 +1465,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         <CriteriaSelect
                           value={editForm.cashBurn}
                           onChange={(v) => setEditForm({ ...editForm, cashBurn: v })}
-                          options={CRITERIA_YES_NO}
+                          options={criteriaOptions.cashBurn}
                           placeholder="Cash burn OK?"
                         />
                       </div>
@@ -1471,7 +1474,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         <CriteriaSelect
                           value={editForm.subDebt}
                           onChange={(v) => setEditForm({ ...editForm, subDebt: v })}
-                          options={CRITERIA_YES_NO}
+                          options={criteriaOptions.subDebt}
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -1479,7 +1482,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         <CriteriaSelect
                           value={editForm.refinancing}
                           onChange={(v) => setEditForm({ ...editForm, refinancing: v })}
-                          options={CRITERIA_YES_NO}
+                          options={criteriaOptions.refinancing}
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -1487,7 +1490,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         <CriteriaSelect
                           value={editForm.b2bB2c}
                           onChange={(v) => setEditForm({ ...editForm, b2bB2c: v })}
-                          options={B2B_B2C_OPTIONS}
+                          options={criteriaOptions.b2bB2c.length ? criteriaOptions.b2bB2c : B2B_B2C_OPTIONS}
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -1495,7 +1498,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         <CriteriaSelect
                           value={editForm.nda}
                           onChange={(v) => setEditForm({ ...editForm, nda: v })}
-                          options={CRITERIA_YES_NO}
+                          options={criteriaOptions.nda}
                         />
                       </div>
                     </div>
