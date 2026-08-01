@@ -399,8 +399,13 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
               <EditableField label="Type" type="select" value={company.company_type} options={CRM_COMPANY_TYPES.map(t => ({ value: t.value, label: t.label }))} onSave={(v) => handleQuickUpdate('company_type', v)} />
               <EditableField label="Industry" type="text" value={company.industry} onSave={(v) => handleQuickUpdate('industry', v)} />
               <EditableField label="Sub-Industry" type="text" value={company.sub_industry} onSave={(v) => handleQuickUpdate('sub_industry', v)} />
-              <EditableField label="Employee Range" type="text" value={company.employee_range} onSave={(v) => handleQuickUpdate('employee_range', v)} />
-              <EditableField label="Employee Count" type="number" value={company.employee_count} onSave={(v) => handleQuickUpdate('employee_count', v)} />
+              <EditableField
+                label="Company Size"
+                type="select"
+                value={company.employee_range}
+                options={EMPLOYEE_RANGE_OPTIONS.map(o => ({ value: o, label: o }))}
+                onSave={(v) => handleQuickUpdate('employee_range', v)}
+              />
               <EditableField label="Annual Revenue" type="number" value={company.annual_revenue} onSave={(v) => handleQuickUpdate('annual_revenue', v)} />
               <EditableField label="Phone" type="tel" value={company.phone} onSave={(v) => handleQuickUpdate('phone', v)} />
               <EditableField label="Email" type="email" asLink value={company.main_contact_email} onSave={(v) => handleQuickUpdate('main_contact_email', v)} />
@@ -470,7 +475,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 pt-2 border-t">
                   <KV label="Industry" value={company.industry} />
                   <KV label="Type" value={typeLabel} />
-                  <KV label="Employees" value={company.employee_count?.toLocaleString() || company.employee_range} />
+                  <KV label="Employees" value={company.employee_range || company.employee_count?.toLocaleString()} />
                   <KV label="HQ" value={[company.hq_city, company.hq_country].filter(Boolean).join(', ')} />
                   <KV label="Domain" value={company.domain} link />
                   <KV
