@@ -85,6 +85,20 @@ export function LenderSuggestionsContent({
       ebitdaMin: detailLender.ebitda_min,
       companyRequirements: detailLender.company_requirements,
       tier: detailLender.tier,
+      upfrontChecklist: detailLender.upfront_checklist,
+      postTermSheetChecklist: detailLender.post_term_sheet_checklist,
+      b2bB2c: detailLender.b2b_b2c,
+      sponsorship: detailLender.sponsorship,
+      cashBurn: detailLender.cash_burn,
+      subDebt: detailLender.sub_debt,
+      refinancing: detailLender.refinancing,
+      industriesToAvoid: detailLender.industries_to_avoid,
+      nda: detailLender.nda,
+      referralLender: detailLender.referral_lender,
+      referralFeeOffered: detailLender.referral_fee_offered,
+      referralAgreement: detailLender.referral_agreement,
+      aboutNotes: detailLender.about_notes,
+      lenderOnePagerUrl: detailLender.lender_one_pager_url,
     };
   }, [detailLender]);
 
@@ -403,6 +417,22 @@ export function LenderSuggestionsContent({
             ebitda_min: data.ebitdaMin ? parseFloat(data.ebitdaMin) : null,
             tier: data.tier ? `T${data.tier}` : null,
             relationship_owners: data.relationshipOwners?.trim() || null,
+            b2b_b2c: data.b2bB2c?.trim() || null,
+            sponsorship: data.sponsorship?.trim() || null,
+            cash_burn: data.cashBurn?.trim() || null,
+            sub_debt: data.subDebt?.trim() || null,
+            refinancing: data.refinancing?.trim() || null,
+            industries_to_avoid: data.industriesToAvoid
+              ? data.industriesToAvoid.split(',').map(p => p.trim()).filter(Boolean)
+              : null,
+            nda: data.nda?.trim() || null,
+            referral_lender: data.referralLender?.trim() || null,
+            referral_fee_offered: data.referralFeeOffered?.trim() || null,
+            referral_agreement: data.referralAgreement?.trim() || null,
+            about_notes: data.aboutNotes?.trim() || null,
+            lender_one_pager_url: data.lenderOnePagerUrl?.trim() || null,
+            upfront_checklist: data.upfrontChecklist?.trim() || null,
+            post_term_sheet_checklist: data.postTermSheetChecklist?.trim() || null,
           };
           const success = await updateLender(lenderId, updates);
           if (success) {

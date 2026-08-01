@@ -95,6 +95,18 @@ interface LenderInfo {
   linkedinUrl?: string | null;
   address?: string | null;
   phoneMain?: string | null;
+  sponsorship?: string | null;
+  cashBurn?: string | null;
+  subDebt?: string | null;
+  refinancing?: string | null;
+  industriesToAvoid?: string[] | null;
+  nda?: string | null;
+  referralLender?: string | null;
+  referralFeeOffered?: string | null;
+  referralAgreement?: string | null;
+  aboutNotes?: string | null;
+  fundingSourceNotes?: string | null;
+  lenderOnePagerUrl?: string | null;
 }
 
 export interface LenderEditData {
@@ -119,6 +131,22 @@ export interface LenderEditData {
   linkedinUrl: string;
   address: string;
   phoneMain: string;
+  contactTitle?: string;
+  b2bB2c?: string;
+  sponsorship?: string;
+  cashBurn?: string;
+  subDebt?: string;
+  refinancing?: string;
+  industriesToAvoid?: string;
+  nda?: string;
+  referralLender?: string;
+  referralFeeOffered?: string;
+  referralAgreement?: string;
+  aboutNotes?: string;
+  fundingSourceNotes?: string;
+  lenderOnePagerUrl?: string;
+  upfrontChecklist?: string;
+  postTermSheetChecklist?: string;
 }
 
 interface LenderDetailDialogProps {
@@ -129,6 +157,48 @@ interface LenderDetailDialogProps {
   onDelete?: (lenderName: string) => void;
   onSave?: (lenderId: string, data: LenderEditData) => Promise<void>;
   initialEditMode?: boolean;
+}
+
+function buildEditForm(lender: LenderInfo): LenderEditData {
+  return {
+    name: lender.name || '',
+    contactName: lender.contact.name || '',
+    contactPhone: lender.contact.phone || '',
+    email: lender.contact.email || '',
+    lenderType: lender.lenderType || '',
+    minDeal: lender.minDeal?.toString() || '',
+    maxDeal: lender.maxDeal?.toString() || '',
+    geo: lender.geo || '',
+    industries: lender.industries?.join(', ') || '',
+    loanTypes: lender.loanTypes?.join(', ') || '',
+    description: lender.description || '',
+    minRevenue: lender.minRevenue?.toString() || '',
+    ebitdaMin: lender.ebitdaMin?.toString() || '',
+    companyRequirements: lender.companyRequirements || '',
+    lenderNotes: lender.lenderNotes || '',
+    tier: lender.tier?.replace(/^T/, '') || '',
+    relationshipOwners: lender.relationshipOwners || '',
+    websiteUrl: lender.websiteUrl || '',
+    linkedinUrl: lender.linkedinUrl || '',
+    address: lender.address || '',
+    phoneMain: lender.phoneMain || '',
+    contactTitle: lender.contact.title || '',
+    b2bB2c: lender.b2bB2c || '',
+    sponsorship: lender.sponsorship || '',
+    cashBurn: lender.cashBurn || '',
+    subDebt: lender.subDebt || '',
+    refinancing: lender.refinancing || '',
+    industriesToAvoid: lender.industriesToAvoid?.join(', ') || '',
+    nda: lender.nda || '',
+    referralLender: lender.referralLender || '',
+    referralFeeOffered: lender.referralFeeOffered || '',
+    referralAgreement: lender.referralAgreement || '',
+    aboutNotes: lender.aboutNotes || '',
+    fundingSourceNotes: lender.fundingSourceNotes || '',
+    lenderOnePagerUrl: lender.lenderOnePagerUrl || '',
+    upfrontChecklist: lender.upfrontChecklist || '',
+    postTermSheetChecklist: lender.postTermSheetChecklist || '',
+  };
 }
 
 function formatFileSize(bytes: number): string {
@@ -374,6 +444,22 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     linkedinUrl: '',
     address: '',
     phoneMain: '',
+    contactTitle: '',
+    b2bB2c: '',
+    sponsorship: '',
+    cashBurn: '',
+    subDebt: '',
+    refinancing: '',
+    industriesToAvoid: '',
+    nda: '',
+    referralLender: '',
+    referralFeeOffered: '',
+    referralAgreement: '',
+    aboutNotes: '',
+    fundingSourceNotes: '',
+    lenderOnePagerUrl: '',
+    upfrontChecklist: '',
+    postTermSheetChecklist: '',
   });
   
   const { sectionOrder, setSectionOrderDirect, resetToDefault } = useLenderSectionOrder();
@@ -393,29 +479,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   // Initialize edit form when entering edit mode or when lender changes
   useEffect(() => {
     if (lender && isEditMode) {
-      setEditForm({
-        name: lender.name || '',
-        contactName: lender.contact.name || '',
-        contactPhone: lender.contact.phone || '',
-        email: lender.contact.email || '',
-        lenderType: lender.lenderType || '',
-        minDeal: lender.minDeal?.toString() || '',
-        maxDeal: lender.maxDeal?.toString() || '',
-        geo: lender.geo || '',
-        industries: lender.industries?.join(', ') || '',
-        loanTypes: lender.loanTypes?.join(', ') || '',
-        description: lender.description || '',
-        minRevenue: lender.minRevenue?.toString() || '',
-        ebitdaMin: lender.ebitdaMin?.toString() || '',
-        companyRequirements: lender.companyRequirements || '',
-        lenderNotes: lender.lenderNotes || '',
-        tier: lender.tier?.replace(/^T/, '') || '',
-        relationshipOwners: lender.relationshipOwners || '',
-        websiteUrl: lender.websiteUrl || '',
-        linkedinUrl: lender.linkedinUrl || '',
-        address: lender.address || '',
-        phoneMain: lender.phoneMain || '',
-      });
+      setEditForm(buildEditForm(lender));
     }
   }, [lender, isEditMode]);
 
@@ -430,29 +494,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
 
   const handleEnterEditMode = () => {
     if (lender) {
-      setEditForm({
-        name: lender.name || '',
-        contactName: lender.contact.name || '',
-        contactPhone: lender.contact.phone || '',
-        email: lender.contact.email || '',
-        lenderType: lender.lenderType || '',
-        minDeal: lender.minDeal?.toString() || '',
-        maxDeal: lender.maxDeal?.toString() || '',
-        geo: lender.geo || '',
-        industries: lender.industries?.join(', ') || '',
-        loanTypes: lender.loanTypes?.join(', ') || '',
-        description: lender.description || '',
-        minRevenue: lender.minRevenue?.toString() || '',
-        ebitdaMin: lender.ebitdaMin?.toString() || '',
-        companyRequirements: lender.companyRequirements || '',
-        lenderNotes: lender.lenderNotes || '',
-        tier: lender.tier?.replace(/^T/, '') || '',
-        relationshipOwners: lender.relationshipOwners || '',
-        websiteUrl: lender.websiteUrl || '',
-        linkedinUrl: lender.linkedinUrl || '',
-        address: lender.address || '',
-        phoneMain: lender.phoneMain || '',
-      });
+      setEditForm(buildEditForm(lender));
       setIsEditMode(true);
     }
   };
@@ -1368,6 +1410,143 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         </PopoverContent>
                       </Popover>
                     </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Sponsorship</Label>
+                        <Input
+                          value={editForm.sponsorship || ''}
+                          onChange={(e) => setEditForm({ ...editForm, sponsorship: e.target.value })}
+                          placeholder="e.g., Sponsored & non-sponsored"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Cash Burn</Label>
+                        <Input
+                          value={editForm.cashBurn || ''}
+                          onChange={(e) => setEditForm({ ...editForm, cashBurn: e.target.value })}
+                          placeholder="e.g., OK if path to profitability"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Sub Debt</Label>
+                        <Input
+                          value={editForm.subDebt || ''}
+                          onChange={(e) => setEditForm({ ...editForm, subDebt: e.target.value })}
+                          placeholder="e.g., Yes / No"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Refinancing</Label>
+                        <Input
+                          value={editForm.refinancing || ''}
+                          onChange={(e) => setEditForm({ ...editForm, refinancing: e.target.value })}
+                          placeholder="e.g., Yes / No"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">B2B / B2C</Label>
+                        <Input
+                          value={editForm.b2bB2c || ''}
+                          onChange={(e) => setEditForm({ ...editForm, b2bB2c: e.target.value })}
+                          placeholder="e.g., B2B"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">NDA</Label>
+                        <Input
+                          value={editForm.nda || ''}
+                          onChange={(e) => setEditForm({ ...editForm, nda: e.target.value })}
+                          placeholder="e.g., Signed 01/2026"
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Industries to Avoid</Label>
+                      <Input
+                        value={editForm.industriesToAvoid || ''}
+                        onChange={(e) => setEditForm({ ...editForm, industriesToAvoid: e.target.value })}
+                        placeholder="Comma-separated list"
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                </section>
+                <Separator />
+
+                {/* Edit Mode: Referral & Checklists */}
+                <section>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                    Referral & Checklists
+                  </h3>
+                  <div className="grid gap-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Referral Funding Source</Label>
+                        <Input
+                          value={editForm.referralLender || ''}
+                          onChange={(e) => setEditForm({ ...editForm, referralLender: e.target.value })}
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Referral Fee Offered</Label>
+                        <Input
+                          value={editForm.referralFeeOffered || ''}
+                          onChange={(e) => setEditForm({ ...editForm, referralFeeOffered: e.target.value })}
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Referral Agreement</Label>
+                        <Input
+                          value={editForm.referralAgreement || ''}
+                          onChange={(e) => setEditForm({ ...editForm, referralAgreement: e.target.value })}
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">One Pager URL</Label>
+                        <Input
+                          type="url"
+                          value={editForm.lenderOnePagerUrl || ''}
+                          onChange={(e) => setEditForm({ ...editForm, lenderOnePagerUrl: e.target.value })}
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Upfront Checklist</Label>
+                      <Textarea
+                        value={editForm.upfrontChecklist || ''}
+                        onChange={(e) => setEditForm({ ...editForm, upfrontChecklist: e.target.value })}
+                        rows={3}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Post-Term Sheet Checklist</Label>
+                      <Textarea
+                        value={editForm.postTermSheetChecklist || ''}
+                        onChange={(e) => setEditForm({ ...editForm, postTermSheetChecklist: e.target.value })}
+                        rows={3}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">About Notes</Label>
+                      <Textarea
+                        value={editForm.aboutNotes || ''}
+                        onChange={(e) => setEditForm({ ...editForm, aboutNotes: e.target.value })}
+                        rows={3}
+                        className="text-sm"
+                      />
+                    </div>
                   </div>
                 </section>
                 <Separator />
@@ -1505,7 +1684,40 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                   </div>
                                 </div>
                               )}
-                              {!lender.minDeal && !lender.maxDeal && !lender.geo && (!lender.industries || lender.industries.length === 0) && (!lender.loanTypes || lender.loanTypes.length === 0) && !lender.minRevenue && !lender.ebitdaMin && !lender.companyRequirements && !lender.b2bB2c && (
+                              {([
+                                ['Sponsorship', lender.sponsorship],
+                                ['Cash Burn', lender.cashBurn],
+                                ['Sub Debt', lender.subDebt],
+                                ['Refinancing', lender.refinancing],
+                                ['NDA', lender.nda],
+                                ['Referral Funding Source', lender.referralLender],
+                                ['Referral Fee Offered', lender.referralFeeOffered],
+                                ['Referral Agreement', lender.referralAgreement],
+                              ] as [string, string | null | undefined][]).filter(([, v]) => v && v.trim()).map(([label, value]) => (
+                                <div key={label} className="flex items-start gap-3">
+                                  <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium">{label}: </span>
+                                    <span className="text-sm">{value}</span>
+                                  </div>
+                                </div>
+                              ))}
+                              {lender.industriesToAvoid && lender.industriesToAvoid.length > 0 && (
+                                <div className="flex items-start gap-3">
+                                  <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium block mb-1.5">Industries to Avoid:</span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {lender.industriesToAvoid.map((industry, idx) => (
+                                        <Badge key={idx} variant="destructive" className="text-xs">
+                                          {industry}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                              {!lender.minDeal && !lender.maxDeal && !lender.geo && (!lender.industries || lender.industries.length === 0) && (!lender.loanTypes || lender.loanTypes.length === 0) && !lender.minRevenue && !lender.ebitdaMin && !lender.companyRequirements && !lender.b2bB2c && !lender.sponsorship && !lender.cashBurn && !lender.subDebt && !lender.refinancing && !lender.nda && !lender.referralLender && !lender.referralFeeOffered && !lender.referralAgreement && (!lender.industriesToAvoid || lender.industriesToAvoid.length === 0) && (
                                 <p className="text-muted-foreground text-sm">No lending criteria specified</p>
                               )}
                             </div>
