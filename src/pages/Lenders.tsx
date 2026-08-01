@@ -290,6 +290,7 @@ export default function Lenders() {
   const [isQuickUploading, setIsQuickUploading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [companyLinkTarget, setCompanyLinkTarget] = useState<FundingSourceCompanyTarget | null>(null);
+  const [linkedCrmCompany, setLinkedCrmCompany] = useState<LinkedCrmCompany | null>(null);
   const [editingLenderId, setEditingLenderId] = useState<string | null>(null);
   const [form, setForm] = useState<LenderForm>(emptyForm);
   const [searchQuery, setSearchQuery] = useState('');
@@ -2151,11 +2152,17 @@ export default function Lenders() {
               <div className="grid grid-cols-[1fr_auto] gap-4 items-end">
                 <div className="space-y-2">
                   <Label htmlFor="name">Funding Source Name *</Label>
-                  <Input
+                  <FundingSourceNameField
                     id="name"
                     value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="Enter lender name"
+                    onChange={(name) => setForm((prev) => ({ ...prev, name }))}
+                    linkedCompany={linkedCrmCompany}
+                    onLinkCompany={(c) => {
+                      setLinkedCrmCompany(c);
+                      if (c && !form.website.trim() && (c.website_url || c.domain)) {
+                        setForm((prev) => ({ ...prev, website: c.website_url || c.domain || '' }));
+                      }
+                    }}
                   />
                 </div>
                 <div className="space-y-2">
