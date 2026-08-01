@@ -74,7 +74,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   const { data: contactActivities = [] } = useCrmCompanyContactActivities(contactIds);
   const { data: subsidiaries = [] } = useCrmSubsidiaries(companyId);
   const { data: companyDeals = [] } = useCrmCompanyDeals(companyId);
-  const { data: affiliatedDeals = [] } = useCompanyAffiliatedDeals(companyId, contactIds);
+  const { data: affiliatedDeals = [] } = useCompanyAffiliatedDeals(companyId, contactIds, company?.name);
   const deleteCompany = useDeleteCrmCompany();
   const teamMembers = useTeamMembers();
   const { data: allContactsResult } = useContacts({ pageSize: 1000 });
@@ -735,6 +735,9 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                           <div className="flex items-center gap-1 shrink-0">
                             {d.via === 'contact' && (
                               <Badge variant="outline" className="text-[9px] font-normal">via contact</Badge>
+                            )}
+                            {d.via === 'name' && (
+                              <Badge variant="outline" className="text-[9px] font-normal">name match</Badge>
                             )}
                             {d.via === 'company' && (
                               <Button
