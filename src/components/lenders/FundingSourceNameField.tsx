@@ -129,8 +129,17 @@ export function FundingSourceNameField({
       ) : null}
 
       {open && value.trim().length >= 2 && (
-        <div className="app-dropdown-surface absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg overflow-hidden">
-          <div className="max-h-64 overflow-y-auto py-1">
+        <div
+          className="app-dropdown-surface app-dropdown-surface app-dropdown-surface absolute z-50 mt-1 w-full rounded-md border border-border shadow-lg overflow-hidden"
+          style={{
+            backgroundColor: '#060b18',
+            backgroundImage:
+              'linear-gradient(135deg, #0a1224 0%, #060b18 52%, #04060f 100%)',
+            backdropFilter: 'none',
+            opacity: 1,
+          }}
+        >
+          <div className="max-h-64 overflow-y-auto py-1 bg-transparent">
             {loading && (
               <p className="px-3 py-2 text-xs text-muted-foreground">Searching companies…</p>
             )}
