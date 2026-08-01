@@ -310,12 +310,12 @@ export function LastWeekSummaryWidget() {
       onClose={() => setDrilldown(null)}
     />
     <Dialog open={salesOpen} onOpenChange={setSalesOpen}>
-      <DialogContent className="max-w-[97vw] w-[97vw] h-[95vh] p-0 overflow-hidden flex flex-col">
+      <DialogContent className="sales-dashboard-popup max-w-[97vw] w-[97vw] h-[95vh] p-0 overflow-hidden flex flex-col border-white/10">
         <DialogHeader className="px-4 pt-4 pb-2 shrink-0">
           <DialogTitle>Sales Dashboard</DialogTitle>
           <DialogDescription className="sr-only">Full Sales Dashboard</DialogDescription>
         </DialogHeader>
-        <div className="flex-1 min-h-0 overflow-auto px-4 pb-4">
+        <div className="insights-glass-skin flex-1 min-h-0 overflow-auto px-4 pb-4">
           {salesOpen && (
             <Suspense
               fallback={
