@@ -1134,9 +1134,13 @@ export default function Lenders() {
       ebitda_min: form.ebitdaMin ? parseFloat(form.ebitdaMin) : null,
       company_requirements: form.companyRequirements.trim() || null,
     };
+    if (linkedCrmCompany) {
+      (lenderData as any).crm_company_id = linkedCrmCompany.id;
+    }
 
     try {
       let lenderId = editingLenderId;
+      let pendingCompanyTarget: FundingSourceCompanyTarget | null = null;
 
       if (editingLenderId) {
         const existingLender = masterLenders.find(l => l.id === editingLenderId);
@@ -1157,8 +1161,8 @@ export default function Lenders() {
         const newLender = await addMasterLender(lenderData);
         lenderId = newLender?.id ?? null;
         toast({ title: 'Lender added', description: `${lenderData.name} has been added.` });
-        if (lenderId) {
-          setCompanyLinkTarget({
+        if (lenderId && !linkedCrmCompany) {
+          pendingCompanyTarget = {
             lenderId,
             name: lenderData.name,
             website: lenderData.website ?? null,
@@ -1167,11 +1171,12 @@ export default function Lenders() {
             phone: lenderData.phone ?? null,
             address: lenderData.address ?? null,
             description: lenderData.deal_structure_notes ?? null,
-          });
+          };
         }
       }
 
       // Insert contacts into lender_contacts
+      const affiliatedContactIds: string[] = [];
       if (lenderId) {
         const resolved = await Promise.all(
           form.contacts
@@ -1200,6 +1205,7 @@ export default function Lenders() {
                   contactId = created?.id ?? null;
                 }
               }
+              if (contactId) affiliatedContactIds.push(contactId);
               return {
                 lender_id: lenderId!,
                 contact_id: contactId,
@@ -1217,8 +1223,21 @@ export default function Lenders() {
         }
       }
 
+      // Every funding source is also a company: affiliate its contacts with it.
+      if (linkedCrmCompany && affiliatedContactIds.length > 0) {
+        await supabase
+          .from('contacts')
+          .update({ crm_company_id: linkedCrmCompany.id } as any)
+          .in('id', affiliatedContactIds)
+          .is('crm_company_id', null);
+      }
+      if (pendingCompanyTarget) {
+        setCompanyLinkTarget({ ...pendingCompanyTarget, contactIds: affiliatedContactIds });
+      }
+
       setIsDialogOpen(false);
       setForm(emptyForm);
+      setLinkedCrmCompany(null);
       setEditingLenderId(null);
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to save lender', variant: 'destructive' });
