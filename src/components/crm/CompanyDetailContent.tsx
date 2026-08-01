@@ -82,6 +82,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   const linkDeal = useLinkDealToCompany();
   const unlinkDeal = useUnlinkDealFromCompany();
   const { attachments } = useCrmCompanyAttachments(companyId);
+  const { data: fundingSource } = useCompanyFundingSource(companyId, company?.name, (company as any)?.domain);
 
   const [newNote, setNewNote] = useState('');
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
