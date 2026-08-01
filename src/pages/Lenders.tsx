@@ -243,6 +243,18 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
     linkedinUrl: lender.linkedin_url,
     address: lender.address,
     phoneMain: lender.phone,
+    sponsorship: lender.sponsorship,
+    cashBurn: lender.cash_burn,
+    subDebt: lender.sub_debt,
+    refinancing: lender.refinancing,
+    industriesToAvoid: lender.industries_to_avoid,
+    nda: lender.nda,
+    referralLender: lender.referral_lender,
+    referralFeeOffered: lender.referral_fee_offered,
+    referralAgreement: lender.referral_agreement,
+    aboutNotes: lender.about_notes,
+    fundingSourceNotes: lender.funding_source_notes,
+    lenderOnePagerUrl: lender.lender_one_pager_url,
   };
 }
 
@@ -1228,6 +1240,23 @@ export default function Lenders() {
       linkedin_url: data.linkedinUrl?.trim() || null,
       address: data.address?.trim() || null,
       phone: data.phoneMain?.trim() || null,
+      contact_title: data.contactTitle?.trim() || null,
+      b2b_b2c: data.b2bB2c?.trim() || null,
+      sponsorship: data.sponsorship?.trim() || null,
+      cash_burn: data.cashBurn?.trim() || null,
+      sub_debt: data.subDebt?.trim() || null,
+      refinancing: data.refinancing?.trim() || null,
+      industries_to_avoid: data.industriesToAvoid
+        ? data.industriesToAvoid.split(',').map(p => p.trim()).filter(Boolean)
+        : null,
+      nda: data.nda?.trim() || null,
+      referral_lender: data.referralLender?.trim() || null,
+      referral_fee_offered: data.referralFeeOffered?.trim() || null,
+      referral_agreement: data.referralAgreement?.trim() || null,
+      about_notes: data.aboutNotes?.trim() || null,
+      lender_one_pager_url: data.lenderOnePagerUrl?.trim() || null,
+      upfront_checklist: data.upfrontChecklist?.trim() || null,
+      post_term_sheet_checklist: data.postTermSheetChecklist?.trim() || null,
     };
 
     // Check if name changed and new name already exists
