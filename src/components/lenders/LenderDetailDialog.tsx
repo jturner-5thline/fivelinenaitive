@@ -1118,7 +1118,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent
-                          className="w-64 p-2 z-[9999] bg-popover"
+                          className="lender-edit-popover w-64 p-2 z-[9999]"
                           align="start"
                           onKeyDown={(e) => { if (e.key === 'Escape') e.stopPropagation(); }}
                         >
@@ -1179,7 +1179,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent
-                          className="w-64 p-2 z-[9999] bg-popover"
+                          className="lender-edit-popover w-64 p-2 z-[9999]"
                           align="start"
                           onKeyDown={(e) => { if (e.key === 'Escape') e.stopPropagation(); }}
                         >
@@ -1240,7 +1240,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent
-                          className="w-64 p-2 z-[9999] bg-popover"
+                          className="lender-edit-popover w-64 p-2 z-[9999]"
                           align="start"
                           onKeyDown={(e) => { if (e.key === 'Escape') e.stopPropagation(); }}
                         >
@@ -1325,7 +1325,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent
-                          className="w-72 p-2 z-[9999] bg-popover"
+                          className="lender-edit-popover w-72 p-2 z-[9999]"
                           align="start"
                           onKeyDown={(e) => { if (e.key === 'Escape') e.stopPropagation(); }}
                         >

@@ -2672,3 +2672,15 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .settings-surface .glass-module:hover {
   background: linear-gradient(180deg, #142547 0%, #0f1d38 100%) !important;
 }
+
+/* Funding source edit controls are portalled into the detail dialog. Keep the
+   popover itself fully opaque even when dialog-wide nested-surface flattening
+   rules apply to its children. */
+[data-radix-popper-content-wrapper] .lender-edit-popover.lender-edit-popover,
+[role="dialog"] .lender-edit-popover.lender-edit-popover {
+  background: hsl(var(--popover)) !important;
+  background-color: hsl(var(--popover)) !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
