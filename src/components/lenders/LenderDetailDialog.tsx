@@ -1410,6 +1410,143 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         </PopoverContent>
                       </Popover>
                     </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Sponsorship</Label>
+                        <Input
+                          value={editForm.sponsorship || ''}
+                          onChange={(e) => setEditForm({ ...editForm, sponsorship: e.target.value })}
+                          placeholder="e.g., Sponsored & non-sponsored"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Cash Burn</Label>
+                        <Input
+                          value={editForm.cashBurn || ''}
+                          onChange={(e) => setEditForm({ ...editForm, cashBurn: e.target.value })}
+                          placeholder="e.g., OK if path to profitability"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Sub Debt</Label>
+                        <Input
+                          value={editForm.subDebt || ''}
+                          onChange={(e) => setEditForm({ ...editForm, subDebt: e.target.value })}
+                          placeholder="e.g., Yes / No"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Refinancing</Label>
+                        <Input
+                          value={editForm.refinancing || ''}
+                          onChange={(e) => setEditForm({ ...editForm, refinancing: e.target.value })}
+                          placeholder="e.g., Yes / No"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">B2B / B2C</Label>
+                        <Input
+                          value={editForm.b2bB2c || ''}
+                          onChange={(e) => setEditForm({ ...editForm, b2bB2c: e.target.value })}
+                          placeholder="e.g., B2B"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">NDA</Label>
+                        <Input
+                          value={editForm.nda || ''}
+                          onChange={(e) => setEditForm({ ...editForm, nda: e.target.value })}
+                          placeholder="e.g., Signed 01/2026"
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Industries to Avoid</Label>
+                      <Input
+                        value={editForm.industriesToAvoid || ''}
+                        onChange={(e) => setEditForm({ ...editForm, industriesToAvoid: e.target.value })}
+                        placeholder="Comma-separated list"
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                </section>
+                <Separator />
+
+                {/* Edit Mode: Referral & Checklists */}
+                <section>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                    Referral & Checklists
+                  </h3>
+                  <div className="grid gap-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Referral Funding Source</Label>
+                        <Input
+                          value={editForm.referralLender || ''}
+                          onChange={(e) => setEditForm({ ...editForm, referralLender: e.target.value })}
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Referral Fee Offered</Label>
+                        <Input
+                          value={editForm.referralFeeOffered || ''}
+                          onChange={(e) => setEditForm({ ...editForm, referralFeeOffered: e.target.value })}
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Referral Agreement</Label>
+                        <Input
+                          value={editForm.referralAgreement || ''}
+                          onChange={(e) => setEditForm({ ...editForm, referralAgreement: e.target.value })}
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">One Pager URL</Label>
+                        <Input
+                          type="url"
+                          value={editForm.lenderOnePagerUrl || ''}
+                          onChange={(e) => setEditForm({ ...editForm, lenderOnePagerUrl: e.target.value })}
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Upfront Checklist</Label>
+                      <Textarea
+                        value={editForm.upfrontChecklist || ''}
+                        onChange={(e) => setEditForm({ ...editForm, upfrontChecklist: e.target.value })}
+                        rows={3}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Post-Term Sheet Checklist</Label>
+                      <Textarea
+                        value={editForm.postTermSheetChecklist || ''}
+                        onChange={(e) => setEditForm({ ...editForm, postTermSheetChecklist: e.target.value })}
+                        rows={3}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">About Notes</Label>
+                      <Textarea
+                        value={editForm.aboutNotes || ''}
+                        onChange={(e) => setEditForm({ ...editForm, aboutNotes: e.target.value })}
+                        rows={3}
+                        className="text-sm"
+                      />
+                    </div>
                   </div>
                 </section>
                 <Separator />
