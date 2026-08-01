@@ -481,6 +481,14 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 pt-2 border-t">
                   <EditableKV label="Industry" value={company.industry} onSave={(v) => handleQuickUpdate('industry', v)} />
                   <EditableKV
+                    label="Company owner"
+                    value={(company as any).owner_user_id}
+                    display={teamMembers.find(m => m.id === (company as any).owner_user_id)?.display_name}
+                    type="select"
+                    options={teamMembers.map(m => ({ value: m.id, label: m.display_name }))}
+                    onSave={(v) => handleQuickUpdate('owner_user_id', v)}
+                  />
+                  <EditableKV
                     label="Type"
                     value={company.company_type}
                     display={typeLabel}
