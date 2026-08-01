@@ -50,6 +50,7 @@ import { useDealStages } from '@/contexts/DealStagesContext';
 import { format } from 'date-fns';
 import { formatLenderCurrency, formatCurrencyInput } from '@/utils/formatLenderCurrency';
 import { toast } from 'sonner';
+import { useLenderCriteriaOptions } from '@/hooks/useLenderCriteriaOptions';
 
 const CRITERIA_YES_NO = ['Yes', 'No'] as const;
 const B2B_B2C_OPTIONS = ['B2B', 'B2C', 'Both'] as const;
@@ -67,9 +68,10 @@ function CriteriaSelect({
   placeholder?: string;
 }) {
   const current = (value || '').trim();
-  const allOptions = current && !options.some(o => o.toLowerCase() === current.toLowerCase())
-    ? [...options, current]
-    : [...options];
+  const base = options.length ? options : CRITERIA_YES_NO;
+  const allOptions = current && !base.some(o => o.toLowerCase() === current.toLowerCase())
+    ? [...base, current]
+    : [...base];
   return (
     <Select
       value={current || CRITERIA_NONE}
