@@ -145,6 +145,18 @@ interface LenderInfo {
   linkedinUrl?: string | null;
   address?: string | null;
   phoneMain?: string | null;
+  sponsorship?: string | null;
+  cashBurn?: string | null;
+  subDebt?: string | null;
+  refinancing?: string | null;
+  industriesToAvoid?: string[] | null;
+  nda?: string | null;
+  referralLender?: string | null;
+  referralFeeOffered?: string | null;
+  referralAgreement?: string | null;
+  aboutNotes?: string | null;
+  fundingSourceNotes?: string | null;
+  lenderOnePagerUrl?: string | null;
 }
 
 interface LenderFormContact {
