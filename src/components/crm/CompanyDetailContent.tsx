@@ -994,6 +994,67 @@ function EditableKV({
   hideLabel?: boolean;
   onSave: (value: string | null) => void;
 }) {
+  return <EditableKVImpl {...{ label, value, display, link, href, type, options, placeholder, hideLabel, onSave }} />;
+}
+
+function MultiSelectKV({
+  label, values, options, onSave,
+}: {
+  label: string;
+  values: string[];
+  options: string[];
+  onSave: (values: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const toggle = (opt: string) => {
+    const next = values.includes(opt) ? values.filter(v => v !== opt) : [...values, opt];
+    onSave(next);
+  };
+
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <DropdownMenu open={open} onOpenChange={setOpen}>
+        <DropdownMenuTrigger asChild>
+          <button className="text-left w-full cursor-text rounded-sm -mx-1 px-1 py-0.5 hover:bg-muted/40 transition-colors">
+            {values.length ? (
+              <span className="flex flex-wrap gap-1">
+                {values.map(v => <Badge key={v} variant="secondary" className="text-[10px]">{v}</Badge>)}
+              </span>
+            ) : (
+              <span className="text-sm text-muted-foreground">—</span>
+            )}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto">
+          {options.length === 0 && <DropdownMenuItem disabled>No options configured</DropdownMenuItem>}
+          {options.map(opt => (
+            <DropdownMenuItem key={opt} onSelect={(e) => { e.preventDefault(); toggle(opt); }}>
+              <Check className={cn('h-3.5 w-3.5 mr-2', values.includes(opt) ? 'opacity-100' : 'opacity-0')} />
+              {opt}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+function EditableKVImpl({
+  label, value, display, link, href, type = 'text', options, placeholder, hideLabel, onSave,
+}: {
+  label: string;
+  value: string | null | undefined;
+  display?: string | null;
+  link?: boolean;
+  href?: string | null;
+  type?: 'text' | 'textarea' | 'select';
+  options?: { value: string; label: string }[];
+  placeholder?: string;
+  hideLabel?: boolean;
+  onSave: (value: string | null) => void;
+}) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? '');
 
