@@ -1008,25 +1008,6 @@ function EditableKV({
   );
 }
 
-function UnusedKV({ label, value, link, display }: { label: string; value: string | null | undefined; link?: boolean; display?: string | null }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      {link && value ? (
-        <a
-          href={value.startsWith('http') ? value : `https://${value}`}
-          target="_blank" rel="noopener noreferrer"
-          className="text-sm text-primary hover:underline truncate block"
-        >
-          {display || value}
-        </a>
-      ) : (
-        <p className="text-sm truncate">{display || value || '—'}</p>
-      )}
-    </div>
-  );
-}
-
 function Kpi({
   label, value, hint, valueClassName,
 }: { label: string; value: string; hint?: string; valueClassName?: string }) {
