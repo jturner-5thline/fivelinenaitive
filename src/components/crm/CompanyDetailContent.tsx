@@ -53,6 +53,7 @@ import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { normalizeLinkedInCompanyUrl, formatLinkedInLabel } from '@/lib/linkedin';
 
 interface CompanyDetailContentProps {
   companyId: string;
@@ -161,8 +162,13 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
     );
   }
 
-  const handleQuickUpdate = (field: string, value: any) =>
-    update.mutate({ id: company.id, [field]: value } as any);
+  const handleQuickUpdate = (field: string, value: any) => {
+    const nextValue =
+      field === 'linkedin_url' && typeof value === 'string'
+        ? normalizeLinkedInCompanyUrl(value)
+        : value;
+    update.mutate({ id: company.id, [field]: nextValue } as any);
+  };
 
   const handleLogActivity = (type: string) => {
     createActivity.mutate({
@@ -467,7 +473,12 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                   <KV label="Employees" value={company.employee_count?.toLocaleString() || company.employee_range} />
                   <KV label="HQ" value={[company.hq_city, company.hq_country].filter(Boolean).join(', ')} />
                   <KV label="Domain" value={company.domain} link />
-                  <KV label="LinkedIn" value={company.linkedin_url} link />
+                  <KV
+                    label="LinkedIn"
+                    value={normalizeLinkedInCompanyUrl(company.linkedin_url)}
+                    display={formatLinkedInLabel(company.linkedin_url)}
+                    link
+                  />
                   <KV label="Phone" value={company.phone} />
                   <KV label="Primary email" value={company.main_contact_email} />
                 </div>
