@@ -45,6 +45,7 @@ import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
 import { CompanyAttachmentsTable } from '@/components/crm/CompanyAttachmentsTable';
 import { useCrmCompanyAttachments } from '@/hooks/useCrmCompanyAttachments';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useCompanyFundingSource } from '@/hooks/useCompanyFundingSource';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -81,6 +82,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   const linkDeal = useLinkDealToCompany();
   const unlinkDeal = useUnlinkDealFromCompany();
   const { attachments } = useCrmCompanyAttachments(companyId);
+  const { data: fundingSource } = useCompanyFundingSource(companyId, company?.name, (company as any)?.domain);
 
   const [newNote, setNewNote] = useState('');
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
@@ -303,6 +305,15 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-lg font-semibold truncate">{company.name}</h1>
+                  {fundingSource && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] font-normal border-emerald-500/40 bg-emerald-500/10 text-emerald-300 cursor-pointer"
+                      onClick={() => navigate(`/lenders?lender=${fundingSource.id}`)}
+                    >
+                      Funding Source
+                    </Badge>
+                  )}
                   {company.migrated_from_hubspot && (
                     <Badge variant="outline" className="text-[10px] font-normal">HubSpot</Badge>
                   )}
