@@ -578,7 +578,7 @@ async function gatherSignalsForDeal(
   if (msgIds.length > 0) {
     const { data: gm } = await supabase
       .from("gmail_messages")
-      .select("gmail_message_id, subject, snippet, from_address, received_at")
+      .select("gmail_message_id, subject, snippet, from_email, from_name, received_at")
       .in("gmail_message_id", msgIds);
     const byId = new Map<string, any>((gm ?? []).map((r: any) => [r.gmail_message_id, r]));
     emailRows = emailRows.map((e) => ({
