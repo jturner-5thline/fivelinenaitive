@@ -402,6 +402,22 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     linkedinUrl: '',
     address: '',
     phoneMain: '',
+    contactTitle: '',
+    b2bB2c: '',
+    sponsorship: '',
+    cashBurn: '',
+    subDebt: '',
+    refinancing: '',
+    industriesToAvoid: '',
+    nda: '',
+    referralLender: '',
+    referralFeeOffered: '',
+    referralAgreement: '',
+    aboutNotes: '',
+    fundingSourceNotes: '',
+    lenderOnePagerUrl: '',
+    upfrontChecklist: '',
+    postTermSheetChecklist: '',
   });
   
   const { sectionOrder, setSectionOrderDirect, resetToDefault } = useLenderSectionOrder();
