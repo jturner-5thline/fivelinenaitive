@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { anthropicFetch } from "../_shared/anthropicUsage.ts";
+import { compactHistory, historyStats } from "../_shared/contextBudget.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -830,12 +831,15 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     const body = await req.json();
-    const messages = body.messages || [];
-    if (!Array.isArray(messages) || messages.length === 0) {
+    const rawMessages = body.messages || [];
+    if (!Array.isArray(rawMessages) || rawMessages.length === 0) {
       return new Response(JSON.stringify({ error: "Messages required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // Compact conversation history to the last 12 turns before it reaches Claude.
+    const messages = compactHistory(rawMessages);
+    console.log("[claude-dashboard-chat] history compaction", historyStats(rawMessages, messages));
 
     const { data: membership } = await supabase
       .from("company_members")
