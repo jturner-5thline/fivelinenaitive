@@ -178,6 +178,7 @@ const SECTIONS: SectionDef[] = [
       { id: "usage-overview", label: "Analytics Overview", icon: BarChart3, group: "System Metrics", description: "Company-level engagement overview." },
       { id: "pilot-kpis", label: "Pilot KPIs", icon: Activity, group: "System Metrics", description: "Pilot KPI tracker." },
       { id: "ai-audit", label: "AI Action Audit", icon: ClipboardList, group: "AI", description: "Review every AI-driven action." },
+      { id: "api-usage", label: "API Usage", icon: BarChart3, group: "AI", description: "LLM API calls, input/output tokens and cost drivers by provider and action." },
       { id: "ai-training", label: "AI Training", icon: Brain, group: "AI", description: "Prompts, model config and AI performance." },
       { id: "ux-analytics", label: "UX Analytics", icon: BarChart3, group: "Insights", description: "Funnel and friction analytics." },
       { id: "performance", label: "Performance", icon: Gauge, group: "Insights", description: "Live client perf diagnostics: realtime channels, intervals, long tasks, memory." },
@@ -680,6 +681,25 @@ const Admin = () => {
         );
       case "qb-mapping":
         return <QbCashflowMappingPanel />;
+      case "api-usage":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                API Usage
+              </CardTitle>
+              <CardDescription>
+                Calls, input and output tokens by provider and action over 24h, 72h, 7d, 30d and by quarter.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => navigate("/admin/api-usage")}>
+                Open Usage Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        );
       case "client-lookup":
         return <ClientAccountViewer />;
       case "usage-overview":
