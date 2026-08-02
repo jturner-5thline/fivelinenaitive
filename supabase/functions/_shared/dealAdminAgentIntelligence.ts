@@ -24,6 +24,8 @@ const INTERNAL_TONE = "concise, fairly informal, not casual or funny";
 const EXTERNAL_TONE = "concise, semi-formal, acquaintance / friendly";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+import { anthropicFetch } from "./anthropicUsage.ts";
+
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-4-5-20250929";
 
@@ -2291,7 +2293,7 @@ async function callModelForCandidates(
     ],
   };
 
-  const resp = await fetch(ANTHROPIC_URL, {
+  const resp = await anthropicFetch({ feature: "deal-admin-agent" }, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
