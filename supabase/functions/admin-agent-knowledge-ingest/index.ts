@@ -9,6 +9,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import * as XLSX from 'https://esm.sh/xlsx@0.18.5';
 import mammoth from 'npm:mammoth@1.8.0';
+import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
 const MAX_TEXT_CHARS = 200_000; // truncate very large docs to keep prompts sane
 const CHUNK_SIZE = 1500;         // ~character-based chunks for retrieval
@@ -118,7 +119,7 @@ async function extractViaClaude(base64: string, mime: string, filename: string):
     throw new Error(`Unsupported file type for Claude extraction: ${mime}`);
   }
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await anthropicFetch({ feature: "admin-agent-knowledge-ingest" }, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

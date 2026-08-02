@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -199,7 +200,7 @@ You MUST use the suggest_mappings tool to return your results.`;
 
     const userPrompt = `Analyze these rows and suggest mappings:\n\n${rowsText}`;
 
-    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
+    const aiResponse = await anthropicFetch({ feature: "ai-mapping-suggest" }, {
       method: "POST",
       headers: {
         "x-api-key": ANTHROPIC_API_KEY,

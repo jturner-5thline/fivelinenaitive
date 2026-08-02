@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,7 +47,7 @@ Keep responses concise and focused on the data. Use markdown formatting for clar
 Current spreadsheet context:
 ${context || 'No data loaded.'}`;
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await anthropicFetch({ feature: "spreadsheet-ai-analysis" }, {
       method: "POST",
       headers: {
         "x-api-key": ANTHROPIC_API_KEY,

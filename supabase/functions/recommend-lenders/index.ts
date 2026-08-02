@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1261,7 +1262,7 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
       try {
         let text = "";
         if (ANTHROPIC_API_KEY) {
-          const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+          const claudeRes = await anthropicFetch({ feature: "recommend-lenders" }, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

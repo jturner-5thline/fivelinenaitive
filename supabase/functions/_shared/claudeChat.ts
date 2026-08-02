@@ -2,6 +2,8 @@
 // Accepts OpenAI-shape tools/tool_choice for convenience and translates to
 // Anthropic shape internally so call sites can be swapped with minimal churn.
 
+import { anthropicFetch } from "./anthropicUsage.ts";
+
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const DEFAULT_MODEL = "claude-sonnet-4-5-20250929";
 
@@ -101,7 +103,7 @@ export async function callClaude(params: CallClaudeParams): Promise<CallClaudeRe
   const toolChoice = normalizeToolChoice(params.toolChoice);
   if (toolChoice) body.tool_choice = toolChoice;
 
-  const resp = await fetch(ANTHROPIC_URL, {
+  const resp = await anthropicFetch({ feature: "claudeChat" }, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -162,7 +164,7 @@ export async function streamClaudeAsOpenAISSE(
   const toolChoice = normalizeToolChoice(params.toolChoice);
   if (toolChoice) body.tool_choice = toolChoice;
 
-  const upstream = await fetch(ANTHROPIC_URL, {
+  const upstream = await anthropicFetch({ feature: "claudeChat" }, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

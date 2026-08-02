@@ -19,6 +19,7 @@
 // Per project memory: AI writes ALWAYS require explicit user approval.
 
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -145,7 +146,7 @@ async function callClaude(opts: {
   tool: any;
   toolName: string;
 }): Promise<any> {
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+  const resp = await anthropicFetch({ feature: "agent-orchestrator" }, {
     method: "POST",
     headers: {
       "x-api-key": opts.apiKey,

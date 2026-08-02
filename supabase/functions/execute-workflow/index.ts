@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -285,7 +286,7 @@ async function executeAIProcessAction(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 55_000);
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await anthropicFetch({ feature: "execute-workflow" }, {
       method: "POST",
       headers: {
         "x-api-key": ANTHROPIC_API_KEY,

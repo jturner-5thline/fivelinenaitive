@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -169,7 +170,7 @@ Provide a concise, actionable response based on this event. Focus on insights th
         const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
         if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
 
-        const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
+        const aiResponse = await anthropicFetch({ feature: "execute-agent-trigger" }, {
           method: "POST",
           headers: {
             "x-api-key": ANTHROPIC_API_KEY,
