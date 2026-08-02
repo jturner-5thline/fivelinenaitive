@@ -1,6 +1,15 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Loader2, Lightbulb, ChevronDown, ChevronRight } from "lucide-react";
+import { Loader2, Lightbulb, ChevronDown, ChevronRight, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -61,6 +70,23 @@ const SEVERITY_STYLES: Record<UsageRecommendation["severity"], string> = {
   low: "border-emerald-500/40 text-emerald-300",
 };
 
+const ALL = "__all__";
+
+/** Coarse bucket for an error message so users can filter by error type. */
+function errorType(message: string | null | undefined): string {
+  const m = (message ?? "").toLowerCase();
+  if (!m) return "unknown";
+  if (m.includes("rate limit") || m.includes("429")) return "rate_limit";
+  if (m.includes("timeout") || m.includes("timed out") || m.includes("504")) return "timeout";
+  if (m.includes("overloaded") || m.includes("529")) return "overloaded";
+  if (m.includes("context") || m.includes("too long") || m.includes("max tokens"))
+    return "context_length";
+  if (m.includes("auth") || m.includes("401") || m.includes("403")) return "auth";
+  if (m.includes("invalid") || m.includes("400")) return "invalid_request";
+  if (m.includes("network") || m.includes("fetch")) return "network";
+  return "other";
+}
+
 export function ApiUsageDrilldownDialog({
   selection,
   onOpenChange,
@@ -74,6 +100,12 @@ export function ApiUsageDrilldownDialog({
   const [openFeature, setOpenFeature] = useState<string | null>(null);
   const [calls, setCalls] = useState<CallRow[]>([]);
   const [callsLoading, setCallsLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [modelFilter, setModelFilter] = useState<string>(ALL);
+  const [statusFilter, setStatusFilter] = useState<string>(ALL);
+  const [errorFilter, setErrorFilter] = useState<string>(ALL);
+  const [minInput, setMinInput] = useState("");
+  const [minOutput, setMinOutput] = useState("");
 
   useEffect(() => {
     if (!selection) return;
@@ -100,6 +132,12 @@ export function ApiUsageDrilldownDialog({
   useEffect(() => {
     setOpenFeature(null);
     setCalls([]);
+    setSearch("");
+    setModelFilter(ALL);
+    setStatusFilter(ALL);
+    setErrorFilter(ALL);
+    setMinInput("");
+    setMinOutput("");
   }, [selection]);
 
   useEffect(() => {
@@ -123,9 +161,80 @@ export function ApiUsageDrilldownDialog({
     };
   }, [selection, openFeature]);
 
+  const modelOptions = useMemo(
+    () =>
+      Array.from(new Set(rows.map((r) => r.model).filter(Boolean) as string[])).sort(),
+    [rows],
+  );
+
+  const errorOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          calls.filter((c) => c.status !== "success").map((c) => errorType(c.error_message)),
+        ),
+      ).sort(),
+    [calls],
+  );
+
+  const minIn = Number(minInput) || 0;
+  const minOut = Number(minOutput) || 0;
+
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (q && !`${r.feature} ${r.model ?? ""} ${r.provider ?? ""}`.toLowerCase().includes(q))
+        return false;
+      if (modelFilter !== ALL && (r.model ?? "—") !== modelFilter) return false;
+      if (statusFilter === "error" && Number(r.errors) === 0) return false;
+      if (statusFilter === "success" && Number(r.errors) > 0 && Number(r.calls) === Number(r.errors))
+        return false;
+      if (minIn && Number(r.input_tokens) < minIn) return false;
+      if (minOut && Number(r.output_tokens) < minOut) return false;
+      return true;
+    });
+  }, [rows, search, modelFilter, statusFilter, minIn, minOut]);
+
+  const filteredCalls = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return calls.filter((c) => {
+      if (
+        q &&
+        !`${c.action ?? ""} ${c.feature} ${c.detail ?? ""} ${c.model ?? ""} ${c.deal_name ?? ""}`
+          .toLowerCase()
+          .includes(q)
+      )
+        return false;
+      if (modelFilter !== ALL && (c.model ?? "—") !== modelFilter) return false;
+      if (statusFilter === "error" && c.status === "success") return false;
+      if (statusFilter === "success" && c.status !== "success") return false;
+      if (errorFilter !== ALL && errorType(c.error_message) !== errorFilter) return false;
+      if (minIn && Number(c.input_tokens) < minIn) return false;
+      if (minOut && Number(c.output_tokens) < minOut) return false;
+      return true;
+    });
+  }, [calls, search, modelFilter, statusFilter, errorFilter, minIn, minOut]);
+
+  const filtersActive =
+    !!search.trim() ||
+    modelFilter !== ALL ||
+    statusFilter !== ALL ||
+    errorFilter !== ALL ||
+    !!minInput ||
+    !!minOutput;
+
+  const clearFilters = () => {
+    setSearch("");
+    setModelFilter(ALL);
+    setStatusFilter(ALL);
+    setErrorFilter(ALL);
+    setMinInput("");
+    setMinOutput("");
+  };
+
   const totals = useMemo(
     () =>
-      rows.reduce(
+      filteredRows.reduce(
         (acc, r) => ({
           calls: acc.calls + Number(r.calls || 0),
           input: acc.input + Number(r.input_tokens || 0),
@@ -134,10 +243,10 @@ export function ApiUsageDrilldownDialog({
         }),
         { calls: 0, input: 0, output: 0, repeats: 0 },
       ),
-    [rows],
+    [filteredRows],
   );
 
-  const advice = useMemo(() => recommendationsForSelection(rows), [rows]);
+  const advice = useMemo(() => recommendationsForSelection(filteredRows), [filteredRows]);
 
   return (
     <Dialog open={!!selection} onOpenChange={onOpenChange}>
@@ -161,6 +270,73 @@ export function ApiUsageDrilldownDialog({
         </DialogHeader>
 
         {error && <Card className="p-3 border-red-500/40 text-red-300 text-sm">{error}</Card>}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search action, feature, deal, context…"
+              className="pl-7 h-8 text-xs"
+            />
+          </div>
+          <Select value={modelFilter} onValueChange={setModelFilter}>
+            <SelectTrigger className="h-8 w-[170px] text-xs">
+              <SelectValue placeholder="Model" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All models</SelectItem>
+              {modelOptions.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-8 w-[130px] text-xs">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All statuses</SelectItem>
+              <SelectItem value="success">Success</SelectItem>
+              <SelectItem value="error">Errors only</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={errorFilter} onValueChange={setErrorFilter}>
+            <SelectTrigger className="h-8 w-[150px] text-xs">
+              <SelectValue placeholder="Error type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All error types</SelectItem>
+              {errorOptions.map((e) => (
+                <SelectItem key={e} value={e}>
+                  {e.replace(/_/g, " ")}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            value={minInput}
+            onChange={(e) => setMinInput(e.target.value.replace(/[^0-9]/g, ""))}
+            placeholder="Min in tokens"
+            inputMode="numeric"
+            className="h-8 w-[120px] text-xs"
+          />
+          <Input
+            value={minOutput}
+            onChange={(e) => setMinOutput(e.target.value.replace(/[^0-9]/g, ""))}
+            placeholder="Min out tokens"
+            inputMode="numeric"
+            className="h-8 w-[130px] text-xs"
+          />
+          {filtersActive && (
+            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={clearFilters}>
+              <X className="h-3.5 w-3.5 mr-1" /> Clear
+            </Button>
+          )}
+        </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-16 text-muted-foreground">
@@ -186,14 +362,16 @@ export function ApiUsageDrilldownDialog({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {rows.length === 0 && (
+                    {filteredRows.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={10} className="text-center text-muted-foreground py-6">
-                          No calls in this slice.
+                          {rows.length === 0
+                            ? "No calls in this slice."
+                            : "No rows match the current filters."}
                         </TableCell>
                       </TableRow>
                     )}
-                    {rows.map((r) => (
+                    {filteredRows.map((r) => (
                       <Fragment key={`${r.feature}-${r.provider}-${r.model}`}>
                       <TableRow
                         className="cursor-pointer"
@@ -252,9 +430,11 @@ export function ApiUsageDrilldownDialog({
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground py-3">
                                   <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading calls…
                                 </div>
-                              ) : calls.length === 0 ? (
+                              ) : filteredCalls.length === 0 ? (
                                 <div className="text-xs text-muted-foreground py-2">
-                                  No per-call detail recorded for this feature yet.
+                                  {calls.length === 0
+                                    ? "No per-call detail recorded for this feature yet."
+                                    : "No calls match the current filters."}
                                 </div>
                               ) : (
                                 <Table>
@@ -271,7 +451,7 @@ export function ApiUsageDrilldownDialog({
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
-                                    {calls.map((c, i) => (
+                                    {filteredCalls.map((c, i) => (
                                       <TableRow key={`${c.created_at}-${i}`}>
                                         <TableCell className="text-xs whitespace-nowrap">
                                           {new Date(c.created_at).toLocaleString()}
