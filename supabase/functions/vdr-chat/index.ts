@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { compactHistory } from "../_shared/contextBudget.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -118,7 +119,7 @@ ${contextText}`;
 
     const messages = [
       { role: "system", content: systemPrompt },
-      ...conversation_history.slice(-10),
+      ...compactHistory(conversation_history, { maxTurns: 10 }),
       { role: "user", content: message },
     ];
 
