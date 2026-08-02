@@ -194,9 +194,8 @@ export function ApiUsageDrilldownDialog({
                       </TableRow>
                     )}
                     {rows.map((r) => (
-                      <>
+                      <Fragment key={`${r.feature}-${r.provider}-${r.model}`}>
                       <TableRow
-                        key={`${r.feature}-${r.provider}-${r.model}`}
                         className="cursor-pointer"
                         onClick={() =>
                           setOpenFeature((cur) => (cur === r.feature ? null : r.feature))
@@ -243,7 +242,7 @@ export function ApiUsageDrilldownDialog({
                         </TableCell>
                       </TableRow>
                       {openFeature === r.feature && (
-                        <TableRow key={`${r.feature}-calls`} className="hover:bg-transparent">
+                        <TableRow className="hover:bg-transparent">
                           <TableCell colSpan={10} className="p-0">
                             <div className="bg-muted/20 border-t p-3 space-y-2">
                               <div className="text-xs font-medium text-muted-foreground">
@@ -312,7 +311,7 @@ export function ApiUsageDrilldownDialog({
                           </TableCell>
                         </TableRow>
                       )}
-                      </>
+                      </Fragment>
                     ))}
                   </TableBody>
                 </Table>
