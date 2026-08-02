@@ -29158,6 +29158,54 @@ export type Database = {
         }
       }
       ai_jobs_reap_stuck: { Args: never; Returns: number }
+      api_usage_by_feature: {
+        Args: { _hours?: number }
+        Returns: {
+          calls: number
+          errors: number
+          feature: string
+          input_tokens: number
+          last_call_at: string
+          model: string
+          output_tokens: number
+          provider: string
+        }[]
+      }
+      api_usage_by_quarter: {
+        Args: { _quarters?: number }
+        Returns: {
+          bucket: string
+          calls: number
+          errors: number
+          input_tokens: number
+          output_tokens: number
+          provider: string
+        }[]
+      }
+      api_usage_events: {
+        Args: { _since: string }
+        Returns: {
+          calls: number
+          created_at: string
+          errors: number
+          feature: string
+          input_tokens: number
+          model: string
+          output_tokens: number
+          provider: string
+        }[]
+      }
+      api_usage_timeseries: {
+        Args: { _bucket?: string; _hours?: number }
+        Returns: {
+          bucket: string
+          calls: number
+          errors: number
+          input_tokens: number
+          output_tokens: number
+          provider: string
+        }[]
+      }
       approve_join_request: {
         Args: {
           _request_id: string
