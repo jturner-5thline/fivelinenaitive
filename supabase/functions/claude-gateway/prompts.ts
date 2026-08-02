@@ -165,6 +165,14 @@ export function buildSystemBlocks(args: BuildSystemArgs): BuildSystemResult {
   const dynamic = args.dynamicSystem?.trim();
   if (dynamic) {
     blocks.push({ type: "text", text: dynamic });
+    // A large dynamic block (typically the assembled deal-context payload) is
+    // still byte-identical across the follow-up turns of one conversation, so
+    // give it its own breakpoint. Anthropic allows up to 4; two here means a
+    // repeat turn reads both the template prefix AND the deal context instead
+    // of re-sending tens of thousands of input tokens.
+    if (dynamic.length >= 5_000) {
+      blocks[blocks.length - 1].cache_control = { type: "ephemeral" };
+    }
   }
 
   const stableChars = stableParts.reduce((n, s) => n + s.length, 0);
