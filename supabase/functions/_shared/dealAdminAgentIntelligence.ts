@@ -2279,6 +2279,7 @@ async function callModelForCandidates(
   bundle: DealSignalBundle,
   fingerprint?: string | null,
   extraRules?: string | null,
+  usageCtx?: { companyId?: string | null; userId?: string | null },
 ): Promise<CandidateItem[]> {
   if (!ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY missing — Deal Admin Agent cannot analyze");
@@ -2293,7 +2294,29 @@ async function callModelForCandidates(
     ],
   };
 
-  const resp = await anthropicFetch({ feature: "deal-admin-agent" }, {
+  const signalSummary = [
+    bundle.emails.length ? `emails:${bundle.emails.length}` : null,
+    bundle.email_threads.length ? `threads:${bundle.email_threads.length}` : null,
+    bundle.activity.length ? `activity:${bundle.activity.length}` : null,
+    bundle.calendar_items.length ? `calendar:${bundle.calendar_items.length}` : null,
+    bundle.claap_recordings.length ? `claap:${bundle.claap_recordings.length}` : null,
+    bundle.status_notes.length ? `notes:${bundle.status_notes.length}` : null,
+    bundle.stage_history.length ? `stage_history:${bundle.stage_history.length}` : null,
+    (bundle.unlinked_terms_emails?.length ?? 0)
+      ? `unlinked_terms:${bundle.unlinked_terms_emails!.length}`
+      : null,
+    bundle.referral_sources.length ? `referrals:${bundle.referral_sources.length}` : null,
+  ].filter(Boolean).join(" ");
+
+  const resp = await anthropicFetch({
+    feature: "deal-admin-agent",
+    // What the assistant was actually doing on this call:
+    promptMode: `analyze_deal_signals · ${bundle.deal_name ?? "unknown deal"}`,
+    signature: signalSummary || "no_signals",
+    dealId: bundle.deal_id ?? null,
+    companyId: usageCtx?.companyId ?? null,
+    userId: usageCtx?.userId ?? null,
+  }, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -5411,7 +5434,13 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
         .join("\n\n") || null;
       const modelCandidates = sigCount > 0
         ? stampTermsIssuedBundleKeys(
-            normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint, perDealRules), bundle),
+            normalizeCandidateTargets(
+              await callModelForCandidates(bundle, fingerprint, perDealRules, {
+                companyId,
+                userId: bundle.current.deal_owner_user_id ?? null,
+              }),
+              bundle,
+            ),
             bundle,
           )
         : [];
