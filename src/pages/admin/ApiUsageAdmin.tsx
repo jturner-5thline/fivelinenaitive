@@ -53,6 +53,35 @@ interface FeatureRow {
   last_call_at: string;
 }
 
+interface FrequencyRow {
+  feature: string;
+  provider: string;
+  calls: number;
+  active_days: number;
+  active_hours: number;
+  calls_per_day: number;
+  calls_per_active_day: number;
+  peak_hour_calls: number;
+  peak_hour_at: string | null;
+  median_gap_minutes: number | null;
+  min_gap_seconds: number | null;
+  burst_calls: number;
+  distinct_users: number;
+  first_call_at: string;
+  last_call_at: string;
+}
+
+/** Human-readable cadence, e.g. "every 12 min" or "every 3.2 h". */
+function cadence(medianGapMinutes: number | null | undefined): string {
+  const m = Number(medianGapMinutes ?? 0);
+  if (!medianGapMinutes || m <= 0) return "—";
+  if (m < 1) return `every ${Math.round(m * 60)} s`;
+  if (m < 90) return `every ${m < 10 ? m.toFixed(1) : Math.round(m)} min`;
+  const h = m / 60;
+  if (h < 48) return `every ${h.toFixed(1)} h`;
+  return `every ${(h / 24).toFixed(1)} d`;
+}
+
 type RangeKey = "24h" | "72h" | "7d" | "30d" | "quarter";
 
 const RANGES: { key: RangeKey; label: string; hours: number; bucket: "hour" | "day" }[] = [
@@ -99,6 +128,7 @@ export default function ApiUsageAdmin() {
   const [range, setRange] = useState<RangeKey>("24h");
   const [series, setSeries] = useState<SeriesRow[]>([]);
   const [features, setFeatures] = useState<FeatureRow[]>([]);
+  const [frequency, setFrequency] = useState<FrequencyRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -150,15 +180,23 @@ export default function ApiUsageAdmin() {
           range === "quarter"
             ? supabase.rpc("api_usage_by_quarter", { _quarters: 8 })
             : supabase.rpc("api_usage_timeseries", { _hours: cfg.hours, _bucket: cfg.bucket });
-        const [seriesRes, featureRes] = await Promise.all([
+        const freqEnd = new Date();
+        const freqStart = new Date(freqEnd.getTime() - cfg.hours * 3600_000);
+        const [seriesRes, featureRes, freqRes] = await Promise.all([
           seriesPromise,
           supabase.rpc("api_usage_by_feature", { _hours: cfg.hours }),
+          supabase.rpc("api_usage_frequency", {
+            _start: freqStart.toISOString(),
+            _end: freqEnd.toISOString(),
+            _provider: null,
+          }),
         ]);
         if (cancelled) return;
         if (seriesRes.error) throw seriesRes.error;
         if (featureRes.error) throw featureRes.error;
         setSeries((seriesRes.data as SeriesRow[]) ?? []);
         setFeatures((featureRes.data as FeatureRow[]) ?? []);
+        setFrequency((freqRes.data as FrequencyRow[]) ?? []);
       } catch (err: unknown) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load usage");
       } finally {
@@ -417,11 +455,121 @@ export default function ApiUsageAdmin() {
         </Table>
       </Card>
 
+      <FrequencyCard
+        rows={frequency}
+        loading={loading}
+        rangeLabel={RANGES.find((r) => r.key === range)!.label}
+        onSelect={(provider, feature) => openRange(provider, feature)}
+      />
+
       <ApiUsageDrilldownDialog
         selection={selection}
         onOpenChange={(open) => !open && setSelection(null)}
       />
     </div>
+  );
+}
+
+function FrequencyCard({
+  rows,
+  loading,
+  rangeLabel,
+  onSelect,
+}: {
+  rows: FrequencyRow[];
+  loading: boolean;
+  rangeLabel: string;
+  onSelect: (provider: string, feature: string) => void;
+}) {
+  return (
+    <Card className="p-0 overflow-hidden">
+      <div className="px-4 py-3 border-b border-border/60">
+        <h2 className="text-sm font-medium">How often each action runs</h2>
+        <p className="text-xs text-muted-foreground">
+          Cadence over the last {rangeLabel}: average per day, typical gap between calls, busiest
+          hour and back-to-back bursts (calls under 60s apart).
+        </p>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Action / feature</TableHead>
+            <TableHead>Provider</TableHead>
+            <TableHead className="text-right">Calls</TableHead>
+            <TableHead className="text-right">Per day</TableHead>
+            <TableHead className="text-right">Per active day</TableHead>
+            <TableHead>Typical cadence</TableHead>
+            <TableHead className="text-right">Busiest hour</TableHead>
+            <TableHead className="text-right">Bursts &lt;60s</TableHead>
+            <TableHead className="text-right">Active days</TableHead>
+            <TableHead className="text-right">Users</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {loading && rows.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={10} className="text-center text-muted-foreground py-6">
+                Loading…
+              </TableCell>
+            </TableRow>
+          )}
+          {!loading && rows.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={10} className="text-center text-muted-foreground py-6">
+                No LLM calls recorded in this range.
+              </TableCell>
+            </TableRow>
+          )}
+          {rows.map((r) => (
+            <TableRow
+              key={`freq-${r.feature}-${r.provider}`}
+              className="cursor-pointer"
+              onClick={() => onSelect(r.provider, r.feature)}
+            >
+              <TableCell className="font-medium">{r.feature}</TableCell>
+              <TableCell>
+                <Badge variant="outline" className="capitalize">
+                  {r.provider}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-right font-mono">{fmt(r.calls)}</TableCell>
+              <TableCell className="text-right font-mono">
+                {Number(r.calls_per_day).toFixed(1)}
+              </TableCell>
+              <TableCell className="text-right font-mono">
+                {Number(r.calls_per_active_day).toFixed(1)}
+              </TableCell>
+              <TableCell className="text-xs">{cadence(r.median_gap_minutes)}</TableCell>
+              <TableCell className="text-right text-xs">
+                {r.peak_hour_at ? (
+                  <span>
+                    <span className="font-mono">{fmt(r.peak_hour_calls)}</span>{" "}
+                    <span className="text-muted-foreground">
+                      @ {new Date(r.peak_hour_at).toLocaleString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                      })}
+                    </span>
+                  </span>
+                ) : (
+                  "—"
+                )}
+              </TableCell>
+              <TableCell className="text-right font-mono">
+                {Number(r.burst_calls) > 0 ? (
+                  <span className="text-amber-300">{fmt(r.burst_calls)}</span>
+                ) : (
+                  "0"
+                )}
+              </TableCell>
+              <TableCell className="text-right font-mono">{fmt(r.active_days)}</TableCell>
+              <TableCell className="text-right font-mono">{fmt(r.distinct_users)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Card>
   );
 }
 
