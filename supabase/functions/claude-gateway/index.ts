@@ -684,7 +684,15 @@ serve(async (req) => {
     }
     await logClaudeUsage({
       userId, companyId, dealId: dealIdOuter, feature,
-      promptMode, signature, cacheMode, cacheStatus, cacheHit: false,
+      promptMode, signature, cacheMode,
+      // Report the real prompt-cache outcome so the usage dashboard's hit
+      // rate reflects Anthropic's ephemeral cache, not just our response cache.
+      cacheStatus: usage.cache_read_input_tokens > 0
+        ? "hit"
+        : usage.cache_creation_input_tokens > 0
+          ? "refresh"
+          : cacheStatus,
+      cacheHit: usage.cache_read_input_tokens > 0,
       model: data.model || model, latencyMs: elapsed(),
       inputTokens: usage.input_tokens, outputTokens: usage.output_tokens,
       promptCacheReadTokens: usage.cache_read_input_tokens,
