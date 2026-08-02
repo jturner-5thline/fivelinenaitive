@@ -219,58 +219,58 @@ export async function buildDealContext(
 
   const funding_sources = ((fsRes as any).data ?? []).map((r: any) => {
     sources.push({ id: `lender:${r.id}`, kind: "funding_source", label: r.name });
-    return {
+    return compact({
       id: `lender:${r.id}`,
       name: r.name,
       stage: r.stage ?? null,
       tracking_status: r.tracking_status ?? null,
       score: r.score ?? null,
       notes_excerpt: r.notes ? trim(r.notes, limits.excerptChars) : null,
-    };
+    });
   });
 
   const notes = ((notesRes as any).data ?? []).map((r: any) => {
     sources.push({ id: `note:${r.id}`, kind: "note", label: r.title ?? "Note" });
-    return {
+    return compact({
       id: `note:${r.id}`,
       title: r.title ?? null,
       excerpt: trim(r.content, limits.excerptChars),
       updated_at: r.updated_at ?? null,
-    };
+    });
   });
 
   const documents = ((docsRes as any).data ?? []).map((r: any) => {
     sources.push({ id: `doc:${r.id}`, kind: "document", label: r.name });
-    return {
+    return compact({
       id: `doc:${r.id}`,
       name: r.name,
       content_type: r.content_type ?? null,
       text_excerpt: r.extracted_text ? trim(r.extracted_text, limits.excerptChars) : null,
-    };
+    });
   });
 
   const recordings = ((recRes as any).data ?? []).map((r: any) => {
     sources.push({ id: `rec:${r.id}`, kind: "recording", label: r.recording_title ?? "Recording" });
-    return {
+    return compact({
       id: `rec:${r.id}`,
       title: r.recording_title ?? "Untitled",
       duration_seconds: r.duration_seconds ?? null,
       happened_at: r.linked_at ?? null,
       notes_excerpt: r.notes ? trim(r.notes, limits.excerptChars) : null,
-    };
+    });
   });
 
   const emails = ((emailRes as any).data ?? []).map((r: any) => {
     const gm = Array.isArray(r.gmail_messages) ? r.gmail_messages[0] : r.gmail_messages;
     const subject = gm?.subject ?? null;
     sources.push({ id: `email:${r.id}`, kind: "email", label: subject ?? "Email" });
-    return {
+    return compact({
       id: `email:${r.id}`,
       subject,
       from: gm?.from_email ?? null,
       happened_at: gm?.received_at ?? r.linked_at ?? null,
       excerpt: trim(gm?.snippet ?? r.notes ?? "", limits.excerptChars),
-    };
+    });
   });
 
   const activity = ((actRes as any).data ?? []).map((r: any) => {
@@ -279,16 +279,16 @@ export async function buildDealContext(
     const diff = r.before || r.after
       ? `before=${JSON.stringify(r.before ?? null)} after=${JSON.stringify(r.after ?? null)}`
       : "";
-    return {
+    return compact({
       id: `act:${r.id}`,
       type: r.action_type ?? "activity",
-      summary: trim(`${summary}${diff ? ` — ${diff}` : ""}`, limits.excerptChars),
+      summary: trim(`${summary}${diff ? ` — ${diff}` : ""}`, Math.min(limits.excerptChars, 240)),
       happened_at: r.created_at ?? null,
-    };
+    });
   });
 
   const payload: DealContextPayload = {
-    deal: {
+    deal: compact({
       id: deal.id,
       company: deal.company ?? null,
       value: deal.value ?? null,
@@ -299,7 +299,7 @@ export async function buildDealContext(
       notes_excerpt: deal.notes ? trim(deal.notes, limits.excerptChars) : null,
       created_at: deal.created_at ?? null,
       updated_at: deal.updated_at ?? null,
-    },
+    }) as DealContextPayload["deal"],
     funding_sources,
     notes,
     documents,
@@ -309,7 +309,47 @@ export async function buildDealContext(
     sources,
     approx_chars: 0,
   };
-  payload.approx_chars = JSON.stringify(payload).length;
+  return enforceBudget(payload, limits.totalChars);
+}
+
+/**
+ * Shrink the payload until its serialized size fits `budget` chars.
+ * Sections are trimmed in reverse-importance order (activity → emails →
+ * recordings → notes → documents → funding sources), and `sources` is pruned
+ * to only the rows that survived so citations never point at dropped data.
+ */
+function enforceBudget(payload: DealContextPayload, budget: number): DealContextPayload {
+  const size = () => JSON.stringify(payload).length;
+  const order: Array<keyof DealContextPayload> = [
+    "activity",
+    "emails",
+    "recordings",
+    "notes",
+    "documents",
+    "funding_sources",
+  ];
+  let truncated = false;
+
+  for (const key of order) {
+    while (size() > budget) {
+      const arr = payload[key] as any[];
+      if (!Array.isArray(arr) || arr.length === 0) break;
+      arr.pop();
+      truncated = true;
+    }
+    if (size() <= budget) break;
+  }
+
+  if (truncated) {
+    const keptIds = new Set<string>([`deal:${payload.deal.id}`]);
+    for (const key of order) {
+      for (const row of (payload[key] as any[]) ?? []) keptIds.add(row.id);
+    }
+    payload.sources = payload.sources.filter((s) => keptIds.has(s.id));
+    payload.truncated = true;
+  }
+
+  payload.approx_chars = size();
   return payload;
 }
 
