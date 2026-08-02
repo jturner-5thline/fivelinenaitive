@@ -24,6 +24,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  ApiUsageDrilldownDialog,
+  type DrilldownSelection,
+} from "@/components/admin/ApiUsageDrilldownDialog";
 
 // Internal-only cross-provider LLM usage observability.
 // Data comes from SECURITY DEFINER RPCs that re-check
@@ -98,6 +102,28 @@ export default function ApiUsageAdmin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [selection, setSelection] = useState<DrilldownSelection | null>(null);
+
+  const openSlice = (bucketIso: string, provider: string | null) => {
+    const start = new Date(bucketIso);
+    const end = new Date(start);
+    if (range === "quarter") end.setUTCMonth(end.getUTCMonth() + 3);
+    else if (range === "24h" || range === "72h") end.setUTCHours(end.getUTCHours() + 1);
+    else end.setUTCDate(end.getUTCDate() + 1);
+    setSelection({
+      start,
+      end,
+      provider,
+      label: labelForBucket(bucketIso, range),
+    });
+  };
+
+  const openRange = (provider: string | null, label: string) => {
+    const cfg = RANGES.find((r) => r.key === range)!;
+    const end = new Date();
+    const start = new Date(end.getTime() - cfg.hours * 3600_000);
+    setSelection({ start, end, provider, label });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -281,6 +307,11 @@ export default function ApiUsageAdmin() {
                           stackId="a"
                           fill={PROVIDER_COLORS[p] ?? PROVIDER_COLORS.other}
                           radius={[2, 2, 0, 0]}
+                          cursor="pointer"
+                          onClick={(entry: { payload?: { bucket?: string } }) => {
+                            const bucket = entry?.payload?.bucket;
+                            if (bucket) openSlice(bucket, p);
+                          }}
                         />
                       ))}
                     </BarChart>
@@ -291,6 +322,9 @@ export default function ApiUsageAdmin() {
                   </div>
                 )}
               </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Click any bar segment to drill into the actions, models and token breakdown behind it.
+              </p>
             </Card>
           </TabsContent>
         ))}
@@ -299,7 +333,11 @@ export default function ApiUsageAdmin() {
       {byProvider.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {byProvider.map(([provider, v]) => (
-            <Card key={provider} className="p-4">
+            <Card
+              key={provider}
+              className="p-4 cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => openRange(provider, `${provider} — ${RANGES.find((r) => r.key === range)!.label}`)}
+            >
               <div className="flex items-center gap-2">
                 <span
                   className="h-2.5 w-2.5 rounded-full"
@@ -352,7 +390,11 @@ export default function ApiUsageAdmin() {
               </TableRow>
             )}
             {features.map((r) => (
-              <TableRow key={`${r.feature}-${r.provider}`}>
+              <TableRow
+                key={`${r.feature}-${r.provider}`}
+                className="cursor-pointer"
+                onClick={() => openRange(r.provider, r.feature)}
+              >
                 <TableCell className="font-medium">{r.feature}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className="capitalize">
@@ -374,6 +416,11 @@ export default function ApiUsageAdmin() {
           </TableBody>
         </Table>
       </Card>
+
+      <ApiUsageDrilldownDialog
+        selection={selection}
+        onOpenChange={(open) => !open && setSelection(null)}
+      />
     </div>
   );
 }
