@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
 /**
  * classify-file
@@ -426,7 +427,7 @@ serve(async (req) => {
 
     let msgResp: Response;
     try {
-      msgResp = await fetch("https://api.anthropic.com/v1/messages", {
+      msgResp = await anthropicFetch({ feature: "classify-file" }, {
         method: "POST",
         headers: {
           "x-api-key": ANTHROPIC_API_KEY,

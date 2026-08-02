@@ -11,6 +11,7 @@
 // Per project memory: AI writes require explicit user approval (human-in-the-loop).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -395,7 +396,7 @@ Deno.serve(async (req) => {
       },
     };
 
-    const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
+    const aiResp = await anthropicFetch({ feature: "claap-deal-analyze" }, {
       method: "POST",
       headers: {
         "x-api-key": ANTHROPIC_API_KEY,

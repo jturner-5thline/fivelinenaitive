@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -960,7 +961,7 @@ ${promptAddendum}`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), CLAUDE_TIMEOUT_MS);
 
-    const anthropicResp = await fetch("https://api.anthropic.com/v1/messages", {
+    const anthropicResp = await anthropicFetch({ feature: "claude-dashboard-chat" }, {
       method: "POST",
       headers: {
         "x-api-key": ANTHROPIC_API_KEY,

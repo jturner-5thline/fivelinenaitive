@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -84,7 +85,7 @@ async function executeAgentNode(node: GraphNode, inputs: Record<string, any>, ct
     throw new Error('ANTHROPIC_API_KEY is not configured');
   }
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const response = await anthropicFetch({ feature: "execute-agent-graph" }, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

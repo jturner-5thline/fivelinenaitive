@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -100,7 +101,7 @@ Rules:
                 required: ['name', 'nodes', 'edges'],
                 additionalProperties: false,
     };
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await anthropicFetch({ feature: "generate-agent-graph" }, {
       method: 'POST',
       headers: {
         'x-api-key': ANTHROPIC_API_KEY,

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -200,7 +201,7 @@ serve(async (req) => {
             "No prose, no markdown — only the JSON array.",
           messages: [{ role: "user", content: `Usage data:\n\n${JSON.stringify(usageContext, null, 2)}` }],
         };
-        const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        const resp = await anthropicFetch({ feature: "send-ux-insights-email" }, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

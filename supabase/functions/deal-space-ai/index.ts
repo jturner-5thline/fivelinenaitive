@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import JSZip from "https://esm.sh/jszip@3.10.1";
+import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,7 +34,7 @@ async function callClaude(
     content: m.content,
   }));
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await anthropicFetch({ feature: "deal-space-ai" }, {
     method: "POST",
     headers: {
       "x-api-key": ANTHROPIC_API_KEY,
@@ -85,7 +86,7 @@ async function streamClaude(
     content: m.content,
   }));
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await anthropicFetch({ feature: "deal-space-ai" }, {
     method: "POST",
     headers: {
       "x-api-key": ANTHROPIC_API_KEY,

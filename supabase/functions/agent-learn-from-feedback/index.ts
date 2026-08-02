@@ -10,6 +10,7 @@
 // merged by rule_text.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const MODEL = "claude-sonnet-4-5-20250929";
@@ -125,7 +126,7 @@ If no strong patterns, return {"rules":[]}.`;
 
   const user = `Existing active rules (do NOT propose duplicates):\n${existingRules.length ? existingRules.map((r,i)=>`${i+1}. ${r}`).join("\n") : "(none yet)"}\n\nRecent feedback signals (newest first):\n${JSON.stringify(compact, null, 2)}`;
 
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+  const resp = await anthropicFetch({ feature: "agent-learn-from-feedback" }, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -98,7 +99,7 @@ The system prompt should be written in expert prompt engineering style - specifi
       description: toolDef.description,
       input_schema: toolDef.parameters,
     }];
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await anthropicFetch({ feature: "generate-agent-config" }, {
       method: "POST",
       headers: {
         "x-api-key": ANTHROPIC_API_KEY,

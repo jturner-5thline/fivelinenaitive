@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -145,7 +146,7 @@ async function callClaude(systemPrompt: string, userPrompt: string): Promise<str
 
   // Prefer Claude if available; fallback to Lovable AI Gateway (Gemini)
   if (ANTHROPIC_API_KEY) {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await anthropicFetch({ feature: "branded-doc-generate" }, {
       method: "POST",
       headers: {
         "x-api-key": ANTHROPIC_API_KEY,
