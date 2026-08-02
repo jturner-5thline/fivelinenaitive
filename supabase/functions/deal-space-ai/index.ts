@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import JSZip from "https://esm.sh/jszip@3.10.1";
 import { anthropicFetch } from "../_shared/anthropicUsage.ts";
+import { compactHistory, historyStats } from "../_shared/contextBudget.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1032,11 +1033,15 @@ SCOPE RESTRICTION: The user has selected "Transcripts Only" scope.
           .select('role, content, created_at')
           .eq('conversation_id', memConvId)
           .order('created_at', { ascending: false })
-          .limit(20);
+          .limit(12);
         const ordered = (priorMsgs || []).reverse();
         // Skip prior messages that duplicate what the client sent in `messages`.
         const incomingFirst = messages?.[0]?.content || '';
-        const filtered = ordered.filter((m: any) => m.content !== incomingFirst).slice(-20);
+        // Cap at the last 12 turns and truncate long messages before replaying.
+        const filtered = compactHistory(
+          ordered.filter((m: any) => m.content !== incomingFirst),
+          { maxTurns: 12, maxCharsPerMessage: 800, maxTotalChars: 8000 },
+        );
         if (filtered.length > 0) {
           priorMemoryBlock = `\n\n**PRIOR CONVERSATION HISTORY (last ${Math.ceil(filtered.length / 2)} exchanges, for continuity):**\n` +
             filtered.map((m: any) => `${m.role === 'user' ? 'User' : 'AI'}: ${truncate(m.content, 800)}`).join('\n');
@@ -1516,7 +1521,9 @@ ${FORMATTING_RULES}
     // ── Streaming mode ──
     if (stream) {
       try {
-        const anthropicStream = await streamClaude(systemPrompt, messages, { temperature: 0.2 });
+        const compactedMessages = compactHistory(messages);
+        console.log("[deal-space-ai] history compaction", historyStats(messages, compactedMessages));
+        const anthropicStream = await streamClaude(systemPrompt, compactedMessages, { temperature: 0.2 });
 
         // Transform Anthropic SSE into a simpler SSE format for the client
         const encoder = new TextEncoder();
@@ -1568,7 +1575,7 @@ ${FORMATTING_RULES}
     }
 
     // ── Non-streaming mode ──
-    const claudeResult = await callClaude(systemPrompt, messages, { temperature: 0.2 });
+    const claudeResult = await callClaude(systemPrompt, compactHistory(messages), { temperature: 0.2 });
     const rawContent = claudeResult.content || "I couldn't generate a response.";
     const { content } = validateAndNormalizeMemo(rawContent);
 

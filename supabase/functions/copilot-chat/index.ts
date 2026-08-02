@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { compactHistory } from "../_shared/contextBudget.ts";
 import {
   verifiedDealUpdate,
   WriteNotPersistedError,
@@ -10386,7 +10387,9 @@ WAITING-ON / OUTSTANDING-ITEMS QUERIES (STRICT):
 
     const apiMessages: any[] = [
       { role: "system", content: systemPrompt + outstandingRoutingBlock + createIntentSystemBlock },
-      ...(history || []).map((m: any) => ({ role: m.role, content: m.content })),
+      // Cap replayed history at the last 12 turns (min 6) and truncate long
+      // messages so the request stays well under the context budget.
+      ...compactHistory((history || []).map((m: any) => ({ role: m.role, content: m.content }))),
       { role: "user", content: message },
     ];
 
