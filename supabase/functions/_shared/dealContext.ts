@@ -78,6 +78,8 @@ export interface DealContextPayload {
   sources: DealContextSource[];
   /** Approximate serialized size, useful for logging/budget checks. */
   approx_chars: number;
+  /** True when sections were dropped/shortened to fit the char budget. */
+  truncated?: boolean;
 }
 
 export interface BuildDealContextOptions {
@@ -98,23 +100,36 @@ export interface BuildDealContextOptions {
     fundingSources?: number;
     /** Max chars kept for any single excerpt. */
     excerptChars?: number;
+    /** Hard cap on the serialized payload. Default 60000 chars (~15k tokens). */
+    totalChars?: number;
   };
 }
 
 const DEFAULT_LIMITS = {
-  notes: 12,
-  documents: 20,
-  recordings: 8,
-  emails: 15,
-  activity: 15,
-  fundingSources: 30,
-  excerptChars: 600,
+  notes: 8,
+  documents: 12,
+  recordings: 6,
+  emails: 10,
+  activity: 10,
+  fundingSources: 20,
+  excerptChars: 400,
+  totalChars: 60000,
 };
 
 function trim(s: unknown, max: number): string {
   if (typeof s !== "string") return "";
   const clean = s.replace(/\s+/g, " ").trim();
   return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
+}
+
+/** Strip null/undefined/empty-string fields so the JSON stays lean. */
+function compact<T extends Record<string, any>>(obj: T): T {
+  const out: any = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === null || v === undefined || v === "") continue;
+    out[k] = v;
+  }
+  return out as T;
 }
 
 /**
