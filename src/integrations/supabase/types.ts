@@ -29182,6 +29182,27 @@ export type Database = {
           provider: string
         }[]
       }
+      api_usage_drilldown: {
+        Args: { _end: string; _provider?: string; _start: string }
+        Returns: {
+          avg_latency_ms: number
+          cache_create_tokens: number
+          cache_hits: number
+          cache_read_tokens: number
+          calls: number
+          distinct_signatures: number
+          distinct_users: number
+          errors: number
+          feature: string
+          first_call_at: string
+          input_tokens: number
+          last_call_at: string
+          model: string
+          output_tokens: number
+          provider: string
+          repeat_calls: number
+        }[]
+      }
       api_usage_events: {
         Args: { _since: string }
         Returns: {
