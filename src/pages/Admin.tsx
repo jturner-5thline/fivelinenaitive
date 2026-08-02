@@ -681,6 +681,25 @@ const Admin = () => {
         );
       case "qb-mapping":
         return <QbCashflowMappingPanel />;
+      case "api-usage":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                API Usage
+              </CardTitle>
+              <CardDescription>
+                Calls, input and output tokens by provider and action over 24h, 72h, 7d, 30d and by quarter.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => navigate("/admin/api-usage")}>
+                Open Usage Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        );
       case "client-lookup":
         return <ClientAccountViewer />;
       case "usage-overview":
