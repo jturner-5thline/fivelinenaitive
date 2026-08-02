@@ -271,6 +271,73 @@ export function ApiUsageDrilldownDialog({
 
         {error && <Card className="p-3 border-red-500/40 text-red-300 text-sm">{error}</Card>}
 
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search action, feature, deal, context…"
+              className="pl-7 h-8 text-xs"
+            />
+          </div>
+          <Select value={modelFilter} onValueChange={setModelFilter}>
+            <SelectTrigger className="h-8 w-[170px] text-xs">
+              <SelectValue placeholder="Model" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All models</SelectItem>
+              {modelOptions.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-8 w-[130px] text-xs">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All statuses</SelectItem>
+              <SelectItem value="success">Success</SelectItem>
+              <SelectItem value="error">Errors only</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={errorFilter} onValueChange={setErrorFilter}>
+            <SelectTrigger className="h-8 w-[150px] text-xs">
+              <SelectValue placeholder="Error type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All error types</SelectItem>
+              {errorOptions.map((e) => (
+                <SelectItem key={e} value={e}>
+                  {e.replace(/_/g, " ")}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            value={minInput}
+            onChange={(e) => setMinInput(e.target.value.replace(/[^0-9]/g, ""))}
+            placeholder="Min in tokens"
+            inputMode="numeric"
+            className="h-8 w-[120px] text-xs"
+          />
+          <Input
+            value={minOutput}
+            onChange={(e) => setMinOutput(e.target.value.replace(/[^0-9]/g, ""))}
+            placeholder="Min out tokens"
+            inputMode="numeric"
+            className="h-8 w-[130px] text-xs"
+          />
+          {filtersActive && (
+            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={clearFilters}>
+              <X className="h-3.5 w-3.5 mr-1" /> Clear
+            </Button>
+          )}
+        </div>
+
         {loading ? (
           <div className="flex items-center justify-center py-16 text-muted-foreground">
             <Loader2 className="animate-spin mr-2 h-4 w-4" /> Loading breakdown…
@@ -295,14 +362,16 @@ export function ApiUsageDrilldownDialog({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {rows.length === 0 && (
+                    {filteredRows.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={10} className="text-center text-muted-foreground py-6">
-                          No calls in this slice.
+                          {rows.length === 0
+                            ? "No calls in this slice."
+                            : "No rows match the current filters."}
                         </TableCell>
                       </TableRow>
                     )}
-                    {rows.map((r) => (
+                    {filteredRows.map((r) => (
                       <Fragment key={`${r.feature}-${r.provider}-${r.model}`}>
                       <TableRow
                         className="cursor-pointer"
@@ -361,9 +430,11 @@ export function ApiUsageDrilldownDialog({
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground py-3">
                                   <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading calls…
                                 </div>
-                              ) : calls.length === 0 ? (
+                              ) : filteredCalls.length === 0 ? (
                                 <div className="text-xs text-muted-foreground py-2">
-                                  No per-call detail recorded for this feature yet.
+                                  {calls.length === 0
+                                    ? "No per-call detail recorded for this feature yet."
+                                    : "No calls match the current filters."}
                                 </div>
                               ) : (
                                 <Table>
@@ -380,7 +451,7 @@ export function ApiUsageDrilldownDialog({
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
-                                    {calls.map((c, i) => (
+                                    {filteredCalls.map((c, i) => (
                                       <TableRow key={`${c.created_at}-${i}`}>
                                         <TableCell className="text-xs whitespace-nowrap">
                                           {new Date(c.created_at).toLocaleString()}
