@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Lightbulb } from "lucide-react";
+import { Loader2, Lightbulb, ChevronDown, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -32,6 +32,24 @@ export interface DrilldownSelection {
   label: string;
 }
 
+interface CallRow {
+  created_at: string;
+  provider: string;
+  feature: string;
+  action: string | null;
+  detail: string | null;
+  model: string | null;
+  deal_id: string | null;
+  deal_name: string | null;
+  user_name: string | null;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  latency_ms: number | null;
+  status: string;
+  error_message: string | null;
+}
+
 function fmt(n: number | null | undefined): string {
   if (n == null) return "—";
   return new Intl.NumberFormat("en-US").format(Math.round(Number(n)));
@@ -53,6 +71,9 @@ export function ApiUsageDrilldownDialog({
   const [rows, setRows] = useState<DrilldownRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openFeature, setOpenFeature] = useState<string | null>(null);
+  const [calls, setCalls] = useState<CallRow[]>([]);
+  const [callsLoading, setCallsLoading] = useState(false);
 
   useEffect(() => {
     if (!selection) return;
@@ -74,6 +95,33 @@ export function ApiUsageDrilldownDialog({
       cancelled = true;
     };
   }, [selection]);
+
+  // Reset the expanded per-call log whenever the slice changes.
+  useEffect(() => {
+    setOpenFeature(null);
+    setCalls([]);
+  }, [selection]);
+
+  useEffect(() => {
+    if (!selection || !openFeature) return;
+    let cancelled = false;
+    (async () => {
+      setCallsLoading(true);
+      const { data } = await supabase.rpc("api_usage_calls", {
+        _start: selection.start.toISOString(),
+        _end: selection.end.toISOString(),
+        _feature: openFeature,
+        _provider: selection.provider,
+        _limit: 200,
+      });
+      if (cancelled) return;
+      setCalls((data as CallRow[]) ?? []);
+      setCallsLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selection, openFeature]);
 
   const totals = useMemo(
     () =>
@@ -146,8 +194,24 @@ export function ApiUsageDrilldownDialog({
                       </TableRow>
                     )}
                     {rows.map((r) => (
-                      <TableRow key={`${r.feature}-${r.provider}-${r.model}`}>
-                        <TableCell className="font-medium">{r.feature}</TableCell>
+                      <>
+                      <TableRow
+                        key={`${r.feature}-${r.provider}-${r.model}`}
+                        className="cursor-pointer"
+                        onClick={() =>
+                          setOpenFeature((cur) => (cur === r.feature ? null : r.feature))
+                        }
+                      >
+                        <TableCell className="font-medium">
+                          <span className="inline-flex items-center gap-1">
+                            {openFeature === r.feature ? (
+                              <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+                            )}
+                            {r.feature}
+                          </span>
+                        </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {r.model ?? "—"}
                         </TableCell>
@@ -178,6 +242,77 @@ export function ApiUsageDrilldownDialog({
                           {r.avg_latency_ms == null ? "—" : fmt(r.avg_latency_ms)}
                         </TableCell>
                       </TableRow>
+                      {openFeature === r.feature && (
+                        <TableRow key={`${r.feature}-calls`} className="hover:bg-transparent">
+                          <TableCell colSpan={10} className="p-0">
+                            <div className="bg-muted/20 border-t p-3 space-y-2">
+                              <div className="text-xs font-medium text-muted-foreground">
+                                What {r.feature} did — individual calls (most recent first)
+                              </div>
+                              {callsLoading ? (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground py-3">
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading calls…
+                                </div>
+                              ) : calls.length === 0 ? (
+                                <div className="text-xs text-muted-foreground py-2">
+                                  No per-call detail recorded for this feature yet.
+                                </div>
+                              ) : (
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className="text-xs">When</TableHead>
+                                      <TableHead className="text-xs">What it did</TableHead>
+                                      <TableHead className="text-xs">Deal</TableHead>
+                                      <TableHead className="text-xs">Context</TableHead>
+                                      <TableHead className="text-xs">User</TableHead>
+                                      <TableHead className="text-xs text-right">In</TableHead>
+                                      <TableHead className="text-xs text-right">Out</TableHead>
+                                      <TableHead className="text-xs text-right">ms</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {calls.map((c, i) => (
+                                      <TableRow key={`${c.created_at}-${i}`}>
+                                        <TableCell className="text-xs whitespace-nowrap">
+                                          {new Date(c.created_at).toLocaleString()}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          {c.action || "call"}
+                                          {c.status !== "success" && (
+                                            <span className="ml-2 text-red-400">
+                                              {c.error_message?.slice(0, 60) ?? "error"}
+                                            </span>
+                                          )}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          {c.deal_name ?? "—"}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-muted-foreground max-w-[260px] truncate">
+                                          {c.detail ?? "—"}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-muted-foreground">
+                                          {c.user_name ?? "—"}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-right font-mono">
+                                          {fmt(c.input_tokens)}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-right font-mono">
+                                          {fmt(c.output_tokens)}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-right font-mono">
+                                          {c.latency_ms == null ? "—" : fmt(c.latency_ms)}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      </>
                     ))}
                   </TableBody>
                 </Table>
