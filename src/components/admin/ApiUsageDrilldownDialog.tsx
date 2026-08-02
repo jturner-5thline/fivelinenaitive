@@ -100,6 +100,12 @@ export function ApiUsageDrilldownDialog({
   const [openFeature, setOpenFeature] = useState<string | null>(null);
   const [calls, setCalls] = useState<CallRow[]>([]);
   const [callsLoading, setCallsLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [modelFilter, setModelFilter] = useState<string>(ALL);
+  const [statusFilter, setStatusFilter] = useState<string>(ALL);
+  const [errorFilter, setErrorFilter] = useState<string>(ALL);
+  const [minInput, setMinInput] = useState("");
+  const [minOutput, setMinOutput] = useState("");
 
   useEffect(() => {
     if (!selection) return;
@@ -126,6 +132,12 @@ export function ApiUsageDrilldownDialog({
   useEffect(() => {
     setOpenFeature(null);
     setCalls([]);
+    setSearch("");
+    setModelFilter(ALL);
+    setStatusFilter(ALL);
+    setErrorFilter(ALL);
+    setMinInput("");
+    setMinOutput("");
   }, [selection]);
 
   useEffect(() => {
@@ -149,9 +161,80 @@ export function ApiUsageDrilldownDialog({
     };
   }, [selection, openFeature]);
 
+  const modelOptions = useMemo(
+    () =>
+      Array.from(new Set(rows.map((r) => r.model).filter(Boolean) as string[])).sort(),
+    [rows],
+  );
+
+  const errorOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          calls.filter((c) => c.status !== "success").map((c) => errorType(c.error_message)),
+        ),
+      ).sort(),
+    [calls],
+  );
+
+  const minIn = Number(minInput) || 0;
+  const minOut = Number(minOutput) || 0;
+
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (q && !`${r.feature} ${r.model ?? ""} ${r.provider ?? ""}`.toLowerCase().includes(q))
+        return false;
+      if (modelFilter !== ALL && (r.model ?? "—") !== modelFilter) return false;
+      if (statusFilter === "error" && Number(r.errors) === 0) return false;
+      if (statusFilter === "success" && Number(r.errors) > 0 && Number(r.calls) === Number(r.errors))
+        return false;
+      if (minIn && Number(r.input_tokens) < minIn) return false;
+      if (minOut && Number(r.output_tokens) < minOut) return false;
+      return true;
+    });
+  }, [rows, search, modelFilter, statusFilter, minIn, minOut]);
+
+  const filteredCalls = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return calls.filter((c) => {
+      if (
+        q &&
+        !`${c.action ?? ""} ${c.feature} ${c.detail ?? ""} ${c.model ?? ""} ${c.deal_name ?? ""}`
+          .toLowerCase()
+          .includes(q)
+      )
+        return false;
+      if (modelFilter !== ALL && (c.model ?? "—") !== modelFilter) return false;
+      if (statusFilter === "error" && c.status === "success") return false;
+      if (statusFilter === "success" && c.status !== "success") return false;
+      if (errorFilter !== ALL && errorType(c.error_message) !== errorFilter) return false;
+      if (minIn && Number(c.input_tokens) < minIn) return false;
+      if (minOut && Number(c.output_tokens) < minOut) return false;
+      return true;
+    });
+  }, [calls, search, modelFilter, statusFilter, errorFilter, minIn, minOut]);
+
+  const filtersActive =
+    !!search.trim() ||
+    modelFilter !== ALL ||
+    statusFilter !== ALL ||
+    errorFilter !== ALL ||
+    !!minInput ||
+    !!minOutput;
+
+  const clearFilters = () => {
+    setSearch("");
+    setModelFilter(ALL);
+    setStatusFilter(ALL);
+    setErrorFilter(ALL);
+    setMinInput("");
+    setMinOutput("");
+  };
+
   const totals = useMemo(
     () =>
-      rows.reduce(
+      filteredRows.reduce(
         (acc, r) => ({
           calls: acc.calls + Number(r.calls || 0),
           input: acc.input + Number(r.input_tokens || 0),
@@ -160,10 +243,10 @@ export function ApiUsageDrilldownDialog({
         }),
         { calls: 0, input: 0, output: 0, repeats: 0 },
       ),
-    [rows],
+    [filteredRows],
   );
 
-  const advice = useMemo(() => recommendationsForSelection(rows), [rows]);
+  const advice = useMemo(() => recommendationsForSelection(filteredRows), [filteredRows]);
 
   return (
     <Dialog open={!!selection} onOpenChange={onOpenChange}>
