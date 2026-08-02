@@ -13,6 +13,66 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
 export const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
 
+/** Beta header that enables prompt caching. Harmless when no markers exist. */
+export const PROMPT_CACHING_BETA = "prompt-caching-2024-07-31";
+
+/**
+ * Anthropic only caches prefixes of at least ~1024 tokens (Sonnet/Opus).
+ * ~4 chars per token, plus headroom so we never pay the 25% cache-write
+ * premium on a block that is too small to ever be cached.
+ */
+const MIN_CACHEABLE_CHARS = 5_000;
+
+type SystemBlock = { type: "text"; text: string; cache_control?: { type: "ephemeral" } };
+
+function hasCacheControl(blocks: SystemBlock[]): boolean {
+  return blocks.some((b) => !!b?.cache_control);
+}
+
+/**
+ * Marks the (large, repeated) system prompt as an `ephemeral` cache block so
+ * follow-up turns read the prefix from Anthropic's cache instead of re-sending
+ * tens of thousands of input tokens.
+ *
+ * Applied centrally here so every edge function that talks to Anthropic gets
+ * caching without touching each call site. Callers that already build their
+ * own `system` block array with a `cache_control` marker (claude-gateway) are
+ * left untouched.
+ *
+ * Caveat for call sites: the cached prefix must be byte-identical across
+ * turns. Never interpolate timestamps, request ids, or the user's current
+ * question into the system prompt — put those in the messages array.
+ */
+export function applyPromptCaching(body: unknown): { body: unknown; cached: boolean } {
+  if (!body || typeof body !== "object") return { body, cached: false };
+  const b = body as Record<string, unknown>;
+  const system = b.system;
+
+  if (typeof system === "string") {
+    if (system.length < MIN_CACHEABLE_CHARS) return { body, cached: false };
+    return {
+      body: {
+        ...b,
+        system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+      },
+      cached: true,
+    };
+  }
+
+  if (Array.isArray(system) && system.length > 0) {
+    const blocks = system as SystemBlock[];
+    if (hasCacheControl(blocks)) return { body, cached: true };
+    const chars = blocks.reduce((n, s) => n + (typeof s?.text === "string" ? s.text.length : 0), 0);
+    if (chars < MIN_CACHEABLE_CHARS) return { body, cached: false };
+    const next = blocks.map((s, i) =>
+      i === blocks.length - 1 ? { ...s, cache_control: { type: "ephemeral" as const } } : s
+    );
+    return { body: { ...b, system: next }, cached: true };
+  }
+
+  return { body, cached: false };
+}
+
 export interface AnthropicUsageContext {
   /** Stable feature key — use the edge function name unless a finer label helps. */
   feature: string;
@@ -101,16 +161,25 @@ export async function anthropicFetch(
   const started = Date.now();
   let model: string | null = ctx.model ?? null;
   let streaming = false;
+  let requestInit = init;
+  let cacheEnabled = false;
   try {
     if (typeof init.body === "string") {
       const parsed = JSON.parse(init.body);
       model = parsed?.model ?? model;
       streaming = parsed?.stream === true;
+      const { body: nextBody, cached } = applyPromptCaching(parsed);
+      cacheEnabled = cached;
+      if (cached) {
+        const headers = new Headers(init.headers as HeadersInit | undefined);
+        if (!headers.has("anthropic-beta")) headers.set("anthropic-beta", PROMPT_CACHING_BETA);
+        requestInit = { ...init, headers, body: JSON.stringify(nextBody) };
+      }
     }
   } catch { /* body not JSON — fine */ }
 
   try {
-    const res = await fetch(url, init);
+    const res = await fetch(url, requestInit);
     const latencyMs = Date.now() - started;
 
     if (!res.ok) {
@@ -119,7 +188,8 @@ export async function anthropicFetch(
         errorMessage = await res.clone().text();
       } catch { /* ignore */ }
       background(logAnthropicUsage({
-        ctx, model, latencyMs, status: "error",
+        ctx: { ...ctx, cacheMode: cacheEnabled ? "ephemeral" : ctx.cacheMode ?? null },
+        model, latencyMs, status: "error",
         httpStatus: res.status, errorMessage,
       }));
       return res;
@@ -127,7 +197,10 @@ export async function anthropicFetch(
 
     const contentType = res.headers.get("content-type") ?? "";
     if (streaming || !contentType.includes("application/json")) {
-      background(logAnthropicUsage({ ctx, model, latencyMs, status: "success", httpStatus: res.status }));
+      background(logAnthropicUsage({
+        ctx: { ...ctx, cacheMode: cacheEnabled ? "ephemeral" : ctx.cacheMode ?? null },
+        model, latencyMs, status: "success", httpStatus: res.status,
+      }));
       return res;
     }
 
@@ -139,8 +212,24 @@ export async function anthropicFetch(
       usage = json?.usage ?? null;
       respModel = json?.model ?? model;
     } catch { /* ignore */ }
+    // Derive real cache outcome from the response so the usage dashboard
+    // reports actual hit rates instead of the caller's guess.
+    const cacheRead = Number((usage as any)?.cache_read_input_tokens ?? 0);
+    const cacheWrite = Number((usage as any)?.cache_creation_input_tokens ?? 0);
+    const observedCtx: AnthropicUsageContext = {
+      ...ctx,
+      cacheMode: cacheEnabled ? "ephemeral" : ctx.cacheMode ?? null,
+      cacheStatus: cacheRead > 0
+        ? "hit"
+        : cacheWrite > 0
+          ? "refresh"
+          : cacheEnabled
+            ? "miss"
+            : ctx.cacheStatus ?? "off",
+      cacheHit: cacheRead > 0 ? true : ctx.cacheHit ?? false,
+    };
     background(logAnthropicUsage({
-      ctx, model: respModel, latencyMs, usage, status: "success", httpStatus: res.status,
+      ctx: observedCtx, model: respModel, latencyMs, usage, status: "success", httpStatus: res.status,
     }));
 
     return res;
