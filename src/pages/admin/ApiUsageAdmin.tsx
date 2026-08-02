@@ -455,6 +455,13 @@ export default function ApiUsageAdmin() {
         </Table>
       </Card>
 
+      <FrequencyCard
+        rows={frequency}
+        loading={loading}
+        rangeLabel={RANGES.find((r) => r.key === range)!.label}
+        onSelect={(provider, feature) => openRange(provider, feature)}
+      />
+
       <ApiUsageDrilldownDialog
         selection={selection}
         onOpenChange={(open) => !open && setSelection(null)}
@@ -563,17 +570,6 @@ function FrequencyCard({
         </TableBody>
       </Table>
     </Card>
-  );
-}
-
-function Unused() {
-  return (
-    <>
-      <ApiUsageDrilldownDialog
-        selection={selection}
-        onOpenChange={(open) => !open && setSelection(null)}
-      />
-    </div>
   );
 }
 
