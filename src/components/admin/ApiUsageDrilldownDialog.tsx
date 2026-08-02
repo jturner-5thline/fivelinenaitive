@@ -1,6 +1,15 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Loader2, Lightbulb, ChevronDown, ChevronRight } from "lucide-react";
+import { Loader2, Lightbulb, ChevronDown, ChevronRight, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -60,6 +69,23 @@ const SEVERITY_STYLES: Record<UsageRecommendation["severity"], string> = {
   medium: "border-amber-500/40 text-amber-300",
   low: "border-emerald-500/40 text-emerald-300",
 };
+
+const ALL = "__all__";
+
+/** Coarse bucket for an error message so users can filter by error type. */
+function errorType(message: string | null | undefined): string {
+  const m = (message ?? "").toLowerCase();
+  if (!m) return "unknown";
+  if (m.includes("rate limit") || m.includes("429")) return "rate_limit";
+  if (m.includes("timeout") || m.includes("timed out") || m.includes("504")) return "timeout";
+  if (m.includes("overloaded") || m.includes("529")) return "overloaded";
+  if (m.includes("context") || m.includes("too long") || m.includes("max tokens"))
+    return "context_length";
+  if (m.includes("auth") || m.includes("401") || m.includes("403")) return "auth";
+  if (m.includes("invalid") || m.includes("400")) return "invalid_request";
+  if (m.includes("network") || m.includes("fetch")) return "network";
+  return "other";
+}
 
 export function ApiUsageDrilldownDialog({
   selection,
