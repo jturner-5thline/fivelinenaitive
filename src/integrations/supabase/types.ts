@@ -29243,6 +29243,26 @@ export type Database = {
           provider: string
         }[]
       }
+      api_usage_frequency: {
+        Args: { _end: string; _provider?: string; _start: string }
+        Returns: {
+          active_days: number
+          active_hours: number
+          burst_calls: number
+          calls: number
+          calls_per_active_day: number
+          calls_per_day: number
+          distinct_users: number
+          feature: string
+          first_call_at: string
+          last_call_at: string
+          median_gap_minutes: number
+          min_gap_seconds: number
+          peak_hour_at: string
+          peak_hour_calls: number
+          provider: string
+        }[]
+      }
       api_usage_timeseries: {
         Args: { _bucket?: string; _hours?: number }
         Returns: {
