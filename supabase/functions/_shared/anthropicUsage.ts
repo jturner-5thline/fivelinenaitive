@@ -62,7 +62,7 @@ export async function logAnthropicUsage(row: {
   try {
     const u = (row.usage ?? {}) as Record<string, number | undefined>;
     const { ctx } = row;
-    await serviceClient().from("claude_usage_logs").insert({
+    const { error } = await serviceClient().from("claude_usage_logs").insert({
       user_id: isUuid(ctx.userId) ? ctx.userId : null,
       company_id: isUuid(ctx.companyId) ? ctx.companyId : null,
       deal_id: isUuid(ctx.dealId) ? ctx.dealId : null,
@@ -82,6 +82,7 @@ export async function logAnthropicUsage(row: {
       http_status: row.httpStatus ?? null,
       error_message: row.errorMessage ? String(row.errorMessage).slice(0, 1000) : null,
     });
+    if (error) console.error("[anthropicUsage] insert error:", error.message);
   } catch (err) {
     console.error("[anthropicUsage] log failed:", err);
   }
