@@ -1521,7 +1521,9 @@ ${FORMATTING_RULES}
     // ── Streaming mode ──
     if (stream) {
       try {
-        const anthropicStream = await streamClaude(systemPrompt, messages, { temperature: 0.2 });
+        const compactedMessages = compactHistory(messages);
+        console.log("[deal-space-ai] history compaction", historyStats(messages, compactedMessages));
+        const anthropicStream = await streamClaude(systemPrompt, compactedMessages, { temperature: 0.2 });
 
         // Transform Anthropic SSE into a simpler SSE format for the client
         const encoder = new TextEncoder();
@@ -1573,7 +1575,7 @@ ${FORMATTING_RULES}
     }
 
     // ── Non-streaming mode ──
-    const claudeResult = await callClaude(systemPrompt, messages, { temperature: 0.2 });
+    const claudeResult = await callClaude(systemPrompt, compactHistory(messages), { temperature: 0.2 });
     const rawContent = claudeResult.content || "I couldn't generate a response.";
     const { content } = validateAndNormalizeMemo(rawContent);
 
