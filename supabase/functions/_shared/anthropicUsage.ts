@@ -34,6 +34,17 @@ function serviceClient() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+/**
+ * Keep the insert alive after the handler returns. Edge functions are torn
+ * down as soon as the response is sent, which silently drops plain
+ * fire-and-forget promises — `waitUntil` is what makes logging reliable.
+ */
+function background(p: Promise<unknown>) {
+  const rt = (globalThis as any).EdgeRuntime;
+  if (rt && typeof rt.waitUntil === "function") rt.waitUntil(p);
+  else void p;
+}
+
 function isUuid(v: unknown): v is string {
   return typeof v === "string" &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
@@ -106,42 +117,40 @@ export async function anthropicFetch(
       try {
         errorMessage = await res.clone().text();
       } catch { /* ignore */ }
-      void logAnthropicUsage({
+      background(logAnthropicUsage({
         ctx, model, latencyMs, status: "error",
         httpStatus: res.status, errorMessage,
-      });
+      }));
       return res;
     }
 
     const contentType = res.headers.get("content-type") ?? "";
     if (streaming || !contentType.includes("application/json")) {
-      void logAnthropicUsage({ ctx, model, latencyMs, status: "success", httpStatus: res.status });
+      background(logAnthropicUsage({ ctx, model, latencyMs, status: "success", httpStatus: res.status }));
       return res;
     }
 
     // Read usage off a clone so the caller's body stays intact.
-    void (async () => {
-      let usage: Record<string, unknown> | null = null;
-      let respModel = model;
-      try {
-        const json = await res.clone().json();
-        usage = json?.usage ?? null;
-        respModel = json?.model ?? model;
-      } catch { /* ignore */ }
-      await logAnthropicUsage({
-        ctx, model: respModel, latencyMs, usage, status: "success", httpStatus: res.status,
-      });
-    })();
+    let usage: Record<string, unknown> | null = null;
+    let respModel = model;
+    try {
+      const json = await res.clone().json();
+      usage = json?.usage ?? null;
+      respModel = json?.model ?? model;
+    } catch { /* ignore */ }
+    background(logAnthropicUsage({
+      ctx, model: respModel, latencyMs, usage, status: "success", httpStatus: res.status,
+    }));
 
     return res;
   } catch (err) {
-    void logAnthropicUsage({
+    background(logAnthropicUsage({
       ctx,
       model,
       latencyMs: Date.now() - started,
       status: "error",
       errorMessage: err instanceof Error ? err.message : String(err),
-    });
+    }));
     throw err;
   }
 }
