@@ -2,7 +2,7 @@ import { useEffect, useRef, useMemo, useState, useCallback, lazy, Suspense } fro
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { LayoutDashboard, BarChart3, Pencil, AlertTriangle, AlertCircle, Clock, Briefcase, Inbox, ListChecks } from 'lucide-react';
-import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
+import { TodayTab } from '@/components/dashboard/TodayTab';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { useNavigate } from 'react-router-dom';

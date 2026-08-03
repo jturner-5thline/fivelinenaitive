@@ -126,7 +126,7 @@ export function DealsHeader() {
   const isDealsRoute = location.pathname === '/deals';
   const { pipelineId: naitivePipelineId, stages: naitiveStages, refetch: refetchNaitive } = useNaitivePipelineData();
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
-  const [dashboardInitialTab, setDashboardInitialTab] = useState<'dashboard' | 'analytics' | 'queue' | 'tasks'>('dashboard');
+  const [dashboardInitialTab, setDashboardInitialTab] = useState<'dashboard' | 'analytics' | 'today' | 'tasks'>('dashboard');
 
   // /analytics now redirects to /deals?dashboard=analytics — when we land
   // here with that param, auto-open the Dashboard modal on the Analytics
@@ -384,8 +384,8 @@ export function DealsHeader() {
     },
     {
       label: 'Approval Queue' as const,
-      isOpen: isDashboardOpen && dashboardInitialTab === 'queue',
-      open: () => { setDashboardInitialTab('queue'); setIsDashboardOpen(true); refetchActionQueue(); },
+      isOpen: isDashboardOpen && dashboardInitialTab === 'today',
+      open: () => { setDashboardInitialTab('today'); setIsDashboardOpen(true); refetchActionQueue(); },
       close: () => setIsDashboardOpen(false),
       available: approvalQueueEnabled,
     },
