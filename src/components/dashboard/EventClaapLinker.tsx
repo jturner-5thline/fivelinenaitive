@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -217,16 +217,34 @@ export function EventClaapLinker({
       .map(d => ({ id: d.id, name: d.name, company: d.company }));
   }, [deals, entitySearch]);
 
-  // Auto-fetch recordings on open
+  // Auto-fetch recordings on open.
+  // NOTE: this must NOT be cancelled by its own state updates — the local
+  // (mirror) fetch changes `recordings`, which previously re-ran the effect,
+  // flipped `cancelled` and silently skipped the live Claap hydration. That
+  // left older meetings (only present upstream, not in the local mirror)
+  // permanently invisible in the picker.
+  const hydratedForOpenRef = useRef(false);
   useEffect(() => {
-    if (!open || recordings.length > 0 || loadingRecordings) return;
-    let cancelled = false;
+    if (!open) { hydratedForOpenRef.current = false; return; }
+    if (hydratedForOpenRef.current) return;
+    hydratedForOpenRef.current = true;
     (async () => {
       await fetchRecordings(undefined, { live: false });
-      if (!cancelled) void fetchRecordings(undefined, { live: true });
+      await fetchRecordings(undefined, { live: true });
     })();
-    return () => { cancelled = true; };
-  }, [open, recordings.length, loadingRecordings, fetchRecordings]);
+  }, [open, fetchRecordings]);
+
+  // Server-side search: the loaded window can't contain every recording, so
+  // when the user types we ask Claap (and the mirror) directly for matches.
+  useEffect(() => {
+    if (!open) return;
+    const q = search.trim();
+    if (q.length < 2) return;
+    const t = setTimeout(() => {
+      void fetchRecordings(q, { live: true });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [open, search, fetchRecordings]);
 
   // Reset internal state on open/close
   useEffect(() => {
@@ -325,7 +343,7 @@ export function EventClaapLinker({
       const bt = b.createdAt ? Date.parse(b.createdAt) : 0;
       return bt - at;
     });
-    return scored.slice(0, 50);
+    return scored.slice(0, 100);
   }, [recordings, search, existingLinks, rankedMap]);
 
   // Auto-preselect top candidate when ranking lands (only once per open, only when user hasn't picked one).
