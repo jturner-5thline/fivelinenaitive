@@ -2276,22 +2276,97 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
   return `Deal signals (last ${LOOKBACK_DAYS} days):\n\n${JSON.stringify(compact, null, 2)}\n${fp}\nReturn JSON: { "items": [CandidateItem, ...] }. If nothing is strongly actionable, return { "items": [] }.`;
 }
 
+/**
+ * Stable, content-addressed fingerprint of everything on the deal the model is
+ * allowed to reason about. Two sweeps that see the same signals produce the
+ * same key even though the serialized prompt differs (rolling lookback window,
+ * re-ordered rows, recomputed "business days since" counters). Used as the
+ * response-cache key so unchanged deals never hit the API twice.
+ */
+function computeSignalFingerprint(bundle: DealSignalBundle): string {
+  const stamp = (rows: any[] | undefined | null, idKey = "id") =>
+    (rows ?? [])
+      .map((r: any) =>
+        [
+          r?.[idKey] ?? r?.gmail_message_id ?? r?.thread_id ?? "",
+          r?.updated_at ?? r?.latest_message_at ?? r?.received_at ??
+            r?.recorded_at ?? r?.created_at ?? "",
+        ].join("@")
+      )
+      .sort()
+      .join("|");
+  const c = bundle.current ?? ({} as any);
+  return JSON.stringify({
+    deal: bundle.deal_id ?? null,
+    stage: c.stage ?? null,
+    status: c.status ?? null,
+    deal_updated_at: c.updated_at ?? null,
+    emails: stamp(bundle.emails),
+    threads: stamp(bundle.email_threads),
+    activity: stamp(bundle.activity),
+    calendar: stamp(bundle.calendar_items),
+    claap: stamp(bundle.claap_recordings),
+    notes: stamp(bundle.status_notes),
+    history: stamp(bundle.stage_history),
+    tasks: stamp(bundle.open_tasks as any),
+    milestones: stamp(bundle.milestones as any),
+    outstanding: stamp(bundle.outstanding_items as any),
+    unlinked_terms: stamp(bundle.unlinked_terms_emails as any),
+    referrals: stamp(bundle.referral_sources as any),
+    funding: stamp((bundle as any).funding_sources),
+    contacts: stamp(bundle.client_contacts as any, "contact_id"),
+    // Day granularity: "business days since X" style reasoning legitimately
+    // changes overnight, so a new day is treated as new signal.
+    day: new Date().toISOString().slice(0, 10),
+  });
+}
+
 async function callModelForCandidates(
   bundle: DealSignalBundle,
   fingerprint?: string | null,
   extraRules?: string | null,
   usageCtx?: { companyId?: string | null; userId?: string | null },
+  dealRules?: string | null,
 ): Promise<CandidateItem[]> {
   if (!ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY missing — Deal Admin Agent cannot analyze");
   }
 
-  const systemPrompt = `${SYSTEM_PROMPT_FULL}${extraRules ? `\n\n${extraRules}` : ""}\n\nRespond with ONLY a JSON object of the form {"items":[...]}. No prose, no markdown fences.`;
+  // ── System prompt is split into cacheable prefix blocks ────────────────────
+  // Anthropic only reads from its prompt cache when the *prefix* is
+  // byte-identical. Previously the rulebook, the company rules and the
+  // per-deal knowledge-base block were concatenated into one string, so every
+  // deal produced a different prefix and the cache never read (0 hits across
+  // 8M input tokens). Now:
+  //   block 1 — the global rulebook (identical for every deal, cached)
+  //   block 2 — company-level rules (identical for every deal in a sweep, cached)
+  //   block 3 — deal-specific knowledge (varies, NOT cached; must come last)
+  // Instruction text and semantics are unchanged — only the block boundaries.
+  const staticSystem =
+    `${SYSTEM_PROMPT_FULL}\n\nRespond with ONLY a JSON object of the form {"items":[...]}. No prose, no markdown fences.`;
+  const systemBlocks: Array<
+    { type: "text"; text: string; cache_control?: { type: "ephemeral" } }
+  > = [
+    { type: "text", text: staticSystem, cache_control: { type: "ephemeral" } },
+  ];
+  if (extraRules && extraRules.trim().length > 0) {
+    systemBlocks.push({
+      type: "text",
+      text: extraRules,
+      cache_control: { type: "ephemeral" },
+    });
+  }
+  if (dealRules && dealRules.trim().length > 0) {
+    systemBlocks.push({ type: "text", text: dealRules });
+  }
+  // Flattened equivalent — used only for the response-cache signature so the
+  // key still busts when any rule text changes.
+  const systemPrompt = systemBlocks.map((b) => b.text).join("\n\n");
   const userPrompt = buildUserPrompt(bundle, fingerprint);
   const body = {
     model: MODEL,
     max_tokens: 6000,
-    system: systemPrompt,
+    system: systemBlocks,
     messages: [{ role: "user", content: userPrompt }],
   };
 
@@ -2317,6 +2392,7 @@ async function callModelForCandidates(
     dealId: bundle.deal_id ?? null,
     system: systemPrompt,
     prompt: userPrompt,
+    signalKey: computeSignalFingerprint(bundle),
   }, async () => {
     const resp = await anthropicFetch({
       feature: "deal-admin-agent",
@@ -5449,16 +5525,20 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
         ? fingerprintByUser.get(bundle.current.deal_owner_user_id) ?? null
         : null;
       const kbBlock = await retrieveKnowledgeForDeal(supabase, companyId, kbTagFilter, bundle);
-      const perDealRules = [companyRulesBlock, kbBlock, passReasonTaxonomyBlock]
+      // Company-level rules are identical for every deal in the sweep, so they
+      // ride in a cacheable system block. The knowledge-base block is
+      // deal-specific and must stay outside the cached prefix.
+      const companyLevelRules = [companyRulesBlock, passReasonTaxonomyBlock]
         .filter((s): s is string => !!s && s.length > 0)
         .join("\n\n") || null;
+      const dealLevelRules = kbBlock && kbBlock.length > 0 ? kbBlock : null;
       const modelCandidates = sigCount > 0
         ? stampTermsIssuedBundleKeys(
             normalizeCandidateTargets(
-              await callModelForCandidates(bundle, fingerprint, perDealRules, {
+              await callModelForCandidates(bundle, fingerprint, companyLevelRules, {
                 companyId,
                 userId: bundle.current.deal_owner_user_id ?? null,
-              }),
+              }, dealLevelRules),
               bundle,
             ),
             bundle,

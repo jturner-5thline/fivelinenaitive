@@ -19,9 +19,15 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
-/** Repeat sweeps of an unchanged deal are common; 6h keeps them off the API. */
+/**
+ * Repeat sweeps of an unchanged deal are common. The cache key is derived from
+ * a *stable signal fingerprint* (see `signalKey`), not the raw prompt text, so
+ * the rolling lookback window and other cosmetic prompt churn no longer force a
+ * miss. Because the key now changes whenever the deal's signals change, the TTL
+ * can be long: an expiry only costs us a re-derivation of an identical verdict.
+ */
 export const DEAL_ADMIN_AGENT_TTL_SECONDS = Number(
-  Deno.env.get("DEAL_ADMIN_AGENT_CACHE_TTL_SECONDS") ?? 6 * 60 * 60,
+  Deno.env.get("DEAL_ADMIN_AGENT_CACHE_TTL_SECONDS") ?? 24 * 60 * 60,
 );
 
 const CACHE_MODE = "deal_admin_agent";
@@ -50,14 +56,21 @@ export async function computeDealAdminAgentSignature(params: {
   dealId?: string | null;
   system: string;
   prompt: string;
+  /**
+   * Stable, content-addressed summary of the deal's signals. When provided it
+   * replaces the raw prompt in the hash so that identical *signals* reuse the
+   * cached verdict even if the serialized prompt differs byte-for-byte.
+   */
+  signalKey?: string | null;
 }): Promise<string> {
   return await sha256Hex(JSON.stringify({
-    v: 1,
+    v: 2,
     mode: CACHE_MODE,
     company: params.companyId ?? null,
     deal: params.dealId ?? null,
     system: normalize(params.system),
-    prompt: normalize(params.prompt),
+    prompt: params.signalKey ? null : normalize(params.prompt),
+    signals: params.signalKey ?? null,
   }));
 }
 
@@ -137,6 +150,7 @@ export async function cachedDealAdminAgentCall(
     dealId?: string | null;
     system: string;
     prompt: string;
+    signalKey?: string | null;
     bypass?: boolean;
     ttlSeconds?: number;
   },
