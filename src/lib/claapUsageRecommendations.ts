@@ -274,6 +274,8 @@ export function promptForClaapRecommendation(
     "spread-batch": `Spread the Claap "${row.source}" workload across the day. Reduce the batch size per run and increase the cron frequency so the same volume of recordings is synced without exhausting the daily ceiling in one sweep. Keep total throughput unchanged.`,
     "manual-cooldown": `Add a per-recording refresh cooldown for user-initiated Claap refreshes. If a recording was hydrated within the last 6 hours, return the mirrored data immediately with a "last synced" timestamp and only call Claap when the user explicitly forces a re-sync.`,
     concentration: `Throttle the dominant Claap source "${row.source}". Cut its per-run batch size and mark its calls priority "low" so they defer whenever protect mode is active, keeping quota available for user-facing refreshes.`,
+    "quota-exhausted": `We are exhausting the Claap daily call ceiling. Add a quota governor in supabase/functions/_shared/claap-quota.ts: reserve the final 20% of the daily allowance for priority "high" (user-initiated) calls, defer priority "low" scheduled work to the next window instead of consuming it, shrink the per-run batch size for "${row.source}", and record deferrals in claap_api_call_log so the drilldown shows what was pushed back.`,
+    "quota-near-limit": `We are running close to the Claap daily ceiling. Shrink the per-run batch for "${row.source}", spread scheduled syncs across more frequent smaller runs, and keep at least 20% of the daily allowance free for user-initiated refreshes.`,
     healthy: `Review the Claap sync path for "${row.source}" and confirm nothing calls Claap for data already present in claap_recordings/claap_transcripts.`,
   };
 
