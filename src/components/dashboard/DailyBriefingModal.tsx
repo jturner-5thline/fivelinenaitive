@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AgendaIntel } from './AgendaIntel';
 import { MoffittDealRundown } from './MoffittDealRundown';
 import { MOFFITT_USER_ID } from '@/constants/moffittBriefing';
-import { EndOfDayTab } from './EndOfDayTab';
+import { TodayTab } from './TodayTab';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
