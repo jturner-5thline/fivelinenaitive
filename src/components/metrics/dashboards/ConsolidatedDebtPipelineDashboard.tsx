@@ -2099,7 +2099,18 @@ export function ConsolidatedDebtPipelineDashboard({
 }: {
   selectedQuarter?: QuarterOption;
 }) {
-  const m = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
+  const rawMetrics = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
+  const { byDeal, ownerOptions, managerOptions } = useDealPeopleIndex();
+  const [selectedOwners, setSelectedOwners] = useState<string[]>([]);
+  const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
+  const allowedDealIds = useMemo(
+    () => computeAllowedDealIds(byDeal, selectedOwners, selectedManagers),
+    [byDeal, selectedOwners, selectedManagers],
+  );
+  const m = useMemo(
+    () => filterDebtMetricsByPeople(rawMetrics, allowedDealIds),
+    [rawMetrics, allowedDealIds],
+  );
   const quarterlyFunnel = useQuarterlyTtmFunnel();
   const totalRevenueOpportunity = useTotalRevenueOpportunity();
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
