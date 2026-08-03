@@ -28,6 +28,7 @@ import {
   ApiUsageDrilldownDialog,
   type DrilldownSelection,
 } from "@/components/admin/ApiUsageDrilldownDialog";
+import { ClaapApiUsageCard } from "@/components/admin/ClaapApiUsageCard";
 
 // Internal-only cross-provider LLM usage observability.
 // Data comes from SECURITY DEFINER RPCs that re-check
@@ -461,6 +462,8 @@ export default function ApiUsageAdmin() {
         rangeLabel={RANGES.find((r) => r.key === range)!.label}
         onSelect={(provider, feature) => openRange(provider, feature)}
       />
+
+      <ClaapApiUsageCard reloadKey={reloadKey} />
 
       <ApiUsageDrilldownDialog
         selection={selection}
