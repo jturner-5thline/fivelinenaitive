@@ -11,7 +11,7 @@ export default defineTool({
     description: z.string().max(10000).optional(),
     due_date: z.string().nullable().optional().describe("ISO date."),
     priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
-    assignee: z.string().trim().max(200).optional(),
+    assigned_to: z.string().uuid().optional().describe("User id to assign the task to."),
     deal_id: z.string().uuid().optional(),
     contact_id: z.string().uuid().optional(),
     company_id: z.string().uuid().optional(),
@@ -26,7 +26,7 @@ export default defineTool({
       status: "not_started",
       created_by: ctx.getUserId(),
     };
-    for (const k of ["description", "due_date", "priority", "assignee", "deal_id", "contact_id", "company_id"] as const) {
+    for (const k of ["description", "due_date", "priority", "assigned_to", "deal_id", "contact_id", "company_id"] as const) {
       if (input[k] !== undefined) row[k] = input[k];
     }
     const { data, error } = await sb.from("tasks").insert(row).select().maybeSingle();

@@ -247,7 +247,7 @@ var create_task_default = defineTool5({
     description: z5.string().max(1e4).optional(),
     due_date: z5.string().nullable().optional().describe("ISO date."),
     priority: z5.enum(["low", "medium", "high", "urgent"]).optional(),
-    assignee: z5.string().trim().max(200).optional(),
+    assigned_to: z5.string().uuid().optional().describe("User id to assign the task to."),
     deal_id: z5.string().uuid().optional(),
     contact_id: z5.string().uuid().optional(),
     company_id: z5.string().uuid().optional()
@@ -262,7 +262,7 @@ var create_task_default = defineTool5({
       status: "not_started",
       created_by: ctx.getUserId()
     };
-    for (const k of ["description", "due_date", "priority", "assignee", "deal_id", "contact_id", "company_id"]) {
+    for (const k of ["description", "due_date", "priority", "assigned_to", "deal_id", "contact_id", "company_id"]) {
       if (input[k] !== void 0) row[k] = input[k];
     }
     const { data, error } = await sb.from("tasks").insert(row).select().maybeSingle();

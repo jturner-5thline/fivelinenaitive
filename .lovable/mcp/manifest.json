@@ -262,9 +262,10 @@
                 "urgent"
               ]
             },
-            "assignee": {
+            "assigned_to": {
               "type": "string",
-              "maxLength": 200
+              "format": "uuid",
+              "description": "User id to assign the task to."
             },
             "deal_id": {
               "type": "string",
