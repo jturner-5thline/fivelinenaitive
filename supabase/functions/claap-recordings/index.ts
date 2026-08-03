@@ -154,15 +154,14 @@ Deno.serve(async (req) => {
     };
 
     if (action === "list") {
-      // List recordings
-      const claapUrl = new URL("https://api.claap.io/v1/recordings");
-      claapUrl.searchParams.set("limit", limit);
-      claapUrl.searchParams.set("sort", "created_desc");
-      // Opt into the new flat aiFields format (legacy insightTemplates is
-      // still returned alongside during the rollout window).
-      claapUrl.searchParams.set("returnAiFields", "true");
+      // Claap hard-caps `limit` at 100 per page and rejects anything larger
+      // with a 400 (validation_error). Callers ask for wider windows (e.g.
+      // 500) so older meetings stay reachable in the picker, so page through
+      // with the pagination cursor instead of sending an oversized limit.
+      const requested = Math.max(1, Math.min(Number(limit) || 20, 500));
+      const PAGE_SIZE = 100;
 
-      const cacheKey = `limit=${limit}`;
+      const cacheKey = `limit=${requested}`;
       const cached = listCache.get(cacheKey);
       const fresh = cached && Date.now() - cached.at < CACHE_TTL_MS;
       if (fresh) {
@@ -184,37 +183,63 @@ Deno.serve(async (req) => {
         });
       }
 
-      const response = await fetch(claapUrl.toString(), {
-        method: "GET",
-        headers: claapHeaders,
-      });
+      let recordings: ClaapRecording[] = [];
+      let cursor: string | null = null;
+      let failure: { status: number; text: string } | null = null;
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Claap API error:", errorText);
+      while (recordings.length < requested) {
+        const claapUrl = new URL("https://api.claap.io/v1/recordings");
+        claapUrl.searchParams.set(
+          "limit",
+          String(Math.min(PAGE_SIZE, requested - recordings.length)),
+        );
+        claapUrl.searchParams.set("sort", "created_desc");
+        // Opt into the new flat aiFields format (legacy insightTemplates is
+        // still returned alongside during the rollout window).
+        claapUrl.searchParams.set("returnAiFields", "true");
+        if (cursor) claapUrl.searchParams.set("cursor", cursor);
+
+        const response = await fetch(claapUrl.toString(), {
+          method: "GET",
+          headers: claapHeaders,
+        });
+
+        if (!response.ok) {
+          failure = { status: response.status, text: await response.text() };
+          break;
+        }
+
+        const data = await response.json();
+        const page: ClaapRecording[] = data.result?.recordings || [];
+        recordings = recordings.concat(page);
+        cursor = data.result?.pagination?.nextCursor || null;
+        if (!cursor || page.length === 0) break;
+      }
+
+      // A mid-pagination failure still yields the pages we already collected;
+      // only fall back to the cache when we got nothing at all.
+      if (failure && recordings.length === 0) {
+        console.error("Claap API error:", failure.text);
         // Never return non-2xx from the list path — the UI treats a
         // non-2xx as a hard failure and shows a blank screen. Fall back
         // to the last cached payload (or an empty list) and surface the
         // upstream status as a soft warning instead.
         const stale = listCache.get(cacheKey);
-        const recordings = (stale?.recordings as ClaapRecording[] | undefined) ?? [];
+        const staleRecordings = (stale?.recordings as ClaapRecording[] | undefined) ?? [];
         return new Response(
           JSON.stringify({
-            recordings,
+            recordings: staleRecordings,
             cached: !!stale,
-            rateLimited: response.status === 429,
-            upstreamStatus: response.status,
+            rateLimited: failure.status === 429,
+            upstreamStatus: failure.status,
             warning:
-              response.status === 429
+              failure.status === 429
                 ? "Claap rate limit reached, showing cached recordings"
-                : `Claap upstream error (${response.status}), showing cached recordings`,
+                : `Claap upstream error (${failure.status}), showing cached recordings`,
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
-
-      const data = await response.json();
-      let recordings = data.result?.recordings || [];
 
       const withAi = Array.isArray(recordings)
         ? recordings.filter((r: any) => Array.isArray(r?.aiFields) && r.aiFields.length > 0).length
