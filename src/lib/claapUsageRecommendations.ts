@@ -23,6 +23,15 @@ export interface ClaapRecommendation {
   savings?: string;
 }
 
+/** One row of public.claap_api_usage — the daily quota ledger. */
+export interface ClaapQuotaDay {
+  usage_date: string;
+  calls_made: number | null;
+  daily_limit: number | null;
+  first_429_at: string | null;
+  last_429_at: string | null;
+}
+
 const n = (v: unknown) => Number(v ?? 0);
 const pct = (part: number, total: number) => (total > 0 ? (part / total) * 100 : 0);
 
