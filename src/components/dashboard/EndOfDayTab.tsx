@@ -2247,6 +2247,7 @@ function EventDetailPane({
             <MeetingDealInlineAction
               eventId={event.id}
               eventTitle={eventTitle}
+              eventStartISO={event.start}
               attendees={(event.attendees || []).map(a => ({
                 email: a.email,
                 displayName: a.display_name,

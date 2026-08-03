@@ -14,11 +14,13 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { toast } from 'sonner';
 import type { Deal } from '@/types/deal';
+import { linkMeetingToDeal } from '@/lib/deals/linkMeetingToDeal';
 
 interface Attendee { email?: string | null; displayName?: string | null; self?: boolean }
 interface Props {
   eventId: string;
   eventTitle: string;
+  eventStartISO?: string | null;
   attendees: Attendee[];
   onLinkedDeal?: (deal: { id: string; name: string }) => void;
 }
@@ -50,7 +52,7 @@ function emailDomainToken(email?: string | null): string | null {
   return root;
 }
 
-export function MeetingDealInlineAction({ eventId, eventTitle, attendees, onLinkedDeal }: Props) {
+export function MeetingDealInlineAction({ eventId, eventTitle, eventStartISO, attendees, onLinkedDeal }: Props) {
   const { user } = useAuth();
   const { company } = useCompany();
   const { deals } = useDealsContext();
@@ -124,11 +126,28 @@ export function MeetingDealInlineAction({ eventId, eventTitle, attendees, onLink
     return best && best.score >= 0.40 ? best : null;
   }, [deals, eventId, eventTitle, attendees]);
 
-  // If existing link, treat as confirmed (1.00)
-  const linkedDeal = useMemo(() => {
-    if (!existing?.deal_id) return null;
-    return deals.find(d => d.id === existing.deal_id) || null;
-  }, [existing, deals]);
+  // The linked deal may not be present in DealsContext (different pipeline,
+  // filtered view, not yet hydrated). Fall back to a direct fetch so a real
+  // link never renders as "not linked".
+  const contextDeal = useMemo(
+    () => (existing?.deal_id ? deals.find(d => d.id === existing.deal_id) || null : null),
+    [existing, deals],
+  );
+  const { data: fetchedDeal } = useQuery({
+    queryKey: ['meeting-deal-link-deal', existing?.deal_id],
+    enabled: !!existing?.deal_id && !contextDeal,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('deals')
+        .select('id, company')
+        .eq('id', existing!.deal_id)
+        .maybeSingle();
+      if (!data) return null;
+      return { id: data.id, name: (data as any).company || 'Linked deal' } as Deal;
+    },
+  });
+  const linkedDeal = (contextDeal || fetchedDeal || null) as Deal | null;
 
   const band: 'linked' | 'auto' | 'review' | 'none' = useMemo(() => {
     if (linkedDeal) return 'linked';
@@ -142,21 +161,26 @@ export function MeetingDealInlineAction({ eventId, eventTitle, attendees, onLink
     if (!user || !company?.id) { toast.error('Workspace not ready'); return; }
     setApproving(true);
     try {
-      if (existing?.id) {
-        await (supabase.from('meeting_deal_links') as any)
-          .update({ deleted_at: new Date().toISOString() })
-          .eq('id', existing.id);
-      }
-      const { error } = await (supabase.from('meeting_deal_links') as any).insert({
-        meeting_external_id: eventId,
-        deal_id: deal.id,
-        org_company_id: company.id,
-        linked_by_user_id: user.id,
+      const res = await linkMeetingToDeal({
+        eventId,
+        eventTitle,
+        eventStartISO: eventStartISO ?? null,
+        dealId: deal.id,
+        dealName: deal.name,
+        orgCompanyId: company.id,
+        userId: user.id,
+        existingLinkId: existing?.id ?? null,
       });
-      if (error) throw error;
-      toast.success(`Linked to ${deal.name}`);
+      toast.success(`Linked to ${deal.name}`, {
+        description: [
+          'Added to deal calendar & activity',
+          res.claapRecordingsLinked ? `${res.claapRecordingsLinked} Claap recording(s) linked` : null,
+        ].filter(Boolean).join(' · '),
+      });
       onLinkedDeal?.({ id: deal.id, name: deal.name });
       qc.invalidateQueries({ queryKey: ['meeting-deal-link', eventId] });
+      qc.invalidateQueries({ queryKey: ['deal-calendar-items', deal.id] });
+      qc.invalidateQueries({ queryKey: ['eod-deal-linked-events'] });
     } catch (err: any) {
       toast.error(err?.message || 'Could not link deal');
     } finally {
