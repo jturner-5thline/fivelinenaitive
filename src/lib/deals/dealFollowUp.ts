@@ -1,4 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
+import {
+  findOpenTaskForEvent,
+  findOpenTaskForQueueItem,
+} from '@/lib/tasks/followUpProvenance';
 
 /**
  * Unified data model for deal-linked follow-ups (tasks & calendar events).
@@ -112,12 +116,21 @@ export interface CreateDealFollowUpInput {
   assignedTo?: string;
   /** Pass null/undefined for user-typed entries with no upstream record. */
   source?: DealFollowUpSource | null;
+  /**
+   * Provenance for the unified Today surface. When either id is supplied the
+   * writer dedupes against an existing OPEN task from the same origin instead
+   * of creating a second copy of the same piece of work.
+   */
+  sourceCalendarEventId?: string | null;
+  sourceQueueItemId?: string | null;
 }
 
 export interface CreateDealFollowUpResult {
   id: string;
   kind: 'task' | 'event';
   backlinkId?: string;
+  /** True when an existing open task was reused rather than inserted. */
+  deduped?: boolean;
 }
 
 export async function createDealFollowUp(
@@ -126,6 +139,17 @@ export async function createDealFollowUp(
   let createdId: string;
 
   if (input.kind === 'task') {
+    // ── Write-time dedupe by provenance ──────────────────────────────
+    if (input.sourceQueueItemId) {
+      const hit = await findOpenTaskForQueueItem(input.sourceQueueItemId);
+      if (hit) return { id: hit.id, kind: 'task', deduped: true };
+    }
+    if (input.sourceCalendarEventId) {
+      const hit = await findOpenTaskForEvent(input.sourceCalendarEventId, {
+        dealId: input.dealId ?? null,
+      });
+      if (hit) return { id: hit.id, kind: 'task', deduped: true };
+    }
     const { data, error } = await supabase
       .from('tasks')
       .insert({
@@ -137,6 +161,8 @@ export async function createDealFollowUp(
         status: 'not_started',
         deal_id: input.dealId ?? null,
         company_id: input.companyId ?? null,
+        source_calendar_event_id: input.sourceCalendarEventId ?? null,
+        source_queue_item_id: input.sourceQueueItemId ?? null,
       } as never)
       .select('id')
       .single();
