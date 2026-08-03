@@ -132,7 +132,10 @@ export function recommendationsForClaapRow(row: ClaapDrilldownRow): ClaapRecomme
 }
 
 /** Roll up recommendations across every source in the selected window. */
-export function recommendationsForClaapSelection(rows: ClaapDrilldownRow[]): {
+export function recommendationsForClaapSelection(
+  rows: ClaapDrilldownRow[],
+  quotaDays: ClaapQuotaDay[] = [],
+): {
   totals: {
     calls: number;
     billable: number;
@@ -141,10 +144,13 @@ export function recommendationsForClaapSelection(rows: ClaapDrilldownRow[]): {
     errors: number;
     repeats: number;
     hydrateSkips: number;
+    saturatedDays: number;
+    nearLimitDays: number;
+    peakUtilizationPct: number;
   };
   recommendations: ClaapRecommendation[];
 } {
-  const totals = rows.reduce(
+  const base = rows.reduce(
     (acc, r) => ({
       calls: acc.calls + n(r.calls),
       billable: acc.billable + n(r.billable_calls),
@@ -157,8 +163,54 @@ export function recommendationsForClaapSelection(rows: ClaapDrilldownRow[]): {
     { calls: 0, billable: 0, skipped: 0, rateLimited: 0, errors: 0, repeats: 0, hydrateSkips: 0 },
   );
 
+  // Quota ledger: a day can exhaust the ceiling without a single 429 landing in
+  // the call log (calls get deferred/skipped once protect mode kicks in), so the
+  // ledger — not the call log — is the source of truth for "we hit the limit".
+  const saturated = quotaDays.filter(
+    (d) =>
+      !!d.first_429_at ||
+      (n(d.daily_limit) > 0 && n(d.calls_made) >= n(d.daily_limit)),
+  );
+  const nearLimit = quotaDays.filter(
+    (d) =>
+      !saturated.includes(d) &&
+      n(d.daily_limit) > 0 &&
+      n(d.calls_made) >= n(d.daily_limit) * 0.8,
+  );
+  const peakUtilizationPct = quotaDays.reduce(
+    (max, d) => Math.max(max, n(d.daily_limit) > 0 ? pct(n(d.calls_made), n(d.daily_limit)) : 0),
+    0,
+  );
+
+  const totals = { ...base, saturatedDays: saturated.length, nearLimitDays: nearLimit.length, peakUtilizationPct };
+
   const recs: ClaapRecommendation[] = [];
   const top = [...rows].sort((a, b) => n(b.billable_calls) - n(a.billable_calls))[0];
+
+  if (saturated.length > 0) {
+    const worst = [...saturated].sort((a, b) => n(b.calls_made) - n(a.calls_made))[0];
+    const days = saturated
+      .map((d) => d.usage_date)
+      .slice(0, 5)
+      .join(", ");
+    recs.push({
+      id: "quota-exhausted",
+      severity: "high",
+      title:
+        saturated.length === 1
+          ? `Daily ceiling was hit on ${saturated[0].usage_date}`
+          : `Daily ceiling was hit on ${saturated.length} days`,
+      detail: `${days}${saturated.length > 5 ? ", …" : ""} reached the limit (peak ${n(worst.calls_made).toLocaleString()} of ${n(worst.daily_limit).toLocaleString()} calls). Once the ceiling is reached, later syncs and user refreshes are deferred entirely — ${top ? `${claapSourceLabel(top.source)} spent the most quota in this window` : "review the sources below"}. Cut the scheduled batch size and reserve the last 20% of quota for user-initiated calls.`,
+      savings: "Removes lockout windows",
+    });
+  } else if (nearLimit.length > 0) {
+    recs.push({
+      id: "quota-near-limit",
+      severity: "medium",
+      title: `Quota ran at ${peakUtilizationPct.toFixed(0)}% of the daily ceiling`,
+      detail: `${nearLimit.length} day(s) used 80%+ of the allowance without hitting the wall. There is little headroom left for user-initiated refreshes${top ? ` — ${claapSourceLabel(top.source)} is the largest consumer` : ""}.`,
+    });
+  }
 
   if (top && pct(n(top.billable_calls), totals.billable) >= 60) {
     recs.push({
