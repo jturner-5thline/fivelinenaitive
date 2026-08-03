@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Loader2, Lightbulb, ChevronDown, ChevronRight, Search, X } from "lucide-react";
+import { Loader2, Lightbulb, ChevronDown, ChevronRight, Search, X, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -30,9 +30,11 @@ import {
 } from "@/components/ui/table";
 import {
   recommendationsForSelection,
+  promptForRecommendation,
   type DrilldownRow,
   type UsageRecommendation,
 } from "@/lib/apiUsageRecommendations";
+import { toast } from "@/hooks/use-toast";
 
 export interface DrilldownSelection {
   start: Date;
