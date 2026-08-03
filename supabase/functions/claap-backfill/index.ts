@@ -702,6 +702,12 @@ Deno.serve(async (req) => {
 
       const identifiableParticipants = classifiedParticipants.filter((p) => !!p.email);
       const hasExternalParticipant = identifiableParticipants.some((p) => !p.is_internal);
+      // Guests joining from a conference room, a dial-in, or an unshared
+      // calendar have a name but no email. They are NOT internal — treating
+      // them as such made real client calls (e.g. a kick-off dialed in from
+      // the client's meeting room) get skipped as "all participants internal"
+      // and never mirrored, so nothing could auto-link them later.
+      const hasUnidentifiedParticipant = classifiedParticipants.some((p) => !p.email);
       const allIdentifiableParticipantsInternal = identifiableParticipants.length > 0
         && identifiableParticipants.every((p) => p.is_internal);
 
@@ -746,7 +752,7 @@ Deno.serve(async (req) => {
         let excluded = false;
         let exclusionReason = "";
 
-        if (allIdentifiableParticipantsInternal && !hasExternalParticipant) {
+        if (allIdentifiableParticipantsInternal && !hasExternalParticipant && !hasUnidentifiedParticipant) {
           excluded = true;
           exclusionReason = "All participants are internal";
           skippedInternalOnly++;
