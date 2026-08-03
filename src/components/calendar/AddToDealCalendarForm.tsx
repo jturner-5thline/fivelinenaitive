@@ -140,7 +140,7 @@ export function AddToDealCalendarForm({ prefill, onClose, compact = false, reset
         assignedTo: kind === 'task' ? (assigneeId || user.id) : undefined,
         source,
         sourceCalendarEventId:
-          prefill.ctx.module === 'calendar' ? prefill.ctx.recordId : null,
+          prefill.ctx.module === 'agenda' ? prefill.ctx.recordId : null,
       });
 
       if (kind === 'task' && alsoOnDealCalendar && effectiveDealId && dateStr) {
