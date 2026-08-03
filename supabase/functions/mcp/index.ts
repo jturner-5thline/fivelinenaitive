@@ -157,7 +157,7 @@ var get_deal_default = defineTool2({
     if (error) return errorResult(error.message);
     if (!deal) return errorResult("Deal not found or you do not have access.");
     const [tasksRes, lendersRes] = await Promise.all([
-      include_tasks ? sb.from("tasks").select("id, title, status, due_date, priority, assignee, created_at").eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(50) : Promise.resolve({ data: null, error: null }),
+      include_tasks ? sb.from("tasks").select("id, title, status, due_date, priority, assigned_to, created_at").eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(50) : Promise.resolve({ data: null, error: null }),
       include_lenders ? sb.from("deal_lenders").select("id, lender_id, status, stage, updated_at").eq("deal_id", deal_id).order("updated_at", { ascending: false }).limit(200) : Promise.resolve({ data: null, error: null })
     ]);
     return textResult({
