@@ -56,6 +56,48 @@ async function recordCall(): Promise<void> {
   await maybeSendQuotaAlert("threshold");
 }
 
+export interface CallContext {
+  /** Which sync / feature drove the call, e.g. "claap-bulk-sync". */
+  source?: string;
+  operation?: string;
+  dealId?: string | null;
+}
+
+/**
+ * Append one row to the Claap call ledger so the admin drilldown can show
+ * exactly which syncs/actions burn the daily quota (and which ones we
+ * successfully avoided via the hydrate-once gate).
+ */
+async function logCall(entry: {
+  source: string;
+  operation: string;
+  outcome: "call" | "skipped" | "rate_limited" | "error";
+  skippedReason?: string | null;
+  priority?: string | null;
+  externalId?: string | null;
+  recordingId?: string | null;
+  dealId?: string | null;
+  latencyMs?: number | null;
+  errorMessage?: string | null;
+}): Promise<void> {
+  try {
+    await admin().rpc("claap_log_api_call", {
+      _source: entry.source,
+      _operation: entry.operation,
+      _outcome: entry.outcome,
+      _skipped_reason: entry.skippedReason ?? null,
+      _priority: entry.priority ?? null,
+      _external_id: entry.externalId ?? null,
+      _recording_id: entry.recordingId ?? null,
+      _deal_id: entry.dealId ?? null,
+      _latency_ms: entry.latencyMs ?? null,
+      _error_message: entry.errorMessage ?? null,
+    });
+  } catch (e) {
+    console.error("[claap-quota] call log failed:", (e as Error).message);
+  }
+}
+
 async function markRateLimited(): Promise<void> {
   await admin().rpc("claap_mark_rate_limited");
   await maybeSendQuotaAlert("rate_limited");
@@ -180,20 +222,49 @@ export async function claapFetchRecording(opts: {
   priority: CallPriority;
   /** Force through even if already hydrated (only user-initiated refresh should pass true). */
   force?: boolean;
+  /** Attribution for the admin quota drilldown. */
+  source?: string;
+  operation?: string;
+  dealId?: string | null;
 }): Promise<ClaapFetchResult> {
-  const { externalId, recordingRowId, priority, force = false } = opts;
+  const {
+    externalId,
+    recordingRowId,
+    priority,
+    force = false,
+    source = "unknown",
+    operation = "get_recording",
+    dealId = null,
+  } = opts;
+  const base = {
+    source,
+    operation,
+    priority,
+    externalId,
+    recordingId: recordingRowId ?? null,
+    dealId,
+  };
 
   if (recordingRowId && !force) {
     const row = await isAlreadyHydrated(recordingRowId);
     if (row?.hydration_complete) {
+      await logCall({ ...base, outcome: "skipped", skippedReason: "already_hydrated" });
       return { ok: true, recording: null, skipped: "already_hydrated" };
     }
   }
 
-  if (!externalId) return { ok: false, recording: null, skipped: "no_external_id" };
+  if (!externalId) {
+    await logCall({ ...base, outcome: "skipped", skippedReason: "no_external_id" });
+    return { ok: false, recording: null, skipped: "no_external_id" };
+  }
 
   const gate = await shouldDefer(priority);
   if (gate.defer) {
+    await logCall({
+      ...base,
+      outcome: "skipped",
+      skippedReason: gate.quota.outOfQuota ? "out_of_quota" : "quota_protect",
+    });
     return {
       ok: false,
       recording: null,
@@ -202,17 +273,31 @@ export async function claapFetchRecording(opts: {
     };
   }
 
+  const startedAt = Date.now();
   try {
     const recording = await claapGetRecording(externalId);
     await recordCall();
+    await logCall({ ...base, outcome: "call", latencyMs: Date.now() - startedAt });
     return { ok: true, recording, quota: await getQuotaStatus() };
   } catch (e) {
     const msg = String((e as Error).message || e);
     if (/\b429\b/.test(msg) || /rate limit/i.test(msg)) {
       await markRateLimited();
       await recordCall();
+      await logCall({
+        ...base,
+        outcome: "rate_limited",
+        latencyMs: Date.now() - startedAt,
+        errorMessage: msg,
+      });
       return { ok: false, recording: null, rateLimited: true, error: msg, quota: await getQuotaStatus() };
     }
+    await logCall({
+      ...base,
+      outcome: "error",
+      latencyMs: Date.now() - startedAt,
+      errorMessage: msg,
+    });
     return { ok: false, recording: null, error: msg };
   }
 }
