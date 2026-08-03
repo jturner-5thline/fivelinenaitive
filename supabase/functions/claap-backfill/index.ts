@@ -923,6 +923,16 @@ Deno.serve(async (req) => {
       elapsedMs: Date.now() - startTime,
     });
 
+    // Mirror any newly ingested meetings into claap_recordings (+ links) so the
+    // End of Day auto-linker can match them to calendar events without a manual
+    // "Link Claap recording" click.
+    try {
+      const { error: mirrorErr } = await supabaseAdmin.rpc("backfill_claap_recordings_from_meetings");
+      if (mirrorErr) console.error("Recording mirror sync failed", mirrorErr);
+    } catch (e) {
+      console.error("Recording mirror sync threw", e);
+    }
+
     return new Response(JSON.stringify({
       ok: true,
       processed,
