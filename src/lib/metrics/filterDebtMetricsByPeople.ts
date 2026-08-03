@@ -6,27 +6,29 @@ import type {
 const keep = (deals: StageEntryDeal[], allowed: Set<string>) =>
   deals.filter((d) => allowed.has(d.deal_id));
 
-function filterStage(metric: any, allowed: Set<string>) {
+function filterStage<T>(metric: T, allowed: Set<string>): T {
   if (!metric) return metric;
-  const deals = keep(metric.deals ?? [], allowed);
+  const mm = metric as any;
+  const deals = keep(mm.deals ?? [], allowed);
   return {
-    ...metric,
+    ...mm,
     deals,
     count: deals.length,
     dollarVolume: deals.reduce((s, d) => s + (Number(d.value) || 0), 0),
-    ...(metric.mrr !== undefined
+    ...(mm.mrr !== undefined
       ? { mrr: deals.reduce((s, d) => s + (Number(d.mrr) || 0), 0) }
       : {}),
   };
 }
 
-function filterAverage(metric: any, allowed: Set<string>) {
+function filterAverage<T>(metric: T, allowed: Set<string>): T {
   if (!metric) return metric;
-  const deals = keep(metric.deals ?? [], allowed);
+  const mm = metric as any;
+  const deals = keep(mm.deals ?? [], allowed);
   const numerator = deals.reduce((s, d) => s + (Number(d.value) || 0), 0);
   const denominator = deals.length;
   return {
-    ...metric,
+    ...mm,
     deals,
     numerator,
     denominator,
@@ -51,19 +53,20 @@ function filterTrendBuckets(buckets: any[] | undefined, allowed: Set<string>) {
   });
 }
 
-function filterTrend(series: any, allowed: Set<string>) {
+function filterTrend<T>(series: T, allowed: Set<string>): T {
   if (!series) return series;
+  const sr = series as any;
   const next: any = {
-    ...series,
-    monthly: filterTrendBuckets(series.monthly, allowed),
-    quarterly: filterTrendBuckets(series.quarterly, allowed),
-    monthlyTtm: filterTrendBuckets(series.monthlyTtm, allowed),
-    quarterlyTtm: filterTrendBuckets(series.quarterlyTtm, allowed),
+    ...sr,
+    monthly: filterTrendBuckets(sr.monthly, allowed),
+    quarterly: filterTrendBuckets(sr.quarterly, allowed),
+    monthlyTtm: filterTrendBuckets(sr.monthlyTtm, allowed),
+    quarterlyTtm: filterTrendBuckets(sr.quarterlyTtm, allowed),
   };
-  if (series.total !== undefined) {
+  if (sr.total !== undefined) {
     next.total = next.quarterly.reduce((s: number, b: any) => s + (b.total ?? b.count ?? 0), 0);
   }
-  return next;
+  return next as T;
 }
 
 function filterIdSet(set: Set<string> | undefined, allowed: Set<string>) {
