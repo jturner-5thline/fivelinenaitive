@@ -175,7 +175,7 @@ async function runSmartMatching(
     let dealQuery = supabaseAdmin
       .from("deals")
       .select("id, company, company_id")
-      .eq("status", "active")
+      .or("status.is.null,status.neq.archived")
       .limit(500);
     if (configCompanyId) dealQuery = dealQuery.eq("company_id", configCompanyId);
     const { data: deals } = await dealQuery;
@@ -416,7 +416,7 @@ async function runSmartMatching(
       result.callType = "Company Call";
       result.confidence = 70;
       const { data: deals } = await supabaseAdmin
-        .from("deals").select("id").eq("status", "active").ilike("company", `%${company.name}%`).limit(5);
+        .from("deals").select("id").or("status.is.null,status.neq.archived").ilike("company", `%${company.name}%`).limit(5);
       if (deals) result.dealIds = deals.map((d: any) => d.id);
       return result;
     }
@@ -978,7 +978,7 @@ Deno.serve(async (req) => {
         .from("deals")
         .select("id")
         .eq("company_id", resolvedCompanyId)
-        .eq("status", "active")
+        .or("status.is.null,status.neq.archived")
         .limit(10);
 
       if (activeDeals && activeDeals.length === 1) {
@@ -993,7 +993,7 @@ Deno.serve(async (req) => {
         .from("deals")
         .select("id, company_id")
         .ilike("company", `%${extractedCompanyName}%`)
-        .eq("status", "active")
+        .or("status.is.null,status.neq.archived")
         .limit(10);
 
       if (dealMatch && dealMatch.length === 1) {

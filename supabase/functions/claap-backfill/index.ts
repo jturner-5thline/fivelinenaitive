@@ -99,7 +99,7 @@ async function runSmartMatching(
 
   // 1. DEAL MATCH (highest priority)
   if (titleNorm || externalEmails.length > 0 || externalDomains.length > 0) {
-    let dealQuery = supabaseAdmin.from("deals").select("id, company, company_id").eq("status", "active").limit(500);
+    let dealQuery = supabaseAdmin.from("deals").select("id, company, company_id").or("status.is.null,status.neq.archived").limit(500);
     if (configCompanyId) dealQuery = dealQuery.eq("company_id", configCompanyId);
     const { data: deals } = await dealQuery;
 
@@ -247,7 +247,7 @@ async function runSmartMatching(
     if (cm && cm.length > 0) {
       result.matched = true; result.matchType = "company"; result.matchSource = `Company domain match: ${domain} → ${cm[0].name}`;
       result.crmCompanyId = cm[0].id; result.callType = "Company Call"; result.confidence = 70;
-      const { data: deals } = await supabaseAdmin.from("deals").select("id").eq("status", "active").ilike("company", `%${cm[0].name}%`).limit(5);
+      const { data: deals } = await supabaseAdmin.from("deals").select("id").or("status.is.null,status.neq.archived").ilike("company", `%${cm[0].name}%`).limit(5);
       if (deals) result.dealIds = deals.map(d => d.id);
       return result;
     }
@@ -316,7 +316,7 @@ async function resolveDealIdFromMatchResult(
   if (matchResult.dealIds.length === 0 && matchResult.crmCompanyId) {
     const { data: crmCo } = await supabaseAdmin.from("crm_companies").select("name").eq("id", matchResult.crmCompanyId).single();
     if (crmCo?.name) {
-      const { data: deals } = await supabaseAdmin.from("deals").select("id").eq("status", "active").ilike("company", `%${crmCo.name}%`).limit(2);
+      const { data: deals } = await supabaseAdmin.from("deals").select("id").or("status.is.null,status.neq.archived").ilike("company", `%${crmCo.name}%`).limit(2);
       if (deals && deals.length === 1) return deals[0].id;
     }
   }
