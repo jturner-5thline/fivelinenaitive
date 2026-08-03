@@ -71,6 +71,9 @@ function DealLink({ dealId, children, className }: { dealId: string; children: R
 import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFourChartsSection';
 import { QuarterlyConversionFunnelChart, type QuarterlyStepConversionOverrides } from '@/components/metrics/charts/QuarterlyConversionFunnelChart';
 import { useQuarterlyTtmFunnel } from '@/hooks/useQuarterlyTtmFunnel';
+import { useDealPeopleIndex, computeAllowedDealIds } from '@/hooks/useDealPeopleFilter';
+import { filterDebtMetricsByPeople } from '@/lib/metrics/filterDebtMetricsByPeople';
+import { FilterMultiSelect } from '@/components/cashflow/FilterMultiSelect';
 import { useStageTransitMetrics } from '@/hooks/useStageTransitMetrics';
 import {
   VelocityDrilldownDialog,
@@ -2099,7 +2102,18 @@ export function ConsolidatedDebtPipelineDashboard({
 }: {
   selectedQuarter?: QuarterOption;
 }) {
-  const m = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
+  const rawMetrics = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
+  const { byDeal, ownerOptions, managerOptions } = useDealPeopleIndex();
+  const [selectedOwners, setSelectedOwners] = useState<string[]>([]);
+  const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
+  const allowedDealIds = useMemo(
+    () => computeAllowedDealIds(byDeal, selectedOwners, selectedManagers),
+    [byDeal, selectedOwners, selectedManagers],
+  );
+  const m = useMemo(
+    () => filterDebtMetricsByPeople(rawMetrics, allowedDealIds),
+    [rawMetrics, allowedDealIds],
+  );
   const quarterlyFunnel = useQuarterlyTtmFunnel();
   const totalRevenueOpportunity = useTotalRevenueOpportunity();
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
@@ -2699,7 +2713,29 @@ export function ConsolidatedDebtPipelineDashboard({
       <ComparisonModeContext.Provider value={comparisonCtx}>
       <OpenDealContext.Provider value={setOpenDealId}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div />
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterMultiSelect
+            label="Owner"
+            options={ownerOptions}
+            selected={selectedOwners}
+            onChange={setSelectedOwners}
+            searchable
+            emptyText="No deal owners"
+          />
+          <FilterMultiSelect
+            label="Manager"
+            options={managerOptions}
+            selected={selectedManagers}
+            onChange={setSelectedManagers}
+            searchable
+            emptyText="No deal managers"
+          />
+          {allowedDealIds && (
+            <span className="text-xs text-muted-foreground">
+              {allowedDealIds.size} deal{allowedDealIds.size === 1 ? '' : 's'} matched
+            </span>
+          )}
+        </div>
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'cards' | 'table')}>
           <TabsList className="bg-muted/40 border border-border/40">
             <TabsTrigger value="cards" className="gap-1.5">
