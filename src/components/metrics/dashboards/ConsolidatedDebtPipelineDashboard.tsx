@@ -71,6 +71,9 @@ function DealLink({ dealId, children, className }: { dealId: string; children: R
 import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFourChartsSection';
 import { QuarterlyConversionFunnelChart, type QuarterlyStepConversionOverrides } from '@/components/metrics/charts/QuarterlyConversionFunnelChart';
 import { useQuarterlyTtmFunnel } from '@/hooks/useQuarterlyTtmFunnel';
+import { useDealPeopleIndex, computeAllowedDealIds } from '@/hooks/useDealPeopleFilter';
+import { filterDebtMetricsByPeople } from '@/lib/metrics/filterDebtMetricsByPeople';
+import { FilterMultiSelect } from '@/components/cashflow/FilterMultiSelect';
 import { useStageTransitMetrics } from '@/hooks/useStageTransitMetrics';
 import {
   VelocityDrilldownDialog,
