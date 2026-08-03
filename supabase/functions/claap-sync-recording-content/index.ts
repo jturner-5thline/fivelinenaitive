@@ -68,6 +68,8 @@ Deno.serve(async (req) => {
     recordingRowId: row?.id ?? null,
     priority,
     force,
+    source: force ? "manual-refresh" : "claap-sync-recording-content",
+    operation: "get_recording",
   });
 
   if (fetched.skipped === "already_hydrated") {

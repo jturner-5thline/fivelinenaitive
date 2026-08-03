@@ -50,6 +50,8 @@ async function syncOneRecording(admin: any, row: RecordingRow) {
       externalId: row.external_id,
       recordingRowId: row.id,
       priority: 'low',
+      source: 'claap-backfill-summaries',
+      operation: 'get_recording',
     });
     if (fetched.skipped === 'already_hydrated') {
       // Row is already hydrated in Supabase — do NOT call Claap again.

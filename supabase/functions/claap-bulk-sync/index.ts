@@ -63,6 +63,8 @@ Deno.serve(async (req) => {
       externalId: row.external_id,
       recordingRowId: row.id,
       priority: "low",
+      source: "claap-bulk-sync",
+      operation: "get_recording",
     });
     if (fetched.skipped === "already_hydrated") {
       results.push({ id: row.id, ok: true, skipped: "already_hydrated" });
