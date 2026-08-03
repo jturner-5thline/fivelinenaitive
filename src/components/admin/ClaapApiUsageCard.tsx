@@ -10,11 +10,16 @@ import {
   ReferenceLine,
   Cell,
 } from "recharts";
-import { AlertTriangle, Video } from "lucide-react";
+import { AlertTriangle, Video, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import {
+  ClaapUsageDrilldownDialog,
+  type ClaapDrilldownSelection,
+} from "@/components/admin/ClaapUsageDrilldownDialog";
 
 interface ClaapUsageRow {
   usage_date: string;
@@ -45,6 +50,27 @@ export function ClaapApiUsageCard({ reloadKey = 0 }: { reloadKey?: number }) {
   const [rows, setRows] = useState<ClaapUsageRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selection, setSelection] = useState<ClaapDrilldownSelection | null>(null);
+
+  const openDay = (usageDate: string) => {
+    const d = new Date(`${usageDate}T00:00:00Z`);
+    setSelection({
+      start: d,
+      end: d,
+      label: d.toLocaleDateString(undefined, {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "UTC",
+      }),
+    });
+  };
+
+  const openRange = () => {
+    const end = new Date();
+    const start = new Date(Date.now() - 29 * 86_400_000);
+    setSelection({ start, end, label: "Last 30 days" });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +115,7 @@ export function ClaapApiUsageCard({ reloadKey = 0 }: { reloadKey?: number }) {
 
   const chartData = rows.map((r) => ({
     label: dayLabel(r.usage_date),
+    usageDate: r.usage_date,
     calls: Number(r.calls_made || 0),
     throttled: !!r.first_429_at,
   }));
@@ -106,15 +133,20 @@ export function ClaapApiUsageCard({ reloadKey = 0 }: { reloadKey?: number }) {
             </p>
           </div>
         </div>
-        {today?.last_429_at ? (
-          <Badge variant="outline" className="border-red-500/50 text-red-400">
-            <AlertTriangle className="h-3 w-3 mr-1" /> Rate limited today
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="capitalize">
-            {loading ? "loading" : "healthy"}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {today?.last_429_at ? (
+            <Badge variant="outline" className="border-red-500/50 text-red-400">
+              <AlertTriangle className="h-3 w-3 mr-1" /> Rate limited today
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="capitalize">
+              {loading ? "loading" : "healthy"}
+            </Badge>
+          )}
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={openRange}>
+            <BarChart3 className="h-3 w-3 mr-1" /> Drilldown
+          </Button>
+        </div>
       </div>
 
       <div className="p-4 space-y-4">
@@ -170,7 +202,12 @@ export function ClaapApiUsageCard({ reloadKey = 0 }: { reloadKey?: number }) {
                   strokeDasharray="4 4"
                   label={{ value: "Daily limit", position: "insideTopRight", fontSize: 10 }}
                 />
-                <Bar dataKey="calls" radius={[2, 2, 0, 0]}>
+                <Bar
+                  dataKey="calls"
+                  radius={[2, 2, 0, 0]}
+                  cursor="pointer"
+                  onClick={(d: any) => d?.payload?.usageDate && openDay(d.payload.usageDate)}
+                >
                   {chartData.map((d, i) => (
                     <Cell
                       key={i}
@@ -186,7 +223,15 @@ export function ClaapApiUsageCard({ reloadKey = 0 }: { reloadKey?: number }) {
             </div>
           )}
         </div>
+        <p className="text-xs text-muted-foreground">
+          Click any day to see the syncs and actions that spent the quota.
+        </p>
       </div>
+
+      <ClaapUsageDrilldownDialog
+        selection={selection}
+        onOpenChange={(open) => !open && setSelection(null)}
+      />
     </Card>
   );
 }
