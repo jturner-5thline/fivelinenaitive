@@ -26,6 +26,54 @@ export interface UsageRecommendation {
   savings?: string;
 }
 
+/**
+ * Build a ready-to-paste Lovable prompt that asks the agent to implement the
+ * fix for one recommendation against one specific feature/model row.
+ */
+export function promptForRecommendation(
+  rec: UsageRecommendation,
+  row: DrilldownRow,
+): string {
+  const calls = n(row.calls);
+  const avgIn = calls ? Math.round(n(row.input_tokens) / calls) : 0;
+  const avgOut = calls ? Math.round(n(row.output_tokens) / calls) : 0;
+  const context = [
+    `Feature/action: "${row.feature}"`,
+    `Provider/model: ${row.provider}${row.model ? ` / ${row.model}` : ""}`,
+    `Observed in this window: ${calls.toLocaleString()} calls, ${row.distinct_users} distinct users, ${n(row.repeat_calls).toLocaleString()} repeat prompt signatures, ${n(row.errors)} errors, ${n(row.cache_hits)} cache hits`,
+    `Average tokens per call: ${avgIn.toLocaleString()} in / ${avgOut.toLocaleString()} out`,
+  ].join("\n- ");
+
+  const asks: Record<string, string> = {
+    dedupe: `Reduce duplicate model calls for this feature. Add client-side in-flight request deduplication (same prompt signature => share one promise) and raise the claude-gateway response cache TTL for this feature. Make the cache key include the deal id and the normalized prompt hash. Show me which files you changed and confirm repeat calls now hit the cache.`,
+    "prompt-cache": `Enable Anthropic prompt caching for this feature. Split the prompt into a stable system/deal-context block and a small dynamic block, and mark the stable block as an \`ephemeral\` cache_control breakpoint. Verify the response reports cache_read_input_tokens and that our usage logging records it.`,
+    "trim-context": `Trim the context payload for this feature. Cap notes/emails/transcript chunks, drop unused fields from DealContextPayload, truncate long excerpts, and compact conversation history to the last 6–12 turns before sending. Keep citations working and tell me the new expected average input token size.`,
+    deterministic: `This action returns very short outputs, so it is probably classification/extraction. Route it through the invocation policy layer: try a deterministic resolver (rules/regex/SQL) first and only call the model when the resolver cannot decide. Add unit tests for the deterministic path.`,
+    debounce: `Reduce the burst rate of this action. Add or lengthen debouncing (800–1200ms) on the UI that triggers it, cancel superseded requests, and batch per-record calls into a single multi-record prompt where possible.`,
+    "per-user": `Reduce per-user call volume for this action by memoizing results per deal/session (React Query cache + persisted result on the record) so revisiting the screen does not re-invoke the model. Add an explicit "Refresh" control for forcing a new run.`,
+    errors: `Fix the failing calls for this action. Diagnose the error responses, cap retries with exponential backoff, validate/limit payload size before invoking, and surface a clear error state instead of silently retrying.`,
+    ok: `Review this action and move it to the async ai_jobs queue if it is not latency-sensitive, so it runs in the background instead of blocking the UI.`,
+  };
+
+  const ask = asks[rec.id] ?? rec.detail;
+
+  return [
+    `Optimize our Anthropic/LLM usage for one specific action.`,
+    ``,
+    `Context:`,
+    `- ${context}`,
+    ``,
+    `Problem: ${rec.title} — ${rec.detail}`,
+    rec.savings ? `Estimated upside: ${rec.savings}` : "",
+    ``,
+    `What to do: ${ask}`,
+    ``,
+    `Do not change the user-visible behavior or output quality of this feature.`,
+  ]
+    .filter((l) => l !== "")
+    .join("\n");
+}
+
 const n = (v: unknown) => Number(v ?? 0);
 
 function pct(part: number, total: number): number {
