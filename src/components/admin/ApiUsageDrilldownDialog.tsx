@@ -74,6 +74,29 @@ const SEVERITY_STYLES: Record<UsageRecommendation["severity"], string> = {
 
 const ALL = "__all__";
 
+function RecommendationPrompt({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast({ title: "Prompt copied", description: "Paste it into Lovable to implement the fix." });
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div className="mt-2 rounded-md border border-white/10 bg-white/5 p-2">
+      <div className="flex items-start justify-between gap-2">
+        <pre className="whitespace-pre-wrap break-words text-[11px] leading-relaxed text-muted-foreground font-mono max-h-40 overflow-auto flex-1">
+          {text}
+        </pre>
+        <Button variant="outline" size="sm" className="shrink-0 h-7 text-xs" onClick={copy}>
+          {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+          {copied ? "Copied" : "Copy"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /** Coarse bucket for an error message so users can filter by error type. */
 function errorType(message: string | null | undefined): string {
   const m = (message ?? "").toLowerCase();
@@ -527,6 +550,7 @@ export function ApiUsageDrilldownDialog({
                               )}
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">{rec.detail}</p>
+                            <RecommendationPrompt text={promptForRecommendation(rec, row)} />
                           </li>
                         ))}
                       </ul>
