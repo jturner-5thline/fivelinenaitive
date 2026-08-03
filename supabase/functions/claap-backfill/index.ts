@@ -99,7 +99,7 @@ async function runSmartMatching(
 
   // 1. DEAL MATCH (highest priority)
   if (titleNorm || externalEmails.length > 0 || externalDomains.length > 0) {
-    let dealQuery = supabaseAdmin.from("deals").select("id, company, company_id").eq("status", "active").limit(500);
+    let dealQuery = supabaseAdmin.from("deals").select("id, company, company_id").or("status.is.null,status.neq.archived").limit(500);
     if (configCompanyId) dealQuery = dealQuery.eq("company_id", configCompanyId);
     const { data: deals } = await dealQuery;
 
@@ -247,7 +247,7 @@ async function runSmartMatching(
     if (cm && cm.length > 0) {
       result.matched = true; result.matchType = "company"; result.matchSource = `Company domain match: ${domain} → ${cm[0].name}`;
       result.crmCompanyId = cm[0].id; result.callType = "Company Call"; result.confidence = 70;
-      const { data: deals } = await supabaseAdmin.from("deals").select("id").eq("status", "active").ilike("company", `%${cm[0].name}%`).limit(5);
+      const { data: deals } = await supabaseAdmin.from("deals").select("id").or("status.is.null,status.neq.archived").ilike("company", `%${cm[0].name}%`).limit(5);
       if (deals) result.dealIds = deals.map(d => d.id);
       return result;
     }
@@ -316,7 +316,7 @@ async function resolveDealIdFromMatchResult(
   if (matchResult.dealIds.length === 0 && matchResult.crmCompanyId) {
     const { data: crmCo } = await supabaseAdmin.from("crm_companies").select("name").eq("id", matchResult.crmCompanyId).single();
     if (crmCo?.name) {
-      const { data: deals } = await supabaseAdmin.from("deals").select("id").eq("status", "active").ilike("company", `%${crmCo.name}%`).limit(2);
+      const { data: deals } = await supabaseAdmin.from("deals").select("id").or("status.is.null,status.neq.archived").ilike("company", `%${crmCo.name}%`).limit(2);
       if (deals && deals.length === 1) return deals[0].id;
     }
   }
@@ -702,6 +702,12 @@ Deno.serve(async (req) => {
 
       const identifiableParticipants = classifiedParticipants.filter((p) => !!p.email);
       const hasExternalParticipant = identifiableParticipants.some((p) => !p.is_internal);
+      // Guests joining from a conference room, a dial-in, or an unshared
+      // calendar have a name but no email. They are NOT internal — treating
+      // them as such made real client calls (e.g. a kick-off dialed in from
+      // the client's meeting room) get skipped as "all participants internal"
+      // and never mirrored, so nothing could auto-link them later.
+      const hasUnidentifiedParticipant = classifiedParticipants.some((p) => !p.email);
       const allIdentifiableParticipantsInternal = identifiableParticipants.length > 0
         && identifiableParticipants.every((p) => p.is_internal);
 
@@ -746,7 +752,7 @@ Deno.serve(async (req) => {
         let excluded = false;
         let exclusionReason = "";
 
-        if (allIdentifiableParticipantsInternal && !hasExternalParticipant) {
+        if (allIdentifiableParticipantsInternal && !hasExternalParticipant && !hasUnidentifiedParticipant) {
           excluded = true;
           exclusionReason = "All participants are internal";
           skippedInternalOnly++;
@@ -916,6 +922,16 @@ Deno.serve(async (req) => {
       errors,
       elapsedMs: Date.now() - startTime,
     });
+
+    // Mirror any newly ingested meetings into claap_recordings (+ links) so the
+    // End of Day auto-linker can match them to calendar events without a manual
+    // "Link Claap recording" click.
+    try {
+      const { error: mirrorErr } = await supabaseAdmin.rpc("backfill_claap_recordings_from_meetings");
+      if (mirrorErr) console.error("Recording mirror sync failed", mirrorErr);
+    } catch (e) {
+      console.error("Recording mirror sync threw", e);
+    }
 
     return new Response(JSON.stringify({
       ok: true,
