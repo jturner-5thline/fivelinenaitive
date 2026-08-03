@@ -346,7 +346,7 @@
       {
         "name": "search_companies",
         "title": "Search companies",
-        "description": "Search CRM companies by name or domain.",
+        "description": "Search CRM companies by name, domain, or website. Returns full row records.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
