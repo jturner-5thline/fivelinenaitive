@@ -53,10 +53,83 @@ export async function getQuotaStatus(): Promise<QuotaStatus> {
 
 async function recordCall(): Promise<void> {
   await admin().rpc("claap_record_api_call", { _count: 1 });
+  await maybeSendQuotaAlert("threshold");
 }
 
 async function markRateLimited(): Promise<void> {
   await admin().rpc("claap_mark_rate_limited");
+  await maybeSendQuotaAlert("rate_limited");
+}
+
+const ALERT_RECIPIENT = "jturner@5thline.co";
+const ALERT_THRESHOLD = 0.8;
+
+function fmt(ts: string | null | undefined): string | undefined {
+  if (!ts) return undefined;
+  try {
+    return `${new Date(ts).toISOString().replace("T", " · ").slice(0, 19)} UTC`;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Sends a one-per-day alert to the Claap owner when we cross 80% of the daily
+ * call ceiling, and a separate one-per-day alert the first time Claap 429s.
+ * The `alert_80_sent_at` / `alert_429_sent_at` columns on today's usage row
+ * act as the idempotency ledger, so repeat calls never re-send.
+ */
+async function maybeSendQuotaAlert(kind: "threshold" | "rate_limited"): Promise<void> {
+  try {
+    const db = admin();
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: row } = await db
+      .from("claap_api_usage")
+      .select("usage_date, calls_made, daily_limit, last_call_at, first_429_at, last_429_at, reset_at, alert_80_sent_at, alert_429_sent_at")
+      .eq("usage_date", today)
+      .maybeSingle();
+    if (!row) return;
+
+    const limit = row.daily_limit || 1000;
+    const pct = limit > 0 ? row.calls_made / limit : 0;
+
+    if (kind === "threshold") {
+      if (row.alert_80_sent_at) return;
+      if (pct < ALERT_THRESHOLD) return;
+    } else {
+      if (row.alert_429_sent_at) return;
+    }
+
+    const column = kind === "threshold" ? "alert_80_sent_at" : "alert_429_sent_at";
+    // Claim the alert first so concurrent invocations can't double-send.
+    const { data: claimed } = await db
+      .from("claap_api_usage")
+      .update({ [column]: new Date().toISOString() })
+      .eq("usage_date", today)
+      .is(column, null)
+      .select("usage_date");
+    if (!claimed || claimed.length === 0) return;
+
+    await db.functions.invoke("send-transactional-email", {
+      body: {
+        templateName: "claap-quota-alert",
+        recipientEmail: ALERT_RECIPIENT,
+        idempotencyKey: `claap-quota-${kind}-${today}`,
+        templateData: {
+          alertType: kind,
+          callsMade: row.calls_made,
+          dailyLimit: limit,
+          percentUsed: Math.round(pct * 100),
+          usageDate: row.usage_date,
+          lastCallAt: fmt(row.last_call_at),
+          last429At: fmt(row.last_429_at ?? row.first_429_at),
+          resetAt: fmt(row.reset_at),
+        },
+      },
+    });
+  } catch (e) {
+    console.error("[claap-quota] alert email failed:", (e as Error).message);
+  }
 }
 
 /**

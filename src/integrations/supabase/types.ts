@@ -3659,6 +3659,8 @@ export type Database = {
       }
       claap_api_usage: {
         Row: {
+          alert_429_sent_at: string | null
+          alert_80_sent_at: string | null
           calls_made: number
           created_at: string
           daily_limit: number
@@ -3670,6 +3672,8 @@ export type Database = {
           usage_date: string
         }
         Insert: {
+          alert_429_sent_at?: string | null
+          alert_80_sent_at?: string | null
           calls_made?: number
           created_at?: string
           daily_limit?: number
@@ -3681,6 +3685,8 @@ export type Database = {
           usage_date?: string
         }
         Update: {
+          alert_429_sent_at?: string | null
+          alert_80_sent_at?: string | null
           calls_made?: number
           created_at?: string
           daily_limit?: number
