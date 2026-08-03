@@ -381,10 +381,11 @@ var create_company_default = defineTool10({
   description: "Create a CRM company record.",
   inputSchema: {
     name: z10.string().trim().min(1).max(300),
+    domain: z10.string().trim().max(300).optional(),
     website_url: z10.string().trim().max(500).optional(),
     industry: z10.string().trim().max(200).optional(),
-    city: z10.string().trim().max(200).optional(),
-    state: z10.string().trim().max(200).optional()
+    hq_city: z10.string().trim().max(200).optional(),
+    hq_state: z10.string().trim().max(200).optional()
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -393,7 +394,7 @@ var create_company_default = defineTool10({
     const sb = supabaseForUser(ctx);
     const row = { created_by: ctx.getUserId() };
     for (const [k, v] of Object.entries(input)) if (v !== void 0) row[k] = v;
-    const { data, error } = await sb.from("crm_companies").insert(row).select("id, name, website_url").maybeSingle();
+    const { data, error } = await sb.from("crm_companies").insert(row).select("id, name, domain, website_url, hq_city, hq_state").maybeSingle();
     if (error) return errorResult(error.message);
     return textResult(data, { company_id: data?.id });
   }
