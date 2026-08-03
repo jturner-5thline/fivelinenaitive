@@ -62,7 +62,7 @@ const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   Calendar: loadCalendar,
   Mail: loadMail,
   Tasks: loadTasks,
-  'Approval Queue': loadTasks,
+  'Today': loadTasks,
   'Dashboard': loadDailyBriefing,
   "Niki's Daily Rundown": loadDailyBriefing,
   "Moffitt's Daily Rundown": loadDailyBriefing,
@@ -126,7 +126,7 @@ export function DealsHeader() {
   const isDealsRoute = location.pathname === '/deals';
   const { pipelineId: naitivePipelineId, stages: naitiveStages, refetch: refetchNaitive } = useNaitivePipelineData();
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
-  const [dashboardInitialTab, setDashboardInitialTab] = useState<'dashboard' | 'analytics' | 'queue' | 'tasks'>('dashboard');
+  const [dashboardInitialTab, setDashboardInitialTab] = useState<'dashboard' | 'analytics' | 'today' | 'tasks'>('dashboard');
 
   // /analytics now redirects to /deals?dashboard=analytics — when we land
   // here with that param, auto-open the Dashboard modal on the Analytics
@@ -204,7 +204,7 @@ export function DealsHeader() {
       setIsBriefingOpen(true);
     };
     const eodHandler = () => {
-      setBriefingInitialTab('end_of_day');
+      setBriefingInitialTab('today');
       setIsBriefingOpen(true);
     };
     window.addEventListener('open-daily-rundown', handler);
@@ -256,7 +256,7 @@ export function DealsHeader() {
       const params = new URLSearchParams(window.location.search);
       const v = params.get('openDailyRundown');
       if (v === 'endOfDay' || v === 'end_of_day' || v === 'eod') {
-        setBriefingInitialTab('end_of_day');
+        setBriefingInitialTab('today');
         setIsBriefingOpen(true);
         params.delete('openDailyRundown');
         const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}${window.location.hash}`;
@@ -383,9 +383,9 @@ export function DealsHeader() {
       available: true,
     },
     {
-      label: 'Approval Queue' as const,
-      isOpen: isDashboardOpen && dashboardInitialTab === 'queue',
-      open: () => { setDashboardInitialTab('queue'); setIsDashboardOpen(true); refetchActionQueue(); },
+      label: 'Today' as const,
+      isOpen: isDashboardOpen && dashboardInitialTab === 'today',
+      open: () => { setDashboardInitialTab('today'); setIsDashboardOpen(true); refetchActionQueue(); },
       close: () => setIsDashboardOpen(false),
       available: approvalQueueEnabled,
     },
@@ -550,7 +550,7 @@ export function DealsHeader() {
               const ICONS: Record<string, typeof Calendar> = {
                 'Calendar': Calendar,
                 'Mail': Mail,
-                'Approval Queue': Inbox,
+                'Today': Inbox,
                 'Tasks': ListChecks,
                 'Deal Rundown': ClipboardList,
                 'Dashboard': LayoutDashboard,
@@ -563,7 +563,7 @@ export function DealsHeader() {
                 "Niki's Daily Rundown": nikiRundownHasBadge,
               };
               const COUNT_BADGES: Record<string, number> = {
-                'Approval Queue': approvalQueueCount,
+                'Today': approvalQueueCount + eodOutstandingCount,
                 'Tasks': myTasksBadgeCount,
                 'Dashboard': eodOutstandingCount,
               };

@@ -608,6 +608,11 @@ async function executeQueuedAction(
           assigned_to: p.assigned_to ?? userId,
           assigned_by: userId,
           company_id: membership?.company_id ?? null,
+          // Provenance — lets the unified Today surface collapse this task and
+          // the queue card it came from into a single entry instead of
+          // showing the same work twice.
+          source_queue_item_id: item.id,
+          source_calendar_event_id: (item as any).source_event_id ?? null,
         } as any).select('id').single();
         if (error) return { ok: false, error: error.message };
         if (created?.id) {

@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AgendaIntel } from './AgendaIntel';
 import { MoffittDealRundown } from './MoffittDealRundown';
 import { MOFFITT_USER_ID } from '@/constants/moffittBriefing';
-import { EndOfDayTab } from './EndOfDayTab';
+import { TodayTab } from './TodayTab';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
@@ -133,7 +133,7 @@ interface DailyBriefingModalProps {
    * Tab to select when the modal opens (and re-opens). If the value is
    * excluded or unknown, falls back to the first available tab.
    */
-  initialTab?: 'dashboard' | 'daily_rundown' | 'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational' | 'end_of_day';
+  initialTab?: 'dashboard' | 'daily_rundown' | 'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational' | 'today';
   /**
    * Identifies which briefing surface this modal represents. Used to scope
    * per-day dismissal state so dismissing an item in one briefing surface
@@ -2002,8 +2002,9 @@ const ALL_TABS = [
   { value: 'financial', label: 'Financial', icon: DollarSign },
   { value: 'pipeline', label: 'Deals', icon: GitBranch },
   { value: 'operational', label: 'Tasks', icon: ListChecks },
-  { value: 'end_of_day', label: 'End of Day', icon: Sunset },
-  { value: 'queue', label: 'Approval Queue', icon: Inbox },
+  // Approval Queue + End of Day are consolidated into a single "Today"
+  // surface (decisions, wrap-ups, and the today slice of tasks).
+  { value: 'today', label: 'Today', icon: Sunset },
 ] as const;
 
 // ── Main modal component ───────────────────────────────────────
@@ -2062,10 +2063,9 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
         return t;
       }).filter(t => {
         if (excludeTabs?.includes(t.value as any)) return false;
-        if (t.value === 'end_of_day' && !canSeeEndOfDay) return false;
+        if (t.value === 'today' && !canSeeEndOfDay && !queueEnabled) return false;
         if (t.value === 'dashboard' && !isFifthLine) return false;
         if (t.value === 'financial' && !canSeeFinancial) return false;
-        if (t.value === 'queue' && !queueEnabled) return false;
         // Agenda, Catch Up & News, and Email are now hosted exclusively
         // inside the Daily Rundown tab — hide them from the left sidebar.
         if (t.value === 'agenda' || t.value === 'catchup' || t.value === 'email') return false;
@@ -2205,13 +2205,11 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                 {TABS.map(tab => {
                   const Icon = tab.icon;
                   const badgeCount =
-                    tab.value === 'end_of_day'
-                      ? eodOutstandingCount
-                      : tab.value === 'queue'
-                        ? queueBadgeCount
-                        : tab.value === 'operational'
-                          ? tasksBadgeCount
-                          : 0;
+                    tab.value === 'today'
+                      ? eodOutstandingCount + queueBadgeCount
+                      : tab.value === 'operational'
+                        ? tasksBadgeCount
+                        : 0;
                   return (
                     <Tooltip key={tab.value}>
                       <TooltipTrigger asChild>
@@ -2361,7 +2359,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                 </button>
               )}
 
-              {activeTab === 'pipeline' || activeTab === 'end_of_day' || activeTab === 'queue' ? (
+              {activeTab === 'pipeline' || activeTab === 'today' ? (
                 // Pipeline and End of Day tabs manage their own master/detail
                 // scrolling (left list + right pane). Wrapping them in the
                 // outer ScrollArea collapses the inner scroll regions, so we
@@ -2372,7 +2370,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                     paddingLeft: 'clamp(0.75rem, 1.4vw, 1.5rem)',
                     paddingRight: 'clamp(0.75rem, 1.4vw, 1.5rem)',
                     paddingTop: 'clamp(0.5rem, 1vw, 1rem)',
-                    paddingBottom: activeTab === 'end_of_day' ? '0.125rem' : 'clamp(0.75rem, 1.2vw, 1.5rem)',
+                    paddingBottom: activeTab === 'today' ? '0.125rem' : 'clamp(0.75rem, 1.2vw, 1.5rem)',
                   }}
                 >
                   <AddToDealCalendarProvider>
@@ -2393,19 +2391,14 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                           briefingType={briefingType}
                         />
                       )}
-                      {contentReady && activeTab === 'end_of_day' && (
-                        <EndOfDayTab
+                      {contentReady && activeTab === 'today' && (
+                        <TodayTab
                           enabled={open}
+                          onClose={() => onOpenChange(false)}
                           onNavigate={handleNavigate}
                           targetAssigneeName={targetAssigneeName}
                           targetUserId={targetUserId}
                           briefingType={briefingType}
-                        />
-                      )}
-                      {contentReady && activeTab === 'queue' && (
-                        <ActionQueuePanel
-                          items={queueItems}
-                          onClose={() => onOpenChange(false)}
                         />
                       )}
                     </div>
@@ -2418,7 +2411,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                   paddingLeft: 'clamp(0.75rem, 1.4vw, 1.5rem)',
                   paddingRight: 'clamp(0.75rem, 1.4vw, 1.5rem)',
                   paddingTop: 'clamp(0.5rem, 1vw, 1rem)',
-                  paddingBottom: activeTab === 'end_of_day' ? '0.125rem' : 'clamp(0.5rem, 1vw, 1rem)',
+                  paddingBottom: activeTab === 'today' ? '0.125rem' : 'clamp(0.5rem, 1vw, 1rem)',
                 }}
               >
                 <AddToDealCalendarProvider>
@@ -2426,7 +2419,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                     key={activeTab}
                     className={cn(
                       'min-w-0 max-w-full',
-                      activeTab === 'end_of_day' && 'h-full min-h-0',
+                      activeTab === 'today' && 'h-full min-h-0',
                       slideDirection === 'left' && 'animate-slide-in-from-right',
                       slideDirection === 'right' && 'animate-slide-in-from-left',
                     )}
