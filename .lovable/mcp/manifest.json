@@ -19,7 +19,7 @@
       {
         "name": "list_deals",
         "title": "List deals",
-        "description": "List the naitive deals the signed-in user can see. Optionally filter by stage, pipeline_id, or a text query against the company/deal name. Returns id, company, stage, value, closing_date, pipeline_id, deal_owner, updated_at.",
+        "description": "List the naitive deals the signed-in user can see, returning full row records (not just a count). Optionally filter by stage, pipeline_id, a text query against the company/deal name, or a created_at/closing_date window (use created_from/created_to for questions like 'deals created in August'). Returns id, company, stage, value, closing_date, created_at, pipeline_id, deal_owner, manager, status, updated_at.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -43,6 +43,26 @@
             "pipeline_id": {
               "type": "string",
               "format": "uuid"
+            },
+            "created_from": {
+              "type": "string",
+              "maxLength": 40,
+              "description": "ISO date/timestamp lower bound on created_at (inclusive)."
+            },
+            "created_to": {
+              "type": "string",
+              "maxLength": 40,
+              "description": "ISO date/timestamp upper bound on created_at (exclusive)."
+            },
+            "closing_from": {
+              "type": "string",
+              "maxLength": 40,
+              "description": "ISO date lower bound on closing_date (inclusive)."
+            },
+            "closing_to": {
+              "type": "string",
+              "maxLength": 40,
+              "description": "ISO date upper bound on closing_date (exclusive)."
             },
             "limit": {
               "type": "integer",
@@ -160,7 +180,7 @@
       {
         "name": "list_tasks",
         "title": "List tasks",
-        "description": "List tasks the signed-in user can see, optionally filtered by deal, status, or assignee.",
+        "description": "List tasks the signed-in user can see, optionally filtered by deal, status, or assignee (assigned_to user id). Returns full row records.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -177,15 +197,16 @@
               "type": "string",
               "enum": [
                 "not_started",
+                "pending",
                 "in_progress",
                 "completed",
-                "blocked",
-                "cancelled"
+                "complete"
               ]
             },
-            "assignee": {
+            "assigned_to": {
               "type": "string",
-              "maxLength": 200
+              "format": "uuid",
+              "description": "User id the task is assigned to."
             },
             "query": {
               "type": "string",
@@ -241,9 +262,10 @@
                 "urgent"
               ]
             },
-            "assignee": {
+            "assigned_to": {
               "type": "string",
-              "maxLength": 200
+              "format": "uuid",
+              "description": "User id to assign the task to."
             },
             "deal_id": {
               "type": "string",
@@ -326,7 +348,7 @@
       {
         "name": "search_companies",
         "title": "Search companies",
-        "description": "Search CRM companies by name or domain.",
+        "description": "Search CRM companies by name, domain, or website. Returns full row records.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -421,6 +443,10 @@
               "minLength": 1,
               "maxLength": 300
             },
+            "domain": {
+              "type": "string",
+              "maxLength": 300
+            },
             "website_url": {
               "type": "string",
               "maxLength": 500
@@ -429,11 +455,11 @@
               "type": "string",
               "maxLength": 200
             },
-            "city": {
+            "hq_city": {
               "type": "string",
               "maxLength": 200
             },
-            "state": {
+            "hq_state": {
               "type": "string",
               "maxLength": 200
             }

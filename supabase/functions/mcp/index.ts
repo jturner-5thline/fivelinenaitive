@@ -101,25 +101,36 @@ async function assertDealAccess(sb, ctx, deal_id, toolName) {
 var list_deals_default = defineTool({
   name: "list_deals",
   title: "List deals",
-  description: "List the naitive deals the signed-in user can see. Optionally filter by stage, pipeline_id, or a text query against the company/deal name. Returns id, company, stage, value, closing_date, pipeline_id, deal_owner, updated_at.",
+  description: "List the naitive deals the signed-in user can see, returning full row records (not just a count). Optionally filter by stage, pipeline_id, a text query against the company/deal name, or a created_at/closing_date window (use created_from/created_to for questions like 'deals created in August'). Returns id, company, stage, value, closing_date, created_at, pipeline_id, deal_owner, manager, status, updated_at.",
   inputSchema: {
     query: z.string().trim().min(1).max(200).optional().describe("Substring search across the company / deal name."),
     stage: z.string().trim().min(1).max(100).optional().describe("Exact stage id (e.g. 'nda-needs-list', 'on-deck')."),
     pipeline_id: z.string().uuid().optional(),
+    created_from: z.string().trim().max(40).optional().describe("ISO date/timestamp lower bound on created_at (inclusive)."),
+    created_to: z.string().trim().max(40).optional().describe("ISO date/timestamp upper bound on created_at (exclusive)."),
+    closing_from: z.string().trim().max(40).optional().describe("ISO date lower bound on closing_date (inclusive)."),
+    closing_to: z.string().trim().max(40).optional().describe("ISO date upper bound on closing_date (exclusive)."),
     limit: z.number().int().min(1).max(200).default(50)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ query, stage, pipeline_id, limit }, ctx) => {
+  handler: async ({ query, stage, pipeline_id, created_from, created_to, closing_from, closing_to, limit }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    let q = sb.from("deals").select("id, company, stage, value, closing_date, pipeline_id, deal_owner, manager, updated_at").order("updated_at", { ascending: false }).limit(limit);
+    let q = sb.from("deals").select(
+      "id, company, stage, status, value, closing_date, created_at, pipeline_id, deal_owner, manager, updated_at"
+    ).order("updated_at", { ascending: false }).limit(limit);
     if (stage) q = q.eq("stage", stage);
     if (pipeline_id) q = q.eq("pipeline_id", pipeline_id);
     if (query) q = q.ilike("company", `%${query}%`);
+    if (created_from) q = q.gte("created_at", created_from);
+    if (created_to) q = q.lt("created_at", created_to);
+    if (closing_from) q = q.gte("closing_date", closing_from);
+    if (closing_to) q = q.lt("closing_date", closing_to);
     const { data, error } = await q;
     if (error) return errorResult(error.message);
-    return textResult(data ?? [], { count: data?.length ?? 0 });
+    const rows = data ?? [];
+    return textResult(rows, { count: rows.length, deals: rows });
   }
 });
 
@@ -146,7 +157,7 @@ var get_deal_default = defineTool2({
     if (error) return errorResult(error.message);
     if (!deal) return errorResult("Deal not found or you do not have access.");
     const [tasksRes, lendersRes] = await Promise.all([
-      include_tasks ? sb.from("tasks").select("id, title, status, due_date, priority, assignee, created_at").eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(50) : Promise.resolve({ data: null, error: null }),
+      include_tasks ? sb.from("tasks").select("id, title, status, due_date, priority, assigned_to, created_at").eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(50) : Promise.resolve({ data: null, error: null }),
       include_lenders ? sb.from("deal_lenders").select("id, lender_id, status, stage, updated_at").eq("deal_id", deal_id).order("updated_at", { ascending: false }).limit(200) : Promise.resolve({ data: null, error: null })
     ]);
     return textResult({
@@ -197,27 +208,30 @@ import { z as z4 } from "npm:zod@^3.23.0";
 var list_tasks_default = defineTool4({
   name: "list_tasks",
   title: "List tasks",
-  description: "List tasks the signed-in user can see, optionally filtered by deal, status, or assignee.",
+  description: "List tasks the signed-in user can see, optionally filtered by deal, status, or assignee (assigned_to user id). Returns full row records.",
   inputSchema: {
     deal_id: z4.string().uuid().optional(),
-    status: z4.enum(["not_started", "in_progress", "completed", "blocked", "cancelled"]).optional(),
-    assignee: z4.string().trim().max(200).optional(),
+    status: z4.enum(["not_started", "pending", "in_progress", "completed", "complete"]).optional(),
+    assigned_to: z4.string().uuid().optional().describe("User id the task is assigned to."),
     query: z4.string().trim().max(200).optional(),
     limit: z4.number().int().min(1).max(200).default(50)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, status, assignee, query, limit }, ctx) => {
+  handler: async ({ deal_id, status, assigned_to, query, limit }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    let q = sb.from("tasks").select("id, title, description, status, priority, due_date, assignee, deal_id, contact_id, company_id, created_at").order("due_date", { ascending: true, nullsFirst: false }).limit(limit);
+    let q = sb.from("tasks").select(
+      "id, title, description, status, priority, due_date, completed_at, assigned_to, assigned_by, task_type, deal_id, contact_id, crm_company_id, company_id, created_at"
+    ).order("due_date", { ascending: true, nullsFirst: false }).limit(limit);
     if (deal_id) q = q.eq("deal_id", deal_id);
     if (status) q = q.eq("status", status);
-    if (assignee) q = q.ilike("assignee", `%${assignee}%`);
+    if (assigned_to) q = q.eq("assigned_to", assigned_to);
     if (query) q = q.ilike("title", `%${query}%`);
     const { data, error } = await q;
     if (error) return errorResult(error.message);
-    return textResult(data ?? [], { count: data?.length ?? 0 });
+    const rows = data ?? [];
+    return textResult(rows, { count: rows.length, tasks: rows });
   }
 });
 
@@ -233,7 +247,7 @@ var create_task_default = defineTool5({
     description: z5.string().max(1e4).optional(),
     due_date: z5.string().nullable().optional().describe("ISO date."),
     priority: z5.enum(["low", "medium", "high", "urgent"]).optional(),
-    assignee: z5.string().trim().max(200).optional(),
+    assigned_to: z5.string().uuid().optional().describe("User id to assign the task to."),
     deal_id: z5.string().uuid().optional(),
     contact_id: z5.string().uuid().optional(),
     company_id: z5.string().uuid().optional()
@@ -248,7 +262,7 @@ var create_task_default = defineTool5({
       status: "not_started",
       created_by: ctx.getUserId()
     };
-    for (const k of ["description", "due_date", "priority", "assignee", "deal_id", "contact_id", "company_id"]) {
+    for (const k of ["description", "due_date", "priority", "assigned_to", "deal_id", "contact_id", "company_id"]) {
       if (input[k] !== void 0) row[k] = input[k];
     }
     const { data, error } = await sb.from("tasks").insert(row).select().maybeSingle();
@@ -306,7 +320,7 @@ import { z as z8 } from "npm:zod@^3.23.0";
 var search_companies_default = defineTool8({
   name: "search_companies",
   title: "Search companies",
-  description: "Search CRM companies by name or domain.",
+  description: "Search CRM companies by name, domain, or website. Returns full row records.",
   inputSchema: {
     query: z8.string().trim().min(1).max(200),
     limit: z8.number().int().min(1).max(100).default(25)
@@ -317,9 +331,12 @@ var search_companies_default = defineTool8({
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
     const like = `%${query}%`;
-    const { data, error } = await sb.from("crm_companies").select("id, name, website_url, industry, city, state, created_at").or(`name.ilike.${like},website_url.ilike.${like}`).limit(limit);
+    const { data, error } = await sb.from("crm_companies").select(
+      "id, name, domain, website_url, industry, company_type, status, hq_city, hq_state, hq_country, created_at"
+    ).or(`name.ilike.${like},domain.ilike.${like},website_url.ilike.${like}`).limit(limit);
     if (error) return errorResult(error.message);
-    return textResult(data ?? [], { count: data?.length ?? 0 });
+    const rows = data ?? [];
+    return textResult(rows, { count: rows.length, companies: rows });
   }
 });
 
@@ -364,10 +381,11 @@ var create_company_default = defineTool10({
   description: "Create a CRM company record.",
   inputSchema: {
     name: z10.string().trim().min(1).max(300),
+    domain: z10.string().trim().max(300).optional(),
     website_url: z10.string().trim().max(500).optional(),
     industry: z10.string().trim().max(200).optional(),
-    city: z10.string().trim().max(200).optional(),
-    state: z10.string().trim().max(200).optional()
+    hq_city: z10.string().trim().max(200).optional(),
+    hq_state: z10.string().trim().max(200).optional()
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -376,7 +394,7 @@ var create_company_default = defineTool10({
     const sb = supabaseForUser(ctx);
     const row = { created_by: ctx.getUserId() };
     for (const [k, v] of Object.entries(input)) if (v !== void 0) row[k] = v;
-    const { data, error } = await sb.from("crm_companies").insert(row).select("id, name, website_url").maybeSingle();
+    const { data, error } = await sb.from("crm_companies").insert(row).select("id, name, domain, website_url, hq_city, hq_state").maybeSingle();
     if (error) return errorResult(error.message);
     return textResult(data, { company_id: data?.id });
   }

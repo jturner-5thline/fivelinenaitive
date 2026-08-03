@@ -25,7 +25,7 @@ export default defineTool({
       include_tasks
         ? sb
             .from("tasks")
-            .select("id, title, status, due_date, priority, assignee, created_at")
+            .select("id, title, status, due_date, priority, assigned_to, created_at")
             .eq("deal_id", deal_id)
             .order("created_at", { ascending: false })
             .limit(50)
