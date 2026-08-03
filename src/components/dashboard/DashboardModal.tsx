@@ -37,7 +37,7 @@ export interface DashboardModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Which tab to land on when the modal opens. Defaults to 'dashboard'. */
-  initialTab?: 'dashboard' | 'analytics' | 'queue' | 'tasks';
+  initialTab?: 'dashboard' | 'analytics' | 'today' | 'tasks';
   /**
    * When true, render the dashboard body inline (no Dialog wrapper) so the
    * same content can be hosted as a tab inside another modal (e.g. the
@@ -77,7 +77,7 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
     user?.email === 'nheikali@5thline.co' || user?.email === 'jturner@5thline.co';
   const { enabled: queueEnabled } = useApprovalQueueAccess();
   const { data: queueItems = [] } = useAiActionQueue();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'performance' | 'queue' | 'tasks'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'performance' | 'today' | 'tasks'>(initialTab);
   useEffect(() => {
     if (open) setActiveTab(initialTab);
   }, [open, initialTab]);
@@ -438,7 +438,7 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
           <style dangerouslySetInnerHTML={{ __html: DASHBOARD_CSS }} />
           <Tabs
             value={activeTab}
-            onValueChange={(v) => setActiveTab(v as 'dashboard' | 'analytics' | 'performance' | 'queue' | 'tasks')}
+            onValueChange={(v) => setActiveTab(v as 'dashboard' | 'analytics' | 'performance' | 'today' | 'tasks')}
             className="flex flex-col flex-1 min-h-0"
           >
             <div className="px-5 pt-2 pb-1 shrink-0">
@@ -457,12 +457,10 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
                     Performance
                   </TabsTrigger>
                 )}
-                {queueEnabled && (
-                  <TabsTrigger value="queue" className="gap-1.5">
-                    <Inbox className="h-3.5 w-3.5" />
-                    Approval Queue
-                  </TabsTrigger>
-                )}
+                <TabsTrigger value="today" className="gap-1.5">
+                  <Inbox className="h-3.5 w-3.5" />
+                  Today
+                </TabsTrigger>
                 <TabsTrigger value="tasks" className="gap-1.5">
                   <ListChecks className="h-3.5 w-3.5" />
                   Tasks
@@ -814,14 +812,12 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
                 </Suspense>
               </TabsContent>
             )}
-            {queueEnabled && (
-              <TabsContent
-                value="queue"
-                className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-hidden data-[state=inactive]:hidden bg-transparent flex flex-col"
-              >
-                <ActionQueuePanel items={queueItems} onClose={() => setActiveTab('dashboard')} />
-              </TabsContent>
-            )}
+            <TabsContent
+              value="today"
+              className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-hidden data-[state=inactive]:hidden bg-transparent flex flex-col px-1"
+            >
+              <TodayTab enabled={activeTab === 'today'} onClose={() => setActiveTab('dashboard')} />
+            </TabsContent>
             <TabsContent
               value="tasks"
               className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-hidden data-[state=inactive]:hidden bg-transparent flex flex-col"
