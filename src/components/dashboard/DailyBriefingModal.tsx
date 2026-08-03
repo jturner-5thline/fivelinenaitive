@@ -2359,7 +2359,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                 </button>
               )}
 
-              {activeTab === 'pipeline' || activeTab === 'end_of_day' || activeTab === 'queue' ? (
+              {activeTab === 'pipeline' || activeTab === 'today' ? (
                 // Pipeline and End of Day tabs manage their own master/detail
                 // scrolling (left list + right pane). Wrapping them in the
                 // outer ScrollArea collapses the inner scroll regions, so we
@@ -2370,7 +2370,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                     paddingLeft: 'clamp(0.75rem, 1.4vw, 1.5rem)',
                     paddingRight: 'clamp(0.75rem, 1.4vw, 1.5rem)',
                     paddingTop: 'clamp(0.5rem, 1vw, 1rem)',
-                    paddingBottom: activeTab === 'end_of_day' ? '0.125rem' : 'clamp(0.75rem, 1.2vw, 1.5rem)',
+                    paddingBottom: activeTab === 'today' ? '0.125rem' : 'clamp(0.75rem, 1.2vw, 1.5rem)',
                   }}
                 >
                   <AddToDealCalendarProvider>
@@ -2391,19 +2391,14 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                           briefingType={briefingType}
                         />
                       )}
-                      {contentReady && activeTab === 'end_of_day' && (
-                        <EndOfDayTab
+                      {contentReady && activeTab === 'today' && (
+                        <TodayTab
                           enabled={open}
+                          onClose={() => onOpenChange(false)}
                           onNavigate={handleNavigate}
                           targetAssigneeName={targetAssigneeName}
                           targetUserId={targetUserId}
                           briefingType={briefingType}
-                        />
-                      )}
-                      {contentReady && activeTab === 'queue' && (
-                        <ActionQueuePanel
-                          items={queueItems}
-                          onClose={() => onOpenChange(false)}
                         />
                       )}
                     </div>
@@ -2416,7 +2411,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                   paddingLeft: 'clamp(0.75rem, 1.4vw, 1.5rem)',
                   paddingRight: 'clamp(0.75rem, 1.4vw, 1.5rem)',
                   paddingTop: 'clamp(0.5rem, 1vw, 1rem)',
-                  paddingBottom: activeTab === 'end_of_day' ? '0.125rem' : 'clamp(0.5rem, 1vw, 1rem)',
+                  paddingBottom: activeTab === 'today' ? '0.125rem' : 'clamp(0.5rem, 1vw, 1rem)',
                 }}
               >
                 <AddToDealCalendarProvider>
@@ -2424,7 +2419,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                     key={activeTab}
                     className={cn(
                       'min-w-0 max-w-full',
-                      activeTab === 'end_of_day' && 'h-full min-h-0',
+                      activeTab === 'today' && 'h-full min-h-0',
                       slideDirection === 'left' && 'animate-slide-in-from-right',
                       slideDirection === 'right' && 'animate-slide-in-from-left',
                     )}
