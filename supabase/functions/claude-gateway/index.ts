@@ -113,6 +113,9 @@ const DEFAULT_TTL_SECONDS: Record<string, number> = {
   deal_qa: 5 * 60,
   document_summary: 7 * 24 * 60 * 60,
   daily_rundown: 24 * 60 * 60,
+  // Deal Admin Agent sweeps re-send byte-identical prompts for unchanged
+  // deals; a long TTL turns those repeats into cache reads.
+  deal_admin_agent: 6 * 60 * 60,
 };
 
 function normalizePrompt(messages: ClaudeMessage[]): string {
