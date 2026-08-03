@@ -26,6 +26,7 @@ const EXTERNAL_TONE = "concise, semi-formal, acquaintance / friendly";
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 import { anthropicFetch } from "./anthropicUsage.ts";
 import { cachedDealAdminAgentCall } from "./dealAdminAgentModelCache.ts";
+import { triageDealSignals } from "./dealAdminAgentTriage.ts";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-4-5-20250929";
@@ -2342,18 +2343,24 @@ async function callModelForCandidates(
   //   block 2 — company-level rules (identical for every deal in a sweep, cached)
   //   block 3 — deal-specific knowledge (varies, NOT cached; must come last)
   // Instruction text and semantics are unchanged — only the block boundaries.
+  // Sweeps are spread out over the day, so the default 5-minute ephemeral TTL
+  // expired between most calls and the rulebook was re-billed as fresh input
+  // (~10% cache reads across 8.75M tokens). The 1-hour TTL keeps the rulebook
+  // resident across a whole sweep window. Requires the extended-cache beta
+  // header set on the request below.
+  const CACHE_1H = { type: "ephemeral" as const, ttl: "1h" as const };
   const staticSystem =
     `${SYSTEM_PROMPT_FULL}\n\nRespond with ONLY a JSON object of the form {"items":[...]}. No prose, no markdown fences.`;
   const systemBlocks: Array<
-    { type: "text"; text: string; cache_control?: { type: "ephemeral" } }
+    { type: "text"; text: string; cache_control?: { type: "ephemeral"; ttl?: "1h" } }
   > = [
-    { type: "text", text: staticSystem, cache_control: { type: "ephemeral" } },
+    { type: "text", text: staticSystem, cache_control: CACHE_1H },
   ];
   if (extraRules && extraRules.trim().length > 0) {
     systemBlocks.push({
       type: "text",
       text: extraRules,
-      cache_control: { type: "ephemeral" },
+      cache_control: CACHE_1H,
     });
   }
   if (dealRules && dealRules.trim().length > 0) {
@@ -2394,6 +2401,33 @@ async function callModelForCandidates(
     prompt: userPrompt,
     signalKey: computeSignalFingerprint(bundle),
   }, async () => {
+    // ── Gemini triage pre-filter ──────────────────────────────────────────
+    // Runs inside the cached callback so a cache hit skips triage too. Fails
+    // open: anything other than a confident "nothing here" escalates to
+    // Claude, so the proposals users see are unchanged.
+    const triage = await triageDealSignals({
+      dealId: bundle.deal_id ?? null,
+      dealName: bundle.deal_name ?? null,
+      digest: userPrompt,
+      extraRules: [extraRules, dealRules].filter(Boolean).join("\n\n") || null,
+    });
+    if (!triage.actionable) {
+      console.log(
+        `[deal-admin-agent] triage skip · deal=${bundle.deal_id ?? "?"} · ${triage.why}`,
+      );
+      return {
+        raw: '{"items":[]}',
+        model: "google/gemini-3.6-flash (triage)",
+        inputTokens: null,
+        outputTokens: null,
+      };
+    }
+    if (triage.outcome === "pass" && triage.triggers.length > 0) {
+      console.log(
+        `[deal-admin-agent] triage pass · deal=${bundle.deal_id ?? "?"} · ${triage.triggers.join(", ")}`,
+      );
+    }
+
     const resp = await anthropicFetch({
       feature: "deal-admin-agent",
       // What the assistant was actually doing on this call:
@@ -2408,6 +2442,8 @@ async function callModelForCandidates(
         "Content-Type": "application/json",
         "x-api-key": ANTHROPIC_API_KEY,
         "anthropic-version": "2023-06-01",
+        // Enables the 1-hour `ttl` on the cache_control blocks above.
+        "anthropic-beta": "extended-cache-ttl-2025-04-11",
       },
       body: JSON.stringify(body),
     });
