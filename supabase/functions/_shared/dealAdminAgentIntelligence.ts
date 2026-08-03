@@ -2395,6 +2395,33 @@ async function callModelForCandidates(
     prompt: userPrompt,
     signalKey: computeSignalFingerprint(bundle),
   }, async () => {
+    // ── Gemini triage pre-filter ──────────────────────────────────────────
+    // Runs inside the cached callback so a cache hit skips triage too. Fails
+    // open: anything other than a confident "nothing here" escalates to
+    // Claude, so the proposals users see are unchanged.
+    const triage = await triageDealSignals({
+      dealId: bundle.deal_id ?? null,
+      dealName: bundle.deal_name ?? null,
+      digest: userPrompt,
+      extraRules: [extraRules, dealRules].filter(Boolean).join("\n\n") || null,
+    });
+    if (!triage.actionable) {
+      console.log(
+        `[deal-admin-agent] triage skip · deal=${bundle.deal_id ?? "?"} · ${triage.why}`,
+      );
+      return {
+        raw: '{"items":[]}',
+        model: "google/gemini-3.6-flash (triage)",
+        inputTokens: null,
+        outputTokens: null,
+      };
+    }
+    if (triage.outcome === "pass" && triage.triggers.length > 0) {
+      console.log(
+        `[deal-admin-agent] triage pass · deal=${bundle.deal_id ?? "?"} · ${triage.triggers.join(", ")}`,
+      );
+    }
+
     const resp = await anthropicFetch({
       feature: "deal-admin-agent",
       // What the assistant was actually doing on this call:
