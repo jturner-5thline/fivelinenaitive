@@ -62,7 +62,7 @@ const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   Calendar: loadCalendar,
   Mail: loadMail,
   Tasks: loadTasks,
-  'Approval Queue': loadTasks,
+  'Today': loadTasks,
   'Dashboard': loadDailyBriefing,
   "Niki's Daily Rundown": loadDailyBriefing,
   "Moffitt's Daily Rundown": loadDailyBriefing,
@@ -383,7 +383,7 @@ export function DealsHeader() {
       available: true,
     },
     {
-      label: 'Approval Queue' as const,
+      label: 'Today' as const,
       isOpen: isDashboardOpen && dashboardInitialTab === 'today',
       open: () => { setDashboardInitialTab('today'); setIsDashboardOpen(true); refetchActionQueue(); },
       close: () => setIsDashboardOpen(false),
@@ -550,7 +550,7 @@ export function DealsHeader() {
               const ICONS: Record<string, typeof Calendar> = {
                 'Calendar': Calendar,
                 'Mail': Mail,
-                'Approval Queue': Inbox,
+                'Today': Inbox,
                 'Tasks': ListChecks,
                 'Deal Rundown': ClipboardList,
                 'Dashboard': LayoutDashboard,
@@ -563,7 +563,7 @@ export function DealsHeader() {
                 "Niki's Daily Rundown": nikiRundownHasBadge,
               };
               const COUNT_BADGES: Record<string, number> = {
-                'Approval Queue': approvalQueueCount,
+                'Today': approvalQueueCount + eodOutstandingCount,
                 'Tasks': myTasksBadgeCount,
                 'Dashboard': eodOutstandingCount,
               };
