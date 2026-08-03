@@ -2205,13 +2205,11 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                 {TABS.map(tab => {
                   const Icon = tab.icon;
                   const badgeCount =
-                    tab.value === 'end_of_day'
-                      ? eodOutstandingCount
-                      : tab.value === 'queue'
-                        ? queueBadgeCount
-                        : tab.value === 'operational'
-                          ? tasksBadgeCount
-                          : 0;
+                    tab.value === 'today'
+                      ? eodOutstandingCount + queueBadgeCount
+                      : tab.value === 'operational'
+                        ? tasksBadgeCount
+                        : 0;
                   return (
                     <Tooltip key={tab.value}>
                       <TooltipTrigger asChild>
