@@ -882,7 +882,10 @@ export async function ensureWorkflowsSeeded(): Promise<void> {
 
     const existingKeys = new Set((existing || []).map((w: any) => w.key));
     const registeredWorkflows = getRegisteredWorkflows();
-    const missing = registeredWorkflows.filter(w => !existingKeys.has(w.key));
+    // Stage-driven task workflows are disabled — never (re)seed them.
+    const missing = registeredWorkflows.filter(
+      w => !existingKeys.has(w.key) && (w as any).trigger !== 'stage_change'
+    );
 
     if (missing.length === 0) return;
 
