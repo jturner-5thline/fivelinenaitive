@@ -23,6 +23,15 @@ export interface ClaapRecommendation {
   savings?: string;
 }
 
+/** One row of public.claap_api_usage — the daily quota ledger. */
+export interface ClaapQuotaDay {
+  usage_date: string;
+  calls_made: number | null;
+  daily_limit: number | null;
+  first_429_at: string | null;
+  last_429_at: string | null;
+}
+
 const n = (v: unknown) => Number(v ?? 0);
 const pct = (part: number, total: number) => (total > 0 ? (part / total) * 100 : 0);
 
@@ -123,7 +132,10 @@ export function recommendationsForClaapRow(row: ClaapDrilldownRow): ClaapRecomme
 }
 
 /** Roll up recommendations across every source in the selected window. */
-export function recommendationsForClaapSelection(rows: ClaapDrilldownRow[]): {
+export function recommendationsForClaapSelection(
+  rows: ClaapDrilldownRow[],
+  quotaDays: ClaapQuotaDay[] = [],
+): {
   totals: {
     calls: number;
     billable: number;
@@ -132,10 +144,13 @@ export function recommendationsForClaapSelection(rows: ClaapDrilldownRow[]): {
     errors: number;
     repeats: number;
     hydrateSkips: number;
+    saturatedDays: number;
+    nearLimitDays: number;
+    peakUtilizationPct: number;
   };
   recommendations: ClaapRecommendation[];
 } {
-  const totals = rows.reduce(
+  const base = rows.reduce(
     (acc, r) => ({
       calls: acc.calls + n(r.calls),
       billable: acc.billable + n(r.billable_calls),
@@ -148,8 +163,54 @@ export function recommendationsForClaapSelection(rows: ClaapDrilldownRow[]): {
     { calls: 0, billable: 0, skipped: 0, rateLimited: 0, errors: 0, repeats: 0, hydrateSkips: 0 },
   );
 
+  // Quota ledger: a day can exhaust the ceiling without a single 429 landing in
+  // the call log (calls get deferred/skipped once protect mode kicks in), so the
+  // ledger — not the call log — is the source of truth for "we hit the limit".
+  const saturated = quotaDays.filter(
+    (d) =>
+      !!d.first_429_at ||
+      (n(d.daily_limit) > 0 && n(d.calls_made) >= n(d.daily_limit)),
+  );
+  const nearLimit = quotaDays.filter(
+    (d) =>
+      !saturated.includes(d) &&
+      n(d.daily_limit) > 0 &&
+      n(d.calls_made) >= n(d.daily_limit) * 0.8,
+  );
+  const peakUtilizationPct = quotaDays.reduce(
+    (max, d) => Math.max(max, n(d.daily_limit) > 0 ? pct(n(d.calls_made), n(d.daily_limit)) : 0),
+    0,
+  );
+
+  const totals = { ...base, saturatedDays: saturated.length, nearLimitDays: nearLimit.length, peakUtilizationPct };
+
   const recs: ClaapRecommendation[] = [];
   const top = [...rows].sort((a, b) => n(b.billable_calls) - n(a.billable_calls))[0];
+
+  if (saturated.length > 0) {
+    const worst = [...saturated].sort((a, b) => n(b.calls_made) - n(a.calls_made))[0];
+    const days = saturated
+      .map((d) => d.usage_date)
+      .slice(0, 5)
+      .join(", ");
+    recs.push({
+      id: "quota-exhausted",
+      severity: "high",
+      title:
+        saturated.length === 1
+          ? `Daily ceiling was hit on ${saturated[0].usage_date}`
+          : `Daily ceiling was hit on ${saturated.length} days`,
+      detail: `${days}${saturated.length > 5 ? ", …" : ""} reached the limit (peak ${n(worst.calls_made).toLocaleString()} of ${n(worst.daily_limit).toLocaleString()} calls). Once the ceiling is reached, later syncs and user refreshes are deferred entirely — ${top ? `${claapSourceLabel(top.source)} spent the most quota in this window` : "review the sources below"}. Cut the scheduled batch size and reserve the last 20% of quota for user-initiated calls.`,
+      savings: "Removes lockout windows",
+    });
+  } else if (nearLimit.length > 0) {
+    recs.push({
+      id: "quota-near-limit",
+      severity: "medium",
+      title: `Quota ran at ${peakUtilizationPct.toFixed(0)}% of the daily ceiling`,
+      detail: `${nearLimit.length} day(s) used 80%+ of the allowance without hitting the wall. There is little headroom left for user-initiated refreshes${top ? ` — ${claapSourceLabel(top.source)} is the largest consumer` : ""}.`,
+    });
+  }
 
   if (top && pct(n(top.billable_calls), totals.billable) >= 60) {
     recs.push({
@@ -213,6 +274,8 @@ export function promptForClaapRecommendation(
     "spread-batch": `Spread the Claap "${row.source}" workload across the day. Reduce the batch size per run and increase the cron frequency so the same volume of recordings is synced without exhausting the daily ceiling in one sweep. Keep total throughput unchanged.`,
     "manual-cooldown": `Add a per-recording refresh cooldown for user-initiated Claap refreshes. If a recording was hydrated within the last 6 hours, return the mirrored data immediately with a "last synced" timestamp and only call Claap when the user explicitly forces a re-sync.`,
     concentration: `Throttle the dominant Claap source "${row.source}". Cut its per-run batch size and mark its calls priority "low" so they defer whenever protect mode is active, keeping quota available for user-facing refreshes.`,
+    "quota-exhausted": `We are exhausting the Claap daily call ceiling. Add a quota governor in supabase/functions/_shared/claap-quota.ts: reserve the final 20% of the daily allowance for priority "high" (user-initiated) calls, defer priority "low" scheduled work to the next window instead of consuming it, shrink the per-run batch size for "${row.source}", and record deferrals in claap_api_call_log so the drilldown shows what was pushed back.`,
+    "quota-near-limit": `We are running close to the Claap daily ceiling. Shrink the per-run batch for "${row.source}", spread scheduled syncs across more frequent smaller runs, and keep at least 20% of the daily allowance free for user-initiated refreshes.`,
     healthy: `Review the Claap sync path for "${row.source}" and confirm nothing calls Claap for data already present in claap_recordings/claap_transcripts.`,
   };
 

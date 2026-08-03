@@ -35,6 +35,7 @@ import {
   recommendationsForClaapSelection,
   type ClaapDrilldownRow,
   type ClaapRecommendation,
+  type ClaapQuotaDay,
 } from "@/lib/claapUsageRecommendations";
 import { toast } from "@/hooks/use-toast";
 
@@ -116,6 +117,7 @@ export function ClaapUsageDrilldownDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const [rows, setRows] = useState<ClaapDrilldownRow[]>([]);
+  const [quotaDays, setQuotaDays] = useState<ClaapQuotaDay[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openKey, setOpenKey] = useState<string | null>(null);
@@ -132,13 +134,22 @@ export function ClaapUsageDrilldownDialog({
       setError(null);
       setOpenKey(null);
       setCalls([]);
-      const { data, error: qErr } = await supabase.rpc("claap_usage_drilldown", {
-        _start: dateKey(selection.start),
-        _end: dateKey(selection.end),
-      });
+      const [{ data, error: qErr }, quotaRes] = await Promise.all([
+        supabase.rpc("claap_usage_drilldown", {
+          _start: dateKey(selection.start),
+          _end: dateKey(selection.end),
+        }),
+        supabase
+          .from("claap_api_usage")
+          .select("usage_date, calls_made, daily_limit, first_429_at, last_429_at")
+          .gte("usage_date", dateKey(selection.start))
+          .lte("usage_date", dateKey(selection.end))
+          .order("usage_date", { ascending: true }),
+      ]);
       if (cancelled) return;
       if (qErr) setError(qErr.message);
       else setRows(((data as ClaapDrilldownRow[]) ?? []).map((r) => ({ ...r })));
+      setQuotaDays((quotaRes.data as ClaapQuotaDay[]) ?? []);
       setLoading(false);
     })();
     return () => {
@@ -146,7 +157,10 @@ export function ClaapUsageDrilldownDialog({
     };
   }, [selection]);
 
-  const summary = useMemo(() => recommendationsForClaapSelection(rows), [rows]);
+  const summary = useMemo(
+    () => recommendationsForClaapSelection(rows, quotaDays),
+    [rows, quotaDays],
+  );
 
   const loadCalls = async (row: ClaapDrilldownRow) => {
     if (!selection) return;
@@ -203,11 +217,16 @@ export function ClaapUsageDrilldownDialog({
         ) : (
           <ScrollArea className="flex-1 pr-3">
             <div className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
                 <Stat label="Billable calls" value={fmt(summary.totals.billable)} />
                 <Stat label="Calls avoided" value={fmt(summary.totals.skipped)} tone="text-emerald-400" />
                 <Stat label="Redundant fetches" value={fmt(summary.totals.repeats)} tone={summary.totals.repeats ? "text-amber-400" : undefined} />
                 <Stat label="Rate limited" value={fmt(summary.totals.rateLimited)} tone={summary.totals.rateLimited ? "text-red-400" : undefined} />
+                <Stat
+                  label="Days at limit"
+                  value={`${fmt(summary.totals.saturatedDays)}${summary.totals.peakUtilizationPct ? ` · peak ${summary.totals.peakUtilizationPct.toFixed(0)}%` : ""}`}
+                  tone={summary.totals.saturatedDays ? "text-red-400" : summary.totals.nearLimitDays ? "text-amber-400" : undefined}
+                />
                 <Stat label="Errors" value={fmt(summary.totals.errors)} tone={summary.totals.errors ? "text-amber-400" : undefined} />
               </div>
 
