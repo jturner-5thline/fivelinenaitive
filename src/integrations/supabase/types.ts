@@ -25488,6 +25488,7 @@ export type Database = {
           source_email_received_at: string | null
           source_email_subject: string | null
           source_email_thread_id: string | null
+          source_queue_item_id: string | null
           start_date: string | null
           status: string
           sync_source: string | null
@@ -25538,6 +25539,7 @@ export type Database = {
           source_email_received_at?: string | null
           source_email_subject?: string | null
           source_email_thread_id?: string | null
+          source_queue_item_id?: string | null
           start_date?: string | null
           status?: string
           sync_source?: string | null
@@ -25588,6 +25590,7 @@ export type Database = {
           source_email_received_at?: string | null
           source_email_subject?: string | null
           source_email_thread_id?: string | null
+          source_queue_item_id?: string | null
           start_date?: string | null
           status?: string
           sync_source?: string | null
