@@ -3657,6 +3657,57 @@ export type Database = {
           },
         ]
       }
+      claap_api_call_log: {
+        Row: {
+          created_at: string
+          deal_id: string | null
+          error_message: string | null
+          external_id: string | null
+          id: string
+          latency_ms: number | null
+          occurred_at: string
+          operation: string
+          outcome: string
+          priority: string | null
+          recording_id: string | null
+          skipped_reason: string | null
+          source: string
+          usage_date: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id?: string | null
+          error_message?: string | null
+          external_id?: string | null
+          id?: string
+          latency_ms?: number | null
+          occurred_at?: string
+          operation?: string
+          outcome?: string
+          priority?: string | null
+          recording_id?: string | null
+          skipped_reason?: string | null
+          source?: string
+          usage_date?: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string | null
+          error_message?: string | null
+          external_id?: string | null
+          id?: string
+          latency_ms?: number | null
+          occurred_at?: string
+          operation?: string
+          outcome?: string
+          priority?: string | null
+          recording_id?: string | null
+          skipped_reason?: string | null
+          source?: string
+          usage_date?: string
+        }
+        Relationships: []
+      }
       claap_api_usage: {
         Row: {
           alert_429_sent_at: string | null
@@ -29353,6 +29404,21 @@ export type Database = {
         }[]
       }
       claap_link_orphan_recordings: { Args: never; Returns: Json }
+      claap_log_api_call: {
+        Args: {
+          _deal_id?: string
+          _error_message?: string
+          _external_id?: string
+          _latency_ms?: number
+          _operation?: string
+          _outcome?: string
+          _priority?: string
+          _recording_id?: string
+          _skipped_reason?: string
+          _source: string
+        }
+        Returns: undefined
+      }
       claap_mark_rate_limited: { Args: never; Returns: undefined }
       claap_mark_unrelated: {
         Args: { p_entity_type: string; p_recording_id: string }
@@ -29391,6 +29457,24 @@ export type Database = {
       claap_upsert_transcript_for_deal: {
         Args: { p_deal_id: string; p_meeting_id: string }
         Returns: undefined
+      }
+      claap_usage_drilldown: {
+        Args: { _end: string; _start: string }
+        Returns: {
+          avg_latency_ms: number
+          billable_calls: number
+          calls: number
+          distinct_recordings: number
+          errors: number
+          first_call_at: string
+          hydrate_skips: number
+          last_call_at: string
+          operation: string
+          rate_limited: number
+          repeat_recordings: number
+          skipped_calls: number
+          source: string
+        }[]
       }
       claude_usage_daily_by_feature: {
         Args: { _days?: number }
