@@ -154,15 +154,14 @@ Deno.serve(async (req) => {
     };
 
     if (action === "list") {
-      // List recordings
-      const claapUrl = new URL("https://api.claap.io/v1/recordings");
-      claapUrl.searchParams.set("limit", limit);
-      claapUrl.searchParams.set("sort", "created_desc");
-      // Opt into the new flat aiFields format (legacy insightTemplates is
-      // still returned alongside during the rollout window).
-      claapUrl.searchParams.set("returnAiFields", "true");
+      // Claap hard-caps `limit` at 100 per page and rejects anything larger
+      // with a 400 (validation_error). Callers ask for wider windows (e.g.
+      // 500) so older meetings stay reachable in the picker, so page through
+      // with the pagination cursor instead of sending an oversized limit.
+      const requested = Math.max(1, Math.min(Number(limit) || 20, 500));
+      const PAGE_SIZE = 100;
 
-      const cacheKey = `limit=${limit}`;
+      const cacheKey = `limit=${requested}`;
       const cached = listCache.get(cacheKey);
       const fresh = cached && Date.now() - cached.at < CACHE_TTL_MS;
       if (fresh) {
