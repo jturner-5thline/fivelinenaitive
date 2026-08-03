@@ -71,7 +71,7 @@ async function lookup(signature: string): Promise<string | null> {
       .gt("expires_at", new Date().toISOString())
       .maybeSingle();
     if (!data?.response) return null;
-    void client
+    await client
       .from("claude_response_cache")
       .update({ hit_count: (data.hit_count ?? 0) + 1, updated_at: new Date().toISOString() })
       .eq("signature", signature);
