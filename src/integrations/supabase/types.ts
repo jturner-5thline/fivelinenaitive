@@ -29904,6 +29904,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      realtime_topic_allowed: { Args: { _topic: string }; Returns: boolean }
       record_partner_tier: {
         Args: {
           _partner_id: string
