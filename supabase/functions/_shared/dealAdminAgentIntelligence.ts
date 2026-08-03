@@ -25,6 +25,7 @@ const EXTERNAL_TONE = "concise, semi-formal, acquaintance / friendly";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 import { anthropicFetch } from "./anthropicUsage.ts";
+import { cachedDealAdminAgentCall } from "./dealAdminAgentModelCache.ts";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-4-5-20250929";
@@ -2285,13 +2286,13 @@ async function callModelForCandidates(
     throw new Error("ANTHROPIC_API_KEY missing — Deal Admin Agent cannot analyze");
   }
 
+  const systemPrompt = `${SYSTEM_PROMPT_FULL}${extraRules ? `\n\n${extraRules}` : ""}\n\nRespond with ONLY a JSON object of the form {"items":[...]}. No prose, no markdown fences.`;
+  const userPrompt = buildUserPrompt(bundle, fingerprint);
   const body = {
     model: MODEL,
     max_tokens: 6000,
-    system: `${SYSTEM_PROMPT_FULL}${extraRules ? `\n\n${extraRules}` : ""}\n\nRespond with ONLY a JSON object of the form {"items":[...]}. No prose, no markdown fences.`,
-    messages: [
-      { role: "user", content: buildUserPrompt(bundle, fingerprint) },
-    ],
+    system: systemPrompt,
+    messages: [{ role: "user", content: userPrompt }],
   };
 
   const signalSummary = [
@@ -2308,34 +2309,53 @@ async function callModelForCandidates(
     bundle.referral_sources.length ? `referrals:${bundle.referral_sources.length}` : null,
   ].filter(Boolean).join(" ");
 
-  const resp = await anthropicFetch({
-    feature: "deal-admin-agent",
-    // What the assistant was actually doing on this call:
-    promptMode: `analyze_deal_signals · ${bundle.deal_name ?? "unknown deal"}`,
-    signature: signalSummary || "no_signals",
-    dealId: bundle.deal_id ?? null,
+  // Identical (company, deal, system, prompt) requests are served from the
+  // response cache / shared in-flight promise instead of re-calling Anthropic.
+  const { raw, cacheStatus } = await cachedDealAdminAgentCall({
     companyId: usageCtx?.companyId ?? null,
     userId: usageCtx?.userId ?? null,
-  }, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify(body),
+    dealId: bundle.deal_id ?? null,
+    system: systemPrompt,
+    prompt: userPrompt,
+  }, async () => {
+    const resp = await anthropicFetch({
+      feature: "deal-admin-agent",
+      // What the assistant was actually doing on this call:
+      promptMode: `analyze_deal_signals · ${bundle.deal_name ?? "unknown deal"}`,
+      signature: signalSummary || "no_signals",
+      dealId: bundle.deal_id ?? null,
+      companyId: usageCtx?.companyId ?? null,
+      userId: usageCtx?.userId ?? null,
+    }, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => "");
+      throw new Error(`Anthropic ${resp.status}: ${txt.slice(0, 200)}`);
+    }
+
+    const j = await resp.json();
+    // Anthropic returns content as an array of blocks; concatenate text blocks.
+    const text: string = Array.isArray(j?.content)
+      ? j.content.filter((b: any) => b?.type === "text").map((b: any) => b.text).join("")
+      : "";
+    return {
+      raw: text,
+      model: j?.model ?? MODEL,
+      inputTokens: j?.usage?.input_tokens ?? null,
+      outputTokens: j?.usage?.output_tokens ?? null,
+    };
   });
-
-  if (!resp.ok) {
-    const txt = await resp.text().catch(() => "");
-    throw new Error(`Anthropic ${resp.status}: ${txt.slice(0, 200)}`);
-  }
-
-  const j = await resp.json();
-  // Anthropic returns content as an array of blocks; concatenate text blocks.
-  const raw: string = Array.isArray(j?.content)
-    ? j.content.filter((b: any) => b?.type === "text").map((b: any) => b.text).join("")
-    : "";
+  console.log(
+    `[deal-admin-agent] model call ${cacheStatus} · deal=${bundle.deal_id ?? "?"}`,
+  );
   // Strip markdown fences if the model wrapped them anyway.
   const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
   let parsed: any;
