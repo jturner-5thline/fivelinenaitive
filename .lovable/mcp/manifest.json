@@ -180,7 +180,7 @@
       {
         "name": "list_tasks",
         "title": "List tasks",
-        "description": "List tasks the signed-in user can see, optionally filtered by deal, status, or assignee.",
+        "description": "List tasks the signed-in user can see, optionally filtered by deal, status, or assignee (assigned_to user id). Returns full row records.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -197,15 +197,16 @@
               "type": "string",
               "enum": [
                 "not_started",
+                "pending",
                 "in_progress",
                 "completed",
-                "blocked",
-                "cancelled"
+                "complete"
               ]
             },
-            "assignee": {
+            "assigned_to": {
               "type": "string",
-              "maxLength": 200
+              "format": "uuid",
+              "description": "User id the task is assigned to."
             },
             "query": {
               "type": "string",
