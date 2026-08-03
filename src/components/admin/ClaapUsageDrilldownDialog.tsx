@@ -217,7 +217,7 @@ export function ClaapUsageDrilldownDialog({
         ) : (
           <ScrollArea className="flex-1 pr-3">
             <div className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
                 <Stat label="Billable calls" value={fmt(summary.totals.billable)} />
                 <Stat label="Calls avoided" value={fmt(summary.totals.skipped)} tone="text-emerald-400" />
                 <Stat label="Redundant fetches" value={fmt(summary.totals.repeats)} tone={summary.totals.repeats ? "text-amber-400" : undefined} />
