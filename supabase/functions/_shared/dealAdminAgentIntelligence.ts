@@ -2442,6 +2442,8 @@ async function callModelForCandidates(
         "Content-Type": "application/json",
         "x-api-key": ANTHROPIC_API_KEY,
         "anthropic-version": "2023-06-01",
+        // Enables the 1-hour `ttl` on the cache_control blocks above.
+        "anthropic-beta": "extended-cache-ttl-2025-04-11",
       },
       body: JSON.stringify(body),
     });
