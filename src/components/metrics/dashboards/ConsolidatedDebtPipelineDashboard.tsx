@@ -2713,7 +2713,29 @@ export function ConsolidatedDebtPipelineDashboard({
       <ComparisonModeContext.Provider value={comparisonCtx}>
       <OpenDealContext.Provider value={setOpenDealId}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div />
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterMultiSelect
+            label="Owner"
+            options={ownerOptions}
+            selected={selectedOwners}
+            onChange={setSelectedOwners}
+            searchable
+            emptyText="No deal owners"
+          />
+          <FilterMultiSelect
+            label="Manager"
+            options={managerOptions}
+            selected={selectedManagers}
+            onChange={setSelectedManagers}
+            searchable
+            emptyText="No deal managers"
+          />
+          {allowedDealIds && (
+            <span className="text-xs text-muted-foreground">
+              {allowedDealIds.size} deal{allowedDealIds.size === 1 ? '' : 's'} matched
+            </span>
+          )}
+        </div>
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'cards' | 'table')}>
           <TabsList className="bg-muted/40 border border-border/40">
             <TabsTrigger value="cards" className="gap-1.5">
