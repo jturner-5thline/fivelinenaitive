@@ -2002,8 +2002,9 @@ const ALL_TABS = [
   { value: 'financial', label: 'Financial', icon: DollarSign },
   { value: 'pipeline', label: 'Deals', icon: GitBranch },
   { value: 'operational', label: 'Tasks', icon: ListChecks },
-  { value: 'end_of_day', label: 'End of Day', icon: Sunset },
-  { value: 'queue', label: 'Approval Queue', icon: Inbox },
+  // Approval Queue + End of Day are consolidated into a single "Today"
+  // surface (decisions, wrap-ups, and the today slice of tasks).
+  { value: 'today', label: 'Today', icon: Sunset },
 ] as const;
 
 // ── Main modal component ───────────────────────────────────────
@@ -2062,10 +2063,9 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
         return t;
       }).filter(t => {
         if (excludeTabs?.includes(t.value as any)) return false;
-        if (t.value === 'end_of_day' && !canSeeEndOfDay) return false;
+        if (t.value === 'today' && !canSeeEndOfDay && !queueEnabled) return false;
         if (t.value === 'dashboard' && !isFifthLine) return false;
         if (t.value === 'financial' && !canSeeFinancial) return false;
-        if (t.value === 'queue' && !queueEnabled) return false;
         // Agenda, Catch Up & News, and Email are now hosted exclusively
         // inside the Daily Rundown tab — hide them from the left sidebar.
         if (t.value === 'agenda' || t.value === 'catchup' || t.value === 'email') return false;
