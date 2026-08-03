@@ -133,7 +133,7 @@ interface DailyBriefingModalProps {
    * Tab to select when the modal opens (and re-opens). If the value is
    * excluded or unknown, falls back to the first available tab.
    */
-  initialTab?: 'dashboard' | 'daily_rundown' | 'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational' | 'end_of_day';
+  initialTab?: 'dashboard' | 'daily_rundown' | 'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational' | 'today';
   /**
    * Identifies which briefing surface this modal represents. Used to scope
    * per-day dismissal state so dismissing an item in one briefing surface

@@ -204,7 +204,7 @@ export function DealsHeader() {
       setIsBriefingOpen(true);
     };
     const eodHandler = () => {
-      setBriefingInitialTab('end_of_day');
+      setBriefingInitialTab('today');
       setIsBriefingOpen(true);
     };
     window.addEventListener('open-daily-rundown', handler);
@@ -256,7 +256,7 @@ export function DealsHeader() {
       const params = new URLSearchParams(window.location.search);
       const v = params.get('openDailyRundown');
       if (v === 'endOfDay' || v === 'end_of_day' || v === 'eod') {
-        setBriefingInitialTab('end_of_day');
+        setBriefingInitialTab('today');
         setIsBriefingOpen(true);
         params.delete('openDailyRundown');
         const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}${window.location.hash}`;
