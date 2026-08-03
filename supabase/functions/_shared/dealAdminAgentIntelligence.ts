@@ -2343,18 +2343,24 @@ async function callModelForCandidates(
   //   block 2 — company-level rules (identical for every deal in a sweep, cached)
   //   block 3 — deal-specific knowledge (varies, NOT cached; must come last)
   // Instruction text and semantics are unchanged — only the block boundaries.
+  // Sweeps are spread out over the day, so the default 5-minute ephemeral TTL
+  // expired between most calls and the rulebook was re-billed as fresh input
+  // (~10% cache reads across 8.75M tokens). The 1-hour TTL keeps the rulebook
+  // resident across a whole sweep window. Requires the extended-cache beta
+  // header set on the request below.
+  const CACHE_1H = { type: "ephemeral" as const, ttl: "1h" as const };
   const staticSystem =
     `${SYSTEM_PROMPT_FULL}\n\nRespond with ONLY a JSON object of the form {"items":[...]}. No prose, no markdown fences.`;
   const systemBlocks: Array<
-    { type: "text"; text: string; cache_control?: { type: "ephemeral" } }
+    { type: "text"; text: string; cache_control?: { type: "ephemeral"; ttl?: "1h" } }
   > = [
-    { type: "text", text: staticSystem, cache_control: { type: "ephemeral" } },
+    { type: "text", text: staticSystem, cache_control: CACHE_1H },
   ];
   if (extraRules && extraRules.trim().length > 0) {
     systemBlocks.push({
       type: "text",
       text: extraRules,
-      cache_control: { type: "ephemeral" },
+      cache_control: CACHE_1H,
     });
   }
   if (dealRules && dealRules.trim().length > 0) {
