@@ -355,6 +355,7 @@ export function ApiEfficiencyByActivityCard({
                         metric="Call volume"
                         rangeLabel={rangeLabel}
                         lowerIsBetter={false}
+                        neutral
                       />
                     </div>
                   </TableCell>
@@ -477,6 +478,7 @@ export function ApiEfficiencyByActivityCard({
                         metric="Call volume"
                         rangeLabel={rangeLabel}
                         lowerIsBetter={false}
+                        neutral
                       />
                     </div>
                   </TableCell>
