@@ -783,7 +783,6 @@ export default function Dashboard() {
               style={{ animation: 'fadeInUp 0.4s ease-out 0.2s forwards' }}
             >
               <div className="flex flex-wrap items-center gap-2">
-                {!showMilestones && <PipelineSelector />}
                 {showMilestones ? (
                   <MilestoneManagerFilter
                     selected={filters.manager}
