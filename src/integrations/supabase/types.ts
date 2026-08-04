@@ -29290,6 +29290,29 @@ export type Database = {
           repeat_calls: number
         }[]
       }
+      api_usage_efficiency_by_activity: {
+        Args: { _end: string; _start: string }
+        Returns: {
+          cache_read_share: number
+          cache_read_tokens: number
+          calls: number
+          calls_per_deal: number
+          calls_per_user: number
+          distinct_days: number
+          distinct_deals: number
+          distinct_users: number
+          error_rate: number
+          errors: number
+          feature: string
+          input_tokens: number
+          output_tokens: number
+          prev_calls: number
+          prev_calls_per_deal: number
+          prev_tokens_per_call: number
+          provider: string
+          tokens_per_call: number
+        }[]
+      }
       api_usage_events: {
         Args: { _since: string }
         Returns: {
@@ -29476,6 +29499,26 @@ export type Database = {
           rate_limited: number
           repeat_recordings: number
           skipped_calls: number
+          source: string
+        }[]
+      }
+      claap_usage_efficiency_by_activity: {
+        Args: { _end: string; _start: string }
+        Returns: {
+          avg_latency_ms: number
+          calls: number
+          calls_per_recording: number
+          distinct_days: number
+          distinct_deals: number
+          distinct_recordings: number
+          error_rate: number
+          errors: number
+          operation: string
+          prev_calls: number
+          prev_calls_per_recording: number
+          redundant_calls: number
+          skip_rate: number
+          skipped: number
           source: string
         }[]
       }

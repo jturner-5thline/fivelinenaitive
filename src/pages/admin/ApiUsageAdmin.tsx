@@ -29,6 +29,7 @@ import {
   type DrilldownSelection,
 } from "@/components/admin/ApiUsageDrilldownDialog";
 import { ClaapApiUsageCard } from "@/components/admin/ClaapApiUsageCard";
+import { ApiEfficiencyByActivityCard } from "@/components/admin/ApiEfficiencyByActivityCard";
 
 // Internal-only cross-provider LLM usage observability.
 // Data comes from SECURITY DEFINER RPCs that re-check
@@ -260,6 +261,15 @@ export default function ApiUsageAdmin() {
     return Array.from(map.entries()).sort((a, b) => b[1].calls - a[1].calls);
   }, [features]);
 
+  // Window for the efficiency card — memoized so it doesn't refetch every render.
+  const effWindow = useMemo(() => {
+    const cfg = RANGES.find((r) => r.key === range)!;
+    const end = new Date();
+    const start = new Date(end.getTime() - cfg.hours * 3600_000);
+    return { start, end };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range, reloadKey]);
+
   if (checking) {
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground">
@@ -464,6 +474,14 @@ export default function ApiUsageAdmin() {
       />
 
       <ClaapApiUsageCard reloadKey={reloadKey} />
+
+      <ApiEfficiencyByActivityCard
+        start={effWindow.start}
+        end={effWindow.end}
+        rangeLabel={RANGES.find((r) => r.key === range)!.label}
+        reloadKey={reloadKey}
+        onSelectFeature={(provider, feature) => openRange(provider, feature)}
+      />
 
       <ApiUsageDrilldownDialog
         selection={selection}
