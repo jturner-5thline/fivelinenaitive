@@ -33,14 +33,21 @@ export function useDealNotificationCounts(dealIds: string[]) {
     }
 
     try {
-      const idChunks = chunk(dealIds, 100);
+      // Run the chunks in parallel — sequential round trips made large
+      // pipelines (1,200+ deals = 13 chunks) block for seconds on load and
+      // again on every realtime/poll refresh.
+      const idChunks = chunk(dealIds, 150);
       const counts: Record<string, number> = {};
-      for (const ids of idChunks) {
-        const { data, error } = await supabase
-          .from('deal_flag_notes')
-          .select('deal_id')
-          .in('deal_id', ids)
-          .eq('resolved', false);
+      const results = await Promise.all(
+        idChunks.map((ids) =>
+          supabase
+            .from('deal_flag_notes')
+            .select('deal_id')
+            .in('deal_id', ids)
+            .eq('resolved', false),
+        ),
+      );
+      for (const { data, error } of results) {
         if (error) {
           console.error('Error fetching deal flag note counts:', error);
           continue;
