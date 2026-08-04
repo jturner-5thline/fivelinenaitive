@@ -11,6 +11,7 @@ import {
   resolveEfficiencyWindow,
   type EfficiencyFilterState,
 } from "@/components/admin/ApiEfficiencyFilters";
+import { ApiEfficiencyTrendChart } from "@/components/admin/ApiEfficiencyTrendChart";
 import {
   Tooltip,
   TooltipContent,
@@ -331,6 +332,16 @@ export function ApiEfficiencyByActivityCard({
         </div>
 
         <TabsContent value="llm" className="mt-3">
+          <ApiEfficiencyTrendChart
+            start={win.start}
+            end={win.end}
+            rangeLabel={effectiveRangeLabel}
+            userIds={userIds}
+            dealClasses={dealClasses}
+            engagementTypes={engagementTypes}
+            reloadKey={reloadKey}
+          />
+          <div className="mt-4 border-t border-border/60" />
           <Table>
             <TableHeader>
               <TableRow>
