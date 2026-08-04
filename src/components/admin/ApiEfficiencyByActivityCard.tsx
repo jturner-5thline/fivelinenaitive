@@ -5,6 +5,13 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
+  ApiEfficiencyFilters,
+  EMPTY_EFFICIENCY_FILTERS,
+  countActiveFilters,
+  resolveEfficiencyWindow,
+  type EfficiencyFilterState,
+} from "@/components/admin/ApiEfficiencyFilters";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
