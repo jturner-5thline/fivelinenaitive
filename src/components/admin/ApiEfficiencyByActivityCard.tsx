@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   ApiEfficiencyFilters,
   EMPTY_EFFICIENCY_FILTERS,
-  countActiveFilters,
+
   resolveEfficiencyWindow,
   type EfficiencyFilterState,
 } from "@/components/admin/ApiEfficiencyFilters";
@@ -239,10 +239,10 @@ export function ApiEfficiencyByActivityCard({
   const [filters, setFilters] = useState<EfficiencyFilterState>(EMPTY_EFFICIENCY_FILTERS);
 
   // Filters can override the page-level window; otherwise we inherit it.
-  const window = resolveEfficiencyWindow(filters, start, end);
-  const effectiveRangeLabel = window.label || rangeLabel;
-  const startIso = window.start.toISOString();
-  const endIso = window.end.toISOString();
+  const win = resolveEfficiencyWindow(filters, start, end);
+  const effectiveRangeLabel = win.label || rangeLabel;
+  const startIso = win.start.toISOString();
+  const endIso = win.end.toISOString();
 
   const userIds = filters.userIds.length ? filters.userIds : null;
   const dealClasses = filters.dealClasses.length ? filters.dealClasses : null;
@@ -338,7 +338,7 @@ export function ApiEfficiencyByActivityCard({
                 <TableHead>Provider</TableHead>
                 <HeadWithHelp
                   label="Calls"
-                  help={`Total model requests this activity made in the last ${rangeLabel}. Volume alone is expected to grow with adoption — the ratios below are what tell you if it's getting expensive.`}
+                  help={`Total model requests this activity made in the last ${effectiveRangeLabel}. Volume alone is expected to grow with adoption — the ratios below are what tell you if it's getting expensive.`}
                 />
                 <HeadWithHelp
                   label="Tokens / call"
@@ -396,7 +396,7 @@ export function ApiEfficiencyByActivityCard({
                         current={r.calls}
                         previous={r.prev_calls}
                         metric="Call volume"
-                        rangeLabel={rangeLabel}
+                        rangeLabel={effectiveRangeLabel}
                         lowerIsBetter={false}
                         neutral
                       />
@@ -409,7 +409,7 @@ export function ApiEfficiencyByActivityCard({
                         current={r.tokens_per_call}
                         previous={r.prev_tokens_per_call}
                         metric="Tokens per call"
-                        rangeLabel={rangeLabel}
+                        rangeLabel={effectiveRangeLabel}
                       />
                     </div>
                   </TableCell>
@@ -420,7 +420,7 @@ export function ApiEfficiencyByActivityCard({
                         current={r.calls_per_deal}
                         previous={r.prev_calls_per_deal}
                         metric="Calls per deal"
-                        rangeLabel={rangeLabel}
+                        rangeLabel={effectiveRangeLabel}
                         format={(v) => ratio(v)}
                       />
                     </div>
@@ -465,7 +465,7 @@ export function ApiEfficiencyByActivityCard({
                 <TableHead>Operation</TableHead>
                 <HeadWithHelp
                   label="Calls"
-                  help={`Claap API requests this activity actually sent in the last ${rangeLabel}. These count against the 1,000/day quota.`}
+                  help={`Claap API requests this activity actually sent in the last ${effectiveRangeLabel}. These count against the 1,000/day quota.`}
                 />
                 <HeadWithHelp
                   label="Recordings"
@@ -519,7 +519,7 @@ export function ApiEfficiencyByActivityCard({
                         current={r.calls}
                         previous={r.prev_calls}
                         metric="Call volume"
-                        rangeLabel={rangeLabel}
+                        rangeLabel={effectiveRangeLabel}
                         lowerIsBetter={false}
                         neutral
                       />
@@ -535,7 +535,7 @@ export function ApiEfficiencyByActivityCard({
                         current={r.calls_per_recording}
                         previous={r.prev_calls_per_recording}
                         metric="Calls per recording"
-                        rangeLabel={rangeLabel}
+                        rangeLabel={effectiveRangeLabel}
                         format={(v) => ratio(v)}
                       />
                     </div>
