@@ -798,6 +798,8 @@ export default function Dashboard() {
                         (() => {
                           const toggleGroup = (v: string) => setGroupBy(prev => (prev === v ? null : v));
                           return (
+                            <>
+                            <PipelineSelector iconOnly />
                             <DealsViewMenu
                               viewMode={viewMode}
                               setViewMode={setViewMode}
@@ -811,6 +813,7 @@ export default function Dashboard() {
                               toggleGroup={toggleGroup}
                               timelineEnabled={!!companyFeatures.timeline_view_enabled}
                             />
+                            </>
                           );
                         })()
                       }
