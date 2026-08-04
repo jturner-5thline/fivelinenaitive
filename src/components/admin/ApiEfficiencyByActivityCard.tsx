@@ -261,6 +261,7 @@ export function ApiEfficiencyByActivityCard({
   }, [startIso, endIso, reloadKey]);
 
   return (
+    <TooltipProvider delayDuration={150}>
     <Card className="p-0 overflow-hidden">
       <div className="px-4 py-3 border-b border-border/60">
         <h2 className="text-sm font-medium">Efficiency by activity</h2>
@@ -287,12 +288,30 @@ export function ApiEfficiencyByActivityCard({
               <TableRow>
                 <TableHead>Activity</TableHead>
                 <TableHead>Provider</TableHead>
-                <TableHead className="text-right">Calls</TableHead>
-                <TableHead className="text-right">Tokens / call</TableHead>
-                <TableHead className="text-right">Calls / deal</TableHead>
-                <TableHead className="text-right">Calls / user</TableHead>
-                <TableHead className="text-right">Cache read</TableHead>
-                <TableHead className="text-right">Errors</TableHead>
+                <HeadWithHelp
+                  label="Calls"
+                  help={`Total model requests this activity made in the last ${rangeLabel}. Volume alone is expected to grow with adoption — the ratios below are what tell you if it's getting expensive.`}
+                />
+                <HeadWithHelp
+                  label="Tokens / call"
+                  help="Average prompt + completion tokens per request. This is prompt weight: a rising number means the context being sent is growing, which is the main driver of cost per call."
+                />
+                <HeadWithHelp
+                  label="Calls / deal"
+                  help="How many times this activity re-ran against the same deal. Near 1.0 means each deal is processed once; higher means repeat work that caching, deduping or a pre-filter could remove."
+                />
+                <HeadWithHelp
+                  label="Calls / user"
+                  help="Average requests per distinct user in this range. Useful for spotting an activity that fires on every page view or keystroke rather than on demand."
+                />
+                <HeadWithHelp
+                  label="Cache read"
+                  help="Share of input tokens served from the provider's prompt cache. Cached tokens bill at a fraction of normal rate, so higher is better — 40%+ shows green."
+                />
+                <HeadWithHelp
+                  label="Errors"
+                  help="Share of calls that failed. Failed calls are usually still billed and often get retried, so any sustained error rate is pure waste."
+                />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -325,19 +344,36 @@ export function ApiEfficiencyByActivityCard({
                   <TableCell className="text-right font-mono">
                     {fmt(r.calls)}
                     <div>
-                      <Delta current={r.calls} previous={r.prev_calls} />
+                      <Delta
+                        current={r.calls}
+                        previous={r.prev_calls}
+                        metric="Call volume"
+                        rangeLabel={rangeLabel}
+                        lowerIsBetter={false}
+                      />
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-mono">
                     {fmt(r.tokens_per_call)}
                     <div>
-                      <Delta current={r.tokens_per_call} previous={r.prev_tokens_per_call} />
+                      <Delta
+                        current={r.tokens_per_call}
+                        previous={r.prev_tokens_per_call}
+                        metric="Tokens per call"
+                        rangeLabel={rangeLabel}
+                      />
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-mono">
                     {ratio(r.calls_per_deal)}
                     <div>
-                      <Delta current={r.calls_per_deal} previous={r.prev_calls_per_deal} />
+                      <Delta
+                        current={r.calls_per_deal}
+                        previous={r.prev_calls_per_deal}
+                        metric="Calls per deal"
+                        rangeLabel={rangeLabel}
+                        format={(v) => ratio(v)}
+                      />
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-mono">{ratio(r.calls_per_user)}</TableCell>
