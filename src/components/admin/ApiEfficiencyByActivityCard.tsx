@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Minus } from "lucide-react";
+import { ArrowDown, ArrowUp, Minus, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -75,29 +81,134 @@ function pct(n: number | null | undefined): string {
   return `${Number(n).toFixed(1)}%`;
 }
 
-/** Delta chip: lower is better for every ratio we show here. */
-function Delta({ current, previous }: { current: number | null; previous: number | null }) {
+/** Column header with an explanation on hover. */
+function HeadWithHelp({
+  label,
+  help,
+  align = "right",
+}: {
+  label: string;
+  help: string;
+  align?: "left" | "right";
+}) {
+  return (
+    <TableHead className={align === "right" ? "text-right" : undefined}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className={`inline-flex items-center gap-1 cursor-help ${
+              align === "right" ? "justify-end" : ""
+            }`}
+          >
+            {label}
+            <HelpCircle className="h-3 w-3 opacity-50" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[260px] text-xs leading-relaxed">
+          {help}
+        </TooltipContent>
+      </Tooltip>
+    </TableHead>
+  );
+}
+
+/**
+ * Delta chip: lower is better for every ratio we show here.
+ * `metric` and `rangeLabel` are only used to phrase the tooltip.
+ */
+function Delta({
+  current,
+  previous,
+  metric,
+  rangeLabel,
+  lowerIsBetter = true,
+  neutral = false,
+  format = (v: number) => fmt(v),
+}: {
+  current: number | null;
+  previous: number | null;
+  metric: string;
+  rangeLabel: string;
+  lowerIsBetter?: boolean;
+  /** Volume-style metric: up/down isn't good or bad on its own. */
+  neutral?: boolean;
+  format?: (v: number) => string;
+}) {
   if (current == null || previous == null || Number(previous) === 0) {
-    return <span className="text-muted-foreground text-[11px]">new</span>;
-  }
-  const change = ((Number(current) - Number(previous)) / Number(previous)) * 100;
-  if (Math.abs(change) < 5) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground">
-        <Minus className="h-3 w-3" /> flat
-      </span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="text-muted-foreground text-[11px] cursor-help">new</span>
+        </TooltipTrigger>
+        <TooltipContent side="left" className="max-w-[260px] text-xs leading-relaxed">
+          No {metric} recorded in the previous {rangeLabel}, so there's nothing to compare against
+          yet.
+        </TooltipContent>
+      </Tooltip>
     );
   }
-  const worse = change > 0;
+
+  const cur = Number(current);
+  const prev = Number(previous);
+  const change = ((cur - prev) / prev) * 100;
+  const flat = Math.abs(change) < 5;
+  const up = change > 0;
+  const worse = lowerIsBetter ? up : !up;
+
+  const direction = flat
+    ? `held roughly steady (within 5%)`
+    : `${up ? "rose" : "fell"} ${Math.abs(change).toFixed(0)}%`;
+  const verdict = flat
+    ? "No meaningful change in efficiency."
+    : neutral
+      ? "Volume change on its own isn't good or bad — check the ratio columns to see whether cost per unit of work moved with it."
+      : worse
+        ? "Amber: this activity got less efficient — worth caching, batching or pre-filtering."
+        : "Green: this activity got more efficient.";
+
+  const tip = (
+    <>
+      <div className="font-medium">
+        {metric} {direction}
+      </div>
+      <div className="mt-1 text-muted-foreground">
+        {format(prev)} in the previous {rangeLabel} → {format(cur)} now.
+      </div>
+      <div className="mt-1">{verdict}</div>
+    </>
+  );
+
+  if (flat) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground cursor-help">
+            <Minus className="h-3 w-3" /> flat
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="left" className="max-w-[280px] text-xs leading-relaxed">
+          {tip}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
   return (
-    <span
-      className={`inline-flex items-center gap-0.5 text-[11px] ${
-        worse ? "text-amber-300" : "text-emerald-400"
-      }`}
-    >
-      {worse ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-      {Math.abs(change).toFixed(0)}%
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={`inline-flex items-center gap-0.5 text-[11px] cursor-help ${
+            worse ? "text-amber-300" : "text-emerald-400"
+          }`}
+        >
+          {up ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+          {Math.abs(change).toFixed(0)}%
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="left" className="max-w-[280px] text-xs leading-relaxed">
+        {tip}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -155,6 +266,7 @@ export function ApiEfficiencyByActivityCard({
   }, [startIso, endIso, reloadKey]);
 
   return (
+    <TooltipProvider delayDuration={150}>
     <Card className="p-0 overflow-hidden">
       <div className="px-4 py-3 border-b border-border/60">
         <h2 className="text-sm font-medium">Efficiency by activity</h2>
@@ -181,12 +293,30 @@ export function ApiEfficiencyByActivityCard({
               <TableRow>
                 <TableHead>Activity</TableHead>
                 <TableHead>Provider</TableHead>
-                <TableHead className="text-right">Calls</TableHead>
-                <TableHead className="text-right">Tokens / call</TableHead>
-                <TableHead className="text-right">Calls / deal</TableHead>
-                <TableHead className="text-right">Calls / user</TableHead>
-                <TableHead className="text-right">Cache read</TableHead>
-                <TableHead className="text-right">Errors</TableHead>
+                <HeadWithHelp
+                  label="Calls"
+                  help={`Total model requests this activity made in the last ${rangeLabel}. Volume alone is expected to grow with adoption — the ratios below are what tell you if it's getting expensive.`}
+                />
+                <HeadWithHelp
+                  label="Tokens / call"
+                  help="Average prompt + completion tokens per request. This is prompt weight: a rising number means the context being sent is growing, which is the main driver of cost per call."
+                />
+                <HeadWithHelp
+                  label="Calls / deal"
+                  help="How many times this activity re-ran against the same deal. Near 1.0 means each deal is processed once; higher means repeat work that caching, deduping or a pre-filter could remove."
+                />
+                <HeadWithHelp
+                  label="Calls / user"
+                  help="Average requests per distinct user in this range. Useful for spotting an activity that fires on every page view or keystroke rather than on demand."
+                />
+                <HeadWithHelp
+                  label="Cache read"
+                  help="Share of input tokens served from the provider's prompt cache. Cached tokens bill at a fraction of normal rate, so higher is better — 40%+ shows green."
+                />
+                <HeadWithHelp
+                  label="Errors"
+                  help="Share of calls that failed. Failed calls are usually still billed and often get retried, so any sustained error rate is pure waste."
+                />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -219,19 +349,37 @@ export function ApiEfficiencyByActivityCard({
                   <TableCell className="text-right font-mono">
                     {fmt(r.calls)}
                     <div>
-                      <Delta current={r.calls} previous={r.prev_calls} />
+                      <Delta
+                        current={r.calls}
+                        previous={r.prev_calls}
+                        metric="Call volume"
+                        rangeLabel={rangeLabel}
+                        lowerIsBetter={false}
+                        neutral
+                      />
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-mono">
                     {fmt(r.tokens_per_call)}
                     <div>
-                      <Delta current={r.tokens_per_call} previous={r.prev_tokens_per_call} />
+                      <Delta
+                        current={r.tokens_per_call}
+                        previous={r.prev_tokens_per_call}
+                        metric="Tokens per call"
+                        rangeLabel={rangeLabel}
+                      />
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-mono">
                     {ratio(r.calls_per_deal)}
                     <div>
-                      <Delta current={r.calls_per_deal} previous={r.prev_calls_per_deal} />
+                      <Delta
+                        current={r.calls_per_deal}
+                        previous={r.prev_calls_per_deal}
+                        metric="Calls per deal"
+                        rangeLabel={rangeLabel}
+                        format={(v) => ratio(v)}
+                      />
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-mono">{ratio(r.calls_per_user)}</TableCell>
@@ -272,13 +420,34 @@ export function ApiEfficiencyByActivityCard({
               <TableRow>
                 <TableHead>Activity</TableHead>
                 <TableHead>Operation</TableHead>
-                <TableHead className="text-right">Calls</TableHead>
-                <TableHead className="text-right">Recordings</TableHead>
-                <TableHead className="text-right">Calls / recording</TableHead>
-                <TableHead className="text-right">Redundant</TableHead>
-                <TableHead className="text-right">Skipped</TableHead>
-                <TableHead className="text-right">Errors</TableHead>
-                <TableHead className="text-right">Avg latency</TableHead>
+                <HeadWithHelp
+                  label="Calls"
+                  help={`Claap API requests this activity actually sent in the last ${rangeLabel}. These count against the 1,000/day quota.`}
+                />
+                <HeadWithHelp
+                  label="Recordings"
+                  help="Distinct recordings touched. This is the real unit of work — the useful output those calls produced."
+                />
+                <HeadWithHelp
+                  label="Calls / recording"
+                  help="The core Claap efficiency number. 1.0 means every call fetched a new recording; 2.0 means each recording was fetched twice, so half the quota went to re-fetching content you already had."
+                />
+                <HeadWithHelp
+                  label="Redundant"
+                  help="Calls beyond the first for a recording already fetched in this range. These are the quota spend you could reclaim with caching or a hydration guard."
+                />
+                <HeadWithHelp
+                  label="Skipped"
+                  help="Requests the cache or hydration guard avoided entirely — work done without spending quota. Higher is better; the percentage is the share of attempts that were skipped."
+                />
+                <HeadWithHelp
+                  label="Errors"
+                  help="Failed requests, including 429 rate limits. These usually still count against quota and trigger retries, so they compound quickly."
+                />
+                <HeadWithHelp
+                  label="Avg latency"
+                  help="Average round-trip time per call. Climbing latency alongside stable volume usually means Claap is throttling this activity."
+                />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -303,7 +472,14 @@ export function ApiEfficiencyByActivityCard({
                   <TableCell className="text-right font-mono">
                     {fmt(r.calls)}
                     <div>
-                      <Delta current={r.calls} previous={r.prev_calls} />
+                      <Delta
+                        current={r.calls}
+                        previous={r.prev_calls}
+                        metric="Call volume"
+                        rangeLabel={rangeLabel}
+                        lowerIsBetter={false}
+                        neutral
+                      />
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-mono">
@@ -315,6 +491,9 @@ export function ApiEfficiencyByActivityCard({
                       <Delta
                         current={r.calls_per_recording}
                         previous={r.prev_calls_per_recording}
+                        metric="Calls per recording"
+                        rangeLabel={rangeLabel}
+                        format={(v) => ratio(v)}
                       />
                     </div>
                   </TableCell>
@@ -353,5 +532,6 @@ export function ApiEfficiencyByActivityCard({
         </TabsContent>
       </Tabs>
     </Card>
+    </TooltipProvider>
   );
 }
