@@ -25,6 +25,7 @@ export function useDealNotificationCounts(dealIds: string[]) {
   const [flexCounts, setFlexCounts] = useState<Record<string, number>>({});
   const dealIdsKey = dealIds.join(',');
   const instanceId = useRef(++instanceCounter);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchCounts = useCallback(async () => {
     if (dealIds.length === 0) {
@@ -80,12 +81,16 @@ export function useDealNotificationCounts(dealIds: string[]) {
           table: 'deal_flag_notes',
         },
         () => {
-          fetchCounts();
+          // Coalesce bursts of flag-note writes (e.g. the auto-stale
+          // reconcile) into a single refetch instead of one per row.
+          if (debounceRef.current) clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => fetchCounts(), 1500);
         }
       )
       .subscribe();
 
     return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
       supabase.removeChannel(channel);
     };
   }, [fetchCounts, dealIdsKey]);
