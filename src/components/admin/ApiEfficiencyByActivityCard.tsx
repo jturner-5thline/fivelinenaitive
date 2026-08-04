@@ -122,6 +122,7 @@ function Delta({
   metric,
   rangeLabel,
   lowerIsBetter = true,
+  neutral = false,
   format = (v: number) => fmt(v),
 }: {
   current: number | null;
@@ -129,6 +130,8 @@ function Delta({
   metric: string;
   rangeLabel: string;
   lowerIsBetter?: boolean;
+  /** Volume-style metric: up/down isn't good or bad on its own. */
+  neutral?: boolean;
   format?: (v: number) => string;
 }) {
   if (current == null || previous == null || Number(previous) === 0) {
@@ -157,9 +160,11 @@ function Delta({
     : `${up ? "rose" : "fell"} ${Math.abs(change).toFixed(0)}%`;
   const verdict = flat
     ? "No meaningful change in efficiency."
-    : worse
-      ? "Amber: this activity got less efficient — worth caching, batching or pre-filtering."
-      : "Green: this activity got more efficient.";
+    : neutral
+      ? "Volume change on its own isn't good or bad — check the ratio columns to see whether cost per unit of work moved with it."
+      : worse
+        ? "Amber: this activity got less efficient — worth caching, batching or pre-filtering."
+        : "Green: this activity got more efficient.";
 
   const tip = (
     <>
