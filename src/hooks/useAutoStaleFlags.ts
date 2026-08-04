@@ -1,6 +1,17 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Deal } from '@/types/deal';
+import { isDealInactive } from '@/utils/dealLifecycle';
+
+/** Cheap 32-bit string hash so we don't build a multi-hundred-KB signature
+ *  string on every render for large pipelines (In Development has 1,200+). */
+function hashString(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (h * 31 + s.charCodeAt(i)) | 0;
+  }
+  return h;
+}
 
 /**
  * Auto-flag deals that cross the "stale" threshold.
@@ -18,14 +29,25 @@ import type { Deal } from '@/types/deal';
  */
 export function useAutoStaleFlags(deals: Deal[], staleDays: number) {
   const runningRef = useRef(false);
-  // Serialize (deals + threshold) so we only reconcile when the meaningful
+  // Only deals in an active lifecycle state are eligible for auto-stale
+  // flagging. Archived / closed / on-hold deals and whole inactive
+  // pipelines (e.g. "In Development", which holds 1,200+ rows) are skipped
+  // entirely — previously they were reconciled on every load, which issued
+  // a bulk `deals` UPDATE across the whole pipeline and hammered the page.
+  const eligible = deals.filter(
+    d => !isDealInactive(d as any, (d as { pipelineName?: string }).pipelineName ?? null),
+  );
+
+  // Hash (deals + threshold) so we only reconcile when the meaningful
   // inputs (id + activity timestamp) change, not on every parent rerender.
-  const signature = deals
-    .map(d => `${d.id}:${d.notesUpdatedAt || d.updatedAt}:${d.status}:${d.stage}`)
-    .join('|') + `#${staleDays}`;
+  let raw = `#${staleDays}`;
+  for (const d of eligible) {
+    raw += `|${d.id}:${d.notesUpdatedAt || d.updatedAt}:${d.status}:${d.stage}:${d.isFlagged ? 1 : 0}`;
+  }
+  const signature = `${eligible.length}:${hashString(raw)}`;
 
   useEffect(() => {
-    if (!deals.length || !staleDays || staleDays <= 0) return;
+    if (!eligible.length || !staleDays || staleDays <= 0) return;
     if (runningRef.current) return;
     runningRef.current = true;
     const now = Date.now();
@@ -33,7 +55,7 @@ export function useAutoStaleFlags(deals: Deal[], staleDays: number) {
     const staleMap = new Map<string, { deal: Deal; days: number }>();
     const nonStaleIds = new Set<string>();
 
-    for (const d of deals) {
+    for (const d of eligible) {
       if (d.status === 'archived' || d.stage === 'closed-lost') {
         nonStaleIds.add(d.id);
         continue;
@@ -50,14 +72,24 @@ export function useAutoStaleFlags(deals: Deal[], staleDays: number) {
 
     (async () => {
       try {
-        const dealIds = deals.map(d => d.id);
-        const { data: existing, error } = await supabase
-          .from('deal_flag_notes')
-          .select('id, deal_id, note, resolved')
-          .in('deal_id', dealIds)
-          .eq('source', 'auto_stale')
-          .eq('resolved', false);
-        if (error) throw error;
+        const dealIds = eligible.map(d => d.id);
+        // Chunk the id list: a single `.in()` with 1,000+ UUIDs produces a
+        // ~40KB URL that Postgrest is slow to parse (and can reject).
+        const idChunks: string[][] = [];
+        for (let i = 0; i < dealIds.length; i += 150) idChunks.push(dealIds.slice(i, i + 150));
+        const existingChunks = await Promise.all(
+          idChunks.map(ids =>
+            supabase
+              .from('deal_flag_notes')
+              .select('id, deal_id, note, resolved')
+              .in('deal_id', ids)
+              .eq('source', 'auto_stale')
+              .eq('resolved', false),
+          ),
+        );
+        const firstError = existingChunks.find(r => r.error)?.error;
+        if (firstError) throw firstError;
+        const existing = existingChunks.flatMap(r => r.data ?? []);
 
         const activeByDeal = new Map<string, { id: string; note: string }[]>();
         (existing ?? []).forEach(row => {
@@ -104,15 +136,21 @@ export function useAutoStaleFlags(deals: Deal[], staleDays: number) {
         }
 
         // 3) Sync legacy `deals.is_flagged` boolean so tile flags render.
-        //    Only flip deals whose value actually changes.
-        if (staleMap.size) {
-          const staleIds = Array.from(staleMap.keys());
-          await supabase.from('deals').update({ is_flagged: true }).in('id', staleIds);
+        //    Only write deals whose value actually changes — a blanket
+        //    update across the pipeline rewrites `updated_at` on every row
+        //    and fans out through the deal triggers + realtime refetch.
+        const staleIdsNeedingFlag = Array.from(staleMap.values())
+          .filter(({ deal }) => deal.isFlagged !== true)
+          .map(({ deal }) => deal.id);
+        if (staleIdsNeedingFlag.length) {
+          await supabase.from('deals').update({ is_flagged: true }).in('id', staleIdsNeedingFlag);
         }
         // Deals that had their last auto-stale flag resolved and have no
         // remaining active flags should clear the boolean.
         if (toResolve.length) {
-          const clearedDealIds = Array.from(nonStaleIds);
+          const clearedDealIds = eligible
+            .filter(d => nonStaleIds.has(d.id) && d.isFlagged === true)
+            .map(d => d.id);
           if (clearedDealIds.length) {
             const { data: remaining } = await supabase
               .from('deal_flag_notes')

@@ -25,6 +25,7 @@ export function useDealNotificationCounts(dealIds: string[]) {
   const [flexCounts, setFlexCounts] = useState<Record<string, number>>({});
   const dealIdsKey = dealIds.join(',');
   const instanceId = useRef(++instanceCounter);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchCounts = useCallback(async () => {
     if (dealIds.length === 0) {
@@ -33,14 +34,21 @@ export function useDealNotificationCounts(dealIds: string[]) {
     }
 
     try {
-      const idChunks = chunk(dealIds, 100);
+      // Run the chunks in parallel — sequential round trips made large
+      // pipelines (1,200+ deals = 13 chunks) block for seconds on load and
+      // again on every realtime/poll refresh.
+      const idChunks = chunk(dealIds, 150);
       const counts: Record<string, number> = {};
-      for (const ids of idChunks) {
-        const { data, error } = await supabase
-          .from('deal_flag_notes')
-          .select('deal_id')
-          .in('deal_id', ids)
-          .eq('resolved', false);
+      const results = await Promise.all(
+        idChunks.map((ids) =>
+          supabase
+            .from('deal_flag_notes')
+            .select('deal_id')
+            .in('deal_id', ids)
+            .eq('resolved', false),
+        ),
+      );
+      for (const { data, error } of results) {
         if (error) {
           console.error('Error fetching deal flag note counts:', error);
           continue;
@@ -73,12 +81,16 @@ export function useDealNotificationCounts(dealIds: string[]) {
           table: 'deal_flag_notes',
         },
         () => {
-          fetchCounts();
+          // Coalesce bursts of flag-note writes (e.g. the auto-stale
+          // reconcile) into a single refetch instead of one per row.
+          if (debounceRef.current) clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => fetchCounts(), 1500);
         }
       )
       .subscribe();
 
     return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
       supabase.removeChannel(channel);
     };
   }, [fetchCounts, dealIdsKey]);
