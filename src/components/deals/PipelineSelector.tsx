@@ -95,14 +95,20 @@ export function PipelineSelector({ iconOnly = false }: PipelineSelectorProps = {
           </TooltipProvider>
         ) : (
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 max-w-[200px]">
-              <Layers className="h-4 w-4 shrink-0" />
-              <span className="truncate">{activePipeline?.name || (activePipeline?.isDefault ? 'Active Pipeline' : 'Pipeline')}</span>
-              <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="Switch pipeline"
+              className="h-9 gap-2 max-w-[260px] shrink-0 rounded-md border-primary/40 bg-gradient-to-br from-primary/20 to-primary/5 text-foreground shadow-sm backdrop-blur-md transition-all duration-200 hover:border-primary/60 hover:from-primary/25 hover:to-primary/10"
+            >
+              <Layers className="h-4 w-4 shrink-0 text-primary" />
+              <span className="hidden sm:inline text-[11px] uppercase tracking-wide text-muted-foreground">Pipeline</span>
+              <span className="truncate font-medium">{activePipeline?.name || (activePipeline?.isDefault ? 'Active Pipeline' : 'Pipeline')}</span>
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" />
             </Button>
           </DropdownMenuTrigger>
         )}
-        <DropdownMenuContent align="start" className="w-[200px]">
+        <DropdownMenuContent align="start" className="w-[240px]">
           {defaultPipeline && (
             <DropdownMenuItem
               onSelect={() => {
