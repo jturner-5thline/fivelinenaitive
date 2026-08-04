@@ -414,13 +414,34 @@ export function ApiEfficiencyByActivityCard({
               <TableRow>
                 <TableHead>Activity</TableHead>
                 <TableHead>Operation</TableHead>
-                <TableHead className="text-right">Calls</TableHead>
-                <TableHead className="text-right">Recordings</TableHead>
-                <TableHead className="text-right">Calls / recording</TableHead>
-                <TableHead className="text-right">Redundant</TableHead>
-                <TableHead className="text-right">Skipped</TableHead>
-                <TableHead className="text-right">Errors</TableHead>
-                <TableHead className="text-right">Avg latency</TableHead>
+                <HeadWithHelp
+                  label="Calls"
+                  help={`Claap API requests this activity actually sent in the last ${rangeLabel}. These count against the 1,000/day quota.`}
+                />
+                <HeadWithHelp
+                  label="Recordings"
+                  help="Distinct recordings touched. This is the real unit of work — the useful output those calls produced."
+                />
+                <HeadWithHelp
+                  label="Calls / recording"
+                  help="The core Claap efficiency number. 1.0 means every call fetched a new recording; 2.0 means each recording was fetched twice, so half the quota went to re-fetching content you already had."
+                />
+                <HeadWithHelp
+                  label="Redundant"
+                  help="Calls beyond the first for a recording already fetched in this range. These are the quota spend you could reclaim with caching or a hydration guard."
+                />
+                <HeadWithHelp
+                  label="Skipped"
+                  help="Requests the cache or hydration guard avoided entirely — work done without spending quota. Higher is better; the percentage is the share of attempts that were skipped."
+                />
+                <HeadWithHelp
+                  label="Errors"
+                  help="Failed requests, including 429 rate limits. These usually still count against quota and trigger retries, so they compound quickly."
+                />
+                <HeadWithHelp
+                  label="Avg latency"
+                  help="Average round-trip time per call. Climbing latency alongside stable volume usually means Claap is throttling this activity."
+                />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -445,7 +466,13 @@ export function ApiEfficiencyByActivityCard({
                   <TableCell className="text-right font-mono">
                     {fmt(r.calls)}
                     <div>
-                      <Delta current={r.calls} previous={r.prev_calls} />
+                      <Delta
+                        current={r.calls}
+                        previous={r.prev_calls}
+                        metric="Call volume"
+                        rangeLabel={rangeLabel}
+                        lowerIsBetter={false}
+                      />
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-mono">
@@ -457,6 +484,9 @@ export function ApiEfficiencyByActivityCard({
                       <Delta
                         current={r.calls_per_recording}
                         previous={r.prev_calls_per_recording}
+                        metric="Calls per recording"
+                        rangeLabel={rangeLabel}
+                        format={(v) => ratio(v)}
                       />
                     </div>
                   </TableCell>
@@ -495,5 +525,6 @@ export function ApiEfficiencyByActivityCard({
         </TabsContent>
       </Tabs>
     </Card>
+    </TooltipProvider>
   );
 }
