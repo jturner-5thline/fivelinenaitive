@@ -29319,6 +29319,30 @@ export type Database = {
           tokens_per_call: number
         }[]
       }
+      api_usage_efficiency_timeseries: {
+        Args: {
+          _bucket?: string
+          _deal_classes?: string[]
+          _end: string
+          _engagement_types?: string[]
+          _start: string
+          _user_ids?: string[]
+        }
+        Returns: {
+          bucket: string
+          bucket_start: string
+          cache_read_share: number
+          cache_read_tokens: number
+          calls: number
+          error_rate: number
+          errors: number
+          feature: string
+          input_tokens: number
+          output_tokens: number
+          provider: string
+          tokens_per_call: number
+        }[]
+      }
       api_usage_events: {
         Args: { _since: string }
         Returns: {
