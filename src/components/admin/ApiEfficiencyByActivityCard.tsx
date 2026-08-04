@@ -5,6 +5,13 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
+  ApiEfficiencyFilters,
+  EMPTY_EFFICIENCY_FILTERS,
+
+  resolveEfficiencyWindow,
+  type EfficiencyFilterState,
+} from "@/components/admin/ApiEfficiencyFilters";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -229,9 +236,20 @@ export function ApiEfficiencyByActivityCard({
   const [claap, setClaap] = useState<ClaapRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<EfficiencyFilterState>(EMPTY_EFFICIENCY_FILTERS);
 
-  const startIso = start.toISOString();
-  const endIso = end.toISOString();
+  // Filters can override the page-level window; otherwise we inherit it.
+  const win = resolveEfficiencyWindow(filters, start, end);
+  const effectiveRangeLabel = win.label || rangeLabel;
+  const startIso = win.start.toISOString();
+  const endIso = win.end.toISOString();
+
+  const userIds = filters.userIds.length ? filters.userIds : null;
+  const dealClasses = filters.dealClasses.length ? filters.dealClasses : null;
+  const engagementTypes = filters.engagementTypes.length ? filters.engagementTypes : null;
+  const dealFilterOn = !!dealClasses || !!engagementTypes;
+  // Serialized so the effect only refires when the selection actually changes.
+  const filterKey = JSON.stringify([userIds, dealClasses, engagementTypes]);
 
   useEffect(() => {
     let cancelled = false;
@@ -239,14 +257,24 @@ export function ApiEfficiencyByActivityCard({
       setLoading(true);
       setError(null);
       try {
+        const [uids, classes, engagements] = JSON.parse(filterKey) as [
+          string[] | null,
+          string[] | null,
+          string[] | null,
+        ];
         const [llmRes, claapRes] = await Promise.all([
           supabase.rpc("api_usage_efficiency_by_activity" as never, {
             _start: startIso,
             _end: endIso,
+            _user_ids: uids,
+            _deal_classes: classes,
+            _engagement_types: engagements,
           } as never),
           supabase.rpc("claap_usage_efficiency_by_activity" as never, {
             _start: startIso,
             _end: endIso,
+            _deal_classes: classes,
+            _engagement_types: engagements,
           } as never),
         ]);
         if (cancelled) return;
@@ -263,7 +291,7 @@ export function ApiEfficiencyByActivityCard({
     return () => {
       cancelled = true;
     };
-  }, [startIso, endIso, reloadKey]);
+  }, [startIso, endIso, reloadKey, filterKey]);
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -271,11 +299,26 @@ export function ApiEfficiencyByActivityCard({
       <div className="px-4 py-3 border-b border-border/60">
         <h2 className="text-sm font-medium">Efficiency by activity</h2>
         <p className="text-xs text-muted-foreground">
-          Cost per unit of work over the last {rangeLabel}, not raw volume — so these stay
-          comparable as usage grows. Arrows compare against the previous {rangeLabel}; amber means
-          the activity got less efficient.
+          Cost per unit of work over the last {effectiveRangeLabel}, not raw volume — so these stay
+          comparable as usage grows. Arrows compare against the previous {effectiveRangeLabel};
+          amber means the activity got less efficient.
         </p>
       </div>
+
+      <ApiEfficiencyFilters
+        value={filters}
+        onChange={setFilters}
+        optionsStart={start}
+        optionsEnd={end}
+        reloadKey={reloadKey}
+      />
+
+      {dealFilterOn && (
+        <div className="px-4 pt-3 text-xs text-amber-300/90">
+          Deal-type filters only apply to calls that are tagged with a deal — activities that run
+          outside a deal context are hidden while a deal filter is active.
+        </div>
+      )}
 
       {error && <div className="px-4 py-3 text-sm text-red-300">{error}</div>}
 
@@ -295,7 +338,7 @@ export function ApiEfficiencyByActivityCard({
                 <TableHead>Provider</TableHead>
                 <HeadWithHelp
                   label="Calls"
-                  help={`Total model requests this activity made in the last ${rangeLabel}. Volume alone is expected to grow with adoption — the ratios below are what tell you if it's getting expensive.`}
+                  help={`Total model requests this activity made in the last ${effectiveRangeLabel}. Volume alone is expected to grow with adoption — the ratios below are what tell you if it's getting expensive.`}
                 />
                 <HeadWithHelp
                   label="Tokens / call"
@@ -353,7 +396,7 @@ export function ApiEfficiencyByActivityCard({
                         current={r.calls}
                         previous={r.prev_calls}
                         metric="Call volume"
-                        rangeLabel={rangeLabel}
+                        rangeLabel={effectiveRangeLabel}
                         lowerIsBetter={false}
                         neutral
                       />
@@ -366,7 +409,7 @@ export function ApiEfficiencyByActivityCard({
                         current={r.tokens_per_call}
                         previous={r.prev_tokens_per_call}
                         metric="Tokens per call"
-                        rangeLabel={rangeLabel}
+                        rangeLabel={effectiveRangeLabel}
                       />
                     </div>
                   </TableCell>
@@ -377,7 +420,7 @@ export function ApiEfficiencyByActivityCard({
                         current={r.calls_per_deal}
                         previous={r.prev_calls_per_deal}
                         metric="Calls per deal"
-                        rangeLabel={rangeLabel}
+                        rangeLabel={effectiveRangeLabel}
                         format={(v) => ratio(v)}
                       />
                     </div>
@@ -422,7 +465,7 @@ export function ApiEfficiencyByActivityCard({
                 <TableHead>Operation</TableHead>
                 <HeadWithHelp
                   label="Calls"
-                  help={`Claap API requests this activity actually sent in the last ${rangeLabel}. These count against the 1,000/day quota.`}
+                  help={`Claap API requests this activity actually sent in the last ${effectiveRangeLabel}. These count against the 1,000/day quota.`}
                 />
                 <HeadWithHelp
                   label="Recordings"
@@ -476,7 +519,7 @@ export function ApiEfficiencyByActivityCard({
                         current={r.calls}
                         previous={r.prev_calls}
                         metric="Call volume"
-                        rangeLabel={rangeLabel}
+                        rangeLabel={effectiveRangeLabel}
                         lowerIsBetter={false}
                         neutral
                       />
@@ -492,7 +535,7 @@ export function ApiEfficiencyByActivityCard({
                         current={r.calls_per_recording}
                         previous={r.prev_calls_per_recording}
                         metric="Calls per recording"
-                        rangeLabel={rangeLabel}
+                        rangeLabel={effectiveRangeLabel}
                         format={(v) => ratio(v)}
                       />
                     </div>

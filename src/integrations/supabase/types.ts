@@ -29291,7 +29291,13 @@ export type Database = {
         }[]
       }
       api_usage_efficiency_by_activity: {
-        Args: { _end: string; _start: string }
+        Args: {
+          _deal_classes?: string[]
+          _end: string
+          _engagement_types?: string[]
+          _start: string
+          _user_ids?: string[]
+        }
         Returns: {
           cache_read_share: number
           cache_read_tokens: number
@@ -29324,6 +29330,15 @@ export type Database = {
           model: string
           output_tokens: number
           provider: string
+        }[]
+      }
+      api_usage_filter_options: {
+        Args: { _end: string; _start: string }
+        Returns: {
+          calls: number
+          kind: string
+          label: string
+          value: string
         }[]
       }
       api_usage_frequency: {
@@ -29503,7 +29518,12 @@ export type Database = {
         }[]
       }
       claap_usage_efficiency_by_activity: {
-        Args: { _end: string; _start: string }
+        Args: {
+          _deal_classes?: string[]
+          _end: string
+          _engagement_types?: string[]
+          _start: string
+        }
         Returns: {
           avg_latency_ms: number
           calls: number
