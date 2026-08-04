@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Minus } from "lucide-react";
+import { ArrowDown, ArrowUp, Minus, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -75,29 +81,129 @@ function pct(n: number | null | undefined): string {
   return `${Number(n).toFixed(1)}%`;
 }
 
-/** Delta chip: lower is better for every ratio we show here. */
-function Delta({ current, previous }: { current: number | null; previous: number | null }) {
+/** Column header with an explanation on hover. */
+function HeadWithHelp({
+  label,
+  help,
+  align = "right",
+}: {
+  label: string;
+  help: string;
+  align?: "left" | "right";
+}) {
+  return (
+    <TableHead className={align === "right" ? "text-right" : undefined}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className={`inline-flex items-center gap-1 cursor-help ${
+              align === "right" ? "justify-end" : ""
+            }`}
+          >
+            {label}
+            <HelpCircle className="h-3 w-3 opacity-50" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[260px] text-xs leading-relaxed">
+          {help}
+        </TooltipContent>
+      </Tooltip>
+    </TableHead>
+  );
+}
+
+/**
+ * Delta chip: lower is better for every ratio we show here.
+ * `metric` and `rangeLabel` are only used to phrase the tooltip.
+ */
+function Delta({
+  current,
+  previous,
+  metric,
+  rangeLabel,
+  lowerIsBetter = true,
+  format = (v: number) => fmt(v),
+}: {
+  current: number | null;
+  previous: number | null;
+  metric: string;
+  rangeLabel: string;
+  lowerIsBetter?: boolean;
+  format?: (v: number) => string;
+}) {
   if (current == null || previous == null || Number(previous) === 0) {
-    return <span className="text-muted-foreground text-[11px]">new</span>;
-  }
-  const change = ((Number(current) - Number(previous)) / Number(previous)) * 100;
-  if (Math.abs(change) < 5) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground">
-        <Minus className="h-3 w-3" /> flat
-      </span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="text-muted-foreground text-[11px] cursor-help">new</span>
+        </TooltipTrigger>
+        <TooltipContent side="left" className="max-w-[260px] text-xs leading-relaxed">
+          No {metric} recorded in the previous {rangeLabel}, so there's nothing to compare against
+          yet.
+        </TooltipContent>
+      </Tooltip>
     );
   }
-  const worse = change > 0;
+
+  const cur = Number(current);
+  const prev = Number(previous);
+  const change = ((cur - prev) / prev) * 100;
+  const flat = Math.abs(change) < 5;
+  const up = change > 0;
+  const worse = lowerIsBetter ? up : !up;
+
+  const direction = flat
+    ? `held roughly steady (within 5%)`
+    : `${up ? "rose" : "fell"} ${Math.abs(change).toFixed(0)}%`;
+  const verdict = flat
+    ? "No meaningful change in efficiency."
+    : worse
+      ? "Amber: this activity got less efficient — worth caching, batching or pre-filtering."
+      : "Green: this activity got more efficient.";
+
+  const tip = (
+    <>
+      <div className="font-medium">
+        {metric} {direction}
+      </div>
+      <div className="mt-1 text-muted-foreground">
+        {format(prev)} in the previous {rangeLabel} → {format(cur)} now.
+      </div>
+      <div className="mt-1">{verdict}</div>
+    </>
+  );
+
+  if (flat) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground cursor-help">
+            <Minus className="h-3 w-3" /> flat
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="left" className="max-w-[280px] text-xs leading-relaxed">
+          {tip}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
   return (
-    <span
-      className={`inline-flex items-center gap-0.5 text-[11px] ${
-        worse ? "text-amber-300" : "text-emerald-400"
-      }`}
-    >
-      {worse ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-      {Math.abs(change).toFixed(0)}%
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={`inline-flex items-center gap-0.5 text-[11px] cursor-help ${
+            worse ? "text-amber-300" : "text-emerald-400"
+          }`}
+        >
+          {up ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+          {Math.abs(change).toFixed(0)}%
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="left" className="max-w-[280px] text-xs leading-relaxed">
+        {tip}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
