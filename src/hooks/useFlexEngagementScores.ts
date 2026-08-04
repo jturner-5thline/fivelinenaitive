@@ -30,22 +30,34 @@ function calculateLevel(score: number): "hot" | "warm" | "cold" | "none" {
 }
 
 export function useFlexEngagementScores(dealIds: string[]) {
+  // NOTE: never sort/mutate the caller's array, and never use the raw id
+  // list as a query key — a 1,200-deal pipeline produces a ~44KB key that
+  // React Query re-hashes on every render.
+  const idsKey = `${dealIds.length}:${dealIds.length ? `${dealIds[0]}-${dealIds[dealIds.length - 1]}` : ''}`;
   const query = useQuery({
-    queryKey: ["flex-engagement-scores", dealIds.sort().join(",")],
+    queryKey: ["flex-engagement-scores", idsKey],
     queryFn: async () => {
       if (dealIds.length === 0) return new Map<string, DealFlexEngagement>();
 
-      // Fetch all FLEx activities for the given deals
-      const { data: activities, error } = await supabase
-        .from("activity_logs")
-        .select("deal_id, activity_type, metadata")
-        .in("deal_id", dealIds)
-        .like("activity_type", "flex_%");
-
-      if (error) {
-        console.error("Error fetching FLEx engagement scores:", error);
-        throw error;
+      // Chunk the id list so a large pipeline doesn't produce a single
+      // multi-tens-of-KB request URL, and run the chunks in parallel.
+      const chunks: string[][] = [];
+      for (let i = 0; i < dealIds.length; i += 150) chunks.push(dealIds.slice(i, i + 150));
+      const results = await Promise.all(
+        chunks.map((ids) =>
+          supabase
+            .from("activity_logs")
+            .select("deal_id, activity_type, metadata")
+            .in("deal_id", ids)
+            .like("activity_type", "flex_%"),
+        ),
+      );
+      const firstError = results.find((r) => r.error)?.error;
+      if (firstError) {
+        console.error("Error fetching FLEx engagement scores:", firstError);
+        throw firstError;
       }
+      const activities = results.flatMap((r) => r.data ?? []);
 
       // Aggregate scores by deal
       const dealScores = new Map<string, {
