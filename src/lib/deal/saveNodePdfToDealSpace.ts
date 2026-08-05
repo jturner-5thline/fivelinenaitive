@@ -21,8 +21,17 @@ export async function saveNodePdfToDealSpace(
     scale: 2,
     backgroundColor: '#ffffff',
     useCORS: true,
+    logging: false,
+    foreignObjectRendering: false,
+    // The preview lives inside a max-h/overflow-y-auto pane; capture the
+    // full content height, not just the visible slice.
+    height: node.scrollHeight,
     windowWidth: node.scrollWidth,
+    windowHeight: node.scrollHeight,
   });
+  if (!canvas.width || !canvas.height) {
+    throw new Error('Could not capture the report preview.');
+  }
 
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
   const pageWidth = pdf.internal.pageSize.getWidth();
