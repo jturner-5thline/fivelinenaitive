@@ -18,6 +18,18 @@ import type { DealLender } from '@/types/deal';
 import { useCompany } from '@/hooks/useCompany';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 import { printNodeInPopup } from '@/lib/printNodeInPopup';
+import { saveNodePdfToDealSpace } from '@/lib/deal/saveNodePdfToDealSpace';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog';
 
 export type { StatusReportEditableContent };
 
