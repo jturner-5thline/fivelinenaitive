@@ -411,19 +411,51 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
    * or while a nested dialog is animating — React briefly sets the ref to
    * null, which is what produced the intermittent "Preview not ready"
    * toast. Resolve defensively: prefer the live ref, then fall back to a
-   * DOM lookup by data attribute.
+   * DOM lookup by data attribute. The confirmation flow also captures a
+   * detached-from-React snapshot, because opening the nested confirmation
+   * dialog can legitimately unmount the live preview.
    */
   const resolvePrintableNode = (): HTMLDivElement | null => {
     const fromRef = printableRef.current;
     if (fromRef && fromRef.isConnected) return fromRef;
     const fromDom = document.querySelector<HTMLDivElement>('[data-status-report-printable]');
     if (fromDom) return fromDom;
-    // Last resort: the node captured when the user opened the confirm step.
+    // Last resort: the stable snapshot captured before confirmation opened.
     const cached = capturedPrintableRef.current;
     return cached && cached.isConnected ? cached : null;
   };
-  /** Node snapshot taken at "Export as PDF" click time. */
+  /** Stable DOM snapshot taken at "Export as PDF" click time. */
   const capturedPrintableRef = useRef<HTMLDivElement | null>(null);
+  const clearPrintableSnapshot = () => {
+    const snapshot = capturedPrintableRef.current;
+    if (snapshot) snapshot.remove();
+    capturedPrintableRef.current = null;
+  };
+  const capturePrintableSnapshot = (): HTMLDivElement | null => {
+    const source = printableRef.current?.isConnected
+      ? printableRef.current
+      : document.querySelector<HTMLDivElement>('[data-status-report-printable]');
+    if (!source) return null;
+
+    clearPrintableSnapshot();
+    const snapshot = source.cloneNode(true) as HTMLDivElement;
+    const sourceWidth = Math.max(source.getBoundingClientRect().width, source.scrollWidth);
+    snapshot.removeAttribute('id');
+    snapshot.removeAttribute('data-status-report-printable');
+    snapshot.setAttribute('data-status-report-export-snapshot', '');
+    snapshot.style.position = 'fixed';
+    snapshot.style.left = '-100000px';
+    snapshot.style.top = '0';
+    snapshot.style.width = `${sourceWidth}px`;
+    snapshot.style.height = 'auto';
+    snapshot.style.maxHeight = 'none';
+    snapshot.style.overflow = 'visible';
+    snapshot.style.pointerEvents = 'none';
+    document.body.appendChild(snapshot);
+    capturedPrintableRef.current = snapshot;
+    return snapshot;
+  };
+  useEffect(() => () => clearPrintableSnapshot(), []);
   /** Wait up to ~1s for the printable node instead of failing immediately. */
   const waitForPrintableNode = async (): Promise<HTMLDivElement | null> => {
     for (let i = 0; i < 20; i++) {
@@ -450,8 +482,20 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
   /** Confirm step: print, and optionally archive a copy to Documents. */
   const handleConfirmPrint = async () => {
-    const node = await waitForPrintableNode();
+    // Always use the stable snapshot here. The live preview may be removed as
+    // soon as this confirmation closes, while PDF capture is still awaiting.
+    const snapshot = capturedPrintableRef.current;
+    const node = snapshot?.isConnected ? snapshot : await waitForPrintableNode();
     setShowPrintConfirm(false);
+    if (!node) {
+      clearPrintableSnapshot();
+      toast({
+        title: 'Preview not ready',
+        description: 'The report could not be captured. Reopen the preview and try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
     // Archive FIRST: window.print() opens a modal, blocking dialog that
     // suspends script execution in the opener, which was preventing the
     // capture/upload from ever completing.
@@ -475,6 +519,9 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       }
     }
     handlePrintPdf(node);
+    // Keep the hidden snapshot mounted until the next export/unmount. If the
+    // popup is blocked, the fallback print path still needs this node when its
+    // delayed window.print() runs.
   };
 
   const handlePrintPdf = (preresolved?: HTMLDivElement | null) => {
@@ -1043,9 +1090,15 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
             variant="outline"
             size="sm"
             onClick={() => {
-              capturedPrintableRef.current =
-                printableRef.current ??
-                document.querySelector<HTMLDivElement>('[data-status-report-printable]');
+              const snapshot = capturePrintableSnapshot();
+              if (!snapshot) {
+                toast({
+                  title: 'Preview not ready',
+                  description: 'The report preview is still loading. Try again in a moment.',
+                  variant: 'destructive',
+                });
+                return;
+              }
               setShowPrintConfirm(true);
             }}
             disabled={isSavingCopy}
@@ -1086,7 +1139,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           </span>
         </label>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={clearPrintableSnapshot}>Cancel</AlertDialogCancel>
           <AlertDialogAction onClick={handleConfirmPrint}>Print to PDF</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
