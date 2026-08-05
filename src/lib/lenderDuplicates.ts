@@ -16,6 +16,10 @@
 export interface DuplicateInput {
   id: string;
   name: string;
+  /** Optional website URL — used as a hard disambiguator. */
+  website?: string | null;
+  /** Optional contact email — its domain is used as a hard disambiguator. */
+  email?: string | null;
 }
 
 export interface DuplicateGroup {
@@ -123,6 +127,46 @@ const STOPWORD_TOKENS = new Set<string>([
 // Any cluster larger than this is treated as a false positive from transitive
 // chaining and re-split into tighter subgroups.
 const MAX_CLUSTER_SIZE = 10;
+
+// Free/consumer mail domains carry no company identity, so they can never
+// prove two funding sources are different organizations.
+const GENERIC_EMAIL_DOMAINS = new Set<string>([
+  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com',
+  'me.com', 'msn.com', 'live.com', 'comcast.net', 'protonmail.com', 'mac.com',
+]);
+
+function domainFromWebsite(raw?: string | null): string | null {
+  if (!raw) return null;
+  let v = raw.trim().toLowerCase();
+  if (!v) return null;
+  v = v.replace(/^[a-z]+:\/\//, '').replace(/^www\./, '');
+  v = v.split('/')[0].split('?')[0].split('#')[0].split(':')[0];
+  if (!v.includes('.')) return null;
+  return v || null;
+}
+
+function domainFromEmail(raw?: string | null): string | null {
+  if (!raw) return null;
+  const v = raw.trim().toLowerCase();
+  const at = v.lastIndexOf('@');
+  if (at < 0) return null;
+  const d = v.slice(at + 1).replace(/^www\./, '').trim();
+  if (!d.includes('.')) return null;
+  if (GENERIC_EMAIL_DOMAINS.has(d)) return null;
+  return d;
+}
+
+/** Registrable-ish root: last two labels (good enough for disambiguation). */
+function rootDomain(d: string): string {
+  const parts = d.split('.').filter(Boolean);
+  if (parts.length <= 2) return parts.join('.');
+  return parts.slice(-2).join('.');
+}
+
+export function lenderDomain(input: DuplicateInput): string | null {
+  const d = domainFromWebsite(input.website) ?? domainFromEmail(input.email);
+  return d ? rootDomain(d) : null;
+}
 
 function stripSuffixes(normalized: string): string {
   let current = normalized;
