@@ -407,7 +407,9 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     const dateStr = `${d.getMonth() + 1}-${d.getDate()}-${yy}`;
     const dealName = (deal.company || deal.name || 'Deal').toString().trim();
     // Browsers use document.title as the default PDF filename for window.print().
-    document.title = `${dealName}-${account} Status Report ${dateStr}`;
+    // Strip characters browsers reject/replace in filenames.
+    const clean = (s: string) => s.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
+    document.title = `${clean(dealName)}-${clean(account)} Status Update ${dateStr}`;
     const style = document.createElement('style');
     style.id = 'naitive-status-report-print-style';
     style.textContent = `
