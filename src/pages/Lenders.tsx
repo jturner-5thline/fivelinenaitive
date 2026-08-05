@@ -508,6 +508,8 @@ export default function Lenders() {
     [],
   );
   const [duplicateIndex, setDuplicateIndex] = useState(EMPTY_DUPLICATE_INDEX);
+  const { isDismissed: isDuplicateGroupDismissed, dismissGroup: dismissDuplicateGroup } =
+    useLenderDuplicateDismissals(true);
   // Fingerprint of the (id, name) pairs that actually drive duplicate
   // detection. Refetches and unrelated state changes routinely produce a new
   // `masterLenders` array reference even when no name/id changed; depending
