@@ -459,7 +459,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   };
 
   const handlePrintPdf = () => {
-    const node = printableRef.current;
+    const node = resolvePrintableNode();
     if (!node) {
       toast({ title: 'Preview not ready', variant: 'destructive' });
       return;
@@ -616,7 +616,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
   // ── Render the printable report (light-themed) ──────────────────────────
   const renderPrintable = () => (
-    <div ref={printableRef} className="bg-white text-slate-900 rounded-lg overflow-hidden">
+    <div ref={printableRef} data-status-report-printable className="bg-white text-slate-900 rounded-lg overflow-hidden">
       <div className="sr-bar" style={{ height: 6, background: reportTheme.accent, borderRadius: 2, marginBottom: 16 }} />
       <div>
         <div className="sr-brand" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', color: reportTheme.accentText, textTransform: 'uppercase' }}>
@@ -752,6 +752,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   const renderInAppPreview = () => (
     <div
       ref={printableRef}
+      data-status-report-printable
       className="rounded-2xl overflow-hidden border backdrop-blur-2xl"
       style={{
         // Layered gradient shell — matches the deal pop-up surface treatment:
