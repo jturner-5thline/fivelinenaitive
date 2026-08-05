@@ -36,6 +36,7 @@ export interface DuplicateIndex {
 // Multi-word suffixes must appear before their single-word components so the
 // stripping pass can match the longest tail first.
 const SUFFIX_PATTERNS: string[] = [
+  // (see STOPWORD_TOKENS below for words that may never drive a merge)
   'capital partners',
   'capital group',
   'capital management',
