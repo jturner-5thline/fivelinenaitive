@@ -2606,6 +2606,33 @@ export default function Lenders() {
         onOpenChange={setShowNonBankImportConfirm}
         showTrigger={false}
       />
+
+      {/* Confirm dismissing a duplicate group as "not duplicates" */}
+      <AlertDialog
+        open={!!pendingDismissGroup}
+        onOpenChange={(open) => { if (!open && !isDismissingGroup) setPendingDismissGroup(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Not duplicates?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This marks the {pendingDismissGroup?.ids.length ?? 0} funding sources in
+              {' '}"{pendingDismissGroup?.name}" as distinct records. The group will stop
+              appearing in the duplicates view, including after a page refresh. No records
+              are changed or deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDismissingGroup}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmDismissGroup(); }}
+              disabled={isDismissingGroup}
+            >
+              {isDismissingGroup ? 'Dismissing...' : 'Dismiss group'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
