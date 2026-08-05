@@ -130,8 +130,8 @@ function applyKeepTogether(win: Window, root: HTMLElement) {
       const combined = label.offsetHeight + next.offsetHeight;
       if (combined <= 0 || combined > FIT) return;
       const wrap = doc.createElement('div');
-      wrap.style.breakInside = 'avoid';
-      wrap.style.pageBreakInside = 'avoid';
+      wrap.style.setProperty('break-inside', 'avoid', 'important');
+      wrap.style.setProperty('page-break-inside', 'avoid', 'important');
       label.parentElement?.insertBefore(wrap, label);
       wrap.appendChild(label);
       wrap.appendChild(next);
@@ -144,11 +144,11 @@ function applyKeepTogether(win: Window, root: HTMLElement) {
     if (el === root || el === firstChild) return;
     const h = el.offsetHeight;
     if (h > 0 && h <= FIT) {
-      el.style.breakInside = 'avoid';
-      el.style.pageBreakInside = 'avoid';
+      el.style.setProperty('break-inside', 'avoid', 'important');
+      el.style.setProperty('page-break-inside', 'avoid', 'important');
     } else {
-      el.style.breakInside = 'auto';
-      el.style.pageBreakInside = 'auto';
+      el.style.setProperty('break-inside', 'auto', 'important');
+      el.style.setProperty('page-break-inside', 'auto', 'important');
     }
   });
 }
