@@ -405,6 +405,19 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   // alternate light layout). We inject @media print rules that hide every
   // other element on the page and force backgrounds/gradients to render.
   const printableRef = useRef<HTMLDivElement | null>(null);
+  /**
+   * The printable node lives in one of two mutually-exclusive branches
+   * (5th Line dark preview vs. light preview). When that branch swaps —
+   * or while a nested dialog is animating — React briefly sets the ref to
+   * null, which is what produced the intermittent "Preview not ready"
+   * toast. Resolve defensively: prefer the live ref, then fall back to a
+   * DOM lookup by data attribute.
+   */
+  const resolvePrintableNode = (): HTMLDivElement | null => {
+    const fromRef = printableRef.current;
+    if (fromRef && fromRef.isConnected) return fromRef;
+    return document.querySelector<HTMLDivElement>('[data-status-report-printable]');
+  };
   const [showPrintConfirm, setShowPrintConfirm] = useState(false);
   const [saveCopyToDealSpace, setSaveCopyToDealSpace] = useState(true);
   const [isSavingCopy, setIsSavingCopy] = useState(false);
@@ -422,7 +435,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
   /** Confirm step: print, and optionally archive a copy to Documents. */
   const handleConfirmPrint = async () => {
-    const node = printableRef.current;
+    const node = resolvePrintableNode();
     setShowPrintConfirm(false);
     handlePrintPdf();
     if (!saveCopyToDealSpace || !node || !deal.id) return;
@@ -446,7 +459,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   };
 
   const handlePrintPdf = () => {
-    const node = printableRef.current;
+    const node = resolvePrintableNode();
     if (!node) {
       toast({ title: 'Preview not ready', variant: 'destructive' });
       return;
@@ -603,7 +616,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
   // ── Render the printable report (light-themed) ──────────────────────────
   const renderPrintable = () => (
-    <div ref={printableRef} className="bg-white text-slate-900 rounded-lg overflow-hidden">
+    <div ref={printableRef} data-status-report-printable className="bg-white text-slate-900 rounded-lg overflow-hidden">
       <div className="sr-bar" style={{ height: 6, background: reportTheme.accent, borderRadius: 2, marginBottom: 16 }} />
       <div>
         <div className="sr-brand" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', color: reportTheme.accentText, textTransform: 'uppercase' }}>
@@ -739,6 +752,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   const renderInAppPreview = () => (
     <div
       ref={printableRef}
+      data-status-report-printable
       className="rounded-2xl overflow-hidden border backdrop-blur-2xl"
       style={{
         // Layered gradient shell — matches the deal pop-up surface treatment:
