@@ -49,11 +49,17 @@ ${head}
     border-radius: 0 !important;
     box-shadow: none !important;
   }
-  #print-root > div > * {
-    break-inside: avoid;
-    page-break-inside: avoid;
+  /* Never allow a break BEFORE the first content — an oversized element
+     with break-inside:avoid gets pushed to the next page, which is what
+     produced a blank first page. Only small atoms keep break-inside:avoid. */
+  #print-root, #print-root > *, #print-root > div > * {
+    break-before: avoid !important;
+    page-break-before: avoid !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
-  #print-root tr, #print-root li, #print-root thead, #print-root table {
+  #print-root > *:first-child { margin-top: 0 !important; }
+  #print-root tr, #print-root li, #print-root thead {
     break-inside: avoid;
     page-break-inside: avoid;
   }
