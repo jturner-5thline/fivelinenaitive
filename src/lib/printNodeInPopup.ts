@@ -82,6 +82,7 @@ ${head}
   const mount = () => {
     const root = win!.document.getElementById('print-root');
     if (root) root.appendChild(win!.document.importNode(clone, true));
+    if (root) applyKeepTogether(win!, root);
     // Give styles/fonts a beat to settle before invoking the print dialog.
     win!.setTimeout(() => {
       win!.focus();
@@ -94,4 +95,60 @@ ${head}
   else win.addEventListener('load', mount);
 
   return true;
+}
+
+/**
+ * Keep sections whole across page breaks WITHOUT reintroducing blank pages.
+ *
+ * CSS alone cannot express "avoid breaking inside this element unless it is
+ * taller than a page" — an oversized `break-inside: avoid` element gets
+ * pushed to the next page, leaving a blank one. So we measure after mount:
+ *  - a section label is glued to the block that follows it;
+ *  - `break-inside: avoid` is applied only to blocks that fit on a page.
+ */
+function applyKeepTogether(win: Window, root: HTMLElement) {
+  const doc = win.document;
+  // Letter height (11in) minus the 0.25in @page margins, in CSS px.
+  const PAGE_PX = (11 - 0.5) * 96;
+  const FIT = PAGE_PX * 0.9;
+
+  const firstChild = root.firstElementChild as HTMLElement | null;
+  const containers: HTMLElement[] = [root];
+  if (firstChild) {
+    containers.push(firstChild);
+    Array.from(firstChild.children).forEach((c) => containers.push(c as HTMLElement));
+  }
+
+  // 1) Glue "section label + following content" into one unbreakable box.
+  containers.forEach((container) => {
+    const labels = Array.from(
+      container.querySelectorAll(':scope > .sr-section-label, :scope > h1, :scope > h2, :scope > h3'),
+    ) as HTMLElement[];
+    labels.forEach((label) => {
+      const next = label.nextElementSibling as HTMLElement | null;
+      if (!next) return;
+      const combined = label.offsetHeight + next.offsetHeight;
+      if (combined <= 0 || combined > FIT) return;
+      const wrap = doc.createElement('div');
+      wrap.style.setProperty('break-inside', 'avoid', 'important');
+      wrap.style.setProperty('page-break-inside', 'avoid', 'important');
+      label.parentElement?.insertBefore(wrap, label);
+      wrap.appendChild(label);
+      wrap.appendChild(next);
+    });
+  });
+
+  // 2) Any block that fits on a page should never be split.
+  const blocks = Array.from(root.querySelectorAll('div, section, table, ul, ol')) as HTMLElement[];
+  blocks.forEach((el) => {
+    if (el === root || el === firstChild) return;
+    const h = el.offsetHeight;
+    if (h > 0 && h <= FIT) {
+      el.style.setProperty('break-inside', 'avoid', 'important');
+      el.style.setProperty('page-break-inside', 'avoid', 'important');
+    } else {
+      el.style.setProperty('break-inside', 'auto', 'important');
+      el.style.setProperty('page-break-inside', 'auto', 'important');
+    }
+  });
 }
