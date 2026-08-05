@@ -36,6 +36,7 @@ export interface DuplicateIndex {
 // Multi-word suffixes must appear before their single-word components so the
 // stripping pass can match the longest tail first.
 const SUFFIX_PATTERNS: string[] = [
+  // (see STOPWORD_TOKENS below for words that may never drive a merge)
   'capital partners',
   'capital group',
   'capital management',
@@ -102,6 +103,26 @@ function basicNormalize(raw: string): string {
     .replace(/\s+/g, ' ')
     .trim();
 }
+
+// High-frequency, low-signal tokens. A shared token from this list can never
+// on its own merge two funding sources — otherwise union-find chains
+// "1 Advantage Bank" → "Advantage Capital" → "Advantage First National" → ...
+// into a single mega-cluster of thousands of unrelated lenders.
+const STOPWORD_TOKENS = new Set<string>([
+  'first', 'national', 'advantage', 'summit', 'pacific', 'atlantic', 'american',
+  'america', 'united', 'general', 'premier', 'united states', 'global', 'central',
+  'northern', 'southern', 'eastern', 'western', 'north', 'south', 'east', 'west',
+  'main', 'community', 'commercial', 'commerce', 'republic', 'liberty', 'heritage',
+  'pinnacle', 'signature', 'peoples', 'citizens', 'security', 'independence',
+  'independent', 'enterprise', 'alliance', 'union', 'state', 'states', 'city',
+  'metro', 'valley', 'river', 'lake', 'park', 'star', 'sun', 'gold', 'silver',
+  'blue', 'green', 'new', 'old', 'grand', 'prime', 'apex', 'core', 'next',
+  'direct', 'select', 'preferred', 'trusted', 'reliable', 'strategic',
+]);
+
+// Any cluster larger than this is treated as a false positive from transitive
+// chaining and re-split into tighter subgroups.
+const MAX_CLUSTER_SIZE = 10;
 
 function stripSuffixes(normalized: string): string {
   let current = normalized;
@@ -195,16 +216,16 @@ export function detectDuplicateLenders(lenders: DuplicateInput[]): DuplicateInde
     for (let i = 1; i < ids.length; i++) dsu.union(ids[0], ids[i]);
   }
 
-  // 3) Word-boundary substring match between core names. This used to be a
-  // bucketed O(n²) scan, which dominated runtime on 6k+ directories. We now
-  // build a single-word index (cores that consist of one token > 3 chars) and
-  // for every multi-word core, union it with every single-word core that
-  // appears as one of its tokens — e.g. "Espresso" ⊂ "Espresso Capital".
-  // Complexity: O(total tokens), effectively linear in n.
+  // 3) Prefix-anchored substring match between core names. A single-word core
+  // only merges into a multi-word core when it is the *leading* token of a
+  // short name and is not a generic stopword — e.g. "Espresso" ⊂ "Espresso
+  // Fund of Texas", but "Advantage" does NOT swallow "1 Advantage Bank".
+  // Complexity: O(n), effectively linear.
   const singleWordIds = new Map<string, string[]>();
   for (const m of meta) {
     if (!m.core || m.core.length <= 3) continue;
     if (m.core.includes(' ')) continue;
+    if (STOPWORD_TOKENS.has(m.core)) continue;
     const arr = singleWordIds.get(m.core) ?? [];
     arr.push(m.id);
     singleWordIds.set(m.core, arr);
@@ -213,13 +234,15 @@ export function detectDuplicateLenders(lenders: DuplicateInput[]): DuplicateInde
     for (const m of meta) {
       if (!m.core || !m.core.includes(' ')) continue;
       const tokens = m.core.split(' ');
-      for (const token of tokens) {
-        if (token.length <= 3) continue;
-        const matches = singleWordIds.get(token);
-        if (!matches) continue;
-        for (const otherId of matches) {
-          if (otherId !== m.id) dsu.union(m.id, otherId);
-        }
+      // Only short, prefix-anchored names qualify.
+      if (tokens.length > 3) continue;
+      const token = tokens[0];
+      if (token.length <= 3) continue;
+      if (STOPWORD_TOKENS.has(token)) continue;
+      const matches = singleWordIds.get(token);
+      if (!matches) continue;
+      for (const otherId of matches) {
+        if (otherId !== m.id) dsu.union(m.id, otherId);
       }
     }
   }
@@ -236,8 +259,8 @@ export function detectDuplicateLenders(lenders: DuplicateInput[]): DuplicateInde
 
   const groups: DuplicateGroup[] = [];
   const byLenderId: Record<string, { groupId: string; count: number }> = {};
-  for (const [root, memberIds] of groupsByRoot.entries()) {
-    if (memberIds.length < 2) continue;
+  const emit = (root: string, memberIds: string[]) => {
+    if (memberIds.length < 2) return;
     // Stable groupId from the lexicographically smallest core name in the
     // cluster — keeps grouping deterministic across renders.
     const cores = memberIds
@@ -248,6 +271,29 @@ export function detectDuplicateLenders(lenders: DuplicateInput[]): DuplicateInde
     groups.push({ groupId, memberIds });
     for (const id of memberIds) {
       byLenderId[id] = { groupId, count: memberIds.length - 1 };
+    }
+  };
+
+  for (const [root, memberIds] of groupsByRoot.entries()) {
+    if (memberIds.length < 2) continue;
+    if (memberIds.length <= MAX_CLUSTER_SIZE) {
+      emit(root, memberIds);
+      continue;
+    }
+    // Oversized cluster: transitive chaining almost certainly merged unrelated
+    // names. Fall back to the strictest signal — identical core name — and
+    // emit those tight subgroups instead of one huge false positive.
+    const byExactCore = new Map<string, string[]>();
+    for (const id of memberIds) {
+      const core = metaById.get(id)?.core || '';
+      if (!core) continue;
+      const arr = byExactCore.get(core) ?? [];
+      arr.push(id);
+      byExactCore.set(core, arr);
+    }
+    for (const [core, ids] of byExactCore.entries()) {
+      if (ids.length < 2) continue;
+      emit(core, ids);
     }
   }
 
