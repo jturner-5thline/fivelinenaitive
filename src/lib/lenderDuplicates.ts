@@ -229,6 +229,7 @@ export function detectDuplicateLenders(lenders: DuplicateInput[]): DuplicateInde
     name: l.name || '',
     normalized: basicNormalize(l.name || ''),
     core: stripSuffixes(basicNormalize(l.name || '')),
+    domain: lenderDomain(l),
   }));
   // O(1) id → meta lookup. The collection step below used to call
   // `meta.find(...)` per member which is O(n) per call and dominated the
@@ -303,7 +304,7 @@ export function detectDuplicateLenders(lenders: DuplicateInput[]): DuplicateInde
 
   const groups: DuplicateGroup[] = [];
   const byLenderId: Record<string, { groupId: string; count: number }> = {};
-  const emit = (root: string, memberIds: string[]) => {
+  const emitRaw = (root: string, memberIds: string[]) => {
     if (memberIds.length < 2) return;
     // Stable groupId from the lexicographically smallest core name in the
     // cluster — keeps grouping deterministic across renders.
@@ -316,6 +317,36 @@ export function detectDuplicateLenders(lenders: DuplicateInput[]): DuplicateInde
     for (const id of memberIds) {
       byLenderId[id] = { groupId, count: memberIds.length - 1 };
     }
+  };
+
+  // Domain guard: a clearly different website/email domain proves two
+  // similarly-named funding sources are NOT the same organization. Members
+  // without any domain stay with the cluster only when no conflict exists.
+  const emit = (root: string, memberIds: string[]) => {
+    if (memberIds.length < 2) return;
+    const byDomain = new Map<string, string[]>();
+    const unknown: string[] = [];
+    for (const id of memberIds) {
+      const d = metaById.get(id)?.domain || null;
+      if (!d) {
+        unknown.push(id);
+        continue;
+      }
+      const arr = byDomain.get(d) ?? [];
+      arr.push(id);
+      byDomain.set(d, arr);
+    }
+    if (byDomain.size <= 1) {
+      emitRaw(root, memberIds);
+      return;
+    }
+    // Conflicting domains → split into one cluster per domain. Domain-less
+    // members can't be attributed, so they only form a cluster among
+    // themselves.
+    for (const [domain, ids] of byDomain.entries()) {
+      emitRaw(`${root}|${domain}`, ids);
+    }
+    emitRaw(`${root}|unknown`, unknown);
   };
 
   for (const [root, memberIds] of groupsByRoot.entries()) {
