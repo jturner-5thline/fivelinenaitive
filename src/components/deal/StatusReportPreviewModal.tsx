@@ -18,6 +18,18 @@ import type { DealLender } from '@/types/deal';
 import { useCompany } from '@/hooks/useCompany';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 import { printNodeInPopup } from '@/lib/printNodeInPopup';
+import { saveNodePdfToDealSpace } from '@/lib/deal/saveNodePdfToDealSpace';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog';
 
 export type { StatusReportEditableContent };
 
@@ -393,6 +405,46 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   // alternate light layout). We inject @media print rules that hide every
   // other element on the page and force backgrounds/gradients to render.
   const printableRef = useRef<HTMLDivElement | null>(null);
+  const [showPrintConfirm, setShowPrintConfirm] = useState(false);
+  const [saveCopyToDealSpace, setSaveCopyToDealSpace] = useState(true);
+  const [isSavingCopy, setIsSavingCopy] = useState(false);
+
+  /** "[Deal]-[Account] Status Update M-D-YY" — also the PDF filename. */
+  const buildFileTitle = () => {
+    const account = isFifthLine ? '5th Line' : (brandName || 'Account');
+    const d = new Date();
+    const yy = String(d.getFullYear()).slice(-2);
+    const dateStr = `${d.getMonth() + 1}-${d.getDate()}-${yy}`;
+    const dealName = (deal.company || deal.name || 'Deal').toString().trim();
+    const clean = (s: string) => s.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
+    return `${clean(dealName)}-${clean(account)} Status Update ${dateStr}`;
+  };
+
+  /** Confirm step: print, and optionally archive a copy to Documents. */
+  const handleConfirmPrint = async () => {
+    const node = printableRef.current;
+    setShowPrintConfirm(false);
+    handlePrintPdf();
+    if (!saveCopyToDealSpace || !node || !deal.id) return;
+    setIsSavingCopy(true);
+    try {
+      const saved = await saveNodePdfToDealSpace(node, String(deal.id), buildFileTitle());
+      toast({
+        title: 'Copy saved to Documents',
+        description: saved?.name ? `${saved.name} added to Deal Space ▸ Documents.` : undefined,
+      });
+    } catch (err) {
+      console.error('[status-report] save copy failed:', err);
+      toast({
+        title: 'Could not save a copy to Documents',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingCopy(false);
+    }
+  };
+
   const handlePrintPdf = () => {
     const node = printableRef.current;
     if (!node) {
@@ -402,15 +454,8 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     const PRINT_ID = 'naitive-status-report-printroot';
     node.setAttribute('id', PRINT_ID);
     const prevTitle = document.title;
-    const account = isFifthLine ? '5th Line' : (brandName || 'Account');
-    const d = new Date();
-    const yy = String(d.getFullYear()).slice(-2);
-    const dateStr = `${d.getMonth() + 1}-${d.getDate()}-${yy}`;
-    const dealName = (deal.company || deal.name || 'Deal').toString().trim();
     // Browsers use document.title as the default PDF filename for window.print().
-    // Strip characters browsers reject/replace in filenames.
-    const clean = (s: string) => s.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
-    const fileTitle = `${clean(dealName)}-${clean(account)} Status Update ${dateStr}`;
+    const fileTitle = buildFileTitle();
     document.title = fileTitle;
 
     // When the app runs inside an iframe (Lovable preview) the browser uses the
@@ -957,8 +1002,14 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         <DialogFooter className="px-6 py-3 border-t border-slate-200 dark:border-slate-700 shrink-0 bg-white dark:bg-slate-800 gap-2">
           <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
-          <Button variant="outline" size="sm" onClick={handlePrintPdf} className="gap-2">
-            <Download className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowPrintConfirm(true)}
+            disabled={isSavingCopy}
+            className="gap-2"
+          >
+            {isSavingCopy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             Export as PDF
           </Button>
           {isFifthLine && (
@@ -970,6 +1021,34 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showPrintConfirm} onOpenChange={setShowPrintConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Print this status update to PDF?</AlertDialogTitle>
+          <AlertDialogDescription>
+            The print dialog will open with the filename “{buildFileTitle()}”.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <label className="flex items-start gap-2 rounded-md border p-3 text-sm cursor-pointer">
+          <Checkbox
+            checked={saveCopyToDealSpace}
+            onCheckedChange={(v) => setSaveCopyToDealSpace(v === true)}
+            className="mt-0.5"
+          />
+          <span>
+            Save a copy to Deal Space ▸ Documents
+            <span className="block text-xs text-muted-foreground">
+              Archives the same report as a PDF on this deal.
+            </span>
+          </span>
+        </label>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleConfirmPrint}>Print to PDF</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }
