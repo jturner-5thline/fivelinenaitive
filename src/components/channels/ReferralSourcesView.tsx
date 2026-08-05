@@ -549,14 +549,12 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
         </div>
       )}
 
-      {editTarget && (
-        <ReferralSourceEditDialog
-          open={!!editTarget}
-          onOpenChange={(v) => { if (!v) setEditTarget(null); }}
-          referredBy={editTarget.referredBy}
-          initialCompany={editTarget.companyName}
-        />
-      )}
+      <ReferralSourceEditDialog
+        open={!!editTarget}
+        onOpenChange={(v) => { if (!v) setTimeout(() => setEditTarget(null), 200); }}
+        referredBy={editTarget?.referredBy ?? ''}
+        initialCompany={editTarget?.companyName}
+      />
     </div>
   );
 }
