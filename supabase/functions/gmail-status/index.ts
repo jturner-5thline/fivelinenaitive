@@ -83,12 +83,17 @@ serve(async (req: Request): Promise<Response> => {
     // Optionally verify grant is still valid with Nylas
     let isExpired = false;
     if (NYLAS_API_KEY) {
+      // Abort the grant check if Nylas is slow — without this a hung request
+      // holds the isolate open until the platform kills it (HTTP 502).
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8_000);
       try {
         const grantResponse = await fetch(`${NYLAS_API_URI}/v3/grants/${grantId}`, {
           headers: {
             "Authorization": `Bearer ${NYLAS_API_KEY}`,
             "Accept": "application/json",
           },
+          signal: controller.signal,
         });
         if (!grantResponse.ok) {
           const errData = await grantResponse.json().catch(() => ({}));
@@ -101,6 +106,8 @@ serve(async (req: Request): Promise<Response> => {
         }
       } catch (e) {
         console.error("Failed to verify Nylas grant:", e);
+      } finally {
+        clearTimeout(timeoutId);
       }
     }
 

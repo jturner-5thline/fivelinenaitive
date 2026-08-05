@@ -753,21 +753,17 @@ serve(async (req: Request): Promise<Response> => {
           params.set("in", "INBOX");
         }
 
-        // Hard 25s timeout: Nylas occasionally hangs for very large mailboxes
-        // and the function would otherwise hit the platform 60s limit and
-        // surface as an HTTP 504 in the email AI sidebar. Returning a 200
-        // with `partial: true` lets the client render its in-memory cache
-        // and show a "Loading more emails…" hint instead of crashing.
+        // Hard 25s timeout via AbortController so a hung Nylas request is
+        // actually cancelled — a bare Promise.race left the socket open and
+        // pinned the isolate until the platform killed it (surfacing as 502s,
+        // including on CORS preflight). Returning a 200 with `partial: true`
+        // lets the client render its in-memory cache instead of crashing.
         let listResponse: Response;
         try {
-          listResponse = await Promise.race([
-            fetch(`${baseUrl}/messages?${params}`, { headers }),
-            new Promise<Response>((_, reject) =>
-              setTimeout(() => reject(new Error("timeout")), 25_000)
-            ),
-          ]);
+          listResponse = await nylasFetch(`${baseUrl}/messages?${params}`, { headers }, 25_000);
         } catch (err) {
-          const isTimeout = (err as Error)?.message === "timeout";
+          const isTimeout =
+            (err as Error)?.name === "AbortError" || (err as Error)?.message === "timeout";
           console.warn(`[gmail-messages] list ${isTimeout ? "timeout" : "error"}: ${(err as Error)?.message}`);
           return new Response(JSON.stringify({
             messages: [],
