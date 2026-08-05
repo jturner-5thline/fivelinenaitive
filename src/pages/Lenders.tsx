@@ -518,7 +518,8 @@ export default function Lenders() {
     // Inputs are already ordered by name from the loader; a simple join is
     // stable and cheap (~tens of KB at 6k rows).
     let s = '';
-    for (const l of masterLenders) s += l.id + '|' + (l.name || '') + '\n';
+    for (const l of masterLenders)
+      s += l.id + '|' + (l.name || '') + '|' + ((l as any).website || '') + '|' + (l.email || '') + '\n';
     return s;
   }, [masterLenders]);
 
@@ -530,7 +531,14 @@ export default function Lenders() {
     let cancelled = false;
     const run = () => {
       if (cancelled) return;
-      const next = detectDuplicateLenders(masterLenders.map((l) => ({ id: l.id, name: l.name })));
+      const next = detectDuplicateLenders(
+        masterLenders.map((l) => ({
+          id: l.id,
+          name: l.name,
+          website: (l as any).website ?? null,
+          email: (l as any).email ?? null,
+        })),
+      );
       if (cancelled) return;
       setDuplicateIndex(next);
     };

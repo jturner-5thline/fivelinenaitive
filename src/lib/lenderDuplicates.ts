@@ -16,6 +16,10 @@
 export interface DuplicateInput {
   id: string;
   name: string;
+  /** Optional website URL — used as a hard disambiguator. */
+  website?: string | null;
+  /** Optional contact email — its domain is used as a hard disambiguator. */
+  email?: string | null;
 }
 
 export interface DuplicateGroup {
@@ -124,6 +128,46 @@ const STOPWORD_TOKENS = new Set<string>([
 // chaining and re-split into tighter subgroups.
 const MAX_CLUSTER_SIZE = 10;
 
+// Free/consumer mail domains carry no company identity, so they can never
+// prove two funding sources are different organizations.
+const GENERIC_EMAIL_DOMAINS = new Set<string>([
+  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com',
+  'me.com', 'msn.com', 'live.com', 'comcast.net', 'protonmail.com', 'mac.com',
+]);
+
+function domainFromWebsite(raw?: string | null): string | null {
+  if (!raw) return null;
+  let v = raw.trim().toLowerCase();
+  if (!v) return null;
+  v = v.replace(/^[a-z]+:\/\//, '').replace(/^www\./, '');
+  v = v.split('/')[0].split('?')[0].split('#')[0].split(':')[0];
+  if (!v.includes('.')) return null;
+  return v || null;
+}
+
+function domainFromEmail(raw?: string | null): string | null {
+  if (!raw) return null;
+  const v = raw.trim().toLowerCase();
+  const at = v.lastIndexOf('@');
+  if (at < 0) return null;
+  const d = v.slice(at + 1).replace(/^www\./, '').trim();
+  if (!d.includes('.')) return null;
+  if (GENERIC_EMAIL_DOMAINS.has(d)) return null;
+  return d;
+}
+
+/** Registrable-ish root: last two labels (good enough for disambiguation). */
+function rootDomain(d: string): string {
+  const parts = d.split('.').filter(Boolean);
+  if (parts.length <= 2) return parts.join('.');
+  return parts.slice(-2).join('.');
+}
+
+export function lenderDomain(input: DuplicateInput): string | null {
+  const d = domainFromWebsite(input.website) ?? domainFromEmail(input.email);
+  return d ? rootDomain(d) : null;
+}
+
 function stripSuffixes(normalized: string): string {
   let current = normalized;
   // Iterate so chains like "Capital Partners LLC" collapse fully.
@@ -185,6 +229,7 @@ export function detectDuplicateLenders(lenders: DuplicateInput[]): DuplicateInde
     name: l.name || '',
     normalized: basicNormalize(l.name || ''),
     core: stripSuffixes(basicNormalize(l.name || '')),
+    domain: lenderDomain(l),
   }));
   // O(1) id → meta lookup. The collection step below used to call
   // `meta.find(...)` per member which is O(n) per call and dominated the
@@ -259,7 +304,7 @@ export function detectDuplicateLenders(lenders: DuplicateInput[]): DuplicateInde
 
   const groups: DuplicateGroup[] = [];
   const byLenderId: Record<string, { groupId: string; count: number }> = {};
-  const emit = (root: string, memberIds: string[]) => {
+  const emitRaw = (root: string, memberIds: string[]) => {
     if (memberIds.length < 2) return;
     // Stable groupId from the lexicographically smallest core name in the
     // cluster — keeps grouping deterministic across renders.
@@ -272,6 +317,36 @@ export function detectDuplicateLenders(lenders: DuplicateInput[]): DuplicateInde
     for (const id of memberIds) {
       byLenderId[id] = { groupId, count: memberIds.length - 1 };
     }
+  };
+
+  // Domain guard: a clearly different website/email domain proves two
+  // similarly-named funding sources are NOT the same organization. Members
+  // without any domain stay with the cluster only when no conflict exists.
+  const emit = (root: string, memberIds: string[]) => {
+    if (memberIds.length < 2) return;
+    const byDomain = new Map<string, string[]>();
+    const unknown: string[] = [];
+    for (const id of memberIds) {
+      const d = metaById.get(id)?.domain || null;
+      if (!d) {
+        unknown.push(id);
+        continue;
+      }
+      const arr = byDomain.get(d) ?? [];
+      arr.push(id);
+      byDomain.set(d, arr);
+    }
+    if (byDomain.size <= 1) {
+      emitRaw(root, memberIds);
+      return;
+    }
+    // Conflicting domains → split into one cluster per domain. Domain-less
+    // members can't be attributed, so they only form a cluster among
+    // themselves.
+    for (const [domain, ids] of byDomain.entries()) {
+      emitRaw(`${root}|${domain}`, ids);
+    }
+    emitRaw(`${root}|unknown`, unknown);
   };
 
   for (const [root, memberIds] of groupsByRoot.entries()) {
