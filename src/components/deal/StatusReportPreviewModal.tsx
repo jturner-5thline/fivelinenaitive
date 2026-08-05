@@ -416,7 +416,22 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   const resolvePrintableNode = (): HTMLDivElement | null => {
     const fromRef = printableRef.current;
     if (fromRef && fromRef.isConnected) return fromRef;
-    return document.querySelector<HTMLDivElement>('[data-status-report-printable]');
+    const fromDom = document.querySelector<HTMLDivElement>('[data-status-report-printable]');
+    if (fromDom) return fromDom;
+    // Last resort: the node captured when the user opened the confirm step.
+    const cached = capturedPrintableRef.current;
+    return cached && cached.isConnected ? cached : null;
+  };
+  /** Node snapshot taken at "Export as PDF" click time. */
+  const capturedPrintableRef = useRef<HTMLDivElement | null>(null);
+  /** Wait up to ~1s for the printable node instead of failing immediately. */
+  const waitForPrintableNode = async (): Promise<HTMLDivElement | null> => {
+    for (let i = 0; i < 20; i++) {
+      const node = resolvePrintableNode();
+      if (node) return node;
+      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 50)));
+    }
+    return null;
   };
   const [showPrintConfirm, setShowPrintConfirm] = useState(false);
   const [saveCopyToDealSpace, setSaveCopyToDealSpace] = useState(true);
@@ -435,7 +450,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
   /** Confirm step: print, and optionally archive a copy to Documents. */
   const handleConfirmPrint = async () => {
-    const node = resolvePrintableNode();
+    const node = await waitForPrintableNode();
     setShowPrintConfirm(false);
     // Archive FIRST: window.print() opens a modal, blocking dialog that
     // suspends script execution in the opener, which was preventing the
@@ -459,13 +474,17 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         setIsSavingCopy(false);
       }
     }
-    handlePrintPdf();
+    handlePrintPdf(node);
   };
 
-  const handlePrintPdf = () => {
-    const node = resolvePrintableNode();
+  const handlePrintPdf = (preresolved?: HTMLDivElement | null) => {
+    const node = (preresolved && preresolved.isConnected ? preresolved : null) ?? resolvePrintableNode();
     if (!node) {
-      toast({ title: 'Preview not ready', variant: 'destructive' });
+      toast({
+        title: 'Preview not ready',
+        description: 'The report preview finished unmounting before printing. Reopen the preview and try again.',
+        variant: 'destructive',
+      });
       return;
     }
     const PRINT_ID = 'naitive-status-report-printroot';
