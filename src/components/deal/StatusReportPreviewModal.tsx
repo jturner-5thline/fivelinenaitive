@@ -482,7 +482,10 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
   /** Confirm step: print, and optionally archive a copy to Documents. */
   const handleConfirmPrint = async () => {
-    const node = await waitForPrintableNode();
+    // Always use the stable snapshot here. The live preview may be removed as
+    // soon as this confirmation closes, while PDF capture is still awaiting.
+    const snapshot = capturedPrintableRef.current;
+    const node = snapshot?.isConnected ? snapshot : await waitForPrintableNode();
     setShowPrintConfirm(false);
     if (!node) {
       clearPrintableSnapshot();
