@@ -493,6 +493,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     const node = snapshot?.isConnected ? snapshot : await waitForPrintableNode();
     setShowPrintConfirm(false);
     if (!node) {
+      printConfirmOpenRef.current = false;
       clearPrintableSnapshot();
       toast({
         title: 'Preview not ready',
@@ -524,6 +525,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       }
     }
     handlePrintPdf(node);
+    printConfirmOpenRef.current = false;
     // Keep the hidden snapshot mounted until the next export/unmount. If the
     // popup is blocked, the fallback print path still needs this node when its
     // delayed window.print() runs.
@@ -1142,9 +1144,8 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     <AlertDialog
       open={showPrintConfirm}
       onOpenChange={(nextOpen) => {
-        printConfirmOpenRef.current = nextOpen;
+        if (nextOpen) printConfirmOpenRef.current = true;
         setShowPrintConfirm(nextOpen);
-        if (!nextOpen && !isSavingCopy) clearPrintableSnapshot();
       }}
     >
       <AlertDialogContent>
@@ -1168,7 +1169,14 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           </span>
         </label>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={clearPrintableSnapshot}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel
+            onClick={() => {
+              printConfirmOpenRef.current = false;
+              clearPrintableSnapshot();
+            }}
+          >
+            Cancel
+          </AlertDialogCancel>
           <AlertDialogAction onClick={handleConfirmPrint}>Print to PDF</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
