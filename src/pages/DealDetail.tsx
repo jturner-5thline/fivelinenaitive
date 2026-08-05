@@ -6480,9 +6480,11 @@ export default function DealDetail() {
 
                 // Build auto-note based on stage label
                 const stageName = configuredStages.find(s => s.id === stageId)?.label || 'Passed';
-                const autoNote = reasonLabels.length > 0
+                const freeText = passReasonNote.trim();
+                const reasonNote = reasonLabels.length > 0
                   ? `Lender passed due to ${reasonLabels.join(', ')}`
                   : '';
+                const autoNote = [reasonNote, freeText].filter(Boolean).join(' — ');
 
                 // Optimistically update local state
                 setDeal((prev) => {
@@ -6516,6 +6518,7 @@ export default function DealDetail() {
                 setPendingPassStageChange(null);
                 setSelectedPassReasons([]); setOtherPassReasonText("");
                 setOtherPassReasonText('');
+                setPassReasonNote('');
               }}
               disabled={(() => {
                 if (selectedPassReasons.length === 0 && passReasons.length > 0) return true;
