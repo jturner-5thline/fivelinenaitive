@@ -405,6 +405,19 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   // alternate light layout). We inject @media print rules that hide every
   // other element on the page and force backgrounds/gradients to render.
   const printableRef = useRef<HTMLDivElement | null>(null);
+  /**
+   * The printable node lives in one of two mutually-exclusive branches
+   * (5th Line dark preview vs. light preview). When that branch swaps —
+   * or while a nested dialog is animating — React briefly sets the ref to
+   * null, which is what produced the intermittent "Preview not ready"
+   * toast. Resolve defensively: prefer the live ref, then fall back to a
+   * DOM lookup by data attribute.
+   */
+  const resolvePrintableNode = (): HTMLDivElement | null => {
+    const fromRef = printableRef.current;
+    if (fromRef && fromRef.isConnected) return fromRef;
+    return document.querySelector<HTMLDivElement>('[data-status-report-printable]');
+  };
   const [showPrintConfirm, setShowPrintConfirm] = useState(false);
   const [saveCopyToDealSpace, setSaveCopyToDealSpace] = useState(true);
   const [isSavingCopy, setIsSavingCopy] = useState(false);
@@ -422,7 +435,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
   /** Confirm step: print, and optionally archive a copy to Documents. */
   const handleConfirmPrint = async () => {
-    const node = printableRef.current;
+    const node = resolvePrintableNode();
     setShowPrintConfirm(false);
     handlePrintPdf();
     if (!saveCopyToDealSpace || !node || !deal.id) return;
