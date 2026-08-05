@@ -316,7 +316,7 @@
       {
         "name": "search_contacts",
         "title": "Search contacts",
-        "description": "Search CRM contacts by name, email, or domain. Returns id, name, email, phone, domain, title, company.",
+        "description": "Search CRM contacts by name, email, or domain. Returns id, name, email, phones, domain, title, company.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -404,7 +404,8 @@
             },
             "phone": {
               "type": "string",
-              "maxLength": 50
+              "maxLength": 50,
+              "description": "Stored as mobile phone."
             },
             "website_url": {
               "type": "string",
@@ -412,10 +413,6 @@
               "description": "Contact domain (matches to company)."
             },
             "job_title": {
-              "type": "string",
-              "maxLength": 200
-            },
-            "company": {
               "type": "string",
               "maxLength": 200
             }

@@ -297,7 +297,7 @@ import { z as z7 } from "npm:zod@^3.23.0";
 var search_contacts_default = defineTool7({
   name: "search_contacts",
   title: "Search contacts",
-  description: "Search CRM contacts by name, email, or domain. Returns id, name, email, phone, domain, title, company.",
+  description: "Search CRM contacts by name, email, or domain. Returns id, name, email, phones, domain, title, company.",
   inputSchema: {
     query: z7.string().trim().min(1).max(200),
     limit: z7.number().int().min(1).max(100).default(25)
@@ -308,9 +308,26 @@ var search_contacts_default = defineTool7({
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
     const like = `%${query}%`;
-    const { data, error } = await sb.from("contacts").select("id, first_name, last_name, email, phone, website_url, job_title, company, created_at").or(`first_name.ilike.${like},last_name.ilike.${like},email.ilike.${like},website_url.ilike.${like},company.ilike.${like}`).limit(limit);
+    const { data, error } = await sb.from("contacts").select(
+      "id, first_name, last_name, full_name, email, phone_mobile, phone_work, phone_other, website_url, job_title, created_at, crm_company:crm_companies!crm_company_id(id, name)"
+    ).or(
+      `first_name.ilike.${like},last_name.ilike.${like},full_name.ilike.${like},email.ilike.${like},website_url.ilike.${like}`
+    ).limit(limit);
     if (error) return errorResult(error.message);
-    return textResult(data ?? [], { count: data?.length ?? 0 });
+    const rows = (data ?? []).map((c) => ({
+      id: c.id,
+      name: c.full_name || [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email || null,
+      first_name: c.first_name,
+      last_name: c.last_name,
+      email: c.email,
+      phone: c.phone_mobile || c.phone_work || c.phone_other || null,
+      domain: c.website_url,
+      job_title: c.job_title,
+      company: c.crm_company?.name ?? null,
+      company_id: c.crm_company?.id ?? null,
+      created_at: c.created_at
+    }));
+    return textResult(rows, { count: rows.length });
   }
 });
 
@@ -351,10 +368,9 @@ var create_contact_default = defineTool9({
     first_name: z9.string().trim().max(200).optional(),
     last_name: z9.string().trim().max(200).optional(),
     email: z9.string().trim().email().optional(),
-    phone: z9.string().trim().max(50).optional(),
+    phone: z9.string().trim().max(50).optional().describe("Stored as mobile phone."),
     website_url: z9.string().trim().max(500).optional().describe("Contact domain (matches to company)."),
-    job_title: z9.string().trim().max(200).optional(),
-    company: z9.string().trim().max(200).optional()
+    job_title: z9.string().trim().max(200).optional()
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -364,9 +380,11 @@ var create_contact_default = defineTool9({
       return errorResult("Provide at least email or first_name/last_name.");
     }
     const sb = supabaseForUser(ctx);
+    const { phone, ...rest } = input;
     const row = { created_by: ctx.getUserId() };
-    for (const [k, v] of Object.entries(input)) if (v !== void 0) row[k] = v;
-    const { data, error } = await sb.from("contacts").insert(row).select("id, first_name, last_name, email, website_url").maybeSingle();
+    for (const [k, v] of Object.entries(rest)) if (v !== void 0) row[k] = v;
+    if (phone !== void 0) row.phone_mobile = phone;
+    const { data, error } = await sb.from("contacts").insert(row).select("id, first_name, last_name, email, phone_mobile, website_url, job_title").maybeSingle();
     if (error) return errorResult(error.message);
     return textResult(data, { contact_id: data?.id });
   }
