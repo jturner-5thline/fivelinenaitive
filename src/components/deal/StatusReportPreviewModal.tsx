@@ -230,6 +230,7 @@ export function StatusReportPreviewModal({
   const [content, setContent] = useState<StatusReportEditableContent>(initialContent);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiTriedForDeal, setAiTriedForDeal] = useState<string | null>(null);
+  const printConfirmOpenRef = useRef(false);
   /**
    * AI-rewritten "Key Feedback" strings for the Passed Lender Reasons table,
    * keyed by lender name. Absence of a key = still loading; explicit empty
@@ -374,6 +375,10 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   }, [open, deal, configuredStages, outstandingItems, aiTriedForDeal]);
 
   const handleOpenChange = (v: boolean) => {
+    // Opening a second Radix modal can ask the underlying dialog to close.
+    // Keep the report mounted until export confirmation has completed so its
+    // detached snapshot cannot be removed by the unmount cleanup.
+    if (!v && printConfirmOpenRef.current) return;
     if (v) {
       setContent(initialContent);
       setAiTriedForDeal(null); // re-trigger AI on next open
@@ -1103,6 +1108,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
                 });
                 return;
               }
+              printConfirmOpenRef.current = true;
               setShowPrintConfirm(true);
             }}
             disabled={isSavingCopy}
@@ -1133,7 +1139,14 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         : renderPrintable(exportSourceRef, true)}
     </div>
 
-    <AlertDialog open={showPrintConfirm} onOpenChange={setShowPrintConfirm}>
+    <AlertDialog
+      open={showPrintConfirm}
+      onOpenChange={(nextOpen) => {
+        printConfirmOpenRef.current = nextOpen;
+        setShowPrintConfirm(nextOpen);
+        if (!nextOpen && !isSavingCopy) clearPrintableSnapshot();
+      }}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Print this status update to PDF?</AlertDialogTitle>
