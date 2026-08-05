@@ -1114,13 +1114,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       </DialogContent>
     </Dialog>
 
-    <AlertDialog
-      open={showPrintConfirm}
-      onOpenChange={(nextOpen) => {
-        setShowPrintConfirm(nextOpen);
-        if (!nextOpen && !isSavingCopy) clearPrintableSnapshot();
-      }}
-    >
+    <AlertDialog open={showPrintConfirm} onOpenChange={setShowPrintConfirm}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Print this status update to PDF?</AlertDialogTitle>
