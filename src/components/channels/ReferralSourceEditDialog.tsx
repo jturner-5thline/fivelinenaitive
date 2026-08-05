@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { CHANNEL_TYPE_OPTIONS } from './channelOptions';
 
-const CHANNEL_PRESETS = ['LinkedIn', 'Event', 'Cold Outreach', 'Existing Client', 'Other'];
+const CHANNEL_PRESETS = CHANNEL_TYPE_OPTIONS.map((o) => o.value as string);
 
 interface Props {
   open: boolean;
@@ -155,8 +156,8 @@ export function ReferralSourceEditDialog({ open, onOpenChange, referredBy, initi
                 <SelectValue placeholder="Select a channel" />
               </SelectTrigger>
               <SelectContent>
-                {CHANNEL_PRESETS.map((c) => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                {CHANNEL_TYPE_OPTIONS.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
