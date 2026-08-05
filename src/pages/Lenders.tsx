@@ -63,6 +63,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
+import { useLenderDuplicateDismissals } from '@/hooks/useLenderDuplicateDismissals';
 import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
 import { formatCurrencyInput } from '@/utils/formatLenderCurrency';
 import { ImportLendersDialog } from '@/components/lenders/ImportLendersDialog';
@@ -507,6 +508,8 @@ export default function Lenders() {
     [],
   );
   const [duplicateIndex, setDuplicateIndex] = useState(EMPTY_DUPLICATE_INDEX);
+  const { isDismissed: isDuplicateGroupDismissed, dismissGroup: dismissDuplicateGroup } =
+    useLenderDuplicateDismissals(true);
   // Fingerprint of the (id, name) pairs that actually drive duplicate
   // detection. Refetches and unrelated state changes routinely produce a new
   // `masterLenders` array reference even when no name/id changed; depending
@@ -828,9 +831,37 @@ export default function Lenders() {
     }
     return Array.from(byGroup.entries())
       .filter(([, members]) => members.length >= 2)
+      .filter(([, members]) => !isDuplicateGroupDismissed(members.map((m) => m.id)))
       .map(([groupId, lenders]) => ({ groupId, lenders }))
       .sort((a, b) => a.groupId.localeCompare(b.groupId));
-  }, [showDuplicatesOnly, sortedLenders, duplicateIndex]);
+  }, [showDuplicatesOnly, sortedLenders, duplicateIndex, isDuplicateGroupDismissed]);
+
+  // Group the user is about to mark as "not duplicates" (confirmation dialog).
+  const [pendingDismissGroup, setPendingDismissGroup] = useState<
+    { groupId: string; name: string; ids: string[] } | null
+  >(null);
+  const [isDismissingGroup, setIsDismissingGroup] = useState(false);
+
+  const confirmDismissGroup = useCallback(async () => {
+    if (!pendingDismissGroup) return;
+    setIsDismissingGroup(true);
+    try {
+      await dismissDuplicateGroup(pendingDismissGroup.ids);
+      toast({
+        title: 'Group dismissed',
+        description: `"${pendingDismissGroup.name}" is marked as not duplicates.`,
+      });
+      setPendingDismissGroup(null);
+    } catch (e: any) {
+      toast({
+        title: 'Could not dismiss group',
+        description: e?.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDismissingGroup(false);
+    }
+  }, [pendingDismissGroup, dismissDuplicateGroup]);
 
   // Memoize callbacks to prevent unnecessary re-renders
   const handleQuickUploadStable = useCallback((lenderName: string, category: 'nda' | 'marketing_materials') => {
@@ -1931,12 +1962,12 @@ export default function Lenders() {
                       return (
                         <div className={index === duplicateGroupsView.length - 1 ? '' : 'pb-4'}>
                           <div className="rounded-lg border border-border/60 bg-card/40 overflow-hidden">
-                            <button
-                              type="button"
-                              onClick={() => openMergeForGroup(ids)}
-                              className="w-full flex items-center justify-between gap-3 px-4 py-3 border-b border-border/40 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-full flex items-center justify-between gap-3 px-4 py-3 border-b border-border/40 bg-muted/30 text-left">
+                              <button
+                                type="button"
+                                onClick={() => openMergeForGroup(ids)}
+                                className="flex items-center gap-2 min-w-0 flex-1 text-left"
+                              >
                                 <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
                                 <span className="text-sm font-medium text-foreground truncate">
                                   {displayName}
@@ -1944,12 +1975,29 @@ export default function Lenders() {
                                 <span className="text-xs text-muted-foreground shrink-0">
                                   · {groupLenders.length} possible duplicates
                                 </span>
+                              </button>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                                  onClick={() =>
+                                    setPendingDismissGroup({ groupId, name: displayName, ids })
+                                  }
+                                >
+                                  <X className="h-3.5 w-3.5 mr-1" />
+                                  Dismiss
+                                </Button>
+                                <button
+                                  type="button"
+                                  onClick={() => openMergeForGroup(ids)}
+                                  className="inline-flex items-center gap-1.5 text-xs font-medium text-primary"
+                                >
+                                  <GitMerge className="h-3.5 w-3.5" />
+                                  Merge group
+                                </button>
                               </div>
-                              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary shrink-0">
-                                <GitMerge className="h-3.5 w-3.5" />
-                                Merge group
-                              </span>
-                            </button>
+                            </div>
                             <div className="p-3 space-y-2">
                               {groupLenders.map((lender) => (
                                 <div key={lender.id} data-lender-row={lender.id}>
@@ -2558,6 +2606,33 @@ export default function Lenders() {
         onOpenChange={setShowNonBankImportConfirm}
         showTrigger={false}
       />
+
+      {/* Confirm dismissing a duplicate group as "not duplicates" */}
+      <AlertDialog
+        open={!!pendingDismissGroup}
+        onOpenChange={(open) => { if (!open && !isDismissingGroup) setPendingDismissGroup(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Not duplicates?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This marks the {pendingDismissGroup?.ids.length ?? 0} funding sources in
+              {' '}"{pendingDismissGroup?.name}" as distinct records. The group will stop
+              appearing in the duplicates view, including after a page refresh. No records
+              are changed or deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDismissingGroup}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmDismissGroup(); }}
+              disabled={isDismissingGroup}
+            >
+              {isDismissingGroup ? 'Dismissing...' : 'Dismiss group'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

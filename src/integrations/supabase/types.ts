@@ -17586,6 +17586,33 @@ export type Database = {
           },
         ]
       }
+      lender_duplicate_dismissals: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string
+          dismissal_key: string
+          id: string
+          lender_ids: string[]
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by: string
+          dismissal_key: string
+          id?: string
+          lender_ids: string[]
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          dismissal_key?: string
+          id?: string
+          lender_ids?: string[]
+        }
+        Relationships: []
+      }
       lender_fit_attributes: {
         Row: {
           company_id: string | null
