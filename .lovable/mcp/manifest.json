@@ -404,7 +404,8 @@
             },
             "phone": {
               "type": "string",
-              "maxLength": 50
+              "maxLength": 50,
+              "description": "Stored as mobile phone."
             },
             "website_url": {
               "type": "string",
@@ -412,10 +413,6 @@
               "description": "Contact domain (matches to company)."
             },
             "job_title": {
-              "type": "string",
-              "maxLength": 200
-            },
-            "company": {
               "type": "string",
               "maxLength": 200
             }
