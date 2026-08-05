@@ -1605,6 +1605,7 @@ export default function DealDetail() {
   const [selectedPassReasons, setSelectedPassReasons] = useState<string[]>([]);
   const [passReasonSearch, setPassReasonSearch] = useState('');
   const [otherPassReasonText, setOtherPassReasonText] = useState('');
+  const [passReasonNote, setPassReasonNote] = useState('');
   const hydratePassReasonSelection = useCallback((passReason: string) => {
     const otherReason = passReasons.find(r => r.label.toLowerCase() === 'other');
     const labels = passReason.split(', ').map(r => r.trim()).filter(Boolean);
@@ -6349,6 +6350,7 @@ export default function DealDetail() {
           setSelectedPassReasons([]); setOtherPassReasonText("");
           setPassReasonSearch('');
           setOtherPassReasonText('');
+          setPassReasonNote('');
         }
       }}>
         <DialogContent className="sm:max-w-2xl">
@@ -6436,6 +6438,17 @@ export default function DealDetail() {
                 </div>
               );
             })()}
+            <div className="space-y-1.5 pt-1">
+              <label className="text-xs font-medium text-muted-foreground">
+                Additional notes (optional)
+              </label>
+              <Textarea
+                rows={3}
+                placeholder="Add any additional context — this is saved to the funding source notes on this deal."
+                value={passReasonNote}
+                onChange={(e) => setPassReasonNote(e.target.value)}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
@@ -6443,6 +6456,7 @@ export default function DealDetail() {
               setPendingPassStageChange(null);
               setSelectedPassReasons([]); setOtherPassReasonText("");
               setOtherPassReasonText('');
+              setPassReasonNote('');
             }}>
               Cancel
             </Button>
@@ -6466,9 +6480,11 @@ export default function DealDetail() {
 
                 // Build auto-note based on stage label
                 const stageName = configuredStages.find(s => s.id === stageId)?.label || 'Passed';
-                const autoNote = reasonLabels.length > 0
+                const freeText = passReasonNote.trim();
+                const reasonNote = reasonLabels.length > 0
                   ? `Lender passed due to ${reasonLabels.join(', ')}`
                   : '';
+                const autoNote = [reasonNote, freeText].filter(Boolean).join(' — ');
 
                 // Optimistically update local state
                 setDeal((prev) => {
@@ -6502,6 +6518,7 @@ export default function DealDetail() {
                 setPendingPassStageChange(null);
                 setSelectedPassReasons([]); setOtherPassReasonText("");
                 setOtherPassReasonText('');
+                setPassReasonNote('');
               }}
               disabled={(() => {
                 if (selectedPassReasons.length === 0 && passReasons.length > 0) return true;
