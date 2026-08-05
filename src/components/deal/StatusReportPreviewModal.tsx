@@ -437,25 +437,29 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   const handleConfirmPrint = async () => {
     const node = resolvePrintableNode();
     setShowPrintConfirm(false);
-    handlePrintPdf();
-    if (!saveCopyToDealSpace || !node || !deal.id) return;
-    setIsSavingCopy(true);
-    try {
-      const saved = await saveNodePdfToDealSpace(node, String(deal.id), buildFileTitle());
-      toast({
-        title: 'Copy saved to Documents',
-        description: saved?.name ? `${saved.name} added to Deal Space ▸ Documents.` : undefined,
-      });
-    } catch (err) {
-      console.error('[status-report] save copy failed:', err);
-      toast({
-        title: 'Could not save a copy to Documents',
-        description: err instanceof Error ? err.message : undefined,
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSavingCopy(false);
+    // Archive FIRST: window.print() opens a modal, blocking dialog that
+    // suspends script execution in the opener, which was preventing the
+    // capture/upload from ever completing.
+    if (saveCopyToDealSpace && node && deal.id) {
+      setIsSavingCopy(true);
+      try {
+        const saved = await saveNodePdfToDealSpace(node, String(deal.id), buildFileTitle());
+        toast({
+          title: 'Copy saved to Documents',
+          description: saved?.name ? `${saved.name} added to Deal Space ▸ Documents.` : undefined,
+        });
+      } catch (err) {
+        console.error('[status-report] save copy failed:', err);
+        toast({
+          title: 'Could not save a copy to Documents',
+          description: err instanceof Error ? err.message : String(err),
+          variant: 'destructive',
+        });
+      } finally {
+        setIsSavingCopy(false);
+      }
     }
+    handlePrintPdf();
   };
 
   const handlePrintPdf = () => {
