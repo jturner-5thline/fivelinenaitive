@@ -445,7 +445,64 @@ export function useContactActivities(contactId: string | undefined) {
         }
       }
 
-      const all = [...merged, ...claapActivities];
+      // Calendar-invite meetings where this contact is an attendee/organizer,
+      // even when no Claap recording exists.
+      let calendarActivities: any[] = [];
+      if (emails.size > 0) {
+        const list = Array.from(emails);
+        const arrList = `{${list.join(',')}}`;
+        const inList = list.map((e) => `"${e}"`).join(',');
+        const { data: events } = await supabase
+          .from('calendar_events')
+          .select('id, event_id, title, start_time, end_time, attendees, organizer_email, location, meeting_url, is_cancelled')
+          .or(`attendees.ov.${arrList},organizer_email.in.(${inList})`)
+          .order('start_time', { ascending: false })
+          .limit(200);
+
+        // Dedupe against Claap meetings covering the same slot (±30 min).
+        const claapTimes = claapActivities
+          .map((a: any) => new Date(a.occurred_at || 0).getTime())
+          .filter((t) => Number.isFinite(t) && t > 0);
+        const seenEventIds = new Set<string>();
+
+        calendarActivities = (events || [])
+          .filter((e: any) => !e.is_cancelled && e.start_time)
+          .filter((e: any) => {
+            const key = e.event_id || e.id;
+            if (seenEventIds.has(key)) return false;
+            seenEventIds.add(key);
+            const t = new Date(e.start_time).getTime();
+            return !claapTimes.some((ct) => Math.abs(ct - t) < 30 * 60 * 1000);
+          })
+          .map((e: any) => {
+            const attendees: string[] = Array.isArray(e.attendees) ? e.attendees : [];
+            const durationSeconds =
+              e.end_time && e.start_time
+                ? Math.max(0, Math.round((new Date(e.end_time).getTime() - new Date(e.start_time).getTime()) / 1000))
+                : undefined;
+            return {
+              id: `cal:${e.event_id || e.id}`,
+              contact_id: contactId,
+              activity_type: 'meeting',
+              subject: e.title || 'Meeting',
+              body: attendees.length ? `Attendees: ${attendees.join(', ')}` : '',
+              occurred_at: e.start_time,
+              created_at: e.start_time,
+              source: 'calendar',
+              metadata: {
+                calendar_event_id: e.event_id || e.id,
+                duration_seconds: durationSeconds,
+                location: e.location,
+                meeting_url: e.meeting_url,
+                organizer_email: e.organizer_email,
+                attendees: attendees.map((email: string) => ({ email })),
+              },
+              __readOnly: true,
+            };
+          });
+      }
+
+      const all = [...merged, ...claapActivities, ...calendarActivities];
       all.sort((a: any, b: any) => {
         const at = new Date(a.occurred_at || a.created_at || 0).getTime();
         const bt = new Date(b.occurred_at || b.created_at || 0).getTime();
