@@ -516,7 +516,9 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       }
     }
     handlePrintPdf(node);
-    clearPrintableSnapshot();
+    // Keep the hidden snapshot mounted until the next export/unmount. If the
+    // popup is blocked, the fallback print path still needs this node when its
+    // delayed window.print() runs.
   };
 
   const handlePrintPdf = (preresolved?: HTMLDivElement | null) => {
@@ -1112,7 +1114,13 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       </DialogContent>
     </Dialog>
 
-    <AlertDialog open={showPrintConfirm} onOpenChange={setShowPrintConfirm}>
+    <AlertDialog
+      open={showPrintConfirm}
+      onOpenChange={(nextOpen) => {
+        setShowPrintConfirm(nextOpen);
+        if (!nextOpen && !isSavingCopy) clearPrintableSnapshot();
+      }}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Print this status update to PDF?</AlertDialogTitle>
