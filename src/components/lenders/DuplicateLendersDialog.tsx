@@ -1150,7 +1150,12 @@ export function DuplicateLendersDialog({
   const groups: DupGroup[] = useMemo(() => {
     if (!open) return [];
     const { groups } = detectDuplicateLenders(
-      lenders.map(l => ({ id: l.id, name: l.name || '' }))
+      lenders.map(l => ({
+        id: l.id,
+        name: l.name || '',
+        website: (l as any).website ?? null,
+        email: (l as any).email ?? null,
+      }))
     );
     const byId = new Map(lenders.map(l => [l.id, l]));
     // Precompute completeness once per lender — sort comparators would otherwise
