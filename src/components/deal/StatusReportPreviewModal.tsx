@@ -1042,7 +1042,12 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowPrintConfirm(true)}
+            onClick={() => {
+              capturedPrintableRef.current =
+                printableRef.current ??
+                document.querySelector<HTMLDivElement>('[data-status-report-printable]');
+              setShowPrintConfirm(true);
+            }}
             disabled={isSavingCopy}
             className="gap-2"
           >
