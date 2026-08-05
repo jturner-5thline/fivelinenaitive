@@ -63,6 +63,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
+import { useLenderDuplicateDismissals } from '@/hooks/useLenderDuplicateDismissals';
 import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
 import { formatCurrencyInput } from '@/utils/formatLenderCurrency';
 import { ImportLendersDialog } from '@/components/lenders/ImportLendersDialog';
@@ -828,9 +829,37 @@ export default function Lenders() {
     }
     return Array.from(byGroup.entries())
       .filter(([, members]) => members.length >= 2)
+      .filter(([, members]) => !isDuplicateGroupDismissed(members.map((m) => m.id)))
       .map(([groupId, lenders]) => ({ groupId, lenders }))
       .sort((a, b) => a.groupId.localeCompare(b.groupId));
-  }, [showDuplicatesOnly, sortedLenders, duplicateIndex]);
+  }, [showDuplicatesOnly, sortedLenders, duplicateIndex, isDuplicateGroupDismissed]);
+
+  // Group the user is about to mark as "not duplicates" (confirmation dialog).
+  const [pendingDismissGroup, setPendingDismissGroup] = useState<
+    { groupId: string; name: string; ids: string[] } | null
+  >(null);
+  const [isDismissingGroup, setIsDismissingGroup] = useState(false);
+
+  const confirmDismissGroup = useCallback(async () => {
+    if (!pendingDismissGroup) return;
+    setIsDismissingGroup(true);
+    try {
+      await dismissDuplicateGroup(pendingDismissGroup.ids);
+      toast({
+        title: 'Group dismissed',
+        description: `"${pendingDismissGroup.name}" is marked as not duplicates.`,
+      });
+      setPendingDismissGroup(null);
+    } catch (e: any) {
+      toast({
+        title: 'Could not dismiss group',
+        description: e?.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDismissingGroup(false);
+    }
+  }, [pendingDismissGroup, dismissDuplicateGroup]);
 
   // Memoize callbacks to prevent unnecessary re-renders
   const handleQuickUploadStable = useCallback((lenderName: string, category: 'nda' | 'marketing_materials') => {
