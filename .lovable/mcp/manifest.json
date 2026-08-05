@@ -316,7 +316,7 @@
       {
         "name": "search_contacts",
         "title": "Search contacts",
-        "description": "Search CRM contacts by name, email, or domain. Returns id, name, email, phone, domain, title, company.",
+        "description": "Search CRM contacts by name, email, or domain. Returns id, name, email, phones, domain, title, company.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,

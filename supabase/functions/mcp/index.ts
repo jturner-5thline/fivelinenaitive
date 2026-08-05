@@ -297,7 +297,7 @@ import { z as z7 } from "npm:zod@^3.23.0";
 var search_contacts_default = defineTool7({
   name: "search_contacts",
   title: "Search contacts",
-  description: "Search CRM contacts by name, email, or domain. Returns id, name, email, phone, domain, title, company.",
+  description: "Search CRM contacts by name, email, or domain. Returns id, name, email, phones, domain, title, company.",
   inputSchema: {
     query: z7.string().trim().min(1).max(200),
     limit: z7.number().int().min(1).max(100).default(25)
@@ -308,9 +308,26 @@ var search_contacts_default = defineTool7({
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
     const like = `%${query}%`;
-    const { data, error } = await sb.from("contacts").select("id, first_name, last_name, email, phone, website_url, job_title, company, created_at").or(`first_name.ilike.${like},last_name.ilike.${like},email.ilike.${like},website_url.ilike.${like},company.ilike.${like}`).limit(limit);
+    const { data, error } = await sb.from("contacts").select(
+      "id, first_name, last_name, full_name, email, phone_mobile, phone_work, phone_other, website_url, job_title, created_at, crm_company:crm_companies!crm_company_id(id, name)"
+    ).or(
+      `first_name.ilike.${like},last_name.ilike.${like},full_name.ilike.${like},email.ilike.${like},website_url.ilike.${like}`
+    ).limit(limit);
     if (error) return errorResult(error.message);
-    return textResult(data ?? [], { count: data?.length ?? 0 });
+    const rows = (data ?? []).map((c) => ({
+      id: c.id,
+      name: c.full_name || [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email || null,
+      first_name: c.first_name,
+      last_name: c.last_name,
+      email: c.email,
+      phone: c.phone_mobile || c.phone_work || c.phone_other || null,
+      domain: c.website_url,
+      job_title: c.job_title,
+      company: c.crm_company?.name ?? null,
+      company_id: c.crm_company?.id ?? null,
+      created_at: c.created_at
+    }));
+    return textResult(rows, { count: rows.length });
   }
 });
 
