@@ -1002,8 +1002,14 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         <DialogFooter className="px-6 py-3 border-t border-slate-200 dark:border-slate-700 shrink-0 bg-white dark:bg-slate-800 gap-2">
           <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
-          <Button variant="outline" size="sm" onClick={handlePrintPdf} className="gap-2">
-            <Download className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowPrintConfirm(true)}
+            disabled={isSavingCopy}
+            className="gap-2"
+          >
+            {isSavingCopy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             Export as PDF
           </Button>
           {isFifthLine && (
@@ -1015,6 +1021,34 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showPrintConfirm} onOpenChange={setShowPrintConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Print this status update to PDF?</AlertDialogTitle>
+          <AlertDialogDescription>
+            The print dialog will open with the filename “{buildFileTitle()}”.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <label className="flex items-start gap-2 rounded-md border p-3 text-sm cursor-pointer">
+          <Checkbox
+            checked={saveCopyToDealSpace}
+            onCheckedChange={(v) => setSaveCopyToDealSpace(v === true)}
+            className="mt-0.5"
+          />
+          <span>
+            Save a copy to Deal Space ▸ Documents
+            <span className="block text-xs text-muted-foreground">
+              Archives the same report as a PDF on this deal.
+            </span>
+          </span>
+        </label>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleConfirmPrint}>Print to PDF</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }
