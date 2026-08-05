@@ -124,16 +124,6 @@ const STOPWORD_TOKENS = new Set<string>([
 // chaining and re-split into tighter subgroups.
 const MAX_CLUSTER_SIZE = 10;
 
-function legacyBasicNormalize(raw: string): string {
-  return raw
-    .toLowerCase()
-    .replace(/[\u2018\u2019\u201C\u201D]/g, "'")
-    .replace(/&/g, ' and ')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 function stripSuffixes(normalized: string): string {
   let current = normalized;
   // Iterate so chains like "Capital Partners LLC" collapse fully.
