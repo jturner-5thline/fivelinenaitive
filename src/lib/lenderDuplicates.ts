@@ -104,6 +104,36 @@ function basicNormalize(raw: string): string {
     .trim();
 }
 
+// High-frequency, low-signal tokens. A shared token from this list can never
+// on its own merge two funding sources — otherwise union-find chains
+// "1 Advantage Bank" → "Advantage Capital" → "Advantage First National" → ...
+// into a single mega-cluster of thousands of unrelated lenders.
+const STOPWORD_TOKENS = new Set<string>([
+  'first', 'national', 'advantage', 'summit', 'pacific', 'atlantic', 'american',
+  'america', 'united', 'general', 'premier', 'united states', 'global', 'central',
+  'northern', 'southern', 'eastern', 'western', 'north', 'south', 'east', 'west',
+  'main', 'community', 'commercial', 'commerce', 'republic', 'liberty', 'heritage',
+  'pinnacle', 'signature', 'peoples', 'citizens', 'security', 'independence',
+  'independent', 'enterprise', 'alliance', 'union', 'state', 'states', 'city',
+  'metro', 'valley', 'river', 'lake', 'park', 'star', 'sun', 'gold', 'silver',
+  'blue', 'green', 'new', 'old', 'grand', 'prime', 'apex', 'core', 'next',
+  'direct', 'select', 'preferred', 'trusted', 'reliable', 'strategic',
+]);
+
+// Any cluster larger than this is treated as a false positive from transitive
+// chaining and re-split into tighter subgroups.
+const MAX_CLUSTER_SIZE = 10;
+
+function legacyBasicNormalize(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/[\u2018\u2019\u201C\u201D]/g, "'")
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function stripSuffixes(normalized: string): string {
   let current = normalized;
   // Iterate so chains like "Capital Partners LLC" collapse fully.
