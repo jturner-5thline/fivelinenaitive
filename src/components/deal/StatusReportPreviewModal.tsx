@@ -405,6 +405,46 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   // alternate light layout). We inject @media print rules that hide every
   // other element on the page and force backgrounds/gradients to render.
   const printableRef = useRef<HTMLDivElement | null>(null);
+  const [showPrintConfirm, setShowPrintConfirm] = useState(false);
+  const [saveCopyToDealSpace, setSaveCopyToDealSpace] = useState(true);
+  const [isSavingCopy, setIsSavingCopy] = useState(false);
+
+  /** "[Deal]-[Account] Status Update M-D-YY" — also the PDF filename. */
+  const buildFileTitle = () => {
+    const account = isFifthLine ? '5th Line' : (brandName || 'Account');
+    const d = new Date();
+    const yy = String(d.getFullYear()).slice(-2);
+    const dateStr = `${d.getMonth() + 1}-${d.getDate()}-${yy}`;
+    const dealName = (deal.company || deal.name || 'Deal').toString().trim();
+    const clean = (s: string) => s.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
+    return `${clean(dealName)}-${clean(account)} Status Update ${dateStr}`;
+  };
+
+  /** Confirm step: print, and optionally archive a copy to Documents. */
+  const handleConfirmPrint = async () => {
+    const node = printableRef.current;
+    setShowPrintConfirm(false);
+    handlePrintPdf();
+    if (!saveCopyToDealSpace || !node || !deal.id) return;
+    setIsSavingCopy(true);
+    try {
+      const saved = await saveNodePdfToDealSpace(node, String(deal.id), buildFileTitle());
+      toast({
+        title: 'Copy saved to Documents',
+        description: saved?.name ? `${saved.name} added to Deal Space ▸ Documents.` : undefined,
+      });
+    } catch (err) {
+      console.error('[status-report] save copy failed:', err);
+      toast({
+        title: 'Could not save a copy to Documents',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingCopy(false);
+    }
+  };
+
   const handlePrintPdf = () => {
     const node = printableRef.current;
     if (!node) {
@@ -414,15 +454,8 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     const PRINT_ID = 'naitive-status-report-printroot';
     node.setAttribute('id', PRINT_ID);
     const prevTitle = document.title;
-    const account = isFifthLine ? '5th Line' : (brandName || 'Account');
-    const d = new Date();
-    const yy = String(d.getFullYear()).slice(-2);
-    const dateStr = `${d.getMonth() + 1}-${d.getDate()}-${yy}`;
-    const dealName = (deal.company || deal.name || 'Deal').toString().trim();
     // Browsers use document.title as the default PDF filename for window.print().
-    // Strip characters browsers reject/replace in filenames.
-    const clean = (s: string) => s.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
-    const fileTitle = `${clean(dealName)}-${clean(account)} Status Update ${dateStr}`;
+    const fileTitle = buildFileTitle();
     document.title = fileTitle;
 
     // When the app runs inside an iframe (Lovable preview) the browser uses the
