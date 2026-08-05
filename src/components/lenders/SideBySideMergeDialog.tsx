@@ -673,9 +673,9 @@ function MergeView({
       </div>
 
       {/* Two-pane body */}
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
         {/* LEFT: resolver */}
-        <div className="min-w-0 flex-1 overflow-y-auto p-4">
+        <div className="min-w-0 flex-1 p-4 lg:min-h-0 lg:overflow-y-auto">
           {totalConflicts === 0 && (
             <div className="rounded-xl border border-success/30 bg-success/10 p-4 text-center text-sm text-foreground">
               All fields already match across sources. Review the merged record on the right and confirm.
@@ -745,8 +745,8 @@ function MergeView({
         </div>
 
         {/* RIGHT: sticky preview */}
-        <aside className="border-t border-border/60 bg-muted/10 p-4 lg:w-[360px] lg:shrink-0 lg:border-l lg:border-t-0">
-          <div className="lg:sticky lg:top-0">
+        <aside className="border-t border-border/60 bg-muted/10 p-4 lg:min-h-0 lg:w-[360px] lg:shrink-0 lg:overflow-y-auto lg:border-l lg:border-t-0">
+          <div>
             <MergedPreview primary={group.lenders[0]} resolved={resolved} />
           </div>
         </aside>
