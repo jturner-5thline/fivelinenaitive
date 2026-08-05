@@ -17,6 +17,7 @@ import { LenderPipelineSnapshot } from './LenderPipelineSnapshot';
 import type { DealLender } from '@/types/deal';
 import { useCompany } from '@/hooks/useCompany';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
+import { printNodeInPopup } from '@/lib/printNodeInPopup';
 
 export type { StatusReportEditableContent };
 
@@ -409,7 +410,17 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     // Browsers use document.title as the default PDF filename for window.print().
     // Strip characters browsers reject/replace in filenames.
     const clean = (s: string) => s.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
-    document.title = `${clean(dealName)}-${clean(account)} Status Update ${dateStr}`;
+    const fileTitle = `${clean(dealName)}-${clean(account)} Status Update ${dateStr}`;
+    document.title = fileTitle;
+
+    // When the app runs inside an iframe (Lovable preview) the browser uses the
+    // TOP document's title for the PDF filename, which produces "naitive _
+    // Lovable.pdf". Printing from a standalone popup window makes our title the
+    // filename in every context, so prefer that path.
+    if (printNodeInPopup(node, fileTitle)) {
+      document.title = prevTitle;
+      return;
+    }
     const style = document.createElement('style');
     style.id = 'naitive-status-report-print-style';
     style.textContent = `
