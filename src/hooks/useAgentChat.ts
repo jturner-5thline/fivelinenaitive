@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { logUsage } from '@/lib/usageLogger';
+import { streamEdgeChat } from '@/lib/ai/streamEdgeChat';
 import type { Agent } from './useAgents';
 
 interface Message {
@@ -53,10 +54,7 @@ export function useAgentChat(agent: Agent | null) {
         content: m.content,
       }));
 
-      const { data, error } = await supabase.functions.invoke('agent-chat', {
-        body: {
-          messages: apiMessages,
-          agentConfig: {
+      const agentConfigPayload = {
             id: agent.id,
             name: agent.name,
             system_prompt: agent.system_prompt,
@@ -67,7 +65,52 @@ export function useAgentChat(agent: Agent | null) {
             can_access_activities: agent.can_access_activities,
             can_access_milestones: agent.can_access_milestones,
             can_search_web: agent.can_search_web,
-          },
+      };
+
+      // ── Streaming (SSE) path ──
+      let streamed = '';
+      let placeholderAdded = false;
+      const appendDelta = (text: string) => {
+        streamed += text;
+        setMessages(prev => {
+          if (!placeholderAdded) {
+            placeholderAdded = true;
+            return [...prev, { role: 'assistant' as const, content: streamed, timestamp: new Date() }];
+          }
+          return prev.map((m, i) =>
+            i === prev.length - 1 && m.role === 'assistant' ? { ...m, content: streamed } : m,
+          );
+        });
+      };
+
+      try {
+        await streamEdgeChat({
+          functionName: 'agent-chat',
+          body: { messages: apiMessages, agentConfig: agentConfigPayload, dealContext },
+          signal: abortControllerRef.current.signal,
+          onDelta: appendDelta,
+        });
+
+        if (streamed.trim()) {
+          logUsage({
+            feature_type: 'AGENT_RUN',
+            feature_subtype: agent.name,
+            deal_id: dealContext?.id ?? null,
+            metadata: { agent_id: agent.id, streamed: true },
+          });
+          return;
+        }
+      } catch (streamErr) {
+        if (streamErr instanceof Error && streamErr.name === 'AbortError') return;
+        console.warn('[agent-chat] streaming failed, falling back to buffered response', streamErr);
+        if (placeholderAdded) setMessages(prev => prev.slice(0, -1));
+      }
+
+      // ── Buffered fallback ──
+      const { data, error } = await supabase.functions.invoke('agent-chat', {
+        body: {
+          messages: apiMessages,
+          agentConfig: agentConfigPayload,
           dealContext,
         },
       });

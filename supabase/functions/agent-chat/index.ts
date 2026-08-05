@@ -156,10 +156,11 @@ serve(async (req) => {
     }
 
     // ── Parse request ────────────────────────────────────
-    const { messages, agentConfig, dealContext } = await req.json() as {
+    const { messages, agentConfig, dealContext, stream } = await req.json() as {
       messages: Message[];
       agentConfig: AgentConfig;
       dealContext?: DealContext;
+      stream?: boolean;
     };
 
     if (!messages || !agentConfig) {
@@ -192,6 +193,107 @@ serve(async (req) => {
     }
 
     const model = "claude-sonnet-4-5-20250929";
+
+    // ── Streaming (SSE) path ────────────────────────────
+    if (stream) {
+      const upstream = await anthropicFetch({ feature: "agent-chat" }, {
+        method: "POST",
+        headers: {
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 4096,
+          temperature: agentConfig.temperature || 0.7,
+          system: fullSystemPrompt,
+          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          stream: true,
+        }),
+      });
+
+      if (!upstream.ok || !upstream.body) {
+        const errorText = await upstream.text().catch(() => "");
+        console.error("Anthropic stream error:", upstream.status, errorText);
+        if (companyId) {
+          await logUsage(supabase, companyId, userId, model, 0, 0, "error", `Anthropic ${upstream.status}`);
+        }
+        return new Response(
+          JSON.stringify({
+            error: upstream.status === 429
+              ? "Rate limit exceeded. Please try again later."
+              : "Failed to get AI response",
+          }),
+          {
+            status: upstream.status === 429 ? 429 : 502,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      const encoder = new TextEncoder();
+      const decoder = new TextDecoder();
+      let inputTokens = 0;
+      let outputTokens = 0;
+
+      const out = new ReadableStream({
+        async start(controller) {
+          const reader = upstream.body!.getReader();
+          let buffer = "";
+          try {
+            while (true) {
+              const { value, done } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              let idx: number;
+              while ((idx = buffer.indexOf("\n")) !== -1) {
+                const line = buffer.slice(0, idx).trim();
+                buffer = buffer.slice(idx + 1);
+                if (!line.startsWith("data:")) continue;
+                const payload = line.slice(5).trim();
+                if (!payload || payload === "[DONE]") continue;
+                try {
+                  const evt = JSON.parse(payload);
+                  if (evt?.type === "content_block_delta" && typeof evt?.delta?.text === "string") {
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify({ delta: { text: evt.delta.text } })}\n\n`),
+                    );
+                  }
+                  if (evt?.type === "message_start") {
+                    inputTokens = evt?.message?.usage?.input_tokens ?? 0;
+                  }
+                  if (evt?.type === "message_delta") {
+                    outputTokens = evt?.usage?.output_tokens ?? outputTokens;
+                  }
+                } catch { /* ignore malformed line */ }
+              }
+            }
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          } catch (e) {
+            console.error("agent-chat stream error:", e);
+          } finally {
+            controller.close();
+            if (companyId) {
+              await logUsage(supabase, companyId, userId, model, inputTokens, outputTokens, "success").catch(() => {});
+            }
+            if (agentConfig.id) {
+              await supabase
+                .from("agents")
+                .update({ last_used_at: new Date().toISOString() })
+                .eq("id", agentConfig.id)
+                .then(() => {})
+                .catch(() => {});
+            }
+          }
+        },
+      });
+
+      return new Response(out, {
+        headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
+      });
+    }
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 55_000);
 

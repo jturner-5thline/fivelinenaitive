@@ -5,6 +5,7 @@ import { logUsage } from '@/lib/usageLogger';
 import { useAuth } from '@/contexts/AuthContext';
 import { isDemoEmail } from '@/lib/demoLenderContact';
 import { matchDemoDealCannedAnswer, matchDemoDealBulletAnswers } from '@/lib/demoDealCannedAnswers';
+import { streamEdgeChat } from '@/lib/ai/streamEdgeChat';
 
 export type DocumentScope = 'all' | 'financial' | 'transcripts' | 'custom';
 
@@ -67,6 +68,58 @@ export function useDealSpaceAI(dealId: string | undefined) {
         content: m.content,
       }));
 
+      // ── Streaming (SSE) path ──
+      let streamed = '';
+      let streamSources: string[] | undefined;
+      let placeholderAdded = false;
+      const appendDelta = (text: string) => {
+        streamed += text;
+        setMessages(prev => {
+          if (!placeholderAdded) {
+            placeholderAdded = true;
+            return [...prev, { role: 'assistant' as const, content: streamed, timestamp: new Date() }];
+          }
+          return prev.map((m, i) =>
+            i === prev.length - 1 && m.role === 'assistant' ? { ...m, content: streamed } : m,
+          );
+        });
+      };
+
+      try {
+        await streamEdgeChat({
+          functionName: 'deal-space-ai',
+          body: {
+            messages: apiMessages,
+            dealId,
+            scope: overrideScope || scope,
+            includeDataRoom,
+            conversationId: options?.conversationId ?? null,
+          },
+          signal: abortControllerRef.current.signal,
+          onDelta: appendDelta,
+          onSources: (s) => { streamSources = s; },
+        });
+
+        if (streamed.trim()) {
+          if (streamSources?.length) {
+            setMessages(prev => prev.map((m, i) =>
+              i === prev.length - 1 && m.role === 'assistant' ? { ...m, sources: streamSources } : m,
+            ));
+          }
+          logUsage({
+            feature_type: 'DEAL_SPACE_AI_LOOKUP',
+            deal_id: dealId,
+            metadata: { scope: overrideScope || scope, includeDataRoom, streamed: true },
+          });
+          return;
+        }
+      } catch (streamErr) {
+        if (streamErr instanceof Error && streamErr.name === 'AbortError') return;
+        console.warn('[deal-space-ai] streaming failed, falling back to buffered response', streamErr);
+        if (placeholderAdded) setMessages(prev => prev.slice(0, -1));
+      }
+
+      // ── Buffered fallback ──
       const { data, error } = await supabase.functions.invoke('deal-space-ai', {
         body: { 
           messages: apiMessages,
