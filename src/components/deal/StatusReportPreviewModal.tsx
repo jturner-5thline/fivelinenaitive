@@ -17,6 +17,7 @@ import { LenderPipelineSnapshot } from './LenderPipelineSnapshot';
 import type { DealLender } from '@/types/deal';
 import { useCompany } from '@/hooks/useCompany';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
+import { printNodeInPopup } from '@/lib/printNodeInPopup';
 
 export type { StatusReportEditableContent };
 
@@ -416,7 +417,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     // TOP document's title for the PDF filename, which produces "naitive _
     // Lovable.pdf". Printing from a standalone popup window makes our title the
     // filename in every context, so prefer that path.
-    if (printInPopup(node, fileTitle)) {
+    if (printNodeInPopup(node, fileTitle)) {
       document.title = prevTitle;
       return;
     }
