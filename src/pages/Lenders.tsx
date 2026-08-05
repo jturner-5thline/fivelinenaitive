@@ -1962,12 +1962,12 @@ export default function Lenders() {
                       return (
                         <div className={index === duplicateGroupsView.length - 1 ? '' : 'pb-4'}>
                           <div className="rounded-lg border border-border/60 bg-card/40 overflow-hidden">
-                            <button
-                              type="button"
-                              onClick={() => openMergeForGroup(ids)}
-                              className="w-full flex items-center justify-between gap-3 px-4 py-3 border-b border-border/40 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-full flex items-center justify-between gap-3 px-4 py-3 border-b border-border/40 bg-muted/30 text-left">
+                              <button
+                                type="button"
+                                onClick={() => openMergeForGroup(ids)}
+                                className="flex items-center gap-2 min-w-0 flex-1 text-left"
+                              >
                                 <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
                                 <span className="text-sm font-medium text-foreground truncate">
                                   {displayName}
@@ -1975,12 +1975,29 @@ export default function Lenders() {
                                 <span className="text-xs text-muted-foreground shrink-0">
                                   · {groupLenders.length} possible duplicates
                                 </span>
+                              </button>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                                  onClick={() =>
+                                    setPendingDismissGroup({ groupId, name: displayName, ids })
+                                  }
+                                >
+                                  <X className="h-3.5 w-3.5 mr-1" />
+                                  Dismiss
+                                </Button>
+                                <button
+                                  type="button"
+                                  onClick={() => openMergeForGroup(ids)}
+                                  className="inline-flex items-center gap-1.5 text-xs font-medium text-primary"
+                                >
+                                  <GitMerge className="h-3.5 w-3.5" />
+                                  Merge group
+                                </button>
                               </div>
-                              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary shrink-0">
-                                <GitMerge className="h-3.5 w-3.5" />
-                                Merge group
-                              </span>
-                            </button>
+                            </div>
                             <div className="p-3 space-y-2">
                               {groupLenders.map((lender) => (
                                 <div key={lender.id} data-lender-row={lender.id}>
