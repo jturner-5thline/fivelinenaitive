@@ -404,7 +404,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   // node the user is editing, so the PDF is a high-fidelity capture (no
   // alternate light layout). We inject @media print rules that hide every
   // other element on the page and force backgrounds/gradients to render.
-  const printableRef = useRef<HTMLDivElement | null>(null);
+  const exportSourceRef = useRef<HTMLDivElement | null>(null);
   /**
    * The printable node lives in one of two mutually-exclusive branches
    * (5th Line dark preview vs. light preview). When that branch swaps —
@@ -416,9 +416,9 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
    * dialog can legitimately unmount the live preview.
    */
   const resolvePrintableNode = (): HTMLDivElement | null => {
-    const fromRef = printableRef.current;
+    const fromRef = exportSourceRef.current;
     if (fromRef && fromRef.isConnected) return fromRef;
-    const fromDom = document.querySelector<HTMLDivElement>('[data-status-report-printable]');
+    const fromDom = document.querySelector<HTMLDivElement>('[data-status-report-export-source]');
     if (fromDom) return fromDom;
     // Last resort: the stable snapshot captured before confirmation opened.
     const cached = capturedPrintableRef.current;
@@ -432,16 +432,16 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     capturedPrintableRef.current = null;
   };
   const capturePrintableSnapshot = (): HTMLDivElement | null => {
-    const source = printableRef.current?.isConnected
-      ? printableRef.current
-      : document.querySelector<HTMLDivElement>('[data-status-report-printable]');
+    const source = exportSourceRef.current?.isConnected
+      ? exportSourceRef.current
+      : document.querySelector<HTMLDivElement>('[data-status-report-export-source]');
     if (!source) return null;
 
     clearPrintableSnapshot();
     const snapshot = source.cloneNode(true) as HTMLDivElement;
     const sourceWidth = Math.max(source.getBoundingClientRect().width, source.scrollWidth);
     snapshot.removeAttribute('id');
-    snapshot.removeAttribute('data-status-report-printable');
+    snapshot.removeAttribute('data-status-report-export-source');
     snapshot.setAttribute('data-status-report-export-snapshot', '');
     snapshot.style.position = 'fixed';
     snapshot.style.left = '-100000px';
@@ -685,8 +685,12 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   };
 
   // ── Render the printable report (light-themed) ──────────────────────────
-  const renderPrintable = () => (
-    <div ref={printableRef} data-status-report-printable className="bg-white text-slate-900 rounded-lg overflow-hidden">
+  const renderPrintable = (nodeRef?: React.Ref<HTMLDivElement>, exportSource = false) => (
+    <div
+      ref={nodeRef}
+      data-status-report-export-source={exportSource ? '' : undefined}
+      className="bg-white text-slate-900 rounded-lg overflow-hidden"
+    >
       <div className="sr-bar" style={{ height: 6, background: reportTheme.accent, borderRadius: 2, marginBottom: 16 }} />
       <div>
         <div className="sr-brand" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', color: reportTheme.accentText, textTransform: 'uppercase' }}>
@@ -819,10 +823,10 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   // ── Render the in-app dark preview (Naitive-styled, on-screen only) ─────
   // Print/PDF still uses `renderPrintable()` (light) — we render that node
   // off-screen so the existing handlePrintPdf flow keeps working.
-  const renderInAppPreview = () => (
+  const renderInAppPreview = (nodeRef?: React.Ref<HTMLDivElement>, exportSource = false) => (
     <div
-      ref={printableRef}
-      data-status-report-printable
+      ref={nodeRef}
+      data-status-report-export-source={exportSource ? '' : undefined}
       className="rounded-2xl overflow-hidden border backdrop-blur-2xl"
       style={{
         // Layered gradient shell — matches the deal pop-up surface treatment:
@@ -1116,6 +1120,18 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* A dedicated export tree stays mounted independently of both dialogs.
+        Capturing the visible preview was inherently racy because Radix can
+        detach it while the nested confirmation takes focus. */}
+    <div
+      aria-hidden="true"
+      className="fixed left-[-100000px] top-0 w-[900px] pointer-events-none"
+    >
+      {isFifthLine
+        ? renderInAppPreview(exportSourceRef, true)
+        : renderPrintable(exportSourceRef, true)}
+    </div>
 
     <AlertDialog open={showPrintConfirm} onOpenChange={setShowPrintConfirm}>
       <AlertDialogContent>
