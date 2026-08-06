@@ -164,25 +164,30 @@ export function LinkedCallActionsDialog({
     dealName ? { name: dealName, company: company || '' } : null,
   );
   const threadLookupRef = useRef<string | null>(null);
+  /** Deal's client contact email — the recap should go to (and thread with) them. */
+  const clientEmailRef = useRef<string | null>(null);
 
   const title = recordingTitle || eventTitle || 'Linked call';
   const callKey = meetingId || recordingId || `title:${title}`;
 
-  // Resolve deal name/company when only an id was passed.
+  // Resolve deal name/company (and the client contact) from the deal id.
   useEffect(() => {
     if (!open) return;
-    if (dealName) { setDealCtx({ name: dealName, company: company || '' }); return; }
+    if (dealName) setDealCtx({ name: dealName, company: company || '' });
     if (!dealId) return;
     let cancelled = false;
     (async () => {
       const { data } = await supabase
         .from('deals')
-        .select('company')
+        .select('company, contact_email, contact_info')
         .eq('id', dealId)
         .maybeSingle();
       if (cancelled || !data) return;
-      const resolvedCompany = (data as { company?: string }).company || '';
-      setDealCtx({ name: resolvedCompany, company: resolvedCompany });
+      const row = data as { company?: string; contact_email?: string; contact_info?: string };
+      const resolvedCompany = row.company || '';
+      if (!dealName) setDealCtx({ name: resolvedCompany, company: resolvedCompany });
+      const raw = `${row.contact_email || ''} ${row.contact_info || ''}`;
+      clientEmailRef.current = raw.match(/[\w.+-]+@[\w-]+\.[\w.-]+/i)?.[0] || null;
     })();
     return () => { cancelled = true; };
   }, [open, dealId, dealName, company]);
@@ -387,7 +392,18 @@ export function LinkedCallActionsDialog({
       const res = data as QaResult;
       const nextSubject = res.email_subject || `${kind === 'client_summary' ? 'Recap' : 'Follow-up'}: ${title}`;
       const nextBody = toHtml(res.email_body || '');
-      const nextTo = (res.suggested_recipients || [])[0] || '';
+      const suggested = (res.suggested_recipients || []).filter(Boolean);
+      const clientEmail = clientEmailRef.current;
+      const clientDomain = clientEmail?.split('@')[1]?.toLowerCase();
+      // The recap goes to the client — prefer the deal's client contact (or a
+      // participant at the client's domain) over the first call participant.
+      const nextTo =
+        kind === 'client_summary'
+          ? suggested.find((e) => clientDomain && e.toLowerCase().endsWith(`@${clientDomain}`)) ||
+            clientEmail ||
+            suggested[0] ||
+            ''
+          : suggested[0] || '';
       hydratingRef.current = true;
       setResult(res);
       setSubject(nextSubject);
