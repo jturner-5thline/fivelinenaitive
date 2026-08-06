@@ -1396,13 +1396,24 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
               >
                 All tasks
               </button>
-              {allowedTeammates.length > 0 && (
+              {teammateOptions.length > 0 && (
                 <>
                   <div className="mt-1.5 mb-1 px-2 text-[10px] uppercase tracking-wide text-muted-foreground">
-                    5th Line teammates
+                    Teammates
+                  </div>
+                  <div className="px-1.5 pb-1.5">
+                    <Input
+                      value={teammateSearch}
+                      onChange={e => setTeammateSearch(e.target.value)}
+                      placeholder="Search people…"
+                      className="h-7 text-xs"
+                    />
                   </div>
                   <div className="max-h-[240px] overflow-y-auto">
-                    {allowedTeammates.map((p: any) => {
+                    {filteredTeammateOptions.length === 0 && (
+                      <div className="px-2 py-2 text-[11px] text-muted-foreground">No people found</div>
+                    )}
+                    {filteredTeammateOptions.map((p) => {
                       const isSelected = selectedTeammateIds.includes(p.user_id);
                       return (
                         <button
