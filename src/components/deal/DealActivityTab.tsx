@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Eye, FileText, TrendingUp, Loader2, ExternalLink, Download, FileSignature, HelpCircle, X, Bookmark, FileCheck, ScrollText, ArrowDownToLine, Video, Unlink, ArrowRightLeft, Link2 } from 'lucide-react';
+import { Eye, FileText, TrendingUp, Loader2, ExternalLink, Download, FileSignature, HelpCircle, X, Bookmark, FileCheck, ScrollText, ArrowDownToLine, Video, Unlink, ArrowRightLeft, Link2, Landmark } from 'lucide-react';
 import { Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
@@ -270,12 +270,10 @@ function useActivityDetailsForDate(dealId: string | undefined, date: string | nu
       // Only return external activity
       const INTERNAL = [
         'deal_created', 'deal_updated', 'stage_changed', 'status_changed',
-        'lender_added', 'lender_updated', 'lender_removed', 'lender_deleted',
-        'lender_stage_change', 'lender_substage_change', 'lender_notes_updated',
         'note_added', 'status_note_added', 'attachment_added', 'attachment_deleted',
         'document_added', 'milestone_added', 'milestone_completed', 'milestone_deleted',
         'value_updated', 'flex_push',
-      ];
+      ].filter((type) => !FUNDING_SOURCE_ACTIVITY_TYPES.includes(type));
 
       const filteredActivityLogs: DealActivityDetailItem[] = (activityLogs || [])
         .filter((activity) => !INTERNAL.includes(activity.activity_type))
