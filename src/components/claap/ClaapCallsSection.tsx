@@ -66,20 +66,20 @@ function CallCard({ call }: { call: ClaapCall }) {
 
   return (
     <>
-      <div className="p-3 rounded-md border border-border/50 hover:bg-muted/30 transition-colors">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setActionsOpen(true)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActionsOpen(true); } }}
+        className="p-3 rounded-md border border-border/50 hover:bg-muted/30 transition-colors cursor-pointer"
+      >
         <div className="flex items-start gap-2.5">
           <div className="mt-0.5 p-1.5 rounded-md bg-primary/10 text-primary">
             <Video className="h-3.5 w-3.5" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              {call.recording_url ? (
-                <a href={call.recording_url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-primary hover:underline truncate">
-                  {call.title || 'Untitled Call'}
-                </a>
-              ) : (
-                <span className="text-sm font-medium truncate">{call.title || 'Untitled Call'}</span>
-              )}
+              <span className="text-sm font-medium truncate">{call.title || 'Untitled Call'}</span>
               {call.call_type && (
                 <Badge variant={callTypeBadgeVariant(call.call_type)} className="text-[10px] px-1.5 py-0 h-4 shrink-0">
                   {call.call_type}
@@ -108,13 +108,18 @@ function CallCard({ call }: { call: ClaapCall }) {
             {hasTranscript && (
               <Collapsible open={expanded} onOpenChange={setExpanded}>
                 <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-5 px-1.5 mt-1 text-xs text-muted-foreground hover:text-foreground">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 px-1.5 mt-1 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <FileText className="h-3 w-3 mr-1" />
                     {expanded ? 'Hide' : 'Show'} summary
                     {expanded ? <ChevronDown className="h-3 w-3 ml-0.5" /> : <ChevronRight className="h-3 w-3 ml-0.5" />}
                   </Button>
                 </CollapsibleTrigger>
-                <CollapsibleContent>
+                <CollapsibleContent onClick={(e) => e.stopPropagation()}>
                   <div className="mt-2 p-2 rounded bg-muted/50 text-xs text-muted-foreground whitespace-pre-wrap max-h-32 overflow-y-auto">
                     {call.ai_summary || (call.transcript?.substring(0, 500) + (call.transcript && call.transcript.length > 500 ? '...' : ''))}
                   </div>
@@ -122,23 +127,13 @@ function CallCard({ call }: { call: ClaapCall }) {
               </Collapsible>
             )}
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0 shrink-0"
-            title="Call actions"
-            aria-label="Call actions"
-            onClick={() => setActionsOpen(true)}
-          >
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0">
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0" onClick={(e) => e.stopPropagation()}>
                 <MoreVertical className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
               {!call.deal_id ? (
                 <DropdownMenuItem onClick={() => setDealSelectorOpen(true)}>
                   <Link2 className="h-3.5 w-3.5 mr-2" />

@@ -577,17 +577,12 @@ export function MeetingClaapInlineAction(props: Props) {
   if (band === 'linked') {
     return (
       <div className="flex w-full min-w-0 items-center gap-1">
-        <div className="min-w-0 flex-1">{buttonCell}</div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 w-8 shrink-0 p-0 border-sky-500/40 bg-sky-500/[0.08] hover:bg-sky-500/[0.14] text-white"
-          onClick={(e) => { e.stopPropagation(); setActionsOpen(true); }}
-          title="Call actions"
-          aria-label="Call actions"
+        <div
+          className="min-w-0 flex-1"
+          onClickCapture={(e) => { e.preventDefault(); e.stopPropagation(); setActionsOpen(true); }}
         >
-          <Sparkles className="h-3.5 w-3.5 text-sky-200" />
-        </Button>
+          {buttonCell}
+        </div>
         <LinkedCallActionsDialog
           open={actionsOpen}
           onOpenChange={setActionsOpen}

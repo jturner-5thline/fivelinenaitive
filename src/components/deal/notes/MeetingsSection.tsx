@@ -324,21 +324,17 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
             </div>
           ) : (
             linkedRecordings.map(r => (
-              <div key={r.id} className="group pl-3 pr-8 py-1.5 flex items-start gap-2 hover:bg-muted/40">
+              <div
+                key={r.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => setActionsFor({ title: r.recording_title || 'Untitled recording' })}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActionsFor({ title: r.recording_title || 'Untitled recording' }); } }}
+                className="group pl-3 pr-8 py-1.5 flex items-start gap-2 hover:bg-muted/40 cursor-pointer"
+              >
                 <Video className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
                 <div className="min-w-0 flex-1">
-                  {r.recording_url ? (
-                    <a
-                      href={r.recording_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs font-medium truncate block hover:underline"
-                    >
-                      {r.recording_title || 'Untitled recording'}
-                    </a>
-                  ) : (
-                    <p className="text-xs font-medium truncate">{r.recording_title || 'Untitled recording'}</p>
-                  )}
+                  <p className="text-xs font-medium truncate">{r.recording_title || 'Untitled recording'}</p>
                   <p className="text-[10px] text-muted-foreground truncate">
                     {r.linked_at ? format(new Date(r.linked_at), 'MMM d, yyyy') : ''}
                     {r.recorder_name ? ` · ${r.recorder_name}` : ''}
@@ -346,21 +342,12 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
                   </p>
                 </div>
                 <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 shrink-0 mr-1">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-5 w-5 opacity-100"
-                    onClick={() => setActionsFor({ title: r.recording_title || 'Untitled recording' })}
-                    title="Call actions"
-                  >
-                    <Sparkles className="h-3 w-3 text-primary" />
-                  </Button>
                   {r.recording_url && (
                     <Button
                       size="icon"
                       variant="ghost"
                       className="h-5 w-5"
-                      onClick={() => navigator.clipboard?.writeText(r.recording_url!)}
+                      onClick={(e) => { e.stopPropagation(); navigator.clipboard?.writeText(r.recording_url!); }}
                       title="Copy Claap link"
                     >
                       <Copy className="h-3 w-3" />
@@ -371,7 +358,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
                       size="icon"
                       variant="ghost"
                       className="h-5 w-5"
-                      onClick={() => window.open(r.recording_url!, '_blank')}
+                      onClick={(e) => { e.stopPropagation(); window.open(r.recording_url!, '_blank'); }}
                       title="Open in Claap"
                     >
                       <ExternalLink className="h-3 w-3" />
@@ -381,7 +368,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
                     size="icon"
                     variant="ghost"
                     className="h-5 w-5 text-destructive hover:text-destructive"
-                    onClick={() => unlinkRecording(r.recording_id)}
+                    onClick={(e) => { e.stopPropagation(); unlinkRecording(r.recording_id); }}
                     title="Unlink meeting"
                   >
                     <Unlink className="h-3 w-3" />
