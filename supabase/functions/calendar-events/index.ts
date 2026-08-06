@@ -366,15 +366,35 @@ serve(async (req: Request): Promise<Response> => {
     const token = authHeader.replace("Bearer ", "");
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { data: claimsData, error: authError } = await supabase.auth.getClaims(token);
-    if (authError || !claimsData?.claims?.sub) {
-      console.error("[calendar-events] auth error:", authError?.message || "no claims");
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // getClaims() verifies locally against the JWKS endpoint. That fetch can
+    // fail transiently (TLS / connection reset), which previously surfaced to
+    // the user as a hard 401 "Invalid token" + blank screen. Retry once, then
+    // fall back to the Auth server (getUser) before rejecting the request.
+    let userId: string | null = null;
+    let lastAuthError = "";
+    for (let attempt = 0; attempt < 2 && !userId; attempt += 1) {
+      const { data: claimsData, error: authError } = await supabase.auth.getClaims(token);
+      if (claimsData?.claims?.sub) {
+        userId = claimsData.claims.sub as string;
+        break;
+      }
+      lastAuthError = authError?.message || "no claims";
+      if (attempt === 0) await new Promise((r) => setTimeout(r, 250));
     }
-    const user = { id: claimsData.claims.sub as string };
+    if (!userId) {
+      const { data: userData, error: userError } = await supabase.auth.getUser(token);
+      if (userData?.user?.id) {
+        userId = userData.user.id;
+        console.warn("[calendar-events] getClaims failed, used getUser fallback:", lastAuthError);
+      } else {
+        console.error("[calendar-events] auth error:", lastAuthError, userError?.message || "");
+        return new Response(JSON.stringify({ error: "Invalid token" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+    const user = { id: userId };
 
     const body: EventsRequest = await req.json();
     console.log("Calendar events action:", body.action, "for user:", user.id);
