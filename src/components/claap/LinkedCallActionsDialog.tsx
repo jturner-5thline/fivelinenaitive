@@ -160,7 +160,7 @@ export function LinkedCallActionsDialog({
     if (!user) return;
     setSavingDraft(true);
     try {
-      await supabase.from('claap_call_email_drafts').upsert({
+      await supabase.from('claap_call_email_drafts').upsert([{
         user_id: user.id,
         call_key: callKey,
         draft_kind: kind,
@@ -171,8 +171,8 @@ export function LinkedCallActionsDialog({
         bcc_addr: payload.bcc,
         subject: payload.subject,
         body_html: payload.body,
-        result: payload.result as unknown as Record<string, unknown> | null,
-      }, { onConflict: 'user_id,call_key,draft_kind' });
+        result: (payload.result ?? null) as never,
+      }], { onConflict: 'user_id,call_key,draft_kind' });
       setSavedKinds((prev) => ({ ...prev, [kind]: true }));
     } finally {
       setSavingDraft(false);
