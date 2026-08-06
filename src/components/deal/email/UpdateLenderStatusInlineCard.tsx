@@ -353,7 +353,7 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, emai
 
       <div className="space-y-1">
         <label className="text-[10px] uppercase tracking-wider text-muted-foreground/80">Stage</label>
-        <Select value={stage} onValueChange={setStage}>
+        <Select value={stage} onValueChange={(v) => { setStageTouched(true); setStage(v); }}>
           <SelectTrigger className="h-8 text-[12px]">
             <SelectValue />
           </SelectTrigger>
@@ -389,15 +389,39 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, emai
       </div>
 
       <div className="space-y-1">
-        <label className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
-          Note <span className="text-muted-foreground/50 normal-case">(optional)</span>
-        </label>
+        <div className="flex items-center justify-between gap-2">
+          <label className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
+            Note <span className="text-muted-foreground/50 normal-case">(optional)</span>
+          </label>
+          {hasEmailContext && (
+            <button
+              type="button"
+              onClick={() => void pullEmailContext(true)}
+              disabled={contextLoading}
+              className="flex items-center gap-1 text-[10px] text-muted-foreground/80 hover:text-foreground transition-colors disabled:opacity-60"
+            >
+              {contextLoading
+                ? <Loader2 className="h-3 w-3 animate-spin" />
+                : <RefreshCw className="h-3 w-3" />}
+              {contextLoading ? 'Reading email…' : 'Pull from email'}
+            </button>
+          )}
+        </div>
         <Textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Add context — e.g. passed on credit, awaiting term sheet…"
           className="min-h-[56px] text-[12px] resize-y"
         />
+        {contextNote && note.trim() === contextNote && (
+          <p className="flex items-start gap-1 text-[10px] text-emerald-300/80">
+            <Sparkles className="h-3 w-3 mt-[1px] shrink-0" />
+            Drafted from this lender's email — edit before confirming.
+          </p>
+        )}
+        {contextError && (
+          <p className="text-[10px] text-amber-300/80">{contextError}</p>
+        )}
       </div>
 
       <div className="flex items-center justify-end gap-2 pt-0.5">
