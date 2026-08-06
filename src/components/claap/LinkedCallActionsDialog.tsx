@@ -185,8 +185,8 @@ export function LinkedCallActionsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(mode === 'qa' ? (showDetails ? 'sm:max-w-[1200px]' : 'sm:max-w-[840px]') : 'sm:max-w-[460px]')}>
-        <DialogHeader>
+      <DialogContent className={cn('flex max-h-[85vh] flex-col overflow-hidden', mode === 'qa' ? (showDetails ? 'sm:max-w-[1200px]' : 'sm:max-w-[840px]') : 'sm:max-w-[460px]')}>
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             {mode === 'qa' && (
               <Button
@@ -248,7 +248,7 @@ export function LinkedCallActionsDialog({
                 Reading the transcript, pairing questions with answers and drafting the follow-up…
               </div>
             ) : result ? (
-              <div className={cn('grid gap-4', showDetails && 'lg:grid-cols-2')}>
+              <div className={cn('grid gap-4 flex-1 min-h-0 overflow-y-auto pr-1', showDetails && 'lg:grid-cols-2')}>
                 {/* Pre-drafted email */}
                 <div className="min-w-0 space-y-2">
                   <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
