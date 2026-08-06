@@ -116,7 +116,7 @@ export function DealContactQuickView({ contactId, contactName, dealId, children 
           qc.invalidateQueries({ queryKey: ['contact-activities', contactId] });
           qc.invalidateQueries({ queryKey: ['deal-linked-claap-calls', dealId] });
           qc.invalidateQueries({ queryKey: ['deal-activity-details', dealId] });
-          qc.invalidateQueries({ queryKey: ['deal-activity-stats', dealId] });
+          qc.invalidateQueries({ queryKey: ['deal-activity-stats-local', dealId] });
           qc.invalidateQueries({ queryKey: ['deal-activity-chart', dealId] });
           qc.invalidateQueries({ queryKey: ['deal-audit-log', dealId] });
           qc.invalidateQueries({ queryKey: ['deal-client-contacts', dealId] });
