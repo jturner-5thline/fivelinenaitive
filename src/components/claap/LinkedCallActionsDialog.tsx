@@ -298,6 +298,7 @@ export function LinkedCallActionsDialog({
         setCopied(false);
         setShowDetails(false);
         setThread(null);
+        threadLookupRef.current = null;
       }, 200);
       return () => clearTimeout(t);
     }
