@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Loader2, ExternalLink, Video, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Loader2, ExternalLink, Video, X, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +17,9 @@ interface Details {
   actionItems: string[];
   keyTakeaways: string[];
   url: string | null;
+  /** Meeting row id (claap_meetings.id) when the content lives there. */
+  meetingId?: string | null;
+  hasTranscript?: boolean;
 }
 
 /**
@@ -27,6 +30,55 @@ interface Details {
 export function ClaapRecordingDetailsPanel({ recordingId, recordingTitle, recordingUrl, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [details, setDetails] = useState<Details | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const autoTriedRef = useRef<string | null>(null);
+
+  const load = useCallback(async (): Promise<Details | null> => {
+    if (!recordingId) return null;
+    // 1) Hydrated recording row (Claap-provided summary/action items).
+    const { data: rec } = await (supabase.from('claap_recordings') as any)
+      .select('summary, action_items, key_takeaways, recording_url')
+      .eq('external_id', recordingId)
+      .maybeSingle();
+
+    let next: Details = {
+      summary: rec?.summary ? stripClaapTimestamps(rec.summary) : null,
+      actionItems: asStringArray(rec?.action_items ?? null),
+      keyTakeaways: asStringArray(rec?.key_takeaways ?? null),
+      url: rec?.recording_url ?? recordingUrl ?? null,
+    };
+
+    // 2) Fall back to the meeting row — this is what the email drafters read,
+    //    so a recording without a Claap summary can still have content here.
+    if (!next.summary || (!next.actionItems.length && !next.keyTakeaways.length)) {
+      const { data: mtg } = await (supabase.from('claap_meetings') as any)
+        .select('id, ai_summary, next_steps, key_decisions, recording_url, transcript')
+        .eq('claap_id', recordingId)
+        .maybeSingle();
+      if (mtg) {
+        next = {
+          summary: next.summary || (mtg.ai_summary ? stripClaapTimestamps(mtg.ai_summary) : null),
+          actionItems: next.actionItems.length ? next.actionItems : asStringArray(mtg.next_steps ?? null),
+          keyTakeaways: next.keyTakeaways.length ? next.keyTakeaways : asStringArray(mtg.key_decisions ?? null),
+          url: next.url ?? mtg.recording_url ?? null,
+          meetingId: mtg.id ?? null,
+          hasTranscript: Boolean(mtg.transcript && String(mtg.transcript).trim().length > 0),
+        };
+      }
+    }
+    return next;
+  }, [recordingId, recordingUrl]);
+
+  const generate = useCallback(async (meetingId: string) => {
+    setGenerating(true);
+    try {
+      await supabase.functions.invoke('claap-analyze-meeting', { body: { meeting_id: meetingId } });
+      const refreshed = await load();
+      if (refreshed) setDetails(refreshed);
+    } finally {
+      setGenerating(false);
+    }
+  }, [load]);
 
   useEffect(() => {
     if (!recordingId) return;
@@ -34,21 +86,18 @@ export function ClaapRecordingDetailsPanel({ recordingId, recordingTitle, record
     setLoading(true);
     setDetails(null);
     (async () => {
-      const { data } = await (supabase.from('claap_recordings') as any)
-        .select('summary, action_items, key_takeaways, recording_url')
-        .eq('external_id', recordingId)
-        .maybeSingle();
+      const next = await load();
       if (cancelled) return;
-      setDetails({
-        summary: data?.summary ? stripClaapTimestamps(data.summary) : null,
-        actionItems: asStringArray(data?.action_items ?? null),
-        keyTakeaways: asStringArray(data?.key_takeaways ?? null),
-        url: data?.recording_url ?? recordingUrl ?? null,
-      });
+      setDetails(next);
       setLoading(false);
+      // Auto-generate once when a transcript exists but no summary was ever made.
+      if (next && !next.summary && next.hasTranscript && next.meetingId && autoTriedRef.current !== recordingId) {
+        autoTriedRef.current = recordingId;
+        void generate(next.meetingId);
+      }
     })();
     return () => { cancelled = true; };
-  }, [recordingId, recordingUrl]);
+  }, [recordingId, load, generate]);
 
   const url = details?.url ?? recordingUrl ?? null;
 
@@ -78,9 +127,26 @@ export function ClaapRecordingDetailsPanel({ recordingId, recordingTitle, record
           <div className="space-y-5 p-4">
             <section>
               <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Summary</h4>
-              <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-                {details?.summary || 'No summary available yet for this recording.'}
-              </p>
+              {details?.summary ? (
+                <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                  {details.summary}
+                </p>
+              ) : generating ? (
+                <p className="mt-1.5 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating summary from the transcript…
+                </p>
+              ) : details?.hasTranscript && details?.meetingId ? (
+                <div className="mt-1.5 space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Transcript is available, but no summary has been generated yet.
+                  </p>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => generate(details.meetingId!)}>
+                    <Sparkles className="h-3 w-3" /> Generate summary
+                  </Button>
+                </div>
+              ) : (
+                <p className="mt-1.5 text-sm text-muted-foreground">No summary available yet for this recording.</p>
+              )}
             </section>
 
             {(details?.keyTakeaways?.length ?? 0) > 0 && (
