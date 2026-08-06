@@ -83,8 +83,15 @@ export async function searchLenderDealThreads(opts: {
   dealName?: string;
   company?: string;
   limit?: number;
+  /**
+   * When true, only keep threads that actually include a message directly
+   * to or from the recipient's email address / domain. Used for client recap
+   * drafts so keyword-only matches (e.g. lender threads mentioning the deal)
+   * are never offered as the client conversation.
+   */
+  requireParticipant?: boolean;
 }): Promise<LenderThreadMatch[]> {
-  const { domain, email, dealName, company } = opts;
+  const { domain, email, dealName, company, requireParticipant } = opts;
   const limit = opts.limit ?? 6;
   if (!domain) return [];
 
@@ -193,9 +200,22 @@ export async function searchLenderDealThreads(opts: {
     return { ...t, score, subject_match: subjectMatch };
   });
 
-  const matched = threads.filter((t) => t.subject_match);
-  const pool = matched.length > 0 ? matched : threads.filter((t) => t.score > 3.5);
-  const fallback = pool.length > 0 ? pool : threads;
+  const domainSuffix = `@${domain.toLowerCase()}`;
+  const intended = (email || '').trim().toLowerCase();
+  const scoped = requireParticipant
+    ? threads.filter((t) => {
+        const participants = [t.from_email, ...(t.to_emails || [])]
+          .map((value) => (value || '').toLowerCase())
+          .filter(Boolean);
+        return participants.some(
+          (value) => (intended && value.includes(intended)) || value.endsWith(domainSuffix),
+        );
+      })
+    : threads;
+
+  const matched = scoped.filter((t) => t.subject_match);
+  const pool = matched.length > 0 ? matched : scoped.filter((t) => t.score > 3.5);
+  const fallback = pool.length > 0 ? pool : (requireParticipant ? scoped : threads);
 
   return fallback
     .sort((a, b) => (b.score - a.score) || (b.latest_date || '').localeCompare(a.latest_date || ''))
