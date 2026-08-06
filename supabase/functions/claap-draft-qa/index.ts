@@ -72,6 +72,26 @@ Deno.serve(async (req) => {
     }
     if (!meeting) return json({ error: "Recording not found" }, 404);
 
+    // Many `claap_meetings` rows have no `deal_id`; the authoritative link for
+    // a call that was attached to a deal lives in `deal_claap_recordings`.
+    let recordingUrl: string | null = meeting.recording_url ?? null;
+    if (!meeting.deal_id) {
+      const rid = meeting.claap_id || recording_id || null;
+      if (rid) {
+        const { data: link } = await admin
+          .from("deal_claap_recordings")
+          .select("deal_id, recording_url")
+          .eq("recording_id", rid)
+          .order("linked_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (link?.deal_id) {
+          meeting.deal_id = link.deal_id;
+          recordingUrl = recordingUrl || link.recording_url || null;
+        }
+      }
+    }
+
     const transcript: string = (meeting.transcript || "").toString();
     if (!transcript.trim() && !meeting.ai_summary) {
       return json({ error: "This recording has no transcript yet — try again once Claap finishes processing." }, 422);
