@@ -183,7 +183,7 @@ export function LinkedCallActionsDialog({
    * Find the live email thread with this lender about this deal and reuse its
    * subject (as a `Re:`) so the follow-up lands in the existing conversation.
    */
-  const applyLenderThreadSubject = async (recipient: string, keepExistingReplySubject = false) => {
+  const applyLenderThreadSubject = async (recipient: string, existingSubject?: string) => {
     const email = (recipient || '').trim();
     const domain = email.includes('@') ? email.split('@')[1].trim().toLowerCase() : '';
     if (!domain || !dealCtx?.name) return;
@@ -198,12 +198,8 @@ export function LinkedCallActionsDialog({
       const best = matches[0];
       if (!best) return;
       setThread(best);
-      if (keepExistingReplySubject) {
-        // Don't clobber a subject the user already edited into a reply.
-        let keep = false;
-        setSubject((prev) => { keep = /^re:/i.test(prev.trim()); return prev; });
-        if (keep) return;
-      }
+      // Don't clobber a subject that is already a reply into a thread.
+      if (existingSubject && /^re:/i.test(existingSubject.trim())) return;
       const next = /^re:/i.test(best.subject) ? best.subject : `Re: ${best.subject}`;
       setSubject(next);
     } catch {
