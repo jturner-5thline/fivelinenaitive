@@ -48,7 +48,14 @@ ${head}
     overflow: visible !important;
     border-radius: 0 !important;
     box-shadow: none !important;
+    background: #ffffff !important;
+    color: #0f172a;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    animation: none !important;
   }
+  #print-root * { opacity: 1 !important; animation: none !important; }
   /* Never allow a break BEFORE the first content — an oversized element
      with break-inside:avoid gets pushed to the next page, which is what
      produced a blank first page. Only small atoms keep break-inside:avoid. */
