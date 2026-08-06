@@ -232,12 +232,17 @@ export function LinkedCallActionsDialog({
    * subject (as a `Re:`) so the message lands in the existing conversation.
    * When the match is ambiguous, the candidates are surfaced for the user to pick.
    */
-  const applyLenderThreadSubject = async (recipient: string, existingSubject?: string) => {
+  const applyLenderThreadSubject = async (
+    recipient: string,
+    existingSubject?: string,
+    kind?: 'qa' | 'client_summary',
+  ) => {
     const email = (recipient || '').trim();
     const domain = email.includes('@') ? email.split('@')[1].trim().toLowerCase() : '';
     const ctx = dealCtxRef.current;
     if (!domain || !ctx?.name) return;
-    const lookupKey = `${email}|${ctx.name}`;
+    const clientRecap = (kind ?? draftKind) === 'client_summary';
+    const lookupKey = `${email}|${ctx.name}|${clientRecap ? 'client' : 'lender'}`;
     if (threadLookupRef.current === lookupKey) return;
     threadLookupRef.current = lookupKey;
     setThreadSearching(true);
@@ -248,6 +253,8 @@ export function LinkedCallActionsDialog({
         dealName: ctx.name,
         company: ctx.company,
         limit: 5,
+        // Client recaps must reply in a real conversation with the client.
+        requireParticipant: clientRecap,
       });
       setThreadOptions(matches);
       const best = matches[0];
@@ -385,7 +392,7 @@ export function LinkedCallActionsDialog({
         setLoading(false);
         setTimeout(() => { hydratingRef.current = false; }, 0);
         if (data.to_addr) {
-          void applyLenderThreadSubject(data.to_addr, data.subject || '');
+          void applyLenderThreadSubject(data.to_addr, data.subject || '', kind);
         }
         return;
       }
@@ -436,7 +443,7 @@ export function LinkedCallActionsDialog({
       setTo(nextTo);
       setTimeout(() => { hydratingRef.current = false; }, 0);
       void persistDraft(kind, { to: nextTo, cc: '', bcc: '', subject: nextSubject, body: nextBody, result: res });
-      if (nextTo) void applyLenderThreadSubject(nextTo);
+      if (nextTo) void applyLenderThreadSubject(nextTo, undefined, kind);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not draft the email';
       toast.error(msg);
