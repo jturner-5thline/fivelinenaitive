@@ -85,7 +85,176 @@ function ClaapMarkdown({ source, recordingUrl }: { source: string; recordingUrl?
  * action items) — matching the End of Day meeting card presentation.
  * Rendered inline in the Notes tab's main panel.
  */
-export function ClaapRecordingDetailsPanel({ recordingId, recordingTitle, recordingUrl, onClose }: Props) {
+function ClientAsksSection({
+  recordingId,
+  dealId,
+  recordingTitle,
+  actionItems,
+}: {
+  recordingId?: string | null;
+  dealId?: string | null;
+  recordingTitle?: string | null;
+  actionItems: string[];
+}) {
+  const ctx = useCallOutstandingContext(recordingId, dealId, recordingTitle);
+  const [labels, setLabels] = useState<Record<string, string>>({});
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [requester, setRequester] = useState<string>('');
+  const [existing, setExisting] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+
+  const asks = useMemo(
+    () =>
+      extractClientAsks(actionItems, {
+        companyName: ctx.companyName,
+        dealName: ctx.dealName,
+        lenderNames: ctx.lenderNames,
+        internalNames: ctx.internalNames,
+      }),
+    [actionItems, ctx],
+  );
+
+  // Kick-off calls are requested by 5th Line; otherwise the lender on the invite.
+  const defaultRequester = ctx.isKickOff ? '5th Line' : ctx.lenderOnCall || '5th Line';
+  useEffect(() => { setRequester((prev) => prev || defaultRequester); }, [defaultRequester]);
+
+  useEffect(() => {
+    setLabels((prev) => {
+      const next = { ...prev };
+      for (const a of asks) if (next[a.raw] === undefined) next[a.raw] = a.label;
+      return next;
+    });
+    setChecked((prev) => {
+      const next = { ...prev };
+      for (const a of asks) if (next[a.raw] === undefined) next[a.raw] = true;
+      return next;
+    });
+  }, [asks]);
+
+  const loadExisting = useCallback(async () => {
+    if (!dealId) return;
+    const { data } = await (supabase.from('outstanding_items') as any)
+      .select('description')
+      .eq('deal_id', dealId);
+    setExisting(new Set((data ?? []).map((r: any) => String(r.description ?? '').trim().toLowerCase())));
+  }, [dealId]);
+
+  useEffect(() => { void loadExisting(); }, [loadExisting]);
+
+  const requesterOptions = useMemo(() => {
+    const opts = ['5th Line', ...ctx.lenderNames];
+    return [...new Set(opts.filter(Boolean))];
+  }, [ctx.lenderNames]);
+
+  const selected = asks.filter(
+    (a) => checked[a.raw] && !existing.has((labels[a.raw] ?? a.label).trim().toLowerCase()),
+  );
+
+  const handleAdd = async () => {
+    if (!dealId || selected.length === 0) return;
+    setSaving(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth?.user?.id;
+      if (!userId) throw new Error('Not signed in');
+
+      const { data: posRow } = await (supabase.from('outstanding_items') as any)
+        .select('position')
+        .eq('deal_id', dealId)
+        .order('position', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      let position = (posRow?.position ?? -1) + 1;
+
+      const status = JSON.stringify({
+        received: false,
+        approved: false,
+        deliveredToLenders: [],
+        requestedBy: [requester || defaultRequester],
+      });
+
+      const inserts = selected.map((a) => ({
+        deal_id: dealId,
+        description: (labels[a.raw] ?? a.label).trim(),
+        status,
+        user_id: userId,
+        priority: 'normal',
+        position: position++,
+        source_metadata: {
+          source: 'claap_action_item',
+          recording_id: recordingId ?? null,
+          raw: a.raw,
+          requested_by: requester || defaultRequester,
+        },
+      }));
+
+      const { error } = await (supabase.from('outstanding_items') as any).insert(inserts);
+      if (error) throw error;
+      toast.success(`Added ${inserts.length} outstanding item${inserts.length === 1 ? '' : 's'} for ${requester || defaultRequester}`);
+      window.dispatchEvent(new CustomEvent('outstanding-items:refresh', { detail: { dealId } }));
+      await loadExisting();
+    } catch (err: any) {
+      console.error('add outstanding items failed', err);
+      toast.error(err?.message || 'Failed to add outstanding items');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!dealId || asks.length === 0) return null;
+
+  return (
+    <div className="mt-3 border-t border-white/[0.06] pt-2.5">
+      <div className="flex items-center gap-1 mb-1.5">
+        <ClipboardCheck className="h-3 w-3 text-sky-300/80" />
+        <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80">
+          Client asks → outstanding items
+        </span>
+      </div>
+      <div className="space-y-1.5">
+        {asks.map((a) => {
+          const label = labels[a.raw] ?? a.label;
+          const already = existing.has(label.trim().toLowerCase());
+          return (
+            <div key={a.raw} className="flex items-start gap-2">
+              <Checkbox
+                className="mt-1.5"
+                checked={already ? false : !!checked[a.raw]}
+                disabled={already}
+                onCheckedChange={(v) => setChecked((p) => ({ ...p, [a.raw]: !!v }))}
+              />
+              <Input
+                value={label}
+                disabled={already}
+                onChange={(e) => setLabels((p) => ({ ...p, [a.raw]: e.target.value }))}
+                className="h-7 text-xs bg-white/[0.03] border-white/10"
+              />
+              {already && <span className="mt-1.5 shrink-0 text-[10px] text-emerald-300/80">Added</span>}
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <span className="text-[10px] text-muted-foreground">Requester</span>
+        <Select value={requester || defaultRequester} onValueChange={setRequester}>
+          <SelectTrigger className="h-7 w-[220px] text-xs bg-white/[0.03] border-white/10">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {requesterOptions.map((o) => (
+              <SelectItem key={o} value={o} className="text-xs">{o}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button size="sm" className="h-7 text-xs" disabled={saving || selected.length === 0} onClick={() => void handleAdd()}>
+          {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : `Add ${selected.length || ''} to outstanding items`.trim()}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function ClaapRecordingDetailsPanel({ recordingId, recordingTitle, recordingUrl, dealId, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [details, setDetails] = useState<Details | null>(null);
   const [working, setWorking] = useState(false);
