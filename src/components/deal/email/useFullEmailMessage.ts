@@ -212,14 +212,25 @@ function hydrateFromLS(id: string): FullMessage | null {
  */
 // With server-side cache-first (gmail-messages :get reads from
 // public.email_cache before hitting Nylas), the edge function returns in
-// <200ms on cache hits. The 15s ceiling that used to ride out cold Nylas
-// calls is no longer needed on the critical path. 5s is generous for the
-// first (uncached) open while still bounding any provider stall.
-const FETCH_TIMEOUT_MS = 5_000;
+// <200ms on cache hits. But a COLD open (no email_cache row) still has to
+// cold-start the isolate and round-trip Nylas, which regularly exceeds 5s
+// — that's the "gmail-messages get timed out after 5000ms" users hit.
+//
+// So: keep background prefetches on a short leash (they're best-effort and
+// must not hog the queue), and give user-initiated opens a realistic
+// ceiling with one automatic retry — the retry almost always lands on a
+// warm isolate + populated cache.
+const FETCH_TIMEOUT_MS = 20_000;
+const PREFETCH_TIMEOUT_MS = 6_000;
+const TIMEOUT_MARKER = '__gmail_fetch_timeout__';
 
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    const t = setTimeout(() => {
+      const e = new Error(`${label} timed out after ${ms}ms`);
+      (e as any)[TIMEOUT_MARKER] = true;
+      reject(e);
+    }, ms);
     p.then(
       (v) => { clearTimeout(t); resolve(v); },
       (e) => { clearTimeout(t); reject(e); },
