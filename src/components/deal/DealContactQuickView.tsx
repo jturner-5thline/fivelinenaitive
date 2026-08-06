@@ -63,23 +63,62 @@ export function DealContactQuickView({ contactId, contactName, dealId, children 
     setBody('');
   };
 
+  const logToDealTimeline = async (kind: 'call' | 'meeting', subj: string, note: string) => {
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth?.user?.id;
+      let displayName: string | null = auth?.user?.email ?? null;
+      if (userId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', userId)
+          .maybeSingle();
+        displayName = (profile as any)?.display_name || displayName;
+      }
+      await supabase.from('activity_logs').insert({
+        deal_id: dealId,
+        user_id: userId ?? null,
+        user_display_name: displayName,
+        activity_type: kind === 'call' ? 'call_logged' : 'meeting_logged',
+        description: subj,
+        body: note || null,
+        subject: subj,
+        metadata: {
+          call_type: kind === 'call' ? 'Call' : 'Meeting',
+          contact_id: contactId,
+          contact_name: contactName,
+          logged_from: 'deal_contact_quick_view',
+        },
+      } as any);
+    } catch (e) {
+      console.error('Failed to log activity to deal timeline', e);
+    }
+  };
+
   const handleLog = () => {
     if (!logType) return;
+    const subj = subject.trim() || (logType === 'call' ? 'Call' : 'Meeting');
+    const note = body.trim();
     createActivity.mutate(
       {
         contact_id: contactId,
         activity_type: logType,
-        subject: subject.trim() || (logType === 'call' ? 'Call' : 'Meeting'),
-        body: body.trim() || undefined,
+        subject: subj,
+        body: note || undefined,
         deal_id: dealId,
         occurred_at: new Date().toISOString(),
       },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
+          await logToDealTimeline(logType, subj, note);
           toast.success(`${logType === 'call' ? 'Call' : 'Meeting'} logged with ${contactName}`);
           qc.invalidateQueries({ queryKey: ['contact-activities', contactId] });
           qc.invalidateQueries({ queryKey: ['deal-linked-claap-calls', dealId] });
           qc.invalidateQueries({ queryKey: ['deal-activity-details', dealId] });
+          qc.invalidateQueries({ queryKey: ['deal-activity-stats-local', dealId] });
+          qc.invalidateQueries({ queryKey: ['deal-activity-chart', dealId] });
+          qc.invalidateQueries({ queryKey: ['deal-audit-log', dealId] });
           qc.invalidateQueries({ queryKey: ['deal-client-contacts', dealId] });
           resetForm();
           setOpen(false);
