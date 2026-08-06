@@ -221,9 +221,9 @@ export function getEventColorStyle(
   event: CalendarEvent,
   calendarColors: CalendarColorMap,
 ): React.CSSProperties | null {
-  const info = calendarColors.get(event.calendar_id);
-  if (!info?.background) return null;
-  const bg = info.background;
+  // Per-event color set in Google wins over the calendar's default color.
+  const bg = getEventOwnHex(event) || calendarColors.get(event.calendar_id)?.background;
+  if (!bg) return null;
   return {
     // Opaque gradient — never transparent. Mirrors the teal palette
     // treatment while preserving the user's per-calendar color identity.
@@ -279,10 +279,8 @@ function getEventDot(
   idx: number,
   calendarColors: CalendarColorMap,
 ): { className: string; style?: React.CSSProperties } {
-  const info = calendarColors.get(event.calendar_id);
-  if (info?.background) {
-    return { className: '', style: { backgroundColor: info.background } };
-  }
+  const bg = getEventOwnHex(event) || calendarColors.get(event.calendar_id)?.background;
+  if (bg) return { className: '', style: { backgroundColor: bg } };
   return { className: EVENT_PALETTE[getColorIndex(event, idx)].dot };
 }
 
