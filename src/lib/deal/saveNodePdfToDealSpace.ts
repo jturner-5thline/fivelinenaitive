@@ -17,12 +17,47 @@ export async function saveNodePdfToDealSpace(
     import('jspdf'),
   ]);
 
-  const canvas = await html2canvas(node, {
-    scale: 2,
-    backgroundColor: '#ffffff',
-    useCORS: true,
-    windowWidth: node.scrollWidth,
-  });
+  // html2canvas can fail with "Unable to find element in cloned iframe" when the
+  // target lives inside a portal/dialog that is animating or re-rendering. Render
+  // a detached, offscreen clone we fully control instead of the live node.
+  const width = Math.max(node.scrollWidth, node.getBoundingClientRect().width, 800);
+  const host = document.createElement('div');
+  host.setAttribute('data-pdf-capture-host', '');
+  host.style.cssText = [
+    'position:fixed',
+    'left:-100000px',
+    'top:0',
+    'z-index:-1',
+    'pointer-events:none',
+    `width:${Math.round(width)}px`,
+    'background:#ffffff',
+  ].join(';');
+  const clone = node.cloneNode(true) as HTMLElement;
+  clone.removeAttribute('id');
+  clone.style.width = `${Math.round(width)}px`;
+  clone.style.maxHeight = 'none';
+  clone.style.height = 'auto';
+  clone.style.overflow = 'visible';
+  host.appendChild(clone);
+  document.body.appendChild(host);
+
+  let canvas: HTMLCanvasElement;
+  try {
+    // Let the clone lay out before measuring.
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    canvas = await html2canvas(clone, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      logging: false,
+      width: Math.round(width),
+      height: Math.max(clone.scrollHeight, 1),
+      windowWidth: Math.round(width),
+      windowHeight: Math.max(clone.scrollHeight, 1),
+    });
+  } finally {
+    host.remove();
+  }
 
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
   const pageWidth = pdf.internal.pageSize.getWidth();
