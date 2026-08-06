@@ -395,6 +395,7 @@ export function MeetingsSection({ dealId, selectedMeetingId, onSelectMeeting }: 
         onOpenChange={(o) => { if (!o) setActionsFor(null); }}
         recordingTitle={actionsFor?.title}
         recordingId={actionsFor?.recordingId}
+        dealId={dealId}
       />
     </div>
   );
