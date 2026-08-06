@@ -392,7 +392,7 @@ export function LinkedCallActionsDialog({
         setLoading(false);
         setTimeout(() => { hydratingRef.current = false; }, 0);
         if (data.to_addr) {
-          void applyLenderThreadSubject(data.to_addr, data.subject || '');
+          void applyLenderThreadSubject(data.to_addr, data.subject || '', kind);
         }
         return;
       }
@@ -443,7 +443,7 @@ export function LinkedCallActionsDialog({
       setTo(nextTo);
       setTimeout(() => { hydratingRef.current = false; }, 0);
       void persistDraft(kind, { to: nextTo, cc: '', bcc: '', subject: nextSubject, body: nextBody, result: res });
-      if (nextTo) void applyLenderThreadSubject(nextTo);
+      if (nextTo) void applyLenderThreadSubject(nextTo, undefined, kind);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not draft the email';
       toast.error(msg);
