@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { searchLenderDealThreads, type LenderThreadMatch } from '@/lib/deal/lenderThreadSearch';
 
 interface Props {
   open: boolean;
@@ -29,6 +30,10 @@ interface Props {
   meetingId?: string | null;
   /** Claap recording id (claap_meetings.claap_id) when the meeting id isn't at hand. */
   recordingId?: string | null;
+  /** Deal context — lets the lender follow-up reply inside the existing deal thread. */
+  dealId?: string | null;
+  dealName?: string | null;
+  company?: string | null;
 }
 
 interface QaPair {
@@ -128,6 +133,7 @@ const ACTIONS: ActionOption[] = [
 
 export function LinkedCallActionsDialog({
   open, onOpenChange, eventTitle, recordingTitle, meetingId, recordingId,
+  dealId, dealName, company,
 }: Props) {
   const [mode, setMode] = useState<'menu' | 'qa'>('menu');
   const [draftKind, setDraftKind] = useState<'qa' | 'client_summary'>('qa');
@@ -145,11 +151,59 @@ export function LinkedCallActionsDialog({
   const [showDetails, setShowDetails] = useState(false);
   const [savedKinds, setSavedKinds] = useState<Record<string, boolean>>({});
   const [savingDraft, setSavingDraft] = useState(false);
+  const [thread, setThread] = useState<LenderThreadMatch | null>(null);
+  const [dealCtx, setDealCtx] = useState<{ name: string; company: string } | null>(
+    dealName ? { name: dealName, company: company || '' } : null,
+  );
   const hydratingRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const title = recordingTitle || eventTitle || 'Linked call';
   const callKey = meetingId || recordingId || `title:${title}`;
+
+  // Resolve deal name/company when only an id was passed.
+  useEffect(() => {
+    if (!open) return;
+    if (dealName) { setDealCtx({ name: dealName, company: company || '' }); return; }
+    if (!dealId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('deals')
+        .select('name, company')
+        .eq('id', dealId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      setDealCtx({ name: (data as { name?: string }).name || '', company: (data as { company?: string }).company || '' });
+    })();
+    return () => { cancelled = true; };
+  }, [open, dealId, dealName, company]);
+
+  /**
+   * Find the live email thread with this lender about this deal and reuse its
+   * subject (as a `Re:`) so the follow-up lands in the existing conversation.
+   */
+  const applyLenderThreadSubject = async (recipient: string) => {
+    const email = (recipient || '').trim();
+    const domain = email.includes('@') ? email.split('@')[1].trim().toLowerCase() : '';
+    if (!domain || !dealCtx?.name) return;
+    try {
+      const matches = await searchLenderDealThreads({
+        domain,
+        email,
+        dealName: dealCtx.name,
+        company: dealCtx.company,
+        limit: 3,
+      });
+      const best = matches[0];
+      if (!best) return;
+      setThread(best);
+      const next = /^re:/i.test(best.subject) ? best.subject : `Re: ${best.subject}`;
+      setSubject(next);
+    } catch {
+      // keep the AI-generated subject
+    }
+  };
 
   /** Persist the current draft (debounced by callers). */
   const persistDraft = async (
@@ -224,6 +278,7 @@ export function LinkedCallActionsDialog({
         setBody('');
         setCopied(false);
         setShowDetails(false);
+        setThread(null);
       }, 200);
       return () => clearTimeout(t);
     }
