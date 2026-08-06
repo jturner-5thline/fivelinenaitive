@@ -162,7 +162,17 @@ function normalizeNylasEvent(event: any, calendarId: string): NormalizedEvent {
       self: false,
     })) || null,
     organizer: event.organizer_email ? { email: event.organizer_email } : null,
-    color_id: null,
+    // Per-event Google color ("Tomato", "Banana", ...). Nylas surfaces this
+    // inconsistently depending on provider/version, so probe every known shape.
+    color_id:
+      event.color_id ??
+      event.colorId ??
+      event.metadata?.color_id ??
+      event.metadata?.colorId ??
+      event.resource?.colorId ??
+      event.raw?.colorId ??
+      null,
+    hex_color: event.hex_color ?? event.background_color ?? null,
   };
 }
 
