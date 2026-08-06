@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import {
   ChevronDown, ChevronRight, User, Calendar, Plus, X, Trash2, CheckSquare,
 } from 'lucide-react';
@@ -182,12 +184,34 @@ export function SubtaskInlineEditor({
               <Calendar className="h-2.5 w-2.5" /> Due date
             </div>
             <div className="flex items-center gap-1 flex-wrap">
-              <Input
-                type="date"
-                value={subtask.due_date || ''}
-                onChange={e => onUpdate(subtask.id, { due_date: e.target.value || null })}
-                className="h-6 text-[11px] w-[120px] bg-[#13181f] text-white border-[#2a2f3e]"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      'h-6 text-[11px] w-[130px] justify-start gap-1 px-2 bg-[#13181f] border-[#2a2f3e]',
+                      subtask.due_date ? 'text-white' : 'text-[#8b92a5]',
+                    )}
+                  >
+                    <Calendar className="h-3 w-3 shrink-0" />
+                    {subtask.due_date
+                      ? format(new Date(subtask.due_date + 'T00:00:00'), 'MMM d, yyyy')
+                      : 'Pick a date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 z-50" align="start">
+                  <CalendarPicker
+                    mode="single"
+                    selected={subtask.due_date ? new Date(subtask.due_date + 'T00:00:00') : undefined}
+                    onSelect={(d) =>
+                      onUpdate(subtask.id, { due_date: d ? format(d, 'yyyy-MM-dd') : null })
+                    }
+                    initialFocus
+                    className={cn('p-3 pointer-events-auto')}
+                  />
+                </PopoverContent>
+              </Popover>
               <Button variant="outline" size="sm" className="h-5 text-[9px] px-1.5 rounded-full border-[#2a2f3e]" style={{ color: '#8b92a5' }}
                 onClick={() => onUpdate(subtask.id, { due_date: today })}>Today</Button>
               <Button variant="outline" size="sm" className="h-5 text-[9px] px-1.5 rounded-full border-[#2a2f3e]" style={{ color: '#8b92a5' }}
