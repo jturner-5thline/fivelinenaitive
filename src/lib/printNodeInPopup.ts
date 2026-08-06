@@ -48,7 +48,14 @@ ${head}
     overflow: visible !important;
     border-radius: 0 !important;
     box-shadow: none !important;
+    background: #ffffff !important;
+    color: #0f172a;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    animation: none !important;
   }
+  #print-root * { opacity: 1 !important; animation: none !important; }
   /* Never allow a break BEFORE the first content — an oversized element
      with break-inside:avoid gets pushed to the next page, which is what
      produced a blank first page. Only small atoms keep break-inside:avoid. */
@@ -80,21 +87,61 @@ ${head}
   clone.style.overflow = 'visible';
 
   const mount = () => {
-    const root = win!.document.getElementById('print-root');
-    if (root) root.appendChild(win!.document.importNode(clone, true));
-    if (root) applyKeepTogether(win!, root);
-    // Give styles/fonts a beat to settle before invoking the print dialog.
-    win!.setTimeout(() => {
+    const doc = win!.document;
+    const root = doc.getElementById('print-root');
+    if (!root) return;
+    root.appendChild(doc.importNode(clone, true));
+
+    const go = () => {
+      try {
+        applyKeepTogether(win!, root);
+      } catch {
+        /* keep-together is best-effort; never block printing */
+      }
       win!.focus();
       win!.print();
-      win!.setTimeout(() => win!.close(), 300);
-    }, 400);
+      win!.setTimeout(() => win!.close(), 500);
+    };
+
+    // Wait for the copied stylesheets (and fonts) to finish loading, otherwise
+    // the print dialog can snapshot an unstyled/blank layout.
+    waitForStyles(win!).then(() => win!.setTimeout(go, 250));
   };
 
   if (win.document.readyState === 'complete') mount();
   else win.addEventListener('load', mount);
 
   return true;
+}
+
+/** Resolve once every <link rel=stylesheet> in the popup has loaded (max 3s). */
+function waitForStyles(win: Window): Promise<void> {
+  const links = Array.from(
+    win.document.querySelectorAll('link[rel="stylesheet"]'),
+  ) as HTMLLinkElement[];
+
+  const loads = links.map(
+    (link) =>
+      new Promise<void>((resolve) => {
+        let loaded = false;
+        try {
+          loaded = !!link.sheet;
+        } catch {
+          loaded = true; // cross-origin sheet: treat as loaded
+        }
+        if (loaded) return resolve();
+        link.addEventListener('load', () => resolve(), { once: true });
+        link.addEventListener('error', () => resolve(), { once: true });
+      }),
+  );
+
+  const fonts = (win.document as Document & { fonts?: FontFaceSet }).fonts;
+  if (fonts) loads.push(fonts.ready.then(() => undefined).catch(() => undefined));
+
+  return Promise.race([
+    Promise.all(loads).then(() => undefined),
+    new Promise<void>((resolve) => win.setTimeout(resolve, 3000)),
+  ]);
 }
 
 /**
