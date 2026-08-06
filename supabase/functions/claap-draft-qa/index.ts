@@ -38,7 +38,8 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await userClient.auth.getUser();
     if (authError || !user) return json({ error: "Unauthorized" }, 401);
 
-    const { meeting_id, recording_id, title } = await req.json();
+    const { meeting_id, recording_id, title, draft_mode } = await req.json();
+    const clientSummary = draft_mode === "client_summary";
     if (!meeting_id && !recording_id && !title) {
       return json({ error: "meeting_id, recording_id or title required" }, 400);
     }
@@ -103,7 +104,15 @@ Deno.serve(async (req) => {
       transcript.slice(0, 120000) || "(no transcript, use the summary)",
     ].filter(Boolean).join("\n");
 
-    const system = [
+    const system = clientSummary ? [
+      "You are a debt-advisory associate writing a short post-call recap email to the CLIENT (the borrower/company) after a call with a lender/funding source.",
+      "Be accurate and grounded in the transcript. Never invent facts.",
+      `The email is sent by ${senderName || "the advisor"}. Write in a natural, human, professional tone. No marketing language, no em dashes, no placeholder brackets other than the sign-off name.`,
+      "Structure email_body as plain text: a greeting line, a blank line, one short paragraph thanking them for the call and noting it went well, a blank line, 2-3 short sentences summarizing what was discussed, a blank line, a section heading line reading exactly 'Action Items' with one '- ' bullet per request the lender made of the client, a blank line, a section heading line reading exactly 'Next Steps' with one '- ' bullet each, a blank line, then the sign-off on its own lines.",
+      "Always separate sections and paragraphs with a blank line. Never run sections together.",
+      "Populate 'summary' with the call summary, 'outstanding_items' with the lender's requests/action items for the client, and leave 'qa' as an empty array.",
+      "Return ONLY JSON matching the schema.",
+    ].join(" ") : [
       "You are a debt-advisory associate preparing lender follow-up material from a recorded call.",
       "Extract every substantive question a lender/funding source asked and pair it with the answer the client (borrower/company) actually gave on the call.",
       "Be accurate: never invent an answer. If a question was asked but not answered, set answer to an empty string and add it to outstanding_items.",
