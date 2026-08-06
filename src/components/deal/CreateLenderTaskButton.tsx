@@ -22,9 +22,18 @@ interface CreateLenderTaskButtonProps {
   dealId: string;
   lenderId: string;
   lenderName: string;
+  /** 'icon' (default) renders the compact square button; 'labeled' renders a full-width "+ Create Task" button. */
+  variant?: 'icon' | 'labeled';
+  className?: string;
 }
 
-export function CreateLenderTaskButton({ dealId, lenderId, lenderName }: CreateLenderTaskButtonProps) {
+export function CreateLenderTaskButton({
+  dealId,
+  lenderId,
+  lenderName,
+  variant = 'icon',
+  className,
+}: CreateLenderTaskButtonProps) {
   const { user } = useAuth();
   const teamMembers = useTeamMembers();
   const [isOpen, setIsOpen] = useState(false);
@@ -87,16 +96,30 @@ export function CreateLenderTaskButton({ dealId, lenderId, lenderName }: CreateL
 
   return (
     <>
+      {variant === 'labeled' ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={cn('h-7 w-full justify-start text-xs', className)}
+          onClick={(e) => { e.stopPropagation(); setIsOpen(true); }}
+          title={`Create task for ${lenderName}`}
+        >
+          <Plus className="h-3 w-3 mr-1.5" />
+          Create Task
+        </Button>
+      ) : (
       <button
         onClick={(e) => { e.stopPropagation(); setIsOpen(true); }}
-        className="relative overflow-hidden h-8 w-8 flex items-center justify-center rounded-md border border-[hsl(272,100%,80%,0.35)] bg-[linear-gradient(145deg,hsl(272,40%,18%,0.5)_0%,hsl(260,30%,12%,0.6)_100%)] text-[hsl(272,100%,85%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(272,80%,75%,0.15),0_2px_12px_hsl(272,60%,35%,0.2)] hover:border-[hsl(272,100%,80%,0.55)] hover:bg-[linear-gradient(145deg,hsl(272,45%,22%,0.6)_0%,hsl(260,35%,16%,0.7)_100%)] hover:shadow-[inset_0_1px_1px_hsl(272,80%,80%,0.25),0_4px_20px_hsl(272,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(272,80%,80%,0.12)_0%,transparent_50%,hsl(272,70%,55%,0.06)_100%)] transition-all"
+        className={cn("relative overflow-hidden h-8 w-8 flex items-center justify-center rounded-md border border-[hsl(272,100%,80%,0.35)] bg-[linear-gradient(145deg,hsl(272,40%,18%,0.5)_0%,hsl(260,30%,12%,0.6)_100%)] text-[hsl(272,100%,85%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(272,80%,75%,0.15),0_2px_12px_hsl(272,60%,35%,0.2)] hover:border-[hsl(272,100%,80%,0.55)] hover:bg-[linear-gradient(145deg,hsl(272,45%,22%,0.6)_0%,hsl(260,35%,16%,0.7)_100%)] hover:shadow-[inset_0_1px_1px_hsl(272,80%,80%,0.25),0_4px_20px_hsl(272,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(272,80%,80%,0.12)_0%,transparent_50%,hsl(272,70%,55%,0.06)_100%)] transition-all", className)}
         title={`Create task for ${lenderName}`}
       >
         <Plus className="h-4 w-4" />
       </button>
+      )}
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+        <DialogContent className="sm:max-w-md z-[10000]" onClick={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>Create Task</DialogTitle>
           </DialogHeader>
