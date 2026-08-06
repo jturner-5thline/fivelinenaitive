@@ -55,6 +55,20 @@ interface ActionOption {
 }
 
 const ACTIONS: ActionOption[] = [
+
+/** Convert an AI plain-text draft into simple HTML for the rich editor. */
+function toHtml(text: string): string {
+  if (!text) return '';
+  if (/<(p|div|br|ul|ol|h[1-6])\b/i.test(text)) return text;
+  return text
+    .split(/\n{2,}/)
+    .map((block) => `<p>${block
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br/>')}</p>`)
+    .join('');
+}
   {
     key: 'draft-qa',
     label: 'Draft Q&A',
