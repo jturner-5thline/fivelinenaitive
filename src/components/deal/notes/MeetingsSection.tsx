@@ -344,6 +344,15 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
                   </p>
                 </div>
                 <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 shrink-0">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-5 w-5 opacity-100"
+                    onClick={() => setActionsFor({ title: r.recording_title || 'Untitled recording' })}
+                    title="Call actions"
+                  >
+                    <Sparkles className="h-3 w-3 text-primary" />
+                  </Button>
                   {r.recording_url && (
                     <Button
                       size="icon"
