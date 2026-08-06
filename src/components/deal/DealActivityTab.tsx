@@ -986,6 +986,9 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
         </CardContent>
       </Card>
 
+        </TabsContent>
+      </Tabs>
+
       {/* Claap call management dialogs */}
       <ClaapDealSelector
         open={dealSelectorOpen}
