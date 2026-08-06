@@ -473,48 +473,81 @@ serve(async (req: Request): Promise<Response> => {
         const endUnix = Math.floor(new Date(timeMax).getTime() / 1000);
 
         const allRaw: any[] = [];
-        let cursor: string | null = body.page_token || null;
         let nextCursor: string | null = null;
+        let rateLimited = false;
+        let hardError: { status: number; message: string } | null = null;
 
-        while (allRaw.length < requested) {
-          const url = new URL(`${baseUrl}/events`);
-          url.searchParams.set("calendar_id", calendarId);
-          url.searchParams.set("start", String(startUnix));
-          url.searchParams.set("end", String(endUnix));
-          url.searchParams.set("limit", String(Math.min(pageLimit, requested - allRaw.length)));
-          if (cursor) url.searchParams.set("page_token", cursor);
+        /**
+         * Nylas (Google) returns ONLY `default` events unless `event_type` is
+         * set explicitly, so out-of-office / focus time / working location
+         * blocks silently disappear from the calendar. Fetch each type and
+         * merge. Non-default types page independently; only the default page
+         * cursor is returned to the caller.
+         */
+        const fetchType = async (eventType: string | null, budget: number): Promise<any[]> => {
+          const collected: any[] = [];
+          let cursor: string | null = eventType ? null : (body.page_token || null);
+          while (collected.length < budget) {
+            const url = new URL(`${baseUrl}/events`);
+            url.searchParams.set("calendar_id", calendarId);
+            url.searchParams.set("start", String(startUnix));
+            url.searchParams.set("end", String(endUnix));
+            url.searchParams.set("limit", String(Math.min(pageLimit, budget - collected.length)));
+            if (eventType) url.searchParams.set("event_type", eventType);
+            if (cursor) url.searchParams.set("page_token", cursor);
 
-          const { response, data } = await fetchWithBackoff(url.toString(), { headers }, `list:${calendarId}`);
+            const { response, data } = await fetchWithBackoff(url.toString(), { headers }, `list:${calendarId}:${eventType || "default"}`);
 
-          if (!response.ok) {
-            console.error("Nylas events error:", data);
-            // Nylas rate-limits aggressively. Degrade to an empty success so
-            // callers don't blow up with a 429 / blank screen. Surface a soft
-            // `rate_limited` flag for callers that want to react.
-            if (response.status === 429) {
-              return new Response(JSON.stringify({ events: allRaw, rate_limited: true, next_page_token: null, warning: 'calendar_rate_limited' }), {
-                status: 200,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-              });
+            if (!response.ok) {
+              console.error("Nylas events error:", eventType || "default", data);
+              if (response.status === 429) { rateLimited = true; break; }
+              // Non-default types may be unsupported for non-Google providers —
+              // never fail the whole request because of them.
+              if (eventType) break;
+              hardError = { status: response.status, message: data.message || "Failed to list events" };
+              break;
             }
-            return new Response(JSON.stringify({ error: data.message || "Failed to list events" }), {
-              status: response.status,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
 
-          const batch = data.data || [];
-          allRaw.push(...batch);
-          nextCursor = data.next_cursor || null;
-          if (!nextCursor || batch.length === 0) break;
-          cursor = nextCursor;
+            const batch = data.data || [];
+            collected.push(...batch);
+            const cur = data.next_cursor || null;
+            if (!eventType) nextCursor = cur;
+            if (!cur || batch.length === 0) break;
+            cursor = cur;
+          }
+          return collected;
+        };
+
+        allRaw.push(...(await fetchType(null, requested)));
+
+        if (!hardError && !rateLimited) {
+          const extraTypes = ["outOfOffice", "focusTime", "workingLocation"];
+          const extras = await Promise.all(extraTypes.map((t) => fetchType(t, Math.min(pageLimit, 200))));
+          for (const list of extras) allRaw.push(...list);
         }
 
-        const events = allRaw.map((e: any) => normalizeNylasEvent(e, calendarId));
+        if (hardError) {
+          return new Response(JSON.stringify({ error: hardError.message }), {
+            status: hardError.status,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const seen = new Set<string>();
+        const events = allRaw
+          .filter((e: any) => {
+            const key = e?.id ?? JSON.stringify(e);
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          })
+          .map((e: any) => normalizeNylasEvent(e, calendarId))
+          .sort((a, b) => (a.start || "").localeCompare(b.start || ""));
 
         return new Response(JSON.stringify({
           events,
-          next_page_token: nextCursor,
+          ...(rateLimited ? { rate_limited: true, warning: 'calendar_rate_limited' } : {}),
+          next_page_token: rateLimited ? null : nextCursor,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
