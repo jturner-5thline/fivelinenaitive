@@ -230,7 +230,6 @@ export function StatusReportPreviewModal({
   const [content, setContent] = useState<StatusReportEditableContent>(initialContent);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiTriedForDeal, setAiTriedForDeal] = useState<string | null>(null);
-  const printConfirmOpenRef = useRef(false);
   /**
    * AI-rewritten "Key Feedback" strings for the Passed Lender Reasons table,
    * keyed by lender name. Absence of a key = still loading; explicit empty
@@ -375,10 +374,6 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   }, [open, deal, configuredStages, outstandingItems, aiTriedForDeal]);
 
   const handleOpenChange = (v: boolean) => {
-    // Opening a second Radix modal can ask the underlying dialog to close.
-    // Keep the report mounted until export confirmation has completed so its
-    // detached snapshot cannot be removed by the unmount cleanup.
-    if (!v && printConfirmOpenRef.current) return;
     if (v) {
       setContent(initialContent);
       setAiTriedForDeal(null); // re-trigger AI on next open
@@ -409,66 +404,19 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   // node the user is editing, so the PDF is a high-fidelity capture (no
   // alternate light layout). We inject @media print rules that hide every
   // other element on the page and force backgrounds/gradients to render.
-  const exportSourceRef = useRef<HTMLDivElement | null>(null);
+  const printableRef = useRef<HTMLDivElement | null>(null);
   /**
    * The printable node lives in one of two mutually-exclusive branches
    * (5th Line dark preview vs. light preview). When that branch swaps —
    * or while a nested dialog is animating — React briefly sets the ref to
    * null, which is what produced the intermittent "Preview not ready"
    * toast. Resolve defensively: prefer the live ref, then fall back to a
-   * DOM lookup by data attribute. The confirmation flow also captures a
-   * detached-from-React snapshot, because opening the nested confirmation
-   * dialog can legitimately unmount the live preview.
+   * DOM lookup by data attribute.
    */
   const resolvePrintableNode = (): HTMLDivElement | null => {
-    const fromRef = exportSourceRef.current;
+    const fromRef = printableRef.current;
     if (fromRef && fromRef.isConnected) return fromRef;
-    const fromDom = document.querySelector<HTMLDivElement>('[data-status-report-export-source]');
-    if (fromDom) return fromDom;
-    // Last resort: the stable snapshot captured before confirmation opened.
-    const cached = capturedPrintableRef.current;
-    return cached && cached.isConnected ? cached : null;
-  };
-  /** Stable DOM snapshot taken at "Export as PDF" click time. */
-  const capturedPrintableRef = useRef<HTMLDivElement | null>(null);
-  const clearPrintableSnapshot = () => {
-    const snapshot = capturedPrintableRef.current;
-    if (snapshot) snapshot.remove();
-    capturedPrintableRef.current = null;
-  };
-  const capturePrintableSnapshot = (): HTMLDivElement | null => {
-    const source = exportSourceRef.current?.isConnected
-      ? exportSourceRef.current
-      : document.querySelector<HTMLDivElement>('[data-status-report-export-source]');
-    if (!source) return null;
-
-    clearPrintableSnapshot();
-    const snapshot = source.cloneNode(true) as HTMLDivElement;
-    const sourceWidth = Math.max(source.getBoundingClientRect().width, source.scrollWidth);
-    snapshot.removeAttribute('id');
-    snapshot.removeAttribute('data-status-report-export-source');
-    snapshot.setAttribute('data-status-report-export-snapshot', '');
-    snapshot.style.position = 'fixed';
-    snapshot.style.left = '-100000px';
-    snapshot.style.top = '0';
-    snapshot.style.width = `${sourceWidth}px`;
-    snapshot.style.height = 'auto';
-    snapshot.style.maxHeight = 'none';
-    snapshot.style.overflow = 'visible';
-    snapshot.style.pointerEvents = 'none';
-    document.body.appendChild(snapshot);
-    capturedPrintableRef.current = snapshot;
-    return snapshot;
-  };
-  useEffect(() => () => clearPrintableSnapshot(), []);
-  /** Wait up to ~1s for the printable node instead of failing immediately. */
-  const waitForPrintableNode = async (): Promise<HTMLDivElement | null> => {
-    for (let i = 0; i < 20; i++) {
-      const node = resolvePrintableNode();
-      if (node) return node;
-      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 50)));
-    }
-    return null;
+    return document.querySelector<HTMLDivElement>('[data-status-report-printable]');
   };
   const [showPrintConfirm, setShowPrintConfirm] = useState(false);
   const [saveCopyToDealSpace, setSaveCopyToDealSpace] = useState(true);
@@ -487,58 +435,33 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
   /** Confirm step: print, and optionally archive a copy to Documents. */
   const handleConfirmPrint = async () => {
-    // Always use the stable snapshot here. The live preview may be removed as
-    // soon as this confirmation closes, while PDF capture is still awaiting.
-    const snapshot = capturedPrintableRef.current;
-    const node = snapshot?.isConnected ? snapshot : await waitForPrintableNode();
+    const node = resolvePrintableNode();
     setShowPrintConfirm(false);
-    if (!node) {
-      printConfirmOpenRef.current = false;
-      clearPrintableSnapshot();
+    handlePrintPdf();
+    if (!saveCopyToDealSpace || !node || !deal.id) return;
+    setIsSavingCopy(true);
+    try {
+      const saved = await saveNodePdfToDealSpace(node, String(deal.id), buildFileTitle());
       toast({
-        title: 'Preview not ready',
-        description: 'The report could not be captured. Reopen the preview and try again.',
+        title: 'Copy saved to Documents',
+        description: saved?.name ? `${saved.name} added to Deal Space ▸ Documents.` : undefined,
+      });
+    } catch (err) {
+      console.error('[status-report] save copy failed:', err);
+      toast({
+        title: 'Could not save a copy to Documents',
+        description: err instanceof Error ? err.message : undefined,
         variant: 'destructive',
       });
-      return;
+    } finally {
+      setIsSavingCopy(false);
     }
-    // Archive FIRST: window.print() opens a modal, blocking dialog that
-    // suspends script execution in the opener, which was preventing the
-    // capture/upload from ever completing.
-    if (saveCopyToDealSpace && node && deal.id) {
-      setIsSavingCopy(true);
-      try {
-        const saved = await saveNodePdfToDealSpace(node, String(deal.id), buildFileTitle());
-        toast({
-          title: 'Copy saved to Documents',
-          description: saved?.name ? `${saved.name} added to Deal Space ▸ Documents.` : undefined,
-        });
-      } catch (err) {
-        console.error('[status-report] save copy failed:', err);
-        toast({
-          title: 'Could not save a copy to Documents',
-          description: err instanceof Error ? err.message : String(err),
-          variant: 'destructive',
-        });
-      } finally {
-        setIsSavingCopy(false);
-      }
-    }
-    handlePrintPdf(node);
-    printConfirmOpenRef.current = false;
-    // Keep the hidden snapshot mounted until the next export/unmount. If the
-    // popup is blocked, the fallback print path still needs this node when its
-    // delayed window.print() runs.
   };
 
-  const handlePrintPdf = (preresolved?: HTMLDivElement | null) => {
-    const node = (preresolved && preresolved.isConnected ? preresolved : null) ?? resolvePrintableNode();
+  const handlePrintPdf = () => {
+    const node = resolvePrintableNode();
     if (!node) {
-      toast({
-        title: 'Preview not ready',
-        description: 'The report preview finished unmounting before printing. Reopen the preview and try again.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Preview not ready', variant: 'destructive' });
       return;
     }
     const PRINT_ID = 'naitive-status-report-printroot';
@@ -692,12 +615,8 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   };
 
   // ── Render the printable report (light-themed) ──────────────────────────
-  const renderPrintable = (nodeRef?: React.Ref<HTMLDivElement>, exportSource = false) => (
-    <div
-      ref={nodeRef}
-      data-status-report-export-source={exportSource ? '' : undefined}
-      className="bg-white text-slate-900 rounded-lg overflow-hidden"
-    >
+  const renderPrintable = () => (
+    <div ref={printableRef} data-status-report-printable className="bg-white text-slate-900 rounded-lg overflow-hidden">
       <div className="sr-bar" style={{ height: 6, background: reportTheme.accent, borderRadius: 2, marginBottom: 16 }} />
       <div>
         <div className="sr-brand" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', color: reportTheme.accentText, textTransform: 'uppercase' }}>
@@ -830,10 +749,10 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   // ── Render the in-app dark preview (Naitive-styled, on-screen only) ─────
   // Print/PDF still uses `renderPrintable()` (light) — we render that node
   // off-screen so the existing handlePrintPdf flow keeps working.
-  const renderInAppPreview = (nodeRef?: React.Ref<HTMLDivElement>, exportSource = false) => (
+  const renderInAppPreview = () => (
     <div
-      ref={nodeRef}
-      data-status-report-export-source={exportSource ? '' : undefined}
+      ref={printableRef}
+      data-status-report-printable
       className="rounded-2xl overflow-hidden border backdrop-blur-2xl"
       style={{
         // Layered gradient shell — matches the deal pop-up surface treatment:
@@ -1100,19 +1019,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              const snapshot = capturePrintableSnapshot();
-              if (!snapshot) {
-                toast({
-                  title: 'Preview not ready',
-                  description: 'The report preview is still loading. Try again in a moment.',
-                  variant: 'destructive',
-                });
-                return;
-              }
-              printConfirmOpenRef.current = true;
-              setShowPrintConfirm(true);
-            }}
+            onClick={() => setShowPrintConfirm(true)}
             disabled={isSavingCopy}
             className="gap-2"
           >
@@ -1129,25 +1036,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       </DialogContent>
     </Dialog>
 
-    {/* A dedicated export tree stays mounted independently of both dialogs.
-        Capturing the visible preview was inherently racy because Radix can
-        detach it while the nested confirmation takes focus. */}
-    <div
-      aria-hidden="true"
-      className="fixed left-[-100000px] top-0 w-[900px] pointer-events-none"
-    >
-      {isFifthLine
-        ? renderInAppPreview(exportSourceRef, true)
-        : renderPrintable(exportSourceRef, true)}
-    </div>
-
-    <AlertDialog
-      open={showPrintConfirm}
-      onOpenChange={(nextOpen) => {
-        if (nextOpen) printConfirmOpenRef.current = true;
-        setShowPrintConfirm(nextOpen);
-      }}
-    >
+    <AlertDialog open={showPrintConfirm} onOpenChange={setShowPrintConfirm}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Print this status update to PDF?</AlertDialogTitle>
@@ -1169,14 +1058,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           </span>
         </label>
         <AlertDialogFooter>
-          <AlertDialogCancel
-            onClick={() => {
-              printConfirmOpenRef.current = false;
-              clearPrintableSnapshot();
-            }}
-          >
-            Cancel
-          </AlertDialogCancel>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction onClick={handleConfirmPrint}>Print to PDF</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

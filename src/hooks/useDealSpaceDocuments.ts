@@ -185,11 +185,6 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
         { event: '*', schema: 'public', table: 'deal_attachments', filter: `deal_id=eq.${dealId}` },
         () => { fetchDocuments(); },
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'deal_space_documents', filter: `deal_id=eq.${dealId}` },
-        () => { fetchDocuments(); },
-      )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [dealId, fetchDocuments]);
