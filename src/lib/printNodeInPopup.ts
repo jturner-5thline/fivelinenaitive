@@ -116,7 +116,13 @@ function waitForStyles(win: Window): Promise<void> {
   const loads = links.map(
     (link) =>
       new Promise<void>((resolve) => {
-        if ((link.sheet && link.sheet.cssRules !== null) || link.dataset.loaded) return resolve();
+        let loaded = false;
+        try {
+          loaded = !!link.sheet;
+        } catch {
+          loaded = true; // cross-origin sheet: treat as loaded
+        }
+        if (loaded) return resolve();
         link.addEventListener('load', () => resolve(), { once: true });
         link.addEventListener('error', () => resolve(), { once: true });
       }),
