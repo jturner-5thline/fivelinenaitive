@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2, GripVertical } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -23,17 +23,28 @@ function slugify(label: string) {
 
 interface Props { open: boolean; onOpenChange: (v: boolean) => void; }
 
+/** Local editing row — `uid` is a stable React key so typing never remounts the input. */
+type DraftField = CustomContactField & { uid: string };
+
+let uidSeq = 0;
+const nextUid = () => `cf_${Date.now().toString(36)}_${uidSeq++}`;
+
 export function ManageContactFieldsDialog({ open, onOpenChange }: Props) {
   const { config, save } = useContactFieldConfig();
   const [disabled, setDisabled] = useState<Set<string>>(new Set());
-  const [custom, setCustom] = useState<CustomContactField[]>([]);
+  const [custom, setCustom] = useState<DraftField[]>([]);
   const [saving, setSaving] = useState(false);
   const [dragKey, setDragKey] = useState<string | null>(null);
+  const hydratedRef = useRef(false);
 
+  // Hydrate once per open. Re-hydrating on every `config` change (realtime pushes
+  // a new object) would wipe whatever the admin is currently typing.
   useEffect(() => {
-    if (!open) return;
+    if (!open) { hydratedRef.current = false; return; }
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
     setDisabled(new Set(config.disabled));
-    setCustom(config.custom.map((f, i) => ({ ...f, order: i })));
+    setCustom(config.custom.map((f, i) => ({ ...f, order: i, uid: nextUid() })));
   }, [open, config]);
 
   const toggleBuiltin = (key: string, enabled: boolean) => {
@@ -46,30 +57,23 @@ export function ManageContactFieldsDialog({ open, onOpenChange }: Props) {
 
   const addCustom = () => {
     setCustom(prev => [...prev, {
-      key: `field_${Date.now()}`, label: 'New Field', type: 'text', order: prev.length,
+      uid: nextUid(), key: '', label: '', type: 'text', order: prev.length,
     }]);
   };
 
-  const updateCustom = (idx: number, patch: Partial<CustomContactField>) => {
-    setCustom(prev => prev.map((f, i) => {
-      if (i !== idx) return f;
-      const merged = { ...f, ...patch };
-      // If label changed and key still looks auto-generated, resync key.
-      if (patch.label !== undefined && (f.key.startsWith('field_') || f.key === slugify(f.label))) {
-        merged.key = slugify(patch.label) || f.key;
-      }
-      return merged;
-    }));
-  };
+  // Never derive `key` while typing — the key is only resolved on save, so the
+  // input keeps a stable identity and backspace/delete behave normally.
+  const updateCustom = (idx: number, patch: Partial<CustomContactField>) =>
+    setCustom(prev => prev.map((f, i) => (i === idx ? { ...f, ...patch } : f)));
 
   const removeCustom = (idx: number) => setCustom(prev => prev.filter((_, i) => i !== idx));
 
-  const reorder = (fromKey: string, toKey: string) => {
-    if (fromKey === toKey) return;
+  const reorder = (fromUid: string, toUid: string) => {
+    if (fromUid === toUid) return;
     setCustom(prev => {
       const arr = [...prev];
-      const fromIdx = arr.findIndex(f => f.key === fromKey);
-      const toIdx = arr.findIndex(f => f.key === toKey);
+      const fromIdx = arr.findIndex(f => f.uid === fromUid);
+      const toIdx = arr.findIndex(f => f.uid === toUid);
       if (fromIdx < 0 || toIdx < 0) return prev;
       const [moved] = arr.splice(fromIdx, 1);
       arr.splice(toIdx, 0, moved);
@@ -80,6 +84,7 @@ export function ManageContactFieldsDialog({ open, onOpenChange }: Props) {
   const handleSave = async () => {
     // Validation
     const seen = new Set<string>();
+    const resolved: CustomContactField[] = [];
     for (const f of custom) {
       if (!f.label.trim()) { toast.error('Every custom field needs a label'); return; }
       const key = f.key || slugify(f.label);
@@ -88,16 +93,17 @@ export function ManageContactFieldsDialog({ open, onOpenChange }: Props) {
       if (f.type === 'select' && (!f.options || f.options.filter(Boolean).length === 0)) {
         toast.error(`Add at least one option to "${f.label}"`); return;
       }
+      resolved.push({
+        key,
+        label: f.label.trim(),
+        type: f.type,
+        order: resolved.length,
+        options: f.type === 'select' ? (f.options || []).map(o => o.trim()).filter(Boolean) : undefined,
+      });
     }
     setSaving(true);
     try {
-      await save({
-        disabled: Array.from(disabled),
-        custom: custom.map((f, i) => ({
-          ...f, key: f.key || slugify(f.label), order: i,
-          options: f.type === 'select' ? (f.options || []).map(o => o.trim()).filter(Boolean) : undefined,
-        })),
-      });
+      await save({ disabled: Array.from(disabled), custom: resolved });
       toast.success('Contact fields updated');
       onOpenChange(false);
     } catch (e: any) {
@@ -150,11 +156,11 @@ export function ManageContactFieldsDialog({ open, onOpenChange }: Props) {
               <div className="space-y-2">
                 {custom.map((f, idx) => (
                   <div
-                    key={f.key + idx}
+                    key={f.uid}
                     draggable
-                    onDragStart={() => setDragKey(f.key)}
+                    onDragStart={() => setDragKey(f.uid)}
                     onDragOver={(e) => { e.preventDefault(); }}
-                    onDrop={(e) => { e.preventDefault(); if (dragKey) reorder(dragKey, f.key); setDragKey(null); }}
+                    onDrop={(e) => { e.preventDefault(); if (dragKey) reorder(dragKey, f.uid); setDragKey(null); }}
                     onDragEnd={() => setDragKey(null)}
                     className="rounded-md border border-border/60 p-3 space-y-2 bg-card"
                   >
@@ -163,7 +169,12 @@ export function ManageContactFieldsDialog({ open, onOpenChange }: Props) {
                       <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div className="space-y-1">
                           <Label className="text-[10px] uppercase text-muted-foreground">Label</Label>
-                          <Input value={f.label} onChange={(e) => updateCustom(idx, { label: e.target.value })} className="h-8 text-sm" />
+                          <Input
+                            value={f.label}
+                            placeholder="e.g. Referral Fee %"
+                            onChange={(e) => updateCustom(idx, { label: e.target.value })}
+                            className="h-8 text-sm"
+                          />
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[10px] uppercase text-muted-foreground">Type</Label>
