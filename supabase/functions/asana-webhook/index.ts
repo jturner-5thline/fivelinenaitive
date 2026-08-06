@@ -44,6 +44,7 @@ serve(async (req) => {
   if (hookSecret) {
     console.log("Asana webhook handshake received");
 
+    const processEvents = async () => {
     const supabase = getSupabase();
     const url = new URL(req.url);
     const integrationId = url.searchParams.get("integration_id");
@@ -284,13 +285,42 @@ serve(async (req) => {
 
       if (updateError) {
         console.error(`[asana-webhook] update error for naitive task ${naitiveTask.id} (gid ${taskGid}):`, updateError);
+        await supabase.from("asana_sync_log").insert({
+          task_id: naitiveTask.id,
+          asana_task_gid: taskGid,
+          action: "inbound_update",
+          success: false,
+          error_message: updateError.message,
+          payload: { event_action: action, fields: Object.keys(updateData) },
+        });
       } else {
         console.log(
           `[asana-webhook] synced ${taskGid} → ${naitiveTask.id} fields:`,
           Object.keys(updateData).filter((k) => k !== 'sync_source' && k !== 'updated_at'),
         );
+        await supabase.from("asana_sync_log").insert({
+          task_id: naitiveTask.id,
+          asana_task_gid: taskGid,
+          action: "inbound_update",
+          success: true,
+          payload: { event_action: action, fields: Object.keys(updateData) },
+          company_id: null,
+        });
       }
     }
+
+    };
+
+    // Asana requires the webhook endpoint to acknowledge delivery within ten
+    // seconds. Fetching task details and applying several events inline could
+    // exceed that deadline, so acknowledge first and keep the work alive in
+    // the edge runtime. This also prevents Asana from disabling an otherwise
+    // valid webhook after repeated timeout failures.
+    EdgeRuntime.waitUntil(
+      processEvents().catch((error) => {
+        console.error("Asana webhook background processing error:", error);
+      }),
+    );
 
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
