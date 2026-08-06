@@ -166,6 +166,8 @@ export function LinkedCallActionsDialog({
   const threadLookupRef = useRef<string | null>(null);
   /** Deal's client contact email — the recap should go to (and thread with) them. */
   const clientEmailRef = useRef<string | null>(null);
+  /** Client company domain — fallback when the legacy deal has no linked contact/email. */
+  const clientDomainRef = useRef<string | null>(null);
 
   const title = recordingTitle || eventTitle || 'Linked call';
   const callKey = meetingId || recordingId || `title:${title}`;
@@ -179,15 +181,38 @@ export function LinkedCallActionsDialog({
     (async () => {
       const { data } = await supabase
         .from('deals')
-        .select('company, contact_email, contact_info')
+        .select('company, contact, contact_email, contact_info, crm_company_id')
         .eq('id', dealId)
         .maybeSingle();
       if (cancelled || !data) return;
-      const row = data as { company?: string; contact_email?: string; contact_info?: string };
+      const row = data as {
+        company?: string;
+        contact?: string;
+        contact_email?: string;
+        contact_info?: string;
+        crm_company_id?: string;
+      };
       const resolvedCompany = row.company || '';
       if (!dealName) setDealCtx({ name: resolvedCompany, company: resolvedCompany });
       const raw = `${row.contact_email || ''} ${row.contact_info || ''}`;
       const legacyEmail = raw.match(/[\w.+-]+@[\w-]+\.[\w.-]+/i)?.[0] || null;
+
+      // Older deals may only carry a free-text client name. Resolve the CRM
+      // company's canonical domain so recap recipients and thread candidates
+      // remain scoped to the client even when contact_deals is empty.
+      let companyDomain: string | null = null;
+      let companyQuery = supabase
+        .from('crm_companies')
+        .select('domain_normalized, domain')
+        .not('domain_normalized', 'is', null)
+        .limit(1);
+      companyQuery = row.crm_company_id
+        ? companyQuery.eq('id', row.crm_company_id)
+        : companyQuery.ilike('name', resolvedCompany);
+      const { data: clientCompany } = await companyQuery.maybeSingle();
+      if (cancelled) return;
+      companyDomain = (clientCompany?.domain_normalized || clientCompany?.domain || '').trim().toLowerCase() || null;
+      clientDomainRef.current = companyDomain;
 
       // Linked deal contacts are the canonical source. Legacy contact fields
       // can be stale and may point the recap search at a lender participant.
@@ -238,10 +263,11 @@ export function LinkedCallActionsDialog({
     kind?: 'qa' | 'client_summary',
   ) => {
     const email = (recipient || '').trim();
-    const domain = email.includes('@') ? email.split('@')[1].trim().toLowerCase() : '';
+    const clientRecap = (kind ?? draftKind) === 'client_summary';
+    const recipientDomain = email.includes('@') ? email.split('@')[1].trim().toLowerCase() : '';
+    const domain = clientRecap ? (clientDomainRef.current || recipientDomain) : recipientDomain;
     const ctx = dealCtxRef.current;
     if (!domain || !ctx?.name) return;
-    const clientRecap = (kind ?? draftKind) === 'client_summary';
     const lookupKey = `${email}|${ctx.name}|${clientRecap ? 'client' : 'lender'}`;
     if (threadLookupRef.current === lookupKey) return;
     threadLookupRef.current = lookupKey;
@@ -426,7 +452,7 @@ export function LinkedCallActionsDialog({
       const nextBody = toHtml(res.email_body || '');
       const suggested = (res.suggested_recipients || []).filter(Boolean);
       const clientEmail = clientEmailRef.current;
-      const clientDomain = clientEmail?.split('@')[1]?.toLowerCase();
+      const clientDomain = clientDomainRef.current || clientEmail?.split('@')[1]?.toLowerCase();
       // The recap goes to the client — prefer the deal's client contact (or a
       // participant at the client's domain) over the first call participant.
       const nextTo =
