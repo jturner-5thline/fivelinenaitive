@@ -128,10 +128,20 @@ function normalizeNylasEvent(event: any, calendarId: string): NormalizedEvent {
     : event.when?.end_date || "";
   const isAllDay = !event.when?.start_time && !!event.when?.start_date;
 
+  const kind = event.event_type || "default";
+  const fallbackTitle = kind === "outOfOffice"
+    ? "Out of office"
+    : kind === "focusTime"
+      ? "Focus time"
+      : kind === "workingLocation"
+        ? "Working location"
+        : "(No title)";
+
   return {
     id: event.id,
     calendar_id: calendarId,
-    summary: event.title || "(No title)",
+    summary: event.title || fallbackTitle,
+    event_type: kind,
     description: event.description || null,
     location: event.location || null,
     start: startTime,
