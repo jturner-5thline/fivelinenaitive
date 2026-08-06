@@ -322,6 +322,8 @@ export function LinkedCallActionsDialog({
         setCopied(false);
         setShowDetails(false);
         setThread(null);
+        setThreadOptions([]);
+        setThreadPickerOpen(false);
         threadLookupRef.current = null;
       }, 200);
       return () => clearTimeout(t);
@@ -352,7 +354,7 @@ export function LinkedCallActionsDialog({
         setBody(data.body_html || '');
         setLoading(false);
         setTimeout(() => { hydratingRef.current = false; }, 0);
-        if (kind === 'qa' && data.to_addr) {
+        if (data.to_addr) {
           void applyLenderThreadSubject(data.to_addr, data.subject || '');
         }
         return;
@@ -367,10 +369,10 @@ export function LinkedCallActionsDialog({
     setDraftKind(kind);
     setMode('qa');
     setLoading(true);
-    if (kind === 'qa') {
-      setThread(null);
-      threadLookupRef.current = null;
-    }
+    setThread(null);
+    setThreadOptions([]);
+    setThreadPickerOpen(false);
+    threadLookupRef.current = null;
     try {
       const { data, error } = await supabase.functions.invoke('claap-draft-qa', {
         body: {
@@ -393,7 +395,7 @@ export function LinkedCallActionsDialog({
       setTo(nextTo);
       setTimeout(() => { hydratingRef.current = false; }, 0);
       void persistDraft(kind, { to: nextTo, cc: '', bcc: '', subject: nextSubject, body: nextBody, result: res });
-      if (kind === 'qa' && nextTo) void applyLenderThreadSubject(nextTo);
+      if (nextTo) void applyLenderThreadSubject(nextTo);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not draft the email';
       toast.error(msg);
