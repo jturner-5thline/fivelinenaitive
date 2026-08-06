@@ -44,8 +44,6 @@ serve(async (req) => {
   if (hookSecret) {
     console.log("Asana webhook handshake received");
 
-    const processEvents = async () => {
-    const processEvents = async () => {
     const supabase = getSupabase();
     const url = new URL(req.url);
     const integrationId = url.searchParams.get("integration_id");
@@ -99,6 +97,7 @@ serve(async (req) => {
       });
     }
 
+    const processEvents = async () => {
     const supabase = getSupabase();
 
     // Optionally verify signature
