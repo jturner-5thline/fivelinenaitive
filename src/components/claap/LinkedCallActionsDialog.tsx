@@ -8,7 +8,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { MessageSquareText, ChevronRight, ChevronLeft, Loader2, Send, ArrowLeft, Mail, Copy, Check } from 'lucide-react';
+import { MessageSquareText, FileText, ChevronRight, ChevronLeft, Loader2, Send, ArrowLeft, Mail, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -114,9 +114,15 @@ function toHtml(text: string): string {
 const ACTIONS: ActionOption[] = [
   {
     key: 'draft-qa',
-    label: 'Draft Q&A',
+    label: 'Draft Post-Call Q&A for Lenders',
     description: 'Turn the call into a question & answer list you can review and send.',
     icon: MessageSquareText,
+  },
+  {
+    key: 'draft-client-summary',
+    label: 'Draft Post-Call Summary to Client',
+    description: 'Turn the call into a client-facing recap you can review and send.',
+    icon: FileText,
   },
 ];
 
