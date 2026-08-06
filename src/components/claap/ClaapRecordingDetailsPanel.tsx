@@ -431,6 +431,13 @@ export function ClaapRecordingDetailsPanel({ recordingId, recordingTitle, record
                   <p className="text-xs italic text-muted-foreground">No action items captured.</p>
                 )}
               </div>
+
+              <ClientAsksSection
+                recordingId={recordingId}
+                dealId={dealId}
+                recordingTitle={recordingTitle}
+                actionItems={details?.actionItems ?? []}
+              />
             </div>
           </div>
         </ScrollArea>
