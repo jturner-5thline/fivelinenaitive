@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Video, Check, Pencil, X, ExternalLink, RefreshCw } from 'lucide-react';
+import { Loader2, Video, Check, Pencil, X, ExternalLink, RefreshCw, Sparkles } from 'lucide-react';
+import { LinkedCallActionsDialog } from './LinkedCallActionsDialog';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -96,6 +97,7 @@ export function MeetingClaapInlineAction(props: Props) {
   const [source, setSource] = useState<'stored' | 'fresh' | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
   const [rankPending, setRankPending] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
 
   // Client-side gate: once we auto-attempt a search for this event and it
   // completes (whether or not a match was found and whether or not the DB
@@ -572,7 +574,30 @@ export function MeetingClaapInlineAction(props: Props) {
   // Once a recording is officially linked (manual approve or post-refresh
   // hydration from event_claap_recordings), collapse back to the plain button
   // cell — no banner. The button itself reflects the linked state via color.
-  if (band === 'none' || band === 'linked') return buttonCell;
+  if (band === 'linked') {
+    return (
+      <div className="flex w-full min-w-0 items-center gap-1">
+        <div className="min-w-0 flex-1">{buttonCell}</div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 w-8 shrink-0 p-0 border-sky-500/40 bg-sky-500/[0.08] hover:bg-sky-500/[0.14] text-white"
+          onClick={(e) => { e.stopPropagation(); setActionsOpen(true); }}
+          title="Call actions"
+          aria-label="Call actions"
+        >
+          <Sparkles className="h-3.5 w-3.5 text-sky-200" />
+        </Button>
+        <LinkedCallActionsDialog
+          open={actionsOpen}
+          onOpenChange={setActionsOpen}
+          eventTitle={eventTitle}
+          recordingTitle={title}
+        />
+      </div>
+    );
+  }
+  if (band === 'none') return buttonCell;
 
   // Suggestion / linked detail bar — rendered via portal below the 4-button
   // action row so it can use full width and never clips the equal-width cell.
