@@ -95,6 +95,7 @@ interface NormalizedEvent {
   end: string;
   all_day: boolean;
   status: string;
+  event_type?: string;
   updated: string | null;
   created: string | null;
   html_link: string | null;
