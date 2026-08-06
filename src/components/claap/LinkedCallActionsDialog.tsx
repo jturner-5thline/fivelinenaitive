@@ -130,6 +130,7 @@ export function LinkedCallActionsDialog({
   open, onOpenChange, eventTitle, recordingTitle, meetingId, recordingId,
 }: Props) {
   const [mode, setMode] = useState<'menu' | 'qa'>('menu');
+  const [draftKind, setDraftKind] = useState<'qa' | 'client_summary'>('qa');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<QaResult | null>(null);
   const [to, setTo] = useState('');
@@ -150,6 +151,7 @@ export function LinkedCallActionsDialog({
       // Reset only after the close animation so the panel doesn't flicker.
       const t = setTimeout(() => {
         setMode('menu');
+        setDraftKind('qa');
         setResult(null);
         setLoading(false);
         setTo('');
@@ -166,22 +168,28 @@ export function LinkedCallActionsDialog({
     }
   }, [open]);
 
-  const runDraftQa = async () => {
+  const runDraft = async (kind: 'qa' | 'client_summary') => {
+    setDraftKind(kind);
     setMode('qa');
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('claap-draft-qa', {
-        body: { meeting_id: meetingId || null, recording_id: recordingId || null, title },
+        body: {
+          meeting_id: meetingId || null,
+          recording_id: recordingId || null,
+          title,
+          draft_mode: kind === 'client_summary' ? 'client_summary' : 'qa',
+        },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       const res = data as QaResult;
       setResult(res);
-      setSubject(res.email_subject || `Follow-up: ${title}`);
+      setSubject(res.email_subject || `${kind === 'client_summary' ? 'Recap' : 'Follow-up'}: ${title}`);
       setBody(toHtml(res.email_body || ''));
       setTo((res.suggested_recipients || [])[0] || '');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Could not draft Q&A';
+      const msg = err instanceof Error ? err.message : 'Could not draft the email';
       toast.error(msg);
       setMode('menu');
     } finally {
