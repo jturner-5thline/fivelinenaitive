@@ -392,6 +392,11 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
           )}
         </div>
       )}
+      <LinkedCallActionsDialog
+        open={!!actionsFor}
+        onOpenChange={(o) => { if (!o) setActionsFor(null); }}
+        recordingTitle={actionsFor?.title}
+      />
     </div>
   );
 }
