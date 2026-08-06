@@ -114,6 +114,7 @@ import { InfoRequestsPanel } from '@/components/deal/InfoRequestsPanel';
 const loadDealManagementTab = lazyRetry(() => import('@/components/deal/DealManagementTab').then(m => ({ default: m.DealManagementTab })));
 const DealManagementTab = lazy(loadDealManagementTab);
 import { CreateTaskButton } from '@/components/deal/CreateTaskButton';
+import { DealCompanyDetailsButton } from '@/components/deal/DealCompanyDetailsButton';
 import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
 import { LenderFollowUpPopover } from '@/components/deal/LenderFollowUpPopover';
 import { LogLenderActivityPopover } from '@/components/deal/LogLenderActivityPopover';
@@ -3401,6 +3402,10 @@ export default function DealDetail() {
                     // truncating aggressively across desktop/laptop widths.
                     displayClassName="font-semibold leading-tight bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white break-words"
                     displayStyle={{ fontSize: 'clamp(1.5rem, 3.2vw, 3rem)' }}
+                  />
+                  <DealCompanyDetailsButton
+                    crmCompanyId={(deal as any)?.crm_company_id ?? null}
+                    companyName={deal.company}
                   />
                   <Tooltip>
                     <TooltipTrigger asChild>
