@@ -222,7 +222,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
                 </div>
               )}
             </div>
-            <ScrollArea className="max-h-72">
+            <ScrollArea className="max-h-72" viewportClassName="pr-3 [scrollbar-gutter:stable]">
               {loading && results.length === 0 ? (
                 <div className="flex items-center justify-center py-6">
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -330,7 +330,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
                 tabIndex={0}
                 onClick={() => setActionsFor({ title: r.recording_title || 'Untitled recording', recordingId: r.recording_id })}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActionsFor({ title: r.recording_title || 'Untitled recording', recordingId: r.recording_id }); } }}
-                className="group pl-3 pr-8 py-1.5 flex items-start gap-2 hover:bg-muted/40 cursor-pointer"
+                className="group pl-3 pr-2 py-1.5 flex items-start gap-2 hover:bg-muted/40 cursor-pointer"
               >
                 <Video className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
                 <div className="min-w-0 flex-1">
@@ -341,7 +341,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
                     {formatDuration(r.duration_seconds) ? ` · ${formatDuration(r.duration_seconds)}` : ''}
                   </p>
                 </div>
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 shrink-0 mr-1">
+                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 shrink-0 mr-2">
                   {r.recording_url && (
                     <Button
                       size="icon"
