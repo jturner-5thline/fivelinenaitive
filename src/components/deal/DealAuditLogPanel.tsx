@@ -342,7 +342,34 @@ export function DealAuditLogPanel({ entries, unresolvedStageEntries = [], loadin
                         <Icon className={cn("h-3 w-3", config.color)} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        {entry.action_type === 'deal_created' ? (
+                        {entry.entity_type === 'funding_source' &&
+                        (entry.action_type === 'lender_stage_change' || entry.action_type === 'lender_substage_change') ? (
+                          (() => {
+                            const meta = entry.metadata || {};
+                            const kind = entry.action_type === 'lender_stage_change' ? 'stage' : 'milestone';
+                            const lenderId = meta.lender_id || null;
+                            const lenderName = meta.lender_name || entry.entity_name || 'Funding source';
+                            const fromLabel = resolveLenderActivityLabel(meta.from, kind as 'stage' | 'milestone', lenderId);
+                            const toLabel = resolveLenderActivityLabel(meta.to, kind as 'stage' | 'milestone', lenderId);
+                            return (
+                              <div className="text-xs leading-relaxed">
+                                <p>
+                                  <span className="font-medium">{lenderName}</span>
+                                  <span className="text-muted-foreground"> {kind === 'stage' ? 'stage' : 'milestone'} changed</span>
+                                </p>
+                                <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded border border-border/40 bg-muted/40 text-[11px] text-muted-foreground">
+                                    {fromLabel}
+                                  </span>
+                                  <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded border border-border/60 bg-muted/70 text-[11px] font-medium text-foreground">
+                                    {toLabel}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : entry.action_type === 'deal_created' ? (
                           <p className="text-xs leading-relaxed">
                             <span className="font-medium">Deal Created</span>
                             <span className="text-muted-foreground"> · {entry.user_display_name || 'System'}</span>
