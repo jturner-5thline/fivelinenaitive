@@ -189,7 +189,11 @@ Deno.serve(async (req) => {
       summary: parsed.summary || meeting.ai_summary || "",
       qa: Array.isArray(parsed.qa) ? parsed.qa : [],
       outstanding_items: Array.isArray(parsed.outstanding_items) ? parsed.outstanding_items : [],
-      email_subject: parsed.email_subject || `Follow-up: ${meeting.title || "our call"}`,
+      email_subject:
+        parsed.email_subject ||
+        (clientSummary
+          ? `Recap: ${meeting.title || "our call"}`
+          : `Follow-up: ${meeting.title || "our call"}`),
       email_body: parsed.email_body || "",
       suggested_recipients: (participants || [])
         .map((p: any) => p.email)
