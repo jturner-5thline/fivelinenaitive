@@ -68,7 +68,29 @@ async function ensureAsanaWebhookForProject(
       .eq('asana_project_gid', projectGid)
       .maybeSingle();
 
-    if (existing?.is_active && existing.asana_webhook_gid) return;
+    // A database row only records the webhook we last registered; it does not
+    // prove Asana is still delivering it. Asana can remove a webhook after
+    // repeated delivery failures, which previously left reverse sync silently
+    // disabled forever because this early-return trusted the stale row.
+    if (existing?.is_active && existing.asana_webhook_gid) {
+      const { data: verification } = await supabase.functions.invoke('asana-proxy', {
+        body: {
+          action: 'get_webhook',
+          integration_id: integrationId,
+          webhook_gid: existing.asana_webhook_gid,
+        },
+      });
+
+      if (verification?.success && verification.webhook?.active !== false) return;
+
+      console.warn(
+        `[AsanaSync] Webhook ${existing.asana_webhook_gid} is stale; registering a replacement for project ${projectGid}`,
+      );
+      await supabase
+        .from('asana_webhooks')
+        .update({ is_active: false, asana_webhook_gid: null })
+        .eq('id', existing.id);
+    }
 
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
     if (!supabaseUrl) {

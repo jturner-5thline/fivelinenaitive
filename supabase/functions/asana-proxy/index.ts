@@ -293,6 +293,22 @@ serve(async (req) => {
         break;
       }
 
+      case "get_webhook": {
+        const resolvedToken = await resolveToken(token, integration_id);
+        const webhookGid = params.webhook_gid;
+        if (!webhookGid) {
+          result = { success: false, error: "webhook_gid is required" };
+          break;
+        }
+
+        const webhookData = await asanaFetch(
+          `/webhooks/${webhookGid}?opt_fields=gid,active,resource.gid,target,last_failure_at,last_failure_content,last_success_at`,
+          resolvedToken,
+        );
+        result = { success: true, webhook: webhookData.data };
+        break;
+      }
+
       case "delete_webhook": {
         const resolvedToken = await resolveToken(token, integration_id);
         const webhookGid = params.webhook_gid;
