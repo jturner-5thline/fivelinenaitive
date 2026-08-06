@@ -5846,6 +5846,21 @@ export default function DealDetail() {
               <LenderFlagIndicator lenderName={selectedLenderName || ''} />
             </DialogTitle>
             {(() => {
+              const hdrLender = deal?.lenders?.find((l) => l.name === selectedLenderName);
+              if (!deal || !hdrLender || !selectedLenderName) return null;
+              return (
+                <div className="mt-2.5 flex items-center gap-2">
+                  <CreateLenderTaskButton
+                    dealId={deal.id}
+                    lenderId={hdrLender.id}
+                    lenderName={selectedLenderName}
+                    variant="labeled"
+                    className="w-auto px-2.5"
+                  />
+                </div>
+              );
+            })()}
+            {(() => {
               const lenderList = deal?.lenders || [];
               const idx = lenderList.findIndex(l => l.name === selectedLenderName);
               if (lenderList.length < 2 || idx < 0) return null;
@@ -6109,20 +6124,10 @@ export default function DealDetail() {
                             <span className="text-muted-foreground">Activity events</span>
                             <span className="font-medium">{lenderActivities.length}</span>
                           </div>
-                          {deal && (
-                            <div className="pt-2">
-                              <CreateLenderTaskButton
-                                dealId={deal.id}
-                                lenderId={dealLender.id}
-                                lenderName={selectedLenderName}
-                                variant="labeled"
-                              />
-                            </div>
-                          )}
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 w-full mt-1.5 text-xs justify-start"
+                            className="h-7 w-full mt-2 text-xs justify-start"
                             onClick={() => setLenderDialogTab('workflow')}
                           >
                             <ArrowRight className="h-3 w-3 mr-1.5" />
