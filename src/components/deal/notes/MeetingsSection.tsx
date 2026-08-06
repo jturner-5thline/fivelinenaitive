@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Video, Search, Plus, ExternalLink, Unlink, Loader2, ChevronDown, ChevronRight, Link2, Check, RefreshCw, Copy, Sparkles } from 'lucide-react';
 import { LinkedCallActionsDialog } from '@/components/claap/LinkedCallActionsDialog';
-import { ClaapRecordingDetailsDialog } from '@/components/claap/ClaapRecordingDetailsDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +14,8 @@ import { format } from 'date-fns';
 
 interface MeetingsSectionProps {
   dealId: string;
+  selectedMeetingId?: string | null;
+  onSelectMeeting?: (meeting: { recordingId: string; title: string; url?: string | null }) => void;
 }
 
 function formatDuration(seconds?: number | null) {
@@ -24,7 +25,7 @@ function formatDuration(seconds?: number | null) {
   return `${Math.floor(mins / 60)}h ${mins % 60}m`;
 }
 
-export function MeetingsSection({ dealId }: MeetingsSectionProps) {
+export function MeetingsSection({ dealId, selectedMeetingId, onSelectMeeting }: MeetingsSectionProps) {
   const { recordings, loading, fetchRecordings, getRecording } = useClaapRecordings();
   const { linkedRecordings, linkedRecordingIds, linkRecording, unlinkRecording } = useDealClaapRecordings(dealId);
   const [open, setOpen] = useState(false);
@@ -37,7 +38,6 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [actionsFor, setActionsFor] = useState<{ title: string; recordingId?: string | null } | null>(null);
-  const [detailsFor, setDetailsFor] = useState<{ title: string; recordingId?: string | null; url?: string | null } | null>(null);
 
   // On open: refetch fresh (bypass 60s live cache) so today's meetings show up.
   useEffect(() => {
