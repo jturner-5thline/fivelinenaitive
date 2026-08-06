@@ -447,6 +447,59 @@ export function useContactActivities(contactId: string | undefined) {
 
       // Calendar-invite meetings where this contact is an attendee/organizer,
       // even when no Claap recording exists.
+      // Claap recordings auto-linked to this contact via the meeting guest list.
+      let claapRecordingActivities: any[] = [];
+      {
+        const { data: links } = await supabase
+          .from('claap_recording_links')
+          .select('recording_id')
+          .eq('entity_type', 'contact')
+          .eq('entity_id', contactId);
+        const recIds = Array.from(new Set((links || []).map((l: any) => l.recording_id).filter(Boolean)));
+        if (recIds.length > 0) {
+          const { data: recs } = await supabase
+            .from('claap_recordings')
+            .select('id, title, started_at, ended_at, created_at, recording_url, transcript_url, summary, participants')
+            .in('id', recIds)
+            .order('started_at', { ascending: false });
+          claapRecordingActivities = (recs || []).map((r: any) => {
+            const parts = Array.isArray(r.participants) ? r.participants : [];
+            const names = parts.map((p: any) => p?.name || p?.email).filter(Boolean);
+            const durationSeconds =
+              r.started_at && r.ended_at
+                ? Math.max(0, Math.round((new Date(r.ended_at).getTime() - new Date(r.started_at).getTime()) / 1000))
+                : undefined;
+            return {
+              id: `claaprec:${r.id}`,
+              contact_id: contactId,
+              activity_type: 'claap_call',
+              subject: r.title || 'Call recording',
+              body: r.summary || (names.length ? `Attendees: ${names.join(', ')}` : ''),
+              occurred_at: r.started_at || r.created_at,
+              created_at: r.started_at || r.created_at,
+              source: 'claap',
+              metadata: {
+                claap_recording_id: r.id,
+                recording_url: r.recording_url,
+                transcript_url: r.transcript_url,
+                duration_seconds: durationSeconds,
+                attendees: parts.map((p: any) => ({ name: p?.name, email: p?.email })),
+              },
+              __readOnly: true,
+            };
+          });
+          // Drop recordings that duplicate a Claap meeting already in the feed (±30 min).
+          const meetingTimes = claapActivities
+            .map((a: any) => new Date(a.occurred_at || 0).getTime())
+            .filter((t) => Number.isFinite(t) && t > 0);
+          claapRecordingActivities = claapRecordingActivities.filter((a: any) => {
+            const t = new Date(a.occurred_at || 0).getTime();
+            if (!Number.isFinite(t) || t <= 0) return true;
+            return !meetingTimes.some((mt) => Math.abs(mt - t) < 30 * 60 * 1000);
+          });
+        }
+      }
+
       let calendarActivities: any[] = [];
       if (emails.size > 0) {
         const list = Array.from(emails);
@@ -460,7 +513,7 @@ export function useContactActivities(contactId: string | undefined) {
           .limit(200);
 
         // Dedupe against Claap meetings covering the same slot (±30 min).
-        const claapTimes = claapActivities
+        const claapTimes = [...claapActivities, ...claapRecordingActivities]
           .map((a: any) => new Date(a.occurred_at || 0).getTime())
           .filter((t) => Number.isFinite(t) && t > 0);
         const seenEventIds = new Set<string>();
@@ -502,7 +555,7 @@ export function useContactActivities(contactId: string | undefined) {
           });
       }
 
-      const all = [...merged, ...claapActivities, ...calendarActivities];
+      const all = [...merged, ...claapActivities, ...claapRecordingActivities, ...calendarActivities];
       all.sort((a: any, b: any) => {
         const at = new Date(a.occurred_at || a.created_at || 0).getTime();
         const bt = new Date(b.occurred_at || b.created_at || 0).getTime();
