@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Eye, FileText, TrendingUp, Loader2, ExternalLink, Download, FileSignature, HelpCircle, X, Bookmark, FileCheck, ScrollText, ArrowDownToLine, Video, Unlink, ArrowRightLeft, Link2 } from 'lucide-react';
+import { Eye, FileText, TrendingUp, Loader2, ExternalLink, Download, FileSignature, HelpCircle, X, Bookmark, FileCheck, ScrollText, ArrowDownToLine, Video, Unlink, ArrowRightLeft, Link2, Landmark } from 'lucide-react';
 import { Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
@@ -89,6 +89,33 @@ const ACTIVITY_TYPE_LABELS: Record<string, { label: string; icon: React.ReactNod
   deal_viewed: { label: 'Viewed deal', icon: <Eye className="h-3.5 w-3.5" /> },
   writeup_viewed: { label: 'Viewed writeup', icon: <FileCheck className="h-3.5 w-3.5" /> },
   claap_recording_linked: { label: 'Call recording', icon: <Video className="h-3.5 w-3.5" /> },
+};
+
+// Funding source (lender) lifecycle events surfaced under the "Funding Sources" filter
+const FUNDING_SOURCE_ACTIVITY_TYPES = [
+  'lender_added',
+  'lender_updated',
+  'lender_removed',
+  'lender_deleted',
+  'lender_stage_change',
+  'lender_substage_change',
+  'lender_status_change',
+  'lender_notes_updated',
+  'lender_passed',
+  'lender_terms_received',
+];
+
+const FUNDING_SOURCE_LABELS: Record<string, { label: string; icon: React.ReactNode }> = {
+  lender_added: { label: 'Funding source added', icon: <Landmark className="h-3.5 w-3.5" /> },
+  lender_updated: { label: 'Funding source updated', icon: <Landmark className="h-3.5 w-3.5" /> },
+  lender_removed: { label: 'Funding source removed', icon: <Unlink className="h-3.5 w-3.5" /> },
+  lender_deleted: { label: 'Funding source removed', icon: <Unlink className="h-3.5 w-3.5" /> },
+  lender_stage_change: { label: 'Funding source stage changed', icon: <ArrowRightLeft className="h-3.5 w-3.5" /> },
+  lender_substage_change: { label: 'Funding source sub-stage changed', icon: <ArrowRightLeft className="h-3.5 w-3.5" /> },
+  lender_status_change: { label: 'Funding source status changed', icon: <ArrowRightLeft className="h-3.5 w-3.5" /> },
+  lender_notes_updated: { label: 'Funding source notes updated', icon: <FileText className="h-3.5 w-3.5" /> },
+  lender_passed: { label: 'Funding source passed', icon: <X className="h-3.5 w-3.5" /> },
+  lender_terms_received: { label: 'Terms received', icon: <FileSignature className="h-3.5 w-3.5" /> },
 };
 
 function formatCallDuration(seconds: number | null | undefined) {
@@ -243,12 +270,10 @@ function useActivityDetailsForDate(dealId: string | undefined, date: string | nu
       // Only return external activity
       const INTERNAL = [
         'deal_created', 'deal_updated', 'stage_changed', 'status_changed',
-        'lender_added', 'lender_updated', 'lender_removed', 'lender_deleted',
-        'lender_stage_change', 'lender_substage_change', 'lender_notes_updated',
         'note_added', 'status_note_added', 'attachment_added', 'attachment_deleted',
         'document_added', 'milestone_added', 'milestone_completed', 'milestone_deleted',
         'value_updated', 'flex_push',
-      ];
+      ].filter((type) => !FUNDING_SOURCE_ACTIVITY_TYPES.includes(type));
 
       const filteredActivityLogs: DealActivityDetailItem[] = (activityLogs || [])
         .filter((activity) => !INTERNAL.includes(activity.activity_type))
@@ -303,7 +328,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
   const { data: chartData, isLoading: isLoadingChart } = useDealActivityChart(dealId, 14);
   const { data: lenderEngagement } = useFlexLenderEngagement(dealId);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [activityFilter, setActivityFilter] = useState<'all' | 'calls' | 'activity'>('all');
+  const [activityFilter, setActivityFilter] = useState<'all' | 'calls' | 'activity' | 'funding_sources'>('all');
   const [expandedTranscriptId, setExpandedTranscriptId] = useState<string | null>(null);
   const [unlinkMeetingId, setUnlinkMeetingId] = useState<string | null>(null);
   const [dealSelectorOpen, setDealSelectorOpen] = useState(false);
@@ -349,11 +374,18 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
 
   const filteredDayActivities = useMemo(() => {
     if (!dayActivities) return [];
+    if (activityFilter === 'funding_sources') {
+      return dayActivities.filter((activity) => FUNDING_SOURCE_ACTIVITY_TYPES.includes(activity.activity_type));
+    }
     if (activityFilter === 'calls') {
       return dayActivities.filter((activity) => activity.activity_type === 'claap_recording_linked');
     }
     if (activityFilter === 'activity') {
-      return dayActivities.filter((activity) => activity.activity_type !== 'claap_recording_linked');
+      return dayActivities.filter(
+        (activity) =>
+          activity.activity_type !== 'claap_recording_linked' &&
+          !FUNDING_SOURCE_ACTIVITY_TYPES.includes(activity.activity_type),
+      );
     }
     return dayActivities;
   }, [activityFilter, dayActivities]);
@@ -461,6 +493,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
                   { value: 'all' as const, label: 'All' },
                   { value: 'calls' as const, label: 'Calls' },
                   { value: 'activity' as const, label: 'Activity' },
+                  { value: 'funding_sources' as const, label: 'Funding Sources' },
                 ].map((filterOption) => (
                   <Button
                     key={filterOption.value}
@@ -484,7 +517,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
                 <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
                   {filteredDayActivities.map((activity) => {
                     const meta = activity.metadata as Record<string, any> | null;
-                    const typeInfo = ACTIVITY_TYPE_LABELS[activity.activity_type] || {
+                    const typeInfo = FUNDING_SOURCE_LABELS[activity.activity_type] || ACTIVITY_TYPE_LABELS[activity.activity_type] || {
                       label: activity.activity_type.replace(/_/g, ' '),
                       icon: <ExternalLink className="h-3.5 w-3.5" />,
                     };
