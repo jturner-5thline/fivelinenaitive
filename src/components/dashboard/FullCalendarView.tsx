@@ -129,6 +129,7 @@ import { AgendaIntel } from './AgendaIntel';
 import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 import { useTeammateList, useTeammateEvents } from '@/hooks/useTeammateCalendar';
 import { UserCircle2 } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────
 type CalendarViewMode = 'day' | 'week' | 'month' | 'agenda' | 'intel';
