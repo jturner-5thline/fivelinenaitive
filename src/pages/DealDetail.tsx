@@ -6109,10 +6109,20 @@ export default function DealDetail() {
                             <span className="text-muted-foreground">Activity events</span>
                             <span className="font-medium">{lenderActivities.length}</span>
                           </div>
+                          {deal && (
+                            <div className="pt-2">
+                              <CreateLenderTaskButton
+                                dealId={deal.id}
+                                lenderId={dealLender.id}
+                                lenderName={selectedLenderName}
+                                variant="labeled"
+                              />
+                            </div>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 w-full mt-2 text-xs justify-start"
+                            className="h-7 w-full mt-1.5 text-xs justify-start"
                             onClick={() => setLenderDialogTab('workflow')}
                           >
                             <ArrowRight className="h-3 w-3 mr-1.5" />
