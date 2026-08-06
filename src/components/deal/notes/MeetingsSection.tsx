@@ -142,7 +142,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
 
   return (
     <div className="border-b">
-      <div className="w-full px-3 py-2 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted/40">
+      <div className="w-full min-w-0 px-3 py-2 flex items-center gap-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted/40">
         <button
           type="button"
           onClick={() => setExpanded(v => !v)}
@@ -161,10 +161,10 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
               type="button"
               variant="ghost"
               size="sm"
-              className="ml-auto h-5 shrink-0 whitespace-nowrap px-1.5 text-[10px] text-primary hover:bg-primary/10"
+              className="ml-auto mr-2 h-5 shrink-0 whitespace-nowrap px-1.5 text-[10px] text-primary hover:bg-primary/10"
               onClick={(e) => { e.stopPropagation(); setOpen(true); }}
             >
-              <Plus className="h-3 w-3" /> Add meeting
+              <Plus className="h-3 w-3" /> Add
             </Button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80 p-0" onClick={(e) => e.stopPropagation()}>
