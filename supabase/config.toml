@@ -73,6 +73,8 @@ project_id = "tgkksvazruzbghssnxde"
     verify_jwt = false
   [functions.gmail-messages]
     verify_jwt = false
+  [functions.extract-lender-email-context]
+    verify_jwt = false
   [functions.gmail-status]
     verify_jwt = false
   [functions.handle-email-suppression]
