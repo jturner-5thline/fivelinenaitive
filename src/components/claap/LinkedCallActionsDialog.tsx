@@ -155,6 +155,7 @@ export function LinkedCallActionsDialog({
   const [threadOptions, setThreadOptions] = useState<LenderThreadMatch[]>([]);
   const [threadPickerOpen, setThreadPickerOpen] = useState(false);
   const [threadSearching, setThreadSearching] = useState(false);
+  const [clientDomain, setClientDomain] = useState<string | null>(null);
   const [dealCtx, setDealCtx] = useState<{ name: string; company: string } | null>(
     dealName ? { name: dealName, company: company || '' } : null,
   );
@@ -213,6 +214,7 @@ export function LinkedCallActionsDialog({
       if (cancelled) return;
       companyDomain = (clientCompany?.domain_normalized || clientCompany?.domain || '').trim().toLowerCase() || null;
       clientDomainRef.current = companyDomain;
+      setClientDomain(companyDomain);
 
       // Linked deal contacts are the canonical source. Legacy contact fields
       // can be stale and may point the recap search at a lender participant.
@@ -243,6 +245,24 @@ export function LinkedCallActionsDialog({
   }, [open, dealId, dealName, company]);
 
   useEffect(() => { dealCtxRef.current = dealCtx; }, [dealCtx]);
+
+  // Deal context resolves independently from draft generation. If the draft
+  // initially chose a non-client attendee, correct it as soon as the client
+  // company's domain is known, then rerun thread matching for that recipient.
+  useEffect(() => {
+    if (!open || mode !== 'qa' || draftKind !== 'client_summary' || !clientDomain || !result) return;
+    const clientRecipient = (result.suggested_recipients || []).find((candidate) =>
+      candidate.toLowerCase().endsWith(`@${clientDomain}`),
+    );
+    if (!clientRecipient || clientRecipient.toLowerCase() === to.trim().toLowerCase()) return;
+    setTo(clientRecipient);
+    setThread(null);
+    setThreadOptions([]);
+    setThreadPickerOpen(false);
+    threadLookupRef.current = null;
+    void applyLenderThreadSubject(clientRecipient, subject, 'client_summary');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, mode, draftKind, clientDomain, result, to]);
 
   /** Use a thread: reply inside it and mirror its subject into the Subject field. */
   const selectThread = (match: LenderThreadMatch) => {
@@ -387,6 +407,9 @@ export function LinkedCallActionsDialog({
         setThread(null);
         setThreadOptions([]);
         setThreadPickerOpen(false);
+        setClientDomain(null);
+        clientDomainRef.current = null;
+        clientEmailRef.current = null;
         threadLookupRef.current = null;
       }, 200);
       return () => clearTimeout(t);
