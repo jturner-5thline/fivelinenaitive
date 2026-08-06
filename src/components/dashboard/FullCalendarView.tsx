@@ -129,6 +129,7 @@ import { AgendaIntel } from './AgendaIntel';
 import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 import { useTeammateList, useTeammateEvents } from '@/hooks/useTeammateCalendar';
 import { UserCircle2 } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────
 type CalendarViewMode = 'day' | 'week' | 'month' | 'agenda' | 'intel';
@@ -811,13 +812,18 @@ function MiniCalendar({
             calendars.map(cal => {
               const hex = calendarColors.get(cal.id)?.background;
               const hidden = hiddenCalendarIds.has(cal.id);
+              const others = calendars.filter(c => c.id !== cal.id).map(c => c.id);
+              const isolated = !hidden && others.length > 0 && others.every(id => hiddenCalendarIds.has(id));
               return (
                 <div key={cal.id} className="group flex items-center gap-2 min-w-0">
                   <button
                     type="button"
-                    onClick={() => onToggleCalendar(cal.id)}
-                    title={hidden ? `Show ${cal.summary}` : `Hide ${cal.summary}`}
-                    className="flex items-center gap-2 min-w-0 flex-1 text-left rounded px-1 py-0.5 hover:bg-muted/60 transition-colors"
+                    onClick={() => onOnlyCalendar(cal.id)}
+                    title={isolated ? `Show all calendars` : `View only ${cal.summary}`}
+                    className={cn(
+                      'flex items-center gap-2 min-w-0 flex-1 text-left rounded px-1 py-0.5 hover:bg-muted/60 transition-colors',
+                      isolated && 'bg-muted/70',
+                    )}
                   >
                     <div
                       className={cn(
@@ -839,11 +845,11 @@ function MiniCalendar({
                   </button>
                   <button
                     type="button"
-                    onClick={() => onOnlyCalendar(cal.id)}
-                    className="shrink-0 text-[9px] uppercase tracking-wide text-primary opacity-0 group-hover:opacity-100 transition-opacity hover:underline"
-                    title="Show only this calendar"
+                    onClick={() => onToggleCalendar(cal.id)}
+                    className="shrink-0 text-muted-foreground/70 hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                    title={hidden ? `Show ${cal.summary}` : `Hide ${cal.summary}`}
                   >
-                    Only
+                    {hidden ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                   </button>
                 </div>
               );
