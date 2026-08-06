@@ -111,7 +111,7 @@ export function EmailRichTextEditor({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm prose-invert max-w-none focus:outline-none px-3 py-3 text-sm leading-relaxed text-foreground/90',
+        class: 'email-rte-content prose prose-sm prose-invert max-w-none focus:outline-none px-3 py-3 text-sm leading-relaxed text-foreground/90',
         style: `min-height: ${minHeight}px;`,
       },
       // Cmd/Ctrl+K opens the insert-link popover on the current selection.
