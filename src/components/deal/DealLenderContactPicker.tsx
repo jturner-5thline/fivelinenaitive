@@ -54,14 +54,19 @@ export function DealLenderContactPicker({
   const selectedFromAdditional = additionalContacts.find((c) => c.id === selectedContactId);
   const hasAlternates = additionalContacts.length > 0;
 
+  // Compact, always single-line label for the closed trigger state.
+  const compactSelectedLabel = selectedFromAdditional
+    ? selectedFromAdditional.name || selectedFromAdditional.email || 'Selected contact'
+    : directoryDefault?.name || directoryDefault?.email || 'Directory default';
+
   return (
-    <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
+    <div className="min-w-0 space-y-2.5 rounded-lg border border-border/60 bg-muted/20 p-3.5">
       <div className="flex items-center justify-between gap-2">
-        <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Preferred contact for this deal
         </Label>
         {selectedContactId && (
-          <Badge variant="secondary" className="h-5 gap-1 text-[10px] font-normal">
+          <Badge variant="secondary" className="h-5 shrink-0 gap-1 text-[10px] font-normal">
             <Star className="h-2.5 w-2.5 fill-current" />
             Override active
           </Badge>
@@ -77,15 +82,15 @@ export function DealLenderContactPicker({
         }
         disabled={setSelected.isPending || !masterLenderId}
       >
-        <SelectTrigger className="h-9 text-sm bg-background">
-          <SelectValue placeholder="Select a contact" />
+        <SelectTrigger className="h-9 w-full min-w-0 bg-background text-sm [&>span]:block [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate [&>span]:whitespace-nowrap [&>span]:text-left">
+          <SelectValue placeholder="Select a contact">{compactSelectedLabel}</SelectValue>
         </SelectTrigger>
         <SelectContent className="z-[9999]">
           <SelectItem value={DEFAULT_VALUE}>
-            <span className="flex flex-col">
-              <span className="text-sm">{directoryLabel}</span>
+            <span className="flex flex-col gap-0.5">
+              <span className="text-sm leading-tight">{directoryLabel}</span>
               {directoryDefault?.email && (
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-[11px] leading-tight text-muted-foreground">
                   {directoryDefault.email}
                 </span>
               )}
@@ -93,20 +98,20 @@ export function DealLenderContactPicker({
           </SelectItem>
           {additionalContacts.map((c) => (
             <SelectItem key={c.id} value={c.id}>
-              <span className="flex flex-col">
-                <span className="text-sm">
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm leading-tight">
                   {c.name}
                   {c.title ? `, ${c.title}` : ''}
                 </span>
                 {c.email && (
-                  <span className="text-[11px] text-muted-foreground">{c.email}</span>
+                  <span className="text-[11px] leading-tight text-muted-foreground">{c.email}</span>
                 )}
               </span>
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-      <p className="text-[11px] text-muted-foreground leading-snug">
+      <p className="text-[11px] leading-relaxed text-muted-foreground">
         {hasAlternates
           ? 'Reminders, lender submissions, and AI email drafts for this deal will be addressed to the contact above.'
           : 'No alternate contacts saved yet for this funding source. Add more from the Funding Sources page to enable selection.'}

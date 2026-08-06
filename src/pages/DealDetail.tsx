@@ -5820,8 +5820,8 @@ export default function DealDetail() {
 
       <Dialog open={!!selectedLenderName} onOpenChange={(open) => !open && setSelectedLenderName(null)}>
         <DialogContent className="max-w-3xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
-          <DialogHeader className="shrink-0 px-6 pt-5 pb-3 border-b border-border/60 relative">
-            <DialogTitle className="flex items-center gap-2 text-lg pr-40">
+          <DialogHeader className="shrink-0 px-7 pt-5 pb-4 border-b border-border/60 bg-muted/10 relative">
+            <DialogTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight pr-40">
               {(() => {
                 const ml = masterLenders.find(
                   (m) => m.name.toLowerCase().trim() === (selectedLenderName || '').toLowerCase().trim(),
@@ -5911,8 +5911,8 @@ export default function DealDetail() {
                 onValueChange={(v) => setLenderDialogTab(v as any)}
                 className="w-full flex flex-row flex-1 min-h-0"
               >
-                <div className="shrink-0 w-40 border-r border-border/60 bg-muted/30 px-2 py-4">
-                  <TabsList className="flex flex-col h-auto w-full bg-transparent p-0 gap-1">
+                <div className="shrink-0 w-40 border-r border-border/60 bg-muted/15 px-2.5 py-4">
+                  <TabsList className="flex flex-col h-auto w-full bg-transparent p-0 gap-0.5">
                     <TabsTrigger
                       value="overview"
                       className="w-full justify-start text-xs h-9 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
@@ -5940,16 +5940,16 @@ export default function DealDetail() {
                 </div>
 
                 <ScrollArea className="flex-1 min-h-0 min-w-0">
-                  <div className="px-6 py-5">
+                  <div className="px-7 py-6">
 
                 {/* ─────────── OVERVIEW ─────────── */}
                 <TabsContent value="overview" className="m-0 focus-visible:outline-none">
                   {dealLender ? (
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                       {/* Left: editable decision fields (~60%) */}
-                      <div className="md:col-span-3 space-y-5">
+                      <div className="md:col-span-3 min-w-0 space-y-5">
                         {/* Stage — visually prominent */}
-                        <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+                        <div className="rounded-lg border border-border/70 bg-muted/20 p-3.5">
                           <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                             Stage
                           </Label>
@@ -5972,7 +5972,7 @@ export default function DealDetail() {
                               }
                             }}
                           >
-                            <SelectTrigger className="h-11 mt-1.5 text-sm font-semibold bg-background">
+                            <SelectTrigger className="h-10 mt-2 w-full min-w-0 bg-background text-sm font-medium [&>span]:truncate [&>span]:whitespace-nowrap">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -5984,7 +5984,7 @@ export default function DealDetail() {
                             </SelectContent>
                           </Select>
                           {currentStage?.group && (
-                            <p className="text-[10px] text-muted-foreground mt-1.5 capitalize">
+                            <p className="mt-2 text-[10px] capitalize text-muted-foreground/80">
                               Group · {currentStage.group}
                             </p>
                           )}
@@ -5992,7 +5992,7 @@ export default function DealDetail() {
 
                         {/* Score (secondary) */}
                         {scoreConfig.enabled && (
-                          <div>
+                          <div className="min-w-0">
                             <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                               Score
                             </Label>
@@ -6005,7 +6005,7 @@ export default function DealDetail() {
                                 });
                               }}
                             >
-                              <SelectTrigger className="h-9 mt-1.5">
+                              <SelectTrigger className="h-9 mt-2 w-full min-w-0 bg-background [&>span]:truncate [&>span]:whitespace-nowrap">
                                 <SelectValue placeholder="No score" />
                               </SelectTrigger>
                               <SelectContent>
@@ -6029,11 +6029,11 @@ export default function DealDetail() {
                         />
 
                         {/* Notes — larger */}
-                        <div>
+                        <div className="min-w-0">
                           <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                             Notes
                           </Label>
-                          <div className="mt-1.5 rounded-md border border-border bg-background min-h-[140px] p-1 text-sm leading-relaxed">
+                          <div className="mt-2 min-h-[140px] rounded-lg border border-border/70 bg-background p-2 text-sm leading-relaxed">
                             <InlineEditField
                               value={dealLender.notes || ''}
                               onSave={(value) => {
@@ -6049,8 +6049,8 @@ export default function DealDetail() {
                       </div>
 
                       {/* Right: status history + meta (~40%) */}
-                      <div className="md:col-span-2 space-y-4">
-                        <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+                      <div className="md:col-span-2 min-w-0 space-y-4">
+                        <div className="rounded-lg border border-border/60 bg-muted/20 p-4">
                           <div className="flex items-center justify-between mb-3">
                             <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                               Status History
@@ -6096,7 +6096,7 @@ export default function DealDetail() {
                         </div>
 
                         {/* Quick meta */}
-                        <div className="rounded-lg border border-border/60 p-4 space-y-2 text-xs">
+                        <div className="rounded-lg border border-border/60 bg-muted/10 p-4 space-y-2.5 text-xs">
                           <div className="flex items-center justify-between">
                             <span className="text-muted-foreground">Open requests</span>
                             <span className="font-medium">{lenderOutstandingItems.length}</span>
@@ -6246,10 +6246,10 @@ export default function DealDetail() {
                 </TabsContent>
 
                 {/* ─────────── FUNDING SOURCE ─────────── */}
-                <TabsContent value="funding-source" className="m-0 focus-visible:outline-none space-y-6">
+                <TabsContent value="funding-source" className="m-0 focus-visible:outline-none divide-y divide-border/50 [&>section]:py-5 [&>section:first-child]:pt-0 [&>section:last-child]:pb-0">
                   {/* About the funding source */}
-                  <section>
-                    <div className="flex items-center justify-between mb-2">
+                  <section className="min-w-0">
+                    <div className="mb-2 flex items-center justify-between gap-3">
                       <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         About {selectedLenderName}
                       </h4>
@@ -6260,18 +6260,18 @@ export default function DealDetail() {
                         </Button>
                       </LenderNotesPopover>
                     </div>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-[11px] leading-relaxed text-muted-foreground/80">
                       Directory record · not specific to this deal. Internal notes are not visible to lenders or borrowers.
                     </p>
                   </section>
 
                   {/* Available contacts */}
-                  <section>
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  <section className="min-w-0">
+                    <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Available Contacts
                     </h4>
                     {masterLender?.contact_name ? (
-                      <div className="rounded-md border border-border/60 p-3 space-y-0.5 text-sm">
+                      <div className="rounded-lg border border-border/60 bg-muted/10 p-3.5 space-y-1 text-sm">
                         <p className="font-medium">
                           {masterLender.contact_name}
                           {masterLender.contact_title ? <span className="font-normal text-muted-foreground">, {masterLender.contact_title}</span> : null}
@@ -6279,13 +6279,13 @@ export default function DealDetail() {
                         {masterLender.email && (
                           <p className="text-xs text-muted-foreground">{masterLender.email}</p>
                         )}
-                        <p className="text-[10px] text-muted-foreground/80 pt-1">Directory default contact</p>
+                        <p className="pt-1 text-[10px] uppercase tracking-wider text-muted-foreground/70">Directory default contact</p>
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground italic">No contact information available</p>
                     )}
                     {dealLender && (
-                      <div className="mt-3">
+                      <div className="mt-3 min-w-0">
                         <DealLenderContactPicker
                           dealLenderId={dealLender.id}
                           masterLenderId={masterLender?.id ?? null}
@@ -6300,8 +6300,8 @@ export default function DealDetail() {
                   </section>
 
                   {/* Deal preferences */}
-                  <section>
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  <section className="min-w-0">
+                    <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Deal Preferences
                     </h4>
                     {lenderDetails?.preferences && lenderDetails.preferences.length > 0 ? (
@@ -6316,8 +6316,8 @@ export default function DealDetail() {
                   </section>
 
                   {/* Other deals with this lender */}
-                  <section>
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  <section className="min-w-0">
+                    <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Other Deals with {selectedLenderName}
                     </h4>
                     <div className="space-y-2">
