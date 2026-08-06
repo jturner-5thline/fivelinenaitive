@@ -149,7 +149,7 @@ export function LinkedCallActionsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(mode === 'qa' ? (showDetails ? 'sm:max-w-[900px]' : 'sm:max-w-[560px]') : 'sm:max-w-[460px]')}>
+      <DialogContent className={cn(mode === 'qa' ? (showDetails ? 'sm:max-w-[1200px]' : 'sm:max-w-[840px]') : 'sm:max-w-[460px]')}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {mode === 'qa' && (
