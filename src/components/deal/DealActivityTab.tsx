@@ -161,7 +161,7 @@ function useLinkedClaapCalls(dealId: string | undefined) {
           .from('contact_activities')
           .select('id, contact_id, activity_type, subject, body, occurred_at, metadata, deal_id')
           .in('contact_id', contactIds)
-          .in('activity_type', ['call', 'meeting', 'call_logged', 'meeting_logged'])
+          .in('activity_type', ['call', 'meeting', 'claap_call', 'call_logged', 'meeting_logged'])
           .order('occurred_at', { ascending: false })
           .limit(200),
       ]);
