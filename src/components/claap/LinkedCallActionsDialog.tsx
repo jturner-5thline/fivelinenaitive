@@ -54,8 +54,6 @@ interface ActionOption {
   icon: typeof MessageSquareText;
 }
 
-const ACTIONS: ActionOption[] = [
-
 /** Convert an AI plain-text draft into simple HTML for the rich editor. */
 function toHtml(text: string): string {
   if (!text) return '';
@@ -69,6 +67,8 @@ function toHtml(text: string): string {
       .replace(/\n/g, '<br/>')}</p>`)
     .join('');
 }
+
+const ACTIONS: ActionOption[] = [
   {
     key: 'draft-qa',
     label: 'Draft Q&A',
