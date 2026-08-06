@@ -23,6 +23,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
+      console.error("[extract-lender-email-context] missing bearer header");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -32,11 +33,14 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-    const { data: claimsData } = await supabase.auth.getClaims(token);
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
     let userId = claimsData?.claims?.sub as string | undefined;
     if (!userId) {
-      const { data: userData } = await supabase.auth.getUser(token);
+      const { data: userData, error: userError } = await supabase.auth.getUser(token);
       userId = userData?.user?.id;
+      if (!userId) {
+        console.error("[extract-lender-email-context] auth failed", claimsError?.message, userError?.message);
+      }
     }
     if (!userId) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
