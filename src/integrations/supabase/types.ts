@@ -29547,6 +29547,10 @@ export type Database = {
         }[]
       }
       claap_link_orphan_recordings: { Args: never; Returns: Json }
+      claap_link_recording_contacts: {
+        Args: { p_recording_id?: string }
+        Returns: number
+      }
       claap_log_api_call: {
         Args: {
           _deal_id?: string
