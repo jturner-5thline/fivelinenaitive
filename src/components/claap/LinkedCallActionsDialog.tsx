@@ -599,6 +599,64 @@ export function LinkedCallActionsDialog({
                   <div>
                     <Label className="text-xs text-muted-foreground">Subject</Label>
                     <Input value={subject} onChange={(e) => setSubject(e.target.value)} className="mt-1 h-9" />
+                    <div className="mt-1.5 space-y-1.5">
+                      {threadSearching && (
+                        <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Looking for the existing email thread…
+                        </p>
+                      )}
+                      {!threadSearching && thread && (
+                        <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <Mail className="h-3 w-3 shrink-0" />
+                          <span className="truncate">Replying in thread: <span className="text-foreground">{thread.subject}</span></span>
+                          {threadOptions.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="link"
+                              size="sm"
+                              className="h-auto p-0 text-[11px]"
+                              onClick={() => setThreadPickerOpen((v) => !v)}
+                            >
+                              Change
+                            </Button>
+                          )}
+                        </p>
+                      )}
+                      {!threadSearching && !thread && threadOptions.length > 0 && (
+                        <p className="text-[11px] text-amber-500">
+                          Multiple possible threads — pick the one to reply in.
+                        </p>
+                      )}
+                      {threadPickerOpen && threadOptions.length > 0 && (
+                        <div className="rounded-md border border-border/60 divide-y divide-border/60">
+                          {threadOptions.map((opt) => (
+                            <button
+                              key={opt.thread_id}
+                              type="button"
+                              onClick={() => selectThread(opt)}
+                              className={cn(
+                                'w-full text-left px-2.5 py-1.5 hover:bg-muted/40 transition-colors',
+                                thread?.thread_id === opt.thread_id && 'bg-muted/40',
+                              )}
+                            >
+                              <span className="block truncate text-xs font-medium">{opt.subject}</span>
+                              <span className="block truncate text-[11px] text-muted-foreground">
+                                {opt.from_email}
+                                {opt.latest_date ? ` · ${new Date(opt.latest_date).toLocaleDateString()}` : ''}
+                                {` · ${opt.message_count} message${opt.message_count === 1 ? '' : 's'}`}
+                              </span>
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => { setThread(null); setThreadPickerOpen(false); }}
+                            className="w-full text-left px-2.5 py-1.5 text-[11px] text-muted-foreground hover:bg-muted/40"
+                          >
+                            Start a new thread instead
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">Message</Label>
