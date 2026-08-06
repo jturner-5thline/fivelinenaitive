@@ -52,7 +52,28 @@ serve(async (req: Request): Promise<Response> => {
       .single();
 
     if (fetchError || !tokenRecord || !tokenRecord.grant_id) {
-      return new Response(JSON.stringify({ connected: false, message: "Calendar not connected. Connect your Google account first." }), {
+      // No Nylas grant — the user may still be connected through Microsoft /
+      // Outlook, whose events are synced into `calendar_events`. Without this
+      // check the calendar popup shows "Calendar isn't connected" even though
+      // Integrations correctly reports Outlook as connected.
+      const { data: msToken } = await supabase
+        .from("microsoft_tokens")
+        .select("email, status, connected_at, created_at")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (msToken && msToken.status !== "disconnected") {
+        return new Response(JSON.stringify({
+          connected: true,
+          is_expired: false,
+          scope: "calendar",
+          provider: "microsoft",
+          connected_at: msToken.connected_at || msToken.created_at,
+          email: msToken.email,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({ connected: false, message: "Calendar not connected. Connect Google or Microsoft in Integrations." }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -93,6 +114,7 @@ serve(async (req: Request): Promise<Response> => {
       connected: !isExpired,
       is_expired: isExpired,
       scope: "calendar",
+      provider: "nylas",
       connected_at: tokenRecord.created_at,
       email: tokenRecord.email_address,
     }), {

@@ -431,6 +431,30 @@ serve(async (req: Request): Promise<Response> => {
       if (msConnected && body.action === "list") {
         return await listMicrosoftEvents(supabase, user.id, body);
       }
+      if (msConnected && body.action === "list_calendars") {
+        // Outlook sync is single-calendar; surface it so the legend and the
+        // rest of the UI have something to bind to instead of erroring out.
+        const { data: msToken } = await supabase
+          .from("microsoft_tokens")
+          .select("email")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        return new Response(
+          JSON.stringify({
+            calendars: [{
+              id: "primary",
+              name: msToken?.email || "Outlook Calendar",
+              description: null,
+              is_primary: true,
+              read_only: true,
+              hex_color: null,
+              provider: "microsoft",
+            }],
+            provider: "microsoft",
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
       if (msConnected) {
         return new Response(
           JSON.stringify({
