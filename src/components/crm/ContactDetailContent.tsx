@@ -81,7 +81,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
   const { data: auditLog = [] } = useContactAuditLog(contactId);
   const [newNote, setNewNote] = useState('');
   const [domainCopied, setDomainCopied] = useState(false);
-  const [activityFilter, setActivityFilter] = useState('all');
+  const [activityFilters, setActivityFilters] = useState<string[]>([]);
   const [logDialog, setLogDialog] = useState<{ type: 'call' | 'meeting' } | null>(null);
 
   const [showLinkCompany, setShowLinkCompany] = useState(false);
@@ -131,14 +131,15 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
     () => activities.find((a: any) => a.activity_type === 'note'),
     [activities],
   );
+  const matchesActivityType = (a: any, type: string) => (
+    a.activity_type === type
+    || (type === 'meeting' && (a.activity_type === 'claap_call' || a.activity_type === 'call'))
+  );
   const filteredActivities = useMemo(
-    () => (activityFilter === 'all'
+    () => (activityFilters.length === 0
       ? activities
-      : activities.filter((a: any) => (
-          a.activity_type === activityFilter
-          || (activityFilter === 'meeting' && a.activity_type === 'claap_call')
-        ))),
-    [activities, activityFilter],
+      : activities.filter((a: any) => activityFilters.some((t) => matchesActivityType(a, t)))),
+    [activities, activityFilters],
   );
   const grouped = useMemo(() => {
     const today: any[] = [];
