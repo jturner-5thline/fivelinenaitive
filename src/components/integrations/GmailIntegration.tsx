@@ -77,6 +77,9 @@ export function GmailIntegration({ onDisconnect }: GmailIntegrationProps) {
     trashMessage,
   } = useGmail();
 
+  // A Microsoft/Outlook connection must NOT make the Gmail card appear connected.
+  const gmailConnected = status.connected && status.provider !== 'microsoft';
+
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
@@ -219,10 +222,10 @@ export function GmailIntegration({ onDisconnect }: GmailIntegrationProps) {
 
   // Load messages when connected
   useEffect(() => {
-    if (status.connected && !status.is_expired) {
+    if (gmailConnected && !status.is_expired) {
       listMessages();
     }
-  }, [status.connected, status.is_expired, listMessages]);
+  }, [gmailConnected, status.is_expired, listMessages]);
 
   const handleConnect = async () => {
     await connect();
@@ -322,7 +325,7 @@ export function GmailIntegration({ onDisconnect }: GmailIntegrationProps) {
     );
   }
 
-  if (!status.connected) {
+  if (!gmailConnected) {
     return (
       <Card>
         <CardHeader>
