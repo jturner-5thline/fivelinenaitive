@@ -301,7 +301,10 @@ export function useDealAuditLog(dealId: string | undefined) {
       );
 
       // Fetch user profiles for display names
-      const userIds = [...new Set(rows.map(r => r.user_id).filter(Boolean))] as string[];
+      const userIds = [...new Set([
+        ...rows.map(r => r.user_id),
+        ...rows.map(r => (r.entity_type === 'task' ? r.metadata?.assigned_to : null)),
+      ].filter(Boolean))] as string[];
       const { data: profiles } = userIds.length
         ? await supabase
             .from('profiles')
@@ -312,6 +315,9 @@ export function useDealAuditLog(dealId: string | undefined) {
       const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
       const enriched = rows.map(r => ({
         ...r,
+        metadata: r.entity_type === 'task' && r.metadata?.assigned_to
+          ? { ...r.metadata, assignee_name: profileMap.get(r.metadata.assigned_to)?.display_name || null }
+          : r.metadata,
         user_display_name: r.user_display_name || (r.user_id ? profileMap.get(r.user_id)?.display_name : null) || 'System',
         user_avatar_url: r.user_id ? profileMap.get(r.user_id)?.avatar_url || null : null,
       }));
