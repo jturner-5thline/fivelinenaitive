@@ -281,6 +281,16 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Microsoft/Outlook mailboxes are served straight from the synced
+  // `emails` table (no Nylas). Several Gmail-only round-trips
+  // (`sync_state`, SENT / DRAFT / SPAM / TRASH folders, the `email_cache`
+  // fallback) are no-ops for them and were the main reason the popup felt
+  // slow and kept showing "Still fetching latest emails…". We branch on
+  // the provider and skip the dead work.
+  const isMicrosoft = status.provider === 'microsoft';
+  const isMicrosoftRef = useRef(false);
+  isMicrosoftRef.current = isMicrosoft;
+
   // Perf: close the [InboxOpen] timer started on the dashboard tile click
   // exactly once after the dialog mounts with `open === true`. This lets
   // us measure click → first paint in the console / User Timing track.
