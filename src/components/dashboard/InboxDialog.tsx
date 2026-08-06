@@ -774,9 +774,23 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       }, 5000) as unknown as number;
     }
     try {
+      const ms = isMicrosoftRef.current;
+      // Outlook: a refresh should actually pull new mail from Graph, not
+      // just re-read the same synced rows. Kick the sync first (bounded so
+      // a slow Graph call can never hang the popup), then read the table.
+      if (ms && opts.manual && user?.id) {
+        await Promise.race([
+          supabase.functions.invoke('microsoft-sync-emails', { body: { user_id: user.id } })
+            .catch(() => null),
+          new Promise((r) => setTimeout(r, 6000)),
+        ]);
+        if (!isMountedRef.current) return;
+      }
       const [inbox, sent] = await Promise.all([
         fetchPage({ labelIds: ['INBOX'], forceRefresh: !!opts.manual }),
-        fetchPage({ labelIds: ['SENT'], forceRefresh: !!opts.manual }),
+        ms
+          ? Promise.resolve({ messages: [], nextPageToken: null, rateLimited: false } as any)
+          : fetchPage({ labelIds: ['SENT'], forceRefresh: !!opts.manual }),
       ]);
       if (!isMountedRef.current) return;
       // Reauth required from upstream — surface a CTA to /integrations
@@ -808,7 +822,11 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
         });
         return;
       }
-      const inboxMessagesAuthoritative = await applyAuthoritativeReadState(inbox.messages);
+      const inboxMessagesAuthoritative = await applyAuthoritativeReadState(
+        inbox.messages,
+        PAGE_SIZE,
+        !ms,
+      );
       if (!isMountedRef.current) return;
       // Prepend new messages above the cached list; mergeUniqueById
       // preserves the already-loaded tail so scroll position and the
@@ -847,7 +865,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       refreshInFlightRef.current = false;
       if (isMountedRef.current) setIsRefreshing(false);
     }
-  }, [status.connected, mergeUniqueById, inboxMessages]);
+  }, [status.connected, mergeUniqueById, inboxMessages, user?.id]);
 
   const silentRefresh = useCallback(() => runRefresh({ force: false }), [runRefresh]);
   const forceRefresh = useCallback(() => runRefresh({ force: true }), [runRefresh]);
