@@ -98,7 +98,7 @@ function markFetchFailure() {
 
 function isTransientFetchError(error: unknown): boolean {
   const msg = error instanceof Error ? error.message : String(error || '');
-  return /rate.?limit|429|503|502|504|timeout|temporar|try again in a moment|service unavailable/i.test(msg);
+  return /rate.?limit|429|503|502|504|timeout|timed out|taking longer than usual|temporar|try again in a moment|service unavailable/i.test(msg);
 }
 
 export interface EmailPrefetchStatus {
