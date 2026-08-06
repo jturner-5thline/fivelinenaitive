@@ -257,7 +257,9 @@ export function LinkedCallActionsDialog({
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
-            {mode === 'qa' ? 'Lender follow-up email' : 'Call actions'}
+            {mode === 'qa'
+              ? draftKind === 'client_summary' ? 'Client recap email' : 'Lender follow-up email'
+              : 'Call actions'}
             {mode === 'qa' && !loading && result && (
               <Button
                 type="button"
@@ -265,9 +267,11 @@ export function LinkedCallActionsDialog({
                 variant="ghost"
                 className="ml-auto h-7 gap-1 text-xs"
                 onClick={() => setShowDetails((v) => !v)}
-                aria-label={showDetails ? 'Hide call summary and Q&A' : 'Show call summary and Q&A'}
+                aria-label={showDetails ? 'Hide call details' : 'Show call details'}
               >
-                {showDetails ? <><ChevronLeft className="h-4 w-4" /> Hide details</> : <>Summary &amp; Q&amp;A <ChevronRight className="h-4 w-4" /></>}
+                {showDetails
+                  ? <><ChevronLeft className="h-4 w-4" /> Hide details</>
+                  : <>{draftKind === 'client_summary' ? 'Summary' : <>Summary &amp; Q&amp;A</>} <ChevronRight className="h-4 w-4" /></>}
               </Button>
             )}
           </DialogTitle>
@@ -282,7 +286,13 @@ export function LinkedCallActionsDialog({
                 <button
                   key={a.key}
                   type="button"
-                  onClick={a.key === 'draft-qa' ? runDraftQa : () => toast.info(`${a.label} — coming soon`)}
+                  onClick={
+                    a.key === 'draft-qa'
+                      ? () => runDraft('qa')
+                      : a.key === 'draft-client-summary'
+                        ? () => runDraft('client_summary')
+                        : () => toast.info(`${a.label} — coming soon`)
+                  }
                   className="w-full text-left rounded-md border border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors px-3 py-2.5 flex items-start gap-2.5"
                 >
                   <Icon className="h-4 w-4 mt-0.5 text-primary shrink-0" />
@@ -302,21 +312,23 @@ export function LinkedCallActionsDialog({
             {loading ? (
               <div className="flex flex-col items-center justify-center gap-2 py-14 text-sm text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                Reading the transcript, pairing questions with answers and drafting the follow-up…
+                {draftKind === 'client_summary'
+                  ? 'Reading the transcript and drafting the client recap…'
+                  : 'Reading the transcript, pairing questions with answers and drafting the follow-up…'}
               </div>
             ) : result ? (
               <div className={cn('grid gap-4 flex-1 min-h-0 overflow-y-auto pr-1', showDetails && 'lg:grid-cols-2')}>
                 {/* Pre-drafted email */}
                 <div className="min-w-0 space-y-2">
                   <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                    <Mail className="h-3.5 w-3.5" /> Lender follow-up email
+                    <Mail className="h-3.5 w-3.5" /> {draftKind === 'client_summary' ? 'Client recap email' : 'Lender follow-up email'}
                   </p>
                   <div>
                     <Label className="text-xs text-muted-foreground">To</Label>
                     <Input
                       value={to}
                       onChange={(e) => setTo(e.target.value)}
-                      placeholder="lender@example.com"
+                      placeholder={draftKind === 'client_summary' ? 'client@example.com' : 'lender@example.com'}
                       className="mt-1 h-9"
                     />
                   </div>
@@ -379,10 +391,13 @@ export function LinkedCallActionsDialog({
                       <p className="text-xs leading-relaxed whitespace-pre-wrap">{result.summary}</p>
                     </div>
                   )}
+                  {draftKind !== 'client_summary' && (
                   <div className="flex items-center gap-2">
                     <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Q&amp;A</p>
                     <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">{result.qa.length}</Badge>
                   </div>
+                  )}
+                  {draftKind !== 'client_summary' && (
                   <ScrollArea className="h-[150px] pr-3">
                     <div className="space-y-2">
                       {result.qa.length === 0 && (
@@ -402,9 +417,12 @@ export function LinkedCallActionsDialog({
                       ))}
                     </div>
                   </ScrollArea>
+                  )}
                   {result.outstanding_items.length > 0 && (
                     <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-amber-500 mb-1">Outstanding items</p>
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-amber-500 mb-1">
+                        {draftKind === 'client_summary' ? 'Action items' : 'Outstanding items'}
+                      </p>
                       <ul className="list-disc pl-4 space-y-0.5">
                         {result.outstanding_items.map((item, i) => (
                           <li key={i} className="text-xs text-muted-foreground">{item}</li>
@@ -425,7 +443,7 @@ export function LinkedCallActionsDialog({
                 </Button>
                 <Button type="button" onClick={handleSend} disabled={sending || !to.trim()} className="gap-1">
                   {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  {sending ? 'Sending…' : 'Send follow-up'}
+                  {sending ? 'Sending…' : draftKind === 'client_summary' ? 'Send recap' : 'Send follow-up'}
                 </Button>
               </DialogFooter>
             )}
