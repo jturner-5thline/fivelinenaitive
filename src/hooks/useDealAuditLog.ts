@@ -19,6 +19,19 @@ export interface DealAuditEntry {
 
 const PAGE_SIZE = 50;
 
+export const FUNDING_SOURCE_ACTIVITY_TYPES = [
+  'lender_added',
+  'lender_updated',
+  'lender_removed',
+  'lender_deleted',
+  'lender_stage_change',
+  'lender_substage_change',
+  'lender_status_change',
+  'lender_notes_updated',
+  'lender_passed',
+  'lender_terms_received',
+];
+
 export function useDealAuditLog(dealId: string | undefined) {
   const { user } = useAuth();
   const [entries, setEntries] = useState<DealAuditEntry[]>([]);
@@ -32,7 +45,7 @@ export function useDealAuditLog(dealId: string | undefined) {
     setLoading(true);
     try {
       const from = pageNum * PAGE_SIZE;
-      const [{ data, error }, { data: callData, error: callError }, stageRes, pipelinesRes, dealRes] = await Promise.all([
+      const [{ data, error }, { data: callData, error: callError }, stageRes, pipelinesRes, dealRes, fundingRes, taskRes] = await Promise.all([
         (supabase as any)
           .from('deal_audit_log')
           .select('*')
@@ -60,6 +73,23 @@ export function useDealAuditLog(dealId: string | undefined) {
         pageNum === 0
           ? supabase.from('deals').select('id, created_at').eq('id', dealId).maybeSingle()
           : Promise.resolve({ data: null as any, error: null }),
+        pageNum === 0
+          ? supabase
+              .from('activity_logs')
+              .select('id, deal_id, user_id, user_display_name, activity_type, description, metadata, created_at')
+              .eq('deal_id', dealId)
+              .in('activity_type', FUNDING_SOURCE_ACTIVITY_TYPES)
+              .order('created_at', { ascending: false })
+              .limit(200)
+          : Promise.resolve({ data: [] as any[], error: null }),
+        pageNum === 0
+          ? (supabase as any)
+              .from('tasks')
+              .select('id, title, description, status, priority, due_date, due_at, created_at, updated_at, completed_at, archived_at, created_by, assigned_by, assigned_to, completed_by')
+              .eq('deal_id', dealId)
+              .order('created_at', { ascending: false })
+              .limit(200)
+          : Promise.resolve({ data: [] as any[], error: null }),
       ]);
 
       if (error) throw error;
