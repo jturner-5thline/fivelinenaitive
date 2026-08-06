@@ -291,7 +291,7 @@ export function prefetchFullEmailMessage(messageId: string | undefined): void {
       notifyStatus();
       return;
     }
-    fetchFullEmailMessage(messageId)
+    fetchFullEmailMessage(messageId, { background: true })
       .catch(() => {
         /* swallow — this is a best-effort prefetch */
       })
@@ -305,19 +305,49 @@ export function prefetchFullEmailMessage(messageId: string | undefined): void {
   notifyStatus();
 }
 
-export async function fetchFullEmailMessage(messageId: string): Promise<FullMessage> {
+export async function fetchFullEmailMessage(
+  messageId: string,
+  opts?: { background?: boolean },
+): Promise<FullMessage> {
   // De-dupe concurrent fetches for the same id (e.g. hover-prefetch + click).
   const existing = inflight.get(messageId);
   if (existing) return existing;
 
+  const background = opts?.background === true;
+  const timeoutMs = background ? PREFETCH_TIMEOUT_MS : FETCH_TIMEOUT_MS;
+
   const p = (async () => {
-  const { data: resp, error: err } = await withTimeout(
-    supabase.functions.invoke('gmail-messages', {
-      body: { action: 'get', message_id: messageId },
-    }),
-    FETCH_TIMEOUT_MS,
-    'gmail-messages get',
-  );
+  const invokeOnce = () =>
+    withTimeout(
+      supabase.functions.invoke('gmail-messages', {
+        body: { action: 'get', message_id: messageId },
+      }),
+      timeoutMs,
+      'gmail-messages get',
+    );
+
+  let resp: any;
+  let err: any;
+  try {
+    ({ data: resp, error: err } = await invokeOnce());
+  } catch (e: any) {
+    // One automatic retry for user-initiated opens that timed out — the
+    // first call typically warmed the isolate and populated email_cache.
+    if (background || !e?.[TIMEOUT_MARKER]) {
+      if (e?.[TIMEOUT_MARKER] && !background) {
+        throw new Error('Message is taking longer than usual to load. Try again in a moment.');
+      }
+      throw e;
+    }
+    try {
+      ({ data: resp, error: err } = await invokeOnce());
+    } catch (e2: any) {
+      if (e2?.[TIMEOUT_MARKER]) {
+        throw new Error('Message is taking longer than usual to load. Try again in a moment.');
+      }
+      throw e2;
+    }
+  }
 
   // Soft fallback (transient rate-limit / 5xx / network blip). The edge
   // function returns HTTP 200 with `{ fallback: true, error_message }` in
