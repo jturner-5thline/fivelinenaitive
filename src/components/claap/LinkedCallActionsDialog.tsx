@@ -157,6 +157,10 @@ export function LinkedCallActionsDialog({
   );
   const hydratingRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dealCtxRef = useRef<{ name: string; company: string } | null>(
+    dealName ? { name: dealName, company: company || '' } : null,
+  );
+  const threadLookupRef = useRef<string | null>(null);
 
   const title = recordingTitle || eventTitle || 'Linked call';
   const callKey = meetingId || recordingId || `title:${title}`;
@@ -179,6 +183,8 @@ export function LinkedCallActionsDialog({
     return () => { cancelled = true; };
   }, [open, dealId, dealName, company]);
 
+  useEffect(() => { dealCtxRef.current = dealCtx; }, [dealCtx]);
+
   /**
    * Find the live email thread with this lender about this deal and reuse its
    * subject (as a `Re:`) so the follow-up lands in the existing conversation.
@@ -186,26 +192,37 @@ export function LinkedCallActionsDialog({
   const applyLenderThreadSubject = async (recipient: string, existingSubject?: string) => {
     const email = (recipient || '').trim();
     const domain = email.includes('@') ? email.split('@')[1].trim().toLowerCase() : '';
-    if (!domain || !dealCtx?.name) return;
+    const ctx = dealCtxRef.current;
+    if (!domain || !ctx?.name) return;
+    const lookupKey = `${email}|${ctx.name}`;
+    if (threadLookupRef.current === lookupKey) return;
+    threadLookupRef.current = lookupKey;
     try {
       const matches = await searchLenderDealThreads({
         domain,
         email,
-        dealName: dealCtx.name,
-        company: dealCtx.company,
+        dealName: ctx.name,
+        company: ctx.company,
         limit: 3,
       });
       const best = matches[0];
-      if (!best) return;
+      if (!best) { threadLookupRef.current = null; return; }
       setThread(best);
-      // Don't clobber a subject that is already a reply into a thread.
-      if (existingSubject && /^re:/i.test(existingSubject.trim())) return;
       const next = /^re:/i.test(best.subject) ? best.subject : `Re: ${best.subject}`;
-      setSubject(next);
+      setSubject((prev) => (prev.trim().toLowerCase() === next.trim().toLowerCase() ? prev : next));
     } catch {
+      threadLookupRef.current = null;
       // keep the AI-generated subject
     }
   };
+
+  // Deal context can resolve after the draft loads — retry the thread lookup then.
+  useEffect(() => {
+    if (!open || mode !== 'qa' || draftKind !== 'qa') return;
+    if (!to || !dealCtx?.name || thread) return;
+    void applyLenderThreadSubject(to, subject);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, mode, draftKind, to, dealCtx, thread]);
 
   /** Persist the current draft (debounced by callers). */
   const persistDraft = async (
