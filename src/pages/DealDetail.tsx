@@ -3402,6 +3402,10 @@ export default function DealDetail() {
                     displayClassName="font-semibold leading-tight bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white break-words"
                     displayStyle={{ fontSize: 'clamp(1.5rem, 3.2vw, 3rem)' }}
                   />
+                  <DealCompanyDetailsButton
+                    crmCompanyId={(deal as any)?.crm_company_id ?? null}
+                    companyName={deal.company}
+                  />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
