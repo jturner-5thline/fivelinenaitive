@@ -328,7 +328,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
   const { data: chartData, isLoading: isLoadingChart } = useDealActivityChart(dealId, 14);
   const { data: lenderEngagement } = useFlexLenderEngagement(dealId);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [activityFilter, setActivityFilter] = useState<'all' | 'calls' | 'activity'>('all');
+  const [activityFilter, setActivityFilter] = useState<'all' | 'calls' | 'activity' | 'funding_sources'>('all');
   const [expandedTranscriptId, setExpandedTranscriptId] = useState<string | null>(null);
   const [unlinkMeetingId, setUnlinkMeetingId] = useState<string | null>(null);
   const [dealSelectorOpen, setDealSelectorOpen] = useState(false);
@@ -374,11 +374,18 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
 
   const filteredDayActivities = useMemo(() => {
     if (!dayActivities) return [];
+    if (activityFilter === 'funding_sources') {
+      return dayActivities.filter((activity) => FUNDING_SOURCE_ACTIVITY_TYPES.includes(activity.activity_type));
+    }
     if (activityFilter === 'calls') {
       return dayActivities.filter((activity) => activity.activity_type === 'claap_recording_linked');
     }
     if (activityFilter === 'activity') {
-      return dayActivities.filter((activity) => activity.activity_type !== 'claap_recording_linked');
+      return dayActivities.filter(
+        (activity) =>
+          activity.activity_type !== 'claap_recording_linked' &&
+          !FUNDING_SOURCE_ACTIVITY_TYPES.includes(activity.activity_type),
+      );
     }
     return dayActivities;
   }, [activityFilter, dayActivities]);
@@ -486,6 +493,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
                   { value: 'all' as const, label: 'All' },
                   { value: 'calls' as const, label: 'Calls' },
                   { value: 'activity' as const, label: 'Activity' },
+                  { value: 'funding_sources' as const, label: 'Funding Sources' },
                 ].map((filterOption) => (
                   <Button
                     key={filterOption.value}
@@ -509,7 +517,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
                 <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
                   {filteredDayActivities.map((activity) => {
                     const meta = activity.metadata as Record<string, any> | null;
-                    const typeInfo = ACTIVITY_TYPE_LABELS[activity.activity_type] || {
+                    const typeInfo = FUNDING_SOURCE_LABELS[activity.activity_type] || ACTIVITY_TYPE_LABELS[activity.activity_type] || {
                       label: activity.activity_type.replace(/_/g, ' '),
                       icon: <ExternalLink className="h-3.5 w-3.5" />,
                     };
