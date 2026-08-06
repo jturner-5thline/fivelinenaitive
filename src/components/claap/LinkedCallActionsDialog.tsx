@@ -361,7 +361,7 @@ export function LinkedCallActionsDialog({
             ) : null}
 
             {!loading && result && (
-              <DialogFooter className="gap-2">
+              <DialogFooter className="gap-2 shrink-0">
                 <Button type="button" variant="outline" onClick={handleCopy} className="gap-1">
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   {copied ? 'Copied' : 'Copy draft'}
