@@ -674,6 +674,8 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
               id="activity-timeline"
               title="Activity Timeline"
               icon={ActivityIcon}
+              collapsible
+              defaultOpen
               right={
                 <div className="flex flex-wrap items-center gap-1">
                   <Button
