@@ -166,6 +166,35 @@ const EVENT_PALETTE = [
 export interface CalendarColorInfo { background: string; foreground?: string }
 export type CalendarColorMap = Map<string, CalendarColorInfo>;
 
+/**
+ * Google Calendar's per-event color palette (the "Tomato / Banana / Sage..."
+ * swatches shown when you color an individual event in Gmail's calendar).
+ * Keyed by Google's colorId.
+ */
+const GOOGLE_EVENT_COLORS: Record<string, string> = {
+  '1': '#7986cb', // Lavender
+  '2': '#33b679', // Sage
+  '3': '#8e24aa', // Grape
+  '4': '#e67c73', // Flamingo
+  '5': '#f6bf26', // Banana
+  '6': '#f4511e', // Tangerine
+  '7': '#039be5', // Peacock
+  '8': '#616161', // Graphite
+  '9': '#3f51b5', // Blueberry
+  '10': '#0b8043', // Basil
+  '11': '#d50000', // Tomato
+};
+
+/** Resolves the event's own Google color (hex) if one was set on the event. */
+function getEventOwnHex(event: CalendarEvent): string | null {
+  const raw = (event as CalendarEvent & { hex_color?: string | null }).hex_color;
+  if (raw && /^#?[0-9a-f]{3,8}$/i.test(raw)) return raw.startsWith('#') ? raw : `#${raw}`;
+  if (event.color_id && GOOGLE_EVENT_COLORS[String(event.color_id)]) {
+    return GOOGLE_EVENT_COLORS[String(event.color_id)];
+  }
+  return null;
+}
+
 function hexToRgba(hex: string, alpha: number): string {
   const h = hex.replace('#', '');
   const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
