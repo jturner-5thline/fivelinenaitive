@@ -675,17 +675,44 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
               title="Activity Timeline"
               icon={ActivityIcon}
               right={
-                <Select value={activityFilter} onValueChange={setActivityFilter}>
-                  <SelectTrigger className="h-7 text-xs w-[110px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="email">Email</SelectItem>
-                    <SelectItem value="call">Call</SelectItem>
-                    <SelectItem value="meeting">Meeting</SelectItem>
-                    <SelectItem value="note">Note</SelectItem>
-                    <SelectItem value="task">Task</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex flex-wrap items-center gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={activityFilters.length === 0 ? 'secondary' : 'ghost'}
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setActivityFilters([])}
+                  >
+                    All
+                  </Button>
+                  {[
+                    { value: 'meeting', label: 'Meetings' },
+                    { value: 'task', label: 'Tasks' },
+                    { value: 'email', label: 'Emails' },
+                    { value: 'note', label: 'Notes' },
+                  ].map((opt) => {
+                    const active = activityFilters.includes(opt.value);
+                    const count = activities.filter((a: any) => matchesActivityType(a, opt.value)).length;
+                    return (
+                      <Button
+                        key={opt.value}
+                        type="button"
+                        size="sm"
+                        variant={active ? 'secondary' : 'ghost'}
+                        className="h-7 px-2 text-xs"
+                        aria-pressed={active}
+                        onClick={() => setActivityFilters((prev) => (
+                          prev.includes(opt.value)
+                            ? prev.filter((v) => v !== opt.value)
+                            : [...prev, opt.value]
+                        ))}
+                      >
+                        {opt.label}
+                        <span className="ml-1 text-muted-foreground">{count}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
               }
             >
               {filteredActivities.length === 0 ? (
