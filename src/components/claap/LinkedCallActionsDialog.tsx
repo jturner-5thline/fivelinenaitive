@@ -246,24 +246,6 @@ export function LinkedCallActionsDialog({
 
   useEffect(() => { dealCtxRef.current = dealCtx; }, [dealCtx]);
 
-  // Deal context resolves independently from draft generation. If the draft
-  // initially chose a non-client attendee, correct it as soon as the client
-  // company's domain is known, then rerun thread matching for that recipient.
-  useEffect(() => {
-    if (!open || mode !== 'qa' || draftKind !== 'client_summary' || !clientDomain || !result) return;
-    const clientRecipient = (result.suggested_recipients || []).find((candidate) =>
-      candidate.toLowerCase().endsWith(`@${clientDomain}`),
-    );
-    if (!clientRecipient || clientRecipient.toLowerCase() === to.trim().toLowerCase()) return;
-    setTo(clientRecipient);
-    setThread(null);
-    setThreadOptions([]);
-    setThreadPickerOpen(false);
-    threadLookupRef.current = null;
-    void applyLenderThreadSubject(clientRecipient, subject, 'client_summary');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, mode, draftKind, clientDomain, result, to]);
-
   /** Use a thread: reply inside it and mirror its subject into the Subject field. */
   const selectThread = (match: LenderThreadMatch) => {
     setThread(match);
@@ -322,6 +304,24 @@ export function LinkedCallActionsDialog({
       threadLookupRef.current = null;
     }
   };
+
+  // Deal context resolves independently from draft generation. If the draft
+  // initially chose a non-client attendee, correct it as soon as the client
+  // company's domain is known, then rerun thread matching for that recipient.
+  useEffect(() => {
+    if (!open || mode !== 'qa' || draftKind !== 'client_summary' || !clientDomain || !result) return;
+    const clientRecipient = (result.suggested_recipients || []).find((candidate) =>
+      candidate.toLowerCase().endsWith(`@${clientDomain}`),
+    );
+    if (!clientRecipient || clientRecipient.toLowerCase() === to.trim().toLowerCase()) return;
+    setTo(clientRecipient);
+    setThread(null);
+    setThreadOptions([]);
+    setThreadPickerOpen(false);
+    threadLookupRef.current = null;
+    void applyLenderThreadSubject(clientRecipient, subject, 'client_summary');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, mode, draftKind, clientDomain, result, to]);
 
   // Deal context can resolve after the draft loads — retry the thread lookup then.
   useEffect(() => {
