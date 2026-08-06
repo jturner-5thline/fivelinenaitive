@@ -368,19 +368,6 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
     if (ownerFilter.startsWith('user:')) return [ownerFilter.slice('user:'.length)];
     return [];
   }, [ownerFilter]);
-  const selectedTeammates = useMemo(
-    () => allowedTeammates.filter((p: any) => selectedTeammateIds.includes(p.user_id)),
-    [allowedTeammates, selectedTeammateIds],
-  );
-  const teammateLabel = useMemo(() => {
-    if (selectedTeammates.length === 0) return null;
-    if (selectedTeammates.length === 1) {
-      const p: any = selectedTeammates[0];
-      const name = p.display_name || p.email || 'Teammate';
-      return name.split(/\s+/)[0];
-    }
-    return `${selectedTeammates.length} teammates`;
-  }, [selectedTeammates]);
   const toggleTeammate = (userId: string) => {
     const next = selectedTeammateIds.includes(userId)
       ? selectedTeammateIds.filter(id => id !== userId)
@@ -394,6 +381,55 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
   const { templates, applyTemplate } = useTaskTemplates();
   const teamMembers = useTeamMembers();
   const { labels, createLabel } = useTaskLabels();
+
+  // Owner-filter people list: everyone in the current workspace (falls back to
+  // the 5th Line roster if the workspace member lookup returns nothing), so a
+  // user can toggle between "My tasks", "All tasks", and any named teammate.
+  const [teammateSearch, setTeammateSearch] = useState('');
+  const teammateOptions = useMemo(() => {
+    const fromWorkspace = (teamMembers || [])
+      .filter(m => !!m.id)
+      .map(m => ({
+        user_id: m.id,
+        display_name: m.display_name,
+        email: m.email,
+      }));
+    const base = fromWorkspace.length > 0
+      ? fromWorkspace
+      : (allowedTeammates as any[]).map(p => ({
+          user_id: p.user_id,
+          display_name: p.display_name,
+          email: p.email,
+        }));
+    const seen = new Set<string>();
+    return base
+      .filter(p => (seen.has(p.user_id) ? false : (seen.add(p.user_id), true)))
+      .sort((a, b) =>
+        (a.display_name || a.email || '').localeCompare(b.display_name || b.email || ''),
+      );
+  }, [teamMembers, allowedTeammates]);
+  const filteredTeammateOptions = useMemo(() => {
+    const q = teammateSearch.trim().toLowerCase();
+    if (!q) return teammateOptions;
+    return teammateOptions.filter(
+      p =>
+        (p.display_name || '').toLowerCase().includes(q) ||
+        (p.email || '').toLowerCase().includes(q),
+    );
+  }, [teammateOptions, teammateSearch]);
+  const selectedTeammates = useMemo(
+    () => teammateOptions.filter(p => selectedTeammateIds.includes(p.user_id)),
+    [teammateOptions, selectedTeammateIds],
+  );
+  const teammateLabel = useMemo(() => {
+    if (selectedTeammates.length === 0) return null;
+    if (selectedTeammates.length === 1) {
+      const p = selectedTeammates[0];
+      const name = p.display_name || p.email || 'Teammate';
+      return name.split(/\s+/)[0];
+    }
+    return `${selectedTeammates.length} teammates`;
+  }, [selectedTeammates]);
 
   // Per-user persistence namespace for filter / view preferences.
   // Falls back to a shared key before auth resolves; useLocalStorageState
@@ -1360,13 +1396,24 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
               >
                 All tasks
               </button>
-              {allowedTeammates.length > 0 && (
+              {teammateOptions.length > 0 && (
                 <>
                   <div className="mt-1.5 mb-1 px-2 text-[10px] uppercase tracking-wide text-muted-foreground">
-                    5th Line teammates
+                    Teammates
+                  </div>
+                  <div className="px-1.5 pb-1.5">
+                    <Input
+                      value={teammateSearch}
+                      onChange={e => setTeammateSearch(e.target.value)}
+                      placeholder="Search people…"
+                      className="h-7 text-xs"
+                    />
                   </div>
                   <div className="max-h-[240px] overflow-y-auto">
-                    {allowedTeammates.map((p: any) => {
+                    {filteredTeammateOptions.length === 0 && (
+                      <div className="px-2 py-2 text-[11px] text-muted-foreground">No people found</div>
+                    )}
+                    {filteredTeammateOptions.map((p) => {
                       const isSelected = selectedTeammateIds.includes(p.user_id);
                       return (
                         <button
