@@ -330,9 +330,9 @@ export function MeetingsSection({ dealId, selectedMeetingId, onSelectMeeting }: 
                 key={r.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => setDetailsFor({ title: r.recording_title || 'Untitled recording', recordingId: r.recording_id, url: r.recording_url })}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailsFor({ title: r.recording_title || 'Untitled recording', recordingId: r.recording_id, url: r.recording_url }); } }}
-                className="group pl-3 pr-2 py-1.5 flex items-start gap-2 hover:bg-muted/40 cursor-pointer"
+                onClick={() => onSelectMeeting?.({ title: r.recording_title || 'Untitled recording', recordingId: r.recording_id, url: r.recording_url })}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectMeeting?.({ title: r.recording_title || 'Untitled recording', recordingId: r.recording_id, url: r.recording_url }); } }}
+                className={`group pl-3 pr-2 py-1.5 flex items-start gap-2 hover:bg-muted/40 cursor-pointer ${selectedMeetingId === r.recording_id ? 'bg-muted/60' : ''}`}
               >
                 <Video className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
                 <div className="min-w-0 flex-1">
@@ -395,13 +395,6 @@ export function MeetingsSection({ dealId, selectedMeetingId, onSelectMeeting }: 
         onOpenChange={(o) => { if (!o) setActionsFor(null); }}
         recordingTitle={actionsFor?.title}
         recordingId={actionsFor?.recordingId}
-      />
-      <ClaapRecordingDetailsDialog
-        open={!!detailsFor}
-        onOpenChange={(o) => { if (!o) setDetailsFor(null); }}
-        recordingTitle={detailsFor?.title}
-        recordingId={detailsFor?.recordingId}
-        recordingUrl={detailsFor?.url}
       />
     </div>
   );
