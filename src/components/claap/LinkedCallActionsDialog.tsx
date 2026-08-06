@@ -342,6 +342,7 @@ export function LinkedCallActionsDialog({
       setTo(nextTo);
       setTimeout(() => { hydratingRef.current = false; }, 0);
       void persistDraft(kind, { to: nextTo, cc: '', bcc: '', subject: nextSubject, body: nextBody, result: res });
+      if (kind === 'qa' && nextTo) void applyLenderThreadSubject(nextTo);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not draft the email';
       toast.error(msg);
@@ -381,6 +382,9 @@ export function LinkedCallActionsDialog({
           subject: subject.trim(),
           body_html: body,
           body: htmlToPlainText(body),
+          ...(thread
+            ? { thread_id: thread.thread_id, reply_to_message_id: thread.latest_message_id }
+            : {}),
         },
       });
       if (error) throw error;
