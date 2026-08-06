@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeamMembers, type TeamMember } from '@/hooks/useTeamMembers';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface CreateLenderTaskButtonProps {
   dealId: string;
