@@ -1494,6 +1494,40 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
     return map;
   }, [liveCalendars]);
 
+  // ─── Calendar visibility (hide/show per connected calendar) ───
+  const HIDDEN_CAL_KEY = 'naitive:hidden-calendar-ids';
+  const [hiddenCalendarIds, setHiddenCalendarIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const raw = window.localStorage.getItem(HIDDEN_CAL_KEY);
+      return new Set<string>(raw ? (JSON.parse(raw) as string[]) : []);
+    } catch {
+      return new Set<string>();
+    }
+  });
+
+  const persistHidden = useCallback((next: Set<string>) => {
+    setHiddenCalendarIds(next);
+    try {
+      window.localStorage.setItem(HIDDEN_CAL_KEY, JSON.stringify(Array.from(next)));
+    } catch { /* quota */ }
+  }, []);
+
+  const handleToggleCalendar = useCallback((id: string) => {
+    const next = new Set(hiddenCalendarIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    persistHidden(next);
+  }, [hiddenCalendarIds, persistHidden]);
+
+  const handleOnlyCalendar = useCallback((id: string) => {
+    const others = liveCalendars.map(c => c.id).filter(c => c !== id);
+    // Clicking "Only" again on an already-isolated calendar restores all.
+    const alreadyOnly = others.length > 0 && others.every(c => hiddenCalendarIds.has(c)) && !hiddenCalendarIds.has(id);
+    persistHidden(alreadyOnly ? new Set<string>() : new Set(others));
+  }, [liveCalendars, hiddenCalendarIds, persistHidden]);
+
+  const handleShowAllCalendars = useCallback(() => persistHidden(new Set<string>()), [persistHidden]);
+
   const handleSaveEvent = useCallback(async (eventData: {
     summary: string;
     description?: string;
@@ -1612,7 +1646,9 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
   // explicitly so users never see fake events flash in.
   const allEvents: CalendarEvent[] = viewingTeammateId
     ? (teammateData?.events ?? [])
-    : liveEvents;
+    : hiddenCalendarIds.size > 0
+      ? liveEvents.filter(e => !e.calendar_id || !hiddenCalendarIds.has(e.calendar_id))
+      : liveEvents;
 
   // Overlay state machine. We show the overlay when:
   //  • we're still resolving auth/status, OR
@@ -1932,6 +1968,10 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
               events={allEvents}
               calendars={liveCalendars}
               calendarColors={calendarColors}
+              hiddenCalendarIds={hiddenCalendarIds}
+              onToggleCalendar={handleToggleCalendar}
+              onOnlyCalendar={handleOnlyCalendar}
+              onShowAllCalendars={handleShowAllCalendars}
             />
 
             {/* Upcoming Events Widget */}
