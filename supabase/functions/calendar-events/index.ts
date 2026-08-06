@@ -110,6 +110,7 @@ interface NormalizedEvent {
   }[] | null;
   organizer: { email: string; displayName?: string } | null;
   color_id: string | null;
+  hex_color?: string | null;
 }
 
 function nylasHeaders() {
