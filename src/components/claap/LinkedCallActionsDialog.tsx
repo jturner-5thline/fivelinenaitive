@@ -152,6 +152,9 @@ export function LinkedCallActionsDialog({
   const [savedKinds, setSavedKinds] = useState<Record<string, boolean>>({});
   const [savingDraft, setSavingDraft] = useState(false);
   const [thread, setThread] = useState<LenderThreadMatch | null>(null);
+  const [threadOptions, setThreadOptions] = useState<LenderThreadMatch[]>([]);
+  const [threadPickerOpen, setThreadPickerOpen] = useState(false);
+  const [threadSearching, setThreadSearching] = useState(false);
   const [dealCtx, setDealCtx] = useState<{ name: string; company: string } | null>(
     dealName ? { name: dealName, company: company || '' } : null,
   );
@@ -186,9 +189,18 @@ export function LinkedCallActionsDialog({
 
   useEffect(() => { dealCtxRef.current = dealCtx; }, [dealCtx]);
 
+  /** Use a thread: reply inside it and mirror its subject into the Subject field. */
+  const selectThread = (match: LenderThreadMatch) => {
+    setThread(match);
+    setThreadPickerOpen(false);
+    const next = /^re:/i.test(match.subject) ? match.subject : `Re: ${match.subject}`;
+    setSubject((prev) => (prev.trim().toLowerCase() === next.trim().toLowerCase() ? prev : next));
+  };
+
   /**
-   * Find the live email thread with this lender about this deal and reuse its
-   * subject (as a `Re:`) so the follow-up lands in the existing conversation.
+   * Find the live email thread with this recipient about this deal and reuse its
+   * subject (as a `Re:`) so the message lands in the existing conversation.
+   * When the match is ambiguous, the candidates are surfaced for the user to pick.
    */
   const applyLenderThreadSubject = async (recipient: string, existingSubject?: string) => {
     const email = (recipient || '').trim();
@@ -198,22 +210,30 @@ export function LinkedCallActionsDialog({
     const lookupKey = `${email}|${ctx.name}`;
     if (threadLookupRef.current === lookupKey) return;
     threadLookupRef.current = lookupKey;
+    setThreadSearching(true);
     try {
       const matches = await searchLenderDealThreads({
         domain,
         email,
         dealName: ctx.name,
         company: ctx.company,
-        limit: 3,
+        limit: 5,
       });
+      setThreadOptions(matches);
       const best = matches[0];
       if (!best) { threadLookupRef.current = null; return; }
-      setThread(best);
-      const next = /^re:/i.test(best.subject) ? best.subject : `Re: ${best.subject}`;
-      setSubject((prev) => (prev.trim().toLowerCase() === next.trim().toLowerCase() ? prev : next));
+      const runnerUp = matches[1];
+      const confident = best.subject_match && (!runnerUp || best.score - runnerUp.score >= 8);
+      if (confident) {
+        selectThread(best);
+      } else {
+        // Ambiguous — let the user choose which thread to reply in.
+        setThreadPickerOpen(true);
+      }
     } catch {
       // keep the AI-generated subject
     } finally {
+      setThreadSearching(false);
       // This ref only deduplicates an in-flight lookup. A refreshed draft must
       // be allowed to look the thread up again after the AI resets its subject.
       threadLookupRef.current = null;
@@ -222,11 +242,11 @@ export function LinkedCallActionsDialog({
 
   // Deal context can resolve after the draft loads — retry the thread lookup then.
   useEffect(() => {
-    if (!open || mode !== 'qa' || draftKind !== 'qa') return;
-    if (!to || !dealCtx?.name || thread) return;
+    if (!open || mode !== 'qa') return;
+    if (!to || !dealCtx?.name || thread || threadOptions.length > 0) return;
     void applyLenderThreadSubject(to, subject);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, mode, draftKind, to, dealCtx, thread]);
+  }, [open, mode, draftKind, to, dealCtx, thread, threadOptions.length]);
 
   /** Persist the current draft (debounced by callers). */
   const persistDraft = async (
@@ -302,6 +322,8 @@ export function LinkedCallActionsDialog({
         setCopied(false);
         setShowDetails(false);
         setThread(null);
+        setThreadOptions([]);
+        setThreadPickerOpen(false);
         threadLookupRef.current = null;
       }, 200);
       return () => clearTimeout(t);
@@ -332,7 +354,7 @@ export function LinkedCallActionsDialog({
         setBody(data.body_html || '');
         setLoading(false);
         setTimeout(() => { hydratingRef.current = false; }, 0);
-        if (kind === 'qa' && data.to_addr) {
+        if (data.to_addr) {
           void applyLenderThreadSubject(data.to_addr, data.subject || '');
         }
         return;
@@ -347,10 +369,10 @@ export function LinkedCallActionsDialog({
     setDraftKind(kind);
     setMode('qa');
     setLoading(true);
-    if (kind === 'qa') {
-      setThread(null);
-      threadLookupRef.current = null;
-    }
+    setThread(null);
+    setThreadOptions([]);
+    setThreadPickerOpen(false);
+    threadLookupRef.current = null;
     try {
       const { data, error } = await supabase.functions.invoke('claap-draft-qa', {
         body: {
@@ -373,7 +395,7 @@ export function LinkedCallActionsDialog({
       setTo(nextTo);
       setTimeout(() => { hydratingRef.current = false; }, 0);
       void persistDraft(kind, { to: nextTo, cc: '', bcc: '', subject: nextSubject, body: nextBody, result: res });
-      if (kind === 'qa' && nextTo) void applyLenderThreadSubject(nextTo);
+      if (nextTo) void applyLenderThreadSubject(nextTo);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not draft the email';
       toast.error(msg);
@@ -577,6 +599,64 @@ export function LinkedCallActionsDialog({
                   <div>
                     <Label className="text-xs text-muted-foreground">Subject</Label>
                     <Input value={subject} onChange={(e) => setSubject(e.target.value)} className="mt-1 h-9" />
+                    <div className="mt-1.5 space-y-1.5">
+                      {threadSearching && (
+                        <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Looking for the existing email thread…
+                        </p>
+                      )}
+                      {!threadSearching && thread && (
+                        <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <Mail className="h-3 w-3 shrink-0" />
+                          <span className="truncate">Replying in thread: <span className="text-foreground">{thread.subject}</span></span>
+                          {threadOptions.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="link"
+                              size="sm"
+                              className="h-auto p-0 text-[11px]"
+                              onClick={() => setThreadPickerOpen((v) => !v)}
+                            >
+                              Change
+                            </Button>
+                          )}
+                        </p>
+                      )}
+                      {!threadSearching && !thread && threadOptions.length > 0 && (
+                        <p className="text-[11px] text-amber-500">
+                          Multiple possible threads — pick the one to reply in.
+                        </p>
+                      )}
+                      {threadPickerOpen && threadOptions.length > 0 && (
+                        <div className="rounded-md border border-border/60 divide-y divide-border/60">
+                          {threadOptions.map((opt) => (
+                            <button
+                              key={opt.thread_id}
+                              type="button"
+                              onClick={() => selectThread(opt)}
+                              className={cn(
+                                'w-full text-left px-2.5 py-1.5 hover:bg-muted/40 transition-colors',
+                                thread?.thread_id === opt.thread_id && 'bg-muted/40',
+                              )}
+                            >
+                              <span className="block truncate text-xs font-medium">{opt.subject}</span>
+                              <span className="block truncate text-[11px] text-muted-foreground">
+                                {opt.from_email}
+                                {opt.latest_date ? ` · ${new Date(opt.latest_date).toLocaleDateString()}` : ''}
+                                {` · ${opt.message_count} message${opt.message_count === 1 ? '' : 's'}`}
+                              </span>
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => { setThread(null); setThreadPickerOpen(false); }}
+                            className="w-full text-left px-2.5 py-1.5 text-[11px] text-muted-foreground hover:bg-muted/40"
+                          >
+                            Start a new thread instead
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">Message</Label>
