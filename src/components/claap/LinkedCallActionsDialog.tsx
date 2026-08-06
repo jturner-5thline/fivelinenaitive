@@ -249,16 +249,52 @@ export function LinkedCallActionsDialog({
                       className="mt-1 h-9"
                     />
                   </div>
+                  <div className="flex items-center gap-2">
+                    {!showCc && (
+                      <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setShowCc(true)}>
+                        Add Cc
+                      </Button>
+                    )}
+                    {!showBcc && (
+                      <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setShowBcc(true)}>
+                        Add Bcc
+                      </Button>
+                    )}
+                  </div>
+                  {showCc && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Cc</Label>
+                      <Input
+                        value={cc}
+                        onChange={(e) => setCc(e.target.value)}
+                        placeholder="cc@example.com, other@example.com"
+                        className="mt-1 h-9"
+                      />
+                    </div>
+                  )}
+                  {showBcc && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Bcc</Label>
+                      <Input
+                        value={bcc}
+                        onChange={(e) => setBcc(e.target.value)}
+                        placeholder="bcc@example.com"
+                        className="mt-1 h-9"
+                      />
+                    </div>
+                  )}
                   <div>
                     <Label className="text-xs text-muted-foreground">Subject</Label>
                     <Input value={subject} onChange={(e) => setSubject(e.target.value)} className="mt-1 h-9" />
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">Message</Label>
-                    <Textarea
-                      value={body}
-                      onChange={(e) => setBody(e.target.value)}
-                      className="mt-1 min-h-[320px] text-sm leading-relaxed"
+                    <EmailRichTextEditor
+                      content={body}
+                      onChange={setBody}
+                      className="mt-1"
+                      minHeight={320}
+                      placeholder="Write your follow-up…"
                     />
                   </div>
                 </div>
