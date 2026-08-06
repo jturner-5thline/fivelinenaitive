@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Mail, Phone, Building2, Briefcase, PhoneCall, CalendarDays, ExternalLink } from 'lucide-react';
+import { Building2, Briefcase, PhoneCall, CalendarDays, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
@@ -36,11 +36,24 @@ export function DealContactQuickView({ contactId, contactName, dealId, children 
     queryFn: async () => {
       const { data, error } = await supabase
         .from('contacts')
-        .select('id, first_name, last_name, full_name, email, phone_mobile, phone_work, job_title, company_name, last_contact_at')
+        .select(
+          'id, first_name, last_name, full_name, email, additional_emails, phone_mobile, phone_work, phone_other, job_title, linkedin_url, city, contact_type, lifecycle_stage, last_contact_at, crm_company_id, company_id, primary_company_id',
+        )
         .eq('id', contactId)
         .maybeSingle();
       if (error) throw error;
-      return data as any;
+      const row = data as any;
+      let companyName: string | null = null;
+      const companyId = row?.crm_company_id || row?.primary_company_id || row?.company_id;
+      if (companyId) {
+        const { data: co } = await supabase
+          .from('crm_companies')
+          .select('id, name, domain')
+          .eq('id', companyId)
+          .maybeSingle();
+        companyName = (co as any)?.name || (co as any)?.domain || null;
+      }
+      return { ...row, companyName, companyId } as any;
     },
   });
 
@@ -76,7 +89,52 @@ export function DealContactQuickView({ contactId, contactName, dealId, children 
     );
   };
 
-  const phone = contact?.phone_mobile || contact?.phone_work;
+  const secondaryEmail = Array.isArray(contact?.additional_emails) ? contact.additional_emails[0] : null;
+
+  const rows: { label: string; value: React.ReactNode }[] = [];
+  if (contact?.companyName) rows.push({ label: 'Company', value: contact.companyName });
+  if (contact?.job_title) rows.push({ label: 'Title', value: contact.job_title });
+  if (contact?.email)
+    rows.push({
+      label: 'Email',
+      value: (
+        <a href={`mailto:${contact.email}`} className="text-primary hover:underline break-all">
+          {contact.email}
+        </a>
+      ),
+    });
+  if (secondaryEmail)
+    rows.push({
+      label: 'Alt email',
+      value: (
+        <a href={`mailto:${secondaryEmail}`} className="text-primary hover:underline break-all">
+          {secondaryEmail}
+        </a>
+      ),
+    });
+  if (contact?.phone_mobile)
+    rows.push({ label: 'Mobile', value: <a href={`tel:${contact.phone_mobile}`} className="hover:underline">{contact.phone_mobile}</a> });
+  if (contact?.phone_work)
+    rows.push({ label: 'Work', value: <a href={`tel:${contact.phone_work}`} className="hover:underline">{contact.phone_work}</a> });
+  if (contact?.phone_other)
+    rows.push({ label: 'Other', value: <a href={`tel:${contact.phone_other}`} className="hover:underline">{contact.phone_other}</a> });
+  if (contact?.linkedin_url)
+    rows.push({
+      label: 'LinkedIn',
+      value: (
+        <a href={contact.linkedin_url} target="_blank" rel="noreferrer" className="text-primary hover:underline break-all">
+          Profile
+        </a>
+      ),
+    });
+  if (contact?.city) rows.push({ label: 'Location', value: contact.city });
+  if (contact?.contact_type) rows.push({ label: 'Type', value: contact.contact_type });
+  rows.push({
+    label: 'Last contact',
+    value: contact?.last_contact_at
+      ? new Date(contact.last_contact_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+      : 'No activity yet',
+  });
 
   return (
     <Popover
@@ -96,39 +154,24 @@ export function DealContactQuickView({ contactId, contactName, dealId, children 
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="space-y-1">
-              <p className="text-sm font-medium leading-tight">{contactName}</p>
-              {(contact?.job_title || contact?.company_name) && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Briefcase className="h-3 w-3" />
-                  {[contact?.job_title, contact?.company_name].filter(Boolean).join(' · ')}
-                </p>
-              )}
-              {contact?.email && (
-                <a href={`mailto:${contact.email}`} className="text-xs text-primary hover:underline flex items-center gap-1 truncate">
-                  <Mail className="h-3 w-3 shrink-0" /> {contact.email}
-                </a>
-              )}
-              {phone && (
-                <a href={`tel:${phone}`} className="text-xs text-muted-foreground hover:underline flex items-center gap-1">
-                  <Phone className="h-3 w-3" /> {phone}
-                </a>
-              )}
-              {contact?.company_name && !contact?.job_title && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Building2 className="h-3 w-3" /> {contact.company_name}
-                </p>
-              )}
-              <p className="text-[11px] text-muted-foreground">
-                Last contact:{' '}
-                {contact?.last_contact_at
-                  ? new Date(contact.last_contact_at).toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })
-                  : 'no activity yet'}
-              </p>
+            <div className="space-y-2">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium leading-tight">{contact?.full_name || contactName}</p>
+                {(contact?.job_title || contact?.companyName) && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    {contact?.companyName ? <Building2 className="h-3 w-3 shrink-0" /> : <Briefcase className="h-3 w-3 shrink-0" />}
+                    <span className="truncate">{[contact?.job_title, contact?.companyName].filter(Boolean).join(' · ')}</span>
+                  </p>
+                )}
+              </div>
+              <dl className="grid grid-cols-[76px_minmax(0,1fr)] gap-x-2 gap-y-1 border-t pt-2">
+                {rows.map((r) => (
+                  <div key={r.label} className="contents">
+                    <dt className="text-[10px] uppercase tracking-wide text-muted-foreground pt-0.5">{r.label}</dt>
+                    <dd className="text-xs text-foreground min-w-0">{r.value}</dd>
+                  </div>
+                ))}
+              </dl>
             </div>
 
             {!logType ? (
