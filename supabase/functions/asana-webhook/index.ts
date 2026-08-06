@@ -45,6 +45,7 @@ serve(async (req) => {
     console.log("Asana webhook handshake received");
 
     const processEvents = async () => {
+    const processEvents = async () => {
     const supabase = getSupabase();
     const url = new URL(req.url);
     const integrationId = url.searchParams.get("integration_id");
