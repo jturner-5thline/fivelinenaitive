@@ -545,9 +545,11 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
 
   // Cold-open fallback: hydrate the newest cached rows.
   const hydrateFromCache = useCallback(async () => {
+    // `email_cache` only ever holds Gmail/Nylas rows — skip for Outlook.
+    if (isMicrosoftRef.current) return;
     const cached = await loadOlderFromCache(null, 200);
     if (cached.length && isMountedRef.current) {
-      const authoritative = await applyAuthoritativeReadState(cached);
+      const authoritative = await applyAuthoritativeReadState(cached, PAGE_SIZE, !isMicrosoftRef.current);
       setCachedInboxEmails(authoritative);
       setInboxMessages((prev) => {
         if (prev.length) return prev;
@@ -569,9 +571,15 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       // 1. Drain inbox
       let token: string | null = initialInboxToken;
       let totalLoaded = 0;
+      const ms = isMicrosoftRef.current;
+      // DB-backed Outlook pages don't hit a provider rate limiter, so no
+      // inter-page delay is needed; and a smaller cap keeps the popup from
+      // grinding through 1,000 rows the user never scrolls to.
+      const pageDelay = ms ? 0 : AUTO_LOAD_DELAY_MS;
+      const loadCap = ms ? 300 : AUTO_LOAD_CAP;
       // current count is captured at call time; we re-check below
-      while (token && totalLoaded < AUTO_LOAD_CAP && isMountedRef.current) {
-        await new Promise(r => setTimeout(r, AUTO_LOAD_DELAY_MS));
+      while (token && totalLoaded < loadCap && isMountedRef.current) {
+        if (pageDelay) await new Promise(r => setTimeout(r, pageDelay));
         if (!isMountedRef.current) break;
         const page = await fetchPage({ labelIds: ['INBOX'], pageToken: token });
         if (!isMountedRef.current) break;
@@ -595,6 +603,9 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       // 2. Drain sent (smaller, but still paginate) — only after inbox is done
       let sentToken: string | null = null;
       let sentLoaded = 0;
+      // Outlook sync doesn't populate a SENT folder — every page is an
+      // empty round-trip.
+      if (ms) return;
       // First sent page
       if (isMountedRef.current) {
         await new Promise(r => setTimeout(r, AUTO_LOAD_DELAY_MS));
