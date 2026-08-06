@@ -12,6 +12,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { differenceInDays, formatDistanceToNowStrict } from 'date-fns';
+import { searchLenderDealThreads, type LenderThreadMatch } from '@/lib/deal/lenderThreadSearch';
 
 interface LenderContactRow {
   id: string;
@@ -21,15 +22,7 @@ interface LenderContactRow {
   is_primary: boolean | null;
 }
 
-interface ThreadMatch {
-  thread_id: string;
-  latest_message_id: string;
-  subject: string;
-  latest_date: string | null; // ISO
-  message_count: number;
-  from_email: string;
-  to_emails: string[];
-}
+type ThreadMatch = LenderThreadMatch;
 
 const NEW_THREAD = '__new__';
 
@@ -88,6 +81,7 @@ export function LenderFollowUpPopover({
   const [threads, setThreads] = useState<ThreadMatch[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
   const [selectedThreadId, setSelectedThreadId] = useState<string>(NEW_THREAD);
+  const [threadsResolved, setThreadsResolved] = useState(false);
 
   const daysSinceContact = useMemo(() => {
     if (!lenderUpdatedAt) return null;
