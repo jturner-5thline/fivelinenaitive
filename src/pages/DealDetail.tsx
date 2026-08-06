@@ -114,6 +114,7 @@ import { InfoRequestsPanel } from '@/components/deal/InfoRequestsPanel';
 const loadDealManagementTab = lazyRetry(() => import('@/components/deal/DealManagementTab').then(m => ({ default: m.DealManagementTab })));
 const DealManagementTab = lazy(loadDealManagementTab);
 import { CreateTaskButton } from '@/components/deal/CreateTaskButton';
+import { DealCompanyDetailsButton } from '@/components/deal/DealCompanyDetailsButton';
 import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
 import { LenderFollowUpPopover } from '@/components/deal/LenderFollowUpPopover';
 import { LogLenderActivityPopover } from '@/components/deal/LogLenderActivityPopover';
