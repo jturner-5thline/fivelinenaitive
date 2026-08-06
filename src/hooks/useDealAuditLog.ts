@@ -218,7 +218,85 @@ export function useDealAuditLog(dealId: string | undefined) {
           }]
         : [];
 
-      const rows = [...auditRows, ...callRows, ...stageRows, ...dealCreatedRows].sort(
+      const fundingRows: DealAuditEntry[] = ((fundingRes?.data || []) as any[]).map((entry) => ({
+        id: `funding-${entry.id}`,
+        deal_id: entry.deal_id,
+        user_id: entry.user_id,
+        action_type: entry.activity_type,
+        entity_type: 'funding_source',
+        entity_id: (entry.metadata as Record<string, any> | null)?.lender_id || entry.id,
+        entity_name: (entry.metadata as Record<string, any> | null)?.lender_name || entry.description,
+        metadata: { ...(entry.metadata || {}), description: entry.description },
+        created_at: entry.created_at,
+        user_display_name: entry.user_display_name || 'System',
+        user_avatar_url: null,
+      }));
+
+      const taskRows: DealAuditEntry[] = [];
+      for (const t of ((taskRes?.data || []) as any[])) {
+        const base = {
+          deal_id: dealId!,
+          entity_type: 'task',
+          entity_id: t.id,
+          entity_name: t.title,
+        };
+        const meta = {
+          title: t.title,
+          description: t.description,
+          status: t.status,
+          priority: t.priority,
+          due_date: t.due_date || t.due_at || null,
+          assigned_to: t.assigned_to,
+        };
+        taskRows.push({
+          ...base,
+          id: `task-created-${t.id}`,
+          user_id: t.created_by || t.assigned_by || null,
+          action_type: 'task_created',
+          metadata: meta,
+          created_at: t.created_at,
+        } as DealAuditEntry);
+        if (t.completed_at) {
+          taskRows.push({
+            ...base,
+            id: `task-completed-${t.id}`,
+            user_id: t.completed_by || null,
+            action_type: 'task_completed',
+            metadata: meta,
+            created_at: t.completed_at,
+          } as DealAuditEntry);
+        }
+        if (t.archived_at) {
+          taskRows.push({
+            ...base,
+            id: `task-removed-${t.id}`,
+            user_id: null,
+            action_type: 'task_removed',
+            metadata: meta,
+            created_at: t.archived_at,
+          } as DealAuditEntry);
+        }
+        const updatedTs = t.updated_at ? new Date(t.updated_at).getTime() : 0;
+        const createdTs = t.created_at ? new Date(t.created_at).getTime() : 0;
+        const completedTs = t.completed_at ? new Date(t.completed_at).getTime() : 0;
+        const archivedTs = t.archived_at ? new Date(t.archived_at).getTime() : 0;
+        if (
+          updatedTs - createdTs > 60_000 &&
+          Math.abs(updatedTs - completedTs) > 60_000 &&
+          Math.abs(updatedTs - archivedTs) > 60_000
+        ) {
+          taskRows.push({
+            ...base,
+            id: `task-updated-${t.id}`,
+            user_id: t.assigned_by || t.created_by || null,
+            action_type: 'task_updated',
+            metadata: meta,
+            created_at: t.updated_at,
+          } as DealAuditEntry);
+        }
+      }
+
+      const rows = [...auditRows, ...callRows, ...stageRows, ...dealCreatedRows, ...fundingRows, ...taskRows].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
 
