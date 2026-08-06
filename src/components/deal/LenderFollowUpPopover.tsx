@@ -144,45 +144,15 @@ export function LenderFollowUpPopover({
     let cancelled = false;
     (async () => {
       setThreadsLoading(true);
+      setThreadsResolved(false);
       try {
-        const q = `(from:${domain} OR to:${domain}) "${dealName}"`;
-        const { data } = await supabase.functions.invoke('gmail-messages', {
-          body: { action: 'list', query: q, max_results: 25, search_all_mail: true },
+        const sorted = await searchLenderDealThreads({
+          domain,
+          email: recipient.includes('@') ? recipient : undefined,
+          dealName,
+          company,
         });
         if (cancelled) return;
-        const items: any[] = data?.messages || data?.data || [];
-        // Group by thread_id, keep most recent message per thread.
-        const byThread = new Map<string, ThreadMatch>();
-        for (const m of items) {
-          const tid = m.thread_id || m.id;
-          if (!tid) continue;
-          const existing = byThread.get(tid);
-          const dateIso = m.received_at || (m.date ? new Date(m.date * 1000).toISOString() : null);
-          if (!existing) {
-            byThread.set(tid, {
-              thread_id: tid,
-              latest_message_id: m.id,
-              subject: m.subject || '(no subject)',
-              latest_date: dateIso,
-              message_count: 1,
-              from_email: m.from_email || '',
-              to_emails: m.to_emails || [],
-            });
-          } else {
-            existing.message_count += 1;
-            const newer = dateIso && (!existing.latest_date || dateIso > existing.latest_date);
-            if (newer) {
-              existing.latest_message_id = m.id;
-              existing.latest_date = dateIso;
-              existing.subject = m.subject || existing.subject;
-              existing.from_email = m.from_email || existing.from_email;
-              existing.to_emails = m.to_emails || existing.to_emails;
-            }
-          }
-        }
-        const sorted = Array.from(byThread.values())
-          .sort((a, b) => (b.latest_date || '').localeCompare(a.latest_date || ''))
-          .slice(0, 5);
         setThreads(sorted);
         // Auto-select most recent thread if any exist.
         if (sorted.length > 0) setSelectedThreadId(sorted[0].thread_id);
@@ -190,28 +160,32 @@ export function LenderFollowUpPopover({
       } catch {
         if (!cancelled) setThreads([]);
       } finally {
-        if (!cancelled) setThreadsLoading(false);
+        if (!cancelled) {
+          setThreadsLoading(false);
+          setThreadsResolved(true);
+        }
       }
     })();
     return () => { cancelled = true; };
-  }, [open, dealName, selectedContact?.email, manualEmail]);
+  }, [open, dealName, company, selectedContact?.email, manualEmail]);
 
   const selectedThread = threads.find((t) => t.thread_id === selectedThreadId) || null;
 
-  // Auto-generate the AI draft when the popover opens and we know a recipient.
+  // Auto-generate the AI draft once we know the recipient AND which existing
+  // deal thread we're replying into, so the draft reads as a continuation.
   useEffect(() => {
     if (!open) return;
+    if (!threadsResolved) return;
     if (subject || body) return; // already drafted/edited
     void generateDraft();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, selectedContactId]);
+  }, [open, selectedContactId, threadsResolved, selectedThreadId]);
 
   const generateDraft = async () => {
     setDrafting(true);
     try {
-      // Try to pull the most recent Gmail thread involving this funding source
-      // (by recipient email domain) and this deal name. Best-effort —
-      // failures are silently ignored so the draft still generates.
+      // Prefer the thread the user is actually replying into — the draft must
+      // read as a continuation of that deal conversation.
       let gmailContext:
         | { date?: string; from?: string; snippet?: string; subject?: string }
         | null = null;
@@ -219,7 +193,16 @@ export function LenderFollowUpPopover({
       const domain = recipientEmailForCtx.includes('@')
         ? recipientEmailForCtx.split('@')[1].trim().toLowerCase()
         : '';
-      if (domain && dealName) {
+      if (selectedThread) {
+        gmailContext = {
+          date: selectedThread.latest_date
+            ? new Date(selectedThread.latest_date).toLocaleDateString()
+            : undefined,
+          from: selectedThread.from_email || undefined,
+          subject: selectedThread.subject,
+          snippet: selectedThread.snippet,
+        };
+      } else if (domain && dealName) {
         try {
           const q = `from:${domain} OR to:${domain} "${dealName}"`;
           const { data: gmailData } = await supabase.functions.invoke('gmail-messages', {
@@ -252,10 +235,20 @@ export function LenderFollowUpPopover({
           contact_name: selectedContact?.name || manualName || '',
           notes: lenderNotes || '',
           gmail_context: gmailContext,
+          reply_in_thread: !!selectedThread,
+          thread_subject: selectedThread?.subject || '',
         },
       });
       if (error) throw error;
-      if (data?.subject) setSubject(data.subject);
+      if (selectedThread) {
+        setSubject(
+          /^re:/i.test(selectedThread.subject)
+            ? selectedThread.subject
+            : `Re: ${selectedThread.subject}`,
+        );
+      } else if (data?.subject) {
+        setSubject(data.subject);
+      }
       if (data?.body) setBody(data.body);
       if (data?.category) setCategory(data.category);
     } catch (e) {
@@ -277,6 +270,7 @@ export function LenderFollowUpPopover({
     setCategory('Touch Base');
     setThreads([]);
     setSelectedThreadId(NEW_THREAD);
+    setThreadsResolved(false);
   };
 
   const handleOpenChange = (v: boolean) => {
