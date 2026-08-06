@@ -172,7 +172,11 @@ export async function searchLenderDealThreads(opts: {
   }
 
   const now = Date.now();
-  const threads = Array.from(byThread.values()).map((t) => {
+  const isCalendarResponse = (subject: string) =>
+    /^\s*(re:\s*)*accepted:\s/i.test(subject || '');
+  const threads = Array.from(byThread.values())
+    .filter((t) => !isCalendarResponse(t.subject))
+    .map((t) => {
     const subj = normalizeSubject(t.subject).toLowerCase();
     const snip = (t.snippet || '').toLowerCase();
     let score = 0;
