@@ -674,6 +674,8 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
               id="activity-timeline"
               title="Activity Timeline"
               icon={ActivityIcon}
+              collapsible
+              defaultOpen
               right={
                 <div className="flex flex-wrap items-center gap-1">
                   <Button
@@ -1002,13 +1004,35 @@ function Section({
   icon: Icon,
   right,
   children,
+  collapsible = false,
+  defaultOpen = true,
 }: {
   id: string;
   title: string;
   icon?: React.ComponentType<{ className?: string }>;
   right?: React.ReactNode;
   children: React.ReactNode;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  if (collapsible) {
+    return (
+      <section id={id} className="scroll-mt-32">
+        <Collapsible open={open} onOpenChange={setOpen}>
+          <div className="flex items-center justify-between mb-4 pb-2 border-b border-border/60 gap-2">
+            <CollapsibleTrigger className="flex items-center gap-2 text-sm font-semibold tracking-wide uppercase text-muted-foreground hover:text-foreground transition-colors">
+              {Icon && <Icon className="h-3.5 w-3.5" />}
+              {title}
+              <ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} />
+            </CollapsibleTrigger>
+            {open ? right : null}
+          </div>
+          <CollapsibleContent>{children}</CollapsibleContent>
+        </Collapsible>
+      </section>
+    );
+  }
   return (
     <section id={id} className="scroll-mt-32">
       <div className="flex items-center justify-between mb-4 pb-2 border-b border-border/60">
