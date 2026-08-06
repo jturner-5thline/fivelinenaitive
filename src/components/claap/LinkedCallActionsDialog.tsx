@@ -310,6 +310,9 @@ export function LinkedCallActionsDialog({
         setBody(data.body_html || '');
         setLoading(false);
         setTimeout(() => { hydratingRef.current = false; }, 0);
+        if (kind === 'qa' && data.to_addr) {
+          void applyLenderThreadSubject(data.to_addr, data.subject || '');
+        }
         return;
       }
     } catch {
