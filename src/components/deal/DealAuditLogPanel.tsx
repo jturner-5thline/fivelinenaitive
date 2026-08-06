@@ -115,7 +115,11 @@ function describeAction(entry: DealAuditEntry): string {
     case 'task_updated': return `updated task "${name}"`;
     case 'task_completed': return `completed task "${name}"`;
     case 'task_removed': return `removed task "${name}"`;
-    default: return entry.action_type.replace(/_/g, ' ');
+    default:
+      if (entry.entity_type === 'funding_source') {
+        return meta.description || `${entry.action_type.replace(/_/g, ' ')}${name ? ` — ${name}` : ''}`;
+      }
+      return entry.action_type.replace(/_/g, ' ');
   }
 }
 
