@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Video, Search, Plus, ExternalLink, Unlink, Loader2, ChevronDown, ChevronRight, Link2, Check, RefreshCw, Copy } from 'lucide-react';
+import { Video, Search, Plus, ExternalLink, Unlink, Loader2, ChevronDown, ChevronRight, Link2, Check, RefreshCw, Copy, Sparkles } from 'lucide-react';
+import { LinkedCallActionsDialog } from '@/components/claap/LinkedCallActionsDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +35,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
   const [justLinked, setJustLinked] = useState<string[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [actionsFor, setActionsFor] = useState<{ title: string } | null>(null);
 
   // On open: refetch fresh (bypass 60s live cache) so today's meetings show up.
   useEffect(() => {
