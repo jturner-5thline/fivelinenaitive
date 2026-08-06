@@ -3750,6 +3750,57 @@ export type Database = {
         }
         Relationships: []
       }
+      claap_call_email_drafts: {
+        Row: {
+          bcc_addr: string
+          body_html: string
+          call_key: string
+          cc_addr: string
+          created_at: string
+          draft_kind: string
+          id: string
+          meeting_id: string | null
+          recording_id: string | null
+          result: Json | null
+          subject: string
+          to_addr: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bcc_addr?: string
+          body_html?: string
+          call_key: string
+          cc_addr?: string
+          created_at?: string
+          draft_kind: string
+          id?: string
+          meeting_id?: string | null
+          recording_id?: string | null
+          result?: Json | null
+          subject?: string
+          to_addr?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bcc_addr?: string
+          body_html?: string
+          call_key?: string
+          cc_addr?: string
+          created_at?: string
+          draft_kind?: string
+          id?: string
+          meeting_id?: string | null
+          recording_id?: string | null
+          result?: Json | null
+          subject?: string
+          to_addr?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       claap_integration_config: {
         Row: {
           company_id: string
