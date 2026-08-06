@@ -18,6 +18,7 @@ import {
   formatPickedContactName,
   type PickedContact,
 } from '@/components/contacts/ContactSearchAndCreate';
+import { DealContactQuickView } from '@/components/deal/DealContactQuickView';
 
 interface Props {
   deal: Pick<Deal, 'id' | 'name' | 'company' | 'contact' | 'contactInfo' | 'contactEmail' | 'companyUrl'>;
@@ -173,9 +174,22 @@ export function DealClientContactField({
                   ) : chip.isPreferred ? (
                     <Star className="h-3 w-3 fill-current" />
                   ) : null}
-                  <span className="truncate max-w-[180px]" data-testid="deal-client-contact-value">
-                    {chip.name}
-                  </span>
+                  {chip.id ? (
+                    <DealContactQuickView contactId={chip.id} contactName={chip.name} dealId={deal.id}>
+                      <button
+                        type="button"
+                        className="truncate max-w-[180px] hover:underline"
+                        data-testid="deal-client-contact-value"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {chip.name}
+                      </button>
+                    </DealContactQuickView>
+                  ) : (
+                    <span className="truncate max-w-[180px]" data-testid="deal-client-contact-value">
+                      {chip.name}
+                    </span>
+                  )}
                   <button
                     type="button"
                     aria-label={`Remove ${chip.name}`}
