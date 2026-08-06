@@ -236,8 +236,16 @@ async function fetchPage(args: {
   }
 }
 
-async function applyAuthoritativeReadState(messages: any[], limit = PAGE_SIZE): Promise<any[]> {
+async function applyAuthoritativeReadState(
+  messages: any[],
+  limit = PAGE_SIZE,
+  enabled = true,
+): Promise<any[]> {
   const normalizedMessages = messages.map(normalizeReadState);
+  // Microsoft/Outlook mailboxes are served from the synced `emails` table
+  // and the `sync_state` action is not supported upstream — calling it
+  // just burns a round-trip and returns a 400 on every refresh.
+  if (!enabled) return normalizedMessages;
   const ids = normalizedMessages.slice(0, limit).map(getMessageKey).filter(Boolean);
   if (!ids.length) return normalizedMessages;
   try {
