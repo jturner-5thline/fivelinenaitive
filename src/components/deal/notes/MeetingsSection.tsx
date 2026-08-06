@@ -324,7 +324,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
             </div>
           ) : (
             linkedRecordings.map(r => (
-              <div key={r.id} className="group pl-3 pr-4 py-1.5 flex items-start gap-2 hover:bg-muted/40">
+              <div key={r.id} className="group pl-3 pr-8 py-1.5 flex items-start gap-2 hover:bg-muted/40">
                 <Video className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
                 <div className="min-w-0 flex-1">
                   {r.recording_url ? (
@@ -345,7 +345,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
                     {formatDuration(r.duration_seconds) ? ` · ${formatDuration(r.duration_seconds)}` : ''}
                   </p>
                 </div>
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 shrink-0">
+                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 shrink-0 mr-1">
                   <Button
                     size="icon"
                     variant="ghost"

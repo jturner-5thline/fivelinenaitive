@@ -305,7 +305,7 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
       </CardHeader>
       <CardContent>
         <ScrollArea className={calls.length > 4 ? 'max-h-80' : undefined}>
-          <div className="space-y-2 pr-3">
+          <div className="space-y-2 pr-7">
             {calls.map(call => (
               <CallCard key={call.id} call={call} />
             ))}
