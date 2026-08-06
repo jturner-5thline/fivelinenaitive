@@ -168,10 +168,20 @@ let cachedMessages: GmailMessage[] = [];
 let cachedStatus: GmailStatus | null = null;
 
 const GMAIL_STATUS_KEY = 'naitive_gmail_status';
+// Persisted/module status must never leak between accounts on a shared browser —
+// scope it to the signed-in user id.
+let cachedStatusUserId: string | null = null;
 
-function loadPersistedStatus(): GmailStatus | null {
+function statusKey(userId?: string | null) {
+  return userId ? `${GMAIL_STATUS_KEY}:${userId}` : GMAIL_STATUS_KEY;
+}
+
+function loadPersistedStatus(userId?: string | null): GmailStatus | null {
+  if (!userId) return null;
   try {
-    const raw = localStorage.getItem(GMAIL_STATUS_KEY);
+    // Drop any legacy unscoped entry — it may belong to a different account.
+    localStorage.removeItem(GMAIL_STATUS_KEY);
+    const raw = localStorage.getItem(statusKey(userId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as GmailStatus;
     // If persisted status says connected, trust it for instant hydration
@@ -181,14 +191,18 @@ function loadPersistedStatus(): GmailStatus | null {
   }
 }
 
-function persistStatus(status: GmailStatus) {
+function persistStatus(status: GmailStatus, userId?: string | null) {
+  if (!userId) return;
   try {
-    localStorage.setItem(GMAIL_STATUS_KEY, JSON.stringify(status));
+    localStorage.setItem(statusKey(userId), JSON.stringify(status));
   } catch { /* ignore */ }
 }
 
-function clearPersistedStatus() {
-  try { localStorage.removeItem(GMAIL_STATUS_KEY); } catch { /* ignore */ }
+function clearPersistedStatus(userId?: string | null) {
+  try {
+    localStorage.removeItem(GMAIL_STATUS_KEY);
+    if (userId) localStorage.removeItem(statusKey(userId));
+  } catch { /* ignore */ }
 }
 
 async function invokeGmailMessages(body: Record<string, unknown>) {
@@ -205,8 +219,16 @@ async function invokeGmailMessages(body: Record<string, unknown>) {
 
 export function useGmail() {
   const { user } = useAuth();
-  const initialStatus = cachedStatus || loadPersistedStatus() || { connected: false };
-  const hasInitialStatus = !!(cachedStatus || loadPersistedStatus());
+  const userId = user?.id ?? null;
+  // Never hydrate from another account's cached status.
+  if (cachedStatusUserId && cachedStatusUserId !== userId) {
+    cachedStatus = null;
+    cachedMessages = [];
+  }
+  cachedStatusUserId = userId;
+  const persisted = cachedStatus || loadPersistedStatus(userId);
+  const initialStatus = persisted || { connected: false };
+  const hasInitialStatus = !!persisted;
   const [status, setStatus] = useState<GmailStatus>(() => initialStatus);
   const isDemo =
     isLegacyDemoEmail(user?.email ?? undefined) ||
@@ -226,7 +248,7 @@ export function useGmail() {
       const demoStatus = { connected: true, connected_at: new Date().toISOString() };
       setStatus(demoStatus);
       cachedStatus = demoStatus;
-      persistStatus(demoStatus);
+      persistStatus(demoStatus, userId);
       setIsStatusLoading(false);
       return;
     }
@@ -298,7 +320,7 @@ export function useGmail() {
 
       setStatus(next);
       cachedStatus = next;
-      persistStatus(next);
+      persistStatus(next, userId);
       setError(null);
     } catch (err: any) {
       // Suppress 401s — usually means the session expired/logged out between renders
@@ -384,7 +406,7 @@ export function useGmail() {
       const disconnected = { connected: false };
       setStatus(disconnected);
       cachedStatus = disconnected;
-      clearPersistedStatus();
+      clearPersistedStatus(userId);
       setMessages([]);
       cachedMessages = [];
       setError(null);
