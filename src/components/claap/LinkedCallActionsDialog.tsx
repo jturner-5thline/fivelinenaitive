@@ -174,11 +174,12 @@ export function LinkedCallActionsDialog({
     (async () => {
       const { data } = await supabase
         .from('deals')
-        .select('name, company')
+        .select('company')
         .eq('id', dealId)
         .maybeSingle();
       if (cancelled || !data) return;
-      setDealCtx({ name: (data as { name?: string }).name || '', company: (data as { company?: string }).company || '' });
+      const resolvedCompany = (data as { company?: string }).company || '';
+      setDealCtx({ name: resolvedCompany, company: resolvedCompany });
     })();
     return () => { cancelled = true; };
   }, [open, dealId, dealName, company]);
@@ -211,8 +212,11 @@ export function LinkedCallActionsDialog({
       const next = /^re:/i.test(best.subject) ? best.subject : `Re: ${best.subject}`;
       setSubject((prev) => (prev.trim().toLowerCase() === next.trim().toLowerCase() ? prev : next));
     } catch {
-      threadLookupRef.current = null;
       // keep the AI-generated subject
+    } finally {
+      // This ref only deduplicates an in-flight lookup. A refreshed draft must
+      // be allowed to look the thread up again after the AI resets its subject.
+      threadLookupRef.current = null;
     }
   };
 
@@ -343,6 +347,10 @@ export function LinkedCallActionsDialog({
     setDraftKind(kind);
     setMode('qa');
     setLoading(true);
+    if (kind === 'qa') {
+      setThread(null);
+      threadLookupRef.current = null;
+    }
     try {
       const { data, error } = await supabase.functions.invoke('claap-draft-qa', {
         body: {

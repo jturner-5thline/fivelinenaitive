@@ -54,6 +54,20 @@ async function listMessages(query: string, max: number): Promise<any[]> {
   return (data?.messages || data?.data || []) as any[];
 }
 
+async function listCachedMessages(domain: string, max: number): Promise<any[]> {
+  const { data } = await supabase
+    .from('email_cache')
+    .select('gmail_message_id, thread_id, subject, snippet, from_email, to_emails, received_at')
+    .ilike('from_email', `%@${domain}`)
+    .order('received_at', { ascending: false })
+    .limit(max);
+
+  return (data || []).map((message) => ({
+    ...message,
+    id: message.gmail_message_id,
+  }));
+}
+
 /**
  * Find the recent email threads with a funding source that relate to a deal.
  *
@@ -81,6 +95,19 @@ export async function searchLenderDealThreads(opts: {
 
   const seen = new Set<string>();
   const messages: any[] = [];
+  // The local mailbox cache is both faster and more reliable than a live
+  // provider search, and includes other contacts at the same lender domain.
+  try {
+    const cached = await listCachedMessages(domain, 80);
+    for (const message of cached) {
+      const id = message?.id || message?.message_id;
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      messages.push(message);
+    }
+  } catch {
+    // Continue with live mailbox search when the cache is unavailable.
+  }
   for (const scope of scopes) {
     try {
       const items = await listMessages(scope, 40);
