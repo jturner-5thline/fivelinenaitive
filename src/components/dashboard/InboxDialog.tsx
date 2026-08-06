@@ -236,8 +236,16 @@ async function fetchPage(args: {
   }
 }
 
-async function applyAuthoritativeReadState(messages: any[], limit = PAGE_SIZE): Promise<any[]> {
+async function applyAuthoritativeReadState(
+  messages: any[],
+  limit = PAGE_SIZE,
+  enabled = true,
+): Promise<any[]> {
   const normalizedMessages = messages.map(normalizeReadState);
+  // Microsoft/Outlook mailboxes are served from the synced `emails` table
+  // and the `sync_state` action is not supported upstream — calling it
+  // just burns a round-trip and returns a 400 on every refresh.
+  if (!enabled) return normalizedMessages;
   const ids = normalizedMessages.slice(0, limit).map(getMessageKey).filter(Boolean);
   if (!ids.length) return normalizedMessages;
   try {
@@ -272,6 +280,16 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   const { status, sendEmail } = useGmail();
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Microsoft/Outlook mailboxes are served straight from the synced
+  // `emails` table (no Nylas). Several Gmail-only round-trips
+  // (`sync_state`, SENT / DRAFT / SPAM / TRASH folders, the `email_cache`
+  // fallback) are no-ops for them and were the main reason the popup felt
+  // slow and kept showing "Still fetching latest emails…". We branch on
+  // the provider and skip the dead work.
+  const isMicrosoft = status.provider === 'microsoft';
+  const isMicrosoftRef = useRef(false);
+  isMicrosoftRef.current = isMicrosoft;
 
   // Perf: close the [InboxOpen] timer started on the dashboard tile click
   // exactly once after the dialog mounts with `open === true`. This lets
@@ -527,9 +545,11 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
 
   // Cold-open fallback: hydrate the newest cached rows.
   const hydrateFromCache = useCallback(async () => {
+    // `email_cache` only ever holds Gmail/Nylas rows — skip for Outlook.
+    if (isMicrosoftRef.current) return;
     const cached = await loadOlderFromCache(null, 200);
     if (cached.length && isMountedRef.current) {
-      const authoritative = await applyAuthoritativeReadState(cached);
+      const authoritative = await applyAuthoritativeReadState(cached, PAGE_SIZE, !isMicrosoftRef.current);
       setCachedInboxEmails(authoritative);
       setInboxMessages((prev) => {
         if (prev.length) return prev;
@@ -551,9 +571,15 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       // 1. Drain inbox
       let token: string | null = initialInboxToken;
       let totalLoaded = 0;
+      const ms = isMicrosoftRef.current;
+      // DB-backed Outlook pages don't hit a provider rate limiter, so no
+      // inter-page delay is needed; and a smaller cap keeps the popup from
+      // grinding through 1,000 rows the user never scrolls to.
+      const pageDelay = ms ? 0 : AUTO_LOAD_DELAY_MS;
+      const loadCap = ms ? 300 : AUTO_LOAD_CAP;
       // current count is captured at call time; we re-check below
-      while (token && totalLoaded < AUTO_LOAD_CAP && isMountedRef.current) {
-        await new Promise(r => setTimeout(r, AUTO_LOAD_DELAY_MS));
+      while (token && totalLoaded < loadCap && isMountedRef.current) {
+        if (pageDelay) await new Promise(r => setTimeout(r, pageDelay));
         if (!isMountedRef.current) break;
         const page = await fetchPage({ labelIds: ['INBOX'], pageToken: token });
         if (!isMountedRef.current) break;
@@ -577,6 +603,9 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       // 2. Drain sent (smaller, but still paginate) — only after inbox is done
       let sentToken: string | null = null;
       let sentLoaded = 0;
+      // Outlook sync doesn't populate a SENT folder — every page is an
+      // empty round-trip.
+      if (ms) return;
       // First sent page
       if (isMountedRef.current) {
         await new Promise(r => setTimeout(r, AUTO_LOAD_DELAY_MS));
@@ -660,7 +689,11 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
 
         // Background reconcile — fire-and-forget so the UI is never
         // blocked waiting on per-message metadata.
-        void applyAuthoritativeReadState(firstInboxMessages).then((reconciled) => {
+        void applyAuthoritativeReadState(
+          firstInboxMessages,
+          PAGE_SIZE,
+          !isMicrosoftRef.current,
+        ).then((reconciled) => {
           if (!isMountedRef.current) return;
           if (reconciled === firstInboxMessages) return;
           setInboxMessages((prev) => {
@@ -741,9 +774,23 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       }, 5000) as unknown as number;
     }
     try {
+      const ms = isMicrosoftRef.current;
+      // Outlook: a refresh should actually pull new mail from Graph, not
+      // just re-read the same synced rows. Kick the sync first (bounded so
+      // a slow Graph call can never hang the popup), then read the table.
+      if (ms && opts.manual && user?.id) {
+        await Promise.race([
+          supabase.functions.invoke('microsoft-sync-emails', { body: { user_id: user.id } })
+            .catch(() => null),
+          new Promise((r) => setTimeout(r, 6000)),
+        ]);
+        if (!isMountedRef.current) return;
+      }
       const [inbox, sent] = await Promise.all([
         fetchPage({ labelIds: ['INBOX'], forceRefresh: !!opts.manual }),
-        fetchPage({ labelIds: ['SENT'], forceRefresh: !!opts.manual }),
+        ms
+          ? Promise.resolve({ messages: [], nextPageToken: null, rateLimited: false } as any)
+          : fetchPage({ labelIds: ['SENT'], forceRefresh: !!opts.manual }),
       ]);
       if (!isMountedRef.current) return;
       // Reauth required from upstream — surface a CTA to /integrations
@@ -775,7 +822,11 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
         });
         return;
       }
-      const inboxMessagesAuthoritative = await applyAuthoritativeReadState(inbox.messages);
+      const inboxMessagesAuthoritative = await applyAuthoritativeReadState(
+        inbox.messages,
+        PAGE_SIZE,
+        !ms,
+      );
       if (!isMountedRef.current) return;
       // Prepend new messages above the cached list; mergeUniqueById
       // preserves the already-loaded tail so scroll position and the
@@ -814,7 +865,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       refreshInFlightRef.current = false;
       if (isMountedRef.current) setIsRefreshing(false);
     }
-  }, [status.connected, mergeUniqueById, inboxMessages]);
+  }, [status.connected, mergeUniqueById, inboxMessages, user?.id]);
 
   const silentRefresh = useCallback(() => runRefresh({ force: false }), [runRefresh]);
   const forceRefresh = useCallback(() => runRefresh({ force: true }), [runRefresh]);
@@ -1176,6 +1227,9 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   // Trash). Called on open and on manual refresh, and re-called after a
   // delete so the Trash tab immediately reflects the new state.
   const refreshSystemFolders = useCallback(async () => {
+    // Outlook sync only covers the inbox — these three calls always come
+    // back empty and only add latency to open/refresh.
+    if (isMicrosoftRef.current) return;
     const [drafts, junk, trash] = await Promise.all([
       fetchPage({ labelIds: ['DRAFT'], maxResults: 50 }),
       fetchPage({ labelIds: ['SPAM'], maxResults: 50 }),
@@ -1190,6 +1244,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   // Re-fetch a single system folder. Used as the post-mutation refresh
   // hook so deletes reliably surface in Trash.
   const refreshTrash = useCallback(async () => {
+    if (isMicrosoftRef.current) return;
     const trash = await fetchPage({ labelIds: ['TRASH'], maxResults: 100 });
     if (!isMountedRef.current) return;
     setTrashMessages(trash.messages);
