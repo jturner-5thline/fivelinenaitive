@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Check, Loader2, Building2, Plus } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Check, Loader2, Building2, Plus, Sparkles, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -14,6 +14,7 @@ import { type Deal, type DealLender } from '@/types/deal';
 import { useLenderStages } from '@/contexts/LenderStagesContext';
 import { isActiveDeal } from '@/lib/deals';
 import { findActiveSameCompanyDeal } from '@/lib/effectiveDealSelection';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 /**
@@ -57,6 +58,15 @@ const getErrorMessage = (err: unknown, fallback: string) =>
 interface Props {
   dealId?: string | null;
   preselectLenderName?: string | null;
+  /**
+   * Latest messages of the lender thread (oldest → newest). When present the
+   * card asks the AI to pull the lender's own words — why they passed, where
+   * they stand, what they're waiting on — into the note + suggested stage.
+   */
+  emailContext?: {
+    subject?: string | null;
+    messages: Array<{ from?: string | null; at?: string | null; text?: string | null }>;
+  } | null;
   onClose: () => void;
 }
 
@@ -66,7 +76,7 @@ interface Props {
  * Single Confirm button writes the change via the shared `updateLender`
  * action so the deal kanban / pipeline updates in real time.
  */
-export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onClose }: Props) {
+export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, emailContext, onClose }: Props) {
   const { deals, updateLender, addLenderToDeal } = useDealsContext();
   const { stages: stageOptions, substages: milestoneOptions } = useLenderStages();
   const initialDeal = useMemo(() => deals.find((d) => d.id === dealId), [deals, dealId]);
