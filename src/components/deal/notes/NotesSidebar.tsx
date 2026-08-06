@@ -26,10 +26,12 @@ interface NotesSidebarProps {
   fileInputRef: React.RefObject<HTMLInputElement>;
   commentCounts?: Record<string, number>;
   dealId?: string;
+  selectedMeetingId?: string | null;
+  onSelectMeeting?: (meeting: { recordingId: string; title: string; url?: string | null }) => void;
 }
 
 export function NotesSidebar({
-  notes, selectedNoteId, onSelectNote, onCreateNote, onDeleteNote, onUpdateNote, onDownload, onUpload, fileInputRef, commentCounts = {}, dealId,
+  notes, selectedNoteId, onSelectNote, onCreateNote, onDeleteNote, onUpdateNote, onDownload, onUpload, fileInputRef, commentCounts = {}, dealId, selectedMeetingId, onSelectMeeting,
 }: NotesSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterFolder, setFilterFolder] = useState<string | null>(null);
@@ -370,7 +372,9 @@ export function NotesSidebar({
         className="flex-1"
         viewportClassName="pr-3 [scrollbar-gutter:stable]"
       >
-        {dealId && <MeetingsSection dealId={dealId} />}
+        {dealId && (
+          <MeetingsSection dealId={dealId} selectedMeetingId={selectedMeetingId} onSelectMeeting={onSelectMeeting} />
+        )}
         {filteredNotes.length === 0 ? (
           <div className="p-4 text-center text-sm text-muted-foreground">
             <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />

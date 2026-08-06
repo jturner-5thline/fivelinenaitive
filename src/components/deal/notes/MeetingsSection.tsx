@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Video, Search, Plus, ExternalLink, Unlink, Loader2, ChevronDown, ChevronRight, Link2, Check, RefreshCw, Copy, Sparkles } from 'lucide-react';
 import { LinkedCallActionsDialog } from '@/components/claap/LinkedCallActionsDialog';
-import { ClaapRecordingDetailsDialog } from '@/components/claap/ClaapRecordingDetailsDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +14,8 @@ import { format } from 'date-fns';
 
 interface MeetingsSectionProps {
   dealId: string;
+  selectedMeetingId?: string | null;
+  onSelectMeeting?: (meeting: { recordingId: string; title: string; url?: string | null }) => void;
 }
 
 function formatDuration(seconds?: number | null) {
@@ -24,7 +25,7 @@ function formatDuration(seconds?: number | null) {
   return `${Math.floor(mins / 60)}h ${mins % 60}m`;
 }
 
-export function MeetingsSection({ dealId }: MeetingsSectionProps) {
+export function MeetingsSection({ dealId, selectedMeetingId, onSelectMeeting }: MeetingsSectionProps) {
   const { recordings, loading, fetchRecordings, getRecording } = useClaapRecordings();
   const { linkedRecordings, linkedRecordingIds, linkRecording, unlinkRecording } = useDealClaapRecordings(dealId);
   const [open, setOpen] = useState(false);
@@ -37,7 +38,6 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [actionsFor, setActionsFor] = useState<{ title: string; recordingId?: string | null } | null>(null);
-  const [detailsFor, setDetailsFor] = useState<{ title: string; recordingId?: string | null; url?: string | null } | null>(null);
 
   // On open: refetch fresh (bypass 60s live cache) so today's meetings show up.
   useEffect(() => {
@@ -330,9 +330,9 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
                 key={r.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => setDetailsFor({ title: r.recording_title || 'Untitled recording', recordingId: r.recording_id, url: r.recording_url })}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailsFor({ title: r.recording_title || 'Untitled recording', recordingId: r.recording_id, url: r.recording_url }); } }}
-                className="group pl-3 pr-2 py-1.5 flex items-start gap-2 hover:bg-muted/40 cursor-pointer"
+                onClick={() => onSelectMeeting?.({ title: r.recording_title || 'Untitled recording', recordingId: r.recording_id, url: r.recording_url })}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectMeeting?.({ title: r.recording_title || 'Untitled recording', recordingId: r.recording_id, url: r.recording_url }); } }}
+                className={`group pl-3 pr-2 py-1.5 flex items-start gap-2 hover:bg-muted/40 cursor-pointer ${selectedMeetingId === r.recording_id ? 'bg-muted/60' : ''}`}
               >
                 <Video className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
                 <div className="min-w-0 flex-1">
@@ -395,13 +395,6 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
         onOpenChange={(o) => { if (!o) setActionsFor(null); }}
         recordingTitle={actionsFor?.title}
         recordingId={actionsFor?.recordingId}
-      />
-      <ClaapRecordingDetailsDialog
-        open={!!detailsFor}
-        onOpenChange={(o) => { if (!o) setDetailsFor(null); }}
-        recordingTitle={detailsFor?.title}
-        recordingId={detailsFor?.recordingId}
-        recordingUrl={detailsFor?.url}
       />
     </div>
   );
