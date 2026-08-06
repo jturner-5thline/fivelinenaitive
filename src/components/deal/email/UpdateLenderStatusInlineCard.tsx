@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Check, Loader2, Building2, Plus } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Check, Loader2, Building2, Plus, Sparkles, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -14,6 +14,7 @@ import { type Deal, type DealLender } from '@/types/deal';
 import { useLenderStages } from '@/contexts/LenderStagesContext';
 import { isActiveDeal } from '@/lib/deals';
 import { findActiveSameCompanyDeal } from '@/lib/effectiveDealSelection';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 /**
@@ -57,6 +58,15 @@ const getErrorMessage = (err: unknown, fallback: string) =>
 interface Props {
   dealId?: string | null;
   preselectLenderName?: string | null;
+  /**
+   * Latest messages of the lender thread (oldest → newest). When present the
+   * card asks the AI to pull the lender's own words — why they passed, where
+   * they stand, what they're waiting on — into the note + suggested stage.
+   */
+  emailContext?: {
+    subject?: string | null;
+    messages: Array<{ from?: string | null; at?: string | null; text?: string | null }>;
+  } | null;
   onClose: () => void;
 }
 
@@ -66,7 +76,7 @@ interface Props {
  * Single Confirm button writes the change via the shared `updateLender`
  * action so the deal kanban / pipeline updates in real time.
  */
-export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onClose }: Props) {
+export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, emailContext, onClose }: Props) {
   const { deals, updateLender, addLenderToDeal } = useDealsContext();
   const { stages: stageOptions, substages: milestoneOptions } = useLenderStages();
   const initialDeal = useMemo(() => deals.find((d) => d.id === dealId), [deals, dealId]);
@@ -134,6 +144,66 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [contextLoading, setContextLoading] = useState(false);
+  const [contextNote, setContextNote] = useState<string | null>(null);
+  const [contextError, setContextError] = useState<string | null>(null);
+  const [stageTouched, setStageTouched] = useState(false);
+  // The last AI-generated note we wrote into the textarea — lets us replace it
+  // on regenerate without clobbering anything the user typed themselves.
+  const aiNoteRef = useRef<string>('');
+  const requestedRef = useRef<string | null>(null);
+
+  const emailMessages = emailContext?.messages;
+  const hasEmailContext = !!emailMessages?.some((m) => (m?.text || '').trim());
+
+  const pullEmailContext = useCallback(async (force = false) => {
+    if (!hasEmailContext || !lender) return;
+    const key = `${lender.id}::${emailContext?.subject || ''}::${emailMessages?.length ?? 0}`;
+    if (!force && requestedRef.current === key) return;
+    requestedRef.current = key;
+    setContextLoading(true);
+    setContextError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('extract-lender-email-context', {
+        body: {
+          subject: emailContext?.subject || '',
+          lenderName: lender.name || preselectLenderName || '',
+          dealName: deal?.company || '',
+          currentStageLabel: stageOptions.find((s) => s.id === (lender.stage || stage))?.label || '',
+          stageOptions: stageOptions.map((s) => ({ id: s.id, label: s.label })),
+          messages: (emailMessages || []).slice(-6).map((m) => ({
+            from: m?.from || '',
+            at: m?.at || '',
+            text: m?.text || '',
+          })),
+        },
+      });
+      if (error) throw error;
+      const aiNote = typeof data?.note === 'string' ? data.note.trim() : '';
+      if (aiNote) {
+        setContextNote(aiNote);
+        // Only auto-fill when the field is empty or still holds our last draft.
+        setNote((cur) => (!cur.trim() || cur === aiNoteRef.current ? aiNote : cur));
+        aiNoteRef.current = aiNote;
+      } else {
+        setContextNote(null);
+      }
+      if (data?.stageId && !stageTouched) {
+        setStage(String(data.stageId));
+      }
+    } catch (err: unknown) {
+      console.warn('[UpdateLenderStatus] email context failed', err);
+      setContextError(getErrorMessage(err, 'Could not read context from this email'));
+    } finally {
+      setContextLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasEmailContext, lender, emailContext?.subject, emailMessages, preselectLenderName, deal?.company, stageOptions, stage, stageTouched]);
+
+  useEffect(() => {
+    void pullEmailContext(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lender?.id, hasEmailContext]);
 
   // True when the AI identified a funding source name that isn't (yet) tracked on this deal.
   const proposedLenderName = (preselectLenderName || '').trim();
@@ -283,7 +353,7 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
 
       <div className="space-y-1">
         <label className="text-[10px] uppercase tracking-wider text-muted-foreground/80">Stage</label>
-        <Select value={stage} onValueChange={setStage}>
+        <Select value={stage} onValueChange={(v) => { setStageTouched(true); setStage(v); }}>
           <SelectTrigger className="h-8 text-[12px]">
             <SelectValue />
           </SelectTrigger>
@@ -319,15 +389,39 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
       </div>
 
       <div className="space-y-1">
-        <label className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
-          Note <span className="text-muted-foreground/50 normal-case">(optional)</span>
-        </label>
+        <div className="flex items-center justify-between gap-2">
+          <label className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
+            Note <span className="text-muted-foreground/50 normal-case">(optional)</span>
+          </label>
+          {hasEmailContext && (
+            <button
+              type="button"
+              onClick={() => void pullEmailContext(true)}
+              disabled={contextLoading}
+              className="flex items-center gap-1 text-[10px] text-muted-foreground/80 hover:text-foreground transition-colors disabled:opacity-60"
+            >
+              {contextLoading
+                ? <Loader2 className="h-3 w-3 animate-spin" />
+                : <RefreshCw className="h-3 w-3" />}
+              {contextLoading ? 'Reading email…' : 'Pull from email'}
+            </button>
+          )}
+        </div>
         <Textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Add context — e.g. passed on credit, awaiting term sheet…"
           className="min-h-[56px] text-[12px] resize-y"
         />
+        {contextNote && note.trim() === contextNote && (
+          <p className="flex items-start gap-1 text-[10px] text-emerald-300/80">
+            <Sparkles className="h-3 w-3 mt-[1px] shrink-0" />
+            Drafted from this lender's email — edit before confirming.
+          </p>
+        )}
+        {contextError && (
+          <p className="text-[10px] text-amber-300/80">{contextError}</p>
+        )}
       </div>
 
       <div className="flex items-center justify-end gap-2 pt-0.5">

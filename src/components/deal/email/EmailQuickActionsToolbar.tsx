@@ -288,6 +288,14 @@ export function EmailQuickActionsToolbar({
           <UpdateLenderStatusInlineCard
             dealId={dealId || fallbackDealId}
             preselectLenderName={likelyLenderName}
+            emailContext={{
+              subject: thread.subject,
+              messages: (thread.emails || []).slice(-6).map((m: any) => ({
+                from: m?.from_name ? `${m.from_name} <${m.from_email || ''}>` : (m?.from_email || ''),
+                at: m?.received_at || null,
+                text: m?.body_text || m?.body_preview || m?.snippet || '',
+              })),
+            }}
             onClose={() => setActive(null)}
           />
         )}
