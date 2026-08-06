@@ -2,7 +2,8 @@ import { useState, useMemo } from 'react';
 import {
   Upload, Trash2, FolderInput, Pencil, Share2, FolderPlus, CheckSquare,
   Square, FileText, Clock, RotateCcw, Filter, User, Search, Undo2, Video,
-  ArrowRightFromLine, ArrowLeftFromLine, Loader2, GitBranch, ArrowRight, CheckCircle
+  ArrowRightFromLine, ArrowLeftFromLine, Loader2, GitBranch, ArrowRight, CheckCircle,
+  Landmark, Unlink, ArrowRightLeft, X, FileSignature, ListTodo
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -46,6 +47,20 @@ const ACTION_CONFIG: Record<string, { icon: typeof Upload; color: string; label:
   stage_changed: { icon: GitBranch, color: 'text-muted-foreground', label: 'Stage Changed' },
   stage_exited: { icon: GitBranch, color: 'text-muted-foreground', label: 'Stage Exited' },
   deal_created: { icon: CheckCircle, color: 'text-primary', label: 'Deal Created' },
+  lender_added: { icon: Landmark, color: 'text-emerald-400', label: 'Funding Source Added' },
+  lender_updated: { icon: Landmark, color: 'text-amber-400', label: 'Funding Source Updated' },
+  lender_removed: { icon: Unlink, color: 'text-destructive', label: 'Funding Source Removed' },
+  lender_deleted: { icon: Unlink, color: 'text-destructive', label: 'Funding Source Removed' },
+  lender_stage_change: { icon: ArrowRightLeft, color: 'text-blue-400', label: 'Funding Source Stage Changed' },
+  lender_substage_change: { icon: ArrowRightLeft, color: 'text-blue-400', label: 'Funding Source Sub-stage Changed' },
+  lender_status_change: { icon: ArrowRightLeft, color: 'text-blue-400', label: 'Funding Source Status Changed' },
+  lender_notes_updated: { icon: FileText, color: 'text-amber-400', label: 'Funding Source Notes Updated' },
+  lender_passed: { icon: X, color: 'text-destructive', label: 'Funding Source Passed' },
+  lender_terms_received: { icon: FileSignature, color: 'text-primary', label: 'Terms Received' },
+  task_created: { icon: ListTodo, color: 'text-cyan-400', label: 'Task Created' },
+  task_updated: { icon: Pencil, color: 'text-amber-400', label: 'Task Updated' },
+  task_completed: { icon: CheckSquare, color: 'text-green-500', label: 'Task Completed' },
+  task_removed: { icon: Trash2, color: 'text-destructive', label: 'Task Removed' },
 };
 
 const FILTER_OPTIONS = [
@@ -56,6 +71,8 @@ const FILTER_OPTIONS = [
   { value: 'checklist', label: 'Checklist' },
   { value: 'deal', label: 'Deal' },
   { value: 'call', label: 'Calls' },
+  { value: 'funding_source', label: 'Funding sources' },
+  { value: 'task', label: 'Tasks' },
 ];
 
 function describeAction(entry: DealAuditEntry): string {
@@ -90,7 +107,19 @@ function describeAction(entry: DealAuditEntry): string {
       const exitL = meta.exit_stage_label || name || 'a stage';
       return `exited stage "${exitL}"`;
     }
-    default: return entry.action_type.replace(/_/g, ' ');
+    case 'task_created': {
+      const due = meta.due_date ? ` (due ${format(new Date(meta.due_date), 'MMM d, yyyy')})` : '';
+      const who = meta.assignee_name ? ` for ${meta.assignee_name}` : '';
+      return `created task "${name}"${who}${due}`;
+    }
+    case 'task_updated': return `updated task "${name}"`;
+    case 'task_completed': return `completed task "${name}"`;
+    case 'task_removed': return `removed task "${name}"`;
+    default:
+      if (entry.entity_type === 'funding_source') {
+        return meta.description || `${entry.action_type.replace(/_/g, ' ')}${name ? ` — ${name}` : ''}`;
+      }
+      return entry.action_type.replace(/_/g, ' ');
   }
 }
 

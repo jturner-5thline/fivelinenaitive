@@ -19,6 +19,19 @@ export interface DealAuditEntry {
 
 const PAGE_SIZE = 50;
 
+export const FUNDING_SOURCE_ACTIVITY_TYPES = [
+  'lender_added',
+  'lender_updated',
+  'lender_removed',
+  'lender_deleted',
+  'lender_stage_change',
+  'lender_substage_change',
+  'lender_status_change',
+  'lender_notes_updated',
+  'lender_passed',
+  'lender_terms_received',
+];
+
 export function useDealAuditLog(dealId: string | undefined) {
   const { user } = useAuth();
   const [entries, setEntries] = useState<DealAuditEntry[]>([]);
@@ -32,7 +45,7 @@ export function useDealAuditLog(dealId: string | undefined) {
     setLoading(true);
     try {
       const from = pageNum * PAGE_SIZE;
-      const [{ data, error }, { data: callData, error: callError }, stageRes, pipelinesRes, dealRes] = await Promise.all([
+      const [{ data, error }, { data: callData, error: callError }, stageRes, pipelinesRes, dealRes, fundingRes, taskRes] = await Promise.all([
         (supabase as any)
           .from('deal_audit_log')
           .select('*')
@@ -60,6 +73,23 @@ export function useDealAuditLog(dealId: string | undefined) {
         pageNum === 0
           ? supabase.from('deals').select('id, created_at').eq('id', dealId).maybeSingle()
           : Promise.resolve({ data: null as any, error: null }),
+        pageNum === 0
+          ? supabase
+              .from('activity_logs')
+              .select('id, deal_id, user_id, user_display_name, activity_type, description, metadata, created_at')
+              .eq('deal_id', dealId)
+              .in('activity_type', FUNDING_SOURCE_ACTIVITY_TYPES)
+              .order('created_at', { ascending: false })
+              .limit(200)
+          : Promise.resolve({ data: [] as any[], error: null }),
+        pageNum === 0
+          ? (supabase as any)
+              .from('tasks')
+              .select('id, title, description, status, priority, due_date, due_at, created_at, updated_at, completed_at, archived_at, created_by, assigned_by, assigned_to, completed_by')
+              .eq('deal_id', dealId)
+              .order('created_at', { ascending: false })
+              .limit(200)
+          : Promise.resolve({ data: [] as any[], error: null }),
       ]);
 
       if (error) throw error;
@@ -188,12 +218,93 @@ export function useDealAuditLog(dealId: string | undefined) {
           }]
         : [];
 
-      const rows = [...auditRows, ...callRows, ...stageRows, ...dealCreatedRows].sort(
+      const fundingRows: DealAuditEntry[] = ((fundingRes?.data || []) as any[]).map((entry) => ({
+        id: `funding-${entry.id}`,
+        deal_id: entry.deal_id,
+        user_id: entry.user_id,
+        action_type: entry.activity_type,
+        entity_type: 'funding_source',
+        entity_id: (entry.metadata as Record<string, any> | null)?.lender_id || entry.id,
+        entity_name: (entry.metadata as Record<string, any> | null)?.lender_name || entry.description,
+        metadata: { ...(entry.metadata || {}), description: entry.description },
+        created_at: entry.created_at,
+        user_display_name: entry.user_display_name || 'System',
+        user_avatar_url: null,
+      }));
+
+      const taskRows: DealAuditEntry[] = [];
+      for (const t of ((taskRes?.data || []) as any[])) {
+        const base = {
+          deal_id: dealId!,
+          entity_type: 'task',
+          entity_id: t.id,
+          entity_name: t.title,
+        };
+        const meta = {
+          title: t.title,
+          description: t.description,
+          status: t.status,
+          priority: t.priority,
+          due_date: t.due_date || t.due_at || null,
+          assigned_to: t.assigned_to,
+        };
+        taskRows.push({
+          ...base,
+          id: `task-created-${t.id}`,
+          user_id: t.created_by || t.assigned_by || null,
+          action_type: 'task_created',
+          metadata: meta,
+          created_at: t.created_at,
+        } as DealAuditEntry);
+        if (t.completed_at) {
+          taskRows.push({
+            ...base,
+            id: `task-completed-${t.id}`,
+            user_id: t.completed_by || null,
+            action_type: 'task_completed',
+            metadata: meta,
+            created_at: t.completed_at,
+          } as DealAuditEntry);
+        }
+        if (t.archived_at) {
+          taskRows.push({
+            ...base,
+            id: `task-removed-${t.id}`,
+            user_id: null,
+            action_type: 'task_removed',
+            metadata: meta,
+            created_at: t.archived_at,
+          } as DealAuditEntry);
+        }
+        const updatedTs = t.updated_at ? new Date(t.updated_at).getTime() : 0;
+        const createdTs = t.created_at ? new Date(t.created_at).getTime() : 0;
+        const completedTs = t.completed_at ? new Date(t.completed_at).getTime() : 0;
+        const archivedTs = t.archived_at ? new Date(t.archived_at).getTime() : 0;
+        if (
+          updatedTs - createdTs > 60_000 &&
+          Math.abs(updatedTs - completedTs) > 60_000 &&
+          Math.abs(updatedTs - archivedTs) > 60_000
+        ) {
+          taskRows.push({
+            ...base,
+            id: `task-updated-${t.id}`,
+            user_id: t.assigned_by || t.created_by || null,
+            action_type: 'task_updated',
+            metadata: meta,
+            created_at: t.updated_at,
+          } as DealAuditEntry);
+        }
+      }
+
+      const rows = [...auditRows, ...callRows, ...stageRows, ...dealCreatedRows, ...fundingRows, ...taskRows].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
 
       // Fetch user profiles for display names
-      const userIds = [...new Set(rows.map(r => r.user_id).filter(Boolean))] as string[];
+      const userIds = [...new Set([
+        ...rows.map(r => r.user_id),
+        ...rows.map(r => (r.entity_type === 'task' ? r.metadata?.assigned_to : null)),
+      ].filter(Boolean))] as string[];
       const { data: profiles } = userIds.length
         ? await supabase
             .from('profiles')
@@ -204,6 +315,9 @@ export function useDealAuditLog(dealId: string | undefined) {
       const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
       const enriched = rows.map(r => ({
         ...r,
+        metadata: r.entity_type === 'task' && r.metadata?.assigned_to
+          ? { ...r.metadata, assignee_name: profileMap.get(r.metadata.assigned_to)?.display_name || null }
+          : r.metadata,
         user_display_name: r.user_display_name || (r.user_id ? profileMap.get(r.user_id)?.display_name : null) || 'System',
         user_avatar_url: r.user_id ? profileMap.get(r.user_id)?.avatar_url || null : null,
       }));
