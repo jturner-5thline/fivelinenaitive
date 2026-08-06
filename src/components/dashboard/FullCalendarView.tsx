@@ -694,12 +694,20 @@ function MiniCalendar({
   events,
   calendars,
   calendarColors,
+  hiddenCalendarIds,
+  onToggleCalendar,
+  onOnlyCalendar,
+  onShowAllCalendars,
 }: {
   currentDate: Date;
   onDateSelect: (date: Date) => void;
   events: CalendarEvent[];
   calendars: Calendar[];
   calendarColors: CalendarColorMap;
+  hiddenCalendarIds: Set<string>;
+  onToggleCalendar: (id: string) => void;
+  onOnlyCalendar: (id: string) => void;
+  onShowAllCalendars: () => void;
 }) {
   const [miniMonth, setMiniMonth] = useState(startOfMonth(currentDate));
 
@@ -786,20 +794,57 @@ function MiniCalendar({
 
       {/* Calendar legend — connected calendars with their Google-assigned colors */}
       <div className="space-y-1.5">
-        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Calendars</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Calendars</p>
+          {hiddenCalendarIds.size > 0 && (
+            <button
+              type="button"
+              onClick={onShowAllCalendars}
+              className="text-[10px] text-primary hover:underline"
+            >
+              Show all
+            </button>
+          )}
+        </div>
         <div className="space-y-1">
           {calendars.length > 0 ? (
             calendars.map(cal => {
               const hex = calendarColors.get(cal.id)?.background;
+              const hidden = hiddenCalendarIds.has(cal.id);
               return (
-                <div key={cal.id} className="flex items-center gap-2 min-w-0">
-                  <div
-                    className={cn('h-2.5 w-2.5 rounded-full shrink-0', !hex && 'bg-primary')}
-                    style={hex ? { backgroundColor: hex } : undefined}
-                  />
-                  <span className="text-[11px] text-muted-foreground truncate" title={cal.summary}>
-                    {cal.primary ? `${cal.summary} · Primary` : cal.summary}
-                  </span>
+                <div key={cal.id} className="group flex items-center gap-2 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => onToggleCalendar(cal.id)}
+                    title={hidden ? `Show ${cal.summary}` : `Hide ${cal.summary}`}
+                    className="flex items-center gap-2 min-w-0 flex-1 text-left rounded px-1 py-0.5 hover:bg-muted/60 transition-colors"
+                  >
+                    <div
+                      className={cn(
+                        'h-2.5 w-2.5 rounded-full shrink-0 border',
+                        !hex && !hidden && 'bg-primary',
+                        hidden ? 'bg-transparent border-muted-foreground/60' : 'border-transparent',
+                      )}
+                      style={hex && !hidden ? { backgroundColor: hex } : undefined}
+                    />
+                    <span
+                      className={cn(
+                        'text-[11px] truncate',
+                        hidden ? 'text-muted-foreground/50 line-through' : 'text-muted-foreground',
+                      )}
+                      title={cal.summary}
+                    >
+                      {cal.primary ? `${cal.summary} · Primary` : cal.summary}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onOnlyCalendar(cal.id)}
+                    className="shrink-0 text-[9px] uppercase tracking-wide text-primary opacity-0 group-hover:opacity-100 transition-opacity hover:underline"
+                    title="Show only this calendar"
+                  >
+                    Only
+                  </button>
                 </div>
               );
             })
@@ -1449,6 +1494,40 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
     return map;
   }, [liveCalendars]);
 
+  // ─── Calendar visibility (hide/show per connected calendar) ───
+  const HIDDEN_CAL_KEY = 'naitive:hidden-calendar-ids';
+  const [hiddenCalendarIds, setHiddenCalendarIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const raw = window.localStorage.getItem(HIDDEN_CAL_KEY);
+      return new Set<string>(raw ? (JSON.parse(raw) as string[]) : []);
+    } catch {
+      return new Set<string>();
+    }
+  });
+
+  const persistHidden = useCallback((next: Set<string>) => {
+    setHiddenCalendarIds(next);
+    try {
+      window.localStorage.setItem(HIDDEN_CAL_KEY, JSON.stringify(Array.from(next)));
+    } catch { /* quota */ }
+  }, []);
+
+  const handleToggleCalendar = useCallback((id: string) => {
+    const next = new Set(hiddenCalendarIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    persistHidden(next);
+  }, [hiddenCalendarIds, persistHidden]);
+
+  const handleOnlyCalendar = useCallback((id: string) => {
+    const others = liveCalendars.map(c => c.id).filter(c => c !== id);
+    // Clicking "Only" again on an already-isolated calendar restores all.
+    const alreadyOnly = others.length > 0 && others.every(c => hiddenCalendarIds.has(c)) && !hiddenCalendarIds.has(id);
+    persistHidden(alreadyOnly ? new Set<string>() : new Set(others));
+  }, [liveCalendars, hiddenCalendarIds, persistHidden]);
+
+  const handleShowAllCalendars = useCallback(() => persistHidden(new Set<string>()), [persistHidden]);
+
   const handleSaveEvent = useCallback(async (eventData: {
     summary: string;
     description?: string;
@@ -1567,7 +1646,9 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
   // explicitly so users never see fake events flash in.
   const allEvents: CalendarEvent[] = viewingTeammateId
     ? (teammateData?.events ?? [])
-    : liveEvents;
+    : hiddenCalendarIds.size > 0
+      ? liveEvents.filter(e => !e.calendar_id || !hiddenCalendarIds.has(e.calendar_id))
+      : liveEvents;
 
   // Overlay state machine. We show the overlay when:
   //  • we're still resolving auth/status, OR
@@ -1887,6 +1968,10 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
               events={allEvents}
               calendars={liveCalendars}
               calendarColors={calendarColors}
+              hiddenCalendarIds={hiddenCalendarIds}
+              onToggleCalendar={handleToggleCalendar}
+              onOnlyCalendar={handleOnlyCalendar}
+              onShowAllCalendars={handleShowAllCalendars}
             />
 
             {/* Upcoming Events Widget */}
