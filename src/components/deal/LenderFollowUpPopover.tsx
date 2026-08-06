@@ -171,6 +171,16 @@ export function LenderFollowUpPopover({
 
   const selectedThread = threads.find((t) => t.thread_id === selectedThreadId) || null;
 
+  // Keep the subject aligned with whichever thread is selected.
+  useEffect(() => {
+    if (!open) return;
+    if (!selectedThread) return;
+    const next = /^re:/i.test(selectedThread.subject)
+      ? selectedThread.subject
+      : `Re: ${selectedThread.subject}`;
+    setSubject(next);
+  }, [open, selectedThreadId]);
+
   // Auto-generate the AI draft once we know the recipient AND which existing
   // deal thread we're replying into, so the draft reads as a continuation.
   useEffect(() => {
