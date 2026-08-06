@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Video, Phone, ExternalLink, ChevronDown, ChevronRight, Clock, Users, FileText, Link2, MoreVertical, Unlink, ArrowRightLeft } from 'lucide-react';
+import { Video, Phone, ExternalLink, ChevronDown, ChevronRight, Clock, Users, FileText, Link2, MoreVertical, Unlink, ArrowRightLeft, Sparkles } from 'lucide-react';
+import { LinkedCallActionsDialog } from './LinkedCallActionsDialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, formatDuration, intervalToDuration } from 'date-fns';
@@ -59,6 +60,7 @@ function callTypeBadgeVariant(callType: string | null): 'default' | 'secondary' 
 function CallCard({ call }: { call: ClaapCall }) {
   const [expanded, setExpanded] = useState(false);
   const [dealSelectorOpen, setDealSelectorOpen] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const { linkToDeal, changeDeal, unlinkFromDeal } = useClaapCallActions();
   const hasTranscript = !!(call.transcript || call.ai_summary);
 
@@ -120,6 +122,16 @@ function CallCard({ call }: { call: ClaapCall }) {
               </Collapsible>
             )}
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 shrink-0"
+            title="Call actions"
+            aria-label="Call actions"
+            onClick={() => setActionsOpen(true)}
+          >
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0">
@@ -167,6 +179,11 @@ function CallCard({ call }: { call: ClaapCall }) {
           }
         }}
         title={call.deal_id ? 'Change Linked Deal' : 'Link Call to Deal'}
+      />
+      <LinkedCallActionsDialog
+        open={actionsOpen}
+        onOpenChange={setActionsOpen}
+        recordingTitle={call.title}
       />
     </>
   );
