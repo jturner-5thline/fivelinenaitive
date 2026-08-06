@@ -11,6 +11,7 @@ import { useFinancialComments } from '@/hooks/useFinancialComments';
 import { FinancialCommentsSection } from './saas-model/FinancialCommentsSection';
 import { Separator } from '@/components/ui/separator';
 import { HighlightCalendarMenu } from '@/components/calendar/HighlightCalendarMenu';
+import { ClaapRecordingDetailsPanel } from '@/components/claap/ClaapRecordingDetailsPanel';
 
 interface DealSpaceNotesTabProps {
   dealId: string;
@@ -27,6 +28,7 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
   const [showComments, setShowComments] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [pendingQuote, setPendingQuote] = useState<string | null>(null);
+  const [selectedMeeting, setSelectedMeeting] = useState<{ recordingId: string; title: string; url?: string | null } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedNote = notes.find(n => n.id === selectedNoteId);
@@ -145,7 +147,7 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
         <NotesSidebar
           notes={notes}
           selectedNoteId={selectedNoteId}
-          onSelectNote={(id) => setSelectedNoteId(id || null)}
+          onSelectNote={(id) => { setSelectedMeeting(null); setSelectedNoteId(id || null); }}
           onCreateNote={handleCreateNote}
           onDeleteNote={(id) => { if (selectedNoteId === id) setSelectedNoteId(null); deleteNote(id); }}
           onUpdateNote={updateNote}
@@ -154,11 +156,20 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
           fileInputRef={fileInputRef}
           commentCounts={commentCounts}
           dealId={dealId}
+          selectedMeetingId={selectedMeeting?.recordingId ?? null}
+          onSelectMeeting={(m) => { setSelectedNoteId(null); setSelectedMeeting(m); }}
         />
 
         {/* Main editor */}
         <div className="flex-1 flex flex-col min-w-0 min-h-0">
-          {selectedNote ? (
+          {selectedMeeting ? (
+            <ClaapRecordingDetailsPanel
+              recordingId={selectedMeeting.recordingId}
+              recordingTitle={selectedMeeting.title}
+              recordingUrl={selectedMeeting.url}
+              onClose={() => setSelectedMeeting(null)}
+            />
+          ) : selectedNote ? (
             <HighlightCalendarMenu
               editableMode
               className="flex-1 flex flex-col min-w-0 min-h-0"
