@@ -69,6 +69,10 @@ Deno.serve(async (req) => {
       }
     }
     const notes = String(body.notes || '').trim();
+    // When true, the app is replying inside an existing deal thread with this
+    // lender — the draft must read as a continuation, not a new introduction.
+    const replyInThread = body.reply_in_thread === true;
+    const threadSubject = String(body.thread_subject || '').trim();
     // Optional Gmail context: most recent message in a thread that involves
     // this lender's email domain and the deal name. Used for "Following up
     // on your message from [date]…" personalization.
@@ -182,7 +186,12 @@ Deno.serve(async (req) => {
       '- Plain prose, no markdown, no bullets, no headings.',
       '- 3 to 5 short sentences in the body.',
       '- Keep the subject line within a few words of the suggested subject.',
-      '- If recent thread context is provided, you MAY open with a single sentence like "Following up on your message from [date]…" using the actual date from the context. Otherwise do not invent prior correspondence.',
+      replyInThread
+        ? '- This email is a REPLY inside an existing thread with this lender about this deal. Write it as a continuation of that conversation: no re-introduction, no restating who we are, no re-explaining the deal from scratch. Reference the prior message briefly (e.g. "Following up on my note from [date]…") using the actual date from the thread context when available.'
+        : '- If recent thread context is provided, you MAY open with a single sentence like "Following up on your message from [date]…" using the actual date from the context. Otherwise do not invent prior correspondence.',
+      replyInThread && threadSubject
+        ? `- The thread subject is "${threadSubject}". Return that exact subject prefixed with "Re: " (do not add a second "Re: " if it already starts with one).`
+        : '',
       '- Never invent numbers, dates, terms, or commitments.',
       `- Address the recipient as "Hi ${fn}," exactly. Do not substitute a different greeting and do not use placeholders like "[Contact Name]".`,
       senderName
@@ -195,6 +204,7 @@ Deno.serve(async (req) => {
       `Deal: ${dealName || '(unnamed)'} for ${company || '(client)'}`,
       `Lender: ${lenderName}`,
       `Lender stage: ${stage || '(unknown)'}`,
+      replyInThread ? `Replying inside existing thread: "${threadSubject || '(subject unknown)'}"` : 'Starting a new email thread.',
       days !== null ? `Days since last contact: ${days}` : 'No prior contact recorded.',
       `Recipient first name: ${fn}`,
       notes ? `Internal notes (do not quote verbatim): ${notes.slice(0, 400)}` : '',
