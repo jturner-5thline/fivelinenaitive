@@ -152,6 +152,9 @@ export function LinkedCallActionsDialog({
   const [savedKinds, setSavedKinds] = useState<Record<string, boolean>>({});
   const [savingDraft, setSavingDraft] = useState(false);
   const [thread, setThread] = useState<LenderThreadMatch | null>(null);
+  const [threadOptions, setThreadOptions] = useState<LenderThreadMatch[]>([]);
+  const [threadPickerOpen, setThreadPickerOpen] = useState(false);
+  const [threadSearching, setThreadSearching] = useState(false);
   const [dealCtx, setDealCtx] = useState<{ name: string; company: string } | null>(
     dealName ? { name: dealName, company: company || '' } : null,
   );
@@ -186,9 +189,18 @@ export function LinkedCallActionsDialog({
 
   useEffect(() => { dealCtxRef.current = dealCtx; }, [dealCtx]);
 
+  /** Use a thread: reply inside it and mirror its subject into the Subject field. */
+  const selectThread = (match: LenderThreadMatch) => {
+    setThread(match);
+    setThreadPickerOpen(false);
+    const next = /^re:/i.test(match.subject) ? match.subject : `Re: ${match.subject}`;
+    setSubject((prev) => (prev.trim().toLowerCase() === next.trim().toLowerCase() ? prev : next));
+  };
+
   /**
-   * Find the live email thread with this lender about this deal and reuse its
-   * subject (as a `Re:`) so the follow-up lands in the existing conversation.
+   * Find the live email thread with this recipient about this deal and reuse its
+   * subject (as a `Re:`) so the message lands in the existing conversation.
+   * When the match is ambiguous, the candidates are surfaced for the user to pick.
    */
   const applyLenderThreadSubject = async (recipient: string, existingSubject?: string) => {
     const email = (recipient || '').trim();
@@ -198,22 +210,30 @@ export function LinkedCallActionsDialog({
     const lookupKey = `${email}|${ctx.name}`;
     if (threadLookupRef.current === lookupKey) return;
     threadLookupRef.current = lookupKey;
+    setThreadSearching(true);
     try {
       const matches = await searchLenderDealThreads({
         domain,
         email,
         dealName: ctx.name,
         company: ctx.company,
-        limit: 3,
+        limit: 5,
       });
+      setThreadOptions(matches);
       const best = matches[0];
       if (!best) { threadLookupRef.current = null; return; }
-      setThread(best);
-      const next = /^re:/i.test(best.subject) ? best.subject : `Re: ${best.subject}`;
-      setSubject((prev) => (prev.trim().toLowerCase() === next.trim().toLowerCase() ? prev : next));
+      const runnerUp = matches[1];
+      const confident = best.subject_match && (!runnerUp || best.score - runnerUp.score >= 8);
+      if (confident) {
+        selectThread(best);
+      } else {
+        // Ambiguous — let the user choose which thread to reply in.
+        setThreadPickerOpen(true);
+      }
     } catch {
       // keep the AI-generated subject
     } finally {
+      setThreadSearching(false);
       // This ref only deduplicates an in-flight lookup. A refreshed draft must
       // be allowed to look the thread up again after the AI resets its subject.
       threadLookupRef.current = null;
@@ -222,11 +242,11 @@ export function LinkedCallActionsDialog({
 
   // Deal context can resolve after the draft loads — retry the thread lookup then.
   useEffect(() => {
-    if (!open || mode !== 'qa' || draftKind !== 'qa') return;
-    if (!to || !dealCtx?.name || thread) return;
+    if (!open || mode !== 'qa') return;
+    if (!to || !dealCtx?.name || thread || threadOptions.length > 0) return;
     void applyLenderThreadSubject(to, subject);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, mode, draftKind, to, dealCtx, thread]);
+  }, [open, mode, draftKind, to, dealCtx, thread, threadOptions.length]);
 
   /** Persist the current draft (debounced by callers). */
   const persistDraft = async (
