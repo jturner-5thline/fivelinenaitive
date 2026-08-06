@@ -307,7 +307,7 @@ export function LinkedCallActionsDialog({
                       content={body}
                       onChange={setBody}
                       className="mt-1"
-                      minHeight={320}
+                      minHeight={160}
                       placeholder="Write your follow-up…"
                     />
                   </div>
@@ -326,7 +326,7 @@ export function LinkedCallActionsDialog({
                     <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Q&amp;A</p>
                     <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">{result.qa.length}</Badge>
                   </div>
-                  <ScrollArea className="h-[300px] pr-3">
+                  <ScrollArea className="h-[150px] pr-3">
                     <div className="space-y-2">
                       {result.qa.length === 0 && (
                         <p className="text-xs text-muted-foreground italic">No lender questions were detected on this call.</p>
