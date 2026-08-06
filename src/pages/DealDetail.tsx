@@ -6246,10 +6246,10 @@ export default function DealDetail() {
                 </TabsContent>
 
                 {/* ─────────── FUNDING SOURCE ─────────── */}
-                <TabsContent value="funding-source" className="m-0 focus-visible:outline-none space-y-6">
+                <TabsContent value="funding-source" className="m-0 focus-visible:outline-none divide-y divide-border/50 [&>section]:py-5 [&>section:first-child]:pt-0 [&>section:last-child]:pb-0">
                   {/* About the funding source */}
-                  <section>
-                    <div className="flex items-center justify-between mb-2">
+                  <section className="min-w-0">
+                    <div className="mb-2 flex items-center justify-between gap-3">
                       <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         About {selectedLenderName}
                       </h4>
@@ -6260,18 +6260,18 @@ export default function DealDetail() {
                         </Button>
                       </LenderNotesPopover>
                     </div>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-[11px] leading-relaxed text-muted-foreground/80">
                       Directory record · not specific to this deal. Internal notes are not visible to lenders or borrowers.
                     </p>
                   </section>
 
                   {/* Available contacts */}
-                  <section>
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  <section className="min-w-0">
+                    <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Available Contacts
                     </h4>
                     {masterLender?.contact_name ? (
-                      <div className="rounded-md border border-border/60 p-3 space-y-0.5 text-sm">
+                      <div className="rounded-lg border border-border/60 bg-muted/10 p-3.5 space-y-1 text-sm">
                         <p className="font-medium">
                           {masterLender.contact_name}
                           {masterLender.contact_title ? <span className="font-normal text-muted-foreground">, {masterLender.contact_title}</span> : null}
@@ -6279,13 +6279,13 @@ export default function DealDetail() {
                         {masterLender.email && (
                           <p className="text-xs text-muted-foreground">{masterLender.email}</p>
                         )}
-                        <p className="text-[10px] text-muted-foreground/80 pt-1">Directory default contact</p>
+                        <p className="pt-1 text-[10px] uppercase tracking-wider text-muted-foreground/70">Directory default contact</p>
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground italic">No contact information available</p>
                     )}
                     {dealLender && (
-                      <div className="mt-3">
+                      <div className="mt-3 min-w-0">
                         <DealLenderContactPicker
                           dealLenderId={dealLender.id}
                           masterLenderId={masterLender?.id ?? null}
@@ -6300,8 +6300,8 @@ export default function DealDetail() {
                   </section>
 
                   {/* Deal preferences */}
-                  <section>
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  <section className="min-w-0">
+                    <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Deal Preferences
                     </h4>
                     {lenderDetails?.preferences && lenderDetails.preferences.length > 0 ? (
@@ -6316,8 +6316,8 @@ export default function DealDetail() {
                   </section>
 
                   {/* Other deals with this lender */}
-                  <section>
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  <section className="min-w-0">
+                    <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Other Deals with {selectedLenderName}
                     </h4>
                     <div className="space-y-2">
