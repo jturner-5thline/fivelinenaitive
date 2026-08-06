@@ -164,7 +164,7 @@ export function NotesSidebar({
           <span className="text-[10px] text-muted-foreground italic">Private</span>
         )}
       </div>
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mr-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="icon" variant="ghost" className="h-6 w-6" onClick={e => e.stopPropagation()}>
@@ -368,7 +368,7 @@ export function NotesSidebar({
       {/* Notes list */}
       <ScrollArea
         className="flex-1"
-        viewportClassName="pr-3"
+        viewportClassName="pr-3 [scrollbar-gutter:stable]"
       >
         {dealId && <MeetingsSection dealId={dealId} />}
         {filteredNotes.length === 0 ? (
