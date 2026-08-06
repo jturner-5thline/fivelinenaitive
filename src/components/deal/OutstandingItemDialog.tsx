@@ -40,6 +40,12 @@ import { useOutstandingItemComments } from '@/hooks/useOutstandingItemComments';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { parseDateFromText, formatDateForInput } from '@/lib/parseDateFromText';
+import { MentionTextarea, MentionText } from '@/components/tasks/MentionTextarea';
+import { supabase } from '@/integrations/supabase/client';
+
+function hasMentions(text: string): boolean {
+  return /@\[[^\]]+\]\([0-9a-fA-F-]{36}\)/.test(text);
+}
 
 const PRIORITY_CONFIG: Record<ItemPriority, { label: string; dotColor: string }> = {
   urgent: { label: 'Urgent', dotColor: 'bg-destructive' },
@@ -104,6 +110,7 @@ export function OutstandingItemDialog({
 
   const handleAddComment = async () => {
     if (!newComment.trim() || !item) return;
+    const body = newComment;
     
     // Check for date references in the comment
     const parsedDate = parseDateFromText(newComment);
@@ -125,12 +132,32 @@ export function OutstandingItemDialog({
     
     await addComment(newComment);
     setNewComment('');
+    void notifyMentions(item.id, body, 'comment');
+  };
+
+  const notifyMentions = async (itemId: string, body: string, source: 'comment' | 'notes') => {
+    if (!hasMentions(body)) return;
+    try {
+      const { data, error } = await supabase.functions.invoke('notify-outstanding-item-mention', {
+        body: { item_id: itemId, source, body },
+      });
+      if (error) throw error;
+      if ((data as any)?.sent > 0) {
+        toast({
+          title: 'Teammates notified',
+          description: `Sent ${(data as any).sent} mention notification${(data as any).sent === 1 ? '' : 's'}.`,
+        });
+      }
+    } catch (e) {
+      console.warn('[outstanding-item-mention] notify failed', e);
+    }
   };
 
   const handleSaveNotes = () => {
     if (item) {
       onUpdate(item.id, { notes: notesValue });
       setEditingNotes(false);
+      void notifyMentions(item.id, notesValue, 'notes');
     }
   };
 
@@ -395,12 +422,12 @@ export function OutstandingItemDialog({
             </div>
             {editingNotes ? (
               <div className="space-y-2">
-                <Textarea
+                <MentionTextarea
                   value={notesValue}
-                  onChange={(e) => setNotesValue(e.target.value)}
-                  placeholder="Add notes about what's needed, status updates, etc."
+                  onChange={setNotesValue}
+                  placeholder="Add notes… use @ to mention a teammate"
                   className="min-h-[80px] text-sm"
-                  autoFocus
+                  minRows={4}
                 />
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleSaveNotes}>Save</Button>
@@ -412,7 +439,7 @@ export function OutstandingItemDialog({
               </div>
             ) : (
               <p className="text-sm text-muted-foreground bg-muted/50 rounded-md p-3 min-h-[60px]">
-                {item.notes || 'No notes yet'}
+                {item.notes ? <MentionText text={item.notes} /> : 'No notes yet'}
               </p>
             )}
           </div>
@@ -447,7 +474,7 @@ export function OutstandingItemDialog({
                               {format(new Date(comment.created_at), 'MMM d, h:mm a')}
                             </span>
                           </div>
-                          <p className="text-sm">{comment.content}</p>
+                          <p className="text-sm"><MentionText text={comment.content} /></p>
                         </div>
                         {user?.id === comment.user_id && (
                           <Button
@@ -468,17 +495,13 @@ export function OutstandingItemDialog({
 
             {/* Add Comment Input */}
             <div className="flex gap-2 mt-3 pt-3 border-t border-border">
-              <Input
+              <MentionTextarea
                 value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Add a comment..."
-                className="flex-1 border-border focus:border-primary focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleAddComment();
-                  }
-                }}
+                onChange={setNewComment}
+                onSubmit={handleAddComment}
+                minRows={2}
+                placeholder="Add a comment… use @ to mention a teammate"
+                className="text-sm"
               />
               <Button
                 size="icon"
