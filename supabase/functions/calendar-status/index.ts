@@ -58,7 +58,7 @@ serve(async (req: Request): Promise<Response> => {
       // Integrations correctly reports Outlook as connected.
       const { data: msToken } = await supabase
         .from("microsoft_tokens")
-        .select("email_address, status, created_at")
+        .select("email, status, connected_at, created_at")
         .eq("user_id", userId)
         .maybeSingle();
 
@@ -68,8 +68,8 @@ serve(async (req: Request): Promise<Response> => {
           is_expired: false,
           scope: "calendar",
           provider: "microsoft",
-          connected_at: msToken.created_at,
-          email: msToken.email_address,
+          connected_at: msToken.connected_at || msToken.created_at,
+          email: msToken.email,
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
