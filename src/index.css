@@ -2700,3 +2700,31 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .sales-dashboard-popup .insights-glass-skin .insights-widget-surface {
   border: 1px solid rgba(255, 255, 255, 0.16) !important;
 }
+
+/* Email rich-text editor: readable paragraph and list spacing.
+   The `prose` classes are inert (typography plugin isn't registered), so
+   spacing is defined explicitly here. */
+.email-rte-content p {
+  margin: 0 0 0.85em;
+}
+.email-rte-content p:last-child {
+  margin-bottom: 0;
+}
+.email-rte-content strong {
+  font-weight: 600;
+}
+.email-rte-content ul,
+.email-rte-content ol {
+  margin: 0 0 0.85em;
+  padding-left: 1.25rem;
+  list-style-position: outside;
+}
+.email-rte-content ul { list-style-type: disc; }
+.email-rte-content ol { list-style-type: decimal; }
+.email-rte-content li { margin: 0 0 0.3em; }
+.email-rte-content li > p { margin: 0; }
+.email-rte-content blockquote {
+  margin: 0 0 0.85em;
+  padding-left: 0.75rem;
+  border-left: 2px solid hsl(var(--border));
+}
