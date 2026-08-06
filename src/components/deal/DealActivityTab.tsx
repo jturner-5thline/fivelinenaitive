@@ -124,7 +124,7 @@ function useLinkedClaapCalls(dealId: string | undefined) {
 
       if (error) throw error;
 
-      return (claapMeetings || []).map((meeting) => ({
+      const linked: DealActivityDetailItem[] = (claapMeetings || []).map((meeting) => ({
         id: `claap-${meeting.id}`,
         activity_type: 'claap_recording_linked',
         description: meeting.title || 'Untitled call recording',
@@ -146,6 +146,65 @@ function useLinkedClaapCalls(dealId: string | undefined) {
         user_display_name: null,
         source: 'claap' as const,
       }));
+
+      // Also surface calls/meetings logged directly against the deal's client contacts.
+      const { data: links } = await supabase
+        .from('contact_deals')
+        .select('contact_id')
+        .eq('deal_id', dealId);
+      const contactIds = (links || []).map((l: any) => l.contact_id).filter(Boolean);
+      if (!contactIds.length) return linked;
+
+      const [{ data: contacts }, { data: contactActivities }] = await Promise.all([
+        supabase.from('contacts').select('id, first_name, last_name, full_name, email').in('id', contactIds),
+        supabase
+          .from('contact_activities')
+          .select('id, contact_id, activity_type, subject, body, occurred_at, metadata, deal_id')
+          .in('contact_id', contactIds)
+          .in('activity_type', ['call', 'meeting', 'call_logged', 'meeting_logged'])
+          .order('occurred_at', { ascending: false })
+          .limit(200),
+      ]);
+
+      const nameById = new Map<string, string>(
+        (contacts || []).map((c: any) => [
+          c.id,
+          [c.first_name, c.last_name].filter(Boolean).join(' ').trim() || c.full_name || c.email || 'Contact',
+        ]),
+      );
+
+      // Avoid duplicating Claap-sourced rows already listed above.
+      const linkedClaapIds = new Set((claapMeetings || []).map((m: any) => m.id));
+
+      const contactCalls: DealActivityDetailItem[] = (contactActivities || [])
+        .filter((a: any) => {
+          const claapId = a?.metadata?.claap_meeting_id;
+          return !(claapId && linkedClaapIds.has(claapId));
+        })
+        .map((a: any) => ({
+          id: `contact-activity-${a.id}`,
+          activity_type: 'claap_recording_linked',
+          description:
+            a.subject ||
+            `${a.activity_type.startsWith('meeting') ? 'Meeting' : 'Call'} with ${nameById.get(a.contact_id) || 'contact'}`,
+          created_at: a.occurred_at,
+          metadata: {
+            call_type: a.activity_type.startsWith('meeting') ? 'Meeting' : 'Call',
+            duration_seconds: a?.metadata?.duration_seconds ?? null,
+            recording_url: a?.metadata?.recording_url ?? null,
+            transcript: a.body ?? null,
+            ai_summary: a?.metadata?.ai_summary ?? null,
+            contact_id: a.contact_id,
+            contact_name: nameById.get(a.contact_id) || null,
+            match_reason: `Logged with client contact ${nameById.get(a.contact_id) || ''}`.trim(),
+          },
+          user_display_name: null,
+          source: 'activity' as const,
+        }));
+
+      return [...linked, ...contactCalls].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
     },
     enabled: !!dealId,
   });
