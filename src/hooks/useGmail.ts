@@ -168,10 +168,20 @@ let cachedMessages: GmailMessage[] = [];
 let cachedStatus: GmailStatus | null = null;
 
 const GMAIL_STATUS_KEY = 'naitive_gmail_status';
+// Persisted/module status must never leak between accounts on a shared browser —
+// scope it to the signed-in user id.
+let cachedStatusUserId: string | null = null;
 
-function loadPersistedStatus(): GmailStatus | null {
+function statusKey(userId?: string | null) {
+  return userId ? `${GMAIL_STATUS_KEY}:${userId}` : GMAIL_STATUS_KEY;
+}
+
+function loadPersistedStatus(userId?: string | null): GmailStatus | null {
+  if (!userId) return null;
   try {
-    const raw = localStorage.getItem(GMAIL_STATUS_KEY);
+    // Drop any legacy unscoped entry — it may belong to a different account.
+    localStorage.removeItem(GMAIL_STATUS_KEY);
+    const raw = localStorage.getItem(statusKey(userId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as GmailStatus;
     // If persisted status says connected, trust it for instant hydration
@@ -181,14 +191,18 @@ function loadPersistedStatus(): GmailStatus | null {
   }
 }
 
-function persistStatus(status: GmailStatus) {
+function persistStatus(status: GmailStatus, userId?: string | null) {
+  if (!userId) return;
   try {
-    localStorage.setItem(GMAIL_STATUS_KEY, JSON.stringify(status));
+    localStorage.setItem(statusKey(userId), JSON.stringify(status));
   } catch { /* ignore */ }
 }
 
-function clearPersistedStatus() {
-  try { localStorage.removeItem(GMAIL_STATUS_KEY); } catch { /* ignore */ }
+function clearPersistedStatus(userId?: string | null) {
+  try {
+    localStorage.removeItem(GMAIL_STATUS_KEY);
+    if (userId) localStorage.removeItem(statusKey(userId));
+  } catch { /* ignore */ }
 }
 
 async function invokeGmailMessages(body: Record<string, unknown>) {
