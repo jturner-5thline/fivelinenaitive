@@ -165,19 +165,26 @@ serve(async (req) => {
 
       console.log(`[asana-webhook] event ${action} for task ${taskGid}`);
 
-      const { data: naitiveTask, error: lookupError } = await supabase
+      const { data: matchingTasks, error: lookupError } = await supabase
         .from("tasks")
-        .select("id, title, description, status, due_date, assigned_to, archived_at")
+        .select("id, title, description, status, due_date, assigned_to, archived_at, updated_at")
         .eq("asana_task_gid", taskGid)
-        .maybeSingle();
+        .order("updated_at", { ascending: false });
 
       if (lookupError) {
         console.error(`Lookup error for GID ${taskGid}:`, lookupError);
         continue;
       }
+      const activeMatches = (matchingTasks || []).filter((task) => !task.archived_at);
+      const naitiveTask = activeMatches[0] ?? matchingTasks?.[0];
       if (!naitiveTask) {
         console.log(`No naitive task mapped for Asana GID ${taskGid}`);
         continue;
+      }
+      if ((matchingTasks?.length || 0) > 1) {
+        console.warn(
+          `[asana-webhook] ${matchingTasks?.length} naitive tasks share Asana GID ${taskGid}; syncing all active matches`,
+        );
       }
 
       // Soft-delete on Asana deletion / project removal
@@ -281,7 +288,8 @@ serve(async (req) => {
       const { error: updateError } = await supabase
         .from("tasks")
         .update(updateData)
-        .eq("id", naitiveTask.id);
+        .eq("asana_task_gid", taskGid)
+        .is("archived_at", null);
 
       if (updateError) {
         console.error(`[asana-webhook] update error for naitive task ${naitiveTask.id} (gid ${taskGid}):`, updateError);
