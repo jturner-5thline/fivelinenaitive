@@ -689,7 +689,11 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
 
         // Background reconcile — fire-and-forget so the UI is never
         // blocked waiting on per-message metadata.
-        void applyAuthoritativeReadState(firstInboxMessages).then((reconciled) => {
+        void applyAuthoritativeReadState(
+          firstInboxMessages,
+          PAGE_SIZE,
+          !isMicrosoftRef.current,
+        ).then((reconciled) => {
           if (!isMountedRef.current) return;
           if (reconciled === firstInboxMessages) return;
           setInboxMessages((prev) => {
