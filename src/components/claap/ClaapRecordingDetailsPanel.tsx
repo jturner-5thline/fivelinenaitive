@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Loader2, ExternalLink, Video, X, Play, RefreshCw, ListChecks, Lightbulb } from 'lucide-react';
+import { Loader2, ExternalLink, Video, X, Play, RefreshCw, ListChecks, Lightbulb, ClipboardCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { asStringArray, stripClaapTimestamps } from '@/types/claap';
 import { transformTimestamps } from '@/components/dashboard/ClaapNoteEditor';
+import { extractClientAsks } from '@/lib/claap/clientActionItems';
+import { useCallOutstandingContext } from '@/hooks/useCallOutstandingContext';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -14,6 +19,7 @@ interface Props {
   recordingId?: string | null;
   recordingTitle?: string | null;
   recordingUrl?: string | null;
+  dealId?: string | null;
   onClose?: () => void;
 }
 
