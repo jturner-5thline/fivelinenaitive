@@ -366,7 +366,10 @@ export function NotesSidebar({
       )}
 
       {/* Notes list */}
-      <ScrollArea className="flex-1">
+      <ScrollArea
+        className="flex-1"
+        viewportClassName="pr-3"
+      >
         {dealId && <MeetingsSection dealId={dealId} />}
         {filteredNotes.length === 0 ? (
           <div className="p-4 text-center text-sm text-muted-foreground">
