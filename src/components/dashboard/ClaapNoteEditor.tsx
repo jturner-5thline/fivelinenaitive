@@ -21,7 +21,7 @@ interface Props {
  * into markdown links pointing at the recording deep-link, rendered as
  * a small playable pill via the custom link renderer below.
  */
-function transformTimestamps(raw: string, recordingUrl: string | null | undefined): string {
+export function transformTimestamps(raw: string, recordingUrl: string | null | undefined): string {
   if (!raw) return raw;
   return raw.replace(/\s*%\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]\(\)\s*/g, (_m, a, b, c) => {
     let secs: number;
