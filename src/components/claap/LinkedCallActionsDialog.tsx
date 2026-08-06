@@ -12,7 +12,8 @@ import { MessageSquareText, ChevronRight, ChevronLeft, Loader2, Send, ArrowLeft,
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { EmailRichTextEditor } from '@/components/deal/email/EmailRichTextEditor';
+import { htmlToPlainText } from '@/lib/htmlToPlainText';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -69,6 +70,10 @@ export function LinkedCallActionsDialog({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<QaResult | null>(null);
   const [to, setTo] = useState('');
+  const [cc, setCc] = useState('');
+  const [bcc, setBcc] = useState('');
+  const [showCc, setShowCc] = useState(false);
+  const [showBcc, setShowBcc] = useState(false);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
@@ -85,6 +90,10 @@ export function LinkedCallActionsDialog({
         setResult(null);
         setLoading(false);
         setTo('');
+        setCc('');
+        setBcc('');
+        setShowCc(false);
+        setShowBcc(false);
         setSubject('');
         setBody('');
         setCopied(false);
@@ -106,7 +115,7 @@ export function LinkedCallActionsDialog({
       const res = data as QaResult;
       setResult(res);
       setSubject(res.email_subject || `Follow-up: ${title}`);
-      setBody(res.email_body || '');
+      setBody(toHtml(res.email_body || ''));
       setTo((res.suggested_recipients || [])[0] || '');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not draft Q&A';
@@ -119,7 +128,9 @@ export function LinkedCallActionsDialog({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(`To: ${to}\nSubject: ${subject}\n\n${body}`);
+      await navigator.clipboard.writeText(
+        `To: ${to}\n${cc ? `Cc: ${cc}\n` : ''}${bcc ? `Bcc: ${bcc}\n` : ''}Subject: ${subject}\n\n${htmlToPlainText(body)}`,
+      );
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -128,13 +139,24 @@ export function LinkedCallActionsDialog({
   };
 
   const handleSend = async () => {
-    const recipients = to.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+    const split = (s: string) => s.split(/[,;]/).map((v) => v.trim()).filter(Boolean);
+    const recipients = split(to);
+    const ccList = split(cc);
+    const bccList = split(bcc);
     if (!recipients.length) { toast.error('Add at least one recipient'); return; }
-    if (!subject.trim() || !body.trim()) { toast.error('Subject and body are required'); return; }
+    if (!subject.trim() || !htmlToPlainText(body).trim()) { toast.error('Subject and body are required'); return; }
     setSending(true);
     try {
       const { data, error } = await supabase.functions.invoke('gmail-messages', {
-        body: { action: 'send', to: recipients, subject: subject.trim(), body },
+        body: {
+          action: 'send',
+          to: recipients,
+          cc: ccList,
+          bcc: bccList,
+          subject: subject.trim(),
+          body_html: body,
+          body: htmlToPlainText(body),
+        },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
