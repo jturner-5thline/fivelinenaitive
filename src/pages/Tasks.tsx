@@ -382,6 +382,55 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
   const teamMembers = useTeamMembers();
   const { labels, createLabel } = useTaskLabels();
 
+  // Owner-filter people list: everyone in the current workspace (falls back to
+  // the 5th Line roster if the workspace member lookup returns nothing), so a
+  // user can toggle between "My tasks", "All tasks", and any named teammate.
+  const [teammateSearch, setTeammateSearch] = useState('');
+  const teammateOptions = useMemo(() => {
+    const fromWorkspace = (teamMembers || [])
+      .filter(m => !!m.id)
+      .map(m => ({
+        user_id: m.id,
+        display_name: m.display_name,
+        email: m.email,
+      }));
+    const base = fromWorkspace.length > 0
+      ? fromWorkspace
+      : (allowedTeammates as any[]).map(p => ({
+          user_id: p.user_id,
+          display_name: p.display_name,
+          email: p.email,
+        }));
+    const seen = new Set<string>();
+    return base
+      .filter(p => (seen.has(p.user_id) ? false : (seen.add(p.user_id), true)))
+      .sort((a, b) =>
+        (a.display_name || a.email || '').localeCompare(b.display_name || b.email || ''),
+      );
+  }, [teamMembers, allowedTeammates]);
+  const filteredTeammateOptions = useMemo(() => {
+    const q = teammateSearch.trim().toLowerCase();
+    if (!q) return teammateOptions;
+    return teammateOptions.filter(
+      p =>
+        (p.display_name || '').toLowerCase().includes(q) ||
+        (p.email || '').toLowerCase().includes(q),
+    );
+  }, [teammateOptions, teammateSearch]);
+  const selectedTeammates = useMemo(
+    () => teammateOptions.filter(p => selectedTeammateIds.includes(p.user_id)),
+    [teammateOptions, selectedTeammateIds],
+  );
+  const teammateLabel = useMemo(() => {
+    if (selectedTeammates.length === 0) return null;
+    if (selectedTeammates.length === 1) {
+      const p = selectedTeammates[0];
+      const name = p.display_name || p.email || 'Teammate';
+      return name.split(/\s+/)[0];
+    }
+    return `${selectedTeammates.length} teammates`;
+  }, [selectedTeammates]);
+
   // Per-user persistence namespace for filter / view preferences.
   // Falls back to a shared key before auth resolves; useLocalStorageState
   // re-hydrates when the key flips so the user's saved prefs load in.
