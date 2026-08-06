@@ -92,6 +92,13 @@ export async function searchLenderDealThreads(opts: {
   const scopes: string[] = [];
   if (email) scopes.push(`(from:${email} OR to:${email} OR cc:${email})`);
   scopes.push(`(from:${domain} OR to:${domain} OR cc:${domain})`);
+  // Recipient metadata is not always complete on older cached/synced mail.
+  // Search the mailbox by the distinctive deal terms as well so a client
+  // conversation such as "RE: ODK & 5th Line" is still offered even when its
+  // participants were not resolved from the deal's legacy contact fields.
+  for (const keyword of keywords.slice(0, 3)) {
+    scopes.push(`subject:"${keyword.replace(/"/g, '')}"`);
+  }
 
   const seen = new Set<string>();
   const messages: any[] = [];
@@ -120,7 +127,6 @@ export async function searchLenderDealThreads(opts: {
     } catch {
       // ignore this scope; try the next one
     }
-    if (messages.length >= 40) break;
   }
   if (messages.length === 0) return [];
 
@@ -171,6 +177,13 @@ export async function searchLenderDealThreads(opts: {
       } else if (snip.includes(kw)) {
         score += 3;
       }
+    }
+    const intendedEmail = (email || '').trim().toLowerCase();
+    const participantEmails = [t.from_email, ...t.to_emails].map((value) => (value || '').toLowerCase());
+    if (intendedEmail && participantEmails.includes(intendedEmail)) {
+      score += 12;
+    } else if (participantEmails.some((value) => value.endsWith(`@${domain.toLowerCase()}`))) {
+      score += 6;
     }
     // Recency bonus: up to 5 points, decaying over ~90 days.
     if (t.latest_date) {

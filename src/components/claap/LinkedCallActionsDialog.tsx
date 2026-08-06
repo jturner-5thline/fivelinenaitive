@@ -187,7 +187,32 @@ export function LinkedCallActionsDialog({
       const resolvedCompany = row.company || '';
       if (!dealName) setDealCtx({ name: resolvedCompany, company: resolvedCompany });
       const raw = `${row.contact_email || ''} ${row.contact_info || ''}`;
-      clientEmailRef.current = raw.match(/[\w.+-]+@[\w-]+\.[\w.-]+/i)?.[0] || null;
+      const legacyEmail = raw.match(/[\w.+-]+@[\w-]+\.[\w.-]+/i)?.[0] || null;
+
+      // Linked deal contacts are the canonical source. Legacy contact fields
+      // can be stale and may point the recap search at a lender participant.
+      const { data: links } = await supabase
+        .from('contact_deals')
+        .select('contact_id, role, created_at')
+        .eq('deal_id', dealId)
+        .order('created_at', { ascending: true });
+      if (cancelled) return;
+      const orderedLinks = [...(links || [])].sort((a, b) => {
+        const aPrimary = (a.role || '').toLowerCase() === 'primary' ? 0 : 1;
+        const bPrimary = (b.role || '').toLowerCase() === 'primary' ? 0 : 1;
+        return aPrimary - bPrimary;
+      });
+      const contactIds = orderedLinks.map((link) => link.contact_id).filter(Boolean);
+      if (contactIds.length > 0) {
+        const { data: contacts } = await supabase.from('contacts').select('id, email').in('id', contactIds);
+        if (cancelled) return;
+        const emailsById = new Map((contacts || []).map((contact) => [contact.id, contact.email]));
+        clientEmailRef.current = orderedLinks
+          .map((link) => emailsById.get(link.contact_id))
+          .find((email): email is string => Boolean(email)) || legacyEmail;
+      } else {
+        clientEmailRef.current = legacyEmail;
+      }
     })();
     return () => { cancelled = true; };
   }, [open, dealId, dealName, company]);
