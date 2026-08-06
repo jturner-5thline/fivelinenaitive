@@ -167,6 +167,7 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
               recordingId={selectedMeeting.recordingId}
               recordingTitle={selectedMeeting.title}
               recordingUrl={selectedMeeting.url}
+              dealId={dealId}
               onClose={() => setSelectedMeeting(null)}
             />
           ) : selectedNote ? (
