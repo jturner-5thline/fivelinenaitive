@@ -588,7 +588,7 @@ export function MeetingClaapInlineAction(props: Props) {
           onOpenChange={setActionsOpen}
           eventTitle={eventTitle}
           recordingTitle={title}
-          recordingId={existing?.recording_id ?? canonicalLinked?.recording_id ?? null}
+          recordingId={existing?.recording_id ?? null}
         />
       </div>
     );
