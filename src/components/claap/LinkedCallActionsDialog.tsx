@@ -54,18 +54,61 @@ interface ActionOption {
   icon: typeof MessageSquareText;
 }
 
-/** Convert an AI plain-text draft into simple HTML for the rich editor. */
+const esc = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** Bold a leading "Q:" / "A:" / "Question:" / "Answer:" marker. */
+function markQa(line: string): string {
+  const m = line.match(/^((?:Q|A|Question|Answer)\b[^:]{0,40}:)\s*(.*)$/i);
+  if (m) return `<strong>${esc(m[1])}</strong> ${esc(m[2])}`;
+  return esc(line);
+}
+
+/**
+ * Convert an AI plain-text draft into well-spaced HTML for the rich editor:
+ * every line becomes its own paragraph, section headings ("Questions & Answers",
+ * "Outstanding Items", etc.) are bolded, bullets become real lists, and Q/A
+ * markers are bolded so pairs read clearly.
+ */
 function toHtml(text: string): string {
   if (!text) return '';
   if (/<(p|div|br|ul|ol|h[1-6])\b/i.test(text)) return text;
-  return text
-    .split(/\n{2,}/)
-    .map((block) => `<p>${block
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/\n/g, '<br/>')}</p>`)
-    .join('');
+
+  const lines = text.split(/\n/);
+  const out: string[] = [];
+  let bullets: string[] = [];
+
+  const flush = () => {
+    if (bullets.length) {
+      out.push(`<ul>${bullets.map((b) => `<li><p>${b}</p></li>`).join('')}</ul>`);
+      bullets = [];
+    }
+  };
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) { flush(); continue; }
+
+    if (/^[-•*]\s+/.test(line) || /^\d+[.)]\s+/.test(line)) {
+      bullets.push(markQa(line.replace(/^[-•*]\s+/, '').replace(/^\d+[.)]\s+/, '')));
+      continue;
+    }
+    flush();
+
+    // Section heading: short line ending in ':' with no sentence punctuation,
+    // or a known section title.
+    const isHeading =
+      (/:$/.test(line) && line.length <= 60 && !/^(Q|A|Question|Answer)\b/i.test(line)) ||
+      /^(questions?\s*(&|and)\s*answers?|q\s*&\s*a|outstanding items?|open items?|next steps?|summary|call summary|recap)\s*:?$/i.test(line);
+
+    if (isHeading) {
+      out.push(`<p><strong>${esc(line.replace(/:$/, ''))}</strong></p>`);
+      continue;
+    }
+    out.push(`<p>${markQa(line)}</p>`);
+  }
+  flush();
+  return out.join('');
 }
 
 const ACTIONS: ActionOption[] = [
