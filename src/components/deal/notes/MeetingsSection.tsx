@@ -35,7 +35,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
   const [justLinked, setJustLinked] = useState<string[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
-  const [actionsFor, setActionsFor] = useState<{ title: string } | null>(null);
+  const [actionsFor, setActionsFor] = useState<{ title: string; recordingId?: string | null } | null>(null);
 
   // On open: refetch fresh (bypass 60s live cache) so today's meetings show up.
   useEffect(() => {
@@ -328,8 +328,8 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
                 key={r.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => setActionsFor({ title: r.recording_title || 'Untitled recording' })}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActionsFor({ title: r.recording_title || 'Untitled recording' }); } }}
+                onClick={() => setActionsFor({ title: r.recording_title || 'Untitled recording', recordingId: r.recording_id })}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActionsFor({ title: r.recording_title || 'Untitled recording', recordingId: r.recording_id }); } }}
                 className="group pl-3 pr-8 py-1.5 flex items-start gap-2 hover:bg-muted/40 cursor-pointer"
               >
                 <Video className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
@@ -383,6 +383,7 @@ export function MeetingsSection({ dealId }: MeetingsSectionProps) {
         open={!!actionsFor}
         onOpenChange={(o) => { if (!o) setActionsFor(null); }}
         recordingTitle={actionsFor?.title}
+        recordingId={actionsFor?.recordingId}
       />
     </div>
   );

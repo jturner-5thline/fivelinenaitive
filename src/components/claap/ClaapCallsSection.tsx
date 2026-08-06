@@ -179,6 +179,7 @@ function CallCard({ call }: { call: ClaapCall }) {
         open={actionsOpen}
         onOpenChange={setActionsOpen}
         recordingTitle={call.title}
+        meetingId={call.id}
       />
     </>
   );
