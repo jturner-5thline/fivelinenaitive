@@ -8,7 +8,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { MessageSquareText, ChevronRight, Loader2, Send, ArrowLeft, Mail, Copy, Check } from 'lucide-react';
+import { MessageSquareText, ChevronRight, ChevronLeft, Loader2, Send, ArrowLeft, Mail, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -73,6 +73,7 @@ export function LinkedCallActionsDialog({
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
   const title = recordingTitle || eventTitle || 'Linked call';
 
@@ -87,6 +88,7 @@ export function LinkedCallActionsDialog({
         setSubject('');
         setBody('');
         setCopied(false);
+        setShowDetails(false);
       }, 200);
       return () => clearTimeout(t);
     }
@@ -147,7 +149,7 @@ export function LinkedCallActionsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(mode === 'qa' ? 'sm:max-w-[900px]' : 'sm:max-w-[460px]')}>
+      <DialogContent className={cn(mode === 'qa' ? (showDetails ? 'sm:max-w-[900px]' : 'sm:max-w-[560px]') : 'sm:max-w-[460px]')}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {mode === 'qa' && (
@@ -162,7 +164,19 @@ export function LinkedCallActionsDialog({
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
-            {mode === 'qa' ? 'Call Q&A and lender follow-up' : 'Call actions'}
+            {mode === 'qa' ? 'Lender follow-up email' : 'Call actions'}
+            {mode === 'qa' && !loading && result && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="ml-auto h-7 gap-1 text-xs"
+                onClick={() => setShowDetails((v) => !v)}
+                aria-label={showDetails ? 'Hide call summary and Q&A' : 'Show call summary and Q&A'}
+              >
+                {showDetails ? <><ChevronLeft className="h-4 w-4" /> Hide details</> : <>Summary &amp; Q&amp;A <ChevronRight className="h-4 w-4" /></>}
+              </Button>
+            )}
           </DialogTitle>
           <DialogDescription className="truncate">{title}</DialogDescription>
         </DialogHeader>
@@ -198,8 +212,37 @@ export function LinkedCallActionsDialog({
                 Reading the transcript, pairing questions with answers and drafting the follow-up…
               </div>
             ) : result ? (
-              <div className="grid gap-4 lg:grid-cols-2">
+              <div className={cn('grid gap-4', showDetails && 'lg:grid-cols-2')}>
+                {/* Pre-drafted email */}
+                <div className="min-w-0 space-y-2">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                    <Mail className="h-3.5 w-3.5" /> Lender follow-up email
+                  </p>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">To</Label>
+                    <Input
+                      value={to}
+                      onChange={(e) => setTo(e.target.value)}
+                      placeholder="lender@example.com"
+                      className="mt-1 h-9"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Subject</Label>
+                    <Input value={subject} onChange={(e) => setSubject(e.target.value)} className="mt-1 h-9" />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Message</Label>
+                    <Textarea
+                      value={body}
+                      onChange={(e) => setBody(e.target.value)}
+                      className="mt-1 min-h-[320px] text-sm leading-relaxed"
+                    />
+                  </div>
+                </div>
+
                 {/* Extracted Q&A log */}
+                {showDetails && (
                 <div className="min-w-0 space-y-2">
                   {result.summary && (
                     <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
@@ -241,34 +284,7 @@ export function LinkedCallActionsDialog({
                     </div>
                   )}
                 </div>
-
-                {/* Pre-drafted email */}
-                <div className="min-w-0 space-y-2">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                    <Mail className="h-3.5 w-3.5" /> Lender follow-up email
-                  </p>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">To</Label>
-                    <Input
-                      value={to}
-                      onChange={(e) => setTo(e.target.value)}
-                      placeholder="lender@example.com"
-                      className="mt-1 h-9"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Subject</Label>
-                    <Input value={subject} onChange={(e) => setSubject(e.target.value)} className="mt-1 h-9" />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Message</Label>
-                    <Textarea
-                      value={body}
-                      onChange={(e) => setBody(e.target.value)}
-                      className="mt-1 min-h-[300px] text-sm leading-relaxed"
-                    />
-                  </div>
-                </div>
+                )}
               </div>
             ) : null}
 
