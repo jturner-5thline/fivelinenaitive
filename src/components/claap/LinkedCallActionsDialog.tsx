@@ -360,11 +360,25 @@ export function LinkedCallActionsDialog({
               ? draftKind === 'client_summary' ? 'Client recap email' : 'Lender follow-up email'
               : 'Call actions'}
             {mode === 'qa' && !loading && result && (
+              <div className="ml-auto flex items-center gap-1">
+                <span className="text-[11px] font-normal text-muted-foreground">
+                  {savingDraft ? 'Saving…' : 'Draft saved'}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 gap-1 text-xs"
+                  onClick={() => void runDraft(draftKind)}
+                  aria-label="Re-draft from the call transcript"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                </Button>
               <Button
                 type="button"
                 size="sm"
                 variant="ghost"
-                className="ml-auto h-7 gap-1 text-xs"
+                className="h-7 gap-1 text-xs"
                 onClick={() => setShowDetails((v) => !v)}
                 aria-label={showDetails ? 'Hide call details' : 'Show call details'}
               >
@@ -372,6 +386,7 @@ export function LinkedCallActionsDialog({
                   ? <><ChevronLeft className="h-4 w-4" /> Hide details</>
                   : <>{draftKind === 'client_summary' ? 'Summary' : <>Summary &amp; Q&amp;A</>} <ChevronRight className="h-4 w-4" /></>}
               </Button>
+              </div>
             )}
           </DialogTitle>
           <DialogDescription className="truncate">{title}</DialogDescription>
@@ -387,9 +402,9 @@ export function LinkedCallActionsDialog({
                   type="button"
                   onClick={
                     a.key === 'draft-qa'
-                      ? () => runDraft('qa')
+                      ? () => void openDraft('qa')
                       : a.key === 'draft-client-summary'
-                        ? () => runDraft('client_summary')
+                        ? () => void openDraft('client_summary')
                         : () => toast.info(`${a.label} — coming soon`)
                   }
                   className="w-full text-left rounded-md border border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors px-3 py-2.5 flex items-start gap-2.5"
@@ -397,7 +412,11 @@ export function LinkedCallActionsDialog({
                   <Icon className="h-4 w-4 mt-0.5 text-primary shrink-0" />
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-medium">{a.label}</span>
-                    <span className="block text-xs text-muted-foreground">{a.description}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {savedKinds[a.key === 'draft-qa' ? 'qa' : 'client_summary']
+                        ? 'Saved draft — opens instantly, no re-analysis.'
+                        : a.description}
+                    </span>
                   </span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                 </button>
