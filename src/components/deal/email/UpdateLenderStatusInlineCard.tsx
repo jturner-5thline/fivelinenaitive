@@ -144,6 +144,66 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, emai
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [contextLoading, setContextLoading] = useState(false);
+  const [contextNote, setContextNote] = useState<string | null>(null);
+  const [contextError, setContextError] = useState<string | null>(null);
+  const [stageTouched, setStageTouched] = useState(false);
+  // The last AI-generated note we wrote into the textarea — lets us replace it
+  // on regenerate without clobbering anything the user typed themselves.
+  const aiNoteRef = useRef<string>('');
+  const requestedRef = useRef<string | null>(null);
+
+  const emailMessages = emailContext?.messages;
+  const hasEmailContext = !!emailMessages?.some((m) => (m?.text || '').trim());
+
+  const pullEmailContext = useCallback(async (force = false) => {
+    if (!hasEmailContext || !lender) return;
+    const key = `${lender.id}::${emailContext?.subject || ''}::${emailMessages?.length ?? 0}`;
+    if (!force && requestedRef.current === key) return;
+    requestedRef.current = key;
+    setContextLoading(true);
+    setContextError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('extract-lender-email-context', {
+        body: {
+          subject: emailContext?.subject || '',
+          lenderName: lender.name || preselectLenderName || '',
+          dealName: deal?.company || '',
+          currentStageLabel: stageOptions.find((s) => s.id === (lender.stage || stage))?.label || '',
+          stageOptions: stageOptions.map((s) => ({ id: s.id, label: s.label })),
+          messages: (emailMessages || []).slice(-6).map((m) => ({
+            from: m?.from || '',
+            at: m?.at || '',
+            text: m?.text || '',
+          })),
+        },
+      });
+      if (error) throw error;
+      const aiNote = typeof data?.note === 'string' ? data.note.trim() : '';
+      if (aiNote) {
+        setContextNote(aiNote);
+        // Only auto-fill when the field is empty or still holds our last draft.
+        setNote((cur) => (!cur.trim() || cur === aiNoteRef.current ? aiNote : cur));
+        aiNoteRef.current = aiNote;
+      } else {
+        setContextNote(null);
+      }
+      if (data?.stageId && !stageTouched) {
+        setStage(String(data.stageId));
+      }
+    } catch (err: unknown) {
+      console.warn('[UpdateLenderStatus] email context failed', err);
+      setContextError(getErrorMessage(err, 'Could not read context from this email'));
+    } finally {
+      setContextLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasEmailContext, lender, emailContext?.subject, emailMessages, preselectLenderName, deal?.company, stageOptions, stage, stageTouched]);
+
+  useEffect(() => {
+    void pullEmailContext(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lender?.id, hasEmailContext]);
 
   // True when the AI identified a funding source name that isn't (yet) tracked on this deal.
   const proposedLenderName = (preselectLenderName || '').trim();
