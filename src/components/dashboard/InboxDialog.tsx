@@ -1227,6 +1227,9 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   // Trash). Called on open and on manual refresh, and re-called after a
   // delete so the Trash tab immediately reflects the new state.
   const refreshSystemFolders = useCallback(async () => {
+    // Outlook sync only covers the inbox — these three calls always come
+    // back empty and only add latency to open/refresh.
+    if (isMicrosoftRef.current) return;
     const [drafts, junk, trash] = await Promise.all([
       fetchPage({ labelIds: ['DRAFT'], maxResults: 50 }),
       fetchPage({ labelIds: ['SPAM'], maxResults: 50 }),
@@ -1241,6 +1244,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   // Re-fetch a single system folder. Used as the post-mutation refresh
   // hook so deletes reliably surface in Trash.
   const refreshTrash = useCallback(async () => {
+    if (isMicrosoftRef.current) return;
     const trash = await fetchPage({ labelIds: ['TRASH'], maxResults: 100 });
     if (!isMountedRef.current) return;
     setTrashMessages(trash.messages);
