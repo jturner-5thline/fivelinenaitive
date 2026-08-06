@@ -5846,6 +5846,21 @@ export default function DealDetail() {
               <LenderFlagIndicator lenderName={selectedLenderName || ''} />
             </DialogTitle>
             {(() => {
+              const hdrLender = deal?.lenders?.find((l) => l.name === selectedLenderName);
+              if (!deal || !hdrLender || !selectedLenderName) return null;
+              return (
+                <div className="mt-2.5 flex items-center gap-2">
+                  <CreateLenderTaskButton
+                    dealId={deal.id}
+                    lenderId={hdrLender.id}
+                    lenderName={selectedLenderName}
+                    variant="labeled"
+                    className="w-auto px-2.5"
+                  />
+                </div>
+              );
+            })()}
+            {(() => {
               const lenderList = deal?.lenders || [];
               const idx = lenderList.findIndex(l => l.name === selectedLenderName);
               if (lenderList.length < 2 || idx < 0) return null;
