@@ -15,6 +15,7 @@ import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import type { DealAuditEntry } from '@/hooks/useDealAuditLog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useLenderLabelResolver } from '@/hooks/useLenderLabelResolver';
 
 interface DealAuditLogPanelProps {
   entries: DealAuditEntry[];
@@ -139,6 +140,7 @@ export function DealAuditLogPanel({ entries, unresolvedStageEntries = [], loadin
   const [activeFilter, setActiveFilter] = useState('all');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [showUnresolved, setShowUnresolved] = useState(false);
+  const { resolveLenderActivityLabel } = useLenderLabelResolver();
 
   const filtered = useMemo(() => {
     let result = entries;
