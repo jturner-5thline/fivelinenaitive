@@ -368,19 +368,6 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
     if (ownerFilter.startsWith('user:')) return [ownerFilter.slice('user:'.length)];
     return [];
   }, [ownerFilter]);
-  const selectedTeammates = useMemo(
-    () => allowedTeammates.filter((p: any) => selectedTeammateIds.includes(p.user_id)),
-    [allowedTeammates, selectedTeammateIds],
-  );
-  const teammateLabel = useMemo(() => {
-    if (selectedTeammates.length === 0) return null;
-    if (selectedTeammates.length === 1) {
-      const p: any = selectedTeammates[0];
-      const name = p.display_name || p.email || 'Teammate';
-      return name.split(/\s+/)[0];
-    }
-    return `${selectedTeammates.length} teammates`;
-  }, [selectedTeammates]);
   const toggleTeammate = (userId: string) => {
     const next = selectedTeammateIds.includes(userId)
       ? selectedTeammateIds.filter(id => id !== userId)
