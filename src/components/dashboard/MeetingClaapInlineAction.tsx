@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Video, Check, Pencil, X, ExternalLink, RefreshCw } from 'lucide-react';
+import { Loader2, Video, Check, Pencil, X, ExternalLink, RefreshCw, Sparkles } from 'lucide-react';
+import { LinkedCallActionsDialog } from './LinkedCallActionsDialog';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -96,6 +97,7 @@ export function MeetingClaapInlineAction(props: Props) {
   const [source, setSource] = useState<'stored' | 'fresh' | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
   const [rankPending, setRankPending] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
 
   // Client-side gate: once we auto-attempt a search for this event and it
   // completes (whether or not a match was found and whether or not the DB
