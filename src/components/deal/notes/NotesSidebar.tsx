@@ -234,7 +234,7 @@ export function NotesSidebar({
   );
 
   return (
-    <div className="w-64 border-r flex flex-col shrink-0">
+    <div className="w-[304px] min-w-[304px] border-r flex flex-col shrink-0">
       {/* Actions */}
       <div className="p-2 border-b flex flex-col gap-1.5">
         <div className="flex items-center gap-1">
