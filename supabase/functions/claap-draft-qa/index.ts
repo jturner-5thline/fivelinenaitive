@@ -109,6 +109,8 @@ Deno.serve(async (req) => {
       "Be accurate: never invent an answer. If a question was asked but not answered, set answer to an empty string and add it to outstanding_items.",
       "Then write a follow-up email to the lender in a natural, human, professional style — short paragraphs, no marketing tone, no em dashes, no placeholder brackets other than the sign-off name.",
       `The email is sent by ${senderName || "the advisor"}. Recap the call briefly, then list the Q&A, then the outstanding items being worked on.`,
+      "Format email_body as plain text with clear spacing: a greeting line, a blank line, a short recap paragraph, a blank line, a section heading line reading exactly 'Questions & Answers', then each pair on its own lines as 'Q: ...' and 'A: ...' with a blank line between pairs, a blank line, a section heading line reading exactly 'Outstanding Items' with one '- ' bullet per item, a blank line, then the sign-off on its own lines.",
+      "Always separate sections and paragraphs with a blank line. Never run sections together.",
       "Return ONLY JSON matching the schema.",
     ].join(" ");
 
