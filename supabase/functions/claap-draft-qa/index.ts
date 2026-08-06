@@ -220,8 +220,59 @@ Deno.serve(async (req) => {
         .filter((e: string | null) => !!e),
     };
 
-    // Log the extraction so the Q&A pairing is auditable.
     if (meeting.deal_id) {
+      // 1) Persist the call link + full Q&A log as a Deal Space note so it is
+      //    permanently retrievable (and indexed for Ask nAItive), not just a
+      //    per-user email draft.
+      const noteTitle = `Call Q&A — ${meeting.title || "Untitled call"}`;
+      const noteLines = [
+        recordingUrl ? `Recording: ${recordingUrl}` : "",
+        meeting.started_at ? `Date: ${new Date(meeting.started_at).toLocaleString("en-US")}` : "",
+        participants?.length
+          ? `Participants: ${participants.map((p: any) => `${p.name || p.email || ""}`).filter(Boolean).join(", ")}`
+          : "",
+        "",
+        result.summary ? `## Summary\n${result.summary}` : "",
+        result.qa.length
+          ? `\n## Q&A Log\n${result.qa
+              .map((p: any, i: number) =>
+                `**Q${i + 1}${p.asked_by ? ` (${p.asked_by})` : ""}:** ${p.question || ""}\n**A${p.answered_by ? ` (${p.answered_by})` : ""}:** ${p.answer || "(no answer captured)"}`,
+              )
+              .join("\n\n")}`
+          : "",
+        result.outstanding_items.length
+          ? `\n## Outstanding Items\n${result.outstanding_items.map((i: any) => `- ${typeof i === "string" ? i : i?.item || JSON.stringify(i)}`).join("\n")}`
+          : "",
+      ].filter(Boolean).join("\n");
+
+      try {
+        const { data: existingNote } = await admin
+          .from("deal_space_notes")
+          .select("id")
+          .eq("deal_id", meeting.deal_id)
+          .eq("title", noteTitle)
+          .limit(1)
+          .maybeSingle();
+        if (existingNote?.id) {
+          await admin
+            .from("deal_space_notes")
+            .update({ content: noteLines, updated_at: new Date().toISOString() })
+            .eq("id", existingNote.id);
+        } else {
+          await admin.from("deal_space_notes").insert({
+            deal_id: meeting.deal_id,
+            title: noteTitle,
+            content: noteLines,
+            user_id: user.id,
+            folder: "Calls",
+            tags: ["Call Q&A", "Claap"],
+          });
+        }
+      } catch (e) {
+        console.warn("[claap-draft-qa] deal space note write failed", e);
+      }
+
+      // 2) Log the extraction so the Q&A pairing is auditable.
       await admin.from("activity_logs").insert({
         deal_id: meeting.deal_id,
         user_id: user.id,
@@ -229,7 +280,7 @@ Deno.serve(async (req) => {
         description: `Q&A extracted from "${meeting.title || "call"}" (${result.qa.length} pairs, ${result.outstanding_items.length} outstanding)`,
         metadata: {
           meeting_id: meeting.id,
-          recording_url: meeting.recording_url,
+          recording_url: recordingUrl,
           qa: result.qa,
           outstanding_items: result.outstanding_items,
           summary: result.summary,
