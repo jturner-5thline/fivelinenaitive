@@ -219,8 +219,16 @@ async function invokeGmailMessages(body: Record<string, unknown>) {
 
 export function useGmail() {
   const { user } = useAuth();
-  const initialStatus = cachedStatus || loadPersistedStatus() || { connected: false };
-  const hasInitialStatus = !!(cachedStatus || loadPersistedStatus());
+  const userId = user?.id ?? null;
+  // Never hydrate from another account's cached status.
+  if (cachedStatusUserId && cachedStatusUserId !== userId) {
+    cachedStatus = null;
+    cachedMessages = [];
+  }
+  cachedStatusUserId = userId;
+  const persisted = cachedStatus || loadPersistedStatus(userId);
+  const initialStatus = persisted || { connected: false };
+  const hasInitialStatus = !!persisted;
   const [status, setStatus] = useState<GmailStatus>(() => initialStatus);
   const isDemo =
     isLegacyDemoEmail(user?.email ?? undefined) ||
@@ -240,7 +248,7 @@ export function useGmail() {
       const demoStatus = { connected: true, connected_at: new Date().toISOString() };
       setStatus(demoStatus);
       cachedStatus = demoStatus;
-      persistStatus(demoStatus);
+      persistStatus(demoStatus, userId);
       setIsStatusLoading(false);
       return;
     }
@@ -312,7 +320,7 @@ export function useGmail() {
 
       setStatus(next);
       cachedStatus = next;
-      persistStatus(next);
+      persistStatus(next, userId);
       setError(null);
     } catch (err: any) {
       // Suppress 401s — usually means the session expired/logged out between renders
@@ -398,7 +406,7 @@ export function useGmail() {
       const disconnected = { connected: false };
       setStatus(disconnected);
       cachedStatus = disconnected;
-      clearPersistedStatus();
+      clearPersistedStatus(userId);
       setMessages([]);
       cachedMessages = [];
       setError(null);
