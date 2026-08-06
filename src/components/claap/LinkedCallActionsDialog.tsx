@@ -6,9 +6,9 @@
  * accurate lender-question / client-answer log plus a human-style follow-up
  * email that the user can edit, address and send.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { MessageSquareText, FileText, ChevronRight, ChevronLeft, Loader2, Send, ArrowLeft, Mail, Copy, Check } from 'lucide-react';
+import { MessageSquareText, FileText, ChevronRight, ChevronLeft, Loader2, Send, ArrowLeft, Mail, Copy, Check, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -143,8 +143,69 @@ export function LinkedCallActionsDialog({
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [savedKinds, setSavedKinds] = useState<Record<string, boolean>>({});
+  const [savingDraft, setSavingDraft] = useState(false);
+  const hydratingRef = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const title = recordingTitle || eventTitle || 'Linked call';
+  const callKey = meetingId || recordingId || `title:${title}`;
+
+  /** Persist the current draft (debounced by callers). */
+  const persistDraft = async (
+    kind: 'qa' | 'client_summary',
+    payload: { to: string; cc: string; bcc: string; subject: string; body: string; result: QaResult | null },
+  ) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    setSavingDraft(true);
+    try {
+      await supabase.from('claap_call_email_drafts').upsert({
+        user_id: user.id,
+        call_key: callKey,
+        draft_kind: kind,
+        meeting_id: meetingId || null,
+        recording_id: recordingId || null,
+        to_addr: payload.to,
+        cc_addr: payload.cc,
+        bcc_addr: payload.bcc,
+        subject: payload.subject,
+        body_html: payload.body,
+        result: payload.result as unknown as Record<string, unknown> | null,
+      }, { onConflict: 'user_id,call_key,draft_kind' });
+      setSavedKinds((prev) => ({ ...prev, [kind]: true }));
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
+  // Which kinds already have a saved draft for this call?
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('claap_call_email_drafts')
+        .select('draft_kind')
+        .eq('call_key', callKey);
+      if (cancelled) return;
+      const map: Record<string, boolean> = {};
+      (data || []).forEach((r: { draft_kind: string }) => { map[r.draft_kind] = true; });
+      setSavedKinds(map);
+    })();
+    return () => { cancelled = true; };
+  }, [open, callKey]);
+
+  // Debounced autosave of user edits.
+  useEffect(() => {
+    if (!open || mode !== 'qa' || !result || hydratingRef.current) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      void persistDraft(draftKind, { to, cc, bcc, subject, body, result });
+    }, 800);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [to, cc, bcc, subject, body, result, draftKind, mode, open]);
 
   useEffect(() => {
     if (!open) {
@@ -168,6 +229,38 @@ export function LinkedCallActionsDialog({
     }
   }, [open]);
 
+  /** Open a kind: load the saved draft when one exists, otherwise generate. */
+  const openDraft = async (kind: 'qa' | 'client_summary') => {
+    setDraftKind(kind);
+    setMode('qa');
+    setLoading(true);
+    try {
+      const { data } = await supabase
+        .from('claap_call_email_drafts')
+        .select('*')
+        .eq('call_key', callKey)
+        .eq('draft_kind', kind)
+        .maybeSingle();
+      if (data) {
+        hydratingRef.current = true;
+        setResult((data.result as unknown as QaResult) ?? { summary: '', qa: [], outstanding_items: [], email_subject: data.subject, email_body: '' });
+        setTo(data.to_addr || '');
+        setCc(data.cc_addr || '');
+        setBcc(data.bcc_addr || '');
+        setShowCc(Boolean(data.cc_addr));
+        setShowBcc(Boolean(data.bcc_addr));
+        setSubject(data.subject || '');
+        setBody(data.body_html || '');
+        setLoading(false);
+        setTimeout(() => { hydratingRef.current = false; }, 0);
+        return;
+      }
+    } catch {
+      // fall through to generating a fresh draft
+    }
+    await runDraft(kind);
+  };
+
   const runDraft = async (kind: 'qa' | 'client_summary') => {
     setDraftKind(kind);
     setMode('qa');
@@ -184,10 +277,16 @@ export function LinkedCallActionsDialog({
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       const res = data as QaResult;
+      const nextSubject = res.email_subject || `${kind === 'client_summary' ? 'Recap' : 'Follow-up'}: ${title}`;
+      const nextBody = toHtml(res.email_body || '');
+      const nextTo = (res.suggested_recipients || [])[0] || '';
+      hydratingRef.current = true;
       setResult(res);
-      setSubject(res.email_subject || `${kind === 'client_summary' ? 'Recap' : 'Follow-up'}: ${title}`);
-      setBody(toHtml(res.email_body || ''));
-      setTo((res.suggested_recipients || [])[0] || '');
+      setSubject(nextSubject);
+      setBody(nextBody);
+      setTo(nextTo);
+      setTimeout(() => { hydratingRef.current = false; }, 0);
+      void persistDraft(kind, { to: nextTo, cc: '', bcc: '', subject: nextSubject, body: nextBody, result: res });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not draft the email';
       toast.error(msg);
