@@ -91,6 +91,33 @@ const ACTIVITY_TYPE_LABELS: Record<string, { label: string; icon: React.ReactNod
   claap_recording_linked: { label: 'Call recording', icon: <Video className="h-3.5 w-3.5" /> },
 };
 
+// Funding source (lender) lifecycle events surfaced under the "Funding Sources" filter
+const FUNDING_SOURCE_ACTIVITY_TYPES = [
+  'lender_added',
+  'lender_updated',
+  'lender_removed',
+  'lender_deleted',
+  'lender_stage_change',
+  'lender_substage_change',
+  'lender_status_change',
+  'lender_notes_updated',
+  'lender_passed',
+  'lender_terms_received',
+];
+
+const FUNDING_SOURCE_LABELS: Record<string, { label: string; icon: React.ReactNode }> = {
+  lender_added: { label: 'Funding source added', icon: <Landmark className="h-3.5 w-3.5" /> },
+  lender_updated: { label: 'Funding source updated', icon: <Landmark className="h-3.5 w-3.5" /> },
+  lender_removed: { label: 'Funding source removed', icon: <Unlink className="h-3.5 w-3.5" /> },
+  lender_deleted: { label: 'Funding source removed', icon: <Unlink className="h-3.5 w-3.5" /> },
+  lender_stage_change: { label: 'Funding source stage changed', icon: <ArrowRightLeft className="h-3.5 w-3.5" /> },
+  lender_substage_change: { label: 'Funding source sub-stage changed', icon: <ArrowRightLeft className="h-3.5 w-3.5" /> },
+  lender_status_change: { label: 'Funding source status changed', icon: <ArrowRightLeft className="h-3.5 w-3.5" /> },
+  lender_notes_updated: { label: 'Funding source notes updated', icon: <FileText className="h-3.5 w-3.5" /> },
+  lender_passed: { label: 'Funding source passed', icon: <X className="h-3.5 w-3.5" /> },
+  lender_terms_received: { label: 'Terms received', icon: <FileSignature className="h-3.5 w-3.5" /> },
+};
+
 function formatCallDuration(seconds: number | null | undefined) {
   if (!seconds || seconds <= 0) return '—';
   const hours = Math.floor(seconds / 3600);
