@@ -34,6 +34,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MoreVertical } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { DealTaskActivityPanel } from './DealTaskActivityPanel';
 
 interface DealActivityTabProps {
   dealId: string;
@@ -394,6 +396,15 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
 
   return (
     <div className="w-full overflow-hidden space-y-6">
+      <Tabs defaultValue="engagement" className="w-full">
+        <TabsList>
+          <TabsTrigger value="engagement">Engagement</TabsTrigger>
+          <TabsTrigger value="tasks">Tasks</TabsTrigger>
+        </TabsList>
+        <TabsContent value="tasks" className="mt-4">
+          <DealTaskActivityPanel dealId={dealId} />
+        </TabsContent>
+        <TabsContent value="engagement" className="mt-4 space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Charts column */}
       <div className="space-y-6 min-w-0 lg:order-2">
