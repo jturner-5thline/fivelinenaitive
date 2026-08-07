@@ -29551,6 +29551,10 @@ export type Database = {
         Args: { p_recording_id?: string }
         Returns: number
       }
+      claap_link_recording_funding_sources: {
+        Args: { p_limit?: number; p_recording_id?: string }
+        Returns: number
+      }
       claap_log_api_call: {
         Args: {
           _deal_id?: string
@@ -29571,6 +29575,7 @@ export type Database = {
         Args: { p_entity_type: string; p_recording_id: string }
         Returns: undefined
       }
+      claap_norm_org_name: { Args: { p_name: string }; Returns: string }
       claap_quota_status: {
         Args: never
         Returns: {
