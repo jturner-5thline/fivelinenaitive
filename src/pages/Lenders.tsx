@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown, FolderPlus, FileX, BarChart3, Copy, Layers, GitMerge } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown, FolderPlus, FileX, BarChart3, Copy, Layers, GitMerge, Video } from 'lucide-react';
 import { WorkspacePage } from '@/components/layout/WorkspacePage';
 import { BetaBadge } from '@/components/ui/beta-badge';
 import { Button } from '@/components/ui/button';
@@ -88,6 +88,7 @@ import { RelationshipOwnersPicker } from '@/components/lenders/RelationshipOwner
 import { LenderSyncRequestsPanel } from '@/components/lenders/LenderSyncRequestsPanel';
 import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 import { LenderAnalyticsDialog } from '@/components/lenders/LenderAnalyticsDialog';
+import { ClaapLinkReviewDialog, useClaapPendingLinkCount } from '@/components/claap/ClaapLinkReviewDialog';
 import { useOriginAnimation } from '@/hooks/useOriginAnimation';
 import { detectDuplicateLenders } from '@/lib/lenderDuplicates';
 import { LenderContactPicker } from '@/components/lenders/LenderContactPicker';
@@ -306,6 +307,8 @@ export default function Lenders() {
   });
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [isCallReviewOpen, setIsCallReviewOpen] = useState(false);
+  const { data: pendingCallMatches = 0 } = useClaapPendingLinkCount();
   const analyticsOrigin = useOriginAnimation();
   const [isDuplicatesDialogOpen, setIsDuplicatesDialogOpen] = useState(false);
   const [isSideBySideMergeOpen, setIsSideBySideMergeOpen] = useState(false);
@@ -1765,6 +1768,15 @@ export default function Lenders() {
                       <BarChart3 className="h-4 w-4 mr-2" />
                       Analytics
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setIsCallReviewOpen(true)}>
+                      <Video className="h-4 w-4 mr-2" />
+                      Review call matches
+                      {pendingCallMatches > 0 && (
+                        <Badge variant="amber" className="ml-2 text-[10px] px-1.5 py-0 h-4">
+                          {pendingCallMatches}
+                        </Badge>
+                      )}
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -2555,6 +2567,11 @@ export default function Lenders() {
       <FundingSourceCompanyLinkDialog
         target={companyLinkTarget}
         onClose={() => setCompanyLinkTarget(null)}
+      />
+
+      <ClaapLinkReviewDialog
+        open={isCallReviewOpen}
+        onOpenChange={setIsCallReviewOpen}
       />
 
       <LenderAnalyticsDialog
