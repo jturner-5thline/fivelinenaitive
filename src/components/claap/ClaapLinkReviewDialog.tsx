@@ -176,7 +176,7 @@ export function ClaapLinkReviewDialog({ open, onOpenChange }: ClaapLinkReviewDia
           )}
         </div>
 
-        <ScrollArea className="flex-1 min-h-0 -mx-2 px-2">
+        <ScrollArea className="flex-1 min-h-0 w-full pr-2 [&>[data-radix-scroll-area-viewport]>div]:!block">
           {isLoading ? (
             <div className="flex items-center justify-center py-10">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
