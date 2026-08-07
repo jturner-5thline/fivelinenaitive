@@ -312,7 +312,7 @@ Deno.serve(async (req) => {
       // Local orphans: no Asana GID yet.
       let orphanQuery = supabase
         .from("tasks")
-        .select("id, title, status, due_date, assigned_to, created_at")
+        .select("id, title, description, status, due_date, assigned_to, created_at")
         .is("asana_task_gid", null)
         .is("archived_at", null)
         .gte("created_at", sinceISO)
