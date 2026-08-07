@@ -4,6 +4,8 @@ import remarkGfm from 'remark-gfm';
 import { Loader2, ExternalLink, Video, X, Play, RefreshCw, ListChecks, Lightbulb, ClipboardCheck, Building2, Link2, Unlink, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { FundingSourcePickerDialog } from './FundingSourcePickerDialog';
+import { ClaapLinkHistoryPanel } from './ClaapLinkHistoryPanel';
+import { UnlinkReasonDialog } from './UnlinkReasonDialog';
 import {
   useRecordingFundingSourceLinks,
   useClaapFundingSourceLinkActions,
@@ -264,6 +266,7 @@ function ClientAsksSection({
 function FundingSourceLinksSection({ recordingRowId }: { recordingRowId?: string | null }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [unlinkTarget, setUnlinkTarget] = useState<{ id: string; name: string } | null>(null);
   const { data: links = [], isLoading } = useRecordingFundingSourceLinks(recordingRowId);
   const { unlink, relink, linkToFundingSource } = useClaapFundingSourceLinkActions();
 
@@ -314,7 +317,10 @@ function FundingSourceLinksSection({ recordingRowId }: { recordingRowId?: string
                   variant="ghost"
                   className={cn('h-6 px-1.5 text-[10px]', !rejected && 'text-destructive')}
                   disabled={busyId === l.id}
-                  onClick={() => void run(l.id, () => (rejected ? relink(l.id) : unlink(l.id)))}
+                  onClick={() => {
+                    if (rejected) void run(l.id, () => relink(l.id));
+                    else setUnlinkTarget({ id: l.id, name: l.name });
+                  }}
                 >
                   {busyId === l.id ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -336,6 +342,18 @@ function FundingSourceLinksSection({ recordingRowId }: { recordingRowId?: string
         excludeIds={links.filter((l) => l.review_status !== 'rejected').map((l) => l.entity_id)}
         onSelect={(lenderId, lenderName) => { void linkToFundingSource(recordingRowId, lenderId, lenderName); }}
       />
+
+      <UnlinkReasonDialog
+        open={!!unlinkTarget}
+        onOpenChange={(o) => { if (!o) setUnlinkTarget(null); }}
+        title={unlinkTarget ? `Unlink from ${unlinkTarget.name}` : 'Unlink recording'}
+        onConfirm={async (reason) => {
+          if (unlinkTarget) await run(unlinkTarget.id, () => unlink(unlinkTarget.id, reason));
+          setUnlinkTarget(null);
+        }}
+      />
+
+      <ClaapLinkHistoryPanel recordingId={recordingRowId} className="mt-2" />
     </div>
   );
 }
