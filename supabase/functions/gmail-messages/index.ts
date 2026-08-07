@@ -388,7 +388,7 @@ async function fetchMicrosoftMessageBody(
     `?$select=id,body,bodyPreview,hasAttachments`;
   let resp: Response;
   try {
-    resp = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${token}` } }, 12_000);
+    resp = await nylasFetch(url, { headers: { Authorization: `Bearer ${token}` } }, 12_000);
   } catch (e) {
     console.error(`[gmail-messages][microsoft] body fetch error user=${userId} msg=${messageId}`, e);
     return null;
@@ -679,9 +679,21 @@ async function handleMicrosoftAction(
       );
     }
     const raw = (data.raw as any) || {};
-    const bodyHtml = raw?.body?.contentType === "html"
-      ? raw?.body?.content
-      : raw?.body?.content || "";
+    const rawType = String(raw?.body?.contentType || "").toLowerCase();
+    const rawContent = String(raw?.body?.content || "");
+    let bodyHtml = rawType === "html" ? rawContent : "";
+    let bodyText = rawType === "html" ? "" : rawContent;
+
+    // Metadata-only sync rows carry no body — fetch it live from Graph.
+    if (!bodyHtml && !bodyText) {
+      const live = await fetchMicrosoftMessageBody(supabase, userId, messageId);
+      if (live) {
+        bodyHtml = live.html;
+        bodyText = live.text;
+      }
+    }
+    // Last resort so the viewer always shows something readable.
+    if (!bodyHtml && !bodyText) bodyText = data.preview ?? "";
     return new Response(
       JSON.stringify({
         message: {
@@ -692,7 +704,7 @@ async function handleMicrosoftAction(
           from_name: data.from_name,
           to_emails: data.to_emails ?? [],
           snippet: data.preview ?? "",
-          body_text: raw?.body?.contentType === "text" ? raw?.body?.content : "",
+          body_text: bodyText,
           body_html: bodyHtml,
           is_read: !!data.is_read,
           is_starred: false,
