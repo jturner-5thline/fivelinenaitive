@@ -468,7 +468,19 @@ export function LinkedCallActionsDialog({
           draft_mode: kind === 'client_summary' ? 'client_summary' : 'qa',
         },
       });
-      if (error) throw error;
+      if (error) {
+        // supabase-js surfaces "non-2xx" for any 4xx/5xx — read the server's
+        // real message off the response body instead.
+        let msg = '';
+        try {
+          const ctx = (error as unknown as { context?: Response }).context;
+          if (ctx && typeof ctx.json === 'function') {
+            const parsed = await ctx.clone().json();
+            msg = parsed?.error || '';
+          }
+        } catch { /* ignore */ }
+        throw new Error(msg || (data as { error?: string } | null)?.error || error.message);
+      }
       if (data?.error) throw new Error(data.error);
       const res = data as QaResult;
       const nextSubject = res.email_subject || `${kind === 'client_summary' ? 'Recap' : 'Follow-up'}: ${title}`;

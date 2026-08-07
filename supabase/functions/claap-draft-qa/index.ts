@@ -70,7 +70,26 @@ Deno.serve(async (req) => {
         .limit(1);
       meeting = data?.[0] || null;
     }
-    if (!meeting) return json({ error: "Recording not found" }, 404);
+    if (!meeting && recording_id) {
+      // Some linked recordings have no `claap_meetings` row yet (link created
+      // before the sync ingested it). Fall back to the deal link record so the
+      // user gets a useful message instead of a bare "non-2xx".
+      const { data: link } = await admin
+        .from("deal_claap_recordings")
+        .select("recording_title")
+        .eq("recording_id", recording_id)
+        .limit(1)
+        .maybeSingle();
+      if (link) {
+        return json({
+          error:
+            `"${link.recording_title || "This recording"}" hasn't finished syncing from Claap yet, so there's no transcript to draft from. Try again after the next Claap sync.`,
+        }, 422);
+      }
+    }
+    if (!meeting) {
+      return json({ error: "That recording isn't in nAItive yet — run a Claap sync and try again." }, 404);
+    }
 
     // Many `claap_meetings` rows have no `deal_id`; the authoritative link for
     // a call that was attached to a deal lives in `deal_claap_recordings`.
@@ -94,14 +113,16 @@ Deno.serve(async (req) => {
 
     const transcript: string = (meeting.transcript || "").toString();
     if (!transcript.trim() && !meeting.ai_summary) {
-      return json({ error: "This recording has no transcript yet — try again once Claap finishes processing." }, 422);
+      return json({
+        error: `"${meeting.title || "This recording"}" has no transcript or summary yet — Claap is still processing it. Try again shortly.`,
+      }, 422);
     }
 
     // Deal + client context for a more human, specific draft.
     let dealName: string | null = null;
     if (meeting.deal_id) {
-      const { data: deal } = await admin.from("deals").select("name").eq("id", meeting.deal_id).maybeSingle();
-      dealName = deal?.name ?? null;
+      const { data: deal } = await admin.from("deals").select("company").eq("id", meeting.deal_id).maybeSingle();
+      dealName = deal?.company ?? null;
     }
     const { data: participants } = await admin
       .from("claap_meeting_participants")
