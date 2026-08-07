@@ -116,15 +116,31 @@ Deno.serve(async (req) => {
     }
     if (!meeting && recording_id) {
       // Some linked recordings have no `claap_meetings` row yet (link created
-      // before the sync ingested it). Fall back to the deal link record so the
-      // user gets a useful message instead of a bare "non-2xx".
+      // before the sync ingested it). Pull the content live from Claap so the
+      // user never has to wait for the scheduled sync.
       const { data: link } = await admin
         .from("deal_claap_recordings")
-        .select("recording_title")
+        .select("recording_title, recording_url, deal_id")
         .eq("recording_id", recording_id)
         .limit(1)
         .maybeSingle();
-      if (link) {
+      const live = await hydrateFromClaap(recording_id) ||
+        await hydrateFromClaap(link?.recording_url ?? null);
+      if (live && (live.transcript.trim() || live.summary)) {
+        meeting = {
+          id: null,
+          claap_id: recording_id,
+          title: live.title || link?.recording_title || title || "Untitled call",
+          transcript: live.transcript,
+          ai_summary: live.summary,
+          next_steps: null,
+          key_decisions: null,
+          organizer_email: null,
+          started_at: null,
+          deal_id: link?.deal_id ?? null,
+          recording_url: live.recording_url || link?.recording_url || null,
+        };
+      } else if (link) {
         return json({
           error:
             `"${link.recording_title || "This recording"}" hasn't finished syncing from Claap yet, so there's no transcript to draft from. Try again after the next Claap sync.`,
@@ -155,7 +171,29 @@ Deno.serve(async (req) => {
       }
     }
 
-    const transcript: string = (meeting.transcript || "").toString();
+    let transcript: string = (meeting.transcript || "").toString();
+    if (!transcript.trim() && !meeting.ai_summary) {
+      // Live-hydrate rather than telling the user to wait for the next sync.
+      const live =
+        (await hydrateFromClaap(meeting.claap_id || recording_id)) ||
+        (await hydrateFromClaap(recordingUrl));
+      if (live && (live.transcript.trim() || live.summary)) {
+        transcript = live.transcript;
+        meeting.transcript = live.transcript;
+        meeting.ai_summary = meeting.ai_summary || live.summary;
+        recordingUrl = recordingUrl || live.recording_url;
+        if (meeting.id) {
+          await admin
+            .from("claap_meetings")
+            .update({
+              transcript: live.transcript || null,
+              ai_summary: meeting.ai_summary,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", meeting.id);
+        }
+      }
+    }
     if (!transcript.trim() && !meeting.ai_summary) {
       return json({
         error: `"${meeting.title || "This recording"}" has no transcript or summary yet — Claap is still processing it. Try again shortly.`,
