@@ -1719,8 +1719,22 @@ export default function Lenders() {
                 {/* Consolidated Actions dropdown — Import, Merge, Sync, Config, Analytics */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="lg-pill h-8 w-8 p-0" aria-label="More actions">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="lg-pill relative h-8 w-8 p-0"
+                      aria-label={
+                        pendingCallMatches > 0
+                          ? `More actions — ${pendingCallMatches} call matches to review`
+                          : 'More actions'
+                      }
+                    >
                       <MoreHorizontal className="h-4 w-4" />
+                      {pendingCallMatches > 0 && (
+                        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-semibold leading-none text-black">
+                          {pendingCallMatches > 99 ? '99+' : pendingCallMatches}
+                        </span>
+                      )}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="bg-popover w-56">
