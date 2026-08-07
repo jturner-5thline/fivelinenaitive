@@ -97,6 +97,7 @@ import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
 import { GEO_OPTIONS } from '@/constants/geoOptions';
+import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 
 const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
 
@@ -284,6 +285,7 @@ function formatCurrency(value: number | null | undefined): string {
 export default function Lenders() {
   const navigate = useNavigate();
   const { deals, addLenderToDeal } = useDealsContext();
+  const { getStageConfigForDeal } = usePipelineStageConfig();
   const { getLenderSummary, refetch: refetchAttachmentSummaries } = useLenderAttachmentsSummary();
   const { user } = useAuth();
   const { company, members: companyMembers } = useCompany();
