@@ -4807,6 +4807,14 @@ export default function DealDetail() {
                   
                     <CardContent className="flex-1 min-h-0">
                   <div className="space-y-4">
+                    {(!deal.lenders || deal.lenders.length === 0) && (
+                      <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 py-10 px-6 text-center">
+                        <p className="text-sm font-medium">No funding sources on this deal yet</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Add funding sources using the search box or the directory above to start tracking lender activity.
+                        </p>
+                      </div>
+                    )}
                     {deal.lenders && deal.lenders.length > 0 && (
                       <>
                         {lenderGroupFilters.size === 0 && lenderStageFilters.size === 0 ? (
