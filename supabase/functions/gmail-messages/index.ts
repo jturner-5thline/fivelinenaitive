@@ -325,6 +325,112 @@ async function hasMicrosoftConnection(supabase: any, userId: string): Promise<bo
 }
 
 /**
+ * Resolve a usable Microsoft Graph access token for the user, refreshing it
+ * when expired. Mirrors the helper in `microsoft-sync-emails`.
+ */
+async function getMicrosoftAccessToken(supabase: any, userId: string): Promise<string | null> {
+  const { data: row } = await supabase
+    .from("microsoft_tokens")
+    .select("user_id, access_token, refresh_token, expires_at, status")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!row || row.status === "disconnected" || !row.access_token) return null;
+  if (row.expires_at && new Date(row.expires_at).getTime() > Date.now() + 60_000) {
+    return row.access_token;
+  }
+  if (!row.refresh_token) return null;
+  const clientId = Deno.env.get("MICROSOFT_CLIENT_ID");
+  const clientSecret = Deno.env.get("MICROSOFT_CLIENT_SECRET");
+  if (!clientId || !clientSecret) return null;
+  const resp = await fetch("https://login.microsoftonline.com/common/oauth2/v2.0/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: row.refresh_token,
+      grant_type: "refresh_token",
+    }),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || !data?.access_token) {
+    console.error(`[gmail-messages][microsoft] token refresh failed user=${userId}`, data?.error || resp.status);
+    return null;
+  }
+  await supabase
+    .from("microsoft_tokens")
+    .update({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token ?? row.refresh_token,
+      expires_at: new Date(Date.now() + (data.expires_in ?? 3600) * 1000).toISOString(),
+      status: "connected",
+    })
+    .eq("user_id", userId);
+  return data.access_token;
+}
+
+/**
+ * The email sync only stores metadata ($select without `body`), so a cached
+ * `emails.raw` row has no readable body — which surfaced in the viewer as
+ * "Full message unavailable" for every Outlook message. Fetch the body on
+ * demand from Graph and write it back into `raw` so subsequent opens are
+ * instant.
+ */
+async function fetchMicrosoftMessageBody(
+  supabase: any,
+  userId: string,
+  messageId: string,
+): Promise<{ html: string; text: string; hasAttachments: boolean } | null> {
+  const token = await getMicrosoftAccessToken(supabase, userId);
+  if (!token) return null;
+  const url =
+    `https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}` +
+    `?$select=id,body,bodyPreview,hasAttachments`;
+  let resp: Response;
+  try {
+    resp = await nylasFetch(url, { headers: { Authorization: `Bearer ${token}` } }, 12_000);
+  } catch (e) {
+    console.error(`[gmail-messages][microsoft] body fetch error user=${userId} msg=${messageId}`, e);
+    return null;
+  }
+  if (!resp.ok) {
+    console.error(
+      `[gmail-messages][microsoft] body fetch ${resp.status} user=${userId} msg=${messageId}`,
+      (await resp.text()).slice(0, 200),
+    );
+    return null;
+  }
+  const m = await resp.json().catch(() => null);
+  const contentType = String(m?.body?.contentType || "").toLowerCase();
+  const content = String(m?.body?.content || "");
+  const out = {
+    html: contentType === "html" ? content : "",
+    text: contentType === "html" ? "" : (content || m?.bodyPreview || ""),
+    hasAttachments: !!m?.hasAttachments,
+  };
+  if (out.html || out.text) {
+    // Cache back into the unified emails row so the next open is instant.
+    try {
+      const { data: existing } = await supabase
+        .from("emails")
+        .select("raw")
+        .eq("user_id", userId)
+        .eq("message_id", messageId)
+        .maybeSingle();
+      const nextRaw = { ...((existing?.raw as any) || {}), body: m?.body ?? null };
+      await supabase
+        .from("emails")
+        .update({ raw: nextRaw })
+        .eq("user_id", userId)
+        .eq("message_id", messageId);
+    } catch (e) {
+      console.warn(`[gmail-messages][microsoft] body cache write failed msg=${messageId}`, e);
+    }
+  }
+  return out;
+}
+
+/**
  * Demo-seed handler: when gmail_tokens.is_demo_seed=true, serve directly from
  * the seeded gmail_messages table instead of calling Nylas. Supports read
  * actions; write actions are no-ops returning ok so the UI doesn't blow up.
@@ -573,9 +679,21 @@ async function handleMicrosoftAction(
       );
     }
     const raw = (data.raw as any) || {};
-    const bodyHtml = raw?.body?.contentType === "html"
-      ? raw?.body?.content
-      : raw?.body?.content || "";
+    const rawType = String(raw?.body?.contentType || "").toLowerCase();
+    const rawContent = String(raw?.body?.content || "");
+    let bodyHtml = rawType === "html" ? rawContent : "";
+    let bodyText = rawType === "html" ? "" : rawContent;
+
+    // Metadata-only sync rows carry no body — fetch it live from Graph.
+    if (!bodyHtml && !bodyText) {
+      const live = await fetchMicrosoftMessageBody(supabase, userId, messageId);
+      if (live) {
+        bodyHtml = live.html;
+        bodyText = live.text;
+      }
+    }
+    // Last resort so the viewer always shows something readable.
+    if (!bodyHtml && !bodyText) bodyText = data.preview ?? "";
     return new Response(
       JSON.stringify({
         message: {
@@ -586,7 +704,7 @@ async function handleMicrosoftAction(
           from_name: data.from_name,
           to_emails: data.to_emails ?? [],
           snippet: data.preview ?? "",
-          body_text: raw?.body?.contentType === "text" ? raw?.body?.content : "",
+          body_text: bodyText,
           body_html: bodyHtml,
           is_read: !!data.is_read,
           is_starred: false,
