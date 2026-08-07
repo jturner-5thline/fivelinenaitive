@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Video, Phone, ExternalLink, ChevronDown, ChevronRight, Clock, Users, FileText, Link2, MoreVertical, Unlink, ArrowRightLeft, Sparkles } from 'lucide-react';
+import { Video, Phone, ExternalLink, ChevronDown, ChevronRight, Clock, Users, FileText, Link2, MoreVertical, Unlink, ArrowRightLeft, Sparkles, History } from 'lucide-react';
 import { LinkedCallActionsDialog } from './LinkedCallActionsDialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +14,8 @@ import { ClaapDealSelector } from './ClaapDealSelector';
 import { useClaapCallActions } from '@/hooks/useClaapCallActions';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { FundingSourcePickerDialog } from './FundingSourcePickerDialog';
+import { ClaapLinkHistoryPanel } from './ClaapLinkHistoryPanel';
+import { UnlinkReasonDialog } from './UnlinkReasonDialog';
 import {
   resolveRecordingRowId,
   useClaapFundingSourceLinkActions,
@@ -83,6 +85,7 @@ function CallCard({
   const [dealSelectorOpen, setDealSelectorOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [fsPickerOpen, setFsPickerOpen] = useState(false);
+  const [unlinkReasonOpen, setUnlinkReasonOpen] = useState(false);
   const { linkToDeal, changeDeal, unlinkFromDeal } = useClaapCallActions();
   const { unlink, relink, linkToFundingSource } = useClaapFundingSourceLinkActions();
   const qc = useQueryClient();
@@ -90,9 +93,9 @@ function CallCard({
   const isLenderView = entityType === 'lender';
   const isUnlinked = call.linkStatus === 'rejected';
 
-  const handleUnlinkFundingSource = async () => {
+  const handleUnlinkFundingSource = async (reason?: string) => {
     if (call.linkId) {
-      await unlink(call.linkId);
+      await unlink(call.linkId, reason);
       return;
     }
     // No link row: the call reaches this funding source via matched_lender_id.
@@ -214,7 +217,7 @@ function CallCard({
                       Relink to this funding source
                     </DropdownMenuItem>
                   ) : (
-                    <DropdownMenuItem onClick={() => { void handleUnlinkFundingSource(); }} className="text-destructive">
+                    <DropdownMenuItem onClick={() => setUnlinkReasonOpen(true)} className="text-destructive">
                       <Unlink className="h-3.5 w-3.5 mr-2" />
                       Unlink from this funding source
                     </DropdownMenuItem>
@@ -261,12 +264,19 @@ function CallCard({
         recordingTitle={call.title}
         meetingId={call.id}
       />
+      <UnlinkReasonDialog
+        open={unlinkReasonOpen}
+        onOpenChange={setUnlinkReasonOpen}
+        title="Unlink from this funding source"
+        onConfirm={async (reason) => { await handleUnlinkFundingSource(reason); }}
+      />
     </>
   );
 }
 
 export function ClaapCallsSection({ entityType, entityId, entityName, entityEmail, entityDomain, contactIds }: ClaapCallsSectionProps) {
   const [showUnlinked, setShowUnlinked] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const { data: allCallsData, isLoading } = useQuery({
     queryKey: ['claap-calls', entityType, entityId],
     queryFn: async () => {
@@ -426,19 +436,35 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
         <CardTitle className="text-sm flex items-center gap-1.5">
           <Video className="h-4 w-4" /> Call Recordings
           <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{calls.length}</Badge>
-          {entityType === 'lender' && unlinkedCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-5 ml-auto px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
-              onClick={() => setShowUnlinked(v => !v)}
-            >
-              {showUnlinked ? 'Hide' : 'Show'} unlinked ({unlinkedCount})
-            </Button>
+          {entityType === 'lender' && (
+            <span className="ml-auto flex items-center gap-1">
+              {unlinkedCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowUnlinked(v => !v)}
+                >
+                  {showUnlinked ? 'Hide' : 'Show'} unlinked ({unlinkedCount})
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+                onClick={() => setShowHistory(v => !v)}
+              >
+                <History className="h-3 w-3 mr-1" />
+                {showHistory ? 'Hide' : 'Link'} history
+              </Button>
+            </span>
           )}
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {entityType === 'lender' && showHistory && (
+          <ClaapLinkHistoryPanel entityId={entityId} showRecordingTitle className="mb-3" />
+        )}
         <ScrollArea className={calls.length > 4 ? 'max-h-80' : undefined}>
           <div className="space-y-2 pr-7">
             {calls.map(call => (

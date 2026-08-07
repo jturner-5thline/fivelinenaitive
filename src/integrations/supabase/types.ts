@@ -4367,6 +4367,59 @@ export type Database = {
           },
         ]
       }
+      claap_recording_link_events: {
+        Row: {
+          actor_id: string | null
+          confidence: number | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          event_type: string
+          id: string
+          link_id: string | null
+          link_role: string | null
+          reason: string | null
+          recording_id: string
+          source: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          event_type: string
+          id?: string
+          link_id?: string | null
+          link_role?: string | null
+          reason?: string | null
+          recording_id: string
+          source?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          event_type?: string
+          id?: string
+          link_id?: string | null
+          link_role?: string | null
+          reason?: string | null
+          recording_id?: string
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_recording_link_events_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "claap_recording_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       claap_recording_links: {
         Row: {
           candidate_id: string | null
@@ -4382,6 +4435,7 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           source: string
+          unlink_reason: string | null
         }
         Insert: {
           candidate_id?: string | null
@@ -4397,6 +4451,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           source?: string
+          unlink_reason?: string | null
         }
         Update: {
           candidate_id?: string | null
@@ -4412,6 +4467,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           source?: string
+          unlink_reason?: string | null
         }
         Relationships: [
           {
@@ -29542,6 +29598,7 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           source: string
+          unlink_reason: string | null
         }
         SetofOptions: {
           from: "*"
