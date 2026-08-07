@@ -258,6 +258,30 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
           .order('started_at', { ascending: false })
           .limit(50);
         addCalls(directMatches);
+
+        // Auto-linked recordings (attendee email domain / title match on the funding source)
+        const { data: links } = await (supabase.from('claap_recording_links') as any)
+          .select('recording_id')
+          .eq('entity_type', 'lender')
+          .eq('entity_id', entityId)
+          .limit(100);
+        const recordingIds = (links || []).map((l: any) => l.recording_id).filter(Boolean);
+        if (recordingIds.length) {
+          const { data: recordings } = await supabase
+            .from('claap_recordings')
+            .select('external_id')
+            .in('id', recordingIds);
+          const externalIds = (recordings || []).map((r: any) => r.external_id).filter(Boolean);
+          if (externalIds.length) {
+            const { data: linkedCalls } = await supabase
+              .from('claap_meetings')
+              .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email, deal_id')
+              .in('claap_id', externalIds)
+              .order('started_at', { ascending: false })
+              .limit(100);
+            addCalls(linkedCalls);
+          }
+        }
       }
 
       // Sort by date descending
