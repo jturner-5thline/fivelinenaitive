@@ -246,11 +246,11 @@ async function resolveRecordingByMeeting(admin: any, meetingId: string): Promise
     // Fall back to claap_id ↔ external_id.
     const { data: m } = await admin
       .from('claap_meetings')
-      .select('claap_id, org_company_id')
+      .select('claap_id, company_id')
       .eq('id', meetingId)
       .maybeSingle();
     if (m?.claap_id) {
-      return await ensureRecordingRow(admin, m.claap_id, m.org_company_id ?? null);
+      return await ensureRecordingRow(admin, m.claap_id, m.company_id ?? null);
     }
     return null;
   }
