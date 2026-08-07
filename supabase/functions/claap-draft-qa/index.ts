@@ -121,8 +121,8 @@ Deno.serve(async (req) => {
     // Deal + client context for a more human, specific draft.
     let dealName: string | null = null;
     if (meeting.deal_id) {
-      const { data: deal } = await admin.from("deals").select("name").eq("id", meeting.deal_id).maybeSingle();
-      dealName = deal?.name ?? null;
+      const { data: deal } = await admin.from("deals").select("company").eq("id", meeting.deal_id).maybeSingle();
+      dealName = deal?.company ?? null;
     }
     const { data: participants } = await admin
       .from("claap_meeting_participants")
