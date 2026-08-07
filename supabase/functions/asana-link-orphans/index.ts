@@ -331,8 +331,10 @@ Deno.serve(async (req) => {
         .limit(20000);
       const claimed = new Set((linkedRows || []).map((r: any) => String(r.asana_task_gid)));
 
-      const asanaTasks = (await fetchWorkspaceTasks(token, workspaceGid, sinceISO))
-        .filter((t) => !claimed.has(t.gid));
+      // Keep already-claimed Asana tasks in the candidate pool: they are what
+      // lets us recognise a local row as a duplicate of an already-synced task
+      // (the `claimed` set still prevents double-linking below).
+      const asanaTasks = await fetchWorkspaceTasks(token, workspaceGid, sinceISO);
 
       let linked = 0, updated = 0, ambiguous = 0;
       const duplicates: Record<string, unknown>[] = [];
