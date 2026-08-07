@@ -45,6 +45,17 @@ function sharedCount(a: string, b: string): number {
   return shared;
 }
 
+/**
+ * Guard against "one title is a tiny subset of a much longer one" false
+ * positives (e.g. "Follow up with Bryan Hunt" vs a long meeting-notes task that
+ * merely mentions Bryan Hunt). Titles must be of comparable specificity.
+ */
+function comparableLength(a: string, b: string): boolean {
+  const sa = significantTokens(a).size;
+  const sb = significantTokens(b).size;
+  return Math.max(sa, sb) <= Math.min(sa, sb) + 2;
+}
+
 const isCompleteStatus = (s: string | null) => s === "complete" || s === "completed";
 
 interface AsanaTask {
@@ -175,16 +186,33 @@ Deno.serve(async (req) => {
         .filter((t) => !claimed.has(t.gid));
 
       let linked = 0, updated = 0, ambiguous = 0;
+      const duplicates: Record<string, unknown>[] = [];
       const matches: Record<string, unknown>[] = [];
       const skipped: Record<string, unknown>[] = [];
 
       for (const orphan of (orphans || []) as any[]) {
-        const scored = asanaTasks
+        const allScored = asanaTasks
           .map((t) => ({ t, score: titleScore(orphan.title, t.name), shared: sharedCount(orphan.title, t.name) }))
-          .filter((s) => s.score >= minScore && s.shared >= 2)
+          .filter((s) => s.score >= minScore && s.shared >= 2 && comparableLength(orphan.title, s.t.name))
           .sort((a, b) => b.score - a.score);
 
-        if (scored.length === 0) continue;
+        const scored = allScored.filter((s) => !claimed.has(s.t.gid));
+
+        if (scored.length === 0) {
+          // The best Asana counterpart is already linked to a different local
+          // row: this orphan is a local duplicate of an already-synced task.
+          if (allScored.length > 0) {
+            duplicates.push({
+              task_id: orphan.id,
+              title: orphan.title,
+              due_date: orphan.due_date,
+              status: orphan.status,
+              duplicate_of_asana_title: allScored[0].t.name,
+              duplicate_of_gid: allScored[0].t.gid,
+            });
+          }
+          continue;
+        }
         // Reject when the top two candidates are indistinguishable.
         if (scored.length > 1 && scored[1].score >= scored[0].score) {
           ambiguous++;
@@ -250,6 +278,8 @@ Deno.serve(async (req) => {
         linked,
         field_updates: updated,
         ambiguous,
+        duplicate_of_linked: duplicates.length,
+        duplicates,
         ...(dryRun ? { dry_run: true, matches, skipped } : { matches }),
       });
     }
