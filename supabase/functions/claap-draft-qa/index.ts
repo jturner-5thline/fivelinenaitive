@@ -206,11 +206,13 @@ Deno.serve(async (req) => {
       const { data: deal } = await admin.from("deals").select("company").eq("id", meeting.deal_id).maybeSingle();
       dealName = deal?.company ?? null;
     }
-    const { data: participants } = await admin
-      .from("claap_meeting_participants")
-      .select("name, email")
-      .eq("meeting_id", meeting.id)
-      .limit(25);
+    const { data: participants } = meeting.id
+      ? await admin
+          .from("claap_meeting_participants")
+          .select("name, email")
+          .eq("meeting_id", meeting.id)
+          .limit(25)
+      : { data: [] as Array<{ name: string | null; email: string | null }> };
 
     const senderName = (user.user_metadata?.full_name || user.email || "").toString();
 
