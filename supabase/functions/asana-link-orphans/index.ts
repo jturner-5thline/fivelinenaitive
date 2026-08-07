@@ -8,6 +8,59 @@ const corsHeaders = {
 const ASANA_API = "https://app.asana.com/api/1.0";
 const OPT_FIELDS = "name,completed,completed_at,due_on,due_at,modified_at,created_at,assignee.email";
 
+async function asanaPost(token: string, path: string, body: unknown) {
+  const res = await fetch(`${ASANA_API}${path}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ data: body }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Asana ${res.status}: ${JSON.stringify(json?.errors || json)}`);
+  return json?.data;
+}
+
+/** email -> Asana user gid for the workspace (fetched once per run). */
+async function fetchWorkspaceUsers(token: string, workspaceGid: string): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  try {
+    const res = await fetch(
+      `${ASANA_API}/users?workspace=${workspaceGid}&opt_fields=email,gid&limit=100`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    const json = await res.json().catch(() => ({}));
+    for (const u of json?.data || []) {
+      if (u?.email) map.set(String(u.email).toLowerCase(), String(u.gid));
+    }
+  } catch (e) {
+    console.warn("[asana-link-orphans] workspace user lookup failed:", e);
+  }
+  return map;
+}
+
+/** First enabled project filter configured for this integration, if any. */
+async function resolveTargetProject(
+  supabase: any,
+  integrationId: string,
+): Promise<{ projectGid: string | null; sectionGid: string | null }> {
+  const { data: cfg } = await supabase
+    .from("asana_sync_config")
+    .select("id")
+    .eq("integration_id", integrationId)
+    .maybeSingle();
+  if (!cfg?.id) return { projectGid: null, sectionGid: null };
+  const { data: filter } = await supabase
+    .from("asana_project_filters")
+    .select("asana_project_gid, asana_section_gid")
+    .eq("sync_config_id", cfg.id)
+    .eq("is_enabled", true)
+    .limit(1)
+    .maybeSingle();
+  return {
+    projectGid: filter?.asana_project_gid || null,
+    sectionGid: filter?.asana_section_gid || null,
+  };
+}
+
 /** Words that carry no identifying signal when comparing task titles. */
 const STOPWORDS = new Set([
   "a","an","the","and","or","of","to","for","on","in","with","at","by","from","re",
@@ -139,6 +192,8 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const dryRun = body?.dry_run === true;
+    // When true, local-only tasks with no Asana counterpart are created in Asana.
+    const push = body?.push === true;
     const days = Number(body?.days) > 0 ? Number(body.days) : 180;
     const minScore = Number(body?.min_score) > 0 ? Number(body.min_score) : 0.75;
     const sinceISO = new Date(Date.now() - days * 86400000).toISOString();
