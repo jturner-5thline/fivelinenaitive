@@ -2569,6 +2569,11 @@ export default function Lenders() {
         onClose={() => setCompanyLinkTarget(null)}
       />
 
+      <ClaapLinkReviewDialog
+        open={isCallReviewOpen}
+        onOpenChange={setIsCallReviewOpen}
+      />
+
       <LenderAnalyticsDialog
         open={isAnalyticsOpen}
         onOpenChange={(v) => { setIsAnalyticsOpen(v); if (!v) setTimeout(() => analyticsOrigin.reset(), 280); }}
