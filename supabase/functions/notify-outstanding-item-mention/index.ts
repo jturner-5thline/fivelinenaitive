@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
     // Caller must be able to see the item under RLS.
     const { data: item } = await userClient
       .from('outstanding_items')
-      .select('id, text, deal_id')
+      .select('id, description, deal_id')
       .eq('id', item_id)
       .maybeSingle();
     if (!item) return json({ error: 'item not found' }, 404);
@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
     const plainBody = renderPlain(body);
     const sourceLabel = source === 'notes' ? 'the item notes' : 'a comment';
     const link = `${APP_URL}/deals?deal=${item.deal_id}`;
-    const subject = `${authorName} mentioned you on "${item.text}"`;
+    const subject = `${authorName} mentioned you on "${item.description}"`;
 
     let sent = 0;
     const failures: any[] = [];
@@ -107,8 +107,8 @@ Deno.serve(async (req) => {
             to: [t.email],
             reply_to: author?.email || getFromAddress(),
             subject,
-            html: renderHtml({ author: authorName, itemText: item.text, source: sourceLabel, body: plainBody, link }),
-            text: `${authorName} mentioned you in ${sourceLabel} on "${item.text}":\n\n${plainBody}\n\nOpen: ${link}`,
+            html: renderHtml({ author: authorName, itemText: item.description, source: sourceLabel, body: plainBody, link }),
+            text: `${authorName} mentioned you in ${sourceLabel} on "${item.description}":\n\n${plainBody}\n\nOpen: ${link}`,
           }),
         });
         const out = await resp.json().catch(() => ({}));

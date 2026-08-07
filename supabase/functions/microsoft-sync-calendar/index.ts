@@ -105,12 +105,15 @@ async function syncForUser(
   }));
 
   if (rows.length > 0) {
-    const { error } = await supabase
-      .from("calendar_events")
-      .upsert(rows, { onConflict: "user_id,provider,event_id" });
-    if (error) {
-      console.error("Calendar upsert failed", row.user_id, error);
-      return { user_id: row.user_id, synced: 0, error: error.message };
+    const CHUNK = 25;
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const { error } = await supabase
+        .from("calendar_events")
+        .upsert(rows.slice(i, i + CHUNK), { onConflict: "user_id,provider,event_id" });
+      if (error) {
+        console.error("Calendar upsert failed", row.user_id, error);
+        return { user_id: row.user_id, synced: i, error: error.message };
+      }
     }
   }
   await supabase
