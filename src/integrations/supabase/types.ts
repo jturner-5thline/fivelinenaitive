@@ -4378,6 +4378,9 @@ export type Database = {
           id: string
           link_role: string
           recording_id: string
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
           source: string
         }
         Insert: {
@@ -4390,6 +4393,9 @@ export type Database = {
           id?: string
           link_role: string
           recording_id: string
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           source?: string
         }
         Update: {
@@ -4402,6 +4408,9 @@ export type Database = {
           id?: string
           link_role?: string
           recording_id?: string
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           source?: string
         }
         Relationships: [
@@ -29529,6 +29538,9 @@ export type Database = {
           id: string
           link_role: string
           recording_id: string
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
           source: string
         }
         SetofOptions: {
