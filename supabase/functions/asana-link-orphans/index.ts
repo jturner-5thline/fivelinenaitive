@@ -181,8 +181,101 @@ async function fetchWorkspaceTasks(token: string, workspaceGid: string, sinceISO
   return Array.from(byGid.values());
 }
 
+/**
+ * Create Asana counterparts for local-only tasks that have no match at all, so
+ * both systems stay aligned going forward. Only open tasks are pushed —
+ * back-filling completed history into Asana would just create noise.
+ */
+async function maybePushOrphans(args: {
+  supabase: any;
+  token: string;
+  workspaceGid: string;
+  integration: any;
+  push: boolean;
+  dryRun: boolean;
+  pushCandidates: any[];
+}): Promise<Record<string, unknown>> {
+  const { supabase, token, workspaceGid, integration, push, dryRun, pushCandidates } = args;
+  const openOnly = pushCandidates.filter((t) => !isCompleteStatus(t.status));
+  if (!push) return { pushable: openOnly.length };
+
+  const { projectGid, sectionGid } = await resolveTargetProject(supabase, integration.id);
+  const userMap = await fetchWorkspaceUsers(token, workspaceGid);
+
+  // Resolve assignee emails in one round-trip.
+  const assigneeIds = [...new Set(openOnly.map((t) => t.assigned_to).filter(Boolean))];
+  const emailById = new Map<string, string>();
+  if (assigneeIds.length) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, email")
+      .in("user_id", assigneeIds);
+    for (const p of profiles || []) if (p?.email) emailById.set(p.user_id, String(p.email));
+  }
+
+  let created = 0;
+  const failures: Record<string, unknown>[] = [];
+  const pushed: Record<string, unknown>[] = [];
+
+  for (const task of openOnly) {
+    if (dryRun) {
+      pushed.push({ task_id: task.id, title: task.title, due_date: task.due_date });
+      continue;
+    }
+    try {
+      const email = task.assigned_to ? emailById.get(task.assigned_to) : null;
+      const assignee = email ? userMap.get(email.toLowerCase()) || null : null;
+      const payload: Record<string, unknown> = {
+        name: task.title,
+        workspace: workspaceGid,
+        notes: task.description || "",
+      };
+      if (task.due_date) payload.due_on = String(task.due_date).slice(0, 10);
+      if (assignee) payload.assignee = assignee;
+      if (projectGid) payload.projects = [projectGid];
+
+      const createdTask = await asanaPost(token, "/tasks", payload);
+      const gid = String(createdTask?.gid);
+
+      if (sectionGid) {
+        await asanaPost(token, `/sections/${sectionGid}/addTask`, { task: gid }).catch(() => {});
+      }
+
+      await supabase
+        .from("tasks")
+        .update({
+          asana_task_gid: gid,
+          asana_sync_status: "synced",
+          asana_synced_at: new Date().toISOString(),
+          asana_sync_error: null,
+        })
+        .eq("id", task.id);
+
+      await supabase.from("asana_sync_log").insert({
+        task_id: task.id,
+        asana_task_gid: gid,
+        action: "orphan_push",
+        success: true,
+        payload: { title: task.title, project_gid: projectGid, assignee },
+        company_id: integration.company_id || null,
+      });
+
+      created++;
+      pushed.push({ task_id: task.id, title: task.title, gid });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      failures.push({ task_id: task.id, title: task.title, error: msg });
+      await supabase
+        .from("tasks")
+        .update({ asana_sync_status: "error", asana_sync_error: msg })
+        .eq("id", task.id);
+    }
+  }
+
+  return { pushed_to_asana: created, push_failures: failures.length, failures, pushed };
+}
+
 Deno.serve(async (req) => {
-  // placeholder-anchor
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const supabase = createClient(
