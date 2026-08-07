@@ -88,6 +88,7 @@ import { RelationshipOwnersPicker } from '@/components/lenders/RelationshipOwner
 import { LenderSyncRequestsPanel } from '@/components/lenders/LenderSyncRequestsPanel';
 import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 import { LenderAnalyticsDialog } from '@/components/lenders/LenderAnalyticsDialog';
+import { ClaapLinkReviewDialog, useClaapPendingLinkCount } from '@/components/claap/ClaapLinkReviewDialog';
 import { useOriginAnimation } from '@/hooks/useOriginAnimation';
 import { detectDuplicateLenders } from '@/lib/lenderDuplicates';
 import { LenderContactPicker } from '@/components/lenders/LenderContactPicker';
@@ -306,6 +307,7 @@ export default function Lenders() {
   });
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [isCallReviewOpen, setIsCallReviewOpen] = useState(false);
   const analyticsOrigin = useOriginAnimation();
   const [isDuplicatesDialogOpen, setIsDuplicatesDialogOpen] = useState(false);
   const [isSideBySideMergeOpen, setIsSideBySideMergeOpen] = useState(false);
@@ -1764,6 +1766,15 @@ export default function Lenders() {
                     <DropdownMenuItem onClick={(e) => { analyticsOrigin.capture(e as any); setIsAnalyticsOpen(true); }}>
                       <BarChart3 className="h-4 w-4 mr-2" />
                       Analytics
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setIsCallReviewOpen(true)}>
+                      <Video className="h-4 w-4 mr-2" />
+                      Review call matches
+                      {pendingCallMatches > 0 && (
+                        <Badge variant="amber" className="ml-2 text-[10px] px-1.5 py-0 h-4">
+                          {pendingCallMatches}
+                        </Badge>
+                      )}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
