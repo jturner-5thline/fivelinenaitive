@@ -1,10 +1,54 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import {
+  claapGetRecording,
+  extractClaapExternalId,
+  getClaapToken,
+  hasClaapToken,
+} from "../_shared/claap-api.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+/**
+ * On-demand hydration: pull the recording straight from the Claap API (and
+ * download its transcript) instead of waiting for the scheduled sync.
+ */
+async function hydrateFromClaap(externalIdInput: string | null | undefined): Promise<
+  { transcript: string; summary: string | null; title: string | null; recording_url: string | null } | null
+> {
+  if (!externalIdInput || !hasClaapToken()) return null;
+  const externalId = extractClaapExternalId(externalIdInput) || externalIdInput;
+  let rec: Awaited<ReturnType<typeof claapGetRecording>> = null;
+  try {
+    rec = await claapGetRecording(externalId);
+  } catch (e) {
+    console.warn("[claap-draft-qa] live fetch failed", externalId, String(e));
+    return null;
+  }
+  if (!rec) return null;
+
+  let transcript = "";
+  if (rec.transcript_url) {
+    try {
+      const token = getClaapToken();
+      const resp = await fetch(rec.transcript_url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (resp.ok) transcript = (await resp.text()).slice(0, 400000);
+    } catch (e) {
+      console.warn("[claap-draft-qa] transcript download failed", String(e));
+    }
+  }
+  return {
+    transcript,
+    summary: rec.summary_md,
+    title: rec.title,
+    recording_url: rec.recording_url || rec.url || null,
+  };
+}
 
 /**
  * claap-draft-qa
