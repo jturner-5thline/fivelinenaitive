@@ -479,13 +479,20 @@ export default function Lenders() {
     
     // Lender-level statuses that are not "active"
     const inactiveStatuses = ['passed', 'on-deck', 'on-hold', 'excluded', 'declined'];
-    // Deal-level stages/statuses that end the engagement
+    // Deal-level statuses that end the engagement
     const closedDealStates = new Set(['closed-won', 'closed-lost', 'archived', 'on-hold']);
+    // Stage IDs are overloaded across pipelines (e.g. 'closed-won' means something
+    // else in "In Development"), so resolve the stage's real label per pipeline.
+    const isClosedLabel = (label: string) =>
+      /^closed\s*[-/ ]?\s*(won|lost)$/i.test(label.trim()) || /\bclosed\s+(won|lost)\b/i.test(label);
     
     deals.forEach(deal => {
-      const dealStage = String((deal as any).stage ?? '').toLowerCase().trim();
       const dealStatus = String((deal as any).status ?? '').toLowerCase().trim();
-      if (closedDealStates.has(dealStage) || closedDealStates.has(dealStatus)) return;
+      if (closedDealStates.has(dealStatus)) return;
+
+      const stageId = String((deal as any).stage ?? '');
+      const stageLabel = getStageConfigForDeal(stageId, (deal as any).pipelineId ?? null).label;
+      if (isClosedLabel(stageLabel)) return;
 
       deal.lenders?.forEach(lender => {
         const tracking = String(lender.trackingStatus ?? '').toLowerCase().trim();
@@ -507,7 +514,7 @@ export default function Lenders() {
     });
     
     return counts;
-  }, [deals, masterLenders]);
+  }, [deals, masterLenders, getStageConfigForDeal]);
 
   // Detect potential duplicate funding sources within the current tenant's
   // master lender list. The detector is O(n^2) over bucketed names — at 6k+
