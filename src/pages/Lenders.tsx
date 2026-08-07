@@ -2573,7 +2573,6 @@ export default function Lenders() {
         open={isAnalyticsOpen}
         onOpenChange={(v) => { setIsAnalyticsOpen(v); if (!v) setTimeout(() => analyticsOrigin.reset(), 280); }}
         lenders={filteredLenders}
-        lenders={filteredLenders}
         totalLenderCount={masterLenders.length}
         filtersSummary={[
           debouncedSearchQuery.trim() ? `Search: "${debouncedSearchQuery.trim()}"` : null,
