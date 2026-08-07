@@ -266,7 +266,8 @@ function CallCard({
 }
 
 export function ClaapCallsSection({ entityType, entityId, entityName, entityEmail, entityDomain, contactIds }: ClaapCallsSectionProps) {
-  const { data: calls, isLoading } = useQuery({
+  const [showUnlinked, setShowUnlinked] = useState(false);
+  const { data: allCallsData, isLoading } = useQuery({
     queryKey: ['claap-calls', entityType, entityId],
     queryFn: async () => {
       const allCalls: ClaapCall[] = [];
@@ -337,30 +338,50 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
           .eq('matched_lender_id', entityId)
           .order('started_at', { ascending: false })
           .limit(50);
-        addCalls(directMatches);
+        addCalls((directMatches || []).map((c: any) => ({ ...c, viaMatchedLender: true })));
 
-        // Auto-linked recordings (attendee email domain / title match on the funding source)
+        // Auto- and manually-linked recordings (attendee email domain / title match)
         const { data: links } = await (supabase.from('claap_recording_links') as any)
-          .select('recording_id')
+          .select('id, recording_id, review_status')
           .eq('entity_type', 'lender')
           .eq('entity_id', entityId)
-          .neq('review_status', 'rejected')
-          .limit(100);
-        const recordingIds = (links || []).map((l: any) => l.recording_id).filter(Boolean);
+          .eq('link_role', 'funding_source')
+          .limit(200);
+        const linkRows = (links || []) as any[];
+        const recordingIds = linkRows.map((l) => l.recording_id).filter(Boolean);
         if (recordingIds.length) {
           const { data: recordings } = await supabase
             .from('claap_recordings')
-            .select('external_id')
+            .select('id, external_id')
             .in('id', recordingIds);
-          const externalIds = (recordings || []).map((r: any) => r.external_id).filter(Boolean);
+          const recRows = (recordings || []) as any[];
+          const byRecordingId = new Map(linkRows.map((l) => [l.recording_id, l]));
+          // external_id -> { link, recordingRowId }
+          const byExternalId = new Map<string, { linkId: string; linkStatus: string; recordingRowId: string }>();
+          for (const r of recRows) {
+            const link = byRecordingId.get(r.id);
+            if (r.external_id && link) {
+              byExternalId.set(r.external_id, { linkId: link.id, linkStatus: link.review_status, recordingRowId: r.id });
+            }
+          }
+          const externalIds = Array.from(byExternalId.keys());
           if (externalIds.length) {
             const { data: linkedCalls } = await supabase
               .from('claap_meetings')
-              .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email, deal_id')
+              .select('id, claap_id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email, deal_id')
               .in('claap_id', externalIds)
               .order('started_at', { ascending: false })
-              .limit(100);
-            addCalls(linkedCalls);
+              .limit(200);
+            const decorated = (linkedCalls || []).map((c: any) => {
+              const meta = byExternalId.get(c.claap_id);
+              return {
+                ...c,
+                linkId: meta?.linkId ?? null,
+                linkStatus: (meta?.linkStatus ?? null) as any,
+                recordingRowId: meta?.recordingRowId ?? null,
+              };
+            });
+            addCalls(decorated);
           }
         }
       }
@@ -376,6 +397,9 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
     },
     enabled: !!entityId,
   });
+
+  const unlinkedCount = (allCallsData || []).filter(c => c.linkStatus === 'rejected').length;
+  const calls = (allCallsData || []).filter(c => showUnlinked || c.linkStatus !== 'rejected');
 
   if (isLoading) {
     return (
@@ -394,7 +418,7 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
     );
   }
 
-  if (!calls?.length) return null;
+  if (!calls.length && !unlinkedCount) return null;
 
   return (
     <Card>
@@ -402,13 +426,23 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
         <CardTitle className="text-sm flex items-center gap-1.5">
           <Video className="h-4 w-4" /> Call Recordings
           <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{calls.length}</Badge>
+          {entityType === 'lender' && unlinkedCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 ml-auto px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+              onClick={() => setShowUnlinked(v => !v)}
+            >
+              {showUnlinked ? 'Hide' : 'Show'} unlinked ({unlinkedCount})
+            </Button>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <ScrollArea className={calls.length > 4 ? 'max-h-80' : undefined}>
           <div className="space-y-2 pr-7">
             {calls.map(call => (
-              <CallCard key={call.id} call={call} />
+              <CallCard key={call.id} call={call} entityType={entityType} entityId={entityId} />
             ))}
           </div>
         </ScrollArea>
