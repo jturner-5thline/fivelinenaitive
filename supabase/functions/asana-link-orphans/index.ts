@@ -244,6 +244,7 @@ Deno.serve(async (req) => {
       const duplicates: Record<string, unknown>[] = [];
       const matches: Record<string, unknown>[] = [];
       const skipped: Record<string, unknown>[] = [];
+      const pushCandidates: any[] = [];
 
       for (const orphan of (orphans || []) as any[]) {
         const allScored = asanaTasks
@@ -265,6 +266,20 @@ Deno.serve(async (req) => {
               duplicate_of_asana_title: allScored[0].t.name,
               duplicate_of_gid: allScored[0].t.gid,
             });
+            if (!dryRun) {
+              // Flag for human review instead of silently linking or archiving.
+              await supabase
+                .from("tasks")
+                .update({
+                  asana_duplicate_of_gid: allScored[0].t.gid,
+                  asana_duplicate_of_title: allScored[0].t.name,
+                  asana_duplicate_status: "pending",
+                })
+                .eq("id", orphan.id)
+                .is("asana_duplicate_status", null);
+            }
+          } else {
+            pushCandidates.push(orphan);
           }
           continue;
         }
@@ -335,6 +350,15 @@ Deno.serve(async (req) => {
         ambiguous,
         duplicate_of_linked: duplicates.length,
         duplicates,
+        ...(await maybePushOrphans({
+          supabase,
+          token,
+          workspaceGid,
+          integration,
+          push,
+          dryRun,
+          pushCandidates,
+        })),
         ...(dryRun ? { dry_run: true, matches, skipped } : { matches }),
       });
     }
