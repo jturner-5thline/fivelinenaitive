@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Video, Phone, ExternalLink, ChevronDown, ChevronRight, Clock, Users, FileText, Link2, MoreVertical, Unlink, ArrowRightLeft, Sparkles } from 'lucide-react';
+import { Video, Phone, ExternalLink, ChevronDown, ChevronRight, Clock, Users, FileText, Link2, MoreVertical, Unlink, ArrowRightLeft, Sparkles, History } from 'lucide-react';
 import { LinkedCallActionsDialog } from './LinkedCallActionsDialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
