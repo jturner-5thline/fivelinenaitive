@@ -12,7 +12,13 @@ import { Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ClaapDealSelector } from './ClaapDealSelector';
 import { useClaapCallActions } from '@/hooks/useClaapCallActions';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { FundingSourcePickerDialog } from './FundingSourcePickerDialog';
+import {
+  resolveRecordingRowId,
+  useClaapFundingSourceLinkActions,
+} from '@/hooks/useClaapFundingSourceLinks';
+import { useQueryClient } from '@tanstack/react-query';
 
 export type ClaapEntityType = 'contact' | 'company' | 'lender';
 
@@ -38,6 +44,13 @@ interface ClaapCall {
   ai_summary: string | null;
   organizer_email: string | null;
   deal_id: string | null;
+  /** claap_recordings.id when a mirrored recording row exists. */
+  recordingRowId?: string | null;
+  /** claap_recording_links.id for the funding-source link (lender view). */
+  linkId?: string | null;
+  linkStatus?: 'pending' | 'confirmed' | 'rejected' | null;
+  /** True when the call reaches this funding source via claap_meetings.matched_lender_id. */
+  viaMatchedLender?: boolean;
 }
 
 function formatCallDuration(seconds: number | null): string {
@@ -57,12 +70,48 @@ function callTypeBadgeVariant(callType: string | null): 'default' | 'secondary' 
   return 'outline';
 }
 
-function CallCard({ call }: { call: ClaapCall }) {
+function CallCard({
+  call,
+  entityType,
+  entityId,
+}: {
+  call: ClaapCall;
+  entityType: ClaapEntityType;
+  entityId: string;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [dealSelectorOpen, setDealSelectorOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [fsPickerOpen, setFsPickerOpen] = useState(false);
   const { linkToDeal, changeDeal, unlinkFromDeal } = useClaapCallActions();
+  const { unlink, relink, linkToFundingSource } = useClaapFundingSourceLinkActions();
+  const qc = useQueryClient();
   const hasTranscript = !!(call.transcript || call.ai_summary);
+  const isLenderView = entityType === 'lender';
+  const isUnlinked = call.linkStatus === 'rejected';
+
+  const handleUnlinkFundingSource = async () => {
+    if (call.linkId) {
+      await unlink(call.linkId);
+      return;
+    }
+    // No link row: the call reaches this funding source via matched_lender_id.
+    const { error } = await (supabase.from('claap_meetings') as any)
+      .update({ matched_lender_id: null })
+      .eq('id', call.id);
+    if (error) return;
+    await qc.invalidateQueries({ queryKey: ['claap-calls'] });
+  };
+
+  const handleLinkFundingSource = async (lenderId: string, lenderName: string) => {
+    const rowId = call.recordingRowId || (await resolveRecordingRowId((call as any).claap_id));
+    if (!rowId) {
+      await (supabase.from('claap_meetings') as any).update({ matched_lender_id: lenderId }).eq('id', call.id);
+      await qc.invalidateQueries({ queryKey: ['claap-calls'] });
+      return;
+    }
+    await linkToFundingSource(rowId, lenderId, lenderName);
+  };
 
   return (
     <>
@@ -83,6 +132,11 @@ function CallCard({ call }: { call: ClaapCall }) {
               {call.call_type && (
                 <Badge variant={callTypeBadgeVariant(call.call_type)} className="text-[10px] px-1.5 py-0 h-4 shrink-0">
                   {call.call_type}
+                </Badge>
+              )}
+              {isLenderView && isUnlinked && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0 border-destructive/40 text-destructive">
+                  Unlinked
                 </Badge>
               )}
               {call.deal_id && (
@@ -151,6 +205,26 @@ function CallCard({ call }: { call: ClaapCall }) {
                   </DropdownMenuItem>
                 </>
               )}
+              {isLenderView && (
+                <>
+                  <DropdownMenuSeparator />
+                  {isUnlinked ? (
+                    <DropdownMenuItem onClick={() => { void relink(call.linkId!); }}>
+                      <Link2 className="h-3.5 w-3.5 mr-2" />
+                      Relink to this funding source
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onClick={() => { void handleUnlinkFundingSource(); }} className="text-destructive">
+                      <Unlink className="h-3.5 w-3.5 mr-2" />
+                      Unlink from this funding source
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => setFsPickerOpen(true)}>
+                    <ArrowRightLeft className="h-3.5 w-3.5 mr-2" />
+                    Link to another funding source
+                  </DropdownMenuItem>
+                </>
+              )}
               {call.recording_url && (
                 <DropdownMenuItem asChild>
                   <a href={call.recording_url} target="_blank" rel="noreferrer">
@@ -174,6 +248,12 @@ function CallCard({ call }: { call: ClaapCall }) {
           }
         }}
         title={call.deal_id ? 'Change Linked Deal' : 'Link Call to Deal'}
+      />
+      <FundingSourcePickerDialog
+        open={fsPickerOpen}
+        onOpenChange={setFsPickerOpen}
+        excludeIds={isLenderView ? [entityId] : []}
+        onSelect={(lenderId, lenderName) => { void handleLinkFundingSource(lenderId, lenderName); }}
       />
       <LinkedCallActionsDialog
         open={actionsOpen}
