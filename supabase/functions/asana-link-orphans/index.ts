@@ -8,6 +8,59 @@ const corsHeaders = {
 const ASANA_API = "https://app.asana.com/api/1.0";
 const OPT_FIELDS = "name,completed,completed_at,due_on,due_at,modified_at,created_at,assignee.email";
 
+async function asanaPost(token: string, path: string, body: unknown) {
+  const res = await fetch(`${ASANA_API}${path}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ data: body }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Asana ${res.status}: ${JSON.stringify(json?.errors || json)}`);
+  return json?.data;
+}
+
+/** email -> Asana user gid for the workspace (fetched once per run). */
+async function fetchWorkspaceUsers(token: string, workspaceGid: string): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  try {
+    const res = await fetch(
+      `${ASANA_API}/users?workspace=${workspaceGid}&opt_fields=email,gid&limit=100`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    const json = await res.json().catch(() => ({}));
+    for (const u of json?.data || []) {
+      if (u?.email) map.set(String(u.email).toLowerCase(), String(u.gid));
+    }
+  } catch (e) {
+    console.warn("[asana-link-orphans] workspace user lookup failed:", e);
+  }
+  return map;
+}
+
+/** First enabled project filter configured for this integration, if any. */
+async function resolveTargetProject(
+  supabase: any,
+  integrationId: string,
+): Promise<{ projectGid: string | null; sectionGid: string | null }> {
+  const { data: cfg } = await supabase
+    .from("asana_sync_config")
+    .select("id")
+    .eq("integration_id", integrationId)
+    .maybeSingle();
+  if (!cfg?.id) return { projectGid: null, sectionGid: null };
+  const { data: filter } = await supabase
+    .from("asana_project_filters")
+    .select("asana_project_gid, asana_section_gid")
+    .eq("sync_config_id", cfg.id)
+    .eq("is_enabled", true)
+    .limit(1)
+    .maybeSingle();
+  return {
+    projectGid: filter?.asana_project_gid || null,
+    sectionGid: filter?.asana_section_gid || null,
+  };
+}
+
 /** Words that carry no identifying signal when comparing task titles. */
 const STOPWORDS = new Set([
   "a","an","the","and","or","of","to","for","on","in","with","at","by","from","re",
@@ -128,6 +181,100 @@ async function fetchWorkspaceTasks(token: string, workspaceGid: string, sinceISO
   return Array.from(byGid.values());
 }
 
+/**
+ * Create Asana counterparts for local-only tasks that have no match at all, so
+ * both systems stay aligned going forward. Only open tasks are pushed —
+ * back-filling completed history into Asana would just create noise.
+ */
+async function maybePushOrphans(args: {
+  supabase: any;
+  token: string;
+  workspaceGid: string;
+  integration: any;
+  push: boolean;
+  dryRun: boolean;
+  pushCandidates: any[];
+}): Promise<Record<string, unknown>> {
+  const { supabase, token, workspaceGid, integration, push, dryRun, pushCandidates } = args;
+  const openOnly = pushCandidates.filter((t) => !isCompleteStatus(t.status));
+  if (!push) return { pushable: openOnly.length };
+
+  const { projectGid, sectionGid } = await resolveTargetProject(supabase, integration.id);
+  const userMap = await fetchWorkspaceUsers(token, workspaceGid);
+
+  // Resolve assignee emails in one round-trip.
+  const assigneeIds = [...new Set(openOnly.map((t) => t.assigned_to).filter(Boolean))];
+  const emailById = new Map<string, string>();
+  if (assigneeIds.length) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, email")
+      .in("user_id", assigneeIds);
+    for (const p of profiles || []) if (p?.email) emailById.set(p.user_id, String(p.email));
+  }
+
+  let created = 0;
+  const failures: Record<string, unknown>[] = [];
+  const pushed: Record<string, unknown>[] = [];
+
+  for (const task of openOnly) {
+    if (dryRun) {
+      pushed.push({ task_id: task.id, title: task.title, due_date: task.due_date });
+      continue;
+    }
+    try {
+      const email = task.assigned_to ? emailById.get(task.assigned_to) : null;
+      const assignee = email ? userMap.get(email.toLowerCase()) || null : null;
+      const payload: Record<string, unknown> = {
+        name: task.title,
+        workspace: workspaceGid,
+        notes: task.description || "",
+      };
+      if (task.due_date) payload.due_on = String(task.due_date).slice(0, 10);
+      if (assignee) payload.assignee = assignee;
+      if (projectGid) payload.projects = [projectGid];
+
+      const createdTask = await asanaPost(token, "/tasks", payload);
+      const gid = String(createdTask?.gid);
+
+      if (sectionGid) {
+        await asanaPost(token, `/sections/${sectionGid}/addTask`, { task: gid }).catch(() => {});
+      }
+
+      await supabase
+        .from("tasks")
+        .update({
+          asana_task_gid: gid,
+          asana_sync_status: "synced",
+          asana_synced_at: new Date().toISOString(),
+          asana_sync_error: null,
+        })
+        .eq("id", task.id);
+
+      await supabase.from("asana_sync_log").insert({
+        task_id: task.id,
+        asana_task_gid: gid,
+        action: "orphan_push",
+        success: true,
+        payload: { title: task.title, project_gid: projectGid, assignee },
+        company_id: integration.company_id || null,
+      });
+
+      created++;
+      pushed.push({ task_id: task.id, title: task.title, gid });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      failures.push({ task_id: task.id, title: task.title, error: msg });
+      await supabase
+        .from("tasks")
+        .update({ asana_sync_status: "error", asana_sync_error: msg })
+        .eq("id", task.id);
+    }
+  }
+
+  return { pushed_to_asana: created, push_failures: failures.length, failures, pushed };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -139,6 +286,8 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const dryRun = body?.dry_run === true;
+    // When true, local-only tasks with no Asana counterpart are created in Asana.
+    const push = body?.push === true;
     const days = Number(body?.days) > 0 ? Number(body.days) : 180;
     const minScore = Number(body?.min_score) > 0 ? Number(body.min_score) : 0.75;
     const sinceISO = new Date(Date.now() - days * 86400000).toISOString();
@@ -163,7 +312,7 @@ Deno.serve(async (req) => {
       // Local orphans: no Asana GID yet.
       let orphanQuery = supabase
         .from("tasks")
-        .select("id, title, status, due_date, assigned_to, created_at")
+        .select("id, title, description, status, due_date, assigned_to, created_at")
         .is("asana_task_gid", null)
         .is("archived_at", null)
         .gte("created_at", sinceISO)
@@ -182,13 +331,16 @@ Deno.serve(async (req) => {
         .limit(20000);
       const claimed = new Set((linkedRows || []).map((r: any) => String(r.asana_task_gid)));
 
-      const asanaTasks = (await fetchWorkspaceTasks(token, workspaceGid, sinceISO))
-        .filter((t) => !claimed.has(t.gid));
+      // Keep already-claimed Asana tasks in the candidate pool: they are what
+      // lets us recognise a local row as a duplicate of an already-synced task
+      // (the `claimed` set still prevents double-linking below).
+      const asanaTasks = await fetchWorkspaceTasks(token, workspaceGid, sinceISO);
 
       let linked = 0, updated = 0, ambiguous = 0;
       const duplicates: Record<string, unknown>[] = [];
       const matches: Record<string, unknown>[] = [];
       const skipped: Record<string, unknown>[] = [];
+      const pushCandidates: any[] = [];
 
       for (const orphan of (orphans || []) as any[]) {
         const allScored = asanaTasks
@@ -210,6 +362,20 @@ Deno.serve(async (req) => {
               duplicate_of_asana_title: allScored[0].t.name,
               duplicate_of_gid: allScored[0].t.gid,
             });
+            if (!dryRun) {
+              // Flag for human review instead of silently linking or archiving.
+              await supabase
+                .from("tasks")
+                .update({
+                  asana_duplicate_of_gid: allScored[0].t.gid,
+                  asana_duplicate_of_title: allScored[0].t.name,
+                  asana_duplicate_status: "pending",
+                })
+                .eq("id", orphan.id)
+                .is("asana_duplicate_status", null);
+            }
+          } else {
+            pushCandidates.push(orphan);
           }
           continue;
         }
@@ -280,6 +446,15 @@ Deno.serve(async (req) => {
         ambiguous,
         duplicate_of_linked: duplicates.length,
         duplicates,
+        ...(await maybePushOrphans({
+          supabase,
+          token,
+          workspaceGid,
+          integration,
+          push,
+          dryRun,
+          pushCandidates,
+        })),
         ...(dryRun ? { dry_run: true, matches, skipped } : { matches }),
       });
     }

@@ -25591,6 +25591,9 @@ export type Database = {
       tasks: {
         Row: {
           archived_at: string | null
+          asana_duplicate_of_gid: string | null
+          asana_duplicate_of_title: string | null
+          asana_duplicate_status: string | null
           asana_sync_attempts: number
           asana_sync_error: string | null
           asana_sync_status: string | null
@@ -25642,6 +25645,9 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          asana_duplicate_of_gid?: string | null
+          asana_duplicate_of_title?: string | null
+          asana_duplicate_status?: string | null
           asana_sync_attempts?: number
           asana_sync_error?: string | null
           asana_sync_status?: string | null
@@ -25693,6 +25699,9 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          asana_duplicate_of_gid?: string | null
+          asana_duplicate_of_title?: string | null
+          asana_duplicate_status?: string | null
           asana_sync_attempts?: number
           asana_sync_error?: string | null
           asana_sync_status?: string | null
