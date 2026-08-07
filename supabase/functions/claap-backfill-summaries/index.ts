@@ -197,6 +197,40 @@ async function syncOneRecording(admin: any, row: RecordingRow) {
   }
 }
 
+/**
+ * Ensure a claap_recordings row exists for an external Claap id. Recordings
+ * that were linked/shared before the nightly sync ran have no local row yet,
+ * which used to surface as a hard 404 (`recording_not_found`).
+ */
+async function ensureRecordingRow(
+  admin: any,
+  externalId: string,
+  orgCompanyId?: string | null,
+): Promise<RecordingRow | null> {
+  const { data: existing } = await admin
+    .from('claap_recordings')
+    .select('id, external_id, org_company_id, sync_attempts')
+    .eq('external_id', externalId)
+    .maybeSingle();
+  if (existing) return existing;
+
+  const { data: inserted, error } = await admin
+    .from('claap_recordings')
+    .insert({ external_id: externalId, org_company_id: orgCompanyId ?? null, sync_attempts: 0 })
+    .select('id, external_id, org_company_id, sync_attempts')
+    .maybeSingle();
+  if (error) {
+    // Race: another request inserted it first.
+    const { data: retry } = await admin
+      .from('claap_recordings')
+      .select('id, external_id, org_company_id, sync_attempts')
+      .eq('external_id', externalId)
+      .maybeSingle();
+    return retry ?? null;
+  }
+  return inserted ?? null;
+}
+
 async function resolveRecordingByMeeting(admin: any, meetingId: string): Promise<RecordingRow | null> {
   // Prefer link table.
   const { data: link } = await admin
@@ -212,17 +246,11 @@ async function resolveRecordingByMeeting(admin: any, meetingId: string): Promise
     // Fall back to claap_id ↔ external_id.
     const { data: m } = await admin
       .from('claap_meetings')
-      .select('claap_id')
+      .select('claap_id, company_id')
       .eq('id', meetingId)
       .maybeSingle();
     if (m?.claap_id) {
-      const { data: r } = await admin
-        .from('claap_recordings')
-        .select('id, external_id, org_company_id, sync_attempts')
-        .eq('external_id', m.claap_id)
-        .limit(1)
-        .maybeSingle();
-      return r ?? null;
+      return await ensureRecordingRow(admin, m.claap_id, m.company_id ?? null);
     }
     return null;
   }
@@ -260,12 +288,7 @@ Deno.serve(async (req) => {
       } else if (meeting_id) {
         row = await resolveRecordingByMeeting(admin, meeting_id);
       } else if (claap_id) {
-        const { data } = await admin
-          .from('claap_recordings')
-          .select('id, external_id, org_company_id, sync_attempts')
-          .eq('external_id', claap_id)
-          .maybeSingle();
-        row = data ?? null;
+        row = await ensureRecordingRow(admin, String(claap_id));
       }
       if (!row) return json({ ok: false, error: 'recording_not_found' }, 404);
       if (force) {
