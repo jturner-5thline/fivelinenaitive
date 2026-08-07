@@ -404,15 +404,18 @@ serve(async (req) => {
         is_cancelled: !!e.isCancelled,
       }));
       if (eventRows.length > 0) {
-        const { error } = await supabase
-          .from("calendar_events")
-          .upsert(eventRows, { onConflict: "user_id,provider,event_id" });
-        if (error) {
-          console.error("Calendar upsert failed", error);
-          return new Response(JSON.stringify({ error: error.message }), {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+        const CHUNK = 25;
+        for (let i = 0; i < eventRows.length; i += CHUNK) {
+          const { error } = await supabase
+            .from("calendar_events")
+            .upsert(eventRows.slice(i, i + CHUNK), { onConflict: "user_id,provider,event_id" });
+          if (error) {
+            console.error("Calendar upsert failed", error);
+            return new Response(JSON.stringify({ error: error.message }), {
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
         }
       }
       await supabase
