@@ -1,6 +1,8 @@
+import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, History, Link2, Unlink, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Loader2, History, Link2, Unlink, Sparkles, CheckCircle2, Search, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { useClaapLinkHistory } from '@/hooks/useClaapFundingSourceLinks';
 import { cn } from '@/lib/utils';
@@ -26,6 +28,25 @@ interface Props {
 
 export function ClaapLinkHistoryPanel({ recordingId, entityId, showRecordingTitle, className }: Props) {
   const { data: events = [], isLoading } = useClaapLinkHistory({ recordingId, entityId });
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return events;
+    return events.filter((e) => {
+      const meta = EVENT_META[e.event_type] || EVENT_META.status_changed;
+      return [
+        e.recordingTitle,
+        e.recording_id,
+        e.entityName,
+        e.reason,
+        e.actorName,
+        meta.label,
+      ]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().includes(q));
+    });
+  }, [events, search]);
 
   if (!recordingId && !entityId) return null;
 
@@ -37,18 +58,44 @@ export function ClaapLinkHistoryPanel({ recordingId, entityId, showRecordingTitl
           Link history
         </span>
         {events.length > 0 && (
-          <Badge variant="outline" className="ml-auto h-4 px-1 text-[9px]">{events.length}</Badge>
+          <Badge variant="outline" className="ml-auto h-4 px-1 text-[9px]">
+            {search.trim() ? `${filtered.length}/${events.length}` : events.length}
+          </Badge>
         )}
       </div>
+
+      {events.length > 3 && (
+        <div className="relative mt-2">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search title, recording ID, source…"
+            className="h-7 pl-7 pr-7 text-xs"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      )}
 
       {isLoading ? (
         <Loader2 className="mt-2 h-3 w-3 animate-spin text-muted-foreground" />
       ) : events.length === 0 ? (
         <p className="mt-1 text-xs italic text-muted-foreground">No link activity recorded yet.</p>
+      ) : filtered.length === 0 ? (
+        <p className="mt-1 text-xs italic text-muted-foreground">No events match “{search}”.</p>
       ) : (
         <ScrollArea className="mt-1.5 max-h-56">
           <ol className="space-y-2 pr-2">
-            {events.map((e) => {
+            {filtered.map((e) => {
               const meta = EVENT_META[e.event_type] || EVENT_META.status_changed;
               const Icon = meta.icon;
               return (
