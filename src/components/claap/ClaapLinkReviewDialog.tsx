@@ -137,8 +137,8 @@ export function ClaapLinkReviewDialog({ open, onOpenChange }: ClaapLinkReviewDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl h-[85vh] max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Video className="h-4 w-4" /> Review call matches
           </DialogTitle>
@@ -147,7 +147,7 @@ export function ClaapLinkReviewDialog({ open, onOpenChange }: ClaapLinkReviewDia
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Tabs value={tab} onValueChange={(v) => setTab(v as ReviewStatus)}>
             <TabsList>
               <TabsTrigger value="pending">Pending</TabsTrigger>
@@ -176,7 +176,7 @@ export function ClaapLinkReviewDialog({ open, onOpenChange }: ClaapLinkReviewDia
           )}
         </div>
 
-        <ScrollArea className="flex-1 min-h-0 w-full pr-2 [&>[data-radix-scroll-area-viewport]>div]:!block">
+        <ScrollArea className="flex-1 min-h-0 w-full overflow-y-auto pr-2 [&>[data-radix-scroll-area-viewport]]:max-h-full [&>[data-radix-scroll-area-viewport]>div]:!block">
           {isLoading ? (
             <div className="flex items-center justify-center py-10">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
