@@ -409,7 +409,15 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
   });
 
   const unlinkedCount = (allCallsData || []).filter(c => c.linkStatus === 'rejected').length;
-  const calls = (allCallsData || []).filter(c => showUnlinked || c.linkStatus !== 'rejected');
+  const visibleCalls = (allCallsData || []).filter(c => showUnlinked || c.linkStatus !== 'rejected');
+  const q = callSearch.trim().toLowerCase();
+  const calls = q
+    ? visibleCalls.filter((c: any) =>
+        [c.title, c.id, c.claap_id, c.recordingRowId, c.organizer_email]
+          .filter(Boolean)
+          .some((v: any) => String(v).toLowerCase().includes(q)),
+      )
+    : visibleCalls;
 
   if (isLoading) {
     return (
@@ -435,7 +443,9 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-1.5">
           <Video className="h-4 w-4" /> Call Recordings
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{calls.length}</Badge>
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+            {q ? `${calls.length}/${visibleCalls.length}` : calls.length}
+          </Badge>
           {entityType === 'lender' && (
             <span className="ml-auto flex items-center gap-1">
               {unlinkedCount > 0 && (
@@ -464,6 +474,20 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
       <CardContent>
         {entityType === 'lender' && showHistory && (
           <ClaapLinkHistoryPanel entityId={entityId} showRecordingTitle className="mb-3" />
+        )}
+        {visibleCalls.length > 3 && (
+          <div className="relative mb-2">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={callSearch}
+              onChange={(e) => setCallSearch(e.target.value)}
+              placeholder="Search recording title or ID…"
+              className="h-7 pl-7 text-xs"
+            />
+          </div>
+        )}
+        {q && calls.length === 0 && (
+          <p className="py-2 text-xs italic text-muted-foreground">No recordings match “{callSearch}”.</p>
         )}
         <ScrollArea className={calls.length > 4 ? 'max-h-80' : undefined}>
           <div className="space-y-2 pr-7">
