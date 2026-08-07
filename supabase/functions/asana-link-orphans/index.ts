@@ -69,33 +69,51 @@ async function asanaGet(path: string, token: string) {
   return res.json();
 }
 
-/** Pull every task across the workspace's non-archived projects (paginated). */
+/**
+ * Pull tasks per workspace member. Far cheaper than walking every project:
+ * one paginated query per assignee instead of one per project.
+ */
 async function fetchWorkspaceTasks(token: string, workspaceGid: string, sinceISO: string) {
-  const projectsResp = await asanaGet(
-    `/projects?workspace=${workspaceGid}&archived=false&opt_fields=name&limit=100`,
+  const usersResp = await asanaGet(
+    `/users?workspace=${workspaceGid}&opt_fields=name,email&limit=100`,
     token,
   );
-  const projects: { gid: string; name: string }[] = projectsResp?.data || [];
+  const users: { gid: string; email?: string }[] = usersResp?.data || [];
 
   const byGid = new Map<string, AsanaTask>();
-  for (const project of projects) {
+  const completedSince = sinceISO;
+
+  const fetchForUser = async (userGid: string) => {
     let offset: string | null = null;
     do {
       const url =
-        `/tasks?project=${project.gid}&opt_fields=${OPT_FIELDS}&limit=100` +
+        `/tasks?assignee=${userGid}&workspace=${workspaceGid}&opt_fields=${OPT_FIELDS}&limit=100` +
         `&modified_since=${encodeURIComponent(sinceISO)}` +
+        `&completed_since=${encodeURIComponent(completedSince)}` +
         (offset ? `&offset=${offset}` : "");
       let page: any;
       try {
         page = await asanaGet(url, token);
       } catch (e) {
-        console.error(`[asana-link-orphans] project ${project.gid} page failed:`, e);
+        console.error(`[asana-link-orphans] assignee ${userGid} page failed:`, e);
         break;
       }
       for (const t of (page?.data || []) as AsanaTask[]) byGid.set(t.gid, t);
       offset = page?.next_page?.offset || null;
     } while (offset);
-  }
+  };
+
+  // Bounded concurrency over members.
+  let cursor = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(4, users.length) }, async () => {
+      while (cursor < users.length) {
+        const u = users[cursor++];
+        await fetchForUser(u.gid);
+      }
+    }),
+  );
+
   return Array.from(byGid.values());
 }
 
