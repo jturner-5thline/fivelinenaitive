@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Video, Phone, ExternalLink, ChevronDown, ChevronRight, Clock, Users, FileText, Link2, MoreVertical, Unlink, ArrowRightLeft, Sparkles, History } from 'lucide-react';
+import { Video, Phone, ExternalLink, ChevronDown, ChevronRight, Clock, Users, FileText, Link2, MoreVertical, Unlink, ArrowRightLeft, Sparkles, History, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { LinkedCallActionsDialog } from './LinkedCallActionsDialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -277,6 +278,7 @@ function CallCard({
 export function ClaapCallsSection({ entityType, entityId, entityName, entityEmail, entityDomain, contactIds }: ClaapCallsSectionProps) {
   const [showUnlinked, setShowUnlinked] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [callSearch, setCallSearch] = useState('');
   const { data: allCallsData, isLoading } = useQuery({
     queryKey: ['claap-calls', entityType, entityId],
     queryFn: async () => {
