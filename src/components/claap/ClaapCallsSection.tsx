@@ -264,6 +264,7 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
           .select('recording_id')
           .eq('entity_type', 'lender')
           .eq('entity_id', entityId)
+          .neq('review_status', 'rejected')
           .limit(100);
         const recordingIds = (links || []).map((l: any) => l.recording_id).filter(Boolean);
         if (recordingIds.length) {
