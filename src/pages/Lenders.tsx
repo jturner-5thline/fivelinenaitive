@@ -468,20 +468,30 @@ export default function Lenders() {
     }
   }, []);
 
-  // Calculate active deals count for each lender
-  // Count lenders that are NOT passed, on-deck, or on-hold (i.e., only 'active' tracking status)
+  // Calculate active deals count for each lender.
+  // A lender only counts as "Active" when:
+  //   - the deal itself is still live (not Closed Won / Closed Lost / archived / on-hold), AND
+  //   - the lender has not passed / been excluded and is not merely on-deck or on-hold.
   // Use normalized name matching to handle case differences between deal lenders and master lenders
   const activeDealCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     const normalizedCounts: Record<string, number> = {};
     
-    // Inactive statuses to exclude
-    const inactiveStatuses = ['passed', 'on-deck', 'on-hold'];
+    // Lender-level statuses that are not "active"
+    const inactiveStatuses = ['passed', 'on-deck', 'on-hold', 'excluded', 'declined'];
+    // Deal-level stages/statuses that end the engagement
+    const closedDealStates = new Set(['closed-won', 'closed-lost', 'archived', 'on-hold']);
     
     deals.forEach(deal => {
+      const dealStage = String((deal as any).stage ?? '').toLowerCase().trim();
+      const dealStatus = String((deal as any).status ?? '').toLowerCase().trim();
+      if (closedDealStates.has(dealStage) || closedDealStates.has(dealStatus)) return;
+
       deal.lenders?.forEach(lender => {
-        // Only count if lender is actively being worked (not passed, on-deck, or on-hold)
-        if (!inactiveStatuses.includes(lender.trackingStatus)) {
+        const tracking = String(lender.trackingStatus ?? '').toLowerCase().trim();
+        const isExcluded = Boolean((lender as any).excludedAt);
+        // Only count if lender is actively being worked
+        if (!isExcluded && !inactiveStatuses.includes(tracking)) {
           const normalizedName = lender.name.toLowerCase().trim();
           normalizedCounts[normalizedName] = (normalizedCounts[normalizedName] || 0) + 1;
         }
