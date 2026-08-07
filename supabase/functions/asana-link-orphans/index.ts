@@ -182,6 +182,7 @@ async function fetchWorkspaceTasks(token: string, workspaceGid: string, sinceISO
 }
 
 Deno.serve(async (req) => {
+  // placeholder-anchor
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const supabase = createClient(
