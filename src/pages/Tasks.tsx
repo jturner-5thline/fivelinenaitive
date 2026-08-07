@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLocalStorageState } from '@/hooks/useLocalStorageState';
 import { useUndoStack } from '@/hooks/useUndoStack';
 import { ClaapRoutingTasksBadge } from '@/components/integrations/claap/ClaapRoutingTasksBadge';
+import { AsanaDuplicateReviewButton } from '@/components/tasks/AsanaDuplicateReviewButton';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
@@ -1353,6 +1354,9 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
           {/* Meeting Tasks — last item in the tab rail, then transitions into controls */}
           <div className="shrink-0">
             <ClaapRoutingTasksBadge />
+          </div>
+          <div className="shrink-0">
+            <AsanaDuplicateReviewButton />
           </div>
 
           <Popover>
