@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Loader2, ExternalLink, Video, X, Play, RefreshCw, ListChecks, Lightbulb, ClipboardCheck } from 'lucide-react';
+import { Loader2, ExternalLink, Video, X, Play, RefreshCw, ListChecks, Lightbulb, ClipboardCheck, Building2, Link2, Unlink, Plus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { FundingSourcePickerDialog } from './FundingSourcePickerDialog';
+import {
+  useRecordingFundingSourceLinks,
+  useClaapFundingSourceLinkActions,
+} from '@/hooks/useClaapFundingSourceLinks';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -254,6 +260,86 @@ function ClientAsksSection({
   );
 }
 
+/** Manual link / unlink of this recording to funding sources. */
+function FundingSourceLinksSection({ recordingRowId }: { recordingRowId?: string | null }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const { data: links = [], isLoading } = useRecordingFundingSourceLinks(recordingRowId);
+  const { unlink, relink, linkToFundingSource } = useClaapFundingSourceLinkActions();
+
+  if (!recordingRowId) return null;
+
+  const run = async (id: string, fn: () => Promise<boolean>) => {
+    setBusyId(id);
+    try { await fn(); } finally { setBusyId(null); }
+  };
+
+  return (
+    <div className="rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-2.5">
+      <div className="flex items-center gap-1.5">
+        <Building2 className="h-3 w-3 text-sky-300/80" />
+        <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80">
+          Funding sources
+        </span>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="ml-auto h-6 px-1.5 text-[10px]"
+          onClick={() => setPickerOpen(true)}
+        >
+          <Plus className="h-3 w-3 mr-1" /> Link
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <Loader2 className="mt-2 h-3 w-3 animate-spin text-muted-foreground" />
+      ) : links.length === 0 ? (
+        <p className="mt-1 text-xs italic text-muted-foreground">
+          Not linked to a funding source yet.
+        </p>
+      ) : (
+        <div className="mt-1.5 space-y-1">
+          {links.map((l) => {
+            const rejected = l.review_status === 'rejected';
+            return (
+              <div key={l.id} className="flex items-center gap-2">
+                <span className={cn('min-w-0 flex-1 truncate text-xs', rejected && 'text-muted-foreground line-through')}>
+                  {l.name}
+                </span>
+                <Badge variant="outline" className="shrink-0 text-[9px] px-1 py-0 h-4">
+                  {l.source === 'manual' ? 'Manual' : (l.confidence ?? 0) >= 0.9 ? 'Domain match' : 'Title match'}
+                </Badge>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={cn('h-6 px-1.5 text-[10px]', !rejected && 'text-destructive')}
+                  disabled={busyId === l.id}
+                  onClick={() => void run(l.id, () => (rejected ? relink(l.id) : unlink(l.id)))}
+                >
+                  {busyId === l.id ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : rejected ? (
+                    <><Link2 className="h-3 w-3 mr-1" /> Relink</>
+                  ) : (
+                    <><Unlink className="h-3 w-3 mr-1" /> Unlink</>
+                  )}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <FundingSourcePickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        excludeIds={links.filter((l) => l.review_status !== 'rejected').map((l) => l.entity_id)}
+        onSelect={(lenderId, lenderName) => { void linkToFundingSource(recordingRowId, lenderId, lenderName); }}
+      />
+    </div>
+  );
+}
+
 export function ClaapRecordingDetailsPanel({ recordingId, recordingTitle, recordingUrl, dealId, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [details, setDetails] = useState<Details | null>(null);
@@ -390,6 +476,8 @@ export function ClaapRecordingDetailsPanel({ recordingId, recordingTitle, record
                 </button>
               </div>
             )}
+
+            <FundingSourceLinksSection recordingRowId={details?.rowId} />
 
             <div className="rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-2.5">
               {details?.summary ? (
