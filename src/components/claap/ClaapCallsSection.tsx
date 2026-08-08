@@ -438,7 +438,10 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
     );
   }
 
-  if (!calls.length && !unlinkedCount) return null;
+  // Only hide the card when there is genuinely nothing to show. While a search
+  // query is active we must keep rendering so the user can clear it.
+  if (!q && !calls.length && !unlinkedCount) return null;
+  if (q && !visibleCalls.length && !unlinkedCount) return null;
 
   return (
     <Card>
