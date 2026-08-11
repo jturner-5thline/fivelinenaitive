@@ -18,7 +18,7 @@ import type { DealLender } from '@/types/deal';
 import { useCompany } from '@/hooks/useCompany';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 import { printNodeInPopup } from '@/lib/printNodeInPopup';
-import { saveNodePdfToDealSpace } from '@/lib/deal/saveNodePdfToDealSpace';
+import { saveNodePdfToDealSpace, downloadNodePdf } from '@/lib/deal/saveNodePdfToDealSpace';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   AlertDialog,
@@ -421,6 +421,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   const [showPrintConfirm, setShowPrintConfirm] = useState(false);
   const [saveCopyToDealSpace, setSaveCopyToDealSpace] = useState(true);
   const [isSavingCopy, setIsSavingCopy] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   /** "[Deal]-[Account] Status Update M-D-YY" — also the PDF filename. */
   const buildFileTitle = () => {
@@ -461,6 +462,44 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     handlePrintPdf();
   };
 
+  /**
+   * Direct download path — generates the PDF in-page and saves it via a blob
+   * link. This never depends on the popup blocker or the browser print dialog,
+   * which is what blocked downloads inside the embedded preview.
+   */
+  const handleDownloadPdf = async () => {
+    const node = resolvePrintableNode();
+    if (!node) {
+      toast({ title: 'Preview not ready', variant: 'destructive' });
+      return;
+    }
+    setIsDownloading(true);
+    try {
+      if (saveCopyToDealSpace && deal.id) {
+        try {
+          const saved = await saveNodePdfToDealSpace(node, String(deal.id), buildFileTitle());
+          toast({
+            title: 'Copy saved to Documents',
+            description: saved?.name ? `${saved.name} added to Deal Space ▸ Documents.` : undefined,
+          });
+        } catch (err) {
+          console.error('[status-report] save copy failed:', err);
+        }
+      }
+      await downloadNodePdf(node, buildFileTitle());
+      setShowPrintConfirm(false);
+    } catch (err) {
+      console.error('[status-report] download failed:', err);
+      toast({
+        title: 'Could not download the PDF',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const handlePrintPdf = () => {
     const node = resolvePrintableNode();
     if (!node) {
@@ -482,139 +521,11 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       document.title = prevTitle;
       return;
     }
-    const style = document.createElement('style');
-    style.id = 'naitive-status-report-print-style';
-    style.textContent = `
-      @page { size: Letter; margin: 0.25in; }
-      @media print {
-        html, body {
-          background: transparent !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          height: auto !important;
-          overflow: visible !important;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-        /* CRITICAL: visibility:hidden preserves layout boxes, so the entire
-           app above the dialog portal would still occupy 2-3 blank pages
-           before the report content. Use display:none on every direct
-           body child that is NOT in the ancestor chain of the print root,
-           so the report flows from page 1 with zero offset. */
-        body > *:not(.naitive-print-root-branch) { display: none !important; }
-        /* Inside the print-root branch, hide every sibling that isn't on
-           the path to the print root — this strips the editor pane, the
-           dialog header/footer, the close button, etc. so ONLY the
-           preview section prints. */
-        .naitive-print-ancestor > *:not(.naitive-print-ancestor):not(#${PRINT_ID}) {
-          display: none !important;
-        }
-        /* Unwind every ancestor of the print root so the Dialog's
-           max-h/overflow-hidden/scroll-container chain cannot clip the
-           printed report. position:static (NOT absolute) is critical —
-           absolutely-positioned roots do not paginate across pages in
-           print, which is what was forcing one-page output. */
-        .naitive-print-ancestor {
-          all: unset !important;
-          display: block !important;
-          position: static !important;
-          width: auto !important;
-          max-width: none !important;
-          height: auto !important;
-          max-height: none !important;
-          min-height: 0 !important;
-          overflow: visible !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          background: transparent !important;
-          box-shadow: none !important;
-          border: 0 !important;
-          transform: none !important;
-          inset: auto !important;
-        }
-        #${PRINT_ID} {
-          position: static !important;
-          display: block !important;
-          width: 100% !important;
-          max-width: 100% !important;
-          height: auto !important;
-          max-height: none !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          border: 0 !important;
-          box-shadow: none !important;
-          border-radius: 0 !important;
-          overflow: visible !important;
-          transform: none !important;
-          background: hsl(218 26% 7%) !important;
-        }
-        #${PRINT_ID} * {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-          color-adjust: exact !important;
-        }
-        /* Multi-page output: keep each top-level section whole; if it
-           does not fit on the current page, push it entirely to the next.
-           The preview's outer wrapper is the px-6 py-5 container inside
-           the print root; each direct child of that container is a major
-           section (header, status summary, pipeline, milestones, next
-           steps, passed reasons, what we need from you). */
-        #${PRINT_ID} > div > * {
-          break-inside: avoid !important;
-          page-break-inside: avoid !important;
-        }
-        /* Inner atoms also avoid breaking awkwardly. */
-        #${PRINT_ID} tr, #${PRINT_ID} li, #${PRINT_ID} thead,
-        #${PRINT_ID} table {
-          break-inside: avoid !important;
-          page-break-inside: avoid !important;
-        }
-        /* Headings should not be orphaned at page bottom. */
-        #${PRINT_ID} h1, #${PRINT_ID} h2, #${PRINT_ID} h3,
-        #${PRINT_ID} .sr-section-label {
-          break-after: avoid !important;
-          page-break-after: avoid !important;
-        }
-        /* Ensure no inner wrapper clips section content. */
-        #${PRINT_ID} *:not(#${PRINT_ID}) {
-          max-height: none !important;
-        }
-        /* Passed Lender Reasons must remain visible. */
-        #${PRINT_ID} .passed-lender-reasons,
-        #${PRINT_ID} .passed-lender-reasons * {
-          display: revert !important;
-          visibility: visible !important;
-          height: auto !important;
-          opacity: 1 !important;
-        }
-      }
-    `;
-    document.head.appendChild(style);
-    // Tag every ancestor of the printable node so the print CSS can
-    // un-clip the Dialog/modal/scroll-container chain that wraps it.
-    const ancestors: HTMLElement[] = [];
-    let p: HTMLElement | null = node.parentElement;
-    let bodyChild: HTMLElement | null = null;
-    while (p && p !== document.body) {
-      p.classList.add('naitive-print-ancestor');
-      ancestors.push(p);
-      if (p.parentElement === document.body) bodyChild = p;
-      p = p.parentElement;
-    }
-    // Mark the single direct body-child branch that contains the print
-    // root, so the print CSS can `display: none` every other body child
-    // (the main app, other portals, toasters, etc.). This is what
-    // eliminates the 2-3 blank pages at the start of the PDF.
-    if (bodyChild) bodyChild.classList.add('naitive-print-root-branch');
-    const cleanup = () => {
-      document.title = prevTitle;
-      style.remove();
-      ancestors.forEach((el) => el.classList.remove('naitive-print-ancestor'));
-      if (bodyChild) bodyChild.classList.remove('naitive-print-root-branch');
-      window.removeEventListener('afterprint', cleanup);
-    };
-    window.addEventListener('afterprint', cleanup);
-    setTimeout(() => window.print(), 80);
+    // Popup blocked (common inside the embedded preview / Safari): fall back to
+    // a direct client-side PDF download instead of the fragile print-CSS path.
+    document.title = prevTitle;
+    void handleDownloadPdf();
+    return;
   };
 
   // ── Render the printable report (light-themed) ──────────────────────────
@@ -1044,7 +955,8 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         <AlertDialogHeader>
           <AlertDialogTitle>Print this status update to PDF?</AlertDialogTitle>
           <AlertDialogDescription>
-            The print dialog will open with the filename “{buildFileTitle()}”.
+            The print dialog will open with the filename “{buildFileTitle()}”. If your browser
+            blocks the print window, use “Download PDF” to save the file directly.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <label className="flex items-start gap-2 rounded-md border p-3 text-sm cursor-pointer">
@@ -1062,7 +974,15 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         </label>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirmPrint}>Print to PDF</AlertDialogAction>
+          <Button
+            variant="outline"
+            disabled={isDownloading}
+            onClick={(e) => { e.preventDefault(); void handleDownloadPdf(); }}
+          >
+            {isDownloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+            Download PDF
+          </Button>
+          <AlertDialogAction onClick={handleConfirmPrint} disabled={isDownloading}>Print to PDF</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
