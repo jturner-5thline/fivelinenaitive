@@ -7,11 +7,12 @@ import { supabase } from '@/integrations/supabase/client';
  * The browser's own "Save as PDF" output is not accessible to JS, so we
  * generate an equivalent copy from the same printable node.
  */
-export async function saveNodePdfToDealSpace(
-  node: HTMLElement,
-  dealId: string,
-  fileBaseName: string,
-): Promise<{ id: string; name: string } | null> {
+/**
+ * Render a DOM node to a paginated Letter-size PDF Blob (no upload, no print).
+ * Used both for the Deal Space archive copy and for direct downloads when the
+ * print popup is blocked by the browser.
+ */
+export async function renderNodeToPdfBlob(node: HTMLElement): Promise<Blob> {
   const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
     import('html2canvas'),
     import('jspdf'),
@@ -87,7 +88,28 @@ export async function saveNodePdfToDealSpace(
     offset += sliceHeight;
   }
 
-  const blob = pdf.output('blob') as Blob;
+  return pdf.output('blob') as Blob;
+}
+
+/** Generate the PDF client-side and trigger a normal browser download. */
+export async function downloadNodePdf(node: HTMLElement, fileBaseName: string): Promise<void> {
+  const blob = await renderNodeToPdfBlob(node);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${fileBaseName}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+export async function saveNodePdfToDealSpace(
+  node: HTMLElement,
+  dealId: string,
+  fileBaseName: string,
+): Promise<{ id: string; name: string } | null> {
+  const blob = await renderNodeToPdfBlob(node);
   const fileName = `${fileBaseName}.pdf`;
   const storagePath = `${dealId}/${crypto.randomUUID()}.pdf`;
 
