@@ -18,7 +18,7 @@ import type { DealLender } from '@/types/deal';
 import { useCompany } from '@/hooks/useCompany';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 import { printNodeInPopup } from '@/lib/printNodeInPopup';
-import { saveNodePdfToDealSpace } from '@/lib/deal/saveNodePdfToDealSpace';
+import { saveNodePdfToDealSpace, downloadNodePdf } from '@/lib/deal/saveNodePdfToDealSpace';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   AlertDialog,
@@ -421,6 +421,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   const [showPrintConfirm, setShowPrintConfirm] = useState(false);
   const [saveCopyToDealSpace, setSaveCopyToDealSpace] = useState(true);
   const [isSavingCopy, setIsSavingCopy] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   /** "[Deal]-[Account] Status Update M-D-YY" — also the PDF filename. */
   const buildFileTitle = () => {
@@ -461,6 +462,44 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     handlePrintPdf();
   };
 
+  /**
+   * Direct download path — generates the PDF in-page and saves it via a blob
+   * link. This never depends on the popup blocker or the browser print dialog,
+   * which is what blocked downloads inside the embedded preview.
+   */
+  const handleDownloadPdf = async () => {
+    const node = resolvePrintableNode();
+    if (!node) {
+      toast({ title: 'Preview not ready', variant: 'destructive' });
+      return;
+    }
+    setIsDownloading(true);
+    try {
+      if (saveCopyToDealSpace && deal.id) {
+        try {
+          const saved = await saveNodePdfToDealSpace(node, String(deal.id), buildFileTitle());
+          toast({
+            title: 'Copy saved to Documents',
+            description: saved?.name ? `${saved.name} added to Deal Space ▸ Documents.` : undefined,
+          });
+        } catch (err) {
+          console.error('[status-report] save copy failed:', err);
+        }
+      }
+      await downloadNodePdf(node, buildFileTitle());
+      setShowPrintConfirm(false);
+    } catch (err) {
+      console.error('[status-report] download failed:', err);
+      toast({
+        title: 'Could not download the PDF',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const handlePrintPdf = () => {
     const node = resolvePrintableNode();
     if (!node) {
@@ -482,6 +521,12 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       document.title = prevTitle;
       return;
     }
+    // Popup blocked (common inside the embedded preview / Safari): fall back to
+    // a direct client-side PDF download instead of the fragile print-CSS path.
+    document.title = prevTitle;
+    void handleDownloadPdf();
+    return;
+    // eslint-disable-next-line no-unreachable
     const style = document.createElement('style');
     style.id = 'naitive-status-report-print-style';
     style.textContent = `
