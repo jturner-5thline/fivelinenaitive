@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { VdrDocument } from '@/components/vdr/types';
 import { format } from 'date-fns';
+import { downloadUrlAsFile } from '@/lib/downloadFile';
 
 interface VdrIncomingDataProps {
   dealId: string;
@@ -48,7 +49,7 @@ export function VdrIncomingData({ dealId, vdrDocs, onPreview }: VdrIncomingDataP
   const handleDownload = useCallback(async (doc: VdrDocument) => {
     if (!doc.file_path) return;
     const url = await vdrDocs.getDownloadUrl(doc.file_path);
-    if (url) window.open(url, '_blank');
+    if (url) await downloadUrlAsFile(url, doc.filename);
   }, [vdrDocs]);
 
   return (

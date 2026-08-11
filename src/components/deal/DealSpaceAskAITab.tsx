@@ -41,6 +41,7 @@ import { CheckInOutstandingItemsModal } from './CheckInOutstandingItemsModal';
 import { ClientCheckInDraftModal } from './ClientCheckInDraftModal';
 import { useDealClientCadence } from '@/hooks/useDealClientCadence';
 import {
+import { downloadUrlAsFile } from '@/lib/downloadFile';
   fetchLenderProfilesForDeal,
   renderLenderProfileBlock,
   type LenderProfileSnapshot,
@@ -560,7 +561,7 @@ function DealSpaceAskAITabImpl({ dealId }: DealSpaceAskAITabProps) {
   }, []);
   const handleDownloadCitedDocument = useCallback(async (doc: DealSpaceDocument) => {
     const url = await getDownloadUrl(doc);
-    if (url) window.open(url, '_blank');
+    if (url) await downloadUrlAsFile(url, doc.name);
   }, [getDownloadUrl]);
 
   // Draft Submission runs as a structured product action — fully decoupled from the chat panel.

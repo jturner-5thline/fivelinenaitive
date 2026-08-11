@@ -35,6 +35,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
+import { downloadUrlAsFile } from '@/lib/downloadFile';
 
 interface DealSpaceDocumentsTabProps {
   dealId: string;
@@ -163,7 +164,7 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
   const handleDownload = useCallback(async (doc: DealSpaceDocument) => {
     const url = await getDownloadUrl(doc);
     if (url) {
-      window.open(url, '_blank');
+      await downloadUrlAsFile(url, doc.name);
     }
   }, [getDownloadUrl]);
 
