@@ -38,6 +38,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { canUse5thLineProprietaryActions } from '@/lib/proprietaryAccess';
 import { LinkDriveFolderDialog } from '../LinkDriveFolderDialog';
+import { downloadUrlAsFile } from '@/lib/downloadFile';
 
 interface Props {
   dealId: string;
@@ -898,8 +899,7 @@ export function VdrThreeColumnWorkspace({
     if (!doc.file_path) return;
     const url = await vdrDocs.getDownloadUrl(doc.file_path);
     if (url) {
-      const a = document.createElement('a');
-      a.href = url; a.download = doc.filename; a.click();
+      await downloadUrlAsFile(url, doc.filename);
     }
   };
 

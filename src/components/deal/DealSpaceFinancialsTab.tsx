@@ -32,6 +32,7 @@ import { useExcelModelParser } from '@/hooks/useExcelModelParser';
 import { FinancialModelViewer } from './financial-model/FinancialModelViewer';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { downloadUrlAsFile } from '@/lib/downloadFile';
 
 interface DealSpaceFinancialsTabProps {
   dealId: string;
@@ -118,7 +119,7 @@ export function DealSpaceFinancialsTab({ dealId }: DealSpaceFinancialsTabProps) 
   const handleDownload = useCallback(async (financial: DealSpaceFinancial) => {
     const url = await getDownloadUrl(financial);
     if (url) {
-      window.open(url, '_blank');
+      await downloadUrlAsFile(url, financial.name);
     }
   }, [getDownloadUrl]);
 

@@ -51,6 +51,7 @@ import { getAsanaSyncContext, syncTaskToAsana, updateTaskInAsana } from '@/hooks
 import { DraftEmailToClientContactDialog } from '@/components/deal/email/DraftEmailToClientContactDialog';
 import { Mail } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { downloadUrlAsFile } from '@/lib/downloadFile';
 
 interface TaskDetailDrawerProps {
   task: Task;
@@ -349,7 +350,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
 
   const handleDownload = async (filePath: string, fileName: string) => {
     const url = await getDownloadUrl(filePath);
-    if (url) window.open(url, '_blank');
+    if (url) await downloadUrlAsFile(url, fileName);
   };
 
   const handleToggleComplete = () => {
