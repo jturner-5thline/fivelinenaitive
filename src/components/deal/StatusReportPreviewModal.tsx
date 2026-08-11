@@ -955,7 +955,8 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         <AlertDialogHeader>
           <AlertDialogTitle>Print this status update to PDF?</AlertDialogTitle>
           <AlertDialogDescription>
-            The print dialog will open with the filename “{buildFileTitle()}”.
+            The print dialog will open with the filename “{buildFileTitle()}”. If your browser
+            blocks the print window, use “Download PDF” to save the file directly.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <label className="flex items-start gap-2 rounded-md border p-3 text-sm cursor-pointer">
@@ -973,7 +974,15 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         </label>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirmPrint}>Print to PDF</AlertDialogAction>
+          <Button
+            variant="outline"
+            disabled={isDownloading}
+            onClick={(e) => { e.preventDefault(); void handleDownloadPdf(); }}
+          >
+            {isDownloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+            Download PDF
+          </Button>
+          <AlertDialogAction onClick={handleConfirmPrint} disabled={isDownloading}>Print to PDF</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
