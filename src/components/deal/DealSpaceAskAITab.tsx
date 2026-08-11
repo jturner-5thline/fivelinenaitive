@@ -41,11 +41,11 @@ import { CheckInOutstandingItemsModal } from './CheckInOutstandingItemsModal';
 import { ClientCheckInDraftModal } from './ClientCheckInDraftModal';
 import { useDealClientCadence } from '@/hooks/useDealClientCadence';
 import {
-import { downloadUrlAsFile } from '@/lib/downloadFile';
   fetchLenderProfilesForDeal,
   renderLenderProfileBlock,
   type LenderProfileSnapshot,
 } from './email/lenderPersonalization';
+import { downloadUrlAsFile } from '@/lib/downloadFile';
 
 interface DealSpaceAskAITabProps {
   dealId: string;
