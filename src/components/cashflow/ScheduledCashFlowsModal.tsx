@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { format, parseISO } from 'date-fns';
 import {
   Trash2,
@@ -256,6 +256,8 @@ export function ScheduledCashFlowsModal({
   cashInNext8WTotal,
 }: Props) {
   const [drafts, setDrafts] = useState<DraftEntry[]>([]);
+  const [newRowId, setNewRowId] = useState<string | null>(null);
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [saving, setSaving] = useState(false);
   const [facilityDrafts, setFacilityDrafts] = useState<CreditFacility[]>([]);
 
