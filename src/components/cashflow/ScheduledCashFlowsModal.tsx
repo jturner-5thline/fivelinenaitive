@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { format, parseISO } from 'date-fns';
 import {
   Trash2,
@@ -790,6 +790,10 @@ export function ScheduledCashFlowsModal({
     );
   }, []);
 
+  const registerRow = useCallback((draftId: string, el: HTMLDivElement | null) => {
+    rowRefs.current[draftId] = el;
+  }, []);
+
   const addRow = (flow: 'cash_in' | 'cash_out' = 'cash_in') => {
     const draft = newDraft(flow);
     setDrafts((prev) => [...prev, draft]);
@@ -802,15 +806,15 @@ export function ScheduledCashFlowsModal({
     });
     window.setTimeout(() => setNewRowId((id) => (id === draft._draftId ? null : id)), 2500);
   };
-  const deleteRow = (id: string) =>
+  const deleteRow = useCallback((id: string) =>
     setDrafts((prev) => {
       const removed = prev.find((d) => d._draftId === id);
       // Track DB id deletions so saveAll can apply them server-side.
       if (removed?.id) setDeletedIds((ids) => (ids.includes(removed.id!) ? ids : [...ids, removed.id!]));
       return prev.filter((d) => d._draftId !== id);
-    });
+    }), []);
 
-  const handleFlowChange = (draftId: string, flow: FlowType) => {
+  const handleFlowChange = useCallback((draftId: string, flow: FlowType) => {
     setDrafts((prev) =>
       prev.map((d) => {
         if (d._draftId !== draftId) return d;
@@ -821,9 +825,9 @@ export function ScheduledCashFlowsModal({
         return { ...d, flow_type: flow, category };
       }),
     );
-  };
+  }, [dedupedCashIn, dedupedCashOut]);
 
-  const handleFrequencyChange = (draftId: string, freq: FrequencyType) => {
+  const handleFrequencyChange = useCallback((draftId: string, freq: FrequencyType) => {
     setDrafts((prev) =>
       prev.map((d) => {
         if (d._draftId !== draftId) return d;
@@ -843,7 +847,7 @@ export function ScheduledCashFlowsModal({
         return { ...d, frequency_type: freq, frequency_config: cfg };
       }),
     );
-  };
+  }, []);
 
   const validate = (): { ok: boolean; error?: string } => {
     for (const d of drafts) {
