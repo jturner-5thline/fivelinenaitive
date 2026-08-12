@@ -27,9 +27,40 @@ export interface CrmCompanyAttachment {
   category: CrmCompanyAttachmentCategory;
   created_at: string;
   url?: string;
+  /** Where the file physically lives — company record or a linked funding source */
+  source?: 'company' | 'funding_source';
+  source_label?: string | null;
 }
 
 const BUCKET = 'crm-company-attachments';
+const LENDER_BUCKET = 'lender-attachments';
+
+/** Lender (funding source) names that represent the same entity as this company. */
+async function resolveLinkedLenderNames(crmCompanyId: string): Promise<string[]> {
+  const names = new Set<string>();
+  const { data: linked } = await supabase
+    .from('master_lenders')
+    .select('name')
+    .eq('crm_company_id', crmCompanyId);
+  (linked ?? []).forEach((l: any) => l?.name && names.add(l.name));
+
+  if (names.size === 0) {
+    const { data: co } = await supabase
+      .from('crm_companies')
+      .select('name')
+      .eq('id', crmCompanyId)
+      .maybeSingle();
+    const coName = (co as any)?.name?.trim();
+    if (coName) {
+      const { data: byName } = await supabase
+        .from('master_lenders')
+        .select('name')
+        .ilike('name', coName);
+      (byName ?? []).forEach((l: any) => l?.name && names.add(l.name));
+    }
+  }
+  return Array.from(names);
+}
 
 export function useCrmCompanyAttachments(crmCompanyId: string | null) {
   const { user } = useAuth();
@@ -49,17 +80,43 @@ export function useCrmCompanyAttachments(crmCompanyId: string | null) {
         .eq('crm_company_id', crmCompanyId)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      const withUrls = await Promise.all(
-        ((data ?? []) as any[]).map(async (att) => {
+
+      // Shared attachments from the matching funding source (not duplicated — same rows)
+      const lenderNames = await resolveLinkedLenderNames(crmCompanyId);
+      let lenderRows: any[] = [];
+      if (lenderNames.length) {
+        const { data: la } = await supabase
+          .from('lender_attachments')
+          .select('*')
+          .in('lender_name', lenderNames);
+        lenderRows = la ?? [];
+      }
+
+      const withUrls = await Promise.all([
+        ...((data ?? []) as any[]).map(async (att) => {
           const { data: signed } = await supabase.storage
             .from(BUCKET)
             .createSignedUrl(att.file_path, 3600);
           return {
             ...att,
             url: signed?.signedUrl,
+            source: 'company' as const,
           } as CrmCompanyAttachment;
         }),
-      );
+        ...lenderRows.map(async (att) => {
+          const { data: signed } = await supabase.storage
+            .from(LENDER_BUCKET)
+            .createSignedUrl(att.file_path, 3600);
+          return {
+            ...att,
+            crm_company_id: crmCompanyId,
+            url: signed?.signedUrl,
+            source: 'funding_source' as const,
+            source_label: att.lender_name,
+          } as CrmCompanyAttachment;
+        }),
+      ]);
+      withUrls.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
       setAttachments(withUrls);
     } catch (err) {
       console.error('[useCrmCompanyAttachments] fetch failed', err);
@@ -133,9 +190,12 @@ export function useCrmCompanyAttachments(crmCompanyId: string | null) {
 
   const remove = async (att: CrmCompanyAttachment) => {
     try {
-      await supabase.storage.from(BUCKET).remove([att.file_path]);
+      const fromFundingSource = att.source === 'funding_source';
+      await supabase.storage
+        .from(fromFundingSource ? LENDER_BUCKET : BUCKET)
+        .remove([att.file_path]);
       const { error } = await supabase
-        .from('crm_company_attachments' as any)
+        .from((fromFundingSource ? 'lender_attachments' : 'crm_company_attachments') as any)
         .delete()
         .eq('id', att.id);
       if (error) throw error;
