@@ -336,13 +336,6 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
   return (
     <div className="space-y-3 crm-companies-surface">
       <div className="flex items-center gap-2 flex-wrap">
-        <Select value={lifecycleFilter} onValueChange={setLifecycleFilter}>
-          <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Lifecycle" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Stages</SelectItem>
-            {CRM_COMPANY_LIFECYCLES.map(l => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
         {leadingFilterSlot}
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[130px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
