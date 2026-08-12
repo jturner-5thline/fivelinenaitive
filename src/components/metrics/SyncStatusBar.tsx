@@ -58,9 +58,8 @@ export function SyncStatusBar() {
             .eq('user_id', user.id)
             .limit(1)
             .maybeSingle(),
-          (supabase.from('integration_configs') as any)
+          (supabase.from('hubspot_integration_configs' as any) as any)
             .select('id')
-            .eq('provider', 'hubspot')
             .limit(1)
             .maybeSingle(),
         ]);
