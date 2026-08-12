@@ -243,6 +243,367 @@ function DatePickerField({
   );
 }
 
+
+interface EntryRowProps {
+  d: DraftEntry;
+  isNew: boolean;
+  dedupedCashIn: string[];
+  dedupedCashOut: string[];
+  creditFacilities: CreditFacility[];
+  updateRow: (draftId: string, patch: Partial<DraftEntry>) => void;
+  updateConfig: (draftId: string, patch: Record<string, any>) => void;
+  handleFlowChange: (draftId: string, flow: FlowType) => void;
+  handleFrequencyChange: (draftId: string, freq: FrequencyType) => void;
+  deleteRow: (draftId: string) => void;
+  registerRow: (draftId: string, el: HTMLDivElement | null) => void;
+}
+
+/**
+ * One scheduled-cash-flow row. Memoized so that typing in a single row (or
+ * changing a select) does NOT re-render every other row — each row mounts
+ * several Radix Selects / date pickers, so re-rendering the full list on
+ * each keystroke made the modal feel sluggish with many entries.
+ */
+const EntryRow = memo(function EntryRow({
+  d,
+  isNew,
+  dedupedCashIn,
+  dedupedCashOut,
+  creditFacilities,
+  updateRow,
+  updateConfig,
+  handleFlowChange,
+  handleFrequencyChange,
+  deleteRow,
+  registerRow,
+}: EntryRowProps) {
+  const isOneTime = d.frequency_type === 'one_time';
+  return (
+    <div
+      ref={(el) => registerRow(d._draftId, el)}
+      className={cn(
+        'grid items-center gap-2 px-2 py-2.5 border-b border-border/60 hover:bg-muted/40 transition-colors rounded-md whitespace-nowrap',
+        isNew && 'ring-1 ring-primary/60 bg-primary/5',
+      )}
+      style={{ gridTemplateColumns: 'var(--cf-cols)' }}
+    >
+                      {/* Drag handle */}
+                      <div className="flex items-center justify-center text-muted-foreground/50 cursor-grab">
+                        <GripVertical className="h-4 w-4" />
+                      </div>
+
+                      {/* Account */}
+                      <Select
+                        value={d.account}
+                        onValueChange={(v) => updateRow(d._draftId, { account: v })}
+                      >
+                        <SelectTrigger className="h-9 w-full min-w-0">
+                          <div className="flex items-center gap-2 min-w-0 truncate">
+                            <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <SelectValue />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ACCOUNT_OPTIONS.map((a) => (
+                            <SelectItem key={a} value={a}>
+                              {a}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Category */}
+                      <Select
+                        value={d.category}
+                        onValueChange={(v) => updateRow(d._draftId, { category: v })}
+                      >
+                        <SelectTrigger className="h-9 w-full min-w-0">
+                          <div className="flex items-center gap-2 min-w-0 truncate">
+                            <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <SelectValue />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(d.flow_type === 'cash_in' ? dedupedCashIn : dedupedCashOut).map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {c}
+                            </SelectItem>
+                          ))}
+                          {creditFacilities.length > 0 && d.flow_type === 'cash_in' && (
+                            <SelectGroup>
+                              <SelectLabel>Line of Credit Draws</SelectLabel>
+                              {creditFacilities.map((f) => (
+                                <SelectItem key={`loc-draw-${f.id}`} value={`${LOC_DRAW_PREFIX} ${f.name}`}>
+                                  LOC Draw — {f.name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )}
+                          {creditFacilities.length > 0 && d.flow_type === 'cash_out' && (
+                            <SelectGroup>
+                              <SelectLabel>Line of Credit Repayments</SelectLabel>
+                              {creditFacilities.map((f) => (
+                                <SelectItem key={`loc-repay-${f.id}`} value={`${LOC_REPAY_PREFIX} ${f.name}`}>
+                                  LOC Repayment — {f.name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Description */}
+                      <Input
+                        type="text"
+                        value={d.notes ?? ''}
+                        placeholder="Add a note…"
+                        onChange={(e) =>
+                          updateRow(d._draftId, { notes: e.target.value || null })
+                        }
+                        className="h-9 w-full min-w-0"
+                      />
+
+                      {/* Amount */}
+                      <div className="relative w-full min-w-0">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                          $
+                        </span>
+                        <CurrencyInput
+                          value={d.amount}
+                          placeholder="0"
+                          ariaLabel="Amount"
+                          onCommit={(n) => updateRow(d._draftId, { amount: n })}
+                          className="pl-6 h-9 w-full text-right tabular-nums"
+                        />
+                        {(() => {
+                          const ovs = d.frequency_config?.amount_overrides || {};
+                          const keys = Object.keys(ovs).sort();
+                          if (keys.length === 0) return null;
+                          const tooltip = keys
+                            .map((k) => `${k}: $${Number(ovs[k]).toLocaleString()}`)
+                            .join('\n');
+                          return (
+                            <div className="mt-1 flex items-center gap-1">
+                              <span
+                                title={`Per-period overrides:\n${tooltip}`}
+                                className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400"
+                              >
+                                {keys.length} period override{keys.length === 1 ? '' : 's'}
+                              </span>
+                              <button
+                                type="button"
+                                title="Clear all per-period overrides for this entry"
+                                className="text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                                onClick={() => {
+                                  const next = { ...(d.frequency_config || {}) };
+                                  delete (next as any).amount_overrides;
+                                  updateRow(d._draftId, { frequency_config: next });
+                                }}
+                              >
+                                Clear
+                              </button>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Frequency type */}
+                      <Select
+                        value={d.frequency_type}
+                        onValueChange={(v) =>
+                          handleFrequencyChange(d._draftId, v as FrequencyType)
+                        }
+                      >
+                        <SelectTrigger className="h-9 w-full min-w-0">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="one_time">1-Time</SelectItem>
+                          <SelectItem value="weekly">Weekly on [Day]</SelectItem>
+                          <SelectItem value="bi_weekly">Bi-Weekly on [Day]</SelectItem>
+                          <SelectItem value="monthly_first">Monthly — First [Day]</SelectItem>
+                          <SelectItem value="monthly_last">Monthly — Last [Day]</SelectItem>
+                          <SelectItem value="monthly_day">Monthly on the [X] day</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {/* When (date / day-of-week / day-of-month, depends on frequency) */}
+                      <div className="w-full min-w-0">
+                        {isOneTime && (
+                          <DatePickerField
+                            value={d.frequency_config?.one_time_date}
+                            onChange={(iso) =>
+                              updateConfig(d._draftId, { one_time_date: iso || '' })
+                            }
+                          />
+                        )}
+                        {(d.frequency_type === 'weekly' || d.frequency_type === 'bi_weekly') && (
+                          <Select
+                            value={String(d.frequency_config?.day_of_week ?? 1)}
+                            onValueChange={(v) =>
+                              updateConfig(d._draftId, { day_of_week: Number(v) })
+                            }
+                          >
+                            <SelectTrigger className="h-9 w-full min-w-0">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {DAY_OF_WEEK_LABELS.map((label, idx) => (
+                                <SelectItem key={idx} value={String(idx)}>
+                                  {label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {(d.frequency_type === 'monthly_first' ||
+                          d.frequency_type === 'monthly_last') && (
+                          <Select
+                            value={String(d.frequency_config?.ordinal_day_of_week ?? 1)}
+                            onValueChange={(v) =>
+                              updateConfig(d._draftId, { ordinal_day_of_week: Number(v) })
+                            }
+                          >
+                            <SelectTrigger className="h-9 w-full min-w-0">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {DAY_OF_WEEK_LABELS.map((label, idx) => (
+                                <SelectItem key={idx} value={String(idx)}>
+                                  {label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {d.frequency_type === 'monthly_day' && (
+                          <Input
+                            type="number"
+                            min={1}
+                            max={31}
+                            className="h-9 w-full"
+                            value={d.frequency_config?.day_of_month ?? 1}
+                            onChange={(e) =>
+                              updateConfig(d._draftId, {
+                                day_of_month: Math.min(31, Math.max(1, Number(e.target.value))),
+                              })
+                            }
+                          />
+                        )}
+                      </div>
+
+                      {/* Start date (only for recurring) */}
+                      <div className="w-full min-w-0">
+                        {!isOneTime ? (
+                          <DatePickerField
+                            value={d.start_date}
+                            onChange={(iso) => updateRow(d._draftId, { start_date: iso })}
+                            placeholder="Start date"
+                          />
+                        ) : (
+                          <div className="h-9 w-full rounded-md border border-dashed border-border/60 bg-muted/20" />
+                        )}
+                      </div>
+
+                      {/* End date (only for recurring) */}
+                      <div className="w-full min-w-0">
+                        {!isOneTime ? (
+                          <DatePickerField
+                            value={d.end_date}
+                            onChange={(iso) => updateRow(d._draftId, { end_date: iso })}
+                            placeholder="End (opt.)"
+                          />
+                        ) : (
+                          <div className="h-9 w-full rounded-md border border-dashed border-border/60 bg-muted/20" />
+                        )}
+                      </div>
+
+                      {/* Variance ± (only for recurring) */}
+                      <div className="w-full min-w-0">
+                        {!isOneTime ? (
+                          <div className="relative w-full">
+                            <Input
+                              type="number"
+                              min={0}
+                              max={100}
+                              step="0.1"
+                              value={
+                                d.frequency_config?.variance_pct === undefined ||
+                                d.frequency_config?.variance_pct === null
+                                  ? ''
+                                  : d.frequency_config.variance_pct
+                              }
+                              placeholder="0"
+                              aria-label="Variance percent"
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                if (raw === '') {
+                                  updateConfig(d._draftId, { variance_pct: undefined });
+                                } else {
+                                  const n = Math.max(0, Math.min(100, Number(raw)));
+                                  updateConfig(d._draftId, { variance_pct: n });
+                                }
+                              }}
+                              className="h-9 w-full pr-6 text-right tabular-nums"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                              %
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="h-9 w-full rounded-md border border-dashed border-border/60 bg-muted/20" />
+                        )}
+                      </div>
+
+                      {/* Type toggle */}
+                      <ToggleGroup
+                        type="single"
+                        value={d.flow_type}
+                        onValueChange={(v) => v && handleFlowChange(d._draftId, v as FlowType)}
+                        className="grid grid-cols-2 gap-1 h-9 w-full"
+                      >
+                        <ToggleGroupItem
+                          value="cash_in"
+                          className={cn(
+                            'h-9 px-2 gap-1 text-xs font-medium border border-border rounded-md',
+                            'data-[state=on]:bg-emerald-500/20 data-[state=on]:text-emerald-400 data-[state=on]:border-emerald-500/40',
+                            'data-[state=off]:text-muted-foreground',
+                          )}
+                          aria-label="Cash In"
+                        >
+                          <TrendingUp className="h-3.5 w-3.5" />
+                          In
+                        </ToggleGroupItem>
+                        <ToggleGroupItem
+                          value="cash_out"
+                          className={cn(
+                            'h-9 px-2 gap-1 text-xs font-medium border border-border rounded-md',
+                            'data-[state=on]:bg-red-500/20 data-[state=on]:text-red-400 data-[state=on]:border-red-500/40',
+                            'data-[state=off]:text-muted-foreground',
+                          )}
+                          aria-label="Cash Out"
+                        >
+                          <TrendingDown className="h-3.5 w-3.5" />
+                          Out
+                        </ToggleGroupItem>
+                      </ToggleGroup>
+
+                      {/* Delete */}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteRow(d._draftId)}
+                        title="Delete row"
+                        className="h-9 w-9 justify-self-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+    </div>
+  );
+});
+
+
 export function ScheduledCashFlowsModal({
   open,
   initialEntries,
@@ -816,333 +1177,22 @@ export function ScheduledCashFlowsModal({
 
                   {/* Rows */}
                   <div className="flex flex-col">
-                    {sortedDrafts.map((d) => {
-                      const isOneTime = d.frequency_type === 'one_time';
-                      return (
-                        <div
-                          key={d._draftId}
-                          ref={(el) => { rowRefs.current[d._draftId] = el; }}
-                          className={cn(
-                            'grid items-center gap-2 px-2 py-2.5 border-b border-border/60 hover:bg-muted/40 transition-colors rounded-md whitespace-nowrap',
-                            newRowId === d._draftId && 'ring-1 ring-primary/60 bg-primary/5',
-                          )}
-                          style={{ gridTemplateColumns: 'var(--cf-cols)' }}
-                        >
-                      {/* Drag handle */}
-                      <div className="flex items-center justify-center text-muted-foreground/50 cursor-grab">
-                        <GripVertical className="h-4 w-4" />
-                      </div>
-
-                      {/* Account */}
-                      <Select
-                        value={d.account}
-                        onValueChange={(v) => updateRow(d._draftId, { account: v })}
-                      >
-                        <SelectTrigger className="h-9 w-full min-w-0">
-                          <div className="flex items-center gap-2 min-w-0 truncate">
-                            <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <SelectValue />
-                          </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ACCOUNT_OPTIONS.map((a) => (
-                            <SelectItem key={a} value={a}>
-                              {a}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      {/* Category */}
-                      <Select
-                        value={d.category}
-                        onValueChange={(v) => updateRow(d._draftId, { category: v })}
-                      >
-                        <SelectTrigger className="h-9 w-full min-w-0">
-                          <div className="flex items-center gap-2 min-w-0 truncate">
-                            <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <SelectValue />
-                          </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(d.flow_type === 'cash_in' ? dedupedCashIn : dedupedCashOut).map((c) => (
-                            <SelectItem key={c} value={c}>
-                              {c}
-                            </SelectItem>
-                          ))}
-                          {creditFacilities.length > 0 && d.flow_type === 'cash_in' && (
-                            <SelectGroup>
-                              <SelectLabel>Line of Credit Draws</SelectLabel>
-                              {creditFacilities.map((f) => (
-                                <SelectItem key={`loc-draw-${f.id}`} value={`${LOC_DRAW_PREFIX} ${f.name}`}>
-                                  LOC Draw — {f.name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          )}
-                          {creditFacilities.length > 0 && d.flow_type === 'cash_out' && (
-                            <SelectGroup>
-                              <SelectLabel>Line of Credit Repayments</SelectLabel>
-                              {creditFacilities.map((f) => (
-                                <SelectItem key={`loc-repay-${f.id}`} value={`${LOC_REPAY_PREFIX} ${f.name}`}>
-                                  LOC Repayment — {f.name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          )}
-                        </SelectContent>
-                      </Select>
-
-                      {/* Description */}
-                      <Input
-                        type="text"
-                        value={d.notes ?? ''}
-                        placeholder="Add a note…"
-                        onChange={(e) =>
-                          updateRow(d._draftId, { notes: e.target.value || null })
-                        }
-                        className="h-9 w-full min-w-0"
+                    {sortedDrafts.map((d) => (
+                      <EntryRow
+                        key={d._draftId}
+                        d={d}
+                        isNew={newRowId === d._draftId}
+                        dedupedCashIn={dedupedCashIn}
+                        dedupedCashOut={dedupedCashOut}
+                        creditFacilities={creditFacilities}
+                        updateRow={updateRow}
+                        updateConfig={updateConfig}
+                        handleFlowChange={handleFlowChange}
+                        handleFrequencyChange={handleFrequencyChange}
+                        deleteRow={deleteRow}
+                        registerRow={registerRow}
                       />
-
-                      {/* Amount */}
-                      <div className="relative w-full min-w-0">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                          $
-                        </span>
-                        <CurrencyInput
-                          value={d.amount}
-                          placeholder="0"
-                          ariaLabel="Amount"
-                          onCommit={(n) => updateRow(d._draftId, { amount: n })}
-                          className="pl-6 h-9 w-full text-right tabular-nums"
-                        />
-                        {(() => {
-                          const ovs = d.frequency_config?.amount_overrides || {};
-                          const keys = Object.keys(ovs).sort();
-                          if (keys.length === 0) return null;
-                          const tooltip = keys
-                            .map((k) => `${k}: $${Number(ovs[k]).toLocaleString()}`)
-                            .join('\n');
-                          return (
-                            <div className="mt-1 flex items-center gap-1">
-                              <span
-                                title={`Per-period overrides:\n${tooltip}`}
-                                className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400"
-                              >
-                                {keys.length} period override{keys.length === 1 ? '' : 's'}
-                              </span>
-                              <button
-                                type="button"
-                                title="Clear all per-period overrides for this entry"
-                                className="text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
-                                onClick={() => {
-                                  const next = { ...(d.frequency_config || {}) };
-                                  delete (next as any).amount_overrides;
-                                  updateRow(d._draftId, { frequency_config: next });
-                                }}
-                              >
-                                Clear
-                              </button>
-                            </div>
-                          );
-                        })()}
-                      </div>
-
-                      {/* Frequency type */}
-                      <Select
-                        value={d.frequency_type}
-                        onValueChange={(v) =>
-                          handleFrequencyChange(d._draftId, v as FrequencyType)
-                        }
-                      >
-                        <SelectTrigger className="h-9 w-full min-w-0">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="one_time">1-Time</SelectItem>
-                          <SelectItem value="weekly">Weekly on [Day]</SelectItem>
-                          <SelectItem value="bi_weekly">Bi-Weekly on [Day]</SelectItem>
-                          <SelectItem value="monthly_first">Monthly — First [Day]</SelectItem>
-                          <SelectItem value="monthly_last">Monthly — Last [Day]</SelectItem>
-                          <SelectItem value="monthly_day">Monthly on the [X] day</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      {/* When (date / day-of-week / day-of-month, depends on frequency) */}
-                      <div className="w-full min-w-0">
-                        {isOneTime && (
-                          <DatePickerField
-                            value={d.frequency_config?.one_time_date}
-                            onChange={(iso) =>
-                              updateConfig(d._draftId, { one_time_date: iso || '' })
-                            }
-                          />
-                        )}
-                        {(d.frequency_type === 'weekly' || d.frequency_type === 'bi_weekly') && (
-                          <Select
-                            value={String(d.frequency_config?.day_of_week ?? 1)}
-                            onValueChange={(v) =>
-                              updateConfig(d._draftId, { day_of_week: Number(v) })
-                            }
-                          >
-                            <SelectTrigger className="h-9 w-full min-w-0">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {DAY_OF_WEEK_LABELS.map((label, idx) => (
-                                <SelectItem key={idx} value={String(idx)}>
-                                  {label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                        {(d.frequency_type === 'monthly_first' ||
-                          d.frequency_type === 'monthly_last') && (
-                          <Select
-                            value={String(d.frequency_config?.ordinal_day_of_week ?? 1)}
-                            onValueChange={(v) =>
-                              updateConfig(d._draftId, { ordinal_day_of_week: Number(v) })
-                            }
-                          >
-                            <SelectTrigger className="h-9 w-full min-w-0">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {DAY_OF_WEEK_LABELS.map((label, idx) => (
-                                <SelectItem key={idx} value={String(idx)}>
-                                  {label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                        {d.frequency_type === 'monthly_day' && (
-                          <Input
-                            type="number"
-                            min={1}
-                            max={31}
-                            className="h-9 w-full"
-                            value={d.frequency_config?.day_of_month ?? 1}
-                            onChange={(e) =>
-                              updateConfig(d._draftId, {
-                                day_of_month: Math.min(31, Math.max(1, Number(e.target.value))),
-                              })
-                            }
-                          />
-                        )}
-                      </div>
-
-                      {/* Start date (only for recurring) */}
-                      <div className="w-full min-w-0">
-                        {!isOneTime ? (
-                          <DatePickerField
-                            value={d.start_date}
-                            onChange={(iso) => updateRow(d._draftId, { start_date: iso })}
-                            placeholder="Start date"
-                          />
-                        ) : (
-                          <div className="h-9 w-full rounded-md border border-dashed border-border/60 bg-muted/20" />
-                        )}
-                      </div>
-
-                      {/* End date (only for recurring) */}
-                      <div className="w-full min-w-0">
-                        {!isOneTime ? (
-                          <DatePickerField
-                            value={d.end_date}
-                            onChange={(iso) => updateRow(d._draftId, { end_date: iso })}
-                            placeholder="End (opt.)"
-                          />
-                        ) : (
-                          <div className="h-9 w-full rounded-md border border-dashed border-border/60 bg-muted/20" />
-                        )}
-                      </div>
-
-                      {/* Variance ± (only for recurring) */}
-                      <div className="w-full min-w-0">
-                        {!isOneTime ? (
-                          <div className="relative w-full">
-                            <Input
-                              type="number"
-                              min={0}
-                              max={100}
-                              step="0.1"
-                              value={
-                                d.frequency_config?.variance_pct === undefined ||
-                                d.frequency_config?.variance_pct === null
-                                  ? ''
-                                  : d.frequency_config.variance_pct
-                              }
-                              placeholder="0"
-                              aria-label="Variance percent"
-                              onChange={(e) => {
-                                const raw = e.target.value;
-                                if (raw === '') {
-                                  updateConfig(d._draftId, { variance_pct: undefined });
-                                } else {
-                                  const n = Math.max(0, Math.min(100, Number(raw)));
-                                  updateConfig(d._draftId, { variance_pct: n });
-                                }
-                              }}
-                              className="h-9 w-full pr-6 text-right tabular-nums"
-                            />
-                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                              %
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="h-9 w-full rounded-md border border-dashed border-border/60 bg-muted/20" />
-                        )}
-                      </div>
-
-                      {/* Type toggle */}
-                      <ToggleGroup
-                        type="single"
-                        value={d.flow_type}
-                        onValueChange={(v) => v && handleFlowChange(d._draftId, v as FlowType)}
-                        className="grid grid-cols-2 gap-1 h-9 w-full"
-                      >
-                        <ToggleGroupItem
-                          value="cash_in"
-                          className={cn(
-                            'h-9 px-2 gap-1 text-xs font-medium border border-border rounded-md',
-                            'data-[state=on]:bg-emerald-500/20 data-[state=on]:text-emerald-400 data-[state=on]:border-emerald-500/40',
-                            'data-[state=off]:text-muted-foreground',
-                          )}
-                          aria-label="Cash In"
-                        >
-                          <TrendingUp className="h-3.5 w-3.5" />
-                          In
-                        </ToggleGroupItem>
-                        <ToggleGroupItem
-                          value="cash_out"
-                          className={cn(
-                            'h-9 px-2 gap-1 text-xs font-medium border border-border rounded-md',
-                            'data-[state=on]:bg-red-500/20 data-[state=on]:text-red-400 data-[state=on]:border-red-500/40',
-                            'data-[state=off]:text-muted-foreground',
-                          )}
-                          aria-label="Cash Out"
-                        >
-                          <TrendingDown className="h-3.5 w-3.5" />
-                          Out
-                        </ToggleGroupItem>
-                      </ToggleGroup>
-
-                      {/* Delete */}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteRow(d._draftId)}
-                        title="Delete row"
-                        className="h-9 w-9 justify-self-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                      );
-                    })}
+                    ))}
                   </div>
                 </div>
               </div>
