@@ -785,21 +785,10 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                              type="button"
                              disabled={createCrmCompany.isPending}
                              className="flex w-full items-center gap-2 border-t border-white/10 px-4 py-3 text-sm text-primary hover:bg-accent"
-                             onClick={async () => {
-                               const name = companySearch.trim();
-                               try {
-                                 const created = await createCrmCompany.mutateAsync({ name } as any);
-                                 setCompanyNameVisual(created?.name || name);
-                                 if (!dealName.trim()) setDealName(created?.name || name);
-                                 toast.success(`Added "${name}" to companies`);
-                               } catch (err: any) {
-                                 toast.error(err?.message || 'Failed to add company');
-                                 return;
-                               } finally {
-                                 setCompanyPickerOpen(false);
-                                 setCompanySearch('');
-                               }
-                             }}
+                            onClick={() => {
+                              setNewCompanyName(companySearch.trim());
+                              setCreateCompanyOpen(true);
+                            }}
                            >
                              <Plus className="h-4 w-4" />
                              {createCrmCompany.isPending ? 'Adding…' : `Add "${companySearch.trim()}" as new company`}
@@ -808,6 +797,20 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                        </div>
                      </DialogContent>
                    </Dialog>
+                  <CreateCrmCompanyModal
+                    open={createCompanyOpen}
+                    initialName={newCompanyName}
+                    onClose={() => setCreateCompanyOpen(false)}
+                    onCreated={(created) => {
+                      const name = created?.name || newCompanyName;
+                      setCompanyNameVisual(name);
+                      if (!dealName.trim()) setDealName(name);
+                      setCreateCompanyOpen(false);
+                      setCompanyPickerOpen(false);
+                      setCompanySearch('');
+                      toast.success(`Added "${name}" to companies`);
+                    }}
+                  />
                  </div>
                 {showClientContact ? (
                   <div className="grid gap-1">
