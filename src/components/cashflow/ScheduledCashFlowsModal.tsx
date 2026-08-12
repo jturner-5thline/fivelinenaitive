@@ -171,7 +171,7 @@ function CurrencyInput({
   );
 }
 
-function newDraft(): DraftEntry {
+function newDraft(flow: 'cash_in' | 'cash_out' = 'cash_in'): DraftEntry {
   const today = new Date().toISOString().slice(0, 10);
   return {
     _draftId: `d_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -180,7 +180,7 @@ function newDraft(): DraftEntry {
     amount: 0,
     frequency_type: 'one_time',
     frequency_config: { one_time_date: today },
-    flow_type: 'cash_in',
+    flow_type: flow,
     start_date: today,
     end_date: null,
     notes: null,
@@ -429,8 +429,8 @@ export function ScheduledCashFlowsModal({
     );
   }, []);
 
-  const addRow = () => {
-    const draft = newDraft();
+  const addRow = (flow: 'cash_in' | 'cash_out' = 'cash_in') => {
+    const draft = newDraft(flow);
     setDrafts((prev) => [...prev, draft]);
     setNewRowId(draft._draftId);
     // Scroll the freshly added row into view (it lands at the bottom of a long list).
