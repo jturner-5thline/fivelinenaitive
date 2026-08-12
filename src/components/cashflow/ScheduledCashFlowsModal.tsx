@@ -392,8 +392,17 @@ export function ScheduledCashFlowsModal({
   // modal was open.
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
 
+  // Hydrate drafts ONLY when the modal transitions closed -> open. `initialEntries`
+  // is commonly a fresh array on every parent render, which would otherwise wipe
+  // out newly added rows the moment "Add Entry" is clicked.
+  const hydratedRef = useRef(false);
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      hydratedRef.current = false;
+      return;
+    }
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
     setDrafts(
       initialEntries.map((e) => ({
         ...e,
@@ -418,7 +427,18 @@ export function ScheduledCashFlowsModal({
     );
   }, []);
 
-  const addRow = () => setDrafts((prev) => [...prev, newDraft()]);
+  const addRow = () => {
+    const draft = newDraft();
+    setDrafts((prev) => [...prev, draft]);
+    setNewRowId(draft._draftId);
+    // Scroll the freshly added row into view (it lands at the bottom of a long list).
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        rowRefs.current[draft._draftId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+    window.setTimeout(() => setNewRowId((id) => (id === draft._draftId ? null : id)), 2500);
+  };
   const deleteRow = (id: string) =>
     setDrafts((prev) => {
       const removed = prev.find((d) => d._draftId === id);
