@@ -171,7 +171,7 @@ function CurrencyInput({
   );
 }
 
-function newDraft(): DraftEntry {
+function newDraft(flow: 'cash_in' | 'cash_out' = 'cash_in'): DraftEntry {
   const today = new Date().toISOString().slice(0, 10);
   return {
     _draftId: `d_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -180,7 +180,7 @@ function newDraft(): DraftEntry {
     amount: 0,
     frequency_type: 'one_time',
     frequency_config: { one_time_date: today },
-    flow_type: 'cash_in',
+    flow_type: flow,
     start_date: today,
     end_date: null,
     notes: null,
@@ -429,8 +429,8 @@ export function ScheduledCashFlowsModal({
     );
   }, []);
 
-  const addRow = () => {
-    const draft = newDraft();
+  const addRow = (flow: 'cash_in' | 'cash_out' = 'cash_in') => {
+    const draft = newDraft(flow);
     setDrafts((prev) => [...prev, draft]);
     setNewRowId(draft._draftId);
     // Scroll the freshly added row into view (it lands at the bottom of a long list).
@@ -579,9 +579,24 @@ export function ScheduledCashFlowsModal({
                   )}
                 </Button>
               )}
-              <Button onClick={addRow} size="sm" className="gap-1.5">
+              <Button
+                onClick={() => addRow('cash_in')}
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                title="Add a recurring or one-time cash-in entry"
+              >
                 <Plus className="h-4 w-4" />
-                Add Entry
+                Add Cash In
+              </Button>
+              <Button
+                onClick={() => addRow('cash_out')}
+                size="sm"
+                className="gap-1.5"
+                title="Add a recurring or one-time cash-out (payment) entry"
+              >
+                <Plus className="h-4 w-4" />
+                Add Cash Out
               </Button>
               <Button
                 type="button"
@@ -730,10 +745,16 @@ export function ScheduledCashFlowsModal({
                 Add recurring or one-time payments and revenue to automatically populate the
                 weekly cash flow view.
               </p>
-              <Button onClick={addRow} className="gap-1.5">
-                <Plus className="h-4 w-4" />
-                Add your first entry
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button onClick={() => addRow('cash_in')} variant="outline" className="gap-1.5">
+                  <Plus className="h-4 w-4" />
+                  Add Cash In
+                </Button>
+                <Button onClick={() => addRow('cash_out')} className="gap-1.5">
+                  <Plus className="h-4 w-4" />
+                  Add Cash Out
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col">
