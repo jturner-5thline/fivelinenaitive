@@ -151,6 +151,11 @@ export function CompanyAttachmentsTable({ crmCompanyId, companyName }: Props) {
                       <Badge variant="outline" className="text-[10px] font-normal">
                         {CRM_COMPANY_ATTACHMENT_CATEGORIES.find(c => c.value === a.category)?.label || a.category}
                       </Badge>
+                      {a.source === 'funding_source' && (
+                        <Badge variant="secondary" className="ml-1 text-[10px] font-normal">
+                          Funding source
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="py-2 text-xs text-muted-foreground">
                       {format(new Date(a.created_at), 'MMM d, yyyy')}
