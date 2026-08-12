@@ -459,7 +459,9 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         setIsSavingCopy(false);
       }
     }
-    handlePrintPdf();
+    // The archive copy (if any) was already uploaded above — don't let the
+    // popup-blocked download fallback upload a second copy.
+    handlePrintPdf({ skipArchive: saveCopyToDealSpace && !!node && !!deal.id });
   };
 
   /**
@@ -467,7 +469,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
    * link. This never depends on the popup blocker or the browser print dialog,
    * which is what blocked downloads inside the embedded preview.
    */
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = async (opts?: { skipArchive?: boolean }) => {
     const node = resolvePrintableNode();
     if (!node) {
       toast({ title: 'Preview not ready', variant: 'destructive' });
@@ -475,7 +477,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     }
     setIsDownloading(true);
     try {
-      if (saveCopyToDealSpace && deal.id) {
+      if (saveCopyToDealSpace && deal.id && !opts?.skipArchive) {
         try {
           const saved = await saveNodePdfToDealSpace(node, String(deal.id), buildFileTitle());
           toast({
@@ -500,7 +502,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     }
   };
 
-  const handlePrintPdf = () => {
+  const handlePrintPdf = (opts?: { skipArchive?: boolean }) => {
     const node = resolvePrintableNode();
     if (!node) {
       toast({ title: 'Preview not ready', variant: 'destructive' });
@@ -524,7 +526,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     // Popup blocked (common inside the embedded preview / Safari): fall back to
     // a direct client-side PDF download instead of the fragile print-CSS path.
     document.title = prevTitle;
-    void handleDownloadPdf();
+    void handleDownloadPdf({ skipArchive: opts?.skipArchive });
     return;
   };
 
