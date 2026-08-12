@@ -800,7 +800,11 @@ export function ScheduledCashFlowsModal({
                       return (
                         <div
                           key={d._draftId}
-                          className="grid items-center gap-2 px-2 py-2.5 border-b border-border/60 hover:bg-muted/40 transition-colors rounded-md whitespace-nowrap"
+                          ref={(el) => { rowRefs.current[d._draftId] = el; }}
+                          className={cn(
+                            'grid items-center gap-2 px-2 py-2.5 border-b border-border/60 hover:bg-muted/40 transition-colors rounded-md whitespace-nowrap',
+                            newRowId === d._draftId && 'ring-1 ring-primary/60 bg-primary/5',
+                          )}
                           style={{ gridTemplateColumns: 'var(--cf-cols)' }}
                         >
                       {/* Drag handle */}
