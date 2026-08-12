@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { format, parseISO } from 'date-fns';
 import {
   Trash2,
@@ -256,6 +256,8 @@ export function ScheduledCashFlowsModal({
   cashInNext8WTotal,
 }: Props) {
   const [drafts, setDrafts] = useState<DraftEntry[]>([]);
+  const [newRowId, setNewRowId] = useState<string | null>(null);
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [saving, setSaving] = useState(false);
   const [facilityDrafts, setFacilityDrafts] = useState<CreditFacility[]>([]);
 
@@ -392,8 +394,17 @@ export function ScheduledCashFlowsModal({
   // modal was open.
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
 
+  // Hydrate drafts ONLY when the modal transitions closed -> open. `initialEntries`
+  // is commonly a fresh array on every parent render, which would otherwise wipe
+  // out newly added rows the moment "Add Entry" is clicked.
+  const hydratedRef = useRef(false);
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      hydratedRef.current = false;
+      return;
+    }
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
     setDrafts(
       initialEntries.map((e) => ({
         ...e,
@@ -418,7 +429,18 @@ export function ScheduledCashFlowsModal({
     );
   }, []);
 
-  const addRow = () => setDrafts((prev) => [...prev, newDraft()]);
+  const addRow = () => {
+    const draft = newDraft();
+    setDrafts((prev) => [...prev, draft]);
+    setNewRowId(draft._draftId);
+    // Scroll the freshly added row into view (it lands at the bottom of a long list).
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        rowRefs.current[draft._draftId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+    window.setTimeout(() => setNewRowId((id) => (id === draft._draftId ? null : id)), 2500);
+  };
   const deleteRow = (id: string) =>
     setDrafts((prev) => {
       const removed = prev.find((d) => d._draftId === id);
@@ -778,7 +800,11 @@ export function ScheduledCashFlowsModal({
                       return (
                         <div
                           key={d._draftId}
-                          className="grid items-center gap-2 px-2 py-2.5 border-b border-border/60 hover:bg-muted/40 transition-colors rounded-md whitespace-nowrap"
+                          ref={(el) => { rowRefs.current[d._draftId] = el; }}
+                          className={cn(
+                            'grid items-center gap-2 px-2 py-2.5 border-b border-border/60 hover:bg-muted/40 transition-colors rounded-md whitespace-nowrap',
+                            newRowId === d._draftId && 'ring-1 ring-primary/60 bg-primary/5',
+                          )}
                           style={{ gridTemplateColumns: 'var(--cf-cols)' }}
                         >
                       {/* Drag handle */}
