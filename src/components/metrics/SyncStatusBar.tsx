@@ -49,9 +49,30 @@ export function SyncStatusBar() {
     if (refreshing) return;
     setRefreshing(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      let hsBody: Record<string, unknown> = { action: 'syncDeals' };
+      if (user) {
+        const [{ data: membership }, { data: config }] = await Promise.all([
+          (supabase.from('company_members') as any)
+            .select('company_id')
+            .eq('user_id', user.id)
+            .limit(1)
+            .maybeSingle(),
+          (supabase.from('hubspot_integration_configs' as any) as any)
+            .select('id')
+            .limit(1)
+            .maybeSingle(),
+        ]);
+        hsBody = {
+          action: 'syncDeals',
+          userId: user.id,
+          companyId: membership?.company_id || null,
+          configId: config?.id || null,
+        };
+      }
       const results = await Promise.allSettled([
         supabase.functions.invoke('quickbooks-sync', { body: {} }),
-        supabase.functions.invoke('hubspot-sync', { body: {} }),
+        supabase.functions.invoke('hubspot-sync', { body: hsBody }),
       ]);
       const failed = results.filter(r => r.status === 'rejected').length;
       await queryClient.invalidateQueries({ queryKey: ['sync-status-bar'] });

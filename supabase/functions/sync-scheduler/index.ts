@@ -173,7 +173,7 @@ serve(async (req: Request) => {
                 "Authorization": `Bearer ${supabaseServiceKey}`,
                 "x-sync-user-id": schedule.user_id,
               },
-              body: JSON.stringify({ userId: schedule.user_id }),
+              body: JSON.stringify({ action: "syncDeals", userId: schedule.user_id }),
             });
 
             await supabase
