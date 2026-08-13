@@ -3526,7 +3526,7 @@ export default function DealDetail() {
               at-a-glance facts to a left rail and lets the main column
               carry the content. Everything below is unchanged. */}
           <div className={cn(useContextRailLayout && "flex flex-col lg:flex-row gap-5 items-start mt-4")}>
-          {useContextRailLayout && (
+          {useContextRailLayout && dealInfoTab !== 'lenders' && (
             <div className="w-full lg:w-[300px] shrink-0 lg:sticky lg:top-4 self-start space-y-4">
               <DealContextRail
                 deal={deal}
@@ -3537,7 +3537,12 @@ export default function DealDetail() {
               <div ref={setRailPanelSlot} className="w-full" />
             </div>
           )}
-          <div className={cn(useContextRailLayout && "flex-1 min-w-0 w-full")}>
+          <div className={cn(
+            useContextRailLayout && "flex-1 min-w-0 w-full",
+            // Funding sources tab: rail hidden, but keep the column width
+            // identical so the table only shifts left.
+            useContextRailLayout && dealInfoTab === 'lenders' && "lg:max-w-[calc(100%-320px)]",
+          )}>
           {/* Header Card */}
           <Card className={cn(
             "w-full mt-4 mb-6 border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]",
