@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, ReactNode, useMemo } from 'react';
 import { useDealsDatabase } from '@/hooks/useDealsDatabase';
 import { Deal, DealLender, DealStatus, DealStage, EngagementType } from '@/types/deal';
+import { IntroducedFundingSourcesDialog } from '@/components/deals/IntroducedFundingSourcesDialog';
 
 export type SortField = 'name' | 'value' | 'createdAt' | 'updatedAt' | 'status' | 'stage';
 export type SortDirection = 'asc' | 'desc';
@@ -101,6 +102,7 @@ export function DealsProvider({ children }: { children: ReactNode }) {
   return (
     <DealsContext.Provider value={value}>
       {children}
+      <IntroducedFundingSourcesDialog />
     </DealsContext.Provider>
   );
 }
