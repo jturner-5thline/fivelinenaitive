@@ -335,20 +335,8 @@ export default function Lenders() {
   // Enable realtime notifications for new sync requests (only for authorized users)
   useLenderSyncRealtimeNotifications(canSeeFlexSync ? refetchSyncRequests : () => {});
 
-  // Debounce search query for server-side search
-  useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    searchTimeoutRef.current = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 250); // Real-time client-side search
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [searchQuery]);
+  // Search debouncing now lives inside <LenderSearchInput/>, so keystrokes no
+  // longer re-render this (very large) page component.
 
   // Load all lenders client-side; we run a rich multi-field search locally.
   const {
