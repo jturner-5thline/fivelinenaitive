@@ -3840,6 +3840,7 @@ export default function DealDetail() {
                   </Card>
                   )}
 
+                  {!useContextRailLayout && (
                   <div className="flex justify-end">
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -3856,6 +3857,7 @@ export default function DealDetail() {
                       <TooltipContent side="left">Reorder panels</TooltipContent>
                     </Tooltip>
                   </div>
+                  )}
 
                   {/* Panels rendered in custom order - only visible panels.
                       In the context-rail layout the Deal Information panel is
