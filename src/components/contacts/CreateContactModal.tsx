@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,9 +18,13 @@ interface CreateContactModalProps {
   open: boolean;
   onClose: () => void;
   defaultCompanyId?: string;
+  /** Pre-fill values (e.g. parsed from a search term). */
+  initialValues?: { first_name?: string; last_name?: string; email?: string };
+  /** Called with the created contact row after a successful save. */
+  onCreated?: (contact: any) => void;
 }
 
-export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateContactModalProps) {
+export function CreateContactModal({ open, onClose, defaultCompanyId, initialValues, onCreated }: CreateContactModalProps) {
   const createContact = useCreateContact();
   const teamMembers = useTeamMembers();
   const { user } = useAuth();
@@ -42,6 +46,17 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
     contact_type: '' as string,
     owner_user_id: '' as string,
   });
+
+  // Seed name/email from the caller each time the modal opens.
+  useEffect(() => {
+    if (!open || !initialValues) return;
+    setForm(p => ({
+      ...p,
+      first_name: p.first_name || initialValues.first_name || '',
+      last_name: p.last_name || initialValues.last_name || '',
+      email: p.email || initialValues.email || '',
+    }));
+  }, [open, initialValues]);
 
   const handleEmailChange = (email: string) => {
     setForm(p => {
@@ -83,8 +98,9 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
       owner_user_id: form.owner_user_id || user?.id || null,
     };
     createContact.mutate(payload as any, {
-      onSuccess: () => {
+      onSuccess: (created: any) => {
         onClose();
+        onCreated?.({ ...payload, ...(created || {}) });
         setForm({
           first_name: '', last_name: '', email: '', phone_work: '', phone_mobile: '',
           job_title: '', department: '', lifecycle_stage: 'lead', status: 'new',
