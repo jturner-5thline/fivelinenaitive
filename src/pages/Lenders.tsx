@@ -538,7 +538,9 @@ export default function Lenders() {
   // on that reference caused the detector (and every downstream memo) to
   // re-run constantly and stall the page. Comparing a tiny string instead
   // keeps the effect quiet unless the inputs really changed.
+  const duplicatesNeeded = showDuplicatesOnly || isDuplicatesDialogOpen || isSideBySideMergeOpen;
   const duplicateInputFingerprint = useMemo(() => {
+    if (!duplicatesNeeded) return '';
     if (!masterLenders.length) return '';
     // Inputs are already ordered by name from the loader; a simple join is
     // stable and cheap (~tens of KB at 6k rows).
@@ -546,7 +548,7 @@ export default function Lenders() {
     for (const l of masterLenders)
       s += l.id + '|' + (l.name || '') + '|' + ((l as any).website || '') + '|' + (l.email || '') + '\n';
     return s;
-  }, [masterLenders]);
+  }, [masterLenders, duplicatesNeeded]);
 
   useEffect(() => {
     // Wait for the background stream of pages to settle so the detector
