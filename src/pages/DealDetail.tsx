@@ -3619,14 +3619,6 @@ export default function DealDetail() {
                   </DropdownMenuContent>
                 </DropdownMenu>
                 )}
-                <DealUpdatesUnified
-                  activities={activityLogs}
-                  isLoadingActivities={isLoadingActivities}
-                  timeAgoText={timeAgoData.text}
-                  highlightClass={timeAgoData.highlightClass}
-                  statusNotes={statusNotes}
-                  onDeleteNote={deleteStatusNote}
-                />
                 </div>
                 {!isSimplifiedDeal && !useContextRailLayout && (
                   <div className="flex items-center gap-1.5 ml-auto">
@@ -3691,6 +3683,16 @@ export default function DealDetail() {
                       Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
                     </p>
                   )}
+                  <div className="flex items-center gap-2 pl-6 pt-1">
+                    <DealUpdatesUnified
+                      activities={activityLogs}
+                      isLoadingActivities={isLoadingActivities}
+                      timeAgoText={timeAgoData.text}
+                      highlightClass={timeAgoData.highlightClass}
+                      statusNotes={statusNotes}
+                      onDeleteNote={deleteStatusNote}
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-col items-end gap-2 shrink-0">
                   {deal.manager && (
