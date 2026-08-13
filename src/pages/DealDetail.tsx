@@ -3713,7 +3713,7 @@ export default function DealDetail() {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2 shrink-0">
-                  {deal.manager && (
+                  {deal.manager && !useContextRailLayout && (
                     <span className="text-sm text-white">{deal.manager}</span>
                   )}
                   {!isSimplifiedDeal && companyFeatures.deal_memo_enabled && hasPageAccess('deal_memo') && (
