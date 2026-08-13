@@ -3843,10 +3843,16 @@ export default function DealDetail() {
                     </Tooltip>
                   </div>
 
-                  {/* Panels rendered in custom order - only visible panels */}
-                  {visiblePanels.reduce((acc: React.ReactNode[], panelId, index) => {
+                  {/* Panels rendered in custom order - only visible panels.
+                      In the context-rail layout the Deal Information panel is
+                      portaled into the left rail, so it is moved to the end of
+                      the list to avoid leaving a hole in the 2-column grid. */}
+                  {(useContextRailLayout && visiblePanels.includes('deal-information' as DealPanelId)
+                    ? ([...visiblePanels.filter((p) => p !== 'deal-information'), 'deal-information'] as DealPanelId[])
+                    : visiblePanels
+                  ).reduce((acc: React.ReactNode[], panelId, index, panelList) => {
                     // Pair panels together for 2-column layout
-                    const nextPanelId = visiblePanels[index + 1];
+                    const nextPanelId = panelList[index + 1];
                     
                     // Only process even indices to create pairs
                     if (index % 2 !== 0) return acc;
