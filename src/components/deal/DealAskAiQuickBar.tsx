@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Sparkles, ArrowUp, Loader2, Maximize2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useDealSpaceAI } from '@/hooks/useDealSpaceAI';
 import { cn } from '@/lib/utils';
 
