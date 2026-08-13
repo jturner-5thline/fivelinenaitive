@@ -325,6 +325,21 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
           className="h-72 overflow-y-auto rounded-lg border border-border/60 bg-card/60 backdrop-blur p-3"
         >
           <div className="space-y-3">
+            {includeCitations && !!missingCitations.length && (
+              <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-2">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
+                <p className="text-[11px] leading-snug text-destructive">
+                  {missingCitations.length} cited source{missingCitations.length === 1 ? '' : 's'} could not be
+                  resolved to a document on this deal. Exports flag {missingCitations.length === 1 ? 'it' : 'them'} as
+                  unresolved — verify before sharing.
+                </p>
+              </div>
+            )}
+            {includeCitations && checkingCitations && (
+              <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" /> Verifying cited documents...
+              </p>
+            )}
             {messages.length === 0 && !isLoading && !error && (
               <div className="flex h-64 flex-col items-center justify-center gap-2 text-center">
                 <MessageSquare className="h-6 w-6 text-muted-foreground/60" />
