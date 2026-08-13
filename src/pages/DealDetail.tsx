@@ -1034,6 +1034,10 @@ export default function DealDetail() {
         deal.company?.trim().toUpperCase() === 'TEST DEAL 123'),
   );
 
+  // Slot element in the left rail where the Deal Information panel is
+  // portaled when the context-rail layout is active.
+  const [railPanelSlot, setRailPanelSlot] = useState<HTMLDivElement | null>(null);
+
   // Projects pipeline (currently Blount Capital only) is a fully siloed
   // pipeline: only Deal Info + Data Room tabs are visible/functional, no
   // outstanding items widget, no dollar value, and pipeline moves are
