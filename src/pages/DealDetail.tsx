@@ -5037,8 +5037,8 @@ export default function DealDetail() {
                                         shouldAnimate && 'animate-pulse-highlight'
                                       )}>
                                       <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,1.3fr)_130px_minmax(260px,2.6fr)_auto] md:items-start md:gap-4">
-                                        <div className="min-w-0">
-                                  <div className="flex items-center gap-1 group/lender -ml-1">
+                                         <div className="min-w-0 flex items-start justify-between gap-2">
+                                   <div className="flex items-center gap-1 group/lender -ml-1 min-w-0">
                                     {scoreConfig.enabled && lender.score != null && (
                                       <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0 h-4 shrink-0" style={getScoreStyles(lender.score, scoreConfig).badge}>
                                         {lender.score}
@@ -5086,6 +5086,42 @@ export default function DealDetail() {
                                         />
                                     </div>
                                   </div>
+                                   {/* NDA & Marketing Materials Status Icons */}
+                                   <div className="flex flex-col items-center gap-0.5 shrink-0">
+                                     {(() => {
+                                       const summary = getLenderSummary(lender.name);
+                                       return (
+                                         <>
+                                           <Tooltip>
+                                             <TooltipTrigger asChild>
+                                               <div className={cn(
+                                                 "p-1 rounded",
+                                                 summary.hasNda ? "text-primary" : "text-muted-foreground/50"
+                                               )}>
+                                                 <FileSignature className="h-4 w-4" />
+                                               </div>
+                                             </TooltipTrigger>
+                                             <TooltipContent>
+                                               <p>{summary.hasNda ? 'NDA on file' : 'No NDA'}</p>
+                                             </TooltipContent>
+                                           </Tooltip>
+                                           <Tooltip>
+                                             <TooltipTrigger asChild>
+                                               <div className={cn(
+                                                 "p-1 rounded",
+                                                 summary.hasMarketingMaterials ? "text-primary" : "text-muted-foreground/50"
+                                               )}>
+                                                 <Megaphone className="h-4 w-4" />
+                                               </div>
+                                             </TooltipTrigger>
+                                             <TooltipContent>
+                                               <p>{summary.hasMarketingMaterials ? 'Marketing materials on file' : 'No marketing materials'}</p>
+                                             </TooltipContent>
+                                           </Tooltip>
+                                         </>
+                                       );
+                                     })()}
+                                   </div>
                                         </div>
                                         <div className="min-w-0 space-y-1.5">
                                   <Select
@@ -5216,47 +5252,7 @@ export default function DealDetail() {
                                     </SelectContent>
                                   </Select>
                                   )}
-                                  {/* NDA & Marketing Materials Status Icons */}
-                                   <div className="flex items-center gap-1">
-                                    {(() => {
-                                      const summary = getLenderSummary(lender.name);
-                                      return (
-                                        <>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <div className={cn(
-                                                "p-1 rounded",
-                                                summary.hasNda 
-                                                  ? "text-primary" 
-                                                  : "text-muted-foreground/50"
-                                              )}>
-                                                <FileSignature className="h-4 w-4" />
-                                              </div>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              <p>{summary.hasNda ? 'NDA on file' : 'No NDA'}</p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <div className={cn(
-                                                "p-1 rounded",
-                                                summary.hasMarketingMaterials 
-                                                  ? "text-primary" 
-                                                  : "text-muted-foreground/50"
-                                              )}>
-                                                <Megaphone className="h-4 w-4" />
-                                              </div>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              <p>{summary.hasMarketingMaterials ? 'Marketing materials on file' : 'No marketing materials'}</p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </>
-                                      );
-                                    })()}
-                                  </div>
-                                        </div>
+                                         </div>
                                         <div className="min-w-0">
                                 {/* Funding Source Notes */}
                                 <div className="ml-2 mt-2 space-y-1">
