@@ -5601,11 +5601,18 @@ export default function DealDetail() {
                   });
                 });
                 const topReasons = Array.from(reasonCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3);
-                if (topReasons.length === 0) return null;
-                const maxReason = topReasons[0][1] || 1;
+                const maxReason = topReasons[0]?.[1] || 1;
                 return (
                   <div className="rounded-xl border border-border/60 bg-card px-4 py-3">
                     <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Top pass reasons</p>
+                    {topReasons.length === 0 ? (
+                      <div className="mt-3 flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border/60 py-8 text-center">
+                        <p className="text-sm font-medium text-foreground">No pass reasons logged yet</p>
+                        <p className="text-xs text-muted-foreground">
+                          When a funding source is marked Passed, the reason you select will appear here.
+                        </p>
+                      </div>
+                    ) : (
                     <div className="mt-4 grid grid-cols-3 gap-4 items-end" style={{ height: 180 }}>
                       {topReasons.map(([label, count]) => (
                         <div key={label} className="flex h-full flex-col items-center justify-end gap-2">
@@ -5618,6 +5625,7 @@ export default function DealDetail() {
                         </div>
                       ))}
                     </div>
+                    )}
                   </div>
                 );
               })()}
