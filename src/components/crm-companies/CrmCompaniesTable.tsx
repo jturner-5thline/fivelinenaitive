@@ -479,7 +479,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
             )}
             itemContent={(_i, co) => (
               <>
-                <TableCell onClick={e => e.stopPropagation()}>
+                <TableCell>
                   <Checkbox checked={selectedIds.has(co.id)} onCheckedChange={() => toggleOne(co.id)} />
                 </TableCell>
                 <TableCell>
@@ -492,7 +492,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
                     <span className="font-medium text-sm">{co.name}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-sm" onClick={e => e.stopPropagation()}>
+                <TableCell className="text-sm">
                   {co.domain ? (
                     <a
                       href={co.domain.startsWith('http') ? co.domain : `https://${co.domain}`}
@@ -514,7 +514,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{CRM_COMPANY_TYPES.find(t => t.value === co.company_type)?.label || co.company_type || '—'}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{co.owner_user_id ? (ownerNameById.get(co.owner_user_id) || 'Unknown') : '—'}</TableCell>
-                <TableCell className="text-sm" onClick={e => e.stopPropagation()}><LinkCell href={co.linkedin_url} label="Profile" /></TableCell>
+                <TableCell className="text-sm"><LinkCell href={co.linkedin_url} label="Profile" /></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{co.phone || '—'}</TableCell>
                 <TableCell>
                   <Badge variant="secondary" className={cn('text-[10px]', lifecycleColors[co.lifecycle_stage] || '')}>{CRM_COMPANY_LIFECYCLES.find(l => l.value === co.lifecycle_stage)?.label || co.lifecycle_stage}</Badge>
@@ -527,7 +527,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
                 <TableCell className="text-sm text-muted-foreground">{co.employee_range || '—'}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{[co.hq_city, co.hq_country].filter(Boolean).join(', ') || '—'}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{co.last_activity_date ? format(new Date(co.last_activity_date), 'MMM d') : '—'}</TableCell>
-                <TableCell onClick={e => e.stopPropagation()}>
+                <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
