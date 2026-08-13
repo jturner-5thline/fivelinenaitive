@@ -87,7 +87,7 @@ export function DealContextRail({ deal, className, onUpdateField }: DealContextR
           manualCommit
           fieldName="Deal amount"
           onSave={(value) => onUpdateField?.('value', parseCurrencyInputValue(value) ?? 0)}
-          displayClassName="text-xl font-bold leading-none bg-brand-gradient bg-clip-text text-transparent"
+          displayClassName="text-xl font-bold leading-none text-primary"
         />
       </div>
 
