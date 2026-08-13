@@ -78,6 +78,7 @@ import { ActivityTimeline, ActivityItem, activityLogToItem } from '@/components/
 import { useActivityLog } from '@/hooks/useActivityLog';
 import { useFlexActivityNotifications } from '@/hooks/useFlexActivityNotifications';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
+import { formatUSD } from '@/lib/formatters/currency';
 import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
 import { MentionTextarea } from '@/components/ui/mention-textarea';
 import { ReferralSourceInput } from '@/components/ui/referral-source-input';
@@ -3534,7 +3535,7 @@ export default function DealDetail() {
                 displayClassName="text-3xl font-bold leading-tight break-words text-foreground"
               />
               <InlineEditField
-                value={formatCurrencyInputValue(String(deal.value ?? 0))}
+                value={formatUSD(deal.value)}
                 editValue={formatAmountWithCommas(String(deal.value ?? 0))}
                 sanitizeInput={(next) => next.replace(/[^0-9.,]/g, '')}
                 manualCommit
