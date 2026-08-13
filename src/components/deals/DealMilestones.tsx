@@ -510,8 +510,9 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
               </div>
             </SortableContext>
           </DndContext>
-        </CollapsibleContent>
-      </Collapsible>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }
