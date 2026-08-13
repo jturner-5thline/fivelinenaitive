@@ -42,6 +42,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { useCompany } from '@/hooks/useCompany';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 import { useCrmCompanies, useCreateCrmCompany } from '@/hooks/useCrmCompanies';
+import { CreateCrmCompanyModal } from '@/components/crm-companies/CreateCrmCompanyModal';
 import { populateDefaultChecklist } from '@/hooks/useDefaultChecklistConfig';
 import { applyDefaultChecklistToOutstandingItems, getChecklistPreview, type ChecklistPreview } from '@/utils/applyDefaultChecklist';
 import { useProfile } from '@/hooks/useProfile';
@@ -196,6 +197,8 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const [companyNameVisual, setCompanyNameVisual] = useState('');
   const [companyPickerOpen, setCompanyPickerOpen] = useState(false);
   const [companySearch, setCompanySearch] = useState('');
+  const [createCompanyOpen, setCreateCompanyOpen] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState('');
   const { data: crmCompaniesResult, isLoading: companiesLoading } = useCrmCompanies({ pageSize: 1000 });
   const createCrmCompany = useCreateCrmCompany();
   const crmCompaniesList = crmCompaniesResult?.data ?? [];
@@ -785,21 +788,10 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                              type="button"
                              disabled={createCrmCompany.isPending}
                              className="flex w-full items-center gap-2 border-t border-white/10 px-4 py-3 text-sm text-primary hover:bg-accent"
-                             onClick={async () => {
-                               const name = companySearch.trim();
-                               try {
-                                 const created = await createCrmCompany.mutateAsync({ name } as any);
-                                 setCompanyNameVisual(created?.name || name);
-                                 if (!dealName.trim()) setDealName(created?.name || name);
-                                 toast.success(`Added "${name}" to companies`);
-                               } catch (err: any) {
-                                 toast.error(err?.message || 'Failed to add company');
-                                 return;
-                               } finally {
-                                 setCompanyPickerOpen(false);
-                                 setCompanySearch('');
-                               }
-                             }}
+                            onClick={() => {
+                              setNewCompanyName(companySearch.trim());
+                              setCreateCompanyOpen(true);
+                            }}
                            >
                              <Plus className="h-4 w-4" />
                              {createCrmCompany.isPending ? 'Adding…' : `Add "${companySearch.trim()}" as new company`}
@@ -808,6 +800,20 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                        </div>
                      </DialogContent>
                    </Dialog>
+                  <CreateCrmCompanyModal
+                    open={createCompanyOpen}
+                    initialName={newCompanyName}
+                    onClose={() => setCreateCompanyOpen(false)}
+                    onCreated={(created) => {
+                      const name = created?.name || newCompanyName;
+                      setCompanyNameVisual(name);
+                      if (!dealName.trim()) setDealName(name);
+                      setCreateCompanyOpen(false);
+                      setCompanyPickerOpen(false);
+                      setCompanySearch('');
+                      toast.success(`Added "${name}" to companies`);
+                    }}
+                  />
                  </div>
                 {showClientContact ? (
                   <div className="grid gap-1">

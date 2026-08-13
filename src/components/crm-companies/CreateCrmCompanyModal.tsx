@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,9 +11,13 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 interface CreateCrmCompanyModalProps {
   open: boolean;
   onClose: () => void;
+  /** Pre-fill the company name (e.g. from a search term). */
+  initialName?: string;
+  /** Called with the created company row after a successful save. */
+  onCreated?: (company: any) => void;
 }
 
-export function CreateCrmCompanyModal({ open, onClose }: CreateCrmCompanyModalProps) {
+export function CreateCrmCompanyModal({ open, onClose, initialName, onCreated }: CreateCrmCompanyModalProps) {
   const create = useCreateCrmCompany();
   const teamMembers = useTeamMembers();
   const [form, setForm] = useState({
@@ -40,6 +44,13 @@ export function CreateCrmCompanyModal({ open, onClose }: CreateCrmCompanyModalPr
     owner_user_id: '',
   });
 
+  // Seed the name from the caller each time the modal opens.
+  useEffect(() => {
+    if (open && initialName) {
+      setForm(p => (p.name.trim() ? p : { ...p, name: initialName }));
+    }
+  }, [open, initialName]);
+
   const handleSubmit = () => {
     if (!form.name.trim()) return;
     // Convert empty strings to null so optional fields stay blank rather than empty text.
@@ -55,8 +66,9 @@ export function CreateCrmCompanyModal({ open, onClose }: CreateCrmCompanyModalPr
       payload.created_at = isNaN(d.getTime()) ? null : d.toISOString();
     }
     create.mutate(payload as any, {
-      onSuccess: () => {
+      onSuccess: (created: any) => {
         onClose();
+        onCreated?.(created);
         setForm({
           name: '', domain: '', industry: '', company_type: 'prospect', status: 'active',
           lifecycle_stage: 'target', employee_range: '', hq_city: '', hq_country: '',
