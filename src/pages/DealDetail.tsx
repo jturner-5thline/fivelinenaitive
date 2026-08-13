@@ -4955,13 +4955,6 @@ export default function DealDetail() {
                                         />
                                     </div>
                                   </div>
-                                    {(() => {
-                                      const ml = masterLenders.find(m => typeof m?.name === 'string' && m.name.toLowerCase().trim() === (lender.name || '').toLowerCase().trim());
-                                      const lenderType = (ml as Record<string, unknown> | undefined)?.lender_type;
-                                      return typeof lenderType === 'string' && lenderType.trim() ? (
-                                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground" title={lenderType}>{lenderType}</p>
-                                      ) : null;
-                                    })()}
                                         </div>
                                         <div className="min-w-0 space-y-1.5">
                                   <Select
