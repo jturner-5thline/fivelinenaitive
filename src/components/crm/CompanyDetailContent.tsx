@@ -920,8 +920,14 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
         onConfirm={() => {
           deleteCompany.mutate(company.id, {
             onSuccess: () => {
-              if (onDeleted) onDeleted();
-              else navigate('/crm-companies');
+              // Close the dialog first so Radix can restore body pointer-events
+              // before this view unmounts (otherwise the app appears frozen).
+              setShowDelete(false);
+              setTimeout(() => {
+                document.body.style.pointerEvents = '';
+                if (onDeleted) onDeleted();
+                else navigate('/crm-companies');
+              }, 0);
             },
           });
         }}
