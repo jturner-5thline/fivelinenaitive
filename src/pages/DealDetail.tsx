@@ -3531,6 +3531,7 @@ export default function DealDetail() {
             <div className="w-full lg:w-[300px] shrink-0 lg:sticky lg:top-4 self-start space-y-4">
               <DealContextRail
                 deal={deal}
+                compact={dealInfoTab !== 'deal-info'}
                 className="lg:w-full lg:static"
                 onUpdateField={(field, value) => updateDeal(field as any, value as any)}
               />
