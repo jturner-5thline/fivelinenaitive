@@ -78,6 +78,7 @@ import { ActivityTimeline, ActivityItem, activityLogToItem } from '@/components/
 import { useActivityLog } from '@/hooks/useActivityLog';
 import { useFlexActivityNotifications } from '@/hooks/useFlexActivityNotifications';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
+import { formatUSD } from '@/lib/formatters/currency';
 import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
 import { MentionTextarea } from '@/components/ui/mention-textarea';
 import { ReferralSourceInput } from '@/components/ui/referral-source-input';
@@ -3522,15 +3523,39 @@ export default function DealDetail() {
               data-deal-modal-scroll-region={isEmbedded ? 'true' : undefined}
             >
 
+          {/* Deal identity header: name + amount pinned to the very top of
+              the deal pop-up (moved out of the left context rail). */}
+          {useContextRailLayout && (
+            <div className="flex flex-col sm:flex-row sm:items-baseline gap-x-4 gap-y-1 mt-4 min-w-0">
+              <InlineEditField
+                value={deal.company}
+                manualCommit
+                fieldName="Deal name"
+                onSave={(value) => updateDeal('company' as any, value as any)}
+                displayClassName="text-3xl font-bold leading-tight break-words text-foreground"
+              />
+              <InlineEditField
+                value={formatUSD(deal.value)}
+                editValue={formatAmountWithCommas(String(deal.value ?? 0))}
+                sanitizeInput={(next) => next.replace(/[^0-9.,]/g, '')}
+                manualCommit
+                fieldName="Deal amount"
+                onSave={(value) => updateDeal('value' as any, (parseCurrencyInputValue(value) ?? 0) as any)}
+                displayClassName="text-2xl font-bold leading-none text-primary"
+              />
+            </div>
+          )}
+
           {/* Context-rail layout (5th Line, scoped deals): pins identity +
               at-a-glance facts to a left rail and lets the main column
               carry the content. Everything below is unchanged. */}
-          <div className={cn(useContextRailLayout && "flex flex-col lg:flex-row gap-5 items-start mt-4")}>
+          <div className={cn(useContextRailLayout && "flex flex-col lg:flex-row gap-5 items-start mt-3")}>
           {useContextRailLayout && dealInfoTab !== 'lenders' && (
             <div className="w-full lg:w-[300px] shrink-0 lg:sticky lg:top-4 self-start space-y-4">
               <DealContextRail
                 deal={deal}
                 compact={dealInfoTab !== 'deal-info'}
+                hideIdentity
                 className="lg:w-full lg:static"
                 onUpdateField={(field, value) => updateDeal(field as any, value as any)}
               />
