@@ -4654,9 +4654,9 @@ export default function DealDetail() {
                   { label: 'Passed', value: passedCount, color: 'text-red-400' },
                 ];
                 return (
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className={cn("grid grid-cols-3 gap-4 items-stretch", useContextRailLayout && "-mt-3")}>
                     {kpis.map(k => (
-                      <div key={k.label} className="rounded-xl border border-border/60 bg-card px-4 py-3 text-center">
+                      <div key={k.label} className="rounded-xl border border-border/60 bg-card px-4 py-3 text-center flex flex-col justify-center min-h-[7rem]">
                         <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{k.label}</p>
                         <p className={cn("mt-1 text-2xl font-bold font-mono tabular-nums", k.color)}>{k.value}</p>
                       </div>
