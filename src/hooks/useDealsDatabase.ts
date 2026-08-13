@@ -1057,6 +1057,38 @@ export function useDealsDatabase() {
         }
       }
 
+      // 5th Line only: entering the "Introductions" stage of the In Development
+      // pipeline prompts the user to record which funding sources were introduced.
+      // The dialog (mounted in DealsProvider) attaches them at the "Sent DRL" stage.
+      if (
+        updates.stage &&
+        previousDeal &&
+        updates.stage !== previousDeal.stage &&
+        String(updates.stage).startsWith('introductions')
+      ) {
+        try {
+          const { data: membership } = await supabase
+            .from('company_members')
+            .select('company_id')
+            .eq('user_id', userId!)
+            .maybeSingle();
+          const companyId = membership?.company_id;
+          if (companyId === '44556c46-9127-4b12-b14e-d6fee784afcf') {
+            window.dispatchEvent(
+              new CustomEvent('deal-introductions-stage', {
+                detail: {
+                  dealId,
+                  dealName: previousDeal.company || previousDeal.name || 'Deal',
+                  companyId,
+                },
+              }),
+            );
+          }
+        } catch (err) {
+          console.error('Error dispatching Introductions funding-source prompt:', err);
+        }
+      }
+
       // Auto-populate Initial Items when deal enters NDA/Needs List Sent in Active Pipeline.
       // Mirrors the Final Credit Items → Kick Off pattern. Re-adds any missing Initial Items
       // (e.g. deal was imported or items were manually deleted) without duplicating existing ones.
