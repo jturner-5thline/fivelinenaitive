@@ -354,11 +354,22 @@ export function useDeleteCrmCompany() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('crm_companies').delete().eq('id', id);
+      const { data, error } = await supabase
+        .from('crm_companies')
+        .delete()
+        .eq('id', id)
+        .select('id');
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('Company was not deleted — you may not have permission to delete it.');
+      }
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (id) => {
+      queryClient.removeQueries({ queryKey: ['crm-company', id] });
       queryClient.invalidateQueries({ queryKey: ['crm-companies'] });
+      queryClient.invalidateQueries({ queryKey: ['crm-companies-infinite'] });
+      queryClient.invalidateQueries({ queryKey: ['crm-companies-count'] });
       toast.success('Company deleted');
     },
     onError: (err: any) => toast.error(err.message || 'Failed to delete company'),
