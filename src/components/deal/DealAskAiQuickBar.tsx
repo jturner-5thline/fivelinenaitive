@@ -245,6 +245,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
       {expanded && (
         <div
           ref={scrollRef}
+          data-transcript
           className="h-72 overflow-y-auto rounded-lg border border-border/60 bg-card/60 backdrop-blur p-3"
         >
           <div className="space-y-3">
