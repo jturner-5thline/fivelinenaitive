@@ -52,26 +52,26 @@ export function DealContextRail({ deal, className }: DealContextRailProps) {
       className={cn(
         'shrink-0 w-full lg:w-[260px] lg:sticky lg:top-4 self-start',
         'rounded-lg border border-border/60 bg-card/70 backdrop-blur-xl',
-        'shadow-[0_8px_32px_hsl(0,0%,0%,0.35)] p-4 space-y-5',
+        'shadow-[0_8px_32px_hsl(0,0%,0%,0.35)] p-3 space-y-2.5',
         className,
       )}
       aria-label="Deal context"
     >
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         <RailLabel>Company</RailLabel>
-        <h2 className="text-xl font-semibold leading-tight break-words text-foreground">
+        <h2 className="text-lg font-semibold leading-tight break-words text-foreground">
           {deal.company}
         </h2>
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         <RailLabel>Deal size</RailLabel>
-        <div className="text-2xl font-semibold leading-none bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
+        <div className="text-xl font-semibold leading-none bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
           {formatUSD(deal.value)}
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1">
         <RailLabel>Status</RailLabel>
         <div>
           <EditableDealStatusTag dealId={deal.id} status={deal.status} />
@@ -86,14 +86,14 @@ export function DealContextRail({ deal, className }: DealContextRailProps) {
         </div>
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         <RailLabel>Close date</RailLabel>
         <div className="text-sm text-foreground">
           {closeDate ? format(new Date(closeDate), 'MMM d, yyyy') : 'Not set'}
         </div>
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         <RailLabel>Last activity</RailLabel>
         <div className="text-sm text-foreground">
           {lastActivity
@@ -102,10 +102,10 @@ export function DealContextRail({ deal, className }: DealContextRailProps) {
         </div>
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         <RailLabel>Deal owner</RailLabel>
         <div className="flex items-center gap-2">
-          <span className="h-7 w-7 rounded-full bg-primary/15 text-primary text-[11px] font-semibold flex items-center justify-center">
+          <span className="h-6 w-6 rounded-full bg-primary/15 text-primary text-[11px] font-semibold flex items-center justify-center">
             {initials(owner)}
           </span>
           <span className="text-sm text-foreground truncate">{owner || 'Unassigned'}</span>
