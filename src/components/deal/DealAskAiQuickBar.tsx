@@ -12,6 +12,8 @@ import {
   Trash2,
   Download,
   Copy,
+  Search,
+  X,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -40,6 +42,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
   const [expanded, setExpanded] = useState(false);
   const [latestOpen, setLatestOpen] = useState(true);
   const [lastPrompt, setLastPrompt] = useState('');
+  const [search, setSearch] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { messages, sendMessage, clearMessages, isLoading, isStreaming, error } = useDealSpaceAI(dealId, {
@@ -99,6 +102,35 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
 
   // Suggestions track the latest answer + deal context instead of being static.
   const latestAnswer = [...messages].reverse().find((m) => m.role === 'assistant')?.content;
+
+  // ── Transcript search ──
+  const query = search.trim().toLowerCase();
+  const visibleMessages = query
+    ? messages
+        .map((m, i) => ({ m, i }))
+        .filter(({ m }) => m.content.toLowerCase().includes(query))
+    : messages.map((m, i) => ({ m, i }));
+
+  /** Highlights every occurrence of the active query inside a message. */
+  const renderContent = (text: string) => {
+    if (!query) return text;
+    const parts: React.ReactNode[] = [];
+    const lower = text.toLowerCase();
+    let cursor = 0;
+    let at = lower.indexOf(query);
+    while (at !== -1) {
+      if (at > cursor) parts.push(text.slice(cursor, at));
+      parts.push(
+        <mark key={`${at}`} className="rounded bg-primary/30 px-0.5 text-inherit">
+          {text.slice(at, at + query.length)}
+        </mark>,
+      );
+      cursor = at + query.length;
+      at = lower.indexOf(query, cursor);
+    }
+    if (cursor < text.length) parts.push(text.slice(cursor));
+    return parts;
+  };
   const chips =
     messages.length === 0 ? STARTER_CHIPS : buildFollowUpChips(latestAnswer, dealName);
 
@@ -210,9 +242,36 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
           </>
         )}
       </div>
+      {expanded && messages.length > 0 && (
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search this deal's chat history..."
+            className="h-8 pl-8 pr-8 text-xs"
+          />
+          {search && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => setSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {query && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {visibleMessages.length} of {messages.length} messages match
+            </p>
+          )}
+        </div>
+      )}
       {expanded && (
         <div
           ref={scrollRef}
+          data-transcript
           className="h-72 overflow-y-auto rounded-lg border border-border/60 bg-card/60 backdrop-blur p-3"
         >
           <div className="space-y-3">
@@ -225,7 +284,12 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
                 </p>
               </div>
             )}
-            {messages.map((m, i) => {
+            {query && visibleMessages.length === 0 && messages.length > 0 && (
+              <p className="py-8 text-center text-xs text-muted-foreground">
+                No messages match "{search.trim()}"
+              </p>
+            )}
+            {visibleMessages.map(({ m, i }) => {
               const isLive =
                 isStreaming && i === messages.length - 1 && m.role === 'assistant';
               return (
@@ -238,7 +302,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
                     : 'text-foreground',
                 )}
               >
-                {m.content}
+                {renderContent(m.content)}
                 {isLive && (
                   <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-pulse bg-primary align-middle" />
                 )}
