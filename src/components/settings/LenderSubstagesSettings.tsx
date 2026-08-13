@@ -40,6 +40,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
+import { Switch } from '@/components/ui/switch';
 import { useLenderStages, SubstageOption } from '@/contexts/LenderStagesContext';
 
 interface SortableSubstageItemProps {
@@ -137,7 +138,7 @@ interface LenderSubstagesSettingsProps {
 }
 
 export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSettingsProps) {
-  const { substages: contextSubstages, addSubstage, updateSubstage, deleteSubstage, reorderSubstages, isSaving: contextSaving } = useLenderStages();
+  const { substages: contextSubstages, addSubstage, updateSubstage, deleteSubstage, reorderSubstages, isSaving: contextSaving, substagesEnabled, setSubstagesEnabled } = useLenderStages();
   
   // Local state for pending changes
   const [localSubstages, setLocalSubstages] = useState<SubstageOption[]>(contextSubstages);
@@ -299,6 +300,26 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
                 </div>
               </button>
             
+            {isAdmin && (
+              <div className="flex items-center gap-2 mr-3">
+                <Label htmlFor="substages-enabled" className="text-xs text-muted-foreground">
+                  Show on deals
+                </Label>
+                <Switch
+                  id="substages-enabled"
+                  checked={substagesEnabled}
+                  onCheckedChange={(checked) => {
+                    setSubstagesEnabled(checked);
+                    toast({
+                      title: checked ? 'Milestones shown' : 'Milestones hidden',
+                      description: checked
+                        ? 'Milestones now appear on funding source tiles in deals.'
+                        : 'Milestones are hidden on funding source tiles. No data was changed.',
+                    });
+                  }}
+                />
+              </div>
+            )}
             {isAdmin && (
               <Button variant="gradient" onClick={(e) => { e.stopPropagation(); openAddDialog(); }} size="sm" className="gap-1">
                 <Plus className="h-4 w-4" />
