@@ -1470,7 +1470,11 @@ export function LenderAnalyticsDialog({
             })()}
           </SheetContent>
         </Sheet>
-      </DialogContent>
+    </div>
+  );
+
+  const overlays = (
+    <>
       {/* KPI drill-down sheet — Active Lenders / Deals Sent / Conversion / Flex Active */}
       <Sheet open={!!openKpi} onOpenChange={(o) => { if (!o) setOpenKpi(null); }}>
         <SheetContent side="right" className="w-[640px] sm:max-w-[720px] z-[1600] bg-slate-950 text-slate-100 border-slate-700/60">
@@ -1907,6 +1911,41 @@ export function LenderAnalyticsDialog({
           tenantId={FIFTH_LINE_COMPANY_ID}
         />
       )}
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div
+        className="flex flex-col h-[calc(100vh-220px)] min-h-[640px] overflow-hidden rounded-2xl border text-slate-100"
+        style={MODAL_SHELL_STYLE}
+      >
+        <div className="px-6 pt-5 pb-4 shrink-0 space-y-2" style={HEADER_STYLE}>
+          {headerInner}
+        </div>
+        {bodyContent}
+        {overlays}
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        style={{ ...MODAL_SHELL_STYLE, ...originStyle }}
+        className={cn(
+          'max-w-[1100px] w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl border text-slate-100',
+          originClassName,
+        )}
+      >
+        <DialogHeader className="px-6 pt-5 pb-4 shrink-0 space-y-2" style={HEADER_STYLE}>
+          <DialogTitle className="sr-only">Lender Intelligence Dashboard</DialogTitle>
+          <DialogDescription className="sr-only">{subtitleParts.join(' · ')}</DialogDescription>
+          {headerInner}
+        </DialogHeader>
+        {bodyContent}
+      </DialogContent>
+      {overlays}
     </Dialog>
   );
 }
