@@ -257,7 +257,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
         )}
 
         {/* Collapsed View - Diamond Icons with Connecting Lines and Labels */}
-        {!isExpanded && milestones.length > 0 && markerVariant === 'diamond' && (
+        {milestones.length > 0 && markerVariant === 'diamond' && (
           <div className="relative py-0 pb-0 overflow-hidden">
             {/* Connecting line that spans the full width */}
             <div className="absolute top-[22px] left-0 right-0 h-0.5 bg-muted-foreground/30" />
@@ -379,7 +379,20 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
           </div>
         )}
 
-        <CollapsibleContent>
+        <Dialog open={isDialogOpen} onOpenChange={(o) => { setIsDialogOpen(o); if (!o) { setIsAdding(false); handleCancelEdit(); } }}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Deal Milestones</DialogTitle>
+              <DialogDescription>Add, edit, reorder, or delete milestones for this deal.</DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end">
+              {!isAdding && (
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setIsAdding(true)}>
+                  <Plus className="h-3 w-3" />
+                  Add milestone
+                </Button>
+              )}
+            </div>
           {milestones.length > 0 && (
             <div className="mb-2">
               <div className="flex items-center justify-between mb-1">
