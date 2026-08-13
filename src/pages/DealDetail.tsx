@@ -4879,7 +4879,7 @@ export default function DealDetail() {
                                   ) : active === 'desc' ? (
                                     <ArrowDown className="h-3 w-3" />
                                   ) : (
-                                    <ArrowUpDown className="h-3 w-3 opacity-40" />
+                                    <ArrowDownUp className="h-3 w-3 opacity-40" />
                                   )}
                                 </button>
                               );
