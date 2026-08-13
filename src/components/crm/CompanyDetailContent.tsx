@@ -429,7 +429,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
               <EditableField label="Email" type="email" asLink value={company.main_contact_email} onSave={(v) => handleQuickUpdate('main_contact_email', v)} />
               <EditableField label="Domain" type="text" value={(company as any).domain} onSave={(v) => handleQuickUpdate('domain', v)} />
               <EditableField label="LinkedIn" type="url" asLink value={company.linkedin_url} onSave={(v) => handleQuickUpdate('linkedin_url', v)} />
-              <EditableField label="HQ City" type="text" value={(company as any).hq_city} onSave={(v) => handleQuickUpdate('hq_city', v)} />
+              <EditableField label="City" type="text" value={(company as any).hq_city} onSave={(v) => handleQuickUpdate('hq_city', v)} />
               <EditableField label="HQ Country" type="text" value={(company as any).hq_country} onSave={(v) => handleQuickUpdate('hq_country', v)} />
               <EditableField label="HQ Address" type="textarea" value={company.hq_address} onSave={(v) => handleQuickUpdate('hq_address', v)} />
               <EditableField label="Segment" type="text" value={company.segment} onSave={(v) => handleQuickUpdate('segment', v)} />
@@ -542,7 +542,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                   />
                   )}
                   {!snapshotFields.isDisabled('hq_city') && (
-                    <EditableKV label="HQ city" value={company.hq_city} onSave={(v) => handleQuickUpdate('hq_city', v)} />
+                    <EditableKV label="City" value={company.hq_city} onSave={(v) => handleQuickUpdate('hq_city', v)} />
                   )}
                   {!snapshotFields.isDisabled('hq_country') && (
                     <EditableKV label="Country" value={company.hq_country} onSave={(v) => handleQuickUpdate('hq_country', v)} />

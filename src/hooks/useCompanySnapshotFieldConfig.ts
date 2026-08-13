@@ -26,7 +26,7 @@ export const BUILTIN_SNAPSHOT_FIELDS: Array<{ key: string; label: string }> = [
   { key: 'owner_user_id', label: 'Company owner' },
   { key: 'company_type', label: 'Type' },
   { key: 'employee_range', label: 'Employees' },
-  { key: 'hq_city', label: 'HQ city' },
+  { key: 'hq_city', label: 'City' },
   { key: 'hq_country', label: 'Country' },
   { key: 'domain', label: 'Domain' },
   { key: 'linkedin_url', label: 'LinkedIn' },
