@@ -4475,21 +4475,25 @@ export default function DealDetail() {
                             return def?.column === 'right';
                           });
 
-                          return (
+                          const isRailed = useContextRailLayout && Boolean(railPanelSlot);
+                          const dealInfoCard = (
                             <Card
                               key={id}
-                              className="rounded-2xl border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                              className={cn(
+                                "rounded-2xl border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+                                isRailed && "w-full text-xs",
+                              )}
                               style={{ background: 'rgba(20, 26, 40, 0.74)' }}
                             >
-                              <CardHeader className="flex flex-row items-center justify-between py-4">
+                              <CardHeader className={cn("flex flex-row items-center justify-between py-4", isRailed && "px-3 py-3")}>
                                 <CardTitle
-                                  className="text-[15px] font-semibold tracking-[0.01em]"
+                                  className={cn("text-[15px] font-semibold tracking-[0.01em]", isRailed && "text-[13px]")}
                                   style={{ color: 'rgba(226, 232, 240, 0.92)' }}
                                 >
                                   Deal Information
                                 </CardTitle>
                               </CardHeader>
-                              <CardContent className="space-y-4">
+                              <CardContent className={cn("space-y-4", isRailed && "px-3 pb-3 space-y-3")}>
                                 {isDealInfoFieldVisible('narrative') && renderDealInfoField('narrative')}
 
                                 {isFinServDeal ? (
