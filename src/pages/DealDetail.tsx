@@ -5216,47 +5216,7 @@ export default function DealDetail() {
                                     </SelectContent>
                                   </Select>
                                   )}
-                                  {/* NDA & Marketing Materials Status Icons */}
-                                   <div className="flex items-center gap-1">
-                                    {(() => {
-                                      const summary = getLenderSummary(lender.name);
-                                      return (
-                                        <>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <div className={cn(
-                                                "p-1 rounded",
-                                                summary.hasNda 
-                                                  ? "text-primary" 
-                                                  : "text-muted-foreground/50"
-                                              )}>
-                                                <FileSignature className="h-4 w-4" />
-                                              </div>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              <p>{summary.hasNda ? 'NDA on file' : 'No NDA'}</p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <div className={cn(
-                                                "p-1 rounded",
-                                                summary.hasMarketingMaterials 
-                                                  ? "text-primary" 
-                                                  : "text-muted-foreground/50"
-                                              )}>
-                                                <Megaphone className="h-4 w-4" />
-                                              </div>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              <p>{summary.hasMarketingMaterials ? 'Marketing materials on file' : 'No marketing materials'}</p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </>
-                                      );
-                                    })()}
-                                  </div>
-                                        </div>
+                                         </div>
                                         <div className="min-w-0">
                                 {/* Funding Source Notes */}
                                 <div className="ml-2 mt-2 space-y-1">
