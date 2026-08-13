@@ -77,6 +77,19 @@ export function CookieConsent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisible]);
 
+  // Outside-click dismissal without a blocking backdrop: listen on the
+  // document so the rest of the app stays fully interactive.
+  useEffect(() => {
+    if (!isVisible) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const card = cardRef.current;
+      if (card && !card.contains(e.target as Node)) handleDismiss();
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => document.removeEventListener('pointerdown', onPointerDown, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isVisible]);
+
   const handleSavePreferences = () => {
     saveConsent(preferences);
   };
@@ -88,16 +101,8 @@ export function CookieConsent() {
 
   if (!isVisible) return null;
 
-  // Outside-click dismissal: a transparent backdrop above the page that
-  // catches clicks outside the banner card. Clicks inside the card stop
-  // propagation so they don't trigger the dismiss handler.
   return (
     <>
-      <div
-        className="fixed inset-0 z-40 bg-transparent"
-        aria-hidden="true"
-        onClick={handleDismiss}
-      />
       <div
         className="fixed inset-x-0 bottom-0 z-50 p-4 sm:p-6 pointer-events-none"
         role="dialog"
