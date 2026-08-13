@@ -4856,9 +4856,34 @@ export default function DealDetail() {
                           // Flat list when "All" is selected - with drag and drop
                           <div>
                           <div className="grid grid-cols-[minmax(180px,1.3fr)_190px_minmax(220px,2fr)_auto] items-center gap-4 border-b border-border px-2 pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                            <span>Lender</span>
-                            <span>Stage</span>
-                            <span>Latest update</span>
+                            {([
+                              { label: 'Lender', asc: 'name-asc', desc: 'name-desc' },
+                              { label: 'Stage', asc: 'stage-slowest', desc: 'stage-furthest' },
+                              { label: 'Latest update', asc: 'updated-asc', desc: 'updated-desc' },
+                            ] as const).map((col) => {
+                              const active = lenderSort === col.asc ? 'asc' : lenderSort === col.desc ? 'desc' : null;
+                              return (
+                                <button
+                                  key={col.label}
+                                  type="button"
+                                  onClick={() => setLenderSort(active === 'asc' ? col.desc : active === 'desc' ? 'none' : col.asc)}
+                                  aria-label={`Sort by ${col.label}`}
+                                  className={cn(
+                                    'flex items-center gap-1 text-left uppercase tracking-wider transition-colors hover:text-foreground',
+                                    active && 'text-foreground',
+                                  )}
+                                >
+                                  {col.label}
+                                  {active === 'asc' ? (
+                                    <ArrowUp className="h-3 w-3" />
+                                  ) : active === 'desc' ? (
+                                    <ArrowDown className="h-3 w-3" />
+                                  ) : (
+                                    <ArrowUpDown className="h-3 w-3 opacity-40" />
+                                  )}
+                                </button>
+                              );
+                            })}
                             <span className="text-right">Actions</span>
                           </div>
                           <DndContext
