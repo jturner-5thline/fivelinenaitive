@@ -3801,6 +3801,7 @@ export default function DealDetail() {
                         onUpdate={updateMilestone}
                         onDelete={deleteMilestone}
                         onReorder={reorderMilestones}
+                        markerVariant={useContextRailLayout ? 'pill' : 'diamond'}
                       />
                     </CardContent>
                   </Card>

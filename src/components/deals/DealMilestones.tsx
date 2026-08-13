@@ -50,9 +50,16 @@ interface DealMilestonesProps {
   onUpdate: (id: string, updates: Partial<DealMilestone>) => void;
   onDelete: (id: string) => void;
   onReorder?: (milestones: DealMilestone[]) => void;
+  /**
+   * Collapsed-timeline marker style.
+   * - `diamond` (default): the classic diamond markers on a connector line.
+   * - `pill`: rounded pills with the milestone title inline (used by the
+   *   context-rail deal detail layout).
+   */
+  markerVariant?: 'diamond' | 'pill';
 }
 
-export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorder }: DealMilestonesProps) {
+export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorder, markerVariant = 'diamond' }: DealMilestonesProps) {
   const [isAdding, setIsAdding] = useState(false);
   // Always start collapsed on every page load/refresh. Do not persist
   // expanded state across reloads — manual expansion only lasts for the
@@ -189,8 +196,64 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
           )}
         </div>
 
+        {/* Collapsed View — pill markers */}
+        {!isExpanded && milestones.length > 0 && markerVariant === 'pill' && (
+          <div className="flex flex-wrap items-center gap-2 py-1">
+            {milestones.map((milestone) => (
+              <Tooltip key={milestone.id}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => onUpdate(milestone.id, {
+                      completed: !milestone.completed,
+                      completedAt: !milestone.completed ? new Date().toISOString() : undefined,
+                    })}
+                    className={cn(
+                      "group inline-flex items-center gap-1.5 rounded-full px-3 h-7 max-w-[220px]",
+                      "text-[11px] font-medium leading-none transition-all duration-150",
+                      "border active:scale-95 hover:brightness-110",
+                      milestone.completed
+                        ? "border-transparent bg-brand-gradient text-white shadow-[0_2px_10px_hsl(272,100%,60%,0.35)]"
+                        : isOverdue(milestone)
+                        ? "border-destructive/50 bg-destructive/15 text-destructive"
+                        : "border-border/70 bg-muted/30 text-muted-foreground",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full shrink-0",
+                        milestone.completed
+                          ? "bg-white"
+                          : isOverdue(milestone)
+                          ? "bg-destructive"
+                          : "bg-muted-foreground/50",
+                      )}
+                    />
+                    <span className="truncate">{milestone.title}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  <p className="font-medium">{milestone.title}</p>
+                  {milestone.dueDate && (
+                    <p className={isOverdue(milestone) ? "text-destructive" : "text-muted-foreground"}>
+                      Due: {format(new Date(milestone.dueDate), 'MMM d, yyyy')}
+                      {isOverdue(milestone) && " (Overdue)"}
+                    </p>
+                  )}
+                  {milestone.completed && milestone.completedAt && (
+                    <p className="text-primary">
+                      Completed: {format(new Date(milestone.completedAt), 'MMM d, yyyy')}
+                    </p>
+                  )}
+                  <p className="text-muted-foreground/70 mt-0.5">Click to {milestone.completed ? 'uncheck' : 'complete'}</p>
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        )}
+
         {/* Collapsed View - Diamond Icons with Connecting Lines and Labels */}
-        {!isExpanded && milestones.length > 0 && (
+        {!isExpanded && milestones.length > 0 && markerVariant === 'diamond' && (
           <div className="relative py-0 pb-0 overflow-hidden">
             {/* Connecting line that spans the full width */}
             <div className="absolute top-[22px] left-0 right-0 h-0.5 bg-muted-foreground/30" />
