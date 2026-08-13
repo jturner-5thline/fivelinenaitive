@@ -12,6 +12,8 @@ import {
   Trash2,
   Download,
   Copy,
+  Search,
+  X,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -40,6 +42,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
   const [expanded, setExpanded] = useState(false);
   const [latestOpen, setLatestOpen] = useState(true);
   const [lastPrompt, setLastPrompt] = useState('');
+  const [search, setSearch] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { messages, sendMessage, clearMessages, isLoading, isStreaming, error } = useDealSpaceAI(dealId, {
@@ -99,6 +102,35 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
 
   // Suggestions track the latest answer + deal context instead of being static.
   const latestAnswer = [...messages].reverse().find((m) => m.role === 'assistant')?.content;
+
+  // ── Transcript search ──
+  const query = search.trim().toLowerCase();
+  const visibleMessages = query
+    ? messages
+        .map((m, i) => ({ m, i }))
+        .filter(({ m }) => m.content.toLowerCase().includes(query))
+    : messages.map((m, i) => ({ m, i }));
+
+  /** Highlights every occurrence of the active query inside a message. */
+  const renderContent = (text: string) => {
+    if (!query) return text;
+    const parts: React.ReactNode[] = [];
+    const lower = text.toLowerCase();
+    let cursor = 0;
+    let at = lower.indexOf(query);
+    while (at !== -1) {
+      if (at > cursor) parts.push(text.slice(cursor, at));
+      parts.push(
+        <mark key={`${at}`} className="rounded bg-primary/30 px-0.5 text-inherit">
+          {text.slice(at, at + query.length)}
+        </mark>,
+      );
+      cursor = at + query.length;
+      at = lower.indexOf(query, cursor);
+    }
+    if (cursor < text.length) parts.push(text.slice(cursor));
+    return parts;
+  };
   const chips =
     messages.length === 0 ? STARTER_CHIPS : buildFollowUpChips(latestAnswer, dealName);
 
