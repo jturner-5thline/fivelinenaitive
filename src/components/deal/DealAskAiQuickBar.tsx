@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Sparkles, ArrowUp, Loader2, Maximize2 } from 'lucide-react';
+import { Sparkles, ArrowUp, Loader2, Maximize2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useDealSpaceAI } from '@/hooks/useDealSpaceAI';
@@ -19,6 +19,7 @@ interface DealAskAiQuickBarProps {
 export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBarProps) {
   const [value, setValue] = useState('');
   const [expanded, setExpanded] = useState(false);
+  const [latestOpen, setLatestOpen] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { messages, sendMessage, isLoading } = useDealSpaceAI(dealId);
@@ -56,6 +57,9 @@ export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBar
     onOpenDealSpace();
     setExpanded(false);
   };
+
+  const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant');
+  const lastQuestion = [...messages].reverse().find((m) => m.role === 'user');
 
   return (
     <div ref={containerRef} className="space-y-2" onFocusCapture={() => setExpanded(true)}>
@@ -98,6 +102,43 @@ export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBar
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Thinking...
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {/* Collapsed view: keep the latest answer on the deal page in an
+          expandable section instead of forcing a trip to the Deal Space tab. */}
+      {!expanded && lastAssistant && (
+        <div className="rounded-lg border border-border/60 bg-card/60 backdrop-blur">
+          <button
+            type="button"
+            onClick={() => setLatestOpen((o) => !o)}
+            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs font-medium text-muted-foreground">Latest AI response</span>
+              {lastQuestion && (
+                <span className="block truncate text-xs text-muted-foreground/80">{lastQuestion.content}</span>
+              )}
+            </span>
+            {latestOpen ? (
+              <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+            )}
+          </button>
+          {latestOpen && (
+            <div className="max-h-56 overflow-y-auto border-t border-border/60 px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap">
+              {lastAssistant.content}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 border-t border-border/60 px-3 py-1.5">
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setExpanded(true)}>
+              Continue chat
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={openFullTab}>
+              <Maximize2 className="h-3.5 w-3.5" />
+              Open full chat
+            </Button>
           </div>
         </div>
       )}
