@@ -153,10 +153,10 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                 "flex items-center gap-2 flex-1 px-3 py-2.5 -mx-3 rounded-lg",
                 "cursor-pointer transition-all duration-200",
                 "border border-transparent",
-                "hover:bg-white/[0.08] hover:shadow-[0_0_16px_rgba(126,184,247,0.1)]",
+                "bg-transparent hover:bg-white/[0.05] hover:shadow-[0_0_16px_rgba(126,184,247,0.1)]",
                 "active:scale-[0.99]",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                !isExpanded && "bg-white/[0.04]"
+                !isExpanded && "bg-transparent"
               )}
               aria-expanded={isExpanded}
             >
@@ -170,7 +170,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                   isExpanded && "rotate-90"
                 )} />
               </div>
-              <span className="text-lg font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">Deal Milestones</span>
+              <span className="text-sm font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">Deal Milestones</span>
               {milestones.length > 0 && (
                 <Badge variant="outline" className="ml-1 text-[10px] px-1.5 py-0 h-5 font-semibold border-primary/30 text-primary">
                   {completedCount}/{totalCount}
