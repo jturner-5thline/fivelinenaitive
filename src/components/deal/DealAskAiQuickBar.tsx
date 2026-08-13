@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { useDealSpaceAI } from '@/hooks/useDealSpaceAI';
 import { downloadTextAsFile } from '@/lib/downloadFile';
 import { STARTER_CHIPS, buildFollowUpChips } from '@/lib/deal/askAiFollowUpChips';
+import { buildCitationIndex, renderCitationAppendix, parseSource } from '@/lib/deal/askAiCitations';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -103,10 +104,14 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
 
   const buildTranscript = () => {
     const title = dealName ? `Ask AI transcript — ${dealName}` : 'Ask AI transcript';
+    const { citations, indexByRaw } = buildCitationIndex(messages, dealId);
     const lines = [
       `# ${title}`,
       '',
       `_Exported ${new Date().toLocaleString()}_`,
+      ...(dealId
+        ? [`_Deal record: ${typeof window !== 'undefined' ? window.location.origin : ''}/deals/${dealId}_`]
+        : []),
       '',
       '---',
       '',
@@ -120,10 +125,16 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
       lines.push(m.content);
       if (m.sources?.length) {
         lines.push('');
-        lines.push(`**Sources:** ${m.sources.join(', ')}`);
+        lines.push('**Sources:**');
+        for (const raw of m.sources) {
+          const n = indexByRaw.get(raw.trim());
+          const { label, url } = parseSource(raw.trim(), dealId);
+          lines.push(url ? `- [${n}] ${label} — ${url}` : `- [${n}] ${label}`);
+        }
       }
       lines.push('');
     }
+    lines.push(...renderCitationAppendix(citations));
     return lines.join('\n');
   };
 
