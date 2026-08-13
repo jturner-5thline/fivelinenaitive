@@ -1574,18 +1574,51 @@ export default function DealDetail() {
   // matching sources already attached to the deal.
   const [lenderSearchQuery, setLenderSearchQuery] = useState('');
 
+  // Lender type / category filter (derived from the master lender directory)
+  const [lenderTypeFilters, setLenderTypeFilters] = useState<Set<string>>(new Set());
+
+  /** name (lowercased) -> list of lender types/categories */
+  const lenderTypesByName = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const ml of masterLenders) {
+      const name = typeof ml?.name === 'string' ? ml.name.toLowerCase().trim() : '';
+      if (!name) continue;
+      const raw = (ml as Record<string, unknown>).lender_type;
+      if (typeof raw !== 'string' || !raw.trim()) continue;
+      map.set(
+        name,
+        raw.split(',').map(t => t.trim()).filter(Boolean),
+      );
+    }
+    return map;
+  }, [masterLenders]);
+
+  /** Distinct types present on this deal's funding sources. */
+  const availableLenderTypes = useMemo(() => {
+    const set = new Set<string>();
+    for (const l of deal?.lenders || []) {
+      for (const t of lenderTypesByName.get((l.name || '').toLowerCase().trim()) || []) set.add(t);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [deal?.lenders, lenderTypesByName]);
+
   // Apply individual stage filters + typed search to sorted lenders
   const filteredSortedLenders = useMemo(() => {
     let out = sortedLenders;
     if (lenderStageFilters.size > 0) {
       out = out.filter(l => lenderStageFilters.has(l.stage));
     }
+    if (lenderTypeFilters.size > 0) {
+      out = out.filter(l =>
+        (lenderTypesByName.get((l.name || '').toLowerCase().trim()) || []).some(t => lenderTypeFilters.has(t)),
+      );
+    }
     const q = lenderSearchQuery.trim().toLowerCase();
     if (q.length > 0) {
       out = out.filter(l => (l.name || '').toLowerCase().includes(q));
     }
     return out;
-  }, [sortedLenders, lenderStageFilters, lenderSearchQuery]);
+  }, [sortedLenders, lenderStageFilters, lenderTypeFilters, lenderTypesByName, lenderSearchQuery]);
 
   const [attachmentFilter, setAttachmentFilter] = useState<'all' | 'materials' | 'financials' | 'agreements' | 'other'>(
     savedViewPrefs?.attachmentFilter ?? 'all'
@@ -4802,6 +4835,75 @@ export default function DealDetail() {
                             </PopoverContent>
                           </Popover>
                           <div className="flex items-center gap-1 ml-2 pl-2 border-l border-white/10 shrink-0">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn('h-8 w-8', (lenderStageFilters.size > 0 || lenderTypeFilters.size > 0) && 'text-primary')}
+                                aria-label="Filter lenders"
+                                title="Filter lenders"
+                              >
+                                <Filter className="h-4 w-4" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="end" sideOffset={6} className="w-[260px] max-h-[70vh] overflow-y-auto p-3 bg-background border border-border shadow-xl">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Stage</span>
+                                {(lenderStageFilters.size > 0 || lenderTypeFilters.size > 0) && (
+                                  <button
+                                    type="button"
+                                    className="text-[11px] text-muted-foreground hover:text-foreground"
+                                    onClick={() => { setLenderStageFilters(new Set()); setLenderTypeFilters(new Set()); }}
+                                  >
+                                    Clear all
+                                  </button>
+                                )}
+                              </div>
+                              <div className="space-y-1.5">
+                                {configuredStages.map((stage) => (
+                                  <label key={stage.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                                    <Checkbox
+                                      checked={lenderStageFilters.has(stage.id)}
+                                      onCheckedChange={(checked) => {
+                                        setLenderStageFilters(prev => {
+                                          const next = new Set(prev);
+                                          if (checked) next.add(stage.id); else next.delete(stage.id);
+                                          return next;
+                                        });
+                                      }}
+                                    />
+                                    <span className="flex items-center gap-1.5">
+                                      <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', getLenderStatusTheme(stage.group).dot)} />
+                                      {stage.label}
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
+                              <div className="mt-3 pt-3 border-t border-border">
+                                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Lender type</span>
+                                <div className="mt-2 space-y-1.5">
+                                  {availableLenderTypes.length === 0 ? (
+                                    <p className="text-[11px] text-muted-foreground">No categories on this deal's funding sources.</p>
+                                  ) : availableLenderTypes.map((type) => (
+                                    <label key={type} className="flex items-center gap-2 text-xs cursor-pointer">
+                                      <Checkbox
+                                        checked={lenderTypeFilters.has(type)}
+                                        onCheckedChange={(checked) => {
+                                          setLenderTypeFilters(prev => {
+                                            const next = new Set(prev);
+                                            if (checked) next.add(type); else next.delete(type);
+                                            return next;
+                                          });
+                                        }}
+                                      />
+                                      <span className="truncate" title={type}>{type}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
