@@ -4220,8 +4220,8 @@ export default function DealDetail() {
                                 );
                               case 'dealManager':
                                 return (
-                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
-                                    <span className="text-muted-foreground text-sm">Deal Manager</span>
+                                  <div key={fieldId} className="flex flex-col gap-1">
+                                    <span className="text-muted-foreground text-xs font-medium">Deal Manager</span>
                                     <Select value={deal.manager} onValueChange={(value) => updateDeal('manager', value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select manager" /></SelectTrigger>
                                       <SelectContent>
@@ -4234,8 +4234,8 @@ export default function DealDetail() {
                                 );
                               case 'dealOwner':
                                 return (
-                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
-                                    <span className="text-muted-foreground text-sm">Deal Owner</span>
+                                  <div key={fieldId} className="flex flex-col gap-1">
+                                    <span className="text-muted-foreground text-xs font-medium">Deal Owner</span>
                                     <Select value={deal.dealOwner || ''} onValueChange={(value) => updateDeal('dealOwner', value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select owner" /></SelectTrigger>
                                       <SelectContent>
@@ -4248,8 +4248,8 @@ export default function DealDetail() {
                                 );
                               case 'type':
                                 return (
-                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
-                                    <span className="text-muted-foreground text-sm">Type</span>
+                                  <div key={fieldId} className="flex flex-col gap-1">
+                                    <span className="text-muted-foreground text-xs font-medium">Type</span>
                                     <Popover>
                                       <PopoverTrigger asChild>
                                         <Button variant="outline" className="w-full justify-between h-8 text-sm font-normal overflow-hidden">
@@ -4296,8 +4296,8 @@ export default function DealDetail() {
                                 );
                               case 'engagement':
                                 return (
-                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
-                                    <span className="text-muted-foreground text-sm">Engagement</span>
+                                  <div key={fieldId} className="flex flex-col gap-1">
+                                    <span className="text-muted-foreground text-xs font-medium">Engagement</span>
                                     <Select value={deal.engagementType} onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue /></SelectTrigger>
                                       <SelectContent>
@@ -4310,8 +4310,8 @@ export default function DealDetail() {
                                 );
                               case 'exclusivity':
                                 return (
-                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
-                                    <span className="text-muted-foreground text-sm">Exclusivity</span>
+                                  <div key={fieldId} className="flex flex-col gap-1">
+                                    <span className="text-muted-foreground text-xs font-medium">Exclusivity</span>
                                     <Select value={deal.exclusivity || ''} onValueChange={(value: ExclusivityType) => updateDeal('exclusivity', value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select..." /></SelectTrigger>
                                       <SelectContent>
@@ -4326,8 +4326,8 @@ export default function DealDetail() {
                                 return <DealAffiliatedContactsField key={fieldId} dealId={deal.id} />;
                               case 'companyUrl':
                                 return (
-                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
-                                    <span className="text-muted-foreground text-sm">Company URL</span>
+                                  <div key={fieldId} className="flex flex-col gap-1">
+                                    <span className="text-muted-foreground text-xs font-medium">Company URL</span>
                                     <DebouncedInput
                                       value={deal.companyUrl || ''}
                                       onChange={(value) => updateDeal('companyUrl', String(value))}
@@ -4338,8 +4338,8 @@ export default function DealDetail() {
                                 );
                               case 'businessModel':
                                 return (
-                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
-                                    <span className="text-muted-foreground text-sm">Business Model</span>
+                                  <div key={fieldId} className="flex flex-col gap-1">
+                                    <span className="text-muted-foreground text-xs font-medium">Business Model</span>
                                     <Select value={deal.businessModel || ''} onValueChange={(value) => updateDeal('businessModel', value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select industry..." /></SelectTrigger>
                                       <SelectContent>
@@ -4364,8 +4364,8 @@ export default function DealDetail() {
                               }
                               case 'referralSource':
                                 return (
-                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
-                                    <span className="text-muted-foreground text-sm">Referral Source</span>
+                                  <div key={fieldId} className="flex flex-col gap-1">
+                                    <span className="text-muted-foreground text-xs font-medium">Referral Source</span>
                                     <ReferralSourceContactInput
                                       value={
                                         deal.referralSourceContactId
@@ -4394,8 +4394,8 @@ export default function DealDetail() {
                                 );
                               case 'analyst':
                                 return (
-                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
-                                    <span className="text-muted-foreground text-sm">Analyst</span>
+                                  <div key={fieldId} className="flex flex-col gap-1">
+                                    <span className="text-muted-foreground text-xs font-medium">Analyst</span>
                                     <Select value={deal.analyst || ''} onValueChange={(value: string) => updateDeal('analyst', value === '__none__' ? '' : value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select analyst..." /></SelectTrigger>
                                       <SelectContent>
@@ -4411,8 +4411,8 @@ export default function DealDetail() {
                                 );
                               case 'sourcedVia':
                                 return (
-                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
-                                    <span className="text-muted-foreground text-sm">Sourced Via</span>
+                                  <div key={fieldId} className="flex flex-col gap-1">
+                                    <span className="text-muted-foreground text-xs font-medium">Sourced Via</span>
                                     <Select value={deal.sourcedVia || ''} onValueChange={(value: string) => updateDeal('sourcedVia', value === '__none__' ? '' : value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select source..." /></SelectTrigger>
                                       <SelectContent side="bottom" align="start">
