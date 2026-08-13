@@ -112,6 +112,7 @@ import { RequestedItemsPanel } from '@/components/deal/RequestedItemsPanel';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { DealActivityTab } from '@/components/deal/DealActivityTab';
 import { DealTasksPanel } from '@/components/deal/DealTasksPanel';
+import { DealHoursFeesCard } from '@/components/deal/DealHoursFeesCard';
 import { InfoRequestsPanel } from '@/components/deal/InfoRequestsPanel';
 const loadDealManagementTab = lazyRetry(() => import('@/components/deal/DealManagementTab').then(m => ({ default: m.DealManagementTab })));
 const DealManagementTab = lazy(loadDealManagementTab);
