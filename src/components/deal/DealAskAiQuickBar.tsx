@@ -109,11 +109,13 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
       `# ${title}`,
       '',
       `_Exported ${new Date().toLocaleString()}_`,
-      dealId ? `_Deal record: ${typeof window !== 'undefined' ? window.location.origin : ''}/deals/${dealId}_` : '',
+      ...(dealId
+        ? [`_Deal record: ${typeof window !== 'undefined' ? window.location.origin : ''}/deals/${dealId}_`]
+        : []),
       '',
       '---',
       '',
-    ].filter((l) => l !== '' || true);
+    ];
     for (const m of messages) {
       const stamp = m.timestamp instanceof Date && !isNaN(m.timestamp.getTime())
         ? m.timestamp.toLocaleString()
