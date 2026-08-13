@@ -376,6 +376,8 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
               dealType={currentDeal?.dealTypes?.[0] ?? null}
               companyId={company?.id ?? null}
               mappingRefreshKey={mappingRefreshKey}
+              dealName={currentDeal?.name}
+              companyName={company?.name}
             />
           </ResizablePanel>
 
