@@ -4,6 +4,7 @@ export { SUB_WIDGET_LABELS, ALL_SUB_WIDGET_IDS } from './ManagementSnapshotDashb
 export { SalesBDROIDashboard } from './SalesBDROIDashboard';
 export { SalesTeamBoardDashboard } from './SalesTeamBoardDashboard';
 export { ConsolidatedDebtPipelineDashboard } from './ConsolidatedDebtPipelineDashboard';
+export { LenderIntelligenceDashboard } from './LenderIntelligenceDashboard';
 export { ControllerDashboard } from './ControllerDashboard';
 export { ExecutiveDashboard } from './ExecutiveDashboard';
 export { FinServFinancialMetricsDashboard } from './FinServFinancialMetricsDashboard';
