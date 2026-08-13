@@ -15,6 +15,9 @@ import {
   Search,
   X,
   Quote,
+  AlertTriangle,
+  CheckCircle2,
+  ExternalLink,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -22,6 +25,7 @@ import { useDealSpaceAI } from '@/hooks/useDealSpaceAI';
 import { downloadTextAsFile } from '@/lib/downloadFile';
 import { STARTER_CHIPS, buildFollowUpChips } from '@/lib/deal/askAiFollowUpChips';
 import { buildCitationIndex, renderCitationAppendix, parseSource } from '@/lib/deal/askAiCitations';
+import { useCitationVerification } from '@/hooks/useCitationVerification';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -50,6 +54,12 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
   const { messages, sendMessage, clearMessages, isLoading, isStreaming, error } = useDealSpaceAI(dealId, {
     persistKey: 'quickbar',
   });
+  const {
+    citations: verifiedCitations,
+    statusByRaw,
+    missing: missingCitations,
+    checking: checkingCitations,
+  } = useCitationVerification(messages, dealId);
 
   // Collapse back to the default bar height when the user clicks outside.
   useEffect(() => {
@@ -164,12 +174,31 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
         for (const raw of m.sources) {
           const n = indexByRaw.get(raw.trim());
           const { label, url } = parseSource(raw.trim(), dealId);
-          lines.push(url ? `- [${n}] ${label} — ${url}` : `- [${n}] ${label}`);
+          const flag = statusByRaw.get(raw.trim()) === 'missing' ? ' ⚠️ _source not found on this deal_' : '';
+          lines.push(url ? `- [${n}] ${label} — ${url}${flag}` : `- [${n}] ${label}${flag}`);
         }
       }
       lines.push('');
     }
-    if (withCitations) lines.push(...renderCitationAppendix(citations));
+    if (withCitations) {
+      lines.push(
+        ...renderCitationAppendix(citations).map((line) => {
+          const m = line.match(/^(\d+)\. \*\*(.+?)\*\*/);
+          if (!m) return line;
+          const cite = citations[Number(m[1]) - 1];
+          return cite && statusByRaw.get(cite.raw.trim()) === 'missing'
+            ? `${line} ⚠️ **Unresolved:** this document could not be found on the deal.`
+            : line;
+        }),
+      );
+      if (missingCitations.length) {
+        lines.push('');
+        lines.push(
+          `> ⚠️ ${missingCitations.length} cited source${missingCitations.length === 1 ? '' : 's'} could not be resolved to a document on this deal and may need manual verification.`,
+        );
+        lines.push('');
+      }
+    }
     return lines.join('\n');
   };
 
