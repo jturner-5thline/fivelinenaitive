@@ -5287,6 +5287,7 @@ export default function DealDetail() {
                               })}
                             </SortableContext>
                           </DndContext>
+                          </div>
                         ) : (
                           // Grouped list when a specific group is selected
                           stageGroups
