@@ -734,6 +734,39 @@ export default function Lenders() {
 
   // Filter lenders: advanced filters → AI filter → active-deals → text search.
   // Text search runs client-side across many fields (real-time substring match).
+  // Precomputed lowercase search corpus per lender. Building this once (and
+  // only when the underlying data changes) keeps each keystroke to a cheap
+  // substring test instead of re-reading ~25 fields on 6k+ rows.
+  const searchBlobById = useMemo(() => {
+    const blobs = new Map<string, string>();
+    for (const l of searchableLenders) {
+      const dealHistory = lenderDealIndex[l.name.toLowerCase().trim()] || '';
+      const aux = lenderAuxIndex[l.id] || '';
+      const parts: unknown[] = [
+        l.name, l.contact_name, l.email, l.contact_title, l.contact_phone,
+        l.geo, l.lender_type, l.tier, l.industries, l.industries_to_avoid,
+        l.loan_types, l.deal_structure_notes, l.company_requirements,
+        l.upfront_checklist, l.post_term_sheet_checklist, l.sub_debt,
+        l.cash_burn, l.sponsorship, l.b2b_b2c, l.refinancing,
+        l.relationship_owners, l.referral_lender,
+        l.min_deal, l.max_deal, formatCurrency(l.min_deal), formatCurrency(l.max_deal),
+        dealHistory, aux,
+      ];
+      const flat: string[] = [];
+      for (const p of parts) {
+        if (p == null) continue;
+        if (Array.isArray(p)) flat.push(p.filter(Boolean).join(' '));
+        else flat.push(String(p));
+      }
+      blobs.set(l.id, flat.join(' ').toLowerCase());
+    }
+    return blobs;
+  }, [searchableLenders, lenderDealIndex, lenderAuxIndex]);
+
+  // Keep typing responsive: the heavy filter/sort/render work runs against a
+  // deferred copy of the query so keystrokes never block the input.
+  const deferredSearchQuery = useDeferredValue(debouncedSearchQuery);
+
   const filteredLenders = useMemo(() => {
     let list = applyLenderFilters(searchableLenders, advancedFilters);
 
@@ -749,50 +782,10 @@ export default function Lenders() {
       list = list.filter((lender) => duplicateIndex.byLenderId[lender.id]);
     }
 
-    const q = debouncedSearchQuery.trim().toLowerCase();
+    const q = deferredSearchQuery.trim().toLowerCase();
     if (!q) return list;
-
-    const matches = (val: unknown): boolean => {
-      if (val == null) return false;
-      if (Array.isArray(val)) return val.some((v) => matches(v));
-      if (typeof val === 'number') return String(val).includes(q);
-      if (typeof val === 'string') return val.toLowerCase().includes(q);
-      return false;
-    };
-
-    return list.filter((l) => {
-      const dealHistory = lenderDealIndex[l.name.toLowerCase().trim()] || '';
-      const dealSize = `${l.min_deal ?? ''} ${l.max_deal ?? ''} ${formatCurrency(l.min_deal)} ${formatCurrency(l.max_deal)}`;
-      const aux = lenderAuxIndex[l.id] || '';
-      return (
-        matches(l.name) ||
-        matches(l.contact_name) ||
-        matches(l.email) ||
-        matches(l.contact_title) ||
-        matches(l.contact_phone) ||
-        matches(l.geo) ||
-        matches(l.lender_type) ||
-        matches(l.tier) ||
-        matches(l.industries) ||
-        matches(l.industries_to_avoid) ||
-        matches(l.loan_types) ||
-        matches(l.deal_structure_notes) ||
-        matches(l.company_requirements) ||
-        matches(l.upfront_checklist) ||
-        matches(l.post_term_sheet_checklist) ||
-        matches(l.sub_debt) ||
-        matches(l.cash_burn) ||
-        matches(l.sponsorship) ||
-        matches(l.b2b_b2c) ||
-        matches(l.refinancing) ||
-        matches(l.relationship_owners) ||
-        matches(l.referral_lender) ||
-        matches(dealSize) ||
-        matches(dealHistory) ||
-        matches(aux)
-      );
-    });
-  }, [searchableLenders, advancedFilters, showActiveDealsOnly, showDuplicatesOnly, duplicateIndex, activeDealCounts, debouncedSearchQuery, lenderDealIndex, lenderAuxIndex, aiFilter]);
+    return list.filter((l) => (searchBlobById.get(l.id) || '').includes(q));
+  }, [searchableLenders, advancedFilters, showActiveDealsOnly, showDuplicatesOnly, duplicateIndex, activeDealCounts, deferredSearchQuery, searchBlobById, aiFilter]);
 
   // Sort filtered lenders - memoized to prevent re-sorting on every render
   const sortedLenders = useMemo(() => {
