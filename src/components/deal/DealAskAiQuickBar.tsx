@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useDealSpaceAI } from '@/hooks/useDealSpaceAI';
 import { downloadTextAsFile } from '@/lib/downloadFile';
+import { STARTER_CHIPS, buildFollowUpChips } from '@/lib/deal/askAiFollowUpChips';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -95,22 +96,10 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
     void sendMessage(question);
   };
 
-  const STARTER_CHIPS = [
-    'Summarize this deal',
-    'What are the outstanding items?',
-    'Which funding sources are active?',
-    'What happened recently?',
-  ];
-
-  const FOLLOW_UP_CHIPS = [
-    'Why does that matter for this deal?',
-    'What should I do next?',
-    'Which documents support that?',
-    'Any risks or blockers?',
-    'Summarize that in 3 bullets',
-  ];
-
-  const chips = messages.length === 0 ? STARTER_CHIPS : FOLLOW_UP_CHIPS;
+  // Suggestions track the latest answer + deal context instead of being static.
+  const latestAnswer = [...messages].reverse().find((m) => m.role === 'assistant')?.content;
+  const chips =
+    messages.length === 0 ? STARTER_CHIPS : buildFollowUpChips(latestAnswer, dealName);
 
   const buildTranscript = () => {
     const title = dealName ? `Ask AI transcript — ${dealName}` : 'Ask AI transcript';
