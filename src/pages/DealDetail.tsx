@@ -4628,6 +4628,46 @@ export default function DealDetail() {
                   </div>
                 );
               })()}
+              {/* Lender stage progress table */}
+              {(() => {
+                const norm = (s?: string) => (s || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
+                const funnel = configuredStages.filter(s => s.group === 'on-deck' || s.group === 'active');
+                if (funnel.length === 0) return null;
+                const rows = (deal.lenders || []).filter((l: any) => {
+                  const ts = norm(l.trackingStatus);
+                  return ts === 'active' || ts === 'on deck';
+                }).map((l: any) => {
+                  const idx = funnel.findIndex(s => s.id === l.stage);
+                  const stageLabel = configuredStages.find(s => s.id === l.stage)?.label || l.stage || '—';
+                  const step = idx >= 0 ? idx + 1 : 0;
+                  return { id: l.id, name: l.name, stageLabel, step, pct: (step / funnel.length) * 100 };
+                }).sort((a, b) => b.step - a.step);
+                if (rows.length === 0) return null;
+                return (
+                  <div className="rounded-xl border border-border/60 bg-card px-4 py-3">
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Stage progress</p>
+                      <p className="text-[11px] text-muted-foreground">Active &amp; On Deck</p>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {rows.map(r => (
+                        <div key={r.id} className="grid grid-cols-[minmax(120px,1fr)_2fr_auto] items-center gap-3">
+                          <span className="truncate text-sm text-foreground" title={r.name}>{r.name}</span>
+                          <div className="h-2.5 w-full rounded-full bg-muted/40">
+                            <div
+                              className="h-2.5 rounded-full bg-primary/70"
+                              style={{ width: `${Math.max(4, r.pct)}%` }}
+                            />
+                          </div>
+                          <span className="w-44 shrink-0 truncate text-right text-xs text-muted-foreground" title={r.stageLabel}>
+                            {r.stageLabel}{r.step > 0 ? ` · ${r.step}/${funnel.length}` : ''}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               {/* Lenders Card */}
                  <Card className={cn("flex flex-col min-h-0", useContextRailLayout && "border-border/60")}>
                    <CardHeader className="pb-3 pt-3">
@@ -5626,46 +5666,6 @@ export default function DealDetail() {
                       ))}
                     </div>
                     )}
-                  </div>
-                );
-              })()}
-              {/* Lender stage progress table */}
-              {(() => {
-                const norm = (s?: string) => (s || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
-                const funnel = configuredStages.filter(s => s.group === 'on-deck' || s.group === 'active');
-                if (funnel.length === 0) return null;
-                const rows = (deal.lenders || []).filter((l: any) => {
-                  const ts = norm(l.trackingStatus);
-                  return ts === 'active' || ts === 'on deck';
-                }).map((l: any) => {
-                  const idx = funnel.findIndex(s => s.id === l.stage);
-                  const stageLabel = configuredStages.find(s => s.id === l.stage)?.label || l.stage || '—';
-                  const step = idx >= 0 ? idx + 1 : 0;
-                  return { id: l.id, name: l.name, stageLabel, step, pct: (step / funnel.length) * 100 };
-                }).sort((a, b) => b.step - a.step);
-                if (rows.length === 0) return null;
-                return (
-                  <div className="rounded-xl border border-border/60 bg-card px-4 py-3">
-                    <div className="flex items-baseline justify-between">
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Stage progress</p>
-                      <p className="text-[11px] text-muted-foreground">Active &amp; On Deck</p>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      {rows.map(r => (
-                        <div key={r.id} className="grid grid-cols-[minmax(120px,1fr)_2fr_auto] items-center gap-3">
-                          <span className="truncate text-sm text-foreground" title={r.name}>{r.name}</span>
-                          <div className="h-2.5 w-full rounded-full bg-muted/40">
-                            <div
-                              className="h-2.5 rounded-full bg-primary/70"
-                              style={{ width: `${Math.max(4, r.pct)}%` }}
-                            />
-                          </div>
-                          <span className="w-44 shrink-0 truncate text-right text-xs text-muted-foreground" title={r.stageLabel}>
-                            {r.stageLabel}{r.step > 0 ? ` · ${r.step}/${funnel.length}` : ''}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 );
               })()}
