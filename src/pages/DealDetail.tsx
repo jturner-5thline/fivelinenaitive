@@ -5018,7 +5018,6 @@ export default function DealDetail() {
                                         </span>
                                       </SelectValue>
                                     </SelectTrigger>
-                                    </SelectTrigger>
                                     <SelectContent>
                                       {configuredStages.map((stage) => {
                                         const isCurrentPassedStage = stage.group === 'passed' && stage.id === lender.stage && lender.passReason;
