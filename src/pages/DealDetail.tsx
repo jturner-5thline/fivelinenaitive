@@ -3525,18 +3525,13 @@ export default function DealDetail() {
           {/* Context-rail layout (5th Line, scoped deals): pins identity +
               at-a-glance facts to a left rail and lets the main column
               carry the content. Everything below is unchanged. */}
-          <div className={cn(useContextRailLayout && (dealInfoTab === 'deal-info'
-            ? "flex flex-col lg:flex-row gap-5 items-start mt-4"
-            : "flex flex-col gap-4 items-stretch mt-4"))}>
+          <div className={cn(useContextRailLayout && "flex flex-col lg:flex-row gap-5 items-start mt-4")}>
           {useContextRailLayout && (
-            <div className={cn(
-              "w-full shrink-0 self-start space-y-4",
-              dealInfoTab === 'deal-info' && "lg:w-[300px] lg:sticky lg:top-4",
-            )}>
+            <div className="w-full lg:w-[300px] shrink-0 lg:sticky lg:top-4 self-start space-y-4">
               <DealContextRail
                 deal={deal}
                 compact={dealInfoTab !== 'deal-info'}
-                className={cn("lg:w-full lg:static", dealInfoTab !== 'deal-info' && "lg:max-w-[300px]")}
+                className="lg:w-full lg:static"
                 onUpdateField={(field, value) => updateDeal(field as any, value as any)}
               />
               <div ref={setRailPanelSlot} className="w-full" />
