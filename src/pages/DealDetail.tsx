@@ -3877,6 +3877,8 @@ export default function DealDetail() {
                     />
                   )}
 
+                  {useContextRailLayout && dealActionCluster}
+
                   {/* Panels rendered in custom order - only visible panels.
                       In the context-rail layout the Deal Information panel is
                       portaled into the left rail, so it is moved to the end of
