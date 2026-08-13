@@ -50,6 +50,8 @@ export function useDealSpaceAI(
   const persistKey = options?.persistKey;
   const [messages, setMessages] = useState<Message[]>(() => loadPersisted(persistKey, dealId));
   const [isLoading, setIsLoading] = useState(false);
+  /** True once the first streamed token has arrived for the in-flight answer. */
+  const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [scope, setScope] = useState<DocumentScope>('all');
@@ -90,6 +92,7 @@ export function useDealSpaceAI(
     
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
+    setIsStreaming(false);
     setError(null);
 
     // Demo-only deterministic intercept: when demo@5thline.co is inside any
@@ -126,6 +129,7 @@ export function useDealSpaceAI(
       let placeholderAdded = false;
       const appendDelta = (text: string) => {
         streamed += text;
+        setIsStreaming(true);
         setMessages(prev => {
           if (!placeholderAdded) {
             placeholderAdded = true;
@@ -169,6 +173,7 @@ export function useDealSpaceAI(
         if (streamErr instanceof Error && streamErr.name === 'AbortError') return;
         console.warn('[deal-space-ai] streaming failed, falling back to buffered response', streamErr);
         if (placeholderAdded) setMessages(prev => prev.slice(0, -1));
+        setIsStreaming(false);
       }
 
       // ── Buffered fallback ──
@@ -223,6 +228,7 @@ export function useDealSpaceAI(
       }]);
     } finally {
       setIsLoading(false);
+      setIsStreaming(false);
     }
   }, [messages, dealId, scope, includeDataRoom]);
 
@@ -241,6 +247,7 @@ export function useDealSpaceAI(
     sendMessage,
     clearMessages,
     isLoading,
+    isStreaming,
     error,
     setMessages,
     scope,
