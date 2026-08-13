@@ -34,6 +34,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, 
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, rectSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
 import { DealMilestones } from '@/components/deals/DealMilestones';
+import { DealContextRail } from '@/components/deal/DealContextRail';
 import { NaitiveStageMilestonesSection } from '@/components/naitive-pipeline/NaitiveStageMilestonesSection';
 import { NaitiveDealInformation } from '@/components/naitive-pipeline/NaitiveDealInformation';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks, format } from 'date-fns';
@@ -1019,6 +1020,19 @@ export default function DealDetail() {
   const isFinServDeal = deal?.dealClass === 'finserv';
   // FinServ deals use same simplified detail view as naitive deals
   const isSimplifiedDeal = isNaitiveDeal || isFinServDeal;
+
+  /**
+   * Context-rail layout — redesigned deal detail (left context rail +
+   * content column). Scoped to 5th Line users and, for now, the piloted
+   * deal ("TEST DEAL 123") only. Widen this predicate to roll it out.
+   */
+  const CONTEXT_RAIL_DEAL_IDS = ['4ae9658e-f9f8-4fa8-8ac2-33d596c5324f'];
+  const useContextRailLayout = Boolean(
+    deal &&
+      is5thLineUser &&
+      (CONTEXT_RAIL_DEAL_IDS.includes(deal.id) ||
+        deal.company?.trim().toUpperCase() === 'TEST DEAL 123'),
+  );
 
   // Projects pipeline (currently Blount Capital only) is a fully siloed
   // pipeline: only Deal Info + Data Room tabs are visible/functional, no
