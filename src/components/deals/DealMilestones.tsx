@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Check, X, ChevronRight, GripVertical } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, GripVertical } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { DealMilestone, MilestoneStatus, MILESTONE_STATUS_CONFIG } from '@/types/deal';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import {
   Popover,
   PopoverContent,
@@ -64,7 +70,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
   // Always start collapsed on every page load/refresh. Do not persist
   // expanded state across reloads — manual expansion only lasts for the
   // current session of this component instance.
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newDate, setNewDate] = useState<Date | undefined>();
@@ -145,10 +151,11 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
 
   return (
     <div className="pt-0">
-      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+      <div>
         <div className="flex items-center gap-2 mb-0.5">
-          <CollapsibleTrigger asChild>
             <button
+              type="button"
+              onClick={() => setIsDialogOpen(true)}
               className={cn(
                 "flex items-center gap-2 flex-1 px-3 py-0.5 -mx-3 rounded-lg",
                 "cursor-pointer transition-all duration-200",
@@ -156,20 +163,9 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                 "bg-primary/[0.06] hover:bg-primary/[0.12] hover:border-primary/30 hover:shadow-[0_0_16px_rgba(126,184,247,0.18)]",
                 "active:scale-[0.99]",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                isExpanded && "bg-primary/[0.1] border-primary/25"
               )}
-              aria-expanded={isExpanded}
+              aria-haspopup="dialog"
             >
-              <div className={cn(
-                "flex items-center justify-center h-5 w-5 rounded-md transition-all duration-300",
-                "bg-primary text-primary-foreground shadow-sm",
-                isExpanded && "bg-primary/90"
-              )}>
-                <ChevronRight className={cn(
-                  "h-3.5 w-3.5 transition-transform duration-300 ease-out will-change-transform",
-                  isExpanded ? "rotate-90 scale-110" : "rotate-0"
-                )} />
-              </div>
               <span className="text-xs font-semibold leading-none bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">Deal Milestones</span>
               {milestones.length > 0 && (
                 <Tooltip>
@@ -188,35 +184,19 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                     </p>
                     <p className="text-[11px] text-muted-foreground mt-1">
                       The first number is how many milestones are marked done; the second is the total for this deal.
-                      {isExpanded
-                        ? ' Click the header to collapse the list.'
-                        : ' Click the header to expand and see titles, due dates, and progress.'}
+                      {' Click the section to open the milestones editor.'}
                     </p>
                   </TooltipContent>
                 </Tooltip>
               )}
-              {!isExpanded && (
-                <span className="ml-auto text-[10px] leading-none text-primary/80 font-medium">
-                  Click to expand
-                </span>
-              )}
+              <span className="ml-auto text-[10px] leading-none text-primary/80 font-medium">
+                Click to edit
+              </span>
             </button>
-          </CollapsibleTrigger>
-          {isExpanded && !isAdding && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs gap-1 shrink-0"
-              onClick={() => setIsAdding(true)}
-            >
-              <Plus className="h-3 w-3" />
-              Add
-            </Button>
-          )}
         </div>
 
         {/* Collapsed View — pill markers */}
-        {!isExpanded && milestones.length > 0 && markerVariant === 'pill' && (
+        {milestones.length > 0 && markerVariant === 'pill' && (
           <div className="grid gap-2 py-1" style={{ gridTemplateColumns: `repeat(${milestones.length}, minmax(0, 1fr))` }}>
             {milestones.map((milestone) => (
               <Tooltip key={milestone.id}>
@@ -277,7 +257,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
         )}
 
         {/* Collapsed View - Diamond Icons with Connecting Lines and Labels */}
-        {!isExpanded && milestones.length > 0 && markerVariant === 'diamond' && (
+        {milestones.length > 0 && markerVariant === 'diamond' && (
           <div className="relative py-0 pb-0 overflow-hidden">
             {/* Connecting line that spans the full width */}
             <div className="absolute top-[22px] left-0 right-0 h-0.5 bg-muted-foreground/30" />
@@ -399,7 +379,20 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
           </div>
         )}
 
-        <CollapsibleContent>
+        <Dialog open={isDialogOpen} onOpenChange={(o) => { setIsDialogOpen(o); if (!o) { setIsAdding(false); handleCancelEdit(); } }}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Deal Milestones</DialogTitle>
+              <DialogDescription>Add, edit, reorder, or delete milestones for this deal.</DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end">
+              {!isAdding && (
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setIsAdding(true)}>
+                  <Plus className="h-3 w-3" />
+                  Add milestone
+                </Button>
+              )}
+            </div>
           {milestones.length > 0 && (
             <div className="mb-2">
               <div className="flex items-center justify-between mb-1">
@@ -517,8 +510,9 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
               </div>
             </SortableContext>
           </DndContext>
-        </CollapsibleContent>
-      </Collapsible>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }
