@@ -4893,14 +4893,13 @@ export default function DealDetail() {
                                       data-lender-id={lender.id}
                                       data-lender-stale={staleStatus.isStale ? 'true' : undefined}
                                       className={cn(
-                                         'relative rounded-xl border border-blue-500/25 bg-gradient-to-br from-[hsl(220,30%,10%)] to-[hsl(260,15%,5%)] p-4 shadow-md hover:shadow-lg transition-all',
-                                        staleStatus.isStale && staleStatus.isUrgent && 'border-destructive/40 shadow-[0_0_12px_2px_hsl(var(--destructive)/0.15)]',
-                                        staleStatus.isStale && !staleStatus.isUrgent && 'border-warning/40 shadow-[0_0_12px_2px_hsl(var(--warning)/0.15)]',
+                                        'relative border-b border-border/60 px-2 py-3 transition-colors hover:bg-muted/30',
+                                        staleStatus.isStale && staleStatus.isUrgent && 'bg-destructive/5',
+                                        staleStatus.isStale && !staleStatus.isUrgent && 'bg-warning/5',
                                         shouldAnimate && 'animate-pulse-highlight'
                                       )}>
-                                      <div className="flex gap-3">
-                                        <div className="flex-1 min-w-0">
-                                      <div className="grid grid-cols-[160px_160px_140px_auto_1fr] items-center gap-3">
+                                      <div className="grid grid-cols-[minmax(180px,1.3fr)_190px_minmax(220px,2fr)_auto] items-start gap-4">
+                                        <div className="min-w-0">
                                   <div className="flex items-center gap-1 group/lender -ml-1">
                                     {scoreConfig.enabled && lender.score != null && (
                                       <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0 h-4 shrink-0" style={getScoreStyles(lender.score, scoreConfig).badge}>
@@ -4949,6 +4948,15 @@ export default function DealDetail() {
                                         />
                                     </div>
                                   </div>
+                                    {(() => {
+                                      const ml = masterLenders.find(m => typeof m?.name === 'string' && m.name.toLowerCase().trim() === (lender.name || '').toLowerCase().trim());
+                                      const lenderType = (ml as Record<string, unknown> | undefined)?.lender_type;
+                                      return typeof lenderType === 'string' && lenderType.trim() ? (
+                                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground" title={lenderType}>{lenderType}</p>
+                                      ) : null;
+                                    })()}
+                                        </div>
+                                        <div className="min-w-0 space-y-1.5">
                                   <Select
                                     value={lender.stage}
                                     onOpenChange={(open) => setLenderDropdownOpen(open)}
@@ -4992,18 +5000,17 @@ export default function DealDetail() {
                                       }
                                     }}
                                   >
-                                    <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-secondary border-0 justify-start">
+                                    <SelectTrigger className={cn(
+                                      "h-7 w-fit max-w-full justify-start gap-1.5 rounded-full border px-2.5 text-xs [&>svg]:h-3 [&>svg]:w-3",
+                                      getLenderStatusTheme(configuredStages.find(s => s.id === lender.stage)?.group).tabActive,
+                                    )}>
                                       <SelectValue>
                                         <span className="flex items-center gap-1.5">
-                                          {(() => {
-                                            const g = configuredStages.find(s => s.id === lender.stage)?.group;
-                                            return (g === 'passed' || g === 'excluded') ? (
-                                              <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
-                                            ) : null;
-                                          })()}
+                                          <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', getLenderStatusTheme(configuredStages.find(s => s.id === lender.stage)?.group).dot)} />
                                           {formatRenderedLenderStage(lender.stage)}
                                         </span>
                                       </SelectValue>
+                                    </SelectTrigger>
                                     </SelectTrigger>
                                     <SelectContent>
                                       {configuredStages.map((stage) => {
@@ -5119,25 +5126,8 @@ export default function DealDetail() {
                                       );
                                     })()}
                                   </div>
-                                </div>
-                                {/* Lender History Warning Hint */}
-                                {(() => {
-                                  const warning = lenderWarningsMap?.get(lender.name);
-                                  if (!warning || warning.isDismissed) return null;
-                                  return (
-                                    <LenderHistoryHint
-                                      warning={warning}
-                                      dealId={deal.id}
-                                      onViewHistory={() => setHistoryDrawerLender(lender.name)}
-                                      className="mt-2"
-                                    />
-                                  );
-                                })()}
-                                <RequestedItemsSummary
-                                  items={lenderOutstandingItems}
-                                  lenderName={lender.name}
-                                  onViewAll={() => setRequestedItemsDrawerLender(lender.name)}
-                                />
+                                        </div>
+                                        <div className="min-w-0">
                                 {/* Funding Source Notes */}
                                 <div className="ml-2 mt-2 space-y-1">
                                   <div className="flex items-start gap-2">
@@ -5237,9 +5227,9 @@ export default function DealDetail() {
                                   )}
                                 </div>
                                         </div>
-                                        {/* Create Task Button - top right */}
                                         <div className="flex items-start gap-1 shrink-0">
                                           <LenderFollowUpPopover
+                                            className={"h-8 w-8 inline-flex items-center justify-center rounded-md border border-border/60 bg-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"}
                                             dealId={deal.id}
                                             dealName={deal.name}
                                             company={deal.company}
@@ -5251,6 +5241,7 @@ export default function DealDetail() {
                                             onSent={() => refreshDeals?.()}
                                           />
                                           <LogLenderActivityPopover
+                                            className={"h-8 w-8 inline-flex items-center justify-center rounded-md border border-border/60 bg-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"}
                                             dealId={deal.id}
                                             dealLenderId={lender.id}
                                             lenderName={lender.name}
@@ -5258,12 +5249,31 @@ export default function DealDetail() {
                                             onLogged={() => refreshDeals?.()}
                                           />
                                           <CreateLenderTaskButton
+                                            className={"h-8 w-8 inline-flex items-center justify-center rounded-md border border-border/60 bg-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"}
                                             dealId={deal.id}
                                             lenderId={lender.id}
                                             lenderName={lender.name}
                                           />
                                         </div>
                                       </div>
+                                {/* Lender History Warning Hint */}
+                                {(() => {
+                                  const warning = lenderWarningsMap?.get(lender.name);
+                                  if (!warning || warning.isDismissed) return null;
+                                  return (
+                                    <LenderHistoryHint
+                                      warning={warning}
+                                      dealId={deal.id}
+                                      onViewHistory={() => setHistoryDrawerLender(lender.name)}
+                                      className="mt-2"
+                                    />
+                                  );
+                                })()}
+                                <RequestedItemsSummary
+                                  items={lenderOutstandingItems}
+                                  lenderName={lender.name}
+                                  onViewAll={() => setRequestedItemsDrawerLender(lender.name)}
+                                />
                                     </div>
                                   </SortableLenderItem>
                                   </LenderRowBoundary>
