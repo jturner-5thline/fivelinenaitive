@@ -5601,7 +5601,7 @@ export default function DealDetail() {
                   });
                 });
                 const topReasons = Array.from(reasonCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3);
-                const maxReason = topReasons[0][1] || 1;
+                const maxReason = topReasons[0]?.[1] || 1;
                 return (
                   <div className="rounded-xl border border-border/60 bg-card px-4 py-3">
                     <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Top pass reasons</p>
