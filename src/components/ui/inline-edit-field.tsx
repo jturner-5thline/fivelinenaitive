@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,11 @@ interface InlineEditFieldProps {
   debounceMs?: number;
   dealId?: string;
   fieldName?: string;
+  /**
+   * When true, edits are never auto-saved — the user must explicitly
+   * confirm with Save (or Enter) or discard with Cancel (or Escape).
+   */
+  manualCommit?: boolean;
 }
 
 export function InlineEditField({
@@ -46,9 +52,11 @@ export function InlineEditField({
   debounceMs = 500,
   dealId,
   fieldName,
+  manualCommit = false,
 }: InlineEditFieldProps) {
   const [draft, setDraft] = useState(value ?? '');
   const [isFocused, setIsFocused] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
@@ -87,6 +95,7 @@ export function InlineEditField({
   const commit = useCallback(async (next: string) => {
     if (next === lastCommittedRef.current) {
       dirtyRef.current = false;
+      setIsDirty(false);
       unregisterDraft();
       return;
     }
@@ -103,6 +112,7 @@ export function InlineEditField({
       latestResolvedRef.current = requestId;
       lastCommittedRef.current = next;
       dirtyRef.current = false;
+      setIsDirty(false);
       unregisterDraft();
       setStatus('saved');
       if (savedTimerRef.current) window.clearTimeout(savedTimerRef.current);
@@ -113,6 +123,7 @@ export function InlineEditField({
       const message = err instanceof Error ? err.message : 'Could not save change';
       setStatus('error');
       dirtyRef.current = false;
+      setIsDirty(false);
       unregisterDraft();
       setDraft(lastCommittedRef.current);
       toast.error('Failed to save', {
@@ -143,8 +154,9 @@ export function InlineEditField({
     const cleaned = sanitizeInput ? sanitizeInput(next) : next;
     setDraft(cleaned);
     dirtyRef.current = true;
+    setIsDirty(true);
     registerDraft();
-    scheduleCommit(cleaned);
+    if (!manualCommit) scheduleCommit(cleaned);
   };
 
   const handleFocus = () => {
@@ -159,6 +171,8 @@ export function InlineEditField({
   const handleBlur = () => {
     isFocusedRef.current = false;
     setIsFocused(false);
+    // Manual mode keeps the pending edit alive so Save/Cancel stay usable.
+    if (manualCommit) return;
     flush();
     if (!dirtyRef.current) {
       unregisterDraft();
@@ -169,22 +183,27 @@ export function InlineEditField({
     }
   };
 
+  const handleCancel = useCallback(() => {
+    if (debounceTimerRef.current) {
+      window.clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    dirtyRef.current = false;
+    setIsDirty(false);
+    unregisterDraft();
+    setDraft(lastCommittedRef.current);
+    setStatus('idle');
+    inputRef.current?.blur();
+  }, [unregisterDraft]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (e.key === 'Escape') {
-      if (debounceTimerRef.current) {
-        window.clearTimeout(debounceTimerRef.current);
-        debounceTimerRef.current = null;
-      }
-      dirtyRef.current = false;
-      unregisterDraft();
-      setDraft(lastCommittedRef.current);
-      setStatus('idle');
-      inputRef.current?.blur();
+      handleCancel();
       return;
     }
 
     if (e.key === 'Tab') {
-      flush();
+      if (!manualCommit) flush();
       return;
     }
 
@@ -208,6 +227,31 @@ export function InlineEditField({
       <span className="inline-flex items-center gap-1 text-xs text-success" aria-live="polite">
         <Check className="h-3 w-3" /> Saved
       </span>
+    ) : null;
+
+  const manualActions =
+    manualCommit && isDirty && status !== 'saving' ? (
+      <div className="flex items-center gap-1 shrink-0">
+        <Button
+          type="button"
+          size="sm"
+          className="h-6 px-2 text-xs"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => void commit(draft)}
+        >
+          <Check className="h-3 w-3 mr-1" /> Save
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-6 px-2 text-xs"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={handleCancel}
+        >
+          <X className="h-3 w-3 mr-1" /> Cancel
+        </Button>
+      </div>
     ) : null;
 
   const sharedInputProps = {
@@ -256,6 +300,7 @@ export function InlineEditField({
         />
       )}
       {statusBadge}
+      {manualActions}
     </div>
   );
 }
