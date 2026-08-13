@@ -18373,6 +18373,7 @@ export type Database = {
           pass_reasons: Json
           stages: Json
           substages: Json
+          substages_enabled: boolean
           tracking_statuses: Json | null
           updated_at: string
           user_id: string
@@ -18384,6 +18385,7 @@ export type Database = {
           pass_reasons?: Json
           stages?: Json
           substages?: Json
+          substages_enabled?: boolean
           tracking_statuses?: Json | null
           updated_at?: string
           user_id: string
@@ -18395,6 +18397,7 @@ export type Database = {
           pass_reasons?: Json
           stages?: Json
           substages?: Json
+          substages_enabled?: boolean
           tracking_statuses?: Json | null
           updated_at?: string
           user_id?: string

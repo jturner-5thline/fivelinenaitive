@@ -1,0 +1,1 @@
+ALTER TABLE public.lender_stage_configs ADD COLUMN IF NOT EXISTS substages_enabled boolean NOT NULL DEFAULT true;

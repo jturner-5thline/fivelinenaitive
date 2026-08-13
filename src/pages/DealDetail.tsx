@@ -625,7 +625,7 @@ export default function DealDetail() {
     | 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication' | null;
   const { getLenderNames, getLenderDetails } = useLenders();
   const { lenders: masterLenders, loading: masterLendersLoading, loadingMore: masterLendersLoadingMore } = useMasterLenders({ eagerAll: true });
-  const { stages: configuredStages, substages: configuredSubstages, passReasons, getTrackingStatusConfig, stageGroups } = useLenderStages();
+  const { stages: configuredStages, substages: configuredSubstages, substagesEnabled, passReasons, getTrackingStatusConfig, stageGroups } = useLenderStages();
   const { resolveLenderActivityLabel } = useLenderLabelResolver();
   const { dealTypes: availableDealTypes } = useDealTypes();
   const { stages: dealStages, getStageConfig } = useDealStages();
@@ -4968,6 +4968,7 @@ export default function DealDetail() {
                                       })}
                                     </SelectContent>
                                   </Select>
+                                  {substagesEnabled && (
                                   <Select
                                     value={lender.substage || '__none__'}
                                     onOpenChange={(open) => setLenderDropdownOpen(open)}
@@ -5003,6 +5004,7 @@ export default function DealDetail() {
                                       ))}
                                     </SelectContent>
                                   </Select>
+                                  )}
                                   {/* NDA & Marketing Materials Status Icons */}
                                    <div className="flex items-center gap-1">
                                     {(() => {
@@ -5392,6 +5394,7 @@ export default function DealDetail() {
                                               })}
                                             </SelectContent>
                                           </Select>
+                                          {substagesEnabled && (
                                           <Select
                                             value={lender.substage || '__none__'}
                                             onOpenChange={(open) => setLenderDropdownOpen(open)}
@@ -5427,6 +5430,7 @@ export default function DealDetail() {
                                               ))}
                                             </SelectContent>
                                           </Select>
+                                          )}
                                         </div>
                                         {/* Lender History Warning Hint (grouped view) */}
                                         {(() => {
