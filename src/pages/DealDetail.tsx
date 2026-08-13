@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp, CalendarIcon, GitBranch, ListChecks, Video, Activity } from 'lucide-react';
@@ -1033,6 +1034,10 @@ export default function DealDetail() {
       (CONTEXT_RAIL_DEAL_IDS.includes(deal.id) ||
         deal.company?.trim().toUpperCase() === 'TEST DEAL 123'),
   );
+
+  // Slot element in the left rail where the Deal Information panel is
+  // portaled when the context-rail layout is active.
+  const [railPanelSlot, setRailPanelSlot] = useState<HTMLDivElement | null>(null);
 
   // Projects pipeline (currently Blount Capital only) is a fully siloed
   // pipeline: only Deal Info + Data Room tabs are visible/functional, no
@@ -3407,7 +3412,16 @@ export default function DealDetail() {
               at-a-glance facts to a left rail and lets the main column
               carry the content. Everything below is unchanged. */}
           <div className={cn(useContextRailLayout && "flex flex-col lg:flex-row gap-5 items-start mt-4")}>
-          {useContextRailLayout && <DealContextRail deal={deal} onUpdateField={(field, value) => updateDeal(field as any, value as any)} />}
+          {useContextRailLayout && (
+            <div className="w-full lg:w-[300px] shrink-0 lg:sticky lg:top-4 self-start space-y-4">
+              <DealContextRail
+                deal={deal}
+                className="lg:w-full lg:static"
+                onUpdateField={(field, value) => updateDeal(field as any, value as any)}
+              />
+              <div ref={setRailPanelSlot} className="w-full" />
+            </div>
+          )}
           <div className={cn(useContextRailLayout && "flex-1 min-w-0 w-full")}>
           {/* Header Card */}
           <Card className={cn(
@@ -3830,10 +3844,16 @@ export default function DealDetail() {
                     </Tooltip>
                   </div>
 
-                  {/* Panels rendered in custom order - only visible panels */}
-                  {visiblePanels.reduce((acc: React.ReactNode[], panelId, index) => {
+                  {/* Panels rendered in custom order - only visible panels.
+                      In the context-rail layout the Deal Information panel is
+                      portaled into the left rail, so it is moved to the end of
+                      the list to avoid leaving a hole in the 2-column grid. */}
+                  {(useContextRailLayout && visiblePanels.includes('deal-information' as DealPanelId)
+                    ? ([...visiblePanels.filter((p) => p !== 'deal-information'), 'deal-information'] as DealPanelId[])
+                    : visiblePanels
+                  ).reduce((acc: React.ReactNode[], panelId, index, panelList) => {
                     // Pair panels together for 2-column layout
-                    const nextPanelId = visiblePanels[index + 1];
+                    const nextPanelId = panelList[index + 1];
                     
                     // Only process even indices to create pairs
                     if (index % 2 !== 0) return acc;
@@ -4456,21 +4476,25 @@ export default function DealDetail() {
                             return def?.column === 'right';
                           });
 
-                          return (
+                          const isRailed = useContextRailLayout && Boolean(railPanelSlot);
+                          const dealInfoCard = (
                             <Card
                               key={id}
-                              className="rounded-2xl border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                              className={cn(
+                                "rounded-2xl border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+                                isRailed && "w-full text-xs",
+                              )}
                               style={{ background: 'rgba(20, 26, 40, 0.74)' }}
                             >
-                              <CardHeader className="flex flex-row items-center justify-between py-4">
+                              <CardHeader className={cn("flex flex-row items-center justify-between py-4", isRailed && "px-3 py-3")}>
                                 <CardTitle
-                                  className="text-[15px] font-semibold tracking-[0.01em]"
+                                  className={cn("text-[15px] font-semibold tracking-[0.01em]", isRailed && "text-[13px]")}
                                   style={{ color: 'rgba(226, 232, 240, 0.92)' }}
                                 >
                                   Deal Information
                                 </CardTitle>
                               </CardHeader>
-                              <CardContent className="space-y-4">
+                              <CardContent className={cn("space-y-4", isRailed && "px-3 pb-3 space-y-3")}>
                                 {isDealInfoFieldVisible('narrative') && renderDealInfoField('narrative')}
 
                                 {isFinServDeal ? (
@@ -4525,12 +4549,12 @@ export default function DealDetail() {
                                   </>
                                 ) : (
                                   <>
-                                    {(leftFields.length > 0 || rightFields.length > 0) && (
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-3 min-w-0">
+                                     {(leftFields.length > 0 || rightFields.length > 0) && (
+                                       <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-6", isRailed && "md:grid-cols-1 gap-3")}>
+                                         <div className={cn("space-y-3 min-w-0", isRailed && "space-y-2")}>
                                           {leftFields.map(fId => renderDealInfoField(fId))}
                                         </div>
-                                        <div className="space-y-3 min-w-0">
+                                        <div className={cn("space-y-3 min-w-0", isRailed && "space-y-2")}>
                                           {rightFields.map(fId => renderDealInfoField(fId))}
                                         </div>
                                       </div>
@@ -4541,7 +4565,7 @@ export default function DealDetail() {
                                     {/* Tasks — moved from the Management tab.
                                         Renders below Hours & Fees when visible,
                                         otherwise below the deal information items. */}
-                                    <div className="mt-4 h-[420px]">
+                                    <div className={cn("mt-4 h-[420px]", isRailed && "h-[320px] mt-3")}>
                                       <DealTasksPanel dealId={deal.id} />
                                     </div>
 
@@ -4558,6 +4582,8 @@ export default function DealDetail() {
                               </CardContent>
                             </Card>
                           );
+
+                          return isRailed ? createPortal(dealInfoCard, railPanelSlot!) : dealInfoCard;
                         }
                         case 'outstanding-items':
                           // Outstanding Items is a debt-pipeline concept —
