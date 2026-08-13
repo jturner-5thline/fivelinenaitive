@@ -12,7 +12,7 @@
  * Editable*Tag components so behaviour stays identical to every other
  * surface.
  */
-import { formatDistanceToNow, format } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { formatUSD } from '@/lib/formatters/currency';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
@@ -48,7 +48,6 @@ export interface DealContextRailProps {
 }
 
 export function DealContextRail({ deal, className, onUpdateField }: DealContextRailProps) {
-  const closeDate = deal.dashboardClosingDate || deal.closingDate || null;
   const lastActivity = deal.notesUpdatedAt || deal.updatedAt || null;
   const owner = deal.dealOwner || deal.manager || '';
 
