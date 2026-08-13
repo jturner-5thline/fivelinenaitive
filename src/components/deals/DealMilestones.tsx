@@ -198,7 +198,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
 
         {/* Collapsed View — pill markers */}
         {!isExpanded && milestones.length > 0 && markerVariant === 'pill' && (
-          <div className="flex flex-wrap items-center gap-2 py-1">
+          <div className="grid gap-2 py-1" style={{ gridTemplateColumns: `repeat(${milestones.length}, minmax(0, 1fr))` }}>
             {milestones.map((milestone) => (
               <Tooltip key={milestone.id}>
                 <TooltipTrigger asChild>
@@ -209,27 +209,32 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                       completedAt: !milestone.completed ? new Date().toISOString() : undefined,
                     })}
                     className={cn(
-                      "group inline-flex items-center gap-1.5 rounded-full px-3 h-7 max-w-[220px]",
-                      "text-[11px] font-medium leading-none transition-all duration-150",
-                      "border active:scale-95 hover:brightness-110",
-                      milestone.completed
-                        ? "border-transparent bg-brand-gradient text-white shadow-[0_2px_10px_hsl(272,100%,60%,0.35)]"
-                        : isOverdue(milestone)
-                        ? "border-destructive/50 bg-destructive/15 text-destructive"
-                        : "border-border/70 bg-muted/30 text-muted-foreground",
+                      "group flex w-full flex-col items-center gap-1.5 text-center",
+                      "transition-all duration-150 active:scale-95 hover:brightness-110",
                     )}
                   >
                     <span
                       className={cn(
-                        "h-1.5 w-1.5 rounded-full shrink-0",
+                        "block w-full h-2.5 rounded-full border transition-all",
                         milestone.completed
-                          ? "bg-white"
+                          ? "border-transparent bg-brand-gradient shadow-[0_2px_10px_hsl(272,100%,60%,0.35)]"
                           : isOverdue(milestone)
-                          ? "bg-destructive"
-                          : "bg-muted-foreground/50",
+                          ? "border-destructive/60 bg-transparent"
+                          : "border-primary/40 bg-transparent",
                       )}
                     />
-                    <span className="truncate">{milestone.title}</span>
+                    <span
+                      className={cn(
+                        "w-full truncate text-[11px] font-medium leading-tight",
+                        milestone.completed
+                          ? "text-foreground"
+                          : isOverdue(milestone)
+                          ? "text-destructive"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {milestone.title}
+                    </span>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">
