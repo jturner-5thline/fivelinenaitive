@@ -425,12 +425,13 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
                 const rawIdx = rowProps['data-index'] ?? rowProps['data-item-index'];
                 const idx = typeof rawIdx === 'string' ? Number(rawIdx) : rawIdx;
                 const row = Number.isFinite(idx) ? filtered[idx as number] : null;
-                const item = (rowProps.item as any) ?? row;
+                const { item: rowItem, ...domProps } = rowProps as any;
+                const item = rowItem ?? row;
                 if (!item) return <TableRow {...rowProps} />;
                 const go = () => navigate(`/crm-companies/${item.id}`);
                 return (
                   <TableRow
-                    {...rowProps}
+                    {...domProps}
                     role="link"
                     tabIndex={0}
                     aria-label={`Open ${item.name}`}
