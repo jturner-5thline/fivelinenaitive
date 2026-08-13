@@ -706,6 +706,18 @@ function DealSpaceAskAITabImpl({ dealId }: DealSpaceAskAITabProps) {
     void handleSendQuestion(prompt);
   }, [handleSendQuestion]);
 
+  // Prompts submitted from the compact Ask AI bar above the deal panels.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ dealId?: string; question?: string }>).detail;
+      if (!detail?.question) return;
+      if (detail.dealId && detail.dealId !== dealId) return;
+      runQuickPrompt(detail.question);
+    };
+    window.addEventListener('naitive:deal-ask-ai', handler as EventListener);
+    return () => window.removeEventListener('naitive:deal-ask-ai', handler as EventListener);
+  }, [dealId, runQuickPrompt]);
+
   const onQuickPromptClick = useCallback((prompt: string) => {
     setQuestion(prompt);
     void handleSendQuestion(prompt);
