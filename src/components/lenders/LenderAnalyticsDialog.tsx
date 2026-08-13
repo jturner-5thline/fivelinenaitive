@@ -954,25 +954,16 @@ export function LenderAnalyticsDialog({
     filtersSummary,
   ].filter(Boolean) as string[];
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        style={{ ...MODAL_SHELL_STYLE, ...originStyle }}
-        className={cn(
-          'max-w-[1100px] w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl border text-slate-100',
-          originClassName,
-        )}
-      >
-        <DialogHeader className="px-6 pt-5 pb-4 shrink-0 space-y-2" style={HEADER_STYLE}>
-          <div className="flex items-start justify-between gap-4 flex-wrap">
+  const headerInner = (
+    <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="min-w-0">
-              <DialogTitle className="text-[16px] font-semibold tracking-tight text-slate-100 flex items-baseline gap-2">
+              <div className="text-[16px] font-semibold tracking-tight text-slate-100 flex items-baseline gap-2">
                 <span>naitive</span>
                 <span className="text-[13px] font-medium" style={{ color: '#4dd9ac' }}>Lender Intelligence Dashboard</span>
-              </DialogTitle>
-              <DialogDescription className="text-[12px] text-slate-400 mt-1">
+              </div>
+              <div className="text-[12px] text-slate-400 mt-1">
                 {subtitleParts.join(' · ')}
-              </DialogDescription>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
