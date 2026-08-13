@@ -3532,7 +3532,7 @@ export default function DealDetail() {
                 manualCommit
                 fieldName="Deal name"
                 onSave={(value) => updateDeal('company' as any, value as any)}
-                displayClassName="text-3xl font-bold leading-tight break-words text-foreground"
+                displayClassName="text-4xl md:text-5xl font-bold leading-tight break-words text-foreground"
               />
               <InlineEditField
                 value={formatUSD(deal.value)}
@@ -3541,7 +3541,7 @@ export default function DealDetail() {
                 manualCommit
                 fieldName="Deal amount"
                 onSave={(value) => updateDeal('value' as any, (parseCurrencyInputValue(value) ?? 0) as any)}
-                displayClassName="text-2xl font-bold leading-none text-primary"
+                displayClassName="text-3xl md:text-4xl font-bold leading-none text-primary"
               />
             </div>
           )}
