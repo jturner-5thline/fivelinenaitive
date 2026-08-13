@@ -4968,6 +4968,7 @@ export default function DealDetail() {
                                       })}
                                     </SelectContent>
                                   </Select>
+                                  {substagesEnabled && (
                                   <Select
                                     value={lender.substage || '__none__'}
                                     onOpenChange={(open) => setLenderDropdownOpen(open)}
@@ -5003,6 +5004,7 @@ export default function DealDetail() {
                                       ))}
                                     </SelectContent>
                                   </Select>
+                                  )}
                                   {/* NDA & Marketing Materials Status Icons */}
                                    <div className="flex items-center gap-1">
                                     {(() => {
