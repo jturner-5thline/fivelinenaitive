@@ -15,6 +15,9 @@
 import { formatDistanceToNow, format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { formatUSD } from '@/lib/formatters/currency';
+import { InlineEditField } from '@/components/ui/inline-edit-field';
+import { NaitiveDatePicker } from '@/components/ui/naitive-date-picker';
+import { formatAmountWithCommas, parseCurrencyInputValue } from '@/utils/currencyFormat';
 import { EditableDealStatusTag } from './EditableDealStatusTag';
 import { EditableDealStageTag } from './EditableDealStageTag';
 import type { Deal } from '@/types/deal';
@@ -40,9 +43,11 @@ function RailLabel({ children }: { children: React.ReactNode }) {
 export interface DealContextRailProps {
   deal: Deal;
   className?: string;
+  /** Persist a single deal field (company, value, closingDate). */
+  onUpdateField?: (field: string, value: unknown) => void;
 }
 
-export function DealContextRail({ deal, className }: DealContextRailProps) {
+export function DealContextRail({ deal, className, onUpdateField }: DealContextRailProps) {
   const closeDate = deal.dashboardClosingDate || deal.closingDate || null;
   const lastActivity = deal.notesUpdatedAt || deal.updatedAt || null;
   const owner = deal.dealOwner || deal.manager || '';
@@ -58,12 +63,18 @@ export function DealContextRail({ deal, className }: DealContextRailProps) {
       aria-label="Deal context"
     >
       <div className="space-y-1.5">
-        <h2 className="text-xl font-bold leading-tight break-words text-foreground">
-          {deal.company}
-        </h2>
-        <div className="text-xl font-bold leading-none bg-brand-gradient bg-clip-text text-transparent">
-          {formatUSD(deal.value)}
-        </div>
+        <InlineEditField
+          value={deal.company}
+          onSave={(value) => onUpdateField?.('company', value)}
+          displayClassName="text-xl font-bold leading-tight break-words text-foreground"
+        />
+        <InlineEditField
+          value={formatUSD(deal.value)}
+          editValue={formatAmountWithCommas(deal.value ?? 0)}
+          sanitizeInput={(next) => next.replace(/[^0-9.,]/g, '')}
+          onSave={(value) => onUpdateField?.('value', parseCurrencyInputValue(value) ?? 0)}
+          displayClassName="text-xl font-bold leading-none bg-brand-gradient bg-clip-text text-transparent"
+        />
       </div>
 
       <div className="space-y-1.5">
@@ -77,9 +88,13 @@ export function DealContextRail({ deal, className }: DealContextRailProps) {
 
       <div className="space-y-0.5">
         <RailLabel>Close date</RailLabel>
-        <div className="text-sm text-foreground">
-          {closeDate ? format(new Date(closeDate), 'MMM d, yyyy') : 'Not set'}
-        </div>
+        <NaitiveDatePicker
+          value={deal.closingDate || null}
+          onChange={(v) => onUpdateField?.('closingDate', v)}
+          size="sm"
+          placeholder="Not set"
+          buttonClassName="border-none bg-transparent hover:bg-muted/40 px-1 -ml-1 h-7 text-sm"
+        />
       </div>
 
       <div className="space-y-0.5">
