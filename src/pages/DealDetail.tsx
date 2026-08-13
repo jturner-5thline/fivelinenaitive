@@ -1247,6 +1247,14 @@ export default function DealDetail() {
     
     prevTabRef.current = newTab;
     setDealInfoTab(newTab);
+    // Switching tabs must bring the deal header (status + milestones) back
+    // into view — otherwise the shared scroll region keeps the offset from
+    // the previous tab and the header looks like it only exists on Deal Info.
+    requestAnimationFrame(() => {
+      const region = document.querySelector<HTMLElement>('[data-deal-modal-scroll-region="true"]');
+      if (region) region.scrollTo({ top: 0, behavior: 'auto' });
+      else window.scrollTo({ top: 0, behavior: 'auto' });
+    });
     // Persist active tab to URL so refresh / shared links land on the
     // same panel (especially Deal Space, which is access-gated and
     // would otherwise fall back to Deal Info on reload).
