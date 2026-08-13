@@ -172,9 +172,28 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
               </div>
               <span className="text-xs font-semibold leading-none bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">Deal Milestones</span>
               {milestones.length > 0 && (
-                <Badge variant="outline" className="ml-1 text-[10px] px-1 py-0 h-4 leading-none font-semibold border-primary/30 text-primary">
-                  {completedCount}/{totalCount}
-                </Badge>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant="outline"
+                      className="ml-1 text-[10px] px-1 py-0 h-4 leading-none font-semibold border-primary/30 text-primary cursor-help"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {completedCount}/{totalCount}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" align="start" className="max-w-[240px]">
+                    <p className="text-xs font-medium">
+                      {completedCount} of {totalCount} milestones completed
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      The first number is how many milestones are marked done; the second is the total for this deal.
+                      {isExpanded
+                        ? ' Click the header to collapse the list.'
+                        : ' Click the header to expand and see titles, due dates, and progress.'}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
               )}
               {!isExpanded && (
                 <span className="ml-auto text-[10px] leading-none text-primary/80 font-medium">
