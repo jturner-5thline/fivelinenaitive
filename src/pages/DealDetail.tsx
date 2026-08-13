@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef, lazy, Suspense } fro
 import { createPortal } from 'react-dom';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp, CalendarIcon, GitBranch, ListChecks, Video, Activity } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, ArrowUp, ArrowDown, Filter, TrendingUp, CalendarIcon, GitBranch, ListChecks, Video, Activity } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { HubSpotDealBadge } from '@/components/integrations/hubspot/HubSpotDealBadge';
@@ -1055,7 +1055,7 @@ export default function DealDetail() {
     deal?.lenders?.map(l => l.name) || [], 
     [deal?.lenders]
   );
-  const [lenderSort, setLenderSort] = useState<'none' | 'updated-desc' | 'updated-asc' | 'stage-furthest' | 'stage-slowest' | 'submitted-desc' | 'status-changed-desc'>('none');
+  const [lenderSort, setLenderSort] = useState<'none' | 'name-asc' | 'name-desc' | 'updated-desc' | 'updated-asc' | 'stage-furthest' | 'stage-slowest' | 'submitted-desc' | 'status-changed-desc'>('none');
   const [lenderDropdownOpen, setLenderDropdownOpen] = useState(false);
   const pendingReorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [stableLenderSnapshot, setStableLenderSnapshot] = useState<DealLender[] | null>(null);
@@ -1067,6 +1067,10 @@ export default function DealDetail() {
     if (lenderSort === 'none') return lenders;
     
     switch (lenderSort) {
+      case 'name-asc':
+        return lenders.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+      case 'name-desc':
+        return lenders.sort((a, b) => (b.name || '').localeCompare(a.name || '', undefined, { sensitivity: 'base' }));
       case 'updated-desc':
         return lenders.sort((a, b) => {
           const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
@@ -4852,9 +4856,34 @@ export default function DealDetail() {
                           // Flat list when "All" is selected - with drag and drop
                           <div>
                           <div className="grid grid-cols-[minmax(180px,1.3fr)_190px_minmax(220px,2fr)_auto] items-center gap-4 border-b border-border px-2 pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                            <span>Lender</span>
-                            <span>Stage</span>
-                            <span>Latest update</span>
+                            {([
+                              { label: 'Lender', asc: 'name-asc', desc: 'name-desc' },
+                              { label: 'Stage', asc: 'stage-slowest', desc: 'stage-furthest' },
+                              { label: 'Latest update', asc: 'updated-asc', desc: 'updated-desc' },
+                            ] as const).map((col) => {
+                              const active = lenderSort === col.asc ? 'asc' : lenderSort === col.desc ? 'desc' : null;
+                              return (
+                                <button
+                                  key={col.label}
+                                  type="button"
+                                  onClick={() => setLenderSort(active === 'asc' ? col.desc : active === 'desc' ? 'none' : col.asc)}
+                                  aria-label={`Sort by ${col.label}`}
+                                  className={cn(
+                                    'flex items-center gap-1 text-left uppercase tracking-wider transition-colors hover:text-foreground',
+                                    active && 'text-foreground',
+                                  )}
+                                >
+                                  {col.label}
+                                  {active === 'asc' ? (
+                                    <ArrowUp className="h-3 w-3" />
+                                  ) : active === 'desc' ? (
+                                    <ArrowDown className="h-3 w-3" />
+                                  ) : (
+                                    <ArrowDownUp className="h-3 w-3 opacity-40" />
+                                  )}
+                                </button>
+                              );
+                            })}
                             <span className="text-right">Actions</span>
                           </div>
                           <DndContext
