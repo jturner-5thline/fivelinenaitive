@@ -3407,7 +3407,16 @@ export default function DealDetail() {
               at-a-glance facts to a left rail and lets the main column
               carry the content. Everything below is unchanged. */}
           <div className={cn(useContextRailLayout && "flex flex-col lg:flex-row gap-5 items-start mt-4")}>
-          {useContextRailLayout && <DealContextRail deal={deal} onUpdateField={(field, value) => updateDeal(field as any, value as any)} />}
+          {useContextRailLayout && (
+            <div className="w-full lg:w-[300px] shrink-0 lg:sticky lg:top-4 self-start space-y-4">
+              <DealContextRail
+                deal={deal}
+                className="lg:w-full lg:static"
+                onUpdateField={(field, value) => updateDeal(field as any, value as any)}
+              />
+              <div ref={setRailPanelSlot} className="w-full" />
+            </div>
+          )}
           <div className={cn(useContextRailLayout && "flex-1 min-w-0 w-full")}>
           {/* Header Card */}
           <Card className={cn(
