@@ -1008,9 +1008,10 @@ export function LenderAnalyticsDialog({
               </Button>
             </div>
           </div>
-        </DialogHeader>
+  );
 
-        <div className="flex-1 min-h-0 overflow-auto px-6 py-5 space-y-4" style={{ background: '#0f1117' }}>
+  const bodyContent = (
+    <div className="flex-1 min-h-0 overflow-auto px-6 py-5 space-y-4" style={{ background: '#0f1117' }}>
           {/* KPI Row — big teal numbers */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <IntelKpi
