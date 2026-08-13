@@ -3859,7 +3859,7 @@ export default function DealDetail() {
                     for (const p of base) {
                       if (p === 'outstanding-items') {
                         if (withTasksHours.length % 2 !== 0) withTasksHours.push('__spacer__' as DealPanelId);
-                        withTasksHours.push('outstanding-items', 'tasks-hours' as DealPanelId);
+                        withTasksHours.push('tasks-hours' as DealPanelId, 'outstanding-items');
                       } else {
                         withTasksHours.push(p);
                       }
@@ -3880,16 +3880,17 @@ export default function DealDetail() {
                           if (isNaitiveDeal || isProjectsDeal) return null;
                           return (
                             <div key={id} className="h-full flex flex-col gap-4">
-                              {!isSimplifiedDeal && (
-                                <DealHoursFeesCard
-                                  deal={deal}
-                                  updateDeal={(field, value) => updateDeal(field as any, value)}
-                                  onHoursChanged={() => { void refreshDeals?.(); }}
-                                />
-                              )}
-                              <div className="flex-1 min-h-[420px]">
+                              <div className="shrink-0 min-h-[420px]">
                                 <DealTasksPanel dealId={deal.id} />
                               </div>
+                              {/* Calendar panel is hidden on FinServ deal detail by request */}
+                              {!isFinServDeal && (
+                                <Card className="overflow-hidden flex-1 flex flex-col min-h-[280px]">
+                                  <div className="flex-1 flex flex-col">
+                                    <CalendarPanel deal={deal} />
+                                  </div>
+                                </Card>
+                              )}
                             </div>
                           );
                         case 'ai-research':
