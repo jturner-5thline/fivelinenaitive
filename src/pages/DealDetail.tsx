@@ -3505,6 +3505,8 @@ export default function DealDetail() {
           <Card className={cn(
             "w-full mt-4 mb-6 border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]",
             useContextRailLayout && "mt-0",
+            // Header widget (status + milestones) is scoped to the Deal Info tab only.
+            dealInfoTab !== 'deal-info' && "hidden",
           )}>
             <CardHeader className={cn("pb-4", useContextRailLayout && "pt-3 pb-3")}>
               <div className={cn(
