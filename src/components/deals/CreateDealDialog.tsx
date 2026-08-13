@@ -196,6 +196,8 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const [companyNameVisual, setCompanyNameVisual] = useState('');
   const [companyPickerOpen, setCompanyPickerOpen] = useState(false);
   const [companySearch, setCompanySearch] = useState('');
+  const [createCompanyOpen, setCreateCompanyOpen] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState('');
   const { data: crmCompaniesResult, isLoading: companiesLoading } = useCrmCompanies({ pageSize: 1000 });
   const createCrmCompany = useCreateCrmCompany();
   const crmCompaniesList = crmCompaniesResult?.data ?? [];
