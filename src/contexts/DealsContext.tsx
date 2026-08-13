@@ -102,7 +102,10 @@ export function DealsProvider({ children }: { children: ReactNode }) {
   return (
     <DealsContext.Provider value={value}>
       {children}
-      <IntroducedFundingSourcesDialog />
+      <IntroducedFundingSourcesDialog
+        addLenderToDeal={addLenderToDeal}
+        refreshDeals={fetchDeals}
+      />
     </DealsContext.Provider>
   );
 }

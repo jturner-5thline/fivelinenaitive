@@ -16,7 +16,6 @@ import { Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useMasterLenders } from '@/hooks/useMasterLenders';
-import { useDealsContext } from '@/contexts/DealsContext';
 
 export const INTRODUCTIONS_DIALOG_EVENT = 'deal-introductions-stage';
 
@@ -50,8 +49,12 @@ async function resolveSentDrlStageId(companyId: string): Promise<string> {
  * client was introduced to. Each selected funding source is attached to the
  * deal at the "Sent DRL" stage.
  */
-export function IntroducedFundingSourcesDialog() {
-  const { addLenderToDeal, refreshDeals } = useDealsContext();
+interface Props {
+  addLenderToDeal: (dealId: string, lenderData: any) => Promise<any>;
+  refreshDeals: () => Promise<void>;
+}
+
+export function IntroducedFundingSourcesDialog({ addLenderToDeal, refreshDeals }: Props) {
   const [detail, setDetail] = useState<IntroductionsDialogDetail | null>(null);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
