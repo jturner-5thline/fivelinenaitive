@@ -146,11 +146,11 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
   return (
     <div className="pt-0">
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-0.5">
           <CollapsibleTrigger asChild>
             <button
               className={cn(
-                "flex items-center gap-2 flex-1 px-3 py-2.5 -mx-3 rounded-lg",
+                "flex items-center gap-2 flex-1 px-3 py-0.5 -mx-3 rounded-lg",
                 "cursor-pointer transition-all duration-200",
                 "border border-transparent",
                 "bg-transparent hover:bg-white/[0.05] hover:shadow-[0_0_16px_rgba(126,184,247,0.1)]",
@@ -161,23 +161,23 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
               aria-expanded={isExpanded}
             >
               <div className={cn(
-                "flex items-center justify-center h-6 w-6 rounded-md transition-all duration-200",
+                "flex items-center justify-center h-5 w-5 rounded-md transition-all duration-200",
                 "bg-primary/10 text-primary",
                 !isExpanded && "bg-primary/20"
               )}>
                 <ChevronRight className={cn(
-                  "h-3.5 w-3.5 transition-transform duration-200",
+                  "h-3 w-3 transition-transform duration-200",
                   isExpanded && "rotate-90"
                 )} />
               </div>
-              <span className="text-sm font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">Deal Milestones</span>
+              <span className="text-xs font-semibold leading-none bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">Deal Milestones</span>
               {milestones.length > 0 && (
-                <Badge variant="outline" className="ml-1 text-[10px] px-1.5 py-0 h-5 font-semibold border-primary/30 text-primary">
+                <Badge variant="outline" className="ml-1 text-[10px] px-1 py-0 h-4 leading-none font-semibold border-primary/30 text-primary">
                   {completedCount}/{totalCount}
                 </Badge>
               )}
               {!isExpanded && (
-                <span className="ml-auto text-[11px] text-muted-foreground/60 italic">
+                <span className="ml-auto text-[10px] leading-none text-muted-foreground/60 italic">
                   Click to expand
                 </span>
               )}
