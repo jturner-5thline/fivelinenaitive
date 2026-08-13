@@ -4850,6 +4850,13 @@ export default function DealDetail() {
                       <>
                         {lenderGroupFilters.size === 0 && lenderStageFilters.size === 0 ? (
                           // Flat list when "All" is selected - with drag and drop
+                          <div>
+                          <div className="grid grid-cols-[minmax(180px,1.3fr)_190px_minmax(220px,2fr)_auto] items-center gap-4 border-b border-border px-2 pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                            <span>Lender</span>
+                            <span>Stage</span>
+                            <span>Latest update</span>
+                            <span className="text-right">Actions</span>
+                          </div>
                           <DndContext
                             sensors={sensors}
                             collisionDetection={closestCenter}
