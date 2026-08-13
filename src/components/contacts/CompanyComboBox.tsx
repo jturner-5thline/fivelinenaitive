@@ -134,7 +134,7 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
         <span className="text-sm flex-1 truncate">{selectedCompany.name}</span>
         <button
           type="button"
-          onClick={() => { onChange(''); setDomainSuggested(false); }}
+          onClick={() => { onChange(''); setDomainSuggested(false); setJustCreated(null); }}
           className="text-muted-foreground hover:text-foreground"
         >
           <X className="h-3.5 w-3.5" />
