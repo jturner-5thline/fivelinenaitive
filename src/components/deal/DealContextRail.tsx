@@ -57,33 +57,22 @@ export function DealContextRail({ deal, className }: DealContextRailProps) {
       )}
       aria-label="Deal context"
     >
-      <div className="space-y-0.5">
-        <RailLabel>Company</RailLabel>
-        <h2 className="text-lg font-semibold leading-tight break-words text-foreground">
+      <div className="space-y-1.5">
+        <h2 className="text-xl font-bold leading-tight break-words text-foreground">
           {deal.company}
         </h2>
-      </div>
-
-      <div className="space-y-0.5">
-        <RailLabel>Deal size</RailLabel>
-        <div className="text-xl font-semibold leading-none bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
+        <div className="text-xl font-bold leading-none bg-brand-gradient bg-clip-text text-transparent">
           {formatUSD(deal.value)}
         </div>
       </div>
 
-      <div className="space-y-1">
-        <RailLabel>Status</RailLabel>
-        <div>
-          <EditableDealStatusTag dealId={deal.id} status={deal.status} />
-        </div>
-        <RailLabel>Stage</RailLabel>
-        <div>
-          <EditableDealStageTag
-            dealId={deal.id}
-            stage={deal.stage}
-            pipelineId={deal.pipelineId ?? null}
-          />
-        </div>
+      <div className="space-y-1.5">
+        <EditableDealStatusTag dealId={deal.id} status={deal.status} />
+        <EditableDealStageTag
+          dealId={deal.id}
+          stage={deal.stage}
+          pipelineId={deal.pipelineId ?? null}
+        />
       </div>
 
       <div className="space-y-0.5">
