@@ -25,6 +25,7 @@ export const DASHBOARD_OPTIONS: InsightsDashboardOption[] = [
   { id: 'sales-dashboard-v2', name: 'Sales Dashboard', isFavorite: false, folder: 'sales-bd' },
   { id: 'finserv-financial-metrics', name: 'FinServ Financial Metrics', isFavorite: false, folder: null },
   { id: 'consolidated-debt-pipeline', name: 'Debt Advisory Metrics', isFavorite: false, folder: 'sales-bd' },
+  { id: 'lender-intelligence', name: 'Lender Intelligence Dashboard', isFavorite: false, folder: 'sales-bd' },
   { id: 'sales-bd-roi', name: 'Sales & BD ROI', isFavorite: false, folder: 'sales-bd' },
   { id: 'management-review', name: 'Insights Dashboard', isFavorite: false, folder: 'management-insights' },
 ];

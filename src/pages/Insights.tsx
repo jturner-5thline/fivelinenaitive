@@ -120,6 +120,7 @@ import {
   SUB_WIDGET_LABELS,
   SalesBDROIDashboard,
   ConsolidatedDebtPipelineDashboard,
+  LenderIntelligenceDashboard,
   ControllerDashboard,
   ExecutiveDashboard,
   FinServFinancialMetricsDashboard,
@@ -166,7 +167,7 @@ const DEFAULT_FOLDER_GROUPS: { id: string; name: string; dashboardIds: string[] 
   {
     id: 'sales-bd',
     name: 'Sales & BD',
-    dashboardIds: ['sales-dashboard-v2', 'sales-bd-roi', 'consolidated-debt-pipeline'],
+    dashboardIds: ['sales-dashboard-v2', 'sales-bd-roi', 'consolidated-debt-pipeline', 'lender-intelligence'],
   },
 ];
 
@@ -2802,6 +2803,7 @@ function MetricsInner() {
             {effectiveSelectedDashboard === 'consolidated-debt-pipeline' && (
               <ConsolidatedDebtPipelineDashboard selectedQuarter={dashboardSelectedQuarter} />
             )}
+            {effectiveSelectedDashboard === 'lender-intelligence' && <LenderIntelligenceDashboard />}
             {effectiveSelectedDashboard === 'controller-dashboard' && <ControllerDashboard />}
             {effectiveSelectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
             {effectiveSelectedDashboard === 'management-review' && (
