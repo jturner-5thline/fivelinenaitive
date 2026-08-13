@@ -50,9 +50,16 @@ interface DealMilestonesProps {
   onUpdate: (id: string, updates: Partial<DealMilestone>) => void;
   onDelete: (id: string) => void;
   onReorder?: (milestones: DealMilestone[]) => void;
+  /**
+   * Collapsed-timeline marker style.
+   * - `diamond` (default): the classic diamond markers on a connector line.
+   * - `pill`: rounded pills with the milestone title inline (used by the
+   *   context-rail deal detail layout).
+   */
+  markerVariant?: 'diamond' | 'pill';
 }
 
-export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorder }: DealMilestonesProps) {
+export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorder, markerVariant = 'diamond' }: DealMilestonesProps) {
   const [isAdding, setIsAdding] = useState(false);
   // Always start collapsed on every page load/refresh. Do not persist
   // expanded state across reloads — manual expansion only lasts for the
