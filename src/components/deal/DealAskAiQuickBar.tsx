@@ -257,7 +257,12 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
                 </p>
               </div>
             )}
-            {messages.map((m, i) => {
+            {query && visibleMessages.length === 0 && messages.length > 0 && (
+              <p className="py-8 text-center text-xs text-muted-foreground">
+                No messages match "{search.trim()}"
+              </p>
+            )}
+            {visibleMessages.map(({ m, i }) => {
               const isLive =
                 isStreaming && i === messages.length - 1 && m.role === 'assistant';
               return (
@@ -270,7 +275,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
                     : 'text-foreground',
                 )}
               >
-                {m.content}
+                {renderContent(m.content)}
                 {isLive && (
                   <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-pulse bg-primary align-middle" />
                 )}
