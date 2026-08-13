@@ -1055,7 +1055,7 @@ export default function DealDetail() {
     deal?.lenders?.map(l => l.name) || [], 
     [deal?.lenders]
   );
-  const [lenderSort, setLenderSort] = useState<'none' | 'updated-desc' | 'updated-asc' | 'stage-furthest' | 'stage-slowest' | 'submitted-desc' | 'status-changed-desc'>('none');
+  const [lenderSort, setLenderSort] = useState<'none' | 'name-asc' | 'name-desc' | 'updated-desc' | 'updated-asc' | 'stage-furthest' | 'stage-slowest' | 'submitted-desc' | 'status-changed-desc'>('none');
   const [lenderDropdownOpen, setLenderDropdownOpen] = useState(false);
   const pendingReorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [stableLenderSnapshot, setStableLenderSnapshot] = useState<DealLender[] | null>(null);
@@ -1067,6 +1067,10 @@ export default function DealDetail() {
     if (lenderSort === 'none') return lenders;
     
     switch (lenderSort) {
+      case 'name-asc':
+        return lenders.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+      case 'name-desc':
+        return lenders.sort((a, b) => (b.name || '').localeCompare(a.name || '', undefined, { sensitivity: 'base' }));
       case 'updated-desc':
         return lenders.sort((a, b) => {
           const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
