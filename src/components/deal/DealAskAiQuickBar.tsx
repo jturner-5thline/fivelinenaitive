@@ -356,6 +356,48 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
                 {isLive && (
                   <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-pulse bg-primary align-middle" />
                 )}
+                {m.role === 'assistant' && includeCitations && !!m.sources?.length && (
+                  <ul className="mt-2 space-y-1">
+                    {m.sources.map((raw) => {
+                      const key = raw.trim();
+                      const status = statusByRaw.get(key) ?? 'unknown';
+                      const { label, url } = parseSource(key, dealId);
+                      return (
+                        <li key={key} className="flex items-start gap-1.5 text-[11px] leading-snug">
+                          {status === 'missing' ? (
+                            <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-destructive" />
+                          ) : status === 'external' ? (
+                            <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                          ) : status === 'ok' ? (
+                            <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-success" />
+                          ) : (
+                            <Loader2 className="mt-0.5 h-3 w-3 shrink-0 animate-spin text-muted-foreground" />
+                          )}
+                          <span className="min-w-0 flex-1">
+                            {url ? (
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={cn(
+                                  'underline underline-offset-2',
+                                  status === 'missing' ? 'text-destructive' : 'text-muted-foreground hover:text-foreground',
+                                )}
+                              >
+                                {label}
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground">{label}</span>
+                            )}
+                            {status === 'missing' && (
+                              <span className="ml-1 text-destructive">— source not found on this deal</span>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </div>
               );
             })}
