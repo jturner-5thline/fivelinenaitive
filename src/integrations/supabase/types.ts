@@ -10106,6 +10106,57 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_drive_folders: {
+        Row: {
+          auto_matched: boolean
+          created_at: string
+          deal_id: string
+          folder_id: string
+          folder_name: string | null
+          folder_url: string | null
+          id: string
+          linked_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_matched?: boolean
+          created_at?: string
+          deal_id: string
+          folder_id: string
+          folder_name?: string | null
+          folder_url?: string | null
+          id?: string
+          linked_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_matched?: boolean
+          created_at?: string
+          deal_id?: string
+          folder_id?: string
+          folder_name?: string | null
+          folder_url?: string | null
+          id?: string
+          linked_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_drive_folders_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_drive_folders_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+        ]
+      }
       deal_email_prompts: {
         Row: {
           cc_json: Json
