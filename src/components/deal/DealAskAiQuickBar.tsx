@@ -242,6 +242,32 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
           </>
         )}
       </div>
+      {expanded && messages.length > 0 && (
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search this deal's chat history..."
+            className="h-8 pl-8 pr-8 text-xs"
+          />
+          {search && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => setSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {query && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {visibleMessages.length} of {messages.length} messages match
+            </p>
+          )}
+        </div>
+      )}
       {expanded && (
         <div
           ref={scrollRef}
