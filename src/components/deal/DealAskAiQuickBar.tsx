@@ -32,11 +32,20 @@ export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBar
   };
 
   return (
-    <form
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-primary shrink-0" />
+        <div>
+          <h3 className="text-sm font-semibold leading-none">Ask AI</h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Ask questions about this deal's data, documents, and activity
+          </p>
+        </div>
+      </div>
+      <form
       onSubmit={submit}
       className="flex items-center gap-2 rounded-lg border border-border/60 bg-card/60 backdrop-blur px-3 py-2"
     >
-      <Sparkles className="h-4 w-4 text-primary shrink-0" />
       <Input
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -47,6 +56,7 @@ export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBar
       <Button type="submit" size="icon" className="h-8 w-8 shrink-0" disabled={!value.trim()}>
         <ArrowUp className="h-4 w-4" />
       </Button>
-    </form>
+      </form>
+    </div>
   );
 }
