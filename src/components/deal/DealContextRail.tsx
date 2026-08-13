@@ -87,8 +87,6 @@ export function DealContextRail({ deal, className, onUpdateField }: DealContextR
           manualCommit
           fieldName="Deal amount"
           onSave={(value) => onUpdateField?.('value', parseCurrencyInputValue(value) ?? 0)}
-          // Gradient text (bg-clip-text + text-transparent) renders invisible
-          // inside an <input>, so the amount uses a solid brand color instead.
           displayClassName="text-xl font-bold leading-none text-primary"
         />
       </div>
