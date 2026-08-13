@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Sparkles, ArrowUp, Loader2, Maximize2, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  Sparkles,
+  ArrowUp,
+  Loader2,
+  Maximize2,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
+  RotateCcw,
+  MessageSquare,
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useDealSpaceAI } from '@/hooks/useDealSpaceAI';
@@ -20,9 +30,10 @@ export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBar
   const [value, setValue] = useState('');
   const [expanded, setExpanded] = useState(false);
   const [latestOpen, setLatestOpen] = useState(true);
+  const [lastPrompt, setLastPrompt] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { messages, sendMessage, isLoading } = useDealSpaceAI(dealId);
+  const { messages, sendMessage, isLoading, error } = useDealSpaceAI(dealId);
 
   // Collapse back to the default bar height when the user clicks outside.
   useEffect(() => {
@@ -50,7 +61,14 @@ export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBar
     if (!question) return;
     setValue('');
     setExpanded(true);
+    setLastPrompt(question);
     void sendMessage(question);
+  };
+
+  const retry = () => {
+    if (!lastPrompt) return;
+    setExpanded(true);
+    void sendMessage(lastPrompt);
   };
 
   const openFullTab = () => {
@@ -78,12 +96,21 @@ export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBar
           </Button>
         )}
       </div>
-      {expanded && (messages.length > 0 || isLoading) && (
+      {expanded && (
         <div
           ref={scrollRef}
           className="h-72 overflow-y-auto rounded-lg border border-border/60 bg-card/60 backdrop-blur p-3"
         >
           <div className="space-y-3">
+            {messages.length === 0 && !isLoading && !error && (
+              <div className="flex h-64 flex-col items-center justify-center gap-2 text-center">
+                <MessageSquare className="h-6 w-6 text-muted-foreground/60" />
+                <p className="text-sm font-medium">No questions yet</p>
+                <p className="max-w-xs text-xs text-muted-foreground">
+                  Ask about financials, documents, funding sources, or recent activity on this deal.
+                </p>
+              </div>
+            )}
             {messages.map((m, i) => (
               <div
                 key={i}
@@ -98,16 +125,58 @@ export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBar
               </div>
             ))}
             {isLoading && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Thinking...
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Searching this deal's data and documents...
+                </div>
+                <div className="space-y-1.5">
+                  <div className="h-3 w-4/5 animate-pulse rounded bg-muted" />
+                  <div className="h-3 w-3/5 animate-pulse rounded bg-muted" />
+                  <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
+                </div>
+              </div>
+            )}
+            {!isLoading && error && (
+              <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-2.5">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-destructive">Ask AI couldn't answer that</p>
+                  <p className="mt-0.5 break-words text-xs text-muted-foreground">{error}</p>
+                  {lastPrompt && (
+                    <Button variant="outline" size="sm" className="mt-2 h-7 gap-1 text-xs" onClick={retry}>
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Retry
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
           </div>
         </div>
       )}
+      {/* Collapsed loading / error cues so the state is never hidden. */}
+      {!expanded && isLoading && (
+        <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-card/60 px-3 py-2 text-xs text-muted-foreground backdrop-blur">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Ask AI is working on your question...
+        </div>
+      )}
+      {!expanded && !isLoading && error && (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2">
+          <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
+          <span className="min-w-0 flex-1 truncate text-xs text-destructive">{error}</span>
+          {lastPrompt && (
+            <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={retry}>
+              <RotateCcw className="h-3.5 w-3.5" />
+              Retry
+            </Button>
+          )}
+        </div>
+      )}
       {/* Collapsed view: keep the latest answer on the deal page in an
           expandable section instead of forcing a trip to the Deal Space tab. */}
-      {!expanded && lastAssistant && (
+      {!expanded && !isLoading && !error && lastAssistant && (
         <div className="rounded-lg border border-border/60 bg-card/60 backdrop-blur">
           <button
             type="button"
