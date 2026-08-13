@@ -3407,7 +3407,7 @@ export default function DealDetail() {
               at-a-glance facts to a left rail and lets the main column
               carry the content. Everything below is unchanged. */}
           <div className={cn(useContextRailLayout && "flex flex-col lg:flex-row gap-5 items-start mt-4")}>
-          {useContextRailLayout && <DealContextRail deal={deal} />}
+          {useContextRailLayout && <DealContextRail deal={deal} onUpdateField={(field, value) => updateDeal(field as any, value as any)} />}
           <div className={cn(useContextRailLayout && "flex-1 min-w-0 w-full")}>
           {/* Header Card */}
           <Card className={cn(
@@ -3485,6 +3485,7 @@ export default function DealDetail() {
               </div>
               <div className="flex items-center justify-between gap-2 mt-4 flex-wrap">
                 <div className="flex items-center gap-2 flex-wrap">
+                {!useContextRailLayout && (
                 <Select
                   value={deal.status}
                   onValueChange={(value: DealStatus) => {
@@ -3524,6 +3525,7 @@ export default function DealDetail() {
                     ))}
                   </SelectContent>
                 </Select>
+                )}
                 {deal.status === 'archived' && (
                   <Button
                     variant="outline"
@@ -3535,6 +3537,7 @@ export default function DealDetail() {
                     Restore from Archive
                   </Button>
                 )}
+                {!useContextRailLayout && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="h-6 px-2 text-xs rounded-lg border gap-1">
@@ -3615,6 +3618,7 @@ export default function DealDetail() {
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
+                )}
                 <DealUpdatesUnified
                   activities={activityLogs}
                   isLoadingActivities={isLoadingActivities}
@@ -3624,7 +3628,7 @@ export default function DealDetail() {
                   onDeleteNote={deleteStatusNote}
                 />
                 </div>
-                {!isSimplifiedDeal && (
+                {!isSimplifiedDeal && !useContextRailLayout && (
                   <div className="flex items-center gap-1.5 ml-auto">
                     <span className="text-xs text-muted-foreground">Close:</span>
                     <NaitiveDatePicker
