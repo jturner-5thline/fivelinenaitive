@@ -3825,7 +3825,7 @@ export default function DealDetail() {
                   ) : (
                   <>
                   {/* Milestones Card - hidden for naitive pipeline deals */}
-                  {!isSimplifiedDeal && (
+                  {!isSimplifiedDeal && !useContextRailLayout && (
                   <Card>
                     <CardContent className="pt-2 pb-2">
                       <DealMilestones
