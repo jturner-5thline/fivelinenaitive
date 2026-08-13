@@ -30,3 +30,21 @@ export async function downloadUrlAsFile(url: string, fileName?: string): Promise
     document.body.removeChild(a);
   }
 }
+
+/** Download in-memory text (transcripts, reports) as a file, no popup/tab. */
+export function downloadTextAsFile(
+  text: string,
+  fileName: string,
+  mimeType = 'text/plain;charset=utf-8',
+): void {
+  const blob = new Blob([text], { type: mimeType });
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = fileName;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 4000);
+}

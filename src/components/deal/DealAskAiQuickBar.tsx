@@ -10,14 +10,20 @@ import {
   RotateCcw,
   MessageSquare,
   Trash2,
+  Download,
+  Copy,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useDealSpaceAI } from '@/hooks/useDealSpaceAI';
+import { downloadTextAsFile } from '@/lib/downloadFile';
+import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 interface DealAskAiQuickBarProps {
   dealId: string;
+  /** Used in the exported transcript header / file name. */
+  dealName?: string;
   /** Switches the surrounding tabs over to the Deal Space tab. */
   onOpenDealSpace: () => void;
 }
@@ -27,7 +33,7 @@ interface DealAskAiQuickBarProps {
  * an inline back-and-forth chat while the user is interacting with it, and
  * collapses back to the single-line bar when they click outside.
  */
-export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBarProps) {
+export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAskAiQuickBarProps) {
   const [value, setValue] = useState('');
   const [expanded, setExpanded] = useState(false);
   const [latestOpen, setLatestOpen] = useState(true);
@@ -106,6 +112,54 @@ export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBar
 
   const chips = messages.length === 0 ? STARTER_CHIPS : FOLLOW_UP_CHIPS;
 
+  const buildTranscript = () => {
+    const title = dealName ? `Ask AI transcript — ${dealName}` : 'Ask AI transcript';
+    const lines = [
+      `# ${title}`,
+      '',
+      `_Exported ${new Date().toLocaleString()}_`,
+      '',
+      '---',
+      '',
+    ];
+    for (const m of messages) {
+      const stamp = m.timestamp instanceof Date && !isNaN(m.timestamp.getTime())
+        ? m.timestamp.toLocaleString()
+        : '';
+      lines.push(`### ${m.role === 'user' ? 'Question' : 'nAItive AI'}${stamp ? ` — ${stamp}` : ''}`);
+      lines.push('');
+      lines.push(m.content);
+      if (m.sources?.length) {
+        lines.push('');
+        lines.push(`**Sources:** ${m.sources.join(', ')}`);
+      }
+      lines.push('');
+    }
+    return lines.join('\n');
+  };
+
+  const slug = (dealName || 'deal').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+  const exportTranscript = () => {
+    if (!messages.length) return;
+    downloadTextAsFile(
+      buildTranscript(),
+      `ask-ai-transcript-${slug}-${new Date().toISOString().slice(0, 10)}.md`,
+      'text/markdown;charset=utf-8',
+    );
+    toast({ title: 'Transcript exported', description: 'Saved as a Markdown report you can share.' });
+  };
+
+  const copyTranscript = async () => {
+    if (!messages.length) return;
+    try {
+      await navigator.clipboard.writeText(buildTranscript());
+      toast({ title: 'Transcript copied', description: 'Paste it into an email or doc to share.' });
+    } catch {
+      toast({ title: 'Copy failed', description: 'Use Export to download the transcript instead.', variant: 'destructive' });
+    }
+  };
+
   return (
     <div ref={containerRef} className="space-y-2" onFocusCapture={() => setExpanded(true)}>
       <div className="flex items-center gap-2">
@@ -119,6 +173,25 @@ export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBar
         {expanded && (
           <>
             {messages.length > 0 && (
+              <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 text-xs text-muted-foreground"
+                onClick={copyTranscript}
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copy
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 text-xs text-muted-foreground"
+                onClick={exportTranscript}
+              >
+                <Download className="h-3.5 w-3.5" />
+                Export
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -128,6 +201,7 @@ export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBar
                 <Trash2 className="h-3.5 w-3.5" />
                 Clear
               </Button>
+              </>
             )}
           <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={openFullTab}>
             <Maximize2 className="h-3.5 w-3.5" />
