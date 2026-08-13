@@ -47,6 +47,8 @@ interface LenderStagesContextType {
   deleteStage: (id: string) => void;
   reorderStages: (stages: StageOption[]) => void;
   substages: SubstageOption[];
+  substagesEnabled: boolean;
+  setSubstagesEnabled: (enabled: boolean) => void;
   addSubstage: (substage: Omit<SubstageOption, 'id'>) => void;
   updateSubstage: (id: string, substage: Omit<SubstageOption, 'id'>) => void;
   deleteSubstage: (id: string) => void;
@@ -118,6 +120,7 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
   const { company } = useCompany();
   const [stages, setStages] = useState<StageOption[]>(defaultStages);
   const [substages, setSubstages] = useState<SubstageOption[]>(defaultSubstages);
+  const [substagesEnabled, setSubstagesEnabledState] = useState<boolean>(true);
   const [passReasons, setPassReasons] = useState<PassReasonOption[]>(defaultPassReasons);
   const [trackingStatuses, setTrackingStatuses] = useState<TrackingStatusOption[]>(defaultTrackingStatuses);
   const [isLoading, setIsLoading] = useState(true);
@@ -206,6 +209,10 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
           const dbTrackingStatuses = (data as any).tracking_statuses as unknown as TrackingStatusOption[];
           if (dbTrackingStatuses && Array.isArray(dbTrackingStatuses) && dbTrackingStatuses.length > 0) {
             setTrackingStatuses(dbTrackingStatuses);
+          }
+          const dbSubstagesEnabled = (data as any).substages_enabled;
+          if (typeof dbSubstagesEnabled === 'boolean') {
+            setSubstagesEnabledState(dbSubstagesEnabled);
           }
           setConfigId(data.id);
         } else {
@@ -373,6 +380,36 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
     saveSubstages(newSubstages);
   };
 
+  const setSubstagesEnabled = useCallback(async (enabled: boolean) => {
+    setSubstagesEnabledState(enabled);
+    if (!user) return;
+    try {
+      if (configId) {
+        await supabase
+          .from('lender_stage_configs')
+          .update({ substages_enabled: enabled, updated_at: new Date().toISOString() } as any)
+          .eq('id', configId);
+      } else {
+        const { data } = await supabase
+          .from('lender_stage_configs')
+          .insert({
+            user_id: user.id,
+            company_id: company?.id || null,
+            stages: stages as unknown as Json,
+            substages: substages as unknown as Json,
+            pass_reasons: passReasons as unknown as Json,
+            tracking_statuses: trackingStatuses as unknown as Json,
+            substages_enabled: enabled,
+          } as any)
+          .select('id')
+          .single();
+        if (data) setConfigId(data.id);
+      }
+    } catch (error) {
+      console.error('Error saving milestone visibility:', error);
+    }
+  }, [user, company?.id, configId, stages, substages, passReasons, trackingStatuses]);
+
   const addPassReason = (reason: Omit<PassReasonOption, 'id'>) => {
     const id = reason.label.toLowerCase().replace(/\s+/g, '-');
     const newReason = { id, ...reason };
@@ -438,6 +475,8 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
       deleteStage,
       reorderStages,
       substages,
+      substagesEnabled,
+      setSubstagesEnabled,
       addSubstage,
       updateSubstage,
       deleteSubstage,
