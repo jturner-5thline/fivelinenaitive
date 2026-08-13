@@ -50,9 +50,11 @@ export interface DealContextRailProps {
   onUpdateField?: (field: string, value: unknown) => void;
   /** When true, show only name, size, status and stage. */
   compact?: boolean;
+  /** When true, hide the deal name + amount (rendered as a page header instead). */
+  hideIdentity?: boolean;
 }
 
-export function DealContextRail({ deal, className, onUpdateField, compact }: DealContextRailProps) {
+export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity }: DealContextRailProps) {
   const lastActivity = deal.notesUpdatedAt || deal.updatedAt || null;
   const owner = deal.dealOwner || deal.manager || '';
 
@@ -74,6 +76,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact }: Dea
       )}
       aria-label="Deal context"
     >
+      {!hideIdentity && (
       <div className="space-y-1.5">
         <InlineEditField
           value={deal.company}
@@ -92,6 +95,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact }: Dea
           displayClassName="text-2xl font-bold leading-none text-primary"
         />
       </div>
+      )}
 
       <div className="space-y-1.5">
         <EditableDealStatusTag dealId={deal.id} status={deal.status} />
