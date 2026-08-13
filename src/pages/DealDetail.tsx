@@ -4548,12 +4548,12 @@ export default function DealDetail() {
                                   </>
                                 ) : (
                                   <>
-                                    {(leftFields.length > 0 || rightFields.length > 0) && (
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-3 min-w-0">
+                                     {(leftFields.length > 0 || rightFields.length > 0) && (
+                                       <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-6", isRailed && "md:grid-cols-1 gap-3")}>
+                                         <div className={cn("space-y-3 min-w-0", isRailed && "space-y-2")}>
                                           {leftFields.map(fId => renderDealInfoField(fId))}
                                         </div>
-                                        <div className="space-y-3 min-w-0">
+                                        <div className={cn("space-y-3 min-w-0", isRailed && "space-y-2")}>
                                           {rightFields.map(fId => renderDealInfoField(fId))}
                                         </div>
                                       </div>
@@ -4564,7 +4564,7 @@ export default function DealDetail() {
                                     {/* Tasks — moved from the Management tab.
                                         Renders below Hours & Fees when visible,
                                         otherwise below the deal information items. */}
-                                    <div className="mt-4 h-[420px]">
+                                    <div className={cn("mt-4 h-[420px]", isRailed && "h-[320px] mt-3")}>
                                       <DealTasksPanel dealId={deal.id} />
                                     </div>
 
@@ -4581,6 +4581,8 @@ export default function DealDetail() {
                               </CardContent>
                             </Card>
                           );
+
+                          return isRailed ? createPortal(dealInfoCard, railPanelSlot!) : dealInfoCard;
                         }
                         case 'outstanding-items':
                           // Outstanding Items is a debt-pipeline concept —
