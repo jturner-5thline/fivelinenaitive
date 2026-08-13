@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Search, Plus, Building2, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { useCrmCompanies, useCreateCrmCompany } from '@/hooks/useCrmCompanies';
+import { useCrmCompanies } from '@/hooks/useCrmCompanies';
+import { CreateCrmCompanyModal } from '@/components/crm-companies/CreateCrmCompanyModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -17,10 +18,9 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
   const navigate = useNavigate();
   const { data: companiesResult } = useCrmCompanies({ pageSize: 1000 });
   const companies = companiesResult?.data ?? [];
-  const createCompany = useCreateCrmCompany();
-
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [domainSuggested, setDomainSuggested] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -89,30 +89,42 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
 
   const exactMatch = search.trim() && companies.some(c => c.name.toLowerCase() === search.toLowerCase().trim());
 
-  const handleCreateNew = async () => {
-    const name = search.trim();
-    if (!name) return;
-    try {
-      const result = await createCompany.mutateAsync({ name } as any);
-      onChange(result.id);
-      setSearch('');
-      setOpen(false);
-      toast.success(
-        <span>
-          {name} was created as a new company —{' '}
-          <span
-            className="underline cursor-pointer font-medium"
-            onClick={() => navigate(`/crm-companies/${result.id}`)}
-          >
-            Add details
-          </span>
-        </span>
-      );
-    } catch {}
+  const handleCreateNew = () => {
+    if (!search.trim()) return;
+    setOpen(false);
+    setCreateOpen(true);
   };
+
+  const handleCreated = (company: any) => {
+    setCreateOpen(false);
+    if (!company?.id) return;
+    onChange(company.id);
+    setSearch('');
+    toast.success(
+      <span>
+        {company.name} was created as a new company —{' '}
+        <span
+          className="underline cursor-pointer font-medium"
+          onClick={() => navigate(`/crm-companies/${company.id}`)}
+        >
+          View details
+        </span>
+      </span>
+    );
+  };
+
+  const createModal = (
+    <CreateCrmCompanyModal
+      open={createOpen}
+      onClose={() => setCreateOpen(false)}
+      initialName={search.trim()}
+      onCreated={handleCreated}
+    />
+  );
 
   if (selectedCompany) {
     return (
+      <>
       <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-background">
         <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
         <span className="text-sm flex-1 truncate">{selectedCompany.name}</span>
@@ -124,6 +136,8 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
+      {createModal}
+      </>
     );
   }
 
@@ -169,6 +183,7 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
           )}
         </div>
       )}
+      {createModal}
     </div>
   );
 }
