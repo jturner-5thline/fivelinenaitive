@@ -5685,6 +5685,8 @@ export default function DealDetail() {
 
                 </div>{/* close Main Content div */}
               </div>{/* close Main Content Grid div */}
+              </div>{/* close context-rail main column */}
+              </div>{/* close context-rail row */}
             </div>{/* close scroll wrapper div */}
 
                 {/* Floating tab rail — pinned to the bottom of the modal
