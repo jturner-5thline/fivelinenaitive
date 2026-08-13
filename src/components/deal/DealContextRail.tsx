@@ -69,7 +69,7 @@ export function DealContextRail({ deal, className, onUpdateField }: DealContextR
         />
         <InlineEditField
           value={formatUSD(deal.value)}
-          editValue={formatAmountWithCommas(deal.value ?? 0)}
+          editValue={formatAmountWithCommas(String(deal.value ?? 0))}
           sanitizeInput={(next) => next.replace(/[^0-9.,]/g, '')}
           onSave={(value) => onUpdateField?.('value', parseCurrencyInputValue(value) ?? 0)}
           displayClassName="text-xl font-bold leading-none bg-brand-gradient bg-clip-text text-transparent"
