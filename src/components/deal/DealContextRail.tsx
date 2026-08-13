@@ -14,7 +14,7 @@
  */
 import { formatDistanceToNow, format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { formatUSD } from '@/lib/formatCurrency';
+import { formatUSD } from '@/lib/formatters/currency';
 import { EditableDealStatusTag } from './EditableDealStatusTag';
 import { EditableDealStageTag } from './EditableDealStageTag';
 import type { Deal } from '@/types/deal';
