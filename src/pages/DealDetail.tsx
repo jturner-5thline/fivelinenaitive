@@ -4617,21 +4617,7 @@ export default function DealDetail() {
                   { label: 'Active', value: activeCount, color: 'text-emerald-400' },
                   { label: 'Passed', value: passedCount, color: 'text-red-400' },
                 ];
-                // Top 3 logged pass reasons across this deal's funding sources
-                const reasonCounts = new Map<string, number>();
-                all.filter(isPassed).forEach((l: any) => {
-                  const raw: string = l.passReason || '';
-                  raw.split(', ').map(s => s.trim()).filter(Boolean).forEach(label => {
-                    const clean = label.toLowerCase().startsWith('other:') ? 'Other' : label;
-                    reasonCounts.set(clean, (reasonCounts.get(clean) || 0) + 1);
-                  });
-                });
-                const topReasons = Array.from(reasonCounts.entries())
-                  .sort((a, b) => b[1] - a[1])
-                  .slice(0, 3);
-                const maxReason = topReasons[0]?.[1] || 1;
                 return (
-                  <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
                     {kpis.map(k => (
                       <div key={k.label} className="rounded-xl border border-border/60 bg-card px-4 py-3 text-center">
@@ -4639,26 +4625,6 @@ export default function DealDetail() {
                         <p className={cn("mt-1 text-2xl font-bold font-mono tabular-nums", k.color)}>{k.value}</p>
                       </div>
                     ))}
-                  </div>
-                  {topReasons.length > 0 && (
-                    <div className="rounded-xl border border-border/60 bg-card px-4 py-3">
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Top pass reasons</p>
-                      <div className="mt-3 space-y-2.5">
-                        {topReasons.map(([label, count]) => (
-                          <div key={label} className="flex items-center gap-3">
-                            <span className="w-40 shrink-0 truncate text-xs text-muted-foreground" title={label}>{label}</span>
-                            <div className="h-2.5 flex-1 rounded-full bg-muted/40">
-                              <div
-                                className="h-2.5 rounded-full bg-red-400/70"
-                                style={{ width: `${Math.max(6, (count / maxReason) * 100)}%` }}
-                              />
-                            </div>
-                            <span className="w-6 shrink-0 text-right text-xs font-mono tabular-nums text-foreground">{count}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                   </div>
                 );
               })()}
@@ -5617,6 +5583,44 @@ export default function DealDetail() {
                     </CardContent>
                   
                 </Card>
+              {/* Top 3 pass reasons (vertical bars) */}
+              {(() => {
+                const norm = (s?: string) => (s || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
+                const labelFor = (l: any) => norm(configuredStages.find(s => s.id === l.stage)?.label || l.stage);
+                const isPassed = (l: any) => {
+                  const ts = norm(l.trackingStatus);
+                  const lb = labelFor(l);
+                  return ts === 'passed' || ts === 'pass' || ts === 'not a fit' || lb === 'passed' || lb.includes('not a fit');
+                };
+                const reasonCounts = new Map<string, number>();
+                (deal.lenders || []).filter(isPassed).forEach((l: any) => {
+                  const raw: string = l.passReason || '';
+                  raw.split(', ').map(s => s.trim()).filter(Boolean).forEach(label => {
+                    const clean = label.toLowerCase().startsWith('other:') ? 'Other' : label;
+                    reasonCounts.set(clean, (reasonCounts.get(clean) || 0) + 1);
+                  });
+                });
+                const topReasons = Array.from(reasonCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3);
+                if (topReasons.length === 0) return null;
+                const maxReason = topReasons[0][1] || 1;
+                return (
+                  <div className="rounded-xl border border-border/60 bg-card px-4 py-3">
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Top pass reasons</p>
+                    <div className="mt-4 grid grid-cols-3 gap-4 items-end" style={{ height: 180 }}>
+                      {topReasons.map(([label, count]) => (
+                        <div key={label} className="flex h-full flex-col items-center justify-end gap-2">
+                          <span className="text-xs font-mono tabular-nums text-foreground">{count}</span>
+                          <div
+                            className="w-full max-w-[72px] rounded-t-md bg-red-400/70"
+                            style={{ height: `${Math.max(6, (count / maxReason) * 100)}%` }}
+                          />
+                          <span className="w-full truncate text-center text-[11px] text-muted-foreground" title={label}>{label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               </div>
 
                 </TabsContent>
