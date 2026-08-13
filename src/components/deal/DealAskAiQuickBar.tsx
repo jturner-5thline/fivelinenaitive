@@ -76,9 +76,9 @@ export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBar
         )}
       </div>
       {expanded && (messages.length > 0 || isLoading) && (
-        <ScrollArea
-          viewportRef={scrollRef}
-          className="max-h-72 h-72 rounded-lg border border-border/60 bg-card/60 backdrop-blur p-3"
+        <div
+          ref={scrollRef}
+          className="h-72 overflow-y-auto rounded-lg border border-border/60 bg-card/60 backdrop-blur p-3"
         >
           <div className="space-y-3">
             {messages.map((m, i) => (
@@ -100,7 +100,7 @@ export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBar
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
       )}
       <form
       onSubmit={submit}
