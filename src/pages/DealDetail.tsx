@@ -4957,7 +4957,7 @@ export default function DealDetail() {
                         {lenderGroupFilters.size === 0 && lenderStageFilters.size === 0 ? (
                           // Flat list when "All" is selected - with drag and drop
                           <div>
-                          <div className="grid grid-cols-[minmax(180px,1.3fr)_190px_minmax(220px,2fr)_auto] items-center gap-4 border-b border-border px-2 pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                          <div className="hidden md:grid grid-cols-[minmax(180px,1.3fr)_190px_minmax(220px,2fr)_auto] items-center gap-4 border-b border-border px-2 pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                             {([
                               { label: 'Lender', asc: 'name-asc', desc: 'name-desc' },
                               { label: 'Stage', asc: 'stage-slowest', desc: 'stage-furthest' },
@@ -5036,7 +5036,7 @@ export default function DealDetail() {
                                         staleStatus.isStale && !staleStatus.isUrgent && 'bg-warning/5',
                                         shouldAnimate && 'animate-pulse-highlight'
                                       )}>
-                                      <div className="grid grid-cols-[minmax(180px,1.3fr)_190px_minmax(220px,2fr)_auto] items-start gap-4">
+                                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,1.3fr)_190px_minmax(220px,2fr)_auto] md:items-start md:gap-4">
                                         <div className="min-w-0">
                                   <div className="flex items-center gap-1 group/lender -ml-1">
                                     {scoreConfig.enabled && lender.score != null && (
@@ -5357,7 +5357,7 @@ export default function DealDetail() {
                                   )}
                                 </div>
                                         </div>
-                                        <div className="flex items-start gap-1 shrink-0">
+                                        <div className="flex items-start gap-1 shrink-0 md:justify-end">
                                           <LenderFollowUpPopover
                                             className={"h-8 w-8 inline-flex items-center justify-center rounded-md border border-border/60 bg-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"}
                                             dealId={deal.id}
