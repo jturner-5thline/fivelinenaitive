@@ -3401,7 +3401,7 @@ export default function DealDetail() {
               // column shell. The middle TabsContent region is the only
               // scroll owner, and the bottom tab rail is a frozen footer
               // that always remains flush with the modal's bottom edge.
-              ? "container mx-auto w-full max-w-[1680px] 2xl:max-w-[1760px] px-[3px] sm:px-[5px] lg:px-2 xl:px-[10px] pt-1 pb-0 flex-1 min-h-0 flex flex-col overflow-hidden"
+              ? "container ml-0 mr-auto w-full max-w-[1680px] 2xl:max-w-[1760px] px-[3px] sm:px-[5px] lg:px-2 xl:px-[10px] pt-1 pb-0 flex-1 min-h-0 flex flex-col overflow-hidden"
               : "container mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8 overflow-x-hidden"
           }
         >
