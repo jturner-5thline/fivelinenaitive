@@ -5,8 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
-import { useCreateContact } from '@/hooks/useContacts';
-import { toast } from 'sonner';
+import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { cn } from '@/lib/utils';
 
 export interface PickedContact {
@@ -36,7 +35,6 @@ export function ContactSearchAndCreate({ open, onSelect, selectedName, autoFocus
   const { company } = useCompany();
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
-  const createContact = useCreateContact();
   const [showCreate, setShowCreate] = useState(false);
   const [newFirst, setNewFirst] = useState('');
   const [newLast, setNewLast] = useState('');
@@ -101,31 +99,17 @@ export function ContactSearchAndCreate({ open, onSelect, selectedName, autoFocus
     setShowCreate(true);
   };
 
-  const handleCreate = async () => {
-    const first = newFirst.trim();
-    const last = newLast.trim();
-    const email = newEmail.trim();
-    if (!first && !last && !email) {
-      toast.error('Enter a name or email');
-      return;
-    }
-    try {
-      const created = await createContact.mutateAsync({
-        first_name: first || null,
-        last_name: last || null,
-        email: email || null,
-      } as never);
-      onSelect({
-        id: (created as { id: string }).id,
-        first_name: first || null,
-        last_name: last || null,
-        full_name: [first, last].filter(Boolean).join(' ').trim() || null,
-        email: email || null,
-      });
-      setShowCreate(false);
-    } catch {
-      // toast handled by hook
-    }
+  const handleCreated = (created: any) => {
+    const first = (created?.first_name || '').trim();
+    const last = (created?.last_name || '').trim();
+    onSelect({
+      id: created?.id,
+      first_name: first || null,
+      last_name: last || null,
+      full_name: [first, last].filter(Boolean).join(' ').trim() || null,
+      email: created?.email || null,
+    });
+    setShowCreate(false);
   };
 
   return (
@@ -202,57 +186,12 @@ export function ContactSearchAndCreate({ open, onSelect, selectedName, autoFocus
           Create new contact
         </Button>
       )}
-      {showCreate && (
-        <div className="space-y-2 rounded-md border border-border bg-muted/30 p-2">
-          <div className="text-[11px] font-medium text-muted-foreground">New contact</div>
-          <div className="grid grid-cols-2 gap-2">
-            <Input
-              value={newFirst}
-              onChange={(e) => setNewFirst(e.target.value)}
-              placeholder="First name"
-              className="h-8 text-sm"
-            />
-            <Input
-              value={newLast}
-              onChange={(e) => setNewLast(e.target.value)}
-              placeholder="Last name"
-              className="h-8 text-sm"
-            />
-          </div>
-          <Input
-            value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
-            placeholder="Email"
-            type="email"
-            className="h-8 text-sm"
-          />
-          <div className="flex items-center justify-end gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs"
-              onClick={() => setShowCreate(false)}
-              disabled={createContact.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="h-7 text-xs"
-              onClick={handleCreate}
-              disabled={createContact.isPending}
-            >
-              {createContact.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                'Save contact'
-              )}
-            </Button>
-          </div>
-        </div>
-      )}
+      <CreateContactModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        initialValues={{ first_name: newFirst, last_name: newLast, email: newEmail }}
+        onCreated={handleCreated}
+      />
     </div>
   );
 }
