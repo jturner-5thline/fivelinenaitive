@@ -1574,18 +1574,51 @@ export default function DealDetail() {
   // matching sources already attached to the deal.
   const [lenderSearchQuery, setLenderSearchQuery] = useState('');
 
+  // Lender type / category filter (derived from the master lender directory)
+  const [lenderTypeFilters, setLenderTypeFilters] = useState<Set<string>>(new Set());
+
+  /** name (lowercased) -> list of lender types/categories */
+  const lenderTypesByName = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const ml of masterLenders) {
+      const name = typeof ml?.name === 'string' ? ml.name.toLowerCase().trim() : '';
+      if (!name) continue;
+      const raw = (ml as Record<string, unknown>).lender_type;
+      if (typeof raw !== 'string' || !raw.trim()) continue;
+      map.set(
+        name,
+        raw.split(',').map(t => t.trim()).filter(Boolean),
+      );
+    }
+    return map;
+  }, [masterLenders]);
+
+  /** Distinct types present on this deal's funding sources. */
+  const availableLenderTypes = useMemo(() => {
+    const set = new Set<string>();
+    for (const l of deal?.lenders || []) {
+      for (const t of lenderTypesByName.get((l.name || '').toLowerCase().trim()) || []) set.add(t);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [deal?.lenders, lenderTypesByName]);
+
   // Apply individual stage filters + typed search to sorted lenders
   const filteredSortedLenders = useMemo(() => {
     let out = sortedLenders;
     if (lenderStageFilters.size > 0) {
       out = out.filter(l => lenderStageFilters.has(l.stage));
     }
+    if (lenderTypeFilters.size > 0) {
+      out = out.filter(l =>
+        (lenderTypesByName.get((l.name || '').toLowerCase().trim()) || []).some(t => lenderTypeFilters.has(t)),
+      );
+    }
     const q = lenderSearchQuery.trim().toLowerCase();
     if (q.length > 0) {
       out = out.filter(l => (l.name || '').toLowerCase().includes(q));
     }
     return out;
-  }, [sortedLenders, lenderStageFilters, lenderSearchQuery]);
+  }, [sortedLenders, lenderStageFilters, lenderTypeFilters, lenderTypesByName, lenderSearchQuery]);
 
   const [attachmentFilter, setAttachmentFilter] = useState<'all' | 'materials' | 'financials' | 'agreements' | 'other'>(
     savedViewPrefs?.attachmentFilter ?? 'all'
