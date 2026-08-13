@@ -12,8 +12,11 @@
  * Editable*Tag components so behaviour stays identical to every other
  * surface.
  */
+import { useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { formatUSD } from '@/lib/formatters/currency';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
 import { NaitiveDatePicker } from '@/components/ui/naitive-date-picker';
@@ -51,6 +54,14 @@ export function DealContextRail({ deal, className, onUpdateField }: DealContextR
   const lastActivity = deal.notesUpdatedAt || deal.updatedAt || null;
   const owner = deal.dealOwner || deal.manager || '';
 
+  // Close date edits stay pending until explicitly saved or cancelled.
+  const [pendingCloseDate, setPendingCloseDate] = useState<string | null>(null);
+  const [isCloseDateDirty, setIsCloseDateDirty] = useState(false);
+
+  useEffect(() => {
+    if (!isCloseDateDirty) setPendingCloseDate(deal.closingDate || null);
+  }, [deal.closingDate, isCloseDateDirty]);
+
   return (
     <aside
       className={cn(
@@ -64,6 +75,8 @@ export function DealContextRail({ deal, className, onUpdateField }: DealContextR
       <div className="space-y-1.5">
         <InlineEditField
           value={deal.company}
+          manualCommit
+          fieldName="Deal name"
           onSave={(value) => onUpdateField?.('company', value)}
           displayClassName="text-xl font-bold leading-tight break-words text-foreground"
         />
@@ -71,6 +84,8 @@ export function DealContextRail({ deal, className, onUpdateField }: DealContextR
           value={formatUSD(deal.value)}
           editValue={formatAmountWithCommas(String(deal.value ?? 0))}
           sanitizeInput={(next) => next.replace(/[^0-9.,]/g, '')}
+          manualCommit
+          fieldName="Deal amount"
           onSave={(value) => onUpdateField?.('value', parseCurrencyInputValue(value) ?? 0)}
           displayClassName="text-xl font-bold leading-none bg-brand-gradient bg-clip-text text-transparent"
         />
@@ -88,12 +103,42 @@ export function DealContextRail({ deal, className, onUpdateField }: DealContextR
       <div className="space-y-0.5">
         <RailLabel>Close date</RailLabel>
         <NaitiveDatePicker
-          value={deal.closingDate || null}
-          onChange={(v) => onUpdateField?.('closingDate', v)}
+          value={pendingCloseDate}
+          onChange={(v) => {
+            setPendingCloseDate(v);
+            setIsCloseDateDirty(true);
+          }}
           size="sm"
           placeholder="Not set"
           buttonClassName="border-none bg-transparent hover:bg-muted/40 px-1 -ml-1 h-7 text-sm"
         />
+        {isCloseDateDirty && (
+          <div className="flex items-center gap-1 pt-1">
+            <Button
+              type="button"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => {
+                onUpdateField?.('closingDate', pendingCloseDate);
+                setIsCloseDateDirty(false);
+              }}
+            >
+              <Check className="h-3 w-3 mr-1" /> Save
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-xs"
+              onClick={() => {
+                setPendingCloseDate(deal.closingDate || null);
+                setIsCloseDateDirty(false);
+              }}
+            >
+              <X className="h-3 w-3 mr-1" /> Cancel
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="space-y-0.5">
