@@ -4591,11 +4591,11 @@ export default function DealDetail() {
                   )}
                 </TabsContent>
 
-                <TabsContent value="lenders" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`lenders-${tabDirection}`}>
+                <TabsContent value="lenders" className={cn(useContextRailLayout ? "mt-4" : "mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`lenders-${tabDirection}`}>
               <div className="w-full min-h-0 space-y-6">
               <DealDataUpdateBanner dealId={id} />
               {/* Lenders Card */}
-                 <Card className="flex flex-col min-h-0">
+                 <Card className={cn("flex flex-col min-h-0", useContextRailLayout && "border-border/60")}>
                    <CardHeader className="pb-3 pt-3">
                        <div className="flex items-center gap-2 flex-wrap">
                          <div className="flex-1 min-w-[160px] max-w-[260px]">
