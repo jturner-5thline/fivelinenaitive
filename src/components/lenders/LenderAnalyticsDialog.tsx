@@ -53,6 +53,8 @@ function isYearRange(range: DateRange): range is `y${number}` {
 
 interface Props {
   open: boolean;
+  /** Render inline as a full page dashboard instead of a modal dialog. */
+  embedded?: boolean;
   onOpenChange: (open: boolean) => void;
   /** Filtered list of lenders from the Lenders page; analytics scope follows it. */
   lenders: MasterLender[];
@@ -312,6 +314,7 @@ function downloadCsv(filename: string, rows: Array<Array<string | number>>) {
 
 export function LenderAnalyticsDialog({
   open,
+  embedded = false,
   onOpenChange,
   lenders,
   totalLenderCount,
@@ -348,7 +351,7 @@ export function LenderAnalyticsDialog({
   );
 
   useEffect(() => {
-    if (!open) return;
+    if (!open && !embedded) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -444,7 +447,7 @@ export function LenderAnalyticsDialog({
       }
     })();
     return () => { cancelled = true; };
-  }, [open, dateRange]);
+  }, [open, embedded, dateRange]);
 
   // Build stage id -> label map per company (+ global fallback)
   const stageLabelByCompany = useMemo(() => {
