@@ -5132,7 +5132,7 @@ export default function DealDetail() {
                                     }}
                                   >
                                     <SelectTrigger className={cn(
-                                      "h-7 w-fit max-w-full justify-start gap-1.5 rounded-md border px-2.5 text-xs [&>svg]:h-3 [&>svg]:w-3",
+                                      "h-7 w-full justify-start gap-1.5 rounded-md border px-2.5 text-xs [&>svg]:h-3 [&>svg]:w-3",
                                       getLenderStatusTheme(configuredStages.find(s => s.id === lender.stage)?.group).tabActive,
                                     )}>
                                       <SelectValue>
