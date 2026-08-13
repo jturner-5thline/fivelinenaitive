@@ -5323,7 +5323,7 @@ export default function DealDetail() {
                                     const rowKey = lender.id || `${group?.id ?? 'grp'}-idx-${index}`;
                                     return (
                                        <LenderRowBoundary key={rowKey} lenderId={lender.id} lenderName={lender.name}>
-                                       <div key={lender.id} className="relative rounded-xl border border-blue-500/25 bg-gradient-to-br from-[hsl(220,30%,10%)] to-[hsl(260,15%,5%)] p-4 shadow-md hover:shadow-lg transition-all">
+                                       <div key={lender.id} className="relative border-b border-border/60 px-2 py-3 transition-colors hover:bg-muted/30">
                                          <div className="absolute right-3 top-3 flex items-center gap-1 z-10">
                                            <LenderFollowUpPopover
                                              dealId={deal.id}
