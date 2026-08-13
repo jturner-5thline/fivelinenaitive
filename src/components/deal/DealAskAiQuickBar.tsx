@@ -15,6 +15,9 @@ import {
   Search,
   X,
   Quote,
+  AlertTriangle,
+  CheckCircle2,
+  ExternalLink,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -22,6 +25,7 @@ import { useDealSpaceAI } from '@/hooks/useDealSpaceAI';
 import { downloadTextAsFile } from '@/lib/downloadFile';
 import { STARTER_CHIPS, buildFollowUpChips } from '@/lib/deal/askAiFollowUpChips';
 import { buildCitationIndex, renderCitationAppendix, parseSource } from '@/lib/deal/askAiCitations';
+import { useCitationVerification } from '@/hooks/useCitationVerification';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -50,6 +54,12 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
   const { messages, sendMessage, clearMessages, isLoading, isStreaming, error } = useDealSpaceAI(dealId, {
     persistKey: 'quickbar',
   });
+  const {
+    citations: verifiedCitations,
+    statusByRaw,
+    missing: missingCitations,
+    checking: checkingCitations,
+  } = useCitationVerification(messages, dealId);
 
   // Collapse back to the default bar height when the user clicks outside.
   useEffect(() => {
@@ -164,12 +174,31 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
         for (const raw of m.sources) {
           const n = indexByRaw.get(raw.trim());
           const { label, url } = parseSource(raw.trim(), dealId);
-          lines.push(url ? `- [${n}] ${label} — ${url}` : `- [${n}] ${label}`);
+          const flag = statusByRaw.get(raw.trim()) === 'missing' ? ' ⚠️ _source not found on this deal_' : '';
+          lines.push(url ? `- [${n}] ${label} — ${url}${flag}` : `- [${n}] ${label}${flag}`);
         }
       }
       lines.push('');
     }
-    if (withCitations) lines.push(...renderCitationAppendix(citations));
+    if (withCitations) {
+      lines.push(
+        ...renderCitationAppendix(citations).map((line) => {
+          const m = line.match(/^(\d+)\. \*\*(.+?)\*\*/);
+          if (!m) return line;
+          const cite = citations[Number(m[1]) - 1];
+          return cite && statusByRaw.get(cite.raw.trim()) === 'missing'
+            ? `${line} ⚠️ **Unresolved:** this document could not be found on the deal.`
+            : line;
+        }),
+      );
+      if (missingCitations.length) {
+        lines.push('');
+        lines.push(
+          `> ⚠️ ${missingCitations.length} cited source${missingCitations.length === 1 ? '' : 's'} could not be resolved to a document on this deal and may need manual verification.`,
+        );
+        lines.push('');
+      }
+    }
     return lines.join('\n');
   };
 
@@ -296,6 +325,21 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
           className="h-72 overflow-y-auto rounded-lg border border-border/60 bg-card/60 backdrop-blur p-3"
         >
           <div className="space-y-3">
+            {includeCitations && !!missingCitations.length && (
+              <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-2">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
+                <p className="text-[11px] leading-snug text-destructive">
+                  {missingCitations.length} cited source{missingCitations.length === 1 ? '' : 's'} could not be
+                  resolved to a document on this deal. Exports flag {missingCitations.length === 1 ? 'it' : 'them'} as
+                  unresolved — verify before sharing.
+                </p>
+              </div>
+            )}
+            {includeCitations && checkingCitations && (
+              <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" /> Verifying cited documents...
+              </p>
+            )}
             {messages.length === 0 && !isLoading && !error && (
               <div className="flex h-64 flex-col items-center justify-center gap-2 text-center">
                 <MessageSquare className="h-6 w-6 text-muted-foreground/60" />
@@ -326,6 +370,48 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
                 {renderContent(m.content)}
                 {isLive && (
                   <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-pulse bg-primary align-middle" />
+                )}
+                {m.role === 'assistant' && includeCitations && !!m.sources?.length && (
+                  <ul className="mt-2 space-y-1">
+                    {m.sources.map((raw) => {
+                      const key = raw.trim();
+                      const status = statusByRaw.get(key) ?? 'unknown';
+                      const { label, url } = parseSource(key, dealId);
+                      return (
+                        <li key={key} className="flex items-start gap-1.5 text-[11px] leading-snug">
+                          {status === 'missing' ? (
+                            <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-destructive" />
+                          ) : status === 'external' ? (
+                            <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                          ) : status === 'ok' ? (
+                            <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-success" />
+                          ) : (
+                            <Loader2 className="mt-0.5 h-3 w-3 shrink-0 animate-spin text-muted-foreground" />
+                          )}
+                          <span className="min-w-0 flex-1">
+                            {url ? (
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={cn(
+                                  'underline underline-offset-2',
+                                  status === 'missing' ? 'text-destructive' : 'text-muted-foreground hover:text-foreground',
+                                )}
+                              >
+                                {label}
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground">{label}</span>
+                            )}
+                            {status === 'missing' && (
+                              <span className="ml-1 text-destructive">— source not found on this deal</span>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
               </div>
               );
