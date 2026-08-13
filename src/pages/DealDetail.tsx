@@ -3848,10 +3848,23 @@ export default function DealDetail() {
                       In the context-rail layout the Deal Information panel is
                       portaled into the left rail, so it is moved to the end of
                       the list to avoid leaving a hole in the 2-column grid. */}
-                  {(useContextRailLayout && visiblePanels.includes('deal-information' as DealPanelId)
-                    ? ([...visiblePanels.filter((p) => p !== 'deal-information'), 'deal-information'] as DealPanelId[])
-                    : visiblePanels
-                  ).reduce((acc: React.ReactNode[], panelId, index, panelList) => {
+                  {(() => {
+                    const base = (useContextRailLayout && visiblePanels.includes('deal-information' as DealPanelId)
+                      ? ([...visiblePanels.filter((p) => p !== 'deal-information'), 'deal-information'] as DealPanelId[])
+                      : visiblePanels) as DealPanelId[];
+                    // Tasks + Hours & Fees live in the main content column,
+                    // paired on the same row as Outstanding Items.
+                    const withTasksHours: DealPanelId[] = [];
+                    for (const p of base) {
+                      if (p === 'outstanding-items') {
+                        if (withTasksHours.length % 2 !== 0) withTasksHours.push('__spacer__' as DealPanelId);
+                        withTasksHours.push('outstanding-items', 'tasks-hours' as DealPanelId);
+                      } else {
+                        withTasksHours.push(p);
+                      }
+                    }
+                    return withTasksHours;
+                  })().reduce((acc: React.ReactNode[], panelId, index, panelList) => {
                     // Pair panels together for 2-column layout
                     const nextPanelId = panelList[index + 1];
                     
@@ -3860,6 +3873,24 @@ export default function DealDetail() {
                     
                     const renderPanel = (id: DealPanelId) => {
                       switch (id) {
+                        case ('__spacer__' as DealPanelId):
+                          return <div key={id} />;
+                        case ('tasks-hours' as DealPanelId):
+                          if (isNaitiveDeal || isProjectsDeal) return null;
+                          return (
+                            <div key={id} className="h-full flex flex-col gap-4">
+                              {!isSimplifiedDeal && (
+                                <DealHoursFeesCard
+                                  deal={deal}
+                                  updateDeal={(field, value) => updateDeal(field as any, value)}
+                                  onHoursChanged={() => { void refreshDeals?.(); }}
+                                />
+                              )}
+                              <div className="flex-1 min-h-[420px]">
+                                <DealTasksPanel dealId={deal.id} />
+                              </div>
+                            </div>
+                          );
                         case 'ai-research':
                           return (
                             <Collapsible key={id} open={isResearchPanelOpen} onOpenChange={setIsResearchPanelOpen} className="h-full">
