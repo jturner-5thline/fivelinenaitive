@@ -382,12 +382,12 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
 
         <CollapsibleContent>
           {milestones.length > 0 && (
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-1.5">
+            <div className="mb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-muted-foreground">Progress</span>
                 <span className="text-xs font-medium">{progressPercentage}%</span>
               </div>
-              <Progress value={progressPercentage} className="h-2" />
+              <Progress value={progressPercentage} className="h-1.5" />
             </div>
           )}
 
@@ -400,7 +400,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
               items={milestones.map(m => m.id)}
               strategy={verticalListSortingStrategy}
             >
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {milestones.map((milestone) => (
                   <SortableMilestoneItem
                     key={milestone.id}
@@ -420,7 +420,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                 ))}
 
                 {isAdding && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg border border-dashed border-border">
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-dashed border-border">
                     <Input
                       value={newTitle}
                       onChange={(e) => setNewTitle(e.target.value)}
@@ -491,7 +491,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                 )}
 
                 {milestones.length === 0 && !isAdding && (
-                  <p className="text-xs text-muted-foreground text-center py-2">
+                  <p className="text-xs text-muted-foreground text-center py-1.5">
                     No milestones yet
                   </p>
                 )}
@@ -563,7 +563,7 @@ function SortableMilestoneItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-2 p-2 rounded-lg group",
+        "flex items-center gap-1.5 px-2 py-1 rounded-lg group",
         isOverdue ? "bg-red-500/10" : "bg-muted/50"
       )}
     >
@@ -672,14 +672,15 @@ function SortableMilestoneItem({
           />
           <span
             className={cn(
-              "flex-1 text-lg",
+              "flex-1 min-w-0 truncate text-sm leading-tight",
               milestone.completed && "line-through text-muted-foreground",
               isOverdue && "text-red-500 font-medium"
             )}
+            title={milestone.title}
           >
             {milestone.title}
           </span>
-          <div className="flex flex-col items-end gap-0.5">
+          <div className="flex flex-col items-end gap-0.5 shrink-0">
             <Popover open={isReadDateOpen} onOpenChange={setIsReadDateOpen} modal>
               <PopoverTrigger asChild>
                 <Button
