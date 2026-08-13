@@ -1210,6 +1210,19 @@ export function LenderAnalyticsDialog({
                 </div>
               </div>
 
+              {isFifthLine && (
+                <FundingSourcePerformanceCard
+                  tenantId={FIFTH_LINE_COMPANY_ID}
+                  lenders={lenders}
+                  onOpenPlan={() => setPlanOpen(true)}
+                  year={
+                    isYearRange(dateRange)
+                      ? Number(dateRange.slice(1))
+                      : currentYear
+                  }
+                />
+              )}
+
               {/* Coming Soon — Next phases */}
               <div className="pt-2">
                 <div className="text-[10px] uppercase tracking-[0.15em] text-slate-500 mb-2 px-1">
