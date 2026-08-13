@@ -380,7 +380,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
         )}
 
         <Dialog open={isDialogOpen} onOpenChange={(o) => { setIsDialogOpen(o); if (!o) { setIsAdding(false); handleCancelEdit(); } }}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Deal Milestones</DialogTitle>
               <DialogDescription>Add, edit, reorder, or delete milestones for this deal.</DialogDescription>
