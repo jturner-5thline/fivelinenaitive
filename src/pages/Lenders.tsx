@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect, useDeferredValue } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
@@ -59,6 +59,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { FundingSourceCompanyLinkDialog, FundingSourceCompanyTarget } from '@/components/lenders/FundingSourceCompanyLinkDialog';
 import { FundingSourceNameField, LinkedCrmCompany } from '@/components/lenders/FundingSourceNameField';
+import { LenderSearchInput } from '@/components/lenders/LenderSearchInput';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
 import { useAuth } from '@/contexts/AuthContext';
@@ -297,7 +298,6 @@ export default function Lenders() {
   const [linkedCrmCompany, setLinkedCrmCompany] = useState<LinkedCrmCompany | null>(null);
   const [editingLenderId, setEditingLenderId] = useState<string | null>(null);
   const [form, setForm] = useState<LenderForm>(emptyForm);
-  const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showActiveDealsOnly, setShowActiveDealsOnly] = useState(false);
@@ -335,20 +335,8 @@ export default function Lenders() {
   // Enable realtime notifications for new sync requests (only for authorized users)
   useLenderSyncRealtimeNotifications(canSeeFlexSync ? refetchSyncRequests : () => {});
 
-  // Debounce search query for server-side search
-  useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    searchTimeoutRef.current = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 150); // Real-time client-side search
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [searchQuery]);
+  // Search debouncing now lives inside <LenderSearchInput/>, so keystrokes no
+  // longer re-render this (very large) page component.
 
   // Load all lenders client-side; we run a rich multi-field search locally.
   const {
@@ -538,7 +526,9 @@ export default function Lenders() {
   // on that reference caused the detector (and every downstream memo) to
   // re-run constantly and stall the page. Comparing a tiny string instead
   // keeps the effect quiet unless the inputs really changed.
+  const duplicatesNeeded = showDuplicatesOnly || isDuplicatesDialogOpen || isSideBySideMergeOpen;
   const duplicateInputFingerprint = useMemo(() => {
+    if (!duplicatesNeeded) return '';
     if (!masterLenders.length) return '';
     // Inputs are already ordered by name from the loader; a simple join is
     // stable and cheap (~tens of KB at 6k rows).
@@ -546,7 +536,7 @@ export default function Lenders() {
     for (const l of masterLenders)
       s += l.id + '|' + (l.name || '') + '|' + ((l as any).website || '') + '|' + (l.email || '') + '\n';
     return s;
-  }, [masterLenders]);
+  }, [masterLenders, duplicatesNeeded]);
 
   useEffect(() => {
     // Wait for the background stream of pages to settle so the detector
@@ -732,6 +722,39 @@ export default function Lenders() {
 
   // Filter lenders: advanced filters → AI filter → active-deals → text search.
   // Text search runs client-side across many fields (real-time substring match).
+  // Precomputed lowercase search corpus per lender. Building this once (and
+  // only when the underlying data changes) keeps each keystroke to a cheap
+  // substring test instead of re-reading ~25 fields on 6k+ rows.
+  const searchBlobById = useMemo(() => {
+    const blobs = new Map<string, string>();
+    for (const l of searchableLenders) {
+      const dealHistory = lenderDealIndex[l.name.toLowerCase().trim()] || '';
+      const aux = lenderAuxIndex[l.id] || '';
+      const parts: unknown[] = [
+        l.name, l.contact_name, l.email, l.contact_title, l.contact_phone,
+        l.geo, l.lender_type, l.tier, l.industries, l.industries_to_avoid,
+        l.loan_types, l.deal_structure_notes, l.company_requirements,
+        l.upfront_checklist, l.post_term_sheet_checklist, l.sub_debt,
+        l.cash_burn, l.sponsorship, l.b2b_b2c, l.refinancing,
+        l.relationship_owners, l.referral_lender,
+        l.min_deal, l.max_deal, formatCurrency(l.min_deal), formatCurrency(l.max_deal),
+        dealHistory, aux,
+      ];
+      const flat: string[] = [];
+      for (const p of parts) {
+        if (p == null) continue;
+        if (Array.isArray(p)) flat.push(p.filter(Boolean).join(' '));
+        else flat.push(String(p));
+      }
+      blobs.set(l.id, flat.join(' ').toLowerCase());
+    }
+    return blobs;
+  }, [searchableLenders, lenderDealIndex, lenderAuxIndex]);
+
+  // Keep typing responsive: the heavy filter/sort/render work runs against a
+  // deferred copy of the query so keystrokes never block the input.
+  const deferredSearchQuery = useDeferredValue(debouncedSearchQuery);
+
   const filteredLenders = useMemo(() => {
     let list = applyLenderFilters(searchableLenders, advancedFilters);
 
@@ -747,50 +770,10 @@ export default function Lenders() {
       list = list.filter((lender) => duplicateIndex.byLenderId[lender.id]);
     }
 
-    const q = debouncedSearchQuery.trim().toLowerCase();
+    const q = deferredSearchQuery.trim().toLowerCase();
     if (!q) return list;
-
-    const matches = (val: unknown): boolean => {
-      if (val == null) return false;
-      if (Array.isArray(val)) return val.some((v) => matches(v));
-      if (typeof val === 'number') return String(val).includes(q);
-      if (typeof val === 'string') return val.toLowerCase().includes(q);
-      return false;
-    };
-
-    return list.filter((l) => {
-      const dealHistory = lenderDealIndex[l.name.toLowerCase().trim()] || '';
-      const dealSize = `${l.min_deal ?? ''} ${l.max_deal ?? ''} ${formatCurrency(l.min_deal)} ${formatCurrency(l.max_deal)}`;
-      const aux = lenderAuxIndex[l.id] || '';
-      return (
-        matches(l.name) ||
-        matches(l.contact_name) ||
-        matches(l.email) ||
-        matches(l.contact_title) ||
-        matches(l.contact_phone) ||
-        matches(l.geo) ||
-        matches(l.lender_type) ||
-        matches(l.tier) ||
-        matches(l.industries) ||
-        matches(l.industries_to_avoid) ||
-        matches(l.loan_types) ||
-        matches(l.deal_structure_notes) ||
-        matches(l.company_requirements) ||
-        matches(l.upfront_checklist) ||
-        matches(l.post_term_sheet_checklist) ||
-        matches(l.sub_debt) ||
-        matches(l.cash_burn) ||
-        matches(l.sponsorship) ||
-        matches(l.b2b_b2c) ||
-        matches(l.refinancing) ||
-        matches(l.relationship_owners) ||
-        matches(l.referral_lender) ||
-        matches(dealSize) ||
-        matches(dealHistory) ||
-        matches(aux)
-      );
-    });
-  }, [searchableLenders, advancedFilters, showActiveDealsOnly, showDuplicatesOnly, duplicateIndex, activeDealCounts, debouncedSearchQuery, lenderDealIndex, lenderAuxIndex, aiFilter]);
+    return list.filter((l) => (searchBlobById.get(l.id) || '').includes(q));
+  }, [searchableLenders, advancedFilters, showActiveDealsOnly, showDuplicatesOnly, duplicateIndex, activeDealCounts, deferredSearchQuery, searchBlobById, aiFilter]);
 
   // Sort filtered lenders - memoized to prevent re-sorting on every render
   const sortedLenders = useMemo(() => {
@@ -824,7 +807,7 @@ export default function Lenders() {
     // Search ranking: when a query is active, surface name-matches first,
     // then everything else. Within each bucket we preserve the order chosen
     // by `sortOption` above so "Most Active Deals" / Z-A still apply.
-    const q = debouncedSearchQuery.trim().toLowerCase();
+    const q = deferredSearchQuery.trim().toLowerCase();
     if (!q) return base;
 
     const rank = (l: typeof base[number]) => {
@@ -835,7 +818,7 @@ export default function Lenders() {
       return 3;                              // matched elsewhere (email, notes, etc.)
     };
     return [...base].sort((a, b) => rank(a) - rank(b));
-  }, [filteredLenders, sortOption, activeDealCounts, showDuplicatesOnly, duplicateIndex, debouncedSearchQuery]);
+  }, [filteredLenders, sortOption, activeDealCounts, showDuplicatesOnly, duplicateIndex, deferredSearchQuery]);
 
   // When the Duplicates filter is active, organize the visible lenders into
   // clusters so the user can review and merge each group as a unit. Each
@@ -1602,24 +1585,7 @@ export default function Lenders() {
                 </span>
               </h1>
 
-              <div className="flex-1 min-w-[180px] max-w-md relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Search funding sources…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="lg-input h-8 pl-8 pr-7 text-sm"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 hover:bg-muted transition-colors"
-                    aria-label="Clear search"
-                  >
-                    <X className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-                )}
-              </div>
+              <LenderSearchInput onDebouncedChange={setDebouncedSearchQuery} />
 
               <div className="flex flex-wrap items-center gap-1.5 ml-auto">
                 {/* Filters — opens off-canvas sheet */}
