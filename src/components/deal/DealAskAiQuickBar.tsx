@@ -79,6 +79,30 @@ export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBar
   const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant');
   const lastQuestion = [...messages].reverse().find((m) => m.role === 'user');
 
+  const askChip = (question: string) => {
+    setValue('');
+    setExpanded(true);
+    setLastPrompt(question);
+    void sendMessage(question);
+  };
+
+  const STARTER_CHIPS = [
+    'Summarize this deal',
+    'What are the outstanding items?',
+    'Which funding sources are active?',
+    'What happened recently?',
+  ];
+
+  const FOLLOW_UP_CHIPS = [
+    'Why does that matter for this deal?',
+    'What should I do next?',
+    'Which documents support that?',
+    'Any risks or blockers?',
+    'Summarize that in 3 bullets',
+  ];
+
+  const chips = messages.length === 0 ? STARTER_CHIPS : FOLLOW_UP_CHIPS;
+
   return (
     <div ref={containerRef} className="space-y-2" onFocusCapture={() => setExpanded(true)}>
       <div className="flex items-center gap-2">
@@ -209,6 +233,20 @@ export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBar
               Open full chat
             </Button>
           </div>
+        </div>
+      )}
+      {expanded && !isLoading && (
+        <div className="flex flex-wrap gap-1.5">
+          {chips.map((chip) => (
+            <button
+              key={chip}
+              type="button"
+              onClick={() => askChip(chip)}
+              className="rounded-full border border-border/60 bg-card/60 px-2.5 py-1 text-xs text-muted-foreground backdrop-blur transition-colors hover:border-primary/50 hover:text-foreground"
+            >
+              {chip}
+            </button>
+          ))}
         </div>
       )}
       <form
