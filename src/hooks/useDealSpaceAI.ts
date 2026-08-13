@@ -19,6 +19,7 @@ interface Message {
 export function useDealSpaceAI(dealId: string | undefined) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [scope, setScope] = useState<DocumentScope>('all');
   const [includeDataRoom, setIncludeDataRoom] = useState<boolean>(true);
@@ -39,6 +40,7 @@ export function useDealSpaceAI(dealId: string | undefined) {
     
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
+    setError(null);
 
     // Demo-only deterministic intercept: when demo@5thline.co is inside any
     // deal workspace and asks one of the mapped questions, return the exact
@@ -157,6 +159,7 @@ export function useDealSpaceAI(dealId: string | undefined) {
       }
       
       const message = err instanceof Error ? err.message : 'Failed to get response';
+      setError(message);
       toast({
         title: 'Error',
         description: message,
@@ -175,6 +178,7 @@ export function useDealSpaceAI(dealId: string | undefined) {
 
   const clearMessages = useCallback(() => {
     setMessages([]);
+    setError(null);
   }, []);
 
   return {
@@ -182,6 +186,7 @@ export function useDealSpaceAI(dealId: string | undefined) {
     sendMessage,
     clearMessages,
     isLoading,
+    error,
     setMessages,
     scope,
     setScope,
