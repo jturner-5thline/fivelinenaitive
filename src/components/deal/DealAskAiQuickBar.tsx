@@ -9,6 +9,7 @@ import {
   AlertCircle,
   RotateCcw,
   MessageSquare,
+  Trash2,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -33,7 +34,9 @@ export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBar
   const [lastPrompt, setLastPrompt] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { messages, sendMessage, isLoading, error } = useDealSpaceAI(dealId);
+  const { messages, sendMessage, clearMessages, isLoading, error } = useDealSpaceAI(dealId, {
+    persistKey: 'quickbar',
+  });
 
   // Collapse back to the default bar height when the user clicks outside.
   useEffect(() => {
@@ -114,10 +117,23 @@ export function DealAskAiQuickBar({ dealId, onOpenDealSpace }: DealAskAiQuickBar
           </p>
         </div>
         {expanded && (
+          <>
+            {messages.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 text-xs text-muted-foreground"
+                onClick={clearMessages}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Clear
+              </Button>
+            )}
           <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={openFullTab}>
             <Maximize2 className="h-3.5 w-3.5" />
             Open full chat
           </Button>
+          </>
         )}
       </div>
       {expanded && (
