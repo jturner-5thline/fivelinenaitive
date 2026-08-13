@@ -422,16 +422,18 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
               Table: (props) => <Table {...props} style={{ ...props.style, width: '100%' }} />,
               TableHead: TableHeader as any,
               TableRow: (rowProps: any) => {
-                const idx = rowProps['data-index'];
-                const row = typeof idx === 'number' ? filtered[idx] : null;
-                if (!row) return <TableRow {...rowProps} />;
-                const go = () => navigate(`/crm-companies/${row.id}`);
+                const rawIdx = rowProps['data-index'] ?? rowProps['data-item-index'];
+                const idx = typeof rawIdx === 'string' ? Number(rawIdx) : rawIdx;
+                const row = Number.isFinite(idx) ? filtered[idx as number] : null;
+                const item = (rowProps.item as any) ?? row;
+                if (!item) return <TableRow {...rowProps} />;
+                const go = () => navigate(`/crm-companies/${item.id}`);
                 return (
                   <TableRow
                     {...rowProps}
                     role="link"
                     tabIndex={0}
-                    aria-label={`Open ${row.name}`}
+                    aria-label={`Open ${item.name}`}
                     onClick={(e: React.MouseEvent) => {
                       // Ignore clicks on intentionally interactive children.
                       const t = e.target as HTMLElement;
