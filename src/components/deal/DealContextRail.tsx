@@ -48,9 +48,11 @@ export interface DealContextRailProps {
   className?: string;
   /** Persist a single deal field (company, value, closingDate). */
   onUpdateField?: (field: string, value: unknown) => void;
+  /** When true, show only name, size, status and stage. */
+  compact?: boolean;
 }
 
-export function DealContextRail({ deal, className, onUpdateField }: DealContextRailProps) {
+export function DealContextRail({ deal, className, onUpdateField, compact }: DealContextRailProps) {
   const lastActivity = deal.notesUpdatedAt || deal.updatedAt || null;
   const owner = deal.dealOwner || deal.manager || '';
 
@@ -100,6 +102,8 @@ export function DealContextRail({ deal, className, onUpdateField }: DealContextR
         />
       </div>
 
+      {!compact && (
+      <>
       <div className="space-y-0.5">
         <RailLabel>Close date</RailLabel>
         <NaitiveDatePicker
@@ -159,6 +163,8 @@ export function DealContextRail({ deal, className, onUpdateField }: DealContextR
           <span className="text-sm text-foreground truncate">{owner || 'Unassigned'}</span>
         </div>
       </div>
+      </>
+      )}
     </aside>
   );
 }
