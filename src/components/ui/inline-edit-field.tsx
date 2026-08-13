@@ -172,7 +172,13 @@ export function InlineEditField({
     isFocusedRef.current = false;
     setIsFocused(false);
     // Manual mode keeps the pending edit alive so Save/Cancel stay usable.
-    if (manualCommit) return;
+    if (manualCommit) {
+      if (!dirtyRef.current) {
+        unregisterDraft();
+        if (editValue !== undefined) setDraft(lastCommittedRef.current);
+      }
+      return;
+    }
     flush();
     if (!dirtyRef.current) {
       unregisterDraft();
