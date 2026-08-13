@@ -14,6 +14,7 @@ import {
   Copy,
   Search,
   X,
+  Quote,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
   const [latestOpen, setLatestOpen] = useState(true);
   const [lastPrompt, setLastPrompt] = useState('');
   const [search, setSearch] = useState('');
+  const [includeCitations, setIncludeCitations] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { messages, sendMessage, clearMessages, isLoading, isStreaming, error } = useDealSpaceAI(dealId, {
@@ -134,7 +136,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
   const chips =
     messages.length === 0 ? STARTER_CHIPS : buildFollowUpChips(latestAnswer, dealName);
 
-  const buildTranscript = () => {
+  const buildTranscript = (withCitations = includeCitations) => {
     const title = dealName ? `Ask AI transcript — ${dealName}` : 'Ask AI transcript';
     const { citations, indexByRaw } = buildCitationIndex(messages, dealId);
     const lines = [
@@ -154,8 +156,9 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
         : '';
       lines.push(`### ${m.role === 'user' ? 'Question' : 'nAItive AI'}${stamp ? ` — ${stamp}` : ''}`);
       lines.push('');
-      lines.push(m.content);
-      if (m.sources?.length) {
+      // Inline citation markers like "[2]" are stripped when citations are off.
+      lines.push(withCitations ? m.content : m.content.replace(/\s?\[\d+\]/g, ''));
+      if (withCitations && m.sources?.length) {
         lines.push('');
         lines.push('**Sources:**');
         for (const raw of m.sources) {
@@ -166,7 +169,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
       }
       lines.push('');
     }
-    lines.push(...renderCitationAppendix(citations));
+    if (withCitations) lines.push(...renderCitationAppendix(citations));
     return lines.join('\n');
   };
 
@@ -206,6 +209,24 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
           <>
             {messages.length > 0 && (
               <>
+              <Button
+                variant={includeCitations ? 'secondary' : 'ghost'}
+                size="sm"
+                className={cn(
+                  'h-7 gap-1 text-xs',
+                  includeCitations ? 'text-foreground' : 'text-muted-foreground',
+                )}
+                aria-pressed={includeCitations}
+                title={
+                  includeCitations
+                    ? 'Citations on — inline markers and the Sources appendix are included in exports'
+                    : 'Citations off — exports omit inline markers and the Sources appendix'
+                }
+                onClick={() => setIncludeCitations((v) => !v)}
+              >
+                <Quote className="h-3.5 w-3.5" />
+                Citations {includeCitations ? 'on' : 'off'}
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
