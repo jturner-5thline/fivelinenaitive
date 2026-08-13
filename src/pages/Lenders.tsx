@@ -342,7 +342,7 @@ export default function Lenders() {
     }
     searchTimeoutRef.current = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-    }, 150); // Real-time client-side search
+    }, 250); // Real-time client-side search
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
@@ -819,7 +819,7 @@ export default function Lenders() {
     // Search ranking: when a query is active, surface name-matches first,
     // then everything else. Within each bucket we preserve the order chosen
     // by `sortOption` above so "Most Active Deals" / Z-A still apply.
-    const q = debouncedSearchQuery.trim().toLowerCase();
+    const q = deferredSearchQuery.trim().toLowerCase();
     if (!q) return base;
 
     const rank = (l: typeof base[number]) => {
@@ -830,7 +830,7 @@ export default function Lenders() {
       return 3;                              // matched elsewhere (email, notes, etc.)
     };
     return [...base].sort((a, b) => rank(a) - rank(b));
-  }, [filteredLenders, sortOption, activeDealCounts, showDuplicatesOnly, duplicateIndex, debouncedSearchQuery]);
+  }, [filteredLenders, sortOption, activeDealCounts, showDuplicatesOnly, duplicateIndex, deferredSearchQuery]);
 
   // When the Duplicates filter is active, organize the visible lenders into
   // clusters so the user can review and merge each group as a unit. Each
