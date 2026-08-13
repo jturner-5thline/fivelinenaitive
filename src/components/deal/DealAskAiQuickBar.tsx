@@ -40,7 +40,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
   const [lastPrompt, setLastPrompt] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { messages, sendMessage, clearMessages, isLoading, error } = useDealSpaceAI(dealId, {
+  const { messages, sendMessage, clearMessages, isLoading, isStreaming, error } = useDealSpaceAI(dealId, {
     persistKey: 'quickbar',
   });
 
@@ -225,7 +225,10 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
                 </p>
               </div>
             )}
-            {messages.map((m, i) => (
+            {messages.map((m, i) => {
+              const isLive =
+                isStreaming && i === messages.length - 1 && m.role === 'assistant';
+              return (
               <div
                 key={i}
                 className={cn(
@@ -236,12 +239,20 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
                 )}
               >
                 {m.content}
+                {isLive && (
+                  <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-pulse bg-primary align-middle" />
+                )}
               </div>
-            ))}
-            {isLoading && (
+              );
+            })}
+            {isLoading && !isStreaming && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span className="flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.3s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.15s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" />
+                  </span>
                   Searching this deal's data and documents...
                 </div>
                 <div className="space-y-1.5">
@@ -273,7 +284,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
       {!expanded && isLoading && (
         <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-card/60 px-3 py-2 text-xs text-muted-foreground backdrop-blur">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Ask AI is working on your question...
+          {isStreaming ? 'Ask AI is responding...' : 'Ask AI is working on your question...'}
         </div>
       )}
       {!expanded && !isLoading && error && (
