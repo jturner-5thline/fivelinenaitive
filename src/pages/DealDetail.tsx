@@ -3389,10 +3389,22 @@ export default function DealDetail() {
               data-deal-modal-scroll-region={isEmbedded ? 'true' : undefined}
             >
 
+          {/* Context-rail layout (5th Line, scoped deals): pins identity +
+              at-a-glance facts to a left rail and lets the main column
+              carry the content. Everything below is unchanged. */}
+          <div className={cn(useContextRailLayout && "flex flex-col lg:flex-row gap-5 items-start mt-4")}>
+          {useContextRailLayout && <DealContextRail deal={deal} />}
+          <div className={cn(useContextRailLayout && "flex-1 min-w-0 w-full")}>
           {/* Header Card */}
-          <Card className="w-full mt-4 mb-6 border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]">
+          <Card className={cn(
+            "w-full mt-4 mb-6 border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]",
+            useContextRailLayout && "mt-0",
+          )}>
             <CardHeader className="pb-4">
-              <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4">
+              <div className={cn(
+                "flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4",
+                useContextRailLayout && "hidden",
+              )}>
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <InlineEditField
                     value={deal.company}
