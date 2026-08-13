@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { logUsage } from '@/lib/usageLogger';
@@ -16,14 +16,64 @@ interface Message {
   sources?: string[];
 }
 
-export function useDealSpaceAI(dealId: string | undefined) {
-  const [messages, setMessages] = useState<Message[]>([]);
+/** Max messages kept in the persisted transcript per deal. */
+const PERSIST_LIMIT = 40;
+
+const persistStorageKey = (persistKey: string, dealId: string) =>
+  `naitive:deal-ai-chat:${persistKey}:${dealId}`;
+
+function loadPersisted(persistKey: string | undefined, dealId: string | undefined): Message[] {
+  if (!persistKey || !dealId || typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(persistStorageKey(persistKey, dealId));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Array<Omit<Message, 'timestamp'> & { timestamp: string }>;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+      .map((m) => ({ ...m, timestamp: new Date(m.timestamp) }));
+  } catch {
+    return [];
+  }
+}
+
+export function useDealSpaceAI(
+  dealId: string | undefined,
+  options?: {
+    /**
+     * When set, the transcript is persisted per deal in localStorage under this
+     * key so the back-and-forth survives collapsing/reopening the surface.
+     */
+    persistKey?: string;
+  },
+) {
+  const persistKey = options?.persistKey;
+  const [messages, setMessages] = useState<Message[]>(() => loadPersisted(persistKey, dealId));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [scope, setScope] = useState<DocumentScope>('all');
   const [includeDataRoom, setIncludeDataRoom] = useState<boolean>(true);
   const { user } = useAuth();
+
+  // Re-hydrate when the deal changes so transcripts never bleed across deals.
+  useEffect(() => {
+    if (!persistKey) return;
+    setMessages(loadPersisted(persistKey, dealId));
+    setError(null);
+  }, [persistKey, dealId]);
+
+  // Persist the transcript (trimmed) whenever it changes.
+  useEffect(() => {
+    if (!persistKey || !dealId || typeof window === 'undefined') return;
+    try {
+      const key = persistStorageKey(persistKey, dealId);
+      if (messages.length === 0) window.localStorage.removeItem(key);
+      else window.localStorage.setItem(key, JSON.stringify(messages.slice(-PERSIST_LIMIT)));
+    } catch {
+      /* storage full or unavailable — chat still works in-memory */
+    }
+  }, [messages, persistKey, dealId]);
 
   const sendMessage = useCallback(async (
     content: string,
@@ -179,7 +229,12 @@ export function useDealSpaceAI(dealId: string | undefined) {
   const clearMessages = useCallback(() => {
     setMessages([]);
     setError(null);
-  }, []);
+    if (persistKey && dealId && typeof window !== 'undefined') {
+      try {
+        window.localStorage.removeItem(persistStorageKey(persistKey, dealId));
+      } catch { /* ignore */ }
+    }
+  }, [persistKey, dealId]);
 
   return {
     messages,
