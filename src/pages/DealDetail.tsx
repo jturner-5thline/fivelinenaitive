@@ -3780,6 +3780,18 @@ export default function DealDetail() {
                 </div>
               </div>
             </CardHeader>
+            {useContextRailLayout && !isSimplifiedDeal && (
+              <CardContent className="pt-2 pb-2 border-t border-white/10">
+                <DealMilestones
+                  milestones={dbMilestones}
+                  onAdd={addMilestone}
+                  onUpdate={updateMilestone}
+                  onDelete={deleteMilestone}
+                  onReorder={reorderMilestones}
+                  markerVariant="pill"
+                />
+              </CardContent>
+            )}
           </Card>
 
           {/* Main Content Grid */}
