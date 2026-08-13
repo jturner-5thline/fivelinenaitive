@@ -59,6 +59,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { FundingSourceCompanyLinkDialog, FundingSourceCompanyTarget } from '@/components/lenders/FundingSourceCompanyLinkDialog';
 import { FundingSourceNameField, LinkedCrmCompany } from '@/components/lenders/FundingSourceNameField';
+import { LenderSearchInput } from '@/components/lenders/LenderSearchInput';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
 import { useAuth } from '@/contexts/AuthContext';
@@ -297,7 +298,6 @@ export default function Lenders() {
   const [linkedCrmCompany, setLinkedCrmCompany] = useState<LinkedCrmCompany | null>(null);
   const [editingLenderId, setEditingLenderId] = useState<string | null>(null);
   const [form, setForm] = useState<LenderForm>(emptyForm);
-  const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showActiveDealsOnly, setShowActiveDealsOnly] = useState(false);
