@@ -97,7 +97,6 @@ const LendersKanban = lazy(loadLendersKanban);
 import { getLenderStatusTheme } from '@/components/deal/lenderStatusTheme';
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
 import { AiRecommendedLendersSection } from '@/components/deal/AiRecommendedLendersSection';
-import { DealDataUpdateBanner } from '@/components/deal/DealDataUpdateBanner';
 import { useFeatureAccess, usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useDemoCapabilities } from '@/hooks/useDemoCapabilities';
 import { LenderSearchInput } from '@/components/deal/LenderSearchInput';
@@ -4631,7 +4630,6 @@ export default function DealDetail() {
 
                 <TabsContent value="lenders" className={cn(useContextRailLayout ? "mt-4" : "mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`lenders-${tabDirection}`}>
               <div className="w-full min-h-0 space-y-6">
-              <DealDataUpdateBanner dealId={id} />
               {/* Funding source KPIs */}
               {(() => {
                 const norm = (s?: string) => (s || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
