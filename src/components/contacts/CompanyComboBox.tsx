@@ -22,9 +22,12 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [domainSuggested, setDomainSuggested] = useState(false);
+  const [justCreated, setJustCreated] = useState<{ id: string; name: string; domain?: string | null } | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const selectedCompany = companies.find(c => c.id === value);
+  const selectedCompany =
+    companies.find(c => c.id === value) ||
+    (justCreated && justCreated.id === value ? justCreated : undefined);
 
   // Domain auto-matching from email
   useEffect(() => {
@@ -99,6 +102,7 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
     setCreateOpen(false);
     if (!company?.id) return;
     onChange(company.id);
+    setJustCreated({ id: company.id, name: company.name, domain: company.domain });
     setSearch('');
     toast.success(
       <span>
