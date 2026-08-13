@@ -1059,19 +1059,6 @@ export function LenderAnalyticsDialog({
             </div>
           )}
 
-          {isFifthLine && (
-            <FundingSourcePerformanceCard
-              tenantId={FIFTH_LINE_COMPANY_ID}
-              lenders={lenders}
-              onOpenPlan={() => setPlanOpen(true)}
-              year={
-                isYearRange(dateRange)
-                  ? Number(dateRange.slice(1))
-                  : currentYear
-              }
-            />
-          )}
-
           {isEmpty && (
             <IntelPanel title="No data">
               <div className="p-8 text-center text-[13px] text-slate-400">
