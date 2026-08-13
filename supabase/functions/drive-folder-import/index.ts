@@ -56,7 +56,123 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({} as any));
-    const action = body.action as 'list' | 'browse' | 'search' | 'download';
+    const action = body.action as 'list' | 'browse' | 'search' | 'download' | 'tree' | 'automatch';
+
+    // ---- Drive-backed data room: live recursive tree -----------------------
+    if (action === 'tree') {
+      const rootId = parseFolderId(String(body.folderId ?? body.folder ?? ''));
+      if (!rootId) {
+        return new Response(JSON.stringify({ error: 'invalid_folder', message: 'A Drive folder id or link is required.' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const maxDepth = Math.min(Number(body.maxDepth ?? 4) || 4, 6);
+
+      const metaRes = await gatewayFetch(
+        `/drive/v3/files/${encodeURIComponent(rootId)}?fields=${encodeURIComponent('id,name,mimeType,trashed')}&supportsAllDrives=true`,
+      );
+      if (!metaRes.ok) {
+        const errText = await metaRes.text();
+        console.error(`Drive tree metadata failed [${metaRes.status}]: ${errText}`);
+        return new Response(
+          JSON.stringify({ error: 'inaccessible', status: metaRes.status, message: "That folder isn't accessible to the connected Drive account.", details: errText }),
+          { status: metaRes.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      const rootMeta = await metaRes.json();
+
+      const fields = encodeURIComponent('files(id,name,mimeType,size,modifiedTime,webViewLink,iconLink)');
+      type Node = { id: string; name: string; mimeType: string; size?: string; modifiedTime?: string; webViewLink?: string; path: string; isFolder: boolean; parentPath: string };
+      const nodes: Node[] = [];
+      let truncated = false;
+      const MAX_NODES = 3000;
+
+      let frontier: { id: string; path: string }[] = [{ id: rootId, path: '' }];
+      for (let depth = 0; depth < maxDepth && frontier.length > 0; depth++) {
+        const next: { id: string; path: string }[] = [];
+        // Fan out one level at a time, in parallel across the frontier.
+        const results = await Promise.all(frontier.map(async (f) => {
+          const q = encodeURIComponent(`'${f.id}' in parents and trashed = false`);
+          const res = await gatewayFetch(
+            `/drive/v3/files?q=${q}&fields=${fields}&pageSize=1000&orderBy=folder,name&supportsAllDrives=true&includeItemsFromAllDrives=true`,
+          );
+          if (!res.ok) {
+            const t = await res.text();
+            console.error(`Drive tree list failed [${res.status}] for ${f.id}: ${t}`);
+            return { parent: f, files: [] as any[] };
+          }
+          const parsed = await res.json();
+          return { parent: f, files: (parsed.files ?? []) as any[] };
+        }));
+
+        for (const { parent, files } of results) {
+          for (const file of files) {
+            if (nodes.length >= MAX_NODES) { truncated = true; break; }
+            const isFolder = file.mimeType === 'application/vnd.google-apps.folder';
+            const path = parent.path ? `${parent.path}/${file.name}` : file.name;
+            nodes.push({
+              id: file.id,
+              name: file.name,
+              mimeType: file.mimeType,
+              size: file.size,
+              modifiedTime: file.modifiedTime,
+              webViewLink: file.webViewLink,
+              path,
+              parentPath: parent.path,
+              isFolder,
+            });
+            if (isFolder) next.push({ id: file.id, path });
+          }
+        }
+        frontier = next;
+      }
+
+      return new Response(
+        JSON.stringify({ root: { id: rootMeta.id, name: rootMeta.name }, nodes, truncated }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // ---- Drive-backed data room: auto-match a folder by deal/company name ---
+    if (action === 'automatch') {
+      const name = String(body.name ?? '').trim();
+      const parentId = parseFolderId(String(body.parentId ?? '')) ?? null;
+      if (!name) {
+        return new Response(JSON.stringify({ matches: [] }), {
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const escaped = name.replace(/'/g, "\\'");
+      const clauses = [
+        `mimeType = 'application/vnd.google-apps.folder'`,
+        `trashed = false`,
+        `name contains '${escaped}'`,
+      ];
+      if (parentId) clauses.push(`'${parentId}' in parents`);
+      const q = encodeURIComponent(clauses.join(' and '));
+      const fields = encodeURIComponent('files(id,name,modifiedTime,webViewLink)');
+      const res = await gatewayFetch(
+        `/drive/v3/files?q=${q}&fields=${fields}&pageSize=25&orderBy=modifiedTime desc&supportsAllDrives=true&includeItemsFromAllDrives=true`,
+      );
+      const text = await res.text();
+      if (!res.ok) {
+        console.error(`Drive automatch failed [${res.status}]: ${text}`);
+        return new Response(
+          JSON.stringify({ error: 'automatch_failed', status: res.status, details: text }),
+          { status: res.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      const parsed = JSON.parse(text);
+      const target = name.toLowerCase();
+      const scored = (parsed.files ?? []).map((f: any) => {
+        const n = String(f.name ?? '').toLowerCase();
+        const score = n === target ? 1 : n.startsWith(target) ? 0.85 : n.includes(target) ? 0.7 : 0.5;
+        return { ...f, score };
+      }).sort((a: any, b: any) => b.score - a.score);
+      return new Response(JSON.stringify({ matches: scored }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     if (action === 'list') {
       const folderId = parseFolderId(String(body.folder ?? ''));
