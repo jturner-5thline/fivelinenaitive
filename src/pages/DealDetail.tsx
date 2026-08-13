@@ -3430,7 +3430,7 @@ export default function DealDetail() {
             "w-full mt-4 mb-6 border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]",
             useContextRailLayout && "mt-0",
           )}>
-            <CardHeader className="pb-4">
+            <CardHeader className={cn("pb-4", useContextRailLayout && "pt-3 pb-3")}>
               <div className={cn(
                 "flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4",
                 useContextRailLayout && "hidden",
@@ -3499,7 +3499,7 @@ export default function DealDetail() {
                   />
                 )}
               </div>
-              <div className="flex items-center justify-between gap-2 mt-4 flex-wrap">
+              <div className={cn("flex items-center justify-between gap-2 flex-wrap", !useContextRailLayout && "mt-4")}>
                 <div className="flex items-center gap-2 flex-wrap">
                 {!useContextRailLayout && (
                 <Select
