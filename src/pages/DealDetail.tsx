@@ -5255,7 +5255,7 @@ export default function DealDetail() {
                                          </div>
                                         <div className="min-w-0">
                                 {/* Funding Source Notes */}
-                                <div className="ml-2 mt-2 space-y-1">
+                                <div className="ml-2 space-y-1">
                                   <div className="flex items-start gap-2">
                                     <LenderNotesField
                                       lenderId={lender.id}
