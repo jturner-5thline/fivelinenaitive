@@ -22,6 +22,7 @@ import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
 import { BulkAssignOwnerDialog } from '@/components/crm/BulkAssignOwnerDialog';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { MultiSelectFilter } from '@/components/deals/MultiSelectFilter';
+import { TOOLBAR_CONTROL_CLASS } from '@/lib/toolbarControlClass';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useTriStateSort } from '@/hooks/useTriStateSort';
