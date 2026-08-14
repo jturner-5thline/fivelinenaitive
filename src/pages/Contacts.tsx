@@ -293,7 +293,7 @@ export default function Contacts() {
                     </>
                   }
                   toolbarExtras={
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <AdvancedFilterBuilder
                         availableFields={CONTACT_CORE_FIELDS}
                         filters={advancedFilters}
