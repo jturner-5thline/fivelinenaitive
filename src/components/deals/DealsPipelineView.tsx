@@ -195,6 +195,7 @@ const DroppableStageColumn = memo(DroppableStageColumnImpl);
 interface VirtualizedStageDealsProps {
   deals: Deal[];
   isOver: boolean;
+  isDraggingAny?: boolean;
   fullscreen: boolean;
   onStatusChange: (dealId: string, newStatus: DealStatus | null) => void;
   onStageChange?: (dealId: string, newStage: string) => void;
@@ -216,6 +217,7 @@ const STAGE_COLUMN_HEIGHT =
 function VirtualizedStageDealsImpl({
   deals,
   isOver,
+  isDraggingAny,
   fullscreen,
   onStatusChange,
   onStageChange,
@@ -279,6 +281,12 @@ function VirtualizedStageDealsImpl({
         }}
         className="p-3"
       >
+        {isOver && isDraggingAny ? (
+          <div
+            className="absolute left-3 right-3 top-0 z-10 h-1.5 rounded-full bg-primary shadow-[0_0_12px_hsl(var(--primary)/0.6)] animate-pulse"
+            aria-hidden
+          />
+        ) : null}
         {items.map((vItem) => {
           const deal = deals[vItem.index];
           if (!deal) return null;
