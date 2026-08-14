@@ -3550,8 +3550,28 @@ export default function DealDetail() {
                 onSave={(value) => updateDeal('value' as any, (parseCurrencyInputValue(value) ?? 0) as any)}
                 displayClassName="text-[2rem] md:text-[2.7rem] font-bold leading-none text-primary"
               />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 shrink-0 self-center"
+                title="Notes"
+                aria-label="Open notes"
+                onClick={() => setNotesDialogOpen(true)}
+              >
+                <StickyNote className="h-4 w-4" />
+              </Button>
             </div>
           )}
+
+          <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
+            <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Notes — {deal.company}</DialogTitle>
+              </DialogHeader>
+              {notesDialogOpen && <DealSpaceNotesTab dealId={deal.id} />}
+            </DialogContent>
+          </Dialog>
 
           {/* Context-rail layout (5th Line, scoped deals): pins identity +
               at-a-glance facts to a left rail and lets the main column
