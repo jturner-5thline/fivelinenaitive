@@ -446,7 +446,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         const saved = await saveNodePdfToDealSpace(node, String(deal.id), buildFileTitle());
         toast({
           title: 'Copy saved to Documents',
-          description: saved?.name ? `${saved.name} added to Deal Space ▸ Documents.` : undefined,
+          description: saved?.name ? `${saved.name} added to Data Room ▸ Internal.` : undefined,
         });
       } catch (err) {
         console.error('[status-report] save copy failed:', err);
@@ -482,7 +482,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           const saved = await saveNodePdfToDealSpace(node, String(deal.id), buildFileTitle());
           toast({
             title: 'Copy saved to Documents',
-            description: saved?.name ? `${saved.name} added to Deal Space ▸ Documents.` : undefined,
+            description: saved?.name ? `${saved.name} added to Data Room ▸ Internal.` : undefined,
           });
         } catch (err) {
           console.error('[status-report] save copy failed:', err);
@@ -968,7 +968,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
             className="mt-0.5"
           />
           <span>
-            Save a copy to Deal Space ▸ Documents
+            Save a copy to Data Room ▸ Internal
             <span className="block text-xs text-muted-foreground">
               Archives the same report as a PDF on this deal.
             </span>
