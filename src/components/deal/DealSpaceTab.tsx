@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DollarSign, FileText, StickyNote } from 'lucide-react';
+import { DollarSign, StickyNote } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { DealSpaceAskAITab } from './DealSpaceAskAITab';
-import { DealSpaceDocumentsTab } from './DealSpaceDocumentsTab';
 import { DealSpaceNotesTab } from './DealSpaceNotesTab';
 import { SaaSModelTab } from './saas-model/SaaSModelTab';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
@@ -57,10 +56,6 @@ export function DealSpaceTab({ dealId, dealData }: DealSpaceTabProps) {
           <DollarSign className="h-3.5 w-3.5" />
           Analysis
         </TabsTrigger>
-        <TabsTrigger value="documents" className={triggerCls}>
-          <FileText className="h-3.5 w-3.5" />
-          Documents
-        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="ask-ai">
@@ -80,10 +75,6 @@ export function DealSpaceTab({ dealId, dealData }: DealSpaceTabProps) {
             <p className="mt-2 text-sm text-muted-foreground">Deal analysis is on its way.</p>
           </div>
         )}
-      </TabsContent>
-
-      <TabsContent value="documents">
-        <DealSpaceDocumentsTab dealId={dealId} />
       </TabsContent>
     </Tabs>
   );
