@@ -199,9 +199,19 @@ function DealListCardRowImpl({
               </Tooltip>
             </TooltipProvider>
           )}
-          <h3 className="font-medium truncate text-foreground">
-            {deal.company || 'Untitled deal'}
-          </h3>
+          <div className="min-w-0">
+            <h3 className="font-medium truncate text-foreground">
+              {deal.company || 'Untitled deal'}
+            </h3>
+            {!compact && engagementLabel && (
+              <Badge
+                variant="outline"
+                className="mt-1 text-[10px] uppercase tracking-wider rounded-md whitespace-nowrap border-white/10 bg-white/[0.03] text-muted-foreground"
+              >
+                {engagementLabel}
+              </Badge>
+            )}
+          </div>
           {!compact && lateMilestoneCount > 0 && (
             <Badge
               variant="outline"
@@ -261,14 +271,6 @@ function DealListCardRowImpl({
             </TooltipProvider>
           </div>
           <div className="flex items-center gap-2 min-w-0">
-          {engagementLabel && (
-            <Badge
-              variant="outline"
-              className="text-[10px] uppercase tracking-wider rounded-md whitespace-nowrap border-white/10 bg-white/[0.03] text-muted-foreground shrink-0"
-            >
-              {engagementLabel}
-            </Badge>
-          )}
           {!compact && (
             <span
               className={cn(
