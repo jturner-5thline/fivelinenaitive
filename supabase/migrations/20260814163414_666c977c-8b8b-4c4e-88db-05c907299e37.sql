@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS trg_contacts_audit_delete ON public.contacts;
