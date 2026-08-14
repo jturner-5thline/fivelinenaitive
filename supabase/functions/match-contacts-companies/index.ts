@@ -52,6 +52,68 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[match-contacts] Running SQL-based domain matching for org ${orgCompanyId}...`);
 
+    const normalize = (v: string | null | undefined) =>
+      (v || '')
+        .trim()
+        .toLowerCase()
+        .replace(/^https?:\/\//, '')
+        .replace(/^www\./, '')
+        .split(/[/?#]/)[0]
+        .trim();
+
+    // Preview mode: compute what WOULD be matched without writing anything.
+    if (body?.dry_run) {
+      const { data: companies, error: compErr } = await admin
+        .from('crm_companies')
+        .select('id, name, domain')
+        .eq('org_company_id', orgCompanyId)
+        .not('domain', 'is', null)
+        .limit(10000);
+      if (compErr) throw compErr;
+
+      const byDomain = new Map<string, { id: string; name: string | null }>();
+      for (const c of companies || []) {
+        const d = normalize((c as any).domain);
+        if (d && !byDomain.has(d)) byDomain.set(d, { id: (c as any).id, name: (c as any).name ?? null });
+      }
+
+      const { data: unmatched, error: unmErr } = await admin
+        .from('contacts')
+        .select('id, full_name, email')
+        .eq('org_company_id', orgCompanyId)
+        .is('crm_company_id', null)
+        .not('email', 'is', null)
+        .limit(20000);
+      if (unmErr) throw unmErr;
+
+      const samples: Array<{ contact: string; email: string; company: string }> = [];
+      let wouldMatch = 0;
+      for (const c of unmatched || []) {
+        const domain = normalize(String((c as any).email || '').split('@')[1] || '');
+        if (!domain) continue;
+        const hit = byDomain.get(domain);
+        if (!hit) continue;
+        wouldMatch++;
+        if (samples.length < 10) {
+          samples.push({
+            contact: (c as any).full_name || (c as any).email,
+            email: (c as any).email,
+            company: hit.name || domain,
+          });
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          dry_run: true,
+          would_match: wouldMatch,
+          unmatched_total: (unmatched || []).length,
+          samples,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
     // Scoped to the same org_company_id
     const matchSql = `
       WITH contact_domains AS (
