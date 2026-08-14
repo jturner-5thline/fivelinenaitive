@@ -232,7 +232,7 @@ function VirtualizedStageDealsImpl({
       <div
         className={cn(
           'min-h-[400px] p-3',
-          fullscreen ? 'h-[calc(92vh-120px)]' : 'h-[calc(100vh-380px)]',
+          fullscreen ? 'h-[calc(92vh-120px)]' : 'h-[calc(100vh-260px)]',
         )}
       >
         <div
@@ -254,7 +254,7 @@ function VirtualizedStageDealsImpl({
       ref={scrollRef}
       className={cn(
         'min-h-[400px] overflow-y-auto overflow-x-hidden',
-        fullscreen ? 'h-[calc(92vh-120px)]' : 'h-[calc(100vh-380px)]',
+        fullscreen ? 'h-[calc(92vh-120px)]' : 'h-[calc(100vh-260px)]',
       )}
     >
       <div
