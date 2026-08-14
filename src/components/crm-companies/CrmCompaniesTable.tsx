@@ -341,17 +341,17 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
 
   return (
     <div className="space-y-3 crm-companies-surface">
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2 flex-nowrap w-full min-w-0">
         {leadingFilterSlot}
         <Select value={companyTypeFilter} onValueChange={setCompanyTypeFilter}>
-          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Type" /></SelectTrigger>
+          <SelectTrigger className="w-[125px] h-9 shrink-0"><SelectValue placeholder="Type" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
             {CRM_COMPANY_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-          <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Owner" /></SelectTrigger>
+          <SelectTrigger className="w-[130px] h-9 shrink-0"><SelectValue placeholder="Owner" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Owners</SelectItem>
             <SelectItem value="unassigned">Unassigned</SelectItem>
@@ -359,7 +359,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
           </SelectContent>
         </Select>
         <Select value={industryFilter} onValueChange={setIndustryFilter}>
-          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Industry" /></SelectTrigger>
+          <SelectTrigger className="w-[135px] h-9 shrink-0"><SelectValue placeholder="Industry" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Industries</SelectItem>
             {industryOptions.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
@@ -367,7 +367,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
         </Select>
         <MultiSelectFilter
           label="Missing Data"
-          className="h-9"
+          className="h-9 shrink-0"
           options={[
             { value: 'no_contacts', label: `No contacts (${contactsCountLabel})` },
             { value: 'no_domain', label: `No domain (${missingDataCounts.no_domain})` },
@@ -378,7 +378,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
         {selectedIds.size > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">Bulk ({selectedIds.size}) <ChevronDown className="ml-1 h-3 w-3" /></Button>
+              <Button variant="outline" size="sm" className="h-9 shrink-0">Bulk ({selectedIds.size}) <ChevronDown className="ml-1 h-3 w-3" /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem onClick={() => setBulkAssignOpen(true)}>Assign Owner</DropdownMenuItem>
