@@ -144,8 +144,6 @@ const DealEmailsTab = lazy(lazyRetry(() => import('@/components/deal/DealEmailsT
 const FloatingDealAssistant = lazy(lazyRetry(() => import('@/components/deals/FloatingDealAssistant').then(m => ({ default: m.FloatingDealAssistant }))));
 import { DealDetailSideNavigation } from '@/components/deal/DealDetailSideNavigation';
 
-const loadDealSpaceTab = lazyRetry(() => import('@/components/deal/DealSpaceTab').then(m => ({ default: m.DealSpaceTab })));
-const DealSpaceTab = lazy(loadDealSpaceTab);
 const SaaSModelTab = lazy(lazyRetry(() => import('@/components/deal/saas-model/SaaSModelTab').then(m => ({ default: m.SaaSModelTab }))));
 const DealPanelReorderDialog = lazy(lazyRetry(() => import('@/components/deal/DealPanelReorderDialog').then(m => ({ default: m.DealPanelReorderDialog }))));
 const DealMemoDialog = lazy(lazyRetry(() => import('@/components/deal/DealMemoDialog').then(m => ({ default: m.DealMemoDialog }))));
@@ -709,7 +707,6 @@ export default function DealDetail() {
     const prefetch = () => {
       void loadLendersKanban();
       void loadDealManagementTab();
-      void loadDealSpaceTab();
       void loadDataRoomV2();
       void loadVdrShell();
       void loadDealActivityLogTab();
@@ -1227,7 +1224,7 @@ export default function DealDetail() {
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
-  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'analysis' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication'>((initialTab === 'deal-space' && !hasDealSpaceAccess) ? 'deal-info' : (initialTab || 'deal-info'));
+  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'analysis' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication'>(initialTab === 'deal-space' ? 'deal-info' : (initialTab || 'deal-info'));
   const prevTabRef = useRef<typeof dealInfoTab>(dealInfoTab);
 
   // Projects deals only expose Deal Info + Data Room. If the persisted/URL
@@ -1303,7 +1300,7 @@ export default function DealDetail() {
     const urlTab = searchParams.get('tab');
     if (!urlTab) return;
     if (urlTab === dealInfoTab) return;
-    if (urlTab === 'deal-space' && !hasDealSpaceAccess) return;
+    if (urlTab === 'deal-space') return;
     const allowed = [...DEAL_TABS, 'activity-log'];
     if (!allowed.includes(urlTab)) return;
     prevTabRef.current = urlTab as typeof dealInfoTab;
