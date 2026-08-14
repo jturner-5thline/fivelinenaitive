@@ -251,7 +251,7 @@ function DealListCardRowImpl({
           {!compact && (
             <div
               onClick={(e) => e.stopPropagation()}
-              className="justify-self-center w-[104px] [&_button]:w-full [&_button>*]:flex [&_button>*]:w-full [&_button>*]:justify-center"
+              className="justify-self-center w-[104px] [&_button]:w-full [&_button>*]:flex [&_button>*]:w-full [&_button>*]:justify-center [&_button>*]:items-center [&_button>*]:min-h-[26px]"
             >
               <InlineStatusDropdown
                 dealId={deal.id}
@@ -263,7 +263,7 @@ function DealListCardRowImpl({
           )}
           {!compact && (
             <div
-              className="min-w-0 flex items-center justify-self-center w-[150px] [&_button]:w-full [&_button>*]:flex [&_button>*]:w-full [&_button>*]:justify-center"
+              className="min-w-0 flex items-center justify-self-center w-[150px] [&_button]:w-full [&_button>*]:flex [&_button>*]:w-full [&_button>*]:justify-center [&_button>*]:items-center [&_button>*]:min-h-[26px]"
               onClick={(e) => e.stopPropagation()}
             >
               <InlineStageDropdown
