@@ -14,6 +14,7 @@ import { useFlexEngagementScores } from '@/hooks/useFlexEngagementScores';
 import { SortField, SortDirection, DealFilters } from '@/hooks/useDeals';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDealListColumnOrder, COLUMN_LABELS, DealListColumnId } from '@/hooks/useDealListColumnOrder';
+import { useLatestStatusNotes } from '@/hooks/useLatestStatusNotes';
 import { DealsHeaderFilterPopover } from './DealsHeaderFilterPopover';
 import { cn } from '@/lib/utils';
 import {
@@ -460,6 +461,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                 <span className="text-center">Amount</span>
                 <span className="text-center">Status</span>
                 <span className="text-center">Stage</span>
+                <span>Status Note</span>
                 <span>Updated</span>
               </div>
             </div>
@@ -475,6 +477,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                 notificationCount={flexNotificationCounts[deal.id] || 0}
                 isSelected={selectedDealIds.has(deal.id)}
                 onToggleSelect={toggleSelectDeal}
+                statusNote={latestStatusNotes?.[deal.id]}
                 compact={detailPanelOpen}
               />
             ))}
