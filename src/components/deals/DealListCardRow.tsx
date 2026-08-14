@@ -12,7 +12,6 @@ import {
   UserPlus,
   Bell,
   ArrowRightLeft,
-  Building2,
 } from 'lucide-react';
 import {
   differenceInMinutes,
