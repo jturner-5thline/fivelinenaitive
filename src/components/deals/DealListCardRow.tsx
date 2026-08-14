@@ -225,8 +225,12 @@ function DealListCardRowImpl({
             <h3 className="font-semibold truncate text-foreground text-[17px] leading-tight">
               {deal.company || 'Untitled deal'}
             </h3>
-            {!compact && (engagementLabel || managerInitials) && (
-              <div className="mt-1 flex items-center gap-1.5">
+            <div className="mt-1 flex items-center gap-2 min-w-0">
+              <span className="font-semibold text-foreground tabular-nums text-[17px] leading-tight shrink-0">
+                {formatCurrencyValue(deal.value)}
+              </span>
+              {!compact && (engagementLabel || managerInitials) && (
+                <div className="flex items-center gap-1.5 min-w-0">
                 {engagementLabel && (
                   <Badge
                     variant="outline"
@@ -254,8 +258,9 @@ function DealListCardRowImpl({
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
           {!compact && lateMilestoneCount > 0 && (
             <Badge
@@ -266,9 +271,6 @@ function DealListCardRowImpl({
             </Badge>
           )}
           </div>
-          <span className="font-semibold text-foreground tabular-nums text-center text-[17px] leading-tight">
-            {formatCurrencyValue(deal.value)}
-          </span>
           {!compact && (
             <div
               onClick={(e) => e.stopPropagation()}
