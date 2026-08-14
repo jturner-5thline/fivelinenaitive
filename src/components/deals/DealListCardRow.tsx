@@ -64,6 +64,8 @@ interface DealListCardRowProps {
   notificationCount?: number;
   isSelected?: boolean;
   onToggleSelect?: (dealId: string) => void;
+  /** Latest status note text for this deal. */
+  statusNote?: string;
   /** Hide secondary metadata (fee, hours, dates) when the detail panel is open. */
   compact?: boolean;
 }
@@ -77,6 +79,7 @@ function DealListCardRowImpl({
   notificationCount = 0,
   isSelected,
   onToggleSelect,
+  statusNote,
   compact = false,
 }: DealListCardRowProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
