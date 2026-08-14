@@ -196,7 +196,45 @@ export default function Contacts() {
           {/* Header */}
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
-            <div className="flex items-center gap-2">
+          </div>
+
+          {/* Content */}
+          {isLoading ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-9 flex-1 max-w-sm" />
+                <Skeleton className="h-9 w-[150px]" />
+                <Skeleton className="h-9 w-[150px]" />
+              </div>
+              <div className="border rounded-lg overflow-hidden">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 p-3 border-b last:border-b-0">
+                    <Skeleton className="h-4 w-4" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-4 w-12" />
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Never block pointer events during background fetches —
+                  doing so freezes the search input mid-keystroke. */}
+              <div>
+                <ContactsTable
+                  contacts={contacts}
+                  search={search}
+                  onSearchChange={handleSearchChange}
+                  isFetching={isSearchPending}
+                  toolbarActions={
+                    <>
               <CrmUpdateQueueButton />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -252,44 +290,8 @@ export default function Contacts() {
               <Button size="sm" onClick={() => setShowCreate(true)}>
                 <Plus className="h-4 w-4 mr-1.5" /> Add Contact
               </Button>
-            </div>
-          </div>
-
-          {/* Content */}
-          {isLoading ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-9 flex-1 max-w-sm" />
-                <Skeleton className="h-9 w-[150px]" />
-                <Skeleton className="h-9 w-[150px]" />
-              </div>
-              <div className="border rounded-lg overflow-hidden">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-4 p-3 border-b last:border-b-0">
-                    <Skeleton className="h-4 w-4" />
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-4 w-20" />
-                    <Skeleton className="h-5 w-16 rounded-full" />
-                    <Skeleton className="h-5 w-16 rounded-full" />
-                    <Skeleton className="h-4 w-12" />
-                    <Skeleton className="h-4 w-20" />
-                    <Skeleton className="h-4 w-16" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Never block pointer events during background fetches —
-                  doing so freezes the search input mid-keystroke. */}
-              <div>
-                <ContactsTable
-                  contacts={contacts}
-                  search={search}
-                  onSearchChange={handleSearchChange}
-                  isFetching={isSearchPending}
+                    </>
+                  }
                   toolbarExtras={
                     <div className="flex items-center gap-2">
                       <AdvancedFilterBuilder
@@ -300,7 +302,7 @@ export default function Contacts() {
                         onMatchModeChange={setMatchMode}
                       />
                       <Select value={quickFilter} onValueChange={handleQuickFilterChange}>
-                        <SelectTrigger className="h-9 w-[170px]">
+                        <SelectTrigger className="h-9 w-[140px] shrink-0">
                           <SelectValue placeholder="Quick filter" />
                         </SelectTrigger>
                         <SelectContent>
