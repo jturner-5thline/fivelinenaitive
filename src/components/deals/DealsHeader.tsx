@@ -107,13 +107,12 @@ export function DealsHeader() {
   //   mobile → off-canvas, header spans full viewport
   // Effective width = pinned-open OR hover-expanded, matching the
   // sidebar's own "effectiveState" logic in `src/components/ui/sidebar.tsx`.
-  const sidebarEffectivelyExpanded =
-    sidebarState === 'expanded' || sidebarIsHovering;
+  // The expanded sidebar now overlays the main content rather than pushing
+  // it, so the floating header stays pinned to the collapsed rail width and
+  // never shifts when the sidebar opens or is hovered.
   const headerLeftOffset = sidebarIsMobile
     ? '0px'
-    : sidebarEffectivelyExpanded
-      ? 'var(--sidebar-width, 14rem)'
-      : 'calc(var(--sidebar-width-icon, 3rem) + 1rem)';
+    : 'calc(var(--sidebar-width-icon, 3rem) + 1rem)';
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { hasPageAccess } = usePageAccessFlags();
   const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
