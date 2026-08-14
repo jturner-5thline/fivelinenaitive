@@ -192,7 +192,7 @@ export default function Contacts() {
       </Helmet>
 
       <div className="bg-transparent">
-        <main className="w-full px-4 pt-4 pb-3 sm:px-6 space-y-6">
+        <main className="w-full px-4 pt-2 pb-3 sm:px-6 space-y-3">
           {/* Header */}
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
