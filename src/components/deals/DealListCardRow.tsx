@@ -234,21 +234,27 @@ function DealListCardRowImpl({
               />
             </div>
           )}
+          {!compact && (
+            <div
+              className="min-w-0 flex items-center justify-self-start"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <InlineStageDropdown
+                dealId={deal.id}
+                stage={deal.stage}
+                pipelineId={deal.pipelineId}
+                onStageChange={
+                  onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))
+                }
+              />
+            </div>
+          )}
         </div>
 
-        {/* Bottom row (table columns): stage | manager initials | type · updated */}
+        {/* Bottom row (table columns): — | manager initials | updated */}
         {!compact && (
         <div className={cn(DEAL_LIST_GRID, 'mt-1 text-sm text-muted-foreground')}>
-          <div className="min-w-0 flex items-center" onClick={(e) => e.stopPropagation()}>
-            <InlineStageDropdown
-              dealId={deal.id}
-              stage={deal.stage}
-              pipelineId={deal.pipelineId}
-              onStageChange={
-                onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))
-              }
-            />
-          </div>
+          <div />
           <div className="flex justify-end">
             <TooltipProvider>
               <Tooltip>
