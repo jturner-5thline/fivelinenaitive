@@ -311,6 +311,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
   const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
   const { data: flexEngagementScores } = useFlexEngagementScores(dealIds);
   const flexNotificationCounts = useDealNotificationCounts(dealIds);
+  const { data: latestStatusNotes } = useLatestStatusNotes(dealIds);
   const mentionUsers = useTeamMembers();
 
   // Apply FLEx engagement sorting if selected (done here since we have access to engagement scores)
