@@ -227,7 +227,7 @@ interface VirtualizedStageDealsProps {
  * `dvh` keeps mobile browser chrome from clipping the last cards.
  */
 const STAGE_COLUMN_HEIGHT =
-  'h-[calc(100dvh-260px)] max-h-[calc(100dvh-260px)] min-h-[280px]';
+  'h-[calc(100dvh-196px)] max-h-[calc(100dvh-196px)] min-h-[280px]';
 
 function VirtualizedStageDealsImpl({
   deals,
