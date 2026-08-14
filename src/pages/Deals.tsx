@@ -29,6 +29,7 @@ import { DemoBanner } from '@/components/deals/DemoBanner';
 import { NotificationConsentModal } from '@/components/notifications/NotificationConsentModal';
 
 import { FlaggedDealsPanel } from '@/components/deals/FlaggedDealsPanel';
+import { PipelineSortButton } from '@/components/deals/PipelineSortButton';
 
 import { LatestUpdatesDropdown } from '@/components/deals/LatestUpdatesDropdown';
 // NotificationsDropdown removed: notifications are merged into the Flag system.
@@ -829,6 +830,8 @@ export default function Dashboard() {
 
                 {/* Stale toggle removed — stale deals are auto-flagged and
                     surface via the Flag filter below (see useAutoStaleFlags). */}
+
+                {viewMode === 'pipeline' && <PipelineSortButton />}
 
                 <TooltipProvider>
                   <Tooltip>

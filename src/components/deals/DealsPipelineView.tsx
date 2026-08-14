@@ -19,29 +19,15 @@ import { useDraggable } from '@dnd-kit/core';
 import { Deal, DealStatus } from '@/types/deal';
 import { DealCard } from './DealCard';
 
-type PipelineSortMode = 'newest' | 'value_desc' | 'value_asc' | 'name_asc';
-const PIPELINE_SORT_STORAGE_KEY = 'deals-pipeline-stage-sort';
-const PIPELINE_SORT_LABELS: Record<PipelineSortMode, string> = {
-  newest: 'Newest first',
-  value_desc: 'Deal size: high to low',
-  value_asc: 'Deal size: low to high',
-  name_asc: 'Name: A to Z',
-};
+import { usePipelineSortMode } from '@/hooks/usePipelineSortMode';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useFlexEngagementScores } from '@/hooks/useFlexEngagementScores';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { FileX, Minimize2, ArrowUpDown } from 'lucide-react';
+import { FileX, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -382,20 +368,8 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
     useSensor(KeyboardSensor)
   );
 
-  // Sort mode for cards inside each stage column (persisted per user)
-  const [sortMode, setSortMode] = useState<PipelineSortMode>(() => {
-    if (typeof window === 'undefined') return 'newest';
-    const saved = window.localStorage.getItem(PIPELINE_SORT_STORAGE_KEY);
-    return (saved as PipelineSortMode) || 'newest';
-  });
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(PIPELINE_SORT_STORAGE_KEY, sortMode);
-    } catch {
-      /* ignore quota / privacy-mode failures */
-    }
-  }, [sortMode]);
+  // Sort mode for cards inside each stage column (persisted, shared with toolbar control)
+  const { sortMode } = usePipelineSortMode();
 
   // Group deals by stage. Default sort is created_at (stable) so updates
   // to non-stage fields don't cause visual reordering.
@@ -506,25 +480,6 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="flex items-center justify-end pb-2">
-        <Select value={sortMode} onValueChange={(v) => setSortMode(v as PipelineSortMode)}>
-          <SelectTrigger
-            className="h-8 w-[210px] gap-1.5 text-xs"
-            aria-label="Sort deals within each stage"
-          >
-            <ArrowUpDown className="h-3.5 w-3.5 opacity-70 shrink-0" />
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
-          <SelectContent align="end">
-            {(Object.keys(PIPELINE_SORT_LABELS) as PipelineSortMode[]).map((mode) => (
-              <SelectItem key={mode} value={mode} className="text-xs">
-                {PIPELINE_SORT_LABELS[mode]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
       <ScrollArea className="w-full" viewportClassName="overflow-x-auto">
         <div className="flex gap-4 pb-0 min-w-max">
           {stages.map((stage) => {
