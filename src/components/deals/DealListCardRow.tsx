@@ -51,7 +51,7 @@ import { shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
 import { cn } from '@/lib/utils';
 
 /** Shared column template so the header row in DealsList stays aligned. */
-export const DEAL_LIST_GRID = 'grid grid-cols-[minmax(180px,1.3fr)_130px_150px] items-center gap-4';
+export const DEAL_LIST_GRID = 'grid grid-cols-[minmax(140px,260px)_120px_150px_minmax(0,1fr)] items-center gap-4';
 
 interface DealListCardRowProps {
   deal: Deal;
