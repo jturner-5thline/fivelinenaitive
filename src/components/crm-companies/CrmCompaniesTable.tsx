@@ -342,7 +342,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
 
   return (
     <div className="space-y-3 crm-companies-surface">
-      <div className="sticky top-0 z-30 -mx-1 px-1 py-2 flex items-center gap-2 flex-nowrap w-full min-w-0 bg-background/85 backdrop-blur-xl rounded-lg">
+      <div className="flex items-center gap-2 flex-nowrap w-full min-w-0">
         {leadingFilterSlot}
         <Select value={companyTypeFilter} onValueChange={setCompanyTypeFilter}>
           <SelectTrigger className={cn('w-[125px]', TOOLBAR_CONTROL_CLASS)}><SelectValue placeholder="Type" /></SelectTrigger>
@@ -408,18 +408,17 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
           '[&_tbody_tr:last-child_td]:border-b-0',
         )}
       >
+        <div style={{ height: 56 + 25 * 44 }}>
         {filtered.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
+          <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
             <Building2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
             <p className="text-sm">No companies found</p>
           </div>
         ) : (
           <TableVirtuoso
-            // Virtualizes the CRM companies grid so the DOM only carries the
-            // visible window worth of rows regardless of tenant size.
-            // Use window scrolling so the page itself scrolls (no nested scroll
-            // inside the companies box) and the full row list expands naturally.
-            useWindowScroll
+            // Virtualized inside a fixed-height module (matches the Contacts
+            // table) so the toolbar stays visible while rows scroll internally.
+            style={{ height: '100%' }}
             data={filtered}
             computeItemKey={(_index, co) => co.id}
             increaseViewportBy={{ top: 600, bottom: 1400 }}
