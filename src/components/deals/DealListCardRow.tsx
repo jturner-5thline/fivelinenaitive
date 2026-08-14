@@ -52,7 +52,7 @@ import { cn } from '@/lib/utils';
 
 /** Shared column template so the header row in DealsList stays aligned. */
 export const DEAL_LIST_GRID =
-  'grid grid-cols-[minmax(100px,182px)_120px_112px_158px_minmax(120px,1.4fr)_minmax(0,1fr)] items-center gap-2';
+  'grid grid-cols-[minmax(160px,240px)_112px_158px_minmax(120px,1.4fr)_minmax(0,1fr)] items-center gap-2';
 
 /** Strip HTML/markup from status note text and normalize whitespace. */
 function cleanStatusNote(raw?: string): string {
@@ -225,8 +225,12 @@ function DealListCardRowImpl({
             <h3 className="font-semibold truncate text-foreground text-[17px] leading-tight">
               {deal.company || 'Untitled deal'}
             </h3>
-            {!compact && (engagementLabel || managerInitials) && (
-              <div className="mt-1 flex items-center gap-1.5">
+            <div className="mt-1 flex items-center gap-2 min-w-0">
+              <span className="font-semibold text-foreground tabular-nums text-[17px] leading-tight shrink-0">
+                {formatCurrencyValue(deal.value)}
+              </span>
+              {!compact && (engagementLabel || managerInitials) && (
+                <div className="flex items-center gap-1.5 min-w-0">
                 {engagementLabel && (
                   <Badge
                     variant="outline"
@@ -254,8 +258,9 @@ function DealListCardRowImpl({
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
           {!compact && lateMilestoneCount > 0 && (
             <Badge
@@ -266,9 +271,6 @@ function DealListCardRowImpl({
             </Badge>
           )}
           </div>
-          <span className="font-semibold text-foreground tabular-nums text-center text-[17px] leading-tight">
-            {formatCurrencyValue(deal.value)}
-          </span>
           {!compact && (
             <div
               onClick={(e) => e.stopPropagation()}
