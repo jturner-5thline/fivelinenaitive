@@ -308,7 +308,7 @@ function DealListCardRowImpl({
           {!compact && (
             <span
               className={cn(
-                'inline-flex items-center gap-1 text-xs text-muted-foreground justify-self-start',
+                'inline-flex items-center justify-center gap-1 text-xs text-muted-foreground justify-self-center text-center',
                 timeAgoData.tone === 'critical' && 'text-destructive',
                 timeAgoData.tone === 'warning' && 'text-warning',
               )}
