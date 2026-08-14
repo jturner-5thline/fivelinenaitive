@@ -3554,7 +3554,7 @@ export default function DealDetail() {
               />
               <span
                 aria-hidden
-                className="hidden sm:block self-stretch w-px bg-border/70 my-1 -ml-2 mr-1"
+                className="hidden sm:block self-stretch w-px bg-border/70 my-1 -ml-6 mr-1"
               />
               <InlineEditField
                 value={formatUSD(deal.value)}
