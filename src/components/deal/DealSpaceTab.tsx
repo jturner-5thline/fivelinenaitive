@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DollarSign, StickyNote } from 'lucide-react';
+import { StickyNote } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { DealSpaceAskAITab } from './DealSpaceAskAITab';
 import { DealSpaceNotesTab } from './DealSpaceNotesTab';
-import { SaaSModelTab } from './saas-model/SaaSModelTab';
-import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 
 interface DealSpaceTabProps {
   dealId: string;
@@ -23,7 +21,6 @@ interface DealSpaceTabProps {
 }
 
 export function DealSpaceTab({ dealId, dealData }: DealSpaceTabProps) {
-  const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
   // Controlled value lets React batch the tab-switch render correctly
   // and avoids the synchronous re-mount cost we get with `defaultValue`
   // when the panel contents are heavy.
@@ -52,10 +49,6 @@ export function DealSpaceTab({ dealId, dealData }: DealSpaceTabProps) {
           <StickyNote className="h-3.5 w-3.5" />
           Notes
         </TabsTrigger>
-        <TabsTrigger value="financials" className={triggerCls}>
-          <DollarSign className="h-3.5 w-3.5" />
-          Analysis
-        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="ask-ai">
@@ -66,16 +59,6 @@ export function DealSpaceTab({ dealId, dealData }: DealSpaceTabProps) {
         <DealSpaceNotesTab dealId={dealId} />
       </TabsContent>
 
-      <TabsContent value="financials">
-        {isFifthLine ? (
-          <SaaSModelTab dealId={dealId} dealData={dealData ? { company: dealData.company, value: dealData.value, stage: dealData.stage } : undefined} />
-        ) : (
-          <div className="flex flex-col items-center justify-center min-h-[420px] rounded-lg border border-border/50 bg-card/30 px-6 py-16 text-center">
-            <p className="text-3xl font-semibold tracking-tight text-foreground">COMING SOON!</p>
-            <p className="mt-2 text-sm text-muted-foreground">Deal analysis is on its way.</p>
-          </div>
-        )}
-      </TabsContent>
     </Tabs>
   );
 }

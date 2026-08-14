@@ -146,6 +146,7 @@ import { DealDetailSideNavigation } from '@/components/deal/DealDetailSideNaviga
 
 const loadDealSpaceTab = lazyRetry(() => import('@/components/deal/DealSpaceTab').then(m => ({ default: m.DealSpaceTab })));
 const DealSpaceTab = lazy(loadDealSpaceTab);
+const SaaSModelTab = lazy(lazyRetry(() => import('@/components/deal/saas-model/SaaSModelTab').then(m => ({ default: m.SaaSModelTab }))));
 const DealPanelReorderDialog = lazy(lazyRetry(() => import('@/components/deal/DealPanelReorderDialog').then(m => ({ default: m.DealPanelReorderDialog }))));
 const DealMemoDialog = lazy(lazyRetry(() => import('@/components/deal/DealMemoDialog').then(m => ({ default: m.DealMemoDialog }))));
 const AgreementDrafterDialog = lazy(lazyRetry(() => import('@/components/agreement/AgreementDrafterDialog').then(m => ({ default: m.AgreementDrafterDialog }))));
@@ -624,7 +625,7 @@ export default function DealDetail() {
     try { window.sessionStorage.removeItem(EMBEDDED_TAB_KEY); } catch {}
   }
   const initialTab = (isEmbeddedEarly ? null : searchParams.get('tab')) as
-    | 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication' | null;
+    | 'deal-info' | 'lenders' | 'analysis' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication' | null;
   const { getLenderNames, getLenderDetails } = useLenders();
   const { lenders: masterLenders, loading: masterLendersLoading, loadingMore: masterLendersLoadingMore } = useMasterLenders({ eagerAll: true });
   const { stages: configuredStages, substages: configuredSubstages, substagesEnabled, passReasons, getTrackingStatusConfig, stageGroups } = useLenderStages();
@@ -1226,7 +1227,7 @@ export default function DealDetail() {
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
-  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication'>((initialTab === 'deal-space' && !hasDealSpaceAccess) ? 'deal-info' : (initialTab || 'deal-info'));
+  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'analysis' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication'>((initialTab === 'deal-space' && !hasDealSpaceAccess) ? 'deal-info' : (initialTab || 'deal-info'));
   const prevTabRef = useRef<typeof dealInfoTab>(dealInfoTab);
 
   // Projects deals only expose Deal Info + Data Room. If the persisted/URL
@@ -1242,7 +1243,7 @@ export default function DealDetail() {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   
   // Track tab direction for swipe animation
-  const DEAL_TABS = ['deal-info', 'lenders', 'deal-management', 'deal-writeup', 'data-room', 'deal-space', 'communication'] as const;
+  const DEAL_TABS = ['deal-info', 'lenders', 'analysis', 'deal-management', 'deal-writeup', 'data-room', 'deal-space', 'communication'] as const;
   
   const handleTabChange = useCallback((newTab: typeof dealInfoTab) => {
     const prevIndex = DEAL_TABS.indexOf(prevTabRef.current);
@@ -3530,7 +3531,7 @@ export default function DealDetail() {
               stays frozen at the modal's bottom edge. */}
           <Tabs
             value={dealInfoTab}
-            onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}
+            onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'analysis' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}
             className={isEmbedded ? "flex-1 min-h-0 flex flex-col" : undefined}
           >
             <div
@@ -5870,6 +5871,19 @@ export default function DealDetail() {
 
                 </TabsContent>
 
+                <TabsContent value="analysis" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`analysis-${tabDirection}`}>
+                  {hasNaitivePipelineAccess ? (
+                    <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
+                      <SaaSModelTab dealId={id!} dealData={{ company: deal.company, value: deal.value, stage: deal.stage }} />
+                    </Suspense>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center min-h-[420px] rounded-lg border border-border/50 bg-card/30 px-6 py-16 text-center">
+                      <p className="text-3xl font-semibold tracking-tight text-foreground">COMING SOON!</p>
+                      <p className="mt-2 text-sm text-muted-foreground">Deal analysis is on its way.</p>
+                    </div>
+                  )}
+                </TabsContent>
+
                 {hasDealManagementAccess && (
                 <TabsContent value="deal-management" className={cn("mt-6 overflow-hidden", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-management-${tabDirection}`}>
                   <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
@@ -6004,6 +6018,14 @@ export default function DealDetail() {
                               {deal.lenders.length}
                             </Badge>
                           )}
+                        </TabsTrigger>
+                      )}
+                      {!isSimplifiedDeal && !isProjectsDeal && (
+                        <TabsTrigger
+                          value="analysis"
+                          className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-white/[0.04] shadow-none hover:text-white hover:bg-white/10 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mt-2 data-[state=active]:rounded-t-sm data-[state=active]:rounded-b-none data-[state=active]:border data-[state=active]:border-b-0 data-[state=active]:border-white/15 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_-8px_18px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18)] data-[state=active]:before:content-[''] data-[state=active]:before:absolute data-[state=active]:before:inset-x-2 data-[state=active]:before:top-0 data-[state=active]:before:h-[2px] data-[state=active]:before:rounded-full data-[state=active]:before:bg-[hsl(var(--primary))] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-bottom-1 data-[state=active]:after:h-1 data-[state=active]:after:bg-gradient-to-b data-[state=active]:after:from-slate-900 data-[state=active]:after:to-transparent"
+                        >
+                          Analysis
                         </TabsTrigger>
                       )}
                       {!isSimplifiedDeal && hasDealManagementAccess && !isProjectsDeal && (
