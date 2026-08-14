@@ -31,6 +31,7 @@ interface ContactsTableProps {
   search?: string;
   onSearchChange?: (value: string) => void;
   toolbarExtras?: React.ReactNode;
+  footer?: React.ReactNode;
   isFetching?: boolean;
 }
 
@@ -57,7 +58,7 @@ const statusColors: Record<string, string> = {
   closed: 'bg-muted text-muted-foreground',
 };
 
-export function ContactsTable({ contacts, onBulkAction, search: controlledSearch, onSearchChange, toolbarExtras, isFetching }: ContactsTableProps) {
+export function ContactsTable({ contacts, onBulkAction, search: controlledSearch, onSearchChange, toolbarExtras, footer, isFetching }: ContactsTableProps) {
   const navigate = useNavigate();
   const [localSearch, setLocalSearch] = useState('');
   const search = controlledSearch ?? localSearch;
@@ -265,8 +266,8 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
           '[&_td]:px-3 [&_td]:align-middle [&_td]:border-b [&_td]:border-border/25 [&_td]:whitespace-nowrap',
           '[&_tbody_tr:last-child_td]:border-b-0',
         )}
-        style={{ height: 56 + 25 * 31 }}
       >
+        <div style={{ height: 56 + 25 * 31 }}>
         {filtered.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
             {isFetching && search.trim() ? (
@@ -435,6 +436,10 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
               );
             }}
           />
+        )}
+        </div>
+        {footer && (
+          <div className="border-t border-border/40 bg-muted/20 px-3 py-2">{footer}</div>
         )}
       </div>
 

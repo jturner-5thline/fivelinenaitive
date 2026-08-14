@@ -25,7 +25,7 @@ export function TablePagination({
   const to = Math.min((page + 1) * pageSize, totalCount);
 
   return (
-    <div className="flex items-center justify-between pt-2">
+    <div className="flex items-center justify-between">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span>
           Showing {totalCount > 0 ? from : 0}–{to} of {totalCount.toLocaleString()}
