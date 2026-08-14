@@ -302,7 +302,7 @@ export default function Contacts() {
                         onMatchModeChange={setMatchMode}
                       />
                       <Select value={quickFilter} onValueChange={handleQuickFilterChange}>
-                        <SelectTrigger className="h-9 w-[140px] shrink-0">
+                        <SelectTrigger className={cn('w-[140px]', TOOLBAR_CONTROL_CLASS)}>
                           <SelectValue placeholder="Quick filter" />
                         </SelectTrigger>
                         <SelectContent>
