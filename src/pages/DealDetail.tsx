@@ -3581,7 +3581,7 @@ export default function DealDetail() {
               at-a-glance facts to a left rail and lets the main column
               carry the content. Everything below is unchanged. */}
           <div className={cn(useContextRailLayout && "flex flex-col lg:flex-row gap-5 items-start mt-3")}>
-          {useContextRailLayout && dealInfoTab !== 'lenders' && (
+          {useContextRailLayout && dealInfoTab === 'deal-info' && (
             <div className="w-full lg:w-[210px] shrink-0 lg:sticky lg:top-4 self-start space-y-4">
               <DealContextRail
                 deal={deal}
@@ -3597,7 +3597,7 @@ export default function DealDetail() {
             useContextRailLayout && "flex-1 min-w-0 w-full",
             // Funding sources tab: rail hidden, but keep the column width
             // identical so the table only shifts left.
-            useContextRailLayout && dealInfoTab === 'lenders' && "lg:max-w-[calc(100%-230px)]",
+            useContextRailLayout && dealInfoTab !== 'deal-info' && "lg:max-w-[calc(100%-230px)]",
           )}>
           {/* Header Card */}
           <Card className={cn(
