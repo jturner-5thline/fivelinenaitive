@@ -287,6 +287,10 @@ function DealListCardRowImpl({
                 timeAgoData.tone === 'warning' && 'text-warning',
               )}
             >
+                timeAgoData.tone === 'critical' && 'text-destructive',
+                timeAgoData.tone === 'warning' && 'text-warning',
+              )}
+            >
               <Clock className="h-3 w-3" />
               {timeAgoData.text}
             </span>
