@@ -459,7 +459,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                 <span>Deal</span>
                 <span className="text-right">Amount</span>
                 <span className="text-center">Status</span>
-                <span>Stage</span>
+                <span className="text-center">Stage</span>
                 <span>Updated</span>
               </div>
             </div>
