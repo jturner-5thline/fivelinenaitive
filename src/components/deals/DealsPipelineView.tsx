@@ -354,6 +354,37 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
   const [overId, setOverId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Soft fade on the horizontal scroll edges (only where there is more to scroll)
+  const scrollWrapRef = useRef<HTMLDivElement | null>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+
+  useEffect(() => {
+    const wrap = scrollWrapRef.current;
+    const viewport = wrap?.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
+    if (!viewport) return;
+    const update = () => {
+      const { scrollLeft, scrollWidth, clientWidth } = viewport;
+      setEdges({
+        left: scrollLeft > 4,
+        right: scrollLeft + clientWidth < scrollWidth - 4,
+      });
+    };
+    update();
+    viewport.addEventListener('scroll', update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(viewport);
+    return () => {
+      viewport.removeEventListener('scroll', update);
+      ro.disconnect();
+    };
+  }, [isFullscreen, deals.length]);
+
+  const fadeWidth = 48;
+  const edgeMask =
+    edges.left || edges.right
+      ? `linear-gradient(to right, transparent 0px, #000 ${edges.left ? fadeWidth : 0}px, #000 calc(100% - ${edges.right ? fadeWidth : 0}px), transparent 100%)`
+      : undefined;
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -481,6 +512,14 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
+      <div
+        ref={scrollWrapRef}
+        className="relative w-full"
+        style={{
+          WebkitMaskImage: edgeMask,
+          maskImage: edgeMask,
+        }}
+      >
       <ScrollArea className="w-full" viewportClassName="overflow-x-auto">
         <div className="flex gap-2 pb-0 min-w-max">
           {stages.map((stage) => {
@@ -509,6 +548,7 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
         </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
+      </div>
 
       <DragOverlay>
         {activeDeal ? (
