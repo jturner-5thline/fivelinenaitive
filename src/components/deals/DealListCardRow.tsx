@@ -209,7 +209,7 @@ function DealListCardRowImpl({
                 {engagementLabel && (
                   <Badge
                     variant="outline"
-                    className="text-[10px] uppercase tracking-wider rounded-md whitespace-nowrap border-white/10 bg-white/[0.03] text-muted-foreground"
+                    className="px-1.5 py-0 text-[8px] leading-[14px] uppercase tracking-wider rounded whitespace-nowrap border-white/10 bg-white/[0.03] text-muted-foreground"
                   >
                     {engagementLabel}
                   </Badge>
@@ -219,13 +219,13 @@ function DealListCardRowImpl({
                     <TooltipTrigger asChild>
                       {managerInitials ? (
                         <span
-                          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,.18),0_1px_2px_rgba(0,0,0,.4)]"
+                          className="inline-flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded text-[8px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,.18),0_1px_2px_rgba(0,0,0,.4)]"
                           style={{ background: 'linear-gradient(135deg, #9b6fd4, #5f3f9e)' }}
                         >
                           {managerInitials}
                         </span>
                       ) : (
-                        <User className="h-3.5 w-3.5 text-muted-foreground" />
+                        <User className="h-2.5 w-2.5 text-muted-foreground" />
                       )}
                     </TooltipTrigger>
                     <TooltipContent>
