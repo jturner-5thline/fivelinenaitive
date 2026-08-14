@@ -330,7 +330,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
             4. The right column is also self-start with a fixed visual height
                so a missing stage pill does not cause baseline drift.
         */}
-        <div className="px-5 pt-4 pb-5 flex flex-col flex-1 gap-3">
+        <div className="px-5 pt-4 pb-5 flex flex-col flex-1 gap-2">
 
           {/* ── ROW 1: Name | inline notification bell + menu ── */}
           <div className="flex items-start justify-between gap-2 min-w-0">
@@ -408,17 +408,15 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
           </div>
 
           {/* ── ROW 2: amount | type/engagement tags ── */}
-          <div className="flex items-end justify-between gap-3 min-w-0">
-            <div className="flex flex-col gap-0.5 min-w-0">
-              <span
-                className="text-[28px] font-bold leading-none tracking-tight tabular-nums whitespace-nowrap"
-                style={{ color: '#f8fbff' }}
-              >
-                {formatCurrencyValue(deal.dealClass === 'finserv' ? (deal.mrr ?? 0) : deal.value)}
-              </span>
-            </div>
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 min-w-0">
+            <span
+              className="text-[28px] font-bold leading-none tracking-tight tabular-nums whitespace-nowrap"
+              style={{ color: '#f8fbff' }}
+            >
+              {formatCurrencyValue(deal.dealClass === 'finserv' ? (deal.mrr ?? 0) : deal.value)}
+            </span>
             {!compact && (deal.engagementType || deal.exclusivity || dealTypeLabels.length > 0) && (
-              <div className="flex items-center justify-end gap-1.5 flex-wrap min-w-0 pb-0.5">
+              <div className="flex items-center justify-end gap-1.5 flex-wrap min-w-0">
                 {deal.engagementType && ENGAGEMENT_TYPE_CONFIG[deal.engagementType] && (
                   <Badge variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-white/[0.03] border-white/10" style={{ color: 'rgba(222, 234, 250, 0.92)' }}>
                     {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
