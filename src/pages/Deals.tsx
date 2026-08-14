@@ -199,7 +199,7 @@ export default function Dashboard() {
       el.removeEventListener('scroll', update);
       ro.disconnect();
     };
-  }, [viewMode, deals.length]);
+  }, [viewMode]);
   const boardFadeWidth = 48;
   const boardEdgeMask =
     boardEdges.top || boardEdges.bottom
