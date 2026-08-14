@@ -639,7 +639,7 @@ export default function Dashboard() {
         OUTSIDE the `space-y-*` rhythm of the main page sections.
       */}
       <WorkspacePage
-        mainClassName="flex min-h-0 flex-col pb-0"
+        mainClassName="flex min-h-0 flex-col pb-0 pt-2"
         contentClassName="flex min-h-0 flex-1 flex-col space-y-0"
         beforeContent={
           <>
