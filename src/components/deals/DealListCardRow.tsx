@@ -281,10 +281,10 @@ function DealListCardRowImpl({
           )}
           {!compact && (
             <span
-              className="min-w-0 truncate text-xs text-muted-foreground justify-self-start"
-              title={statusNote || undefined}
+              className="min-w-0 w-full text-left text-xs leading-snug text-muted-foreground justify-self-start whitespace-pre-line break-words line-clamp-3"
+              title={cleanStatusNote(statusNote) || undefined}
             >
-              {statusNote || '—'}
+              {cleanStatusNote(statusNote) || '—'}
             </span>
           )}
           {!compact && (
