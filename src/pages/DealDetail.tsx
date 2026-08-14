@@ -1042,6 +1042,7 @@ export default function DealDetail() {
   // Slot element in the left rail where the Deal Information panel is
   // portaled when the context-rail layout is active.
   const [railPanelSlot, setRailPanelSlot] = useState<HTMLDivElement | null>(null);
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
 
   // Projects pipeline (currently Blount Capital only) is a fully siloed
   // pipeline: only Deal Info + Data Room tabs are visible/functional, no
