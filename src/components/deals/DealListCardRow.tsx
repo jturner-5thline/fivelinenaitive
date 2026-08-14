@@ -12,7 +12,6 @@ import {
   UserPlus,
   Bell,
   ArrowRightLeft,
-  Building2,
 } from 'lucide-react';
 import {
   differenceInMinutes,
@@ -160,15 +159,10 @@ function DealListCardRowImpl({
         </div>
       )}
 
-      {!compact && (
-        <div className="p-2 bg-primary/10 rounded-lg shrink-0">
-          <Building2 className="h-5 w-5 text-primary" />
-        </div>
-      )}
-
       <div className="flex-1 min-w-0">
-        {/* Top row: warning/status icons + name + deal size + status badge */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Top row (table columns): name | amount | status */}
+        <div className="grid grid-cols-[minmax(0,1fr)_120px_150px] items-center gap-3">
+          <div className="flex items-center gap-2 min-w-0">
           {!compact && timeAgoData.isStale && (
             <TooltipProvider>
               <Tooltip>
@@ -223,19 +217,6 @@ function DealListCardRowImpl({
           <h3 className="font-medium truncate text-foreground">
             {deal.company || 'Untitled deal'}
           </h3>
-          <span className="font-medium text-foreground tabular-nums shrink-0">
-            {formatCurrencyValue(deal.value)}
-          </span>
-          {!compact && (
-            <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-              <InlineStatusDropdown
-                dealId={deal.id}
-                status={deal.status}
-                onStatusChange={onStatusChange}
-                className="text-foreground dark:text-[hsl(240,25%,5%)] whitespace-nowrap"
-              />
-            </div>
-          )}
           {!compact && lateMilestoneCount > 0 && (
             <Badge
               variant="outline"
@@ -244,25 +225,26 @@ function DealListCardRowImpl({
               {lateMilestoneCount} late
             </Badge>
           )}
+          </div>
+          <span className="font-medium text-foreground tabular-nums text-right">
+            {formatCurrencyValue(deal.value)}
+          </span>
+          {!compact && (
+            <div onClick={(e) => e.stopPropagation()} className="justify-self-start">
+              <InlineStatusDropdown
+                dealId={deal.id}
+                status={deal.status}
+                onStatusChange={onStatusChange}
+                className="text-foreground dark:text-[hsl(240,25%,5%)] whitespace-nowrap"
+              />
+            </div>
+          )}
         </div>
 
-        {/* Bottom row: manager · stage · deal type · updated */}
+        {/* Bottom row (table columns): stage | manager initials | type · updated */}
         {!compact && (
-        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            {managerInitials ? (
-              <span
-                className="inline-flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,.18),0_1px_2px_rgba(0,0,0,.4)]"
-                style={{ background: 'linear-gradient(135deg, #9b6fd4, #5f3f9e)' }}
-              >
-                {managerInitials}
-              </span>
-            ) : (
-              <User className="h-3.5 w-3.5" />
-            )}
-            <span className="truncate max-w-[140px]">{deal.manager || 'No manager'}</span>
-          </span>
-          <div onClick={(e) => e.stopPropagation()}>
+        <div className="mt-1 grid grid-cols-[minmax(0,1fr)_120px_150px] items-center gap-3 text-sm text-muted-foreground">
+          <div className="min-w-0 flex items-center" onClick={(e) => e.stopPropagation()}>
             <InlineStageDropdown
               dealId={deal.id}
               stage={deal.stage}
@@ -272,6 +254,28 @@ function DealListCardRowImpl({
               }
             />
           </div>
+          <div className="flex justify-end">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {managerInitials ? (
+                    <span
+                      className="inline-flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,.18),0_1px_2px_rgba(0,0,0,.4)]"
+                      style={{ background: 'linear-gradient(135deg, #9b6fd4, #5f3f9e)' }}
+                    >
+                      {managerInitials}
+                    </span>
+                  ) : (
+                    <User className="h-3.5 w-3.5" />
+                  )}
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{deal.manager || 'No manager'}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <div className="flex items-center gap-2 min-w-0">
           {engagementLabel && (
             <Badge
               variant="outline"
@@ -292,6 +296,7 @@ function DealListCardRowImpl({
               {timeAgoData.text}
             </span>
           )}
+          </div>
         </div>
         )}
       </div>
