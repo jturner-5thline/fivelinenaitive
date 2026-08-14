@@ -54,6 +54,24 @@ import { cn } from '@/lib/utils';
 export const DEAL_LIST_GRID =
   'grid grid-cols-[minmax(100px,182px)_120px_112px_158px_minmax(120px,1.4fr)_minmax(0,1fr)] items-center gap-2';
 
+/** Strip HTML/markup from status note text and normalize whitespace. */
+function cleanStatusNote(raw?: string): string {
+  if (!raw) return '';
+  return raw
+    .replace(/<\s*(br|\/p|\/li|\/div)\s*\/?\s*>/gi, '\n')
+    .replace(/<\s*li[^>]*>/gi, '• ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{2,}/g, '\n')
+    .trim();
+}
+
 interface DealListCardRowProps {
   deal: Deal;
   onStatusChange: (dealId: string, newStatus: DealStatus | null) => void;
@@ -281,10 +299,10 @@ function DealListCardRowImpl({
           )}
           {!compact && (
             <span
-              className="min-w-0 truncate text-xs text-muted-foreground justify-self-start"
-              title={statusNote || undefined}
+              className="min-w-0 w-full text-left text-xs leading-snug text-muted-foreground justify-self-start whitespace-pre-line break-words line-clamp-3"
+              title={cleanStatusNote(statusNote) || undefined}
             >
-              {statusNote || '—'}
+              {cleanStatusNote(statusNote) || '—'}
             </span>
           )}
           {!compact && (
