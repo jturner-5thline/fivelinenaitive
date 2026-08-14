@@ -494,6 +494,25 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
+      <div className="flex items-center justify-end pb-2">
+        <Select value={sortMode} onValueChange={(v) => setSortMode(v as PipelineSortMode)}>
+          <SelectTrigger
+            className="h-8 w-[210px] gap-1.5 text-xs"
+            aria-label="Sort deals within each stage"
+          >
+            <ArrowUpDown className="h-3.5 w-3.5 opacity-70 shrink-0" />
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent align="end">
+            {(Object.keys(PIPELINE_SORT_LABELS) as PipelineSortMode[]).map((mode) => (
+              <SelectItem key={mode} value={mode} className="text-xs">
+                {PIPELINE_SORT_LABELS[mode]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <ScrollArea className="w-full" viewportClassName="overflow-x-auto">
         <div className="flex gap-4 pb-0 min-w-max">
           {stages.map((stage) => {
