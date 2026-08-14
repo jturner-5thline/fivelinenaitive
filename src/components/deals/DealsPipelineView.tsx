@@ -474,6 +474,7 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
                 flexNotificationCounts={flexNotificationCounts}
                 activeDealId={activeDealId}
                 isOver={overId === stage.id}
+                isDraggingAny={!!activeDealId}
                 fullscreen={fullscreen}
               />
             );
