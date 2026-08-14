@@ -32,6 +32,8 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { CrmUpdateQueueButton } from '@/components/crm/CrmUpdateQueueButton';
 import { exportContactsToXlsx } from '@/lib/contactsXlsxExport';
 import { useCompany } from '@/hooks/useCompany';
+import { cn } from '@/lib/utils';
+import { TOOLBAR_CONTROL_CLASS } from '@/lib/toolbarControlClass';
 
 export default function Contacts() {
   const [showCreate, setShowCreate] = useState(false);
@@ -302,7 +304,7 @@ export default function Contacts() {
                         onMatchModeChange={setMatchMode}
                       />
                       <Select value={quickFilter} onValueChange={handleQuickFilterChange}>
-                        <SelectTrigger className="h-9 w-[140px] shrink-0">
+                        <SelectTrigger className={cn('w-[140px]', TOOLBAR_CONTROL_CLASS)}>
                           <SelectValue placeholder="Quick filter" />
                         </SelectTrigger>
                         <SelectContent>

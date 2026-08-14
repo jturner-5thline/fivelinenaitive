@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useTriStateSort } from '@/hooks/useTriStateSort';
 import { SortableHeader } from '@/components/ui/sortable-header';
+import { TOOLBAR_CONTROL_CLASS } from '@/lib/toolbarControlClass';
 
 interface ContactsTableProps {
   contacts: Contact[];
@@ -214,7 +215,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
         </div>
         {toolbarExtras}
         <Select value={contactTypeFilter} onValueChange={setContactTypeFilter}>
-          <SelectTrigger className="w-[120px] h-9 shrink-0">
+          <SelectTrigger className={cn('w-[120px]', TOOLBAR_CONTROL_CLASS)}>
             <SelectValue placeholder="Contact Type" />
           </SelectTrigger>
           <SelectContent>
@@ -223,7 +224,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
           </SelectContent>
         </Select>
         <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-          <SelectTrigger className="w-[125px] h-9 shrink-0">
+          <SelectTrigger className={cn('w-[125px]', TOOLBAR_CONTROL_CLASS)}>
             <SelectValue placeholder="Owner" />
           </SelectTrigger>
           <SelectContent>
@@ -236,7 +237,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
         {selectedIds.size > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="h-9 shrink-0">
                 Bulk Actions ({selectedIds.size}) <ChevronDown className="ml-1 h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>

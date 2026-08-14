@@ -22,6 +22,7 @@ import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
 import { BulkAssignOwnerDialog } from '@/components/crm/BulkAssignOwnerDialog';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { MultiSelectFilter } from '@/components/deals/MultiSelectFilter';
+import { TOOLBAR_CONTROL_CLASS } from '@/lib/toolbarControlClass';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useTriStateSort } from '@/hooks/useTriStateSort';
@@ -49,10 +50,6 @@ const statusColors: Record<string, string> = {
   target: 'bg-blue-500/10 text-blue-500',
   churned: 'bg-red-500/10 text-red-500',
 };
-
-/* Matches the outline Button variant so every toolbar control shares one design */
-const TOOLBAR_CONTROL_CLASS =
-  'h-9 shrink-0 rounded-lg px-3 py-0 text-sm font-medium bg-[rgba(126,184,247,0.06)] backdrop-blur-[8px] border border-[rgba(126,184,247,0.22)] text-[#A8D0FF] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-[rgba(126,184,247,0.12)] hover:border-[rgba(126,184,247,0.4)]';
 
 export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, toolbarActions }: CrmCompaniesTableProps) {
   const navigate = useNavigate();
