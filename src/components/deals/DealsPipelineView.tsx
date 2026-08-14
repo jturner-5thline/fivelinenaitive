@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import {
@@ -18,14 +18,30 @@ import {
 import { useDraggable } from '@dnd-kit/core';
 import { Deal, DealStatus } from '@/types/deal';
 import { DealCard } from './DealCard';
+
+type PipelineSortMode = 'newest' | 'value_desc' | 'value_asc' | 'name_asc';
+const PIPELINE_SORT_STORAGE_KEY = 'deals-pipeline-stage-sort';
+const PIPELINE_SORT_LABELS: Record<PipelineSortMode, string> = {
+  newest: 'Newest first',
+  value_desc: 'Deal size: high to low',
+  value_asc: 'Deal size: low to high',
+  name_asc: 'Name: A to Z',
+};
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useFlexEngagementScores } from '@/hooks/useFlexEngagementScores';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { FileX, Minimize2 } from 'lucide-react';
+import { FileX, Minimize2, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -354,8 +370,23 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
     useSensor(KeyboardSensor)
   );
 
-  // Group deals by stage with stable sort order (created_at) to prevent
-  // card reordering when non-stage fields are updated
+  // Sort mode for cards inside each stage column (persisted per user)
+  const [sortMode, setSortMode] = useState<PipelineSortMode>(() => {
+    if (typeof window === 'undefined') return 'newest';
+    const saved = window.localStorage.getItem(PIPELINE_SORT_STORAGE_KEY);
+    return (saved as PipelineSortMode) || 'newest';
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(PIPELINE_SORT_STORAGE_KEY, sortMode);
+    } catch {
+      /* ignore quota / privacy-mode failures */
+    }
+  }, [sortMode]);
+
+  // Group deals by stage. Default sort is created_at (stable) so updates
+  // to non-stage fields don't cause visual reordering.
   const dealsByStage = useMemo(() => {
     const grouped = new Map<string, Deal[]>();
 
@@ -371,19 +402,28 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
       grouped.set(deal.stage, stageDeals);
     });
 
-    // Sort deals within each stage by created_at (stable) so updates
-    // to non-stage fields don't cause visual reordering
+    const dealAmount = (d: Deal) =>
+      Number((d.dealClass === 'finserv' ? d.mrr : d.value) ?? 0);
+
     grouped.forEach((stageDeals, stageId) => {
       stageDeals.sort((a, b) => {
-        const dateA = new Date(a.createdAt).getTime();
-        const dateB = new Date(b.createdAt).getTime();
-        return dateB - dateA; // newest first
+        switch (sortMode) {
+          case 'value_desc':
+            return dealAmount(b) - dealAmount(a);
+          case 'value_asc':
+            return dealAmount(a) - dealAmount(b);
+          case 'name_asc':
+            return (a.company || '').localeCompare(b.company || '');
+          case 'newest':
+          default:
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
       });
       grouped.set(stageId, stageDeals);
     });
 
     return grouped;
-  }, [deals, stages]);
+  }, [deals, stages, sortMode]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
@@ -454,6 +494,25 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
+      <div className="flex items-center justify-end pb-2">
+        <Select value={sortMode} onValueChange={(v) => setSortMode(v as PipelineSortMode)}>
+          <SelectTrigger
+            className="h-8 w-[210px] gap-1.5 text-xs"
+            aria-label="Sort deals within each stage"
+          >
+            <ArrowUpDown className="h-3.5 w-3.5 opacity-70 shrink-0" />
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent align="end">
+            {(Object.keys(PIPELINE_SORT_LABELS) as PipelineSortMode[]).map((mode) => (
+              <SelectItem key={mode} value={mode} className="text-xs">
+                {PIPELINE_SORT_LABELS[mode]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <ScrollArea className="w-full" viewportClassName="overflow-x-auto">
         <div className="flex gap-4 pb-0 min-w-max">
           {stages.map((stage) => {
