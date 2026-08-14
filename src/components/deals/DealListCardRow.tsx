@@ -226,19 +226,21 @@ function DealListCardRowImpl({
               {deal.company || 'Untitled deal'}
             </h3>
             <div className="mt-1 flex items-center gap-2 min-w-0">
-              <span className="font-semibold text-foreground tabular-nums text-[17px] leading-tight shrink-0">
+              <span className="font-semibold text-foreground tabular-nums text-[17px] leading-tight shrink-0 w-[84px]">
                 {formatCurrencyValue(deal.value)}
               </span>
-              {!compact && (engagementLabel || managerInitials) && (
+              {!compact && (
                 <div className="flex items-center gap-1.5 min-w-0">
-                {engagementLabel && (
+                <span className="inline-flex w-[70px] shrink-0 justify-start">
+                {engagementLabel ? (
                   <Badge
                     variant="outline"
                     className="px-1.5 py-0 text-[8px] leading-[14px] uppercase tracking-wider rounded whitespace-nowrap border-white/10 bg-white/[0.03] text-muted-foreground"
                   >
                     {engagementLabel}
                   </Badge>
-                )}
+                ) : null}
+                </span>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
