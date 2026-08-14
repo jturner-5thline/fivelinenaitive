@@ -64,16 +64,14 @@ const ACTION_CONFIG: Record<string, { icon: typeof Upload; color: string; label:
   task_removed: { icon: Trash2, color: 'text-destructive', label: 'Task Removed' },
 };
 
-const FILTER_OPTIONS = [
+const FILTER_OPTIONS: { value: string; label: string; types?: string[] }[] = [
   { value: 'all', label: 'All activity' },
-  { value: 'stage_change', label: 'Stage changes only' },
-  { value: 'file', label: 'Files' },
-  { value: 'folder', label: 'Folders' },
-  { value: 'checklist', label: 'Checklist' },
-  { value: 'deal', label: 'Deal' },
-  { value: 'call', label: 'Calls' },
-  { value: 'funding_source', label: 'Funding sources' },
-  { value: 'task', label: 'Tasks' },
+  { value: 'stage_change', label: 'Stage changes only', types: ['stage_change'] },
+  { value: 'file', label: 'Files', types: ['file', 'folder', 'checklist'] },
+  { value: 'deal', label: 'Deals', types: ['deal'] },
+  { value: 'call', label: 'Calls', types: ['call'] },
+  { value: 'funding_source', label: 'Funding Sources', types: ['funding_source'] },
+  { value: 'task', label: 'Tasks', types: ['task'] },
 ];
 
 function describeAction(entry: DealAuditEntry): string {
@@ -145,7 +143,8 @@ export function DealAuditLogPanel({ entries, unresolvedStageEntries = [], loadin
   const filtered = useMemo(() => {
     let result = entries;
     if (activeFilter !== 'all') {
-      result = result.filter(e => e.entity_type === activeFilter);
+      const types = FILTER_OPTIONS.find(o => o.value === activeFilter)?.types ?? [activeFilter];
+      result = result.filter(e => types.includes(e.entity_type));
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
