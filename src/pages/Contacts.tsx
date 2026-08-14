@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Upload, RefreshCw, Loader2, Link2, Download, Tags } from 'lucide-react';
+import { Plus, Upload, RefreshCw, Loader2, Link2, Download, Tags, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useContacts } from '@/hooks/useContacts';
 import { ContactsTable } from '@/components/contacts/ContactsTable';
@@ -159,20 +160,31 @@ export default function Contacts() {
             <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
             <div className="flex items-center gap-2">
               <CrmUpdateQueueButton />
-              <Button variant="outline" size="sm" onClick={() => setShowTaggingRules(true)}>
-                <Tags className="h-4 w-4 mr-1.5" /> Tagging Rules
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleMatchCompanies} disabled={isMatching}>
-                {isMatching ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Link2 className="h-4 w-4 mr-1.5" />}
-                Match Companies
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExport} disabled={isExporting}>
-                {isExporting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Download className="h-4 w-4 mr-1.5" />}
-                Export
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowImport(true)}>
-                <Upload className="h-4 w-4 mr-1.5" /> Import
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    {isMatching || isExporting ? (
+                      <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                    ) : null}
+                    Actions
+                    <ChevronDown className="h-4 w-4 ml-1.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onSelect={() => setShowTaggingRules(true)}>
+                    <Tags className="h-4 w-4 mr-2" /> Tagging Rules
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => handleMatchCompanies()} disabled={isMatching}>
+                    <Link2 className="h-4 w-4 mr-2" /> Match Companies
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => handleExport()} disabled={isExporting}>
+                    <Download className="h-4 w-4 mr-2" /> Export
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setShowImport(true)}>
+                    <Upload className="h-4 w-4 mr-2" /> Import
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button size="sm" onClick={() => setShowCreate(true)}>
                 <Plus className="h-4 w-4 mr-1.5" /> Add Contact
               </Button>
