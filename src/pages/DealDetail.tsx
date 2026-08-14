@@ -1225,6 +1225,8 @@ export default function DealDetail() {
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
   const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'analysis' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication'>(initialTab === 'deal-space' ? 'deal-info' : (initialTab || 'deal-info'));
+  // Activity tab now hosts both the audit/activity log and communications.
+  const [activityView, setActivityView] = useState<'activity' | 'communications'>('activity');
   const prevTabRef = useRef<typeof dealInfoTab>(dealInfoTab);
 
   // Projects deals only expose Deal Info + Data Room. If the persisted/URL
@@ -1302,6 +1304,12 @@ export default function DealDetail() {
     if (urlTab === dealInfoTab) return;
     if (urlTab === 'deal-space') return;
     const allowed = [...DEAL_TABS, 'activity-log'];
+    if (urlTab === 'communications') {
+      setActivityView('communications');
+      prevTabRef.current = 'activity-log' as typeof dealInfoTab;
+      setDealInfoTab('activity-log' as typeof dealInfoTab);
+      return;
+    }
     if (!allowed.includes(urlTab)) return;
     prevTabRef.current = urlTab as typeof dealInfoTab;
     setDealInfoTab(urlTab as typeof dealInfoTab);
@@ -5918,17 +5926,35 @@ export default function DealDetail() {
                 </TabsContent>
 
                 <TabsContent value="activity-log" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`activity-log-${tabDirection}`}>
-                  <Card className="w-full max-w-full overflow-hidden p-0" style={{ height: 'calc(100vh - 190px)' }}>
-                    <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading activity…</div>}>
-                      <DealActivityLogTab dealId={id!} />
+                  <div className="flex items-center gap-1 mb-3 p-1 rounded-md bg-white/[0.04] border border-white/10 w-fit">
+                    {(['activity', 'communications'] as const).map((view) => (
+                      <button
+                        key={view}
+                        type="button"
+                        onClick={() => setActivityView(view)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-3 h-7 rounded-sm text-[12px] font-medium transition-colors",
+                          activityView === view
+                            ? "bg-primary/15 text-primary"
+                            : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                        )}
+                      >
+                        {view === 'activity' ? <History className="h-3.5 w-3.5" /> : <Mail className="h-3.5 w-3.5" />}
+                        {view === 'activity' ? 'Activity' : 'Communications'}
+                      </button>
+                    ))}
+                  </div>
+                  {activityView === 'activity' ? (
+                    <Card className="w-full max-w-full overflow-hidden p-0" style={{ height: 'calc(100vh - 240px)' }}>
+                      <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading activity…</div>}>
+                        <DealActivityLogTab dealId={id!} />
+                      </Suspense>
+                    </Card>
+                  ) : (
+                    <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading communications…</div>}>
+                      <DealCommunicationsTab dealId={id!} />
                     </Suspense>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="communications" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`communications-${tabDirection}`}>
-                  <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading communications…</div>}>
-                    <DealCommunicationsTab dealId={id!} />
-                  </Suspense>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="crm-search" className={cn("mt-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`crm-search-${tabDirection}`}>
@@ -6041,15 +6067,6 @@ export default function DealDetail() {
                       >
                         <History className="h-3.5 w-3.5" />
                         Activity
-                      </TabsTrigger>
-                      )}
-                      {!isProjectsDeal && (
-                      <TabsTrigger
-                        value="communications"
-                        className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-white/[0.04] shadow-none hover:text-white hover:bg-white/10 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mt-2 data-[state=active]:rounded-t-sm data-[state=active]:rounded-b-none data-[state=active]:border data-[state=active]:border-b-0 data-[state=active]:border-white/15 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_-8px_18px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18)] data-[state=active]:before:content-[''] data-[state=active]:before:absolute data-[state=active]:before:inset-x-2 data-[state=active]:before:top-0 data-[state=active]:before:h-[2px] data-[state=active]:before:rounded-full data-[state=active]:before:bg-[hsl(var(--primary))] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-bottom-1 data-[state=active]:after:h-1 data-[state=active]:after:bg-gradient-to-b data-[state=active]:after:from-slate-900 data-[state=active]:after:to-transparent"
-                      >
-                        <Mail className="h-3.5 w-3.5" />
-                        Communications
                       </TabsTrigger>
                       )}
                     </TabsList>
