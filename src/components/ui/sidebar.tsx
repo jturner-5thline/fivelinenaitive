@@ -237,17 +237,16 @@ const Sidebar = React.forwardRef<
           "relative h-svh bg-transparent transition-[width] duration-150 ease-out",
           "group-data-[collapsible=offcanvas]:w-0",
           "group-data-[side=right]:rotate-180",
-          // Use effectiveState to determine width (includes hover)
-          effectiveState === "expanded"
-            ? "w-[--sidebar-width]"
-            : "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]",
+          // The spacer always reserves only the collapsed (icon-rail) width so
+          // the expanded sidebar overlays the main content instead of pushing it.
+          "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]",
         )}
         style={{ willChange: "width" }}
       />
       {/* Actual sidebar container - expands on hover */}
       <div
         className={cn(
-          "fixed top-0 bottom-0 z-10 hidden h-svh transition-[left,right,width] duration-150 ease-out md:flex",
+          "fixed top-0 bottom-0 z-30 hidden h-svh transition-[left,right,width] duration-150 ease-out md:flex",
           effectiveState === "expanded" ? "w-[--sidebar-width]" : "",
           state === "collapsed" && !isHovering
             ? variant === "floating" || variant === "inset"
@@ -265,7 +264,10 @@ const Sidebar = React.forwardRef<
           opacity: 1,
           borderRadius: 12,
           overflow: 'hidden',
-          boxShadow: 'none',
+          boxShadow:
+            effectiveState === "expanded"
+              ? '0 18px 48px rgba(0, 0, 0, 0.45)'
+              : 'none',
           filter: 'none',
           backdropFilter: 'none',
           WebkitBackdropFilter: 'none',
