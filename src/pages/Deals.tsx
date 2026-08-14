@@ -512,7 +512,10 @@ export default function Dashboard() {
 
   const handleMarkReviewed = async (dealId: string) => {
     try {
-      await updateDeal(dealId, { updatedAt: new Date().toISOString() });
+      // Staleness (the yellow ring) is derived from `notesUpdatedAt ?? updatedAt`,
+      // so marking reviewed must bump the notes timestamp too.
+      const nowIso = new Date().toISOString();
+      await updateDeal(dealId, { updatedAt: nowIso, notesUpdatedAt: nowIso } as any);
       toast({ 
         title: "Deal marked as reviewed", 
         description: "The deal's timestamp has been updated." 
