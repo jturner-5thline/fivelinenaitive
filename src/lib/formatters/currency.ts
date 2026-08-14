@@ -36,7 +36,25 @@ type TotalLike = number | { amount: number } | null | undefined;
  */
 export function formatUSDFromDollars(value: number | null | undefined): string {
   if (value === null || value === undefined || isNaN(Number(value))) return '—';
-  return formatUSD(Number(value) / 1_000);
+  const num = Number(value);
+  const abs = Math.abs(num);
+  let formatted: string;
+  if (abs >= 1_000_000_000) {
+    formatted = `$${(abs / 1_000_000_000).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}B`;
+  } else if (abs >= 1_000_000) {
+    formatted = `$${(abs / 1_000_000).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}MM`;
+  } else if (abs >= 1_000) {
+    formatted = `$${Math.round(abs / 1_000).toLocaleString('en-US')}K`;
+  } else {
+    formatted = `$${Math.round(abs).toLocaleString('en-US')}`;
+  }
+  return num < 0 ? `(${formatted})` : formatted;
 }
 
 export function extractAmount(value: TotalLike): number | null {
