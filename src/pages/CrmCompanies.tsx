@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Upload, Building2, Loader2, RefreshCw, Download, Search, X } from 'lucide-react';
+import { Plus, Upload, Building2, Loader2, RefreshCw, Download, Search, X, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCrmCompaniesInfinite } from '@/hooks/useCrmCompanies';
