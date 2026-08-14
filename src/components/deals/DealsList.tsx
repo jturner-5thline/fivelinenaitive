@@ -457,7 +457,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
               <span className="h-4 w-4 shrink-0" aria-hidden />
               <div className={cn(DEAL_LIST_GRID, 'flex-1 min-w-0')}>
                 <span>Deal</span>
-                <span className="text-right">Amount</span>
+                <span className="text-center">Amount</span>
                 <span className="text-center">Status</span>
                 <span className="text-center">Stage</span>
                 <span>Updated</span>
