@@ -407,27 +407,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
             </div>
           </div>
 
-          {/* ── ROW 2: Status pill + Stage pill (inline pills row) ── */}
-          {!hideStatus && (
-            <div className="flex items-center gap-2 flex-wrap min-w-0">
-              <InlineStatusDropdown
-                dealId={deal.id}
-                status={deal.status}
-                onStatusChange={onStatusChange}
-              />
-              {!compact && (
-                <InlineStageDropdown
-                  dealId={deal.id}
-                  stage={deal.stage}
-                  pipelineId={deal.pipelineId}
-                  dealName={deal.company}
-                  onStageChange={onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))}
-                />
-              )}
-            </div>
-          )}
-
-          {/* ── ROW 3: "Deal size" label + value | type/engagement tags ── */}
+          {/* ── ROW 2: "Deal size" label + value | type/engagement tags ── */}
           <div className="flex items-end justify-between gap-3 min-w-0">
             <div className="flex flex-col gap-0.5 min-w-0">
               <span className="text-[11px] font-medium uppercase tracking-wide" style={{ color: 'rgba(180, 198, 224, 0.75)' }}>
@@ -460,6 +440,26 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
               </div>
             )}
           </div>
+
+          {/* ── ROW 3: Status pill + Stage pill (inline pills row) ── */}
+          {!hideStatus && (
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <InlineStatusDropdown
+                dealId={deal.id}
+                status={deal.status}
+                onStatusChange={onStatusChange}
+              />
+              {!compact && (
+                <InlineStageDropdown
+                  dealId={deal.id}
+                  stage={deal.stage}
+                  pipelineId={deal.pipelineId}
+                  dealName={deal.company}
+                  onStageChange={onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))}
+                />
+              )}
+            </div>
+          )}
 
           {/* Migrated + FLEx badges row */}
           {(deal.migratedFromPersonal || (flexEngagement && flexEngagement.level !== "none")) && (
