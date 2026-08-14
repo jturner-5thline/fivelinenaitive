@@ -624,7 +624,7 @@ export default function DealDetail() {
     try { window.sessionStorage.removeItem(EMBEDDED_TAB_KEY); } catch {}
   }
   const initialTab = (isEmbeddedEarly ? null : searchParams.get('tab')) as
-    | 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication' | null;
+    | 'deal-info' | 'lenders' | 'analysis' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication' | null;
   const { getLenderNames, getLenderDetails } = useLenders();
   const { lenders: masterLenders, loading: masterLendersLoading, loadingMore: masterLendersLoadingMore } = useMasterLenders({ eagerAll: true });
   const { stages: configuredStages, substages: configuredSubstages, substagesEnabled, passReasons, getTrackingStatusConfig, stageGroups } = useLenderStages();
@@ -1226,7 +1226,7 @@ export default function DealDetail() {
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
-  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication'>((initialTab === 'deal-space' && !hasDealSpaceAccess) ? 'deal-info' : (initialTab || 'deal-info'));
+  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'analysis' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication'>((initialTab === 'deal-space' && !hasDealSpaceAccess) ? 'deal-info' : (initialTab || 'deal-info'));
   const prevTabRef = useRef<typeof dealInfoTab>(dealInfoTab);
 
   // Projects deals only expose Deal Info + Data Room. If the persisted/URL
@@ -3530,7 +3530,7 @@ export default function DealDetail() {
               stays frozen at the modal's bottom edge. */}
           <Tabs
             value={dealInfoTab}
-            onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}
+            onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'analysis' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}
             className={isEmbedded ? "flex-1 min-h-0 flex flex-col" : undefined}
           >
             <div
