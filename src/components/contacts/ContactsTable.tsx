@@ -436,6 +436,10 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
             }}
           />
         )}
+        </div>
+        {footer && (
+          <div className="border-t border-border/40 bg-muted/20 px-3 py-2">{footer}</div>
+        )}
       </div>
 
       <p className="text-xs text-muted-foreground">{filtered.length} contact{filtered.length !== 1 ? 's' : ''}</p>
