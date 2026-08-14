@@ -275,7 +275,7 @@ function VirtualizedStageDealsImpl({
     >
       <div
         style={{
-          height: virtualizer.getTotalSize(),
+          height: virtualizer.getTotalSize() + 12,
           position: 'relative',
           width: '100%',
         }}
@@ -283,7 +283,7 @@ function VirtualizedStageDealsImpl({
       >
         {isOver && isDraggingAny ? (
           <div
-            className="absolute left-3 right-3 top-0 z-10 h-1.5 rounded-full bg-primary shadow-[0_0_12px_hsl(var(--primary)/0.6)] animate-pulse"
+            className="absolute left-3 right-3 top-3 z-10 h-1.5 rounded-full bg-primary shadow-[0_0_12px_hsl(var(--primary)/0.6)] animate-pulse"
             aria-hidden
           />
         ) : null}
@@ -300,7 +300,7 @@ function VirtualizedStageDealsImpl({
                 top: 0,
                 left: 0,
                 width: '100%',
-                transform: `translateY(${vItem.start}px)`,
+                transform: `translateY(${vItem.start + 12}px)`,
                 paddingLeft: 12,
                 paddingRight: 12,
                 paddingBottom: 12,
