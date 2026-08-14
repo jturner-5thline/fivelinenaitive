@@ -144,8 +144,6 @@ const DealEmailsTab = lazy(lazyRetry(() => import('@/components/deal/DealEmailsT
 const FloatingDealAssistant = lazy(lazyRetry(() => import('@/components/deals/FloatingDealAssistant').then(m => ({ default: m.FloatingDealAssistant }))));
 import { DealDetailSideNavigation } from '@/components/deal/DealDetailSideNavigation';
 
-const loadDealSpaceTab = lazyRetry(() => import('@/components/deal/DealSpaceTab').then(m => ({ default: m.DealSpaceTab })));
-const DealSpaceTab = lazy(loadDealSpaceTab);
 const SaaSModelTab = lazy(lazyRetry(() => import('@/components/deal/saas-model/SaaSModelTab').then(m => ({ default: m.SaaSModelTab }))));
 const DealPanelReorderDialog = lazy(lazyRetry(() => import('@/components/deal/DealPanelReorderDialog').then(m => ({ default: m.DealPanelReorderDialog }))));
 const DealMemoDialog = lazy(lazyRetry(() => import('@/components/deal/DealMemoDialog').then(m => ({ default: m.DealMemoDialog }))));
@@ -709,7 +707,6 @@ export default function DealDetail() {
     const prefetch = () => {
       void loadLendersKanban();
       void loadDealManagementTab();
-      void loadDealSpaceTab();
       void loadDataRoomV2();
       void loadVdrShell();
       void loadDealActivityLogTab();
@@ -1227,7 +1224,7 @@ export default function DealDetail() {
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
-  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'analysis' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication'>((initialTab === 'deal-space' && !hasDealSpaceAccess) ? 'deal-info' : (initialTab || 'deal-info'));
+  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'analysis' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication'>(initialTab === 'deal-space' ? 'deal-info' : (initialTab || 'deal-info'));
   const prevTabRef = useRef<typeof dealInfoTab>(dealInfoTab);
 
   // Projects deals only expose Deal Info + Data Room. If the persisted/URL
@@ -1303,7 +1300,7 @@ export default function DealDetail() {
     const urlTab = searchParams.get('tab');
     if (!urlTab) return;
     if (urlTab === dealInfoTab) return;
-    if (urlTab === 'deal-space' && !hasDealSpaceAccess) return;
+    if (urlTab === 'deal-space') return;
     const allowed = [...DEAL_TABS, 'activity-log'];
     if (!allowed.includes(urlTab)) return;
     prevTabRef.current = urlTab as typeof dealInfoTab;
@@ -3984,7 +3981,7 @@ export default function DealDetail() {
                       <DealAskAiQuickBar
                         dealId={id}
                         dealName={deal?.name || deal?.company}
-                        onOpenDealSpace={() => handleTabChange('deal-space')}
+                        onOpenDealSpace={() => handleTabChange('deal-info')}
                       />
                     </div>
                   )}
@@ -5945,23 +5942,6 @@ export default function DealDetail() {
                   </Suspense>
                 </TabsContent>
 
-                {hasDealSpaceAccess && (
-                <TabsContent value="deal-space" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-space-${tabDirection}`}>
-                  <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
-                  <DealSpaceTab dealId={id!} dealData={{
-                    company: deal.company,
-                    value: deal.value,
-                    stage: deal.stage,
-                    status: deal.status,
-                    deal_type: deal.dealTypes?.[0],
-                    notes: deal.notes,
-                    narrative: deal.narrative,
-                    lenders: deal.lenders?.map(l => ({ name: l.name, stage: l.stage })),
-                    milestones: dbMilestones?.map(m => ({ title: m.title, completed: m.completed })),
-                  }} />
-                  </Suspense>
-                </TabsContent>
-                )}
 
                 </div>{/* close Main Content div */}
               </div>{/* close Main Content Grid div */}
@@ -5992,20 +5972,12 @@ export default function DealDetail() {
                       className="pointer-events-auto inline-flex h-auto items-center justify-start rounded-sm bg-gradient-to-b from-slate-800/95 to-slate-950 backdrop-blur-xl p-0 gap-0 border border-white/10 border-l-0 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.75),inset_0_1px_0_0_rgba(255,255,255,0.07)] max-w-full overflow-x-visible overflow-y-visible scrollbar-none [&>button+button]:border-l [&>button+button]:border-white/10"
                       style={{ scrollbarWidth: 'none' }}
                     >
-                      {hasDealSpaceAccess && !isSimplifiedDeal && !isProjectsDeal && (
-                        <TabsTrigger
-                          value="deal-space"
-                          className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-white/[0.04] shadow-none hover:text-white hover:bg-white/10 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mt-2 data-[state=active]:rounded-t-sm data-[state=active]:rounded-b-none data-[state=active]:border data-[state=active]:border-b-0 data-[state=active]:border-white/15 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_-8px_18px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18)] data-[state=active]:before:content-[''] data-[state=active]:before:absolute data-[state=active]:before:inset-x-2 data-[state=active]:before:top-0 data-[state=active]:before:h-[2px] data-[state=active]:before:rounded-full data-[state=active]:before:bg-[hsl(var(--primary))] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-bottom-1 data-[state=active]:after:h-1 data-[state=active]:after:bg-gradient-to-b data-[state=active]:after:from-slate-900 data-[state=active]:after:to-transparent"
-                        >
-                          <Sparkles className="h-3.5 w-3.5" />
-                          Deal Space
-                        </TabsTrigger>
-                      )}
                       <TabsTrigger
                         value="deal-info"
-                        className="relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-white/[0.04] shadow-none hover:text-white hover:bg-white/10 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mt-2 data-[state=active]:rounded-t-sm data-[state=active]:rounded-b-none data-[state=active]:border data-[state=active]:border-b-0 data-[state=active]:border-white/15 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_-8px_18px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18)] data-[state=active]:before:content-[''] data-[state=active]:before:absolute data-[state=active]:before:inset-x-2 data-[state=active]:before:top-0 data-[state=active]:before:h-[2px] data-[state=active]:before:rounded-full data-[state=active]:before:bg-[hsl(var(--primary))] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-bottom-1 data-[state=active]:after:h-1 data-[state=active]:after:bg-gradient-to-b data-[state=active]:after:from-slate-900 data-[state=active]:after:to-transparent"
+                        className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-white/[0.04] shadow-none hover:text-white hover:bg-white/10 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mt-2 data-[state=active]:rounded-t-sm data-[state=active]:rounded-b-none data-[state=active]:border data-[state=active]:border-b-0 data-[state=active]:border-white/15 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_-8px_18px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18)] data-[state=active]:before:content-[''] data-[state=active]:before:absolute data-[state=active]:before:inset-x-2 data-[state=active]:before:top-0 data-[state=active]:before:h-[2px] data-[state=active]:before:rounded-full data-[state=active]:before:bg-[hsl(var(--primary))] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-bottom-1 data-[state=active]:after:h-1 data-[state=active]:after:bg-gradient-to-b data-[state=active]:after:from-slate-900 data-[state=active]:after:to-transparent"
                       >
-                        Deal Info
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Deal Space
                       </TabsTrigger>
                       {!isSimplifiedDeal && !isProjectsDeal && (
                         <TabsTrigger
@@ -7252,7 +7224,7 @@ export default function DealDetail() {
                 // Trigger memo dialog - handled by existing button
                 break;
               case 'ask-ai':
-                handleTabChange('deal-space');
+                handleTabChange('deal-info');
                 break;
               case 'export-report':
                 setShowStatusReportPreview(true);
@@ -7266,7 +7238,7 @@ export default function DealDetail() {
               case 'ai-summarize':
               case 'ai-next-steps':
               case 'ai-risks':
-                handleTabChange('deal-space');
+                handleTabChange('deal-info');
                 break;
             }
           }}
