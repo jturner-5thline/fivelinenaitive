@@ -201,6 +201,14 @@ interface VirtualizedStageDealsProps {
   activeDealId: string | null;
 }
 
+/**
+ * Shared height for every stage column so all columns end on the same line
+ * and leave a consistent gap above the viewport bottom on any screen size.
+ * `dvh` keeps mobile browser chrome from clipping the last cards.
+ */
+const STAGE_COLUMN_HEIGHT =
+  'h-[calc(100dvh-260px)] max-h-[calc(100dvh-260px)] min-h-[280px]';
+
 function VirtualizedStageDealsImpl({
   deals,
   isOver,
@@ -231,8 +239,9 @@ function VirtualizedStageDealsImpl({
     return (
       <div
         className={cn(
-          'min-h-[400px] p-3',
-          fullscreen ? 'h-[calc(92vh-120px)]' : 'h-[calc(100vh-260px)]',
+          'p-3',
+          STAGE_COLUMN_HEIGHT,
+          fullscreen && 'h-[calc(92dvh-120px)] max-h-[calc(92dvh-120px)]',
         )}
       >
         <div
@@ -253,8 +262,9 @@ function VirtualizedStageDealsImpl({
     <div
       ref={scrollRef}
       className={cn(
-        'min-h-[400px] overflow-y-auto overflow-x-hidden',
-        fullscreen ? 'h-[calc(92vh-120px)]' : 'h-[calc(100vh-260px)]',
+        'overflow-y-auto overflow-x-hidden',
+        STAGE_COLUMN_HEIGHT,
+        fullscreen && 'h-[calc(92dvh-120px)] max-h-[calc(92dvh-120px)]',
       )}
     >
       <div
