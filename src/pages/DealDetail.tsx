@@ -1304,6 +1304,12 @@ export default function DealDetail() {
     if (urlTab === dealInfoTab) return;
     if (urlTab === 'deal-space') return;
     const allowed = [...DEAL_TABS, 'activity-log'];
+    if (urlTab === 'communications') {
+      setActivityView('communications');
+      prevTabRef.current = 'activity-log' as typeof dealInfoTab;
+      setDealInfoTab('activity-log' as typeof dealInfoTab);
+      return;
+    }
     if (!allowed.includes(urlTab)) return;
     prevTabRef.current = urlTab as typeof dealInfoTab;
     setDealInfoTab(urlTab as typeof dealInfoTab);
