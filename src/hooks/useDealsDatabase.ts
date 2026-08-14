@@ -848,7 +848,11 @@ export function useDealsDatabase() {
               // so surfaces that read `notesUpdatedAt` (deal tile / list row /
               // detail "X Min. Ago") reflect the fresh status-note update
               // immediately, without waiting for a refetch.
-              ...(updates.notes !== undefined ? { notesUpdatedAt: nowIso } : {}),
+              ...(updates.notes !== undefined
+                ? { notesUpdatedAt: nowIso }
+                : (updates as any).notesUpdatedAt !== undefined
+                  ? { notesUpdatedAt: (updates as any).notesUpdatedAt }
+                  : {}),
             }
           : deal
       )
