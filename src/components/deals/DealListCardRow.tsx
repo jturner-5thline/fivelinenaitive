@@ -52,7 +52,7 @@ import { cn } from '@/lib/utils';
 
 /** Shared column template so the header row in DealsList stays aligned. */
 export const DEAL_LIST_GRID =
-  'grid grid-cols-[minmax(100px,182px)_120px_112px_158px_minmax(0,1fr)] items-center gap-2';
+  'grid grid-cols-[minmax(100px,182px)_120px_112px_158px_minmax(120px,1.4fr)_minmax(0,1fr)] items-center gap-2';
 
 interface DealListCardRowProps {
   deal: Deal;
@@ -64,6 +64,8 @@ interface DealListCardRowProps {
   notificationCount?: number;
   isSelected?: boolean;
   onToggleSelect?: (dealId: string) => void;
+  /** Latest status note text for this deal. */
+  statusNote?: string;
   /** Hide secondary metadata (fee, hours, dates) when the detail panel is open. */
   compact?: boolean;
 }
@@ -77,6 +79,7 @@ function DealListCardRowImpl({
   notificationCount = 0,
   isSelected,
   onToggleSelect,
+  statusNote,
   compact = false,
 }: DealListCardRowProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
@@ -275,6 +278,14 @@ function DealListCardRowImpl({
                 }
               />
             </div>
+          )}
+          {!compact && (
+            <span
+              className="min-w-0 truncate text-xs text-muted-foreground justify-self-start"
+              title={statusNote || undefined}
+            >
+              {statusNote || '—'}
+            </span>
           )}
           {!compact && (
             <span
