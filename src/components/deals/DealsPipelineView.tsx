@@ -24,7 +24,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useFlexEngagementScores } from '@/hooks/useFlexEngagementScores';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { FileX, Maximize2, Minimize2 } from 'lucide-react';
+import { FileX, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -487,17 +487,6 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
   return (
     <>
       <div className="relative">
-        <div className="flex justify-end mb-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            onClick={() => setIsFullscreen(true)}
-          >
-            <Maximize2 className="h-3.5 w-3.5" />
-            Expand
-          </Button>
-        </div>
         {pipelineContent(false)}
       </div>
 
