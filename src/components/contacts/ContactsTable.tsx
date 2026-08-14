@@ -265,8 +265,8 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
           '[&_td]:px-3 [&_td]:align-middle [&_td]:border-b [&_td]:border-border/25 [&_td]:whitespace-nowrap',
           '[&_tbody_tr:last-child_td]:border-b-0',
         )}
-        style={{ height: 56 + 25 * 31 }}
       >
+        <div style={{ height: 56 + 25 * 31 }}>
         {filtered.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
             {isFetching && search.trim() ? (
