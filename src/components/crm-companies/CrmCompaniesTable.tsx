@@ -345,7 +345,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
 
   return (
     <div className="space-y-3 crm-companies-surface">
-      <div className="flex items-center gap-2 flex-nowrap w-full min-w-0">
+      <div className="sticky top-0 z-30 -mx-1 px-1 py-2 flex items-center gap-2 flex-nowrap w-full min-w-0 bg-background/85 backdrop-blur-xl rounded-lg">
         {leadingFilterSlot}
         <Select value={companyTypeFilter} onValueChange={setCompanyTypeFilter}>
           <SelectTrigger className={cn('w-[125px]', TOOLBAR_CONTROL_CLASS)}><SelectValue placeholder="Type" /></SelectTrigger>
