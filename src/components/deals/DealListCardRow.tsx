@@ -263,7 +263,7 @@ function DealListCardRowImpl({
           )}
           {!compact && (
             <div
-              className="min-w-0 flex items-center justify-self-center"
+              className="min-w-0 flex items-center justify-self-center w-[150px] [&_button]:w-full [&_button>*]:flex [&_button>*]:w-full [&_button>*]:justify-center"
               onClick={(e) => e.stopPropagation()}
             >
               <InlineStageDropdown
