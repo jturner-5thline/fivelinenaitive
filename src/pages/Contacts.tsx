@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Plus, Upload, RefreshCw, Loader2, Link2, Download, Tags, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -130,7 +130,7 @@ export default function Contacts() {
     }
   };
 
-  const handleExport = async () => {
+  const handleExport = async (format: 'xlsx' | 'csv' = 'xlsx') => {
     if (!company?.id) return;
     setIsExporting(true);
     try {
@@ -139,8 +139,10 @@ export default function Contacts() {
         quickFilter,
         advancedFilters: debouncedFilters,
         matchMode,
+        search: debouncedSearch,
+        format,
       });
-      toast.success(`Exported ${count} contacts`);
+      toast.success(`Exported ${count} contacts (${format.toUpperCase()})`);
     } catch (e: any) {
       toast.error('Export failed', { description: e.message });
     } finally {
@@ -216,9 +218,32 @@ export default function Contacts() {
                   >
                     <Link2 className="h-4 w-4 mr-2" /> Match Companies
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => handleExport()} disabled={isExporting}>
-                    <Download className="h-4 w-4 mr-2" /> Export
-                  </DropdownMenuItem>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger disabled={isExporting}>
+                      <Download className="h-4 w-4 mr-2" /> Export
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent className="w-64">
+                        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                          Uses current filters &amp; search
+                          <div className="mt-1 text-[11px] leading-snug">
+                            {[
+                              quickFilter !== 'all' ? `Tab: ${quickFilter.replace(/_/g, ' ')}` : null,
+                              normalizedSearch ? `Search: "${normalizedSearch}"` : null,
+                              advancedFilters.length ? `${advancedFilters.length} filter${advancedFilters.length > 1 ? 's' : ''} (${matchMode})` : null,
+                            ].filter(Boolean).join(' · ') || 'No filters applied'}
+                          </div>
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onSelect={() => handleExport('csv')} disabled={isExporting}>
+                          CSV (.csv)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleExport('xlsx')} disabled={isExporting}>
+                          Excel (.xlsx)
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
                   <DropdownMenuItem onSelect={() => setShowImport(true)}>
                     <Upload className="h-4 w-4 mr-2" /> Import
                   </DropdownMenuItem>
