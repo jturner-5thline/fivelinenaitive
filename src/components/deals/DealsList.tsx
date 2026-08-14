@@ -454,8 +454,8 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                 : `${sortedDeals.length} ${sortedDeals.length === 1 ? 'deal' : 'deals'}`}
             </span>
           </div>
-          <div className="rounded-lg border border-border/60 overflow-hidden">
-            <div className="flex items-center gap-3 border-b border-border bg-muted/20 px-2 py-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          <div className="deal-glass rounded-lg overflow-hidden">
+            <div className="flex items-center gap-3 border-b border-white/10 bg-white/[0.03] px-2 py-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               <span className="h-4 w-4 shrink-0" aria-hidden />
               <div className={cn(DEAL_LIST_GRID, 'flex-1 min-w-0')}>
                 <span>Deal</span>
