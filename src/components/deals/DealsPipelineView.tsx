@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import {
@@ -24,8 +24,15 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useFlexEngagementScores } from '@/hooks/useFlexEngagementScores';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { FileX, Minimize2 } from 'lucide-react';
+import { FileX, Minimize2, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
