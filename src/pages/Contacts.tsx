@@ -306,6 +306,7 @@ export default function Contacts() {
                         <SelectContent>
                           <SelectItem value="all">All contacts</SelectItem>
                           <SelectItem value="no_email">Missing email</SelectItem>
+                          <SelectItem value="missing_name">Missing name</SelectItem>
                           <SelectItem value="no_company">Missing company</SelectItem>
                           <SelectItem value="new_leads">New leads</SelectItem>
                           <SelectItem value="meeting_scheduled">Meeting scheduled</SelectItem>

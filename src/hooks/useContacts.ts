@@ -189,6 +189,11 @@ export function useContacts(params: ContactsListParams = {}) {
           case 'no_company':
             query = query.is('crm_company_id', null);
             break;
+          case 'missing_name':
+            query = query.or(
+              'first_name.is.null,first_name.eq.,last_name.is.null,last_name.eq.',
+            );
+            break;
         }
       }
 
