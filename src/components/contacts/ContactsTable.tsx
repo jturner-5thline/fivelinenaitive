@@ -507,6 +507,44 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
           }
         }}
       />
+
+      <BulkAssignOwnerDialog
+        open={bulkAssignOpen}
+        onClose={() => setBulkAssignOpen(false)}
+        count={selectedIds.size}
+        teamMembers={teamMembers}
+        isSaving={bulkBusy}
+        onConfirm={async (ownerId) => {
+          setBulkBusy(true);
+          try {
+            await Promise.all(
+              Array.from(selectedIds).map(id => updateContact.mutateAsync({ id, owner_user_id: ownerId } as any))
+            );
+            setBulkAssignOpen(false);
+            setSelectedIds(new Set());
+          } finally {
+            setBulkBusy(false);
+          }
+        }}
+      />
+
+      <DeleteConfirmDialog
+        open={bulkDeleteOpen}
+        onClose={() => setBulkDeleteOpen(false)}
+        title={`Delete ${selectedIds.size} contact${selectedIds.size === 1 ? '' : 's'}`}
+        description={`Are you sure you want to delete ${selectedIds.size} selected contact${selectedIds.size === 1 ? '' : 's'}? This will unlink all associated deals and companies.`}
+        isDeleting={bulkBusy}
+        onConfirm={async () => {
+          setBulkBusy(true);
+          try {
+            await Promise.all(Array.from(selectedIds).map(id => deleteContact.mutateAsync(id)));
+            setBulkDeleteOpen(false);
+            setSelectedIds(new Set());
+          } finally {
+            setBulkBusy(false);
+          }
+        }}
+      />
     </div>
   );
 }
