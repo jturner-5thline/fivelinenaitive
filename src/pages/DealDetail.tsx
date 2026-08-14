@@ -1026,16 +1026,10 @@ export default function DealDetail() {
 
   /**
    * Context-rail layout — redesigned deal detail (left context rail +
-   * content column). Scoped to 5th Line users and, for now, the piloted
-   * deal ("TEST DEAL 123") only. Widen this predicate to roll it out.
+   * content column). Now rolled out to every deal for every user — the
+   * previous 5th Line / "TEST DEAL 123" pilot gating has been removed.
    */
-  const CONTEXT_RAIL_DEAL_IDS = ['4ae9658e-f9f8-4fa8-8ac2-33d596c5324f'];
-  const useContextRailLayout = Boolean(
-    deal &&
-      is5thLineUser &&
-      (CONTEXT_RAIL_DEAL_IDS.includes(deal.id) ||
-        deal.company?.trim().toUpperCase() === 'TEST DEAL 123'),
-  );
+  const useContextRailLayout = Boolean(deal);
 
   // Slot element in the left rail where the Deal Information panel is
   // portaled when the context-rail layout is active.
