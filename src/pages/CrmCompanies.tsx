@@ -153,11 +153,23 @@ export default function CrmCompanies() {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-foreground">Companies</h1>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleExport} disabled={isExporting}>
-                {isExporting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Download className="h-4 w-4 mr-1.5" />}
-                Export
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowImport(true)}><Upload className="h-4 w-4 mr-1.5" /> Import</Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    {isExporting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
+                    Actions
+                    <ChevronDown className="h-4 w-4 ml-1.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem onSelect={() => handleExport()} disabled={isExporting}>
+                    <Download className="h-4 w-4 mr-2" /> Export
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setShowImport(true)}>
+                    <Upload className="h-4 w-4 mr-2" /> Import
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button size="sm" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-1.5" /> Add Company</Button>
             </div>
           </div>
