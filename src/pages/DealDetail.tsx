@@ -1243,7 +1243,7 @@ export default function DealDetail() {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   
   // Track tab direction for swipe animation
-  const DEAL_TABS = ['deal-info', 'lenders', 'deal-management', 'deal-writeup', 'data-room', 'deal-space', 'communication'] as const;
+  const DEAL_TABS = ['deal-info', 'lenders', 'analysis', 'deal-management', 'deal-writeup', 'data-room', 'deal-space', 'communication'] as const;
   
   const handleTabChange = useCallback((newTab: typeof dealInfoTab) => {
     const prevIndex = DEAL_TABS.indexOf(prevTabRef.current);
@@ -5869,6 +5869,19 @@ export default function DealDetail() {
               })()}
               </div>
 
+                </TabsContent>
+
+                <TabsContent value="analysis" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`analysis-${tabDirection}`}>
+                  {hasNaitivePipelineAccess ? (
+                    <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
+                      <SaaSModelTab dealId={id!} dealData={{ company: deal.company, value: deal.value, stage: deal.stage }} />
+                    </Suspense>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center min-h-[420px] rounded-lg border border-border/50 bg-card/30 px-6 py-16 text-center">
+                      <p className="text-3xl font-semibold tracking-tight text-foreground">COMING SOON!</p>
+                      <p className="mt-2 text-sm text-muted-foreground">Deal analysis is on its way.</p>
+                    </div>
+                  )}
                 </TabsContent>
 
                 {hasDealManagementAccess && (
