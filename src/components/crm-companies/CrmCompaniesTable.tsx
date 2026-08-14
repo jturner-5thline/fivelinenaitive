@@ -557,6 +557,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
             )}
           />
         )}
+        </div>
       </div>
       <p className="text-xs text-muted-foreground">{filtered.length} compan{filtered.length !== 1 ? 'ies' : 'y'}</p>
 
