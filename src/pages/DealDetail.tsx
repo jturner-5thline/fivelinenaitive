@@ -3227,6 +3227,21 @@ export default function DealDetail() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Open notes"
+            onClick={() => setNotesDialogOpen(true)}
+            className="relative overflow-hidden h-8 w-8 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]"
+          >
+            <StickyNote className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Notes</TooltipContent>
+      </Tooltip>
     </div>
   );
 
@@ -3550,17 +3565,6 @@ export default function DealDetail() {
                 onSave={(value) => updateDeal('value' as any, (parseCurrencyInputValue(value) ?? 0) as any)}
                 displayClassName="text-[2rem] md:text-[2.7rem] font-bold leading-none text-primary"
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-9 w-9 shrink-0 self-center"
-                title="Notes"
-                aria-label="Open notes"
-                onClick={() => setNotesDialogOpen(true)}
-              >
-                <StickyNote className="h-4 w-4" />
-              </Button>
             </div>
           )}
 
