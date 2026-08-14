@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +20,25 @@ interface DeleteConfirmDialogProps {
 }
 
 export function DeleteConfirmDialog({ open, onClose, onConfirm, title, description, isDeleting }: DeleteConfirmDialogProps) {
+  // Radix locks scroll/pointer-events on <body>; if the dialog unmounts while an
+  // async action is in flight the lock can survive and freeze the whole page.
+  useEffect(() => {
+    if (!open) {
+      const t = setTimeout(() => {
+        if (document.body.style.pointerEvents === 'none') {
+          document.body.style.pointerEvents = '';
+        }
+      }, 300);
+      return () => clearTimeout(t);
+    }
+  }, [open]);
+
+  useEffect(() => () => {
+    if (document.body.style.pointerEvents === 'none') {
+      document.body.style.pointerEvents = '';
+    }
+  }, []);
+
   return (
     <AlertDialog open={open} onOpenChange={o => !o && onClose()}>
       <AlertDialogContent>
@@ -29,7 +49,10 @@ export function DeleteConfirmDialog({ open, onClose, onConfirm, title, descripti
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={onConfirm}
+            onClick={(e) => {
+              e.preventDefault();
+              onConfirm();
+            }}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             disabled={isDeleting}
           >
