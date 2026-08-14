@@ -156,7 +156,18 @@ function DroppableStageColumnImpl({
       )}
     >
       {/* Stage Header */}
-      <div className={cn("p-3 border-b border-white/[0.06] bg-white/[0.03] rounded-t-lg transition-colors", isOver && "bg-primary/10")}>
+      <div
+        className={cn("p-3 border-b rounded-t-lg transition-colors", isOver && "bg-primary/10")}
+        style={
+          isOver
+            ? undefined
+            : {
+                background:
+                  'linear-gradient(180deg, rgba(150, 195, 245, 0.070) 0%, rgba(150, 195, 245, 0.062) 100%)',
+                borderBottomColor: 'rgba(150, 195, 245, 0.26)',
+              }
+        }
+      >
         <div className="flex items-center gap-2 min-w-0">
           <span
             className={cn(
