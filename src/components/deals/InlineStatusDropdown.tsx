@@ -13,11 +13,19 @@ import { useOptionalRequestStatusChange } from '@/components/deal/StatusChangeGa
 // Same translucent tone treatment used by the deal detail panel's
 // `DealStatusTag`, so inline list tags never diverge visually.
 const STATUS_TAG_THEME: Record<DealStatus, string> = {
-  'on-track': 'bg-teal-400/15 text-teal-300 border border-teal-400/30',
-  'at-risk': 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/20',
-  'off-track': 'bg-red-500/15 text-red-400 border border-red-500/20',
-  'on-hold': 'bg-blue-500/15 text-blue-400 border border-blue-500/20',
-  'archived': 'bg-orange-500/15 text-orange-400 border border-orange-500/20',
+  'on-track': '!bg-teal-400/15 !text-teal-300 border !border-teal-400/30',
+  'at-risk': '!bg-yellow-500/15 !text-yellow-400 border !border-yellow-500/25',
+  'off-track': '!bg-red-500/15 !text-red-400 border !border-red-500/25',
+  'on-hold': '!bg-blue-500/15 !text-blue-400 border !border-blue-500/25',
+  'archived': '!bg-orange-500/15 !text-orange-400 border !border-orange-500/25',
+};
+
+const STATUS_DOT: Record<DealStatus, string> = {
+  'on-track': 'bg-teal-300',
+  'at-risk': 'bg-yellow-400',
+  'off-track': 'bg-red-400',
+  'on-hold': 'bg-blue-400',
+  'archived': 'bg-orange-400',
 };
 
 interface InlineStatusDropdownProps {
