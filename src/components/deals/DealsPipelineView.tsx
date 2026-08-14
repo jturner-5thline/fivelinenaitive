@@ -18,6 +18,15 @@ import {
 import { useDraggable } from '@dnd-kit/core';
 import { Deal, DealStatus } from '@/types/deal';
 import { DealCard } from './DealCard';
+
+type PipelineSortMode = 'newest' | 'value_desc' | 'value_asc' | 'name_asc';
+const PIPELINE_SORT_STORAGE_KEY = 'deals-pipeline-stage-sort';
+const PIPELINE_SORT_LABELS: Record<PipelineSortMode, string> = {
+  newest: 'Newest first',
+  value_desc: 'Deal size: high to low',
+  value_asc: 'Deal size: low to high',
+  name_asc: 'Name: A to Z',
+};
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
