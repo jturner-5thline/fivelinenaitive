@@ -517,6 +517,7 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
         </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
+      </div>
 
       <DragOverlay>
         {activeDeal ? (
