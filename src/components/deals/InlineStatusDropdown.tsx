@@ -10,14 +10,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useOptionalRequestStatusChange } from '@/components/deal/StatusChangeGate';
 
-// Same translucent tone treatment used by the deal detail panel's
-// `DealStatusTag`, so inline list tags never diverge visually.
+// Brighter gradient tone treatment so list tags read clearly against the
+// dark glass table fill (the flat 15% translucency looked near-black).
 const STATUS_TAG_THEME: Record<DealStatus, string> = {
-  'on-track': '!bg-teal-400/15 !text-teal-300 border !border-teal-400/30',
-  'at-risk': '!bg-yellow-500/15 !text-yellow-400 border !border-yellow-500/25',
-  'off-track': '!bg-red-500/15 !text-red-400 border !border-red-500/25',
-  'on-hold': '!bg-blue-500/15 !text-blue-400 border !border-blue-500/25',
-  'archived': '!bg-orange-500/15 !text-orange-400 border !border-orange-500/25',
+  'on-track': '!bg-gradient-to-r !from-teal-400/45 !to-emerald-400/30 !text-teal-100 border !border-teal-300/45',
+  'at-risk': '!bg-gradient-to-r !from-yellow-400/45 !to-amber-400/30 !text-yellow-100 border !border-yellow-300/45',
+  'off-track': '!bg-gradient-to-r !from-red-500/45 !to-rose-400/30 !text-red-100 border !border-red-300/45',
+  'on-hold': '!bg-gradient-to-r !from-blue-500/45 !to-sky-400/30 !text-blue-100 border !border-blue-300/45',
+  'archived': '!bg-gradient-to-r !from-orange-500/45 !to-amber-500/30 !text-orange-100 border !border-orange-300/45',
 };
 
 const STATUS_DOT: Record<DealStatus, string> = {
