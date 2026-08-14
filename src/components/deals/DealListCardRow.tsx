@@ -52,7 +52,7 @@ import { cn } from '@/lib/utils';
 
 /** Shared column template so the header row in DealsList stays aligned. */
 export const DEAL_LIST_GRID =
-  'grid grid-cols-[minmax(100px,182px)_120px_150px_180px_minmax(0,1fr)] items-center gap-4';
+  'grid grid-cols-[minmax(100px,182px)_120px_112px_158px_minmax(0,1fr)] items-center gap-2';
 
 interface DealListCardRowProps {
   deal: Deal;
