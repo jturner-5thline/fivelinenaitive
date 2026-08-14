@@ -315,17 +315,19 @@ export default function Contacts() {
                       </Select>
                     </div>
                   }
+                  footer={
+                    <TablePagination
+                      page={page}
+                      pageSize={pageSize}
+                      totalCount={totalCount}
+                      totalPages={totalPages}
+                      onPageChange={setPage}
+                      onPageSizeChange={handlePageSizeChange}
+                      isLoading={isFetching}
+                    />
+                  }
                 />
               </div>
-              <TablePagination
-                page={page}
-                pageSize={pageSize}
-                totalCount={totalCount}
-                totalPages={totalPages}
-                onPageChange={setPage}
-                onPageSizeChange={handlePageSizeChange}
-                isLoading={isFetching}
-              />
             </>
           )}
         </main>
