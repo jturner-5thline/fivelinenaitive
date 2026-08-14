@@ -481,6 +481,14 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
+      <div
+        ref={scrollWrapRef}
+        className="relative w-full"
+        style={{
+          WebkitMaskImage: edgeMask,
+          maskImage: edgeMask,
+        }}
+      >
       <ScrollArea className="w-full" viewportClassName="overflow-x-auto">
         <div className="flex gap-2 pb-0 min-w-max">
           {stages.map((stage) => {
