@@ -309,6 +309,50 @@ export default function Contacts() {
       <CreateContactModal open={showCreate} onClose={() => setShowCreate(false)} />
       <ImportContactsModal open={showImport} onClose={() => setShowImport(false)} />
       <ContactTaggingRulesDialog open={showTaggingRules} onOpenChange={setShowTaggingRules} />
+
+      <AlertDialog open={!!matchPreview} onOpenChange={(o) => !o && setMatchPreview(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Preview company matches</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  <span className="font-semibold text-foreground">{matchPreview?.would_match ?? 0}</span> of{' '}
+                  {matchPreview?.unmatched_total ?? 0} unlinked contacts will be matched to a company by email
+                  domain. Nothing has been changed yet.
+                </p>
+                {!!matchPreview?.samples.length && (
+                  <div className="rounded-md border border-border/60 divide-y divide-border/50 text-xs">
+                    {matchPreview.samples.map((s, i) => (
+                      <div key={i} className="flex items-center justify-between gap-3 px-2 py-1.5">
+                        <span className="truncate text-foreground">{s.contact}</span>
+                        <span className="truncate text-muted-foreground">{s.company}</span>
+                      </div>
+                    ))}
+                    {matchPreview.would_match > matchPreview.samples.length && (
+                      <div className="px-2 py-1.5 text-muted-foreground">
+                        + {matchPreview.would_match - matchPreview.samples.length} more…
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isMatching || !matchPreview?.would_match}
+              onClick={(e) => {
+                e.preventDefault();
+                handleMatchCompanies();
+              }}
+            >
+              {isMatching ? 'Applying…' : `Apply to ${matchPreview?.would_match ?? 0} contacts`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
