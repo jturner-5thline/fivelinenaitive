@@ -146,6 +146,7 @@ import { DealDetailSideNavigation } from '@/components/deal/DealDetailSideNaviga
 
 const loadDealSpaceTab = lazyRetry(() => import('@/components/deal/DealSpaceTab').then(m => ({ default: m.DealSpaceTab })));
 const DealSpaceTab = lazy(loadDealSpaceTab);
+const SaaSModelTab = lazy(lazyRetry(() => import('@/components/deal/saas-model/SaaSModelTab').then(m => ({ default: m.SaaSModelTab }))));
 const DealPanelReorderDialog = lazy(lazyRetry(() => import('@/components/deal/DealPanelReorderDialog').then(m => ({ default: m.DealPanelReorderDialog }))));
 const DealMemoDialog = lazy(lazyRetry(() => import('@/components/deal/DealMemoDialog').then(m => ({ default: m.DealMemoDialog }))));
 const AgreementDrafterDialog = lazy(lazyRetry(() => import('@/components/agreement/AgreementDrafterDialog').then(m => ({ default: m.AgreementDrafterDialog }))));
