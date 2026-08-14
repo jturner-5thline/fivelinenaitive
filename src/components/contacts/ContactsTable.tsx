@@ -254,6 +254,9 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+        {toolbarActions && (
+          <div className="ml-auto flex items-center gap-2 shrink-0">{toolbarActions}</div>
+        )}
       </div>
 
       {/* Table — fixed height to always show ~25 rows */}
