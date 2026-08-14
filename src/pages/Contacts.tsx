@@ -32,6 +32,8 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { CrmUpdateQueueButton } from '@/components/crm/CrmUpdateQueueButton';
 import { exportContactsToXlsx } from '@/lib/contactsXlsxExport';
 import { useCompany } from '@/hooks/useCompany';
+import { cn } from '@/lib/utils';
+import { TOOLBAR_CONTROL_CLASS } from '@/lib/toolbarControlClass';
 
 export default function Contacts() {
   const [showCreate, setShowCreate] = useState(false);
