@@ -211,24 +211,6 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
           <Input placeholder="Search contacts..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9" />
         </div>
         {toolbarExtras}
-        <Select value={lifecycleFilter} onValueChange={setLifecycleFilter}>
-          <SelectTrigger className="w-[150px] h-9">
-            <SelectValue placeholder="Lifecycle" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Stages</SelectItem>
-            {LIFECYCLE_STAGES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px] h-9">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            {CONTACT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
         <Select value={contactTypeFilter} onValueChange={setContactTypeFilter}>
           <SelectTrigger className="w-[150px] h-9">
             <SelectValue placeholder="Contact Type" />
