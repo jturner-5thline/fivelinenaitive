@@ -281,12 +281,16 @@ function DealListCardRowImpl({
           )}
           {!compact && (
             <span
+              className="min-w-0 truncate text-xs text-muted-foreground justify-self-start"
+              title={statusNote || undefined}
+            >
+              {statusNote || '—'}
+            </span>
+          )}
+          {!compact && (
+            <span
               className={cn(
                 'inline-flex items-center gap-1 text-xs text-muted-foreground justify-self-start',
-                timeAgoData.tone === 'critical' && 'text-destructive',
-                timeAgoData.tone === 'warning' && 'text-warning',
-              )}
-            >
                 timeAgoData.tone === 'critical' && 'text-destructive',
                 timeAgoData.tone === 'warning' && 'text-warning',
               )}
