@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { formatUSDFromDollars } from '@/lib/formatters/currency';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
@@ -410,10 +411,16 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
           {/* ── ROW 2: amount | type/engagement tags ── */}
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 min-w-0">
             <span
-              className="text-[28px] font-bold leading-none tracking-tight tabular-nums whitespace-nowrap"
+              className="flex items-baseline gap-1 text-[28px] font-bold leading-none tracking-tight tabular-nums whitespace-nowrap"
               style={{ color: '#f8fbff' }}
+              title={formatUSDFromDollars(deal.dealClass === 'finserv' ? (deal.mrr ?? 0) : deal.value)}
             >
-              {formatCurrencyValue(deal.dealClass === 'finserv' ? (deal.mrr ?? 0) : deal.value)}
+              {formatUSDFromDollars(deal.dealClass === 'finserv' ? (deal.mrr ?? 0) : deal.value)}
+              {deal.dealClass === 'finserv' && (
+                <span className="text-[13px] font-medium" style={{ color: 'rgba(180, 198, 224, 0.75)' }}>
+                  /mo
+                </span>
+              )}
             </span>
             {!compact && (deal.engagementType || deal.exclusivity || dealTypeLabels.length > 0) && (
               <div className="flex items-center justify-end gap-1.5 flex-wrap min-w-0">
