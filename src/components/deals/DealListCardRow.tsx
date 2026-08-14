@@ -203,13 +203,36 @@ function DealListCardRowImpl({
             <h3 className="font-medium truncate text-foreground">
               {deal.company || 'Untitled deal'}
             </h3>
-            {!compact && engagementLabel && (
-              <Badge
-                variant="outline"
-                className="mt-1 text-[10px] uppercase tracking-wider rounded-md whitespace-nowrap border-white/10 bg-white/[0.03] text-muted-foreground"
-              >
-                {engagementLabel}
-              </Badge>
+            {!compact && (engagementLabel || managerInitials) && (
+              <div className="mt-1 flex items-center gap-1.5">
+                {engagementLabel && (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] uppercase tracking-wider rounded-md whitespace-nowrap border-white/10 bg-white/[0.03] text-muted-foreground"
+                  >
+                    {engagementLabel}
+                  </Badge>
+                )}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      {managerInitials ? (
+                        <span
+                          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,.18),0_1px_2px_rgba(0,0,0,.4)]"
+                          style={{ background: 'linear-gradient(135deg, #9b6fd4, #5f3f9e)' }}
+                        >
+                          {managerInitials}
+                        </span>
+                      ) : (
+                        <User className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{deal.manager || 'No manager'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             )}
           </div>
           {!compact && lateMilestoneCount > 0 && (
@@ -255,27 +278,7 @@ function DealListCardRowImpl({
         {!compact && (
         <div className={cn(DEAL_LIST_GRID, 'mt-1 text-sm text-muted-foreground')}>
           <div />
-          <div className="flex justify-end">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  {managerInitials ? (
-                    <span
-                      className="inline-flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,.18),0_1px_2px_rgba(0,0,0,.4)]"
-                      style={{ background: 'linear-gradient(135deg, #9b6fd4, #5f3f9e)' }}
-                    >
-                      {managerInitials}
-                    </span>
-                  ) : (
-                    <User className="h-3.5 w-3.5" />
-                  )}
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{deal.manager || 'No manager'}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
+          <div />
           <div className="flex items-center gap-2 min-w-0">
           {!compact && (
             <span
