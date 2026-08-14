@@ -309,9 +309,6 @@ export default function Contacts() {
                           <SelectItem value="missing_name">Missing name</SelectItem>
                           <SelectItem value="no_company">Missing company</SelectItem>
                           <SelectItem value="new_leads">New leads</SelectItem>
-                          <SelectItem value="meeting_scheduled">Meeting scheduled</SelectItem>
-                          <SelectItem value="high_score">High score (70+)</SelectItem>
-                          <SelectItem value="no_activity_7d">No activity 7d+</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
