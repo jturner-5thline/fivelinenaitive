@@ -52,7 +52,7 @@ const statusColors: Record<string, string> = {
 
 /* Matches the outline Button variant so every toolbar control shares one design */
 const TOOLBAR_CONTROL_CLASS =
-  'h-9 shrink-0 rounded-lg bg-[rgba(126,184,247,0.06)] backdrop-blur-[8px] border border-[rgba(126,184,247,0.22)] text-[#A8D0FF] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-[rgba(126,184,247,0.12)] hover:border-[rgba(126,184,247,0.4)]';
+  'h-9 shrink-0 rounded-lg px-3 py-0 text-sm font-medium bg-[rgba(126,184,247,0.06)] backdrop-blur-[8px] border border-[rgba(126,184,247,0.22)] text-[#A8D0FF] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-[rgba(126,184,247,0.12)] hover:border-[rgba(126,184,247,0.4)]';
 
 export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, toolbarActions }: CrmCompaniesTableProps) {
   const navigate = useNavigate();
