@@ -27,6 +27,18 @@ export function formatUSD(value: number | null | undefined): string {
 
 type TotalLike = number | { amount: number } | null | undefined;
 
+/**
+ * Global display rule for amounts already expressed in DOLLARS
+ * (unlike formatUSD, whose inputs are expressed in thousands).
+ *   >= $1,000,000  ->  $XX.XXMM
+ *   <  $1,000,000  ->  $XXX,XXXK  (rounded to whole thousands)
+ * Negative values are wrapped in parentheses.
+ */
+export function formatUSDFromDollars(value: number | null | undefined): string {
+  if (value === null || value === undefined || isNaN(Number(value))) return '—';
+  return formatUSD(Number(value) / 1_000);
+}
+
 export function extractAmount(value: TotalLike): number | null {
   if (value === null || value === undefined) return null;
   if (typeof value === 'number') return value;
