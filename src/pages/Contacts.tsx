@@ -3,6 +3,16 @@ import { Helmet } from 'react-helmet-async';
 import { Plus, Upload, RefreshCw, Loader2, Link2, Download, Tags, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useContacts } from '@/hooks/useContacts';
 import { ContactsTable } from '@/components/contacts/ContactsTable';
@@ -32,6 +42,10 @@ export default function Contacts() {
   const [pageSize, setPageSize] = useState(50);
   const [isSyncingContacts, setIsSyncingContacts] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
+  const [matchPreview, setMatchPreview] = useState<
+    { would_match: number; unmatched_total: number; samples: Array<{ contact: string; email: string; company: string }> } | null
+  >(null);
+  const [isPreviewingMatch, setIsPreviewingMatch] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [search, setSearch] = useState('');
   const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>([]);
@@ -78,6 +92,27 @@ export default function Contacts() {
     }
   };
 
+  const handlePreviewMatchCompanies = async () => {
+    setIsPreviewingMatch(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('match-contacts-companies', {
+        body: { dry_run: true },
+      });
+      if (error) throw error;
+      const r = data as any;
+      if (r?.error) throw new Error(r.error);
+      setMatchPreview({
+        would_match: r.would_match ?? 0,
+        unmatched_total: r.unmatched_total ?? 0,
+        samples: r.samples ?? [],
+      });
+    } catch (error: any) {
+      toast.error('Failed to preview matches', { description: error.message });
+    } finally {
+      setIsPreviewingMatch(false);
+    }
+  };
+
   const handleMatchCompanies = async () => {
     setIsMatching(true);
     try {
@@ -91,6 +126,7 @@ export default function Contacts() {
       toast.error('Failed to match contacts', { description: error.message });
     } finally {
       setIsMatching(false);
+      setMatchPreview(null);
     }
   };
 
@@ -163,7 +199,7 @@ export default function Contacts() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
-                    {isMatching || isExporting ? (
+                    {isMatching || isExporting || isPreviewingMatch ? (
                       <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
                     ) : null}
                     Actions
@@ -174,7 +210,10 @@ export default function Contacts() {
                   <DropdownMenuItem onSelect={() => setShowTaggingRules(true)}>
                     <Tags className="h-4 w-4 mr-2" /> Tagging Rules
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => handleMatchCompanies()} disabled={isMatching}>
+                  <DropdownMenuItem
+                    onSelect={() => handlePreviewMatchCompanies()}
+                    disabled={isMatching || isPreviewingMatch}
+                  >
                     <Link2 className="h-4 w-4 mr-2" /> Match Companies
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => handleExport()} disabled={isExporting}>
