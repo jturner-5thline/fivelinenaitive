@@ -292,6 +292,13 @@ export default function Contacts() {
                   isFetching={isSearchPending}
                   toolbarExtras={
                     <div className="flex items-center gap-2">
+                      <AdvancedFilterBuilder
+                        availableFields={CONTACT_CORE_FIELDS}
+                        filters={advancedFilters}
+                        onFiltersChange={handleFiltersChange}
+                        matchMode={matchMode}
+                        onMatchModeChange={setMatchMode}
+                      />
                       <Select value={quickFilter} onValueChange={handleQuickFilterChange}>
                         <SelectTrigger className="h-9 w-[170px]">
                           <SelectValue placeholder="Quick filter" />
@@ -306,13 +313,6 @@ export default function Contacts() {
                           <SelectItem value="no_activity_7d">No activity 7d+</SelectItem>
                         </SelectContent>
                       </Select>
-                      <AdvancedFilterBuilder
-                        availableFields={CONTACT_CORE_FIELDS}
-                        filters={advancedFilters}
-                        onFiltersChange={handleFiltersChange}
-                        matchMode={matchMode}
-                        onMatchModeChange={setMatchMode}
-                      />
                     </div>
                   }
                 />
