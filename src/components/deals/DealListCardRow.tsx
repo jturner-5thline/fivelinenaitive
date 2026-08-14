@@ -222,7 +222,7 @@ function DealListCardRowImpl({
             </TooltipProvider>
           )}
           <div className="min-w-0">
-            <h3 className="font-semibold truncate text-foreground text-[17px] leading-tight">
+            <h3 className="font-semibold truncate text-foreground text-[19.5px] leading-tight">
               {deal.company || 'Untitled deal'}
             </h3>
             <div className="mt-1 flex items-center gap-2 min-w-0">
