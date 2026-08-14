@@ -20,6 +20,7 @@ import { template as insightsReportReady } from './insights-report-ready.tsx'
 import { template as endOfDayBriefingReady } from './end-of-day-briefing-ready.tsx'
 import { template as partnerTierChanged } from './partner-tier-changed.tsx'
 import { template as claapQuotaAlert } from './claap-quota-alert.tsx'
+import { template as contactUsRequest } from './contact-us-request.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'welcome-to-naitive': welcomeToNaitive,
@@ -33,4 +34,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'end-of-day-briefing-ready': endOfDayBriefingReady,
   'partner-tier-changed': partnerTierChanged,
   'claap-quota-alert': claapQuotaAlert,
+  'contact-us-request': contactUsRequest,
 }
