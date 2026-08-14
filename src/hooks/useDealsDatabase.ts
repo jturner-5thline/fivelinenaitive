@@ -886,6 +886,11 @@ export function useDealsDatabase() {
         dbUpdates.notes = updates.notes;
         dbUpdates.notes_updated_at = new Date().toISOString();
       }
+      // Explicit "mark reviewed" writes: allow callers to bump the
+      // freshness timestamp without touching the note text.
+      if ((updates as any).notesUpdatedAt !== undefined) {
+        dbUpdates.notes_updated_at = (updates as any).notesUpdatedAt;
+      }
       if (updates.narrative !== undefined) {
         dbUpdates.narrative = updates.narrative;
       }
