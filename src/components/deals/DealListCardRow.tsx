@@ -51,6 +51,9 @@ import { DealFlexEngagement } from '@/hooks/useFlexEngagementScores';
 import { shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
 import { cn } from '@/lib/utils';
 
+/** Shared column template so the header row in DealsList stays aligned. */
+export const DEAL_LIST_GRID = 'grid grid-cols-[minmax(180px,1.3fr)_130px_150px] items-center gap-4';
+
 interface DealListCardRowProps {
   deal: Deal;
   onStatusChange: (dealId: string, newStatus: DealStatus | null) => void;
@@ -140,8 +143,8 @@ function DealListCardRowImpl({
   return (
     <div
       className={cn(
-        'deal-glass deal-tile group flex items-center gap-3 p-3 min-h-[68px] cursor-pointer transition-all duration-200 hover:-translate-y-0.5',
-        isSelected && 'ring-2 ring-primary',
+        'group flex items-center gap-3 border-b border-border/60 px-2 py-3 cursor-pointer transition-colors hover:bg-muted/30',
+        isSelected && 'bg-primary/5',
       )}
       data-deal-open-id={deal.id}
       onClick={(e) => {
@@ -161,7 +164,7 @@ function DealListCardRowImpl({
 
       <div className="flex-1 min-w-0">
         {/* Top row (table columns): name | amount | status */}
-        <div className="grid grid-cols-[minmax(0,1fr)_120px_150px] items-center gap-3">
+        <div className={DEAL_LIST_GRID}>
           <div className="flex items-center gap-2 min-w-0">
           {!compact && timeAgoData.isStale && (
             <TooltipProvider>
@@ -243,7 +246,7 @@ function DealListCardRowImpl({
 
         {/* Bottom row (table columns): stage | manager initials | type · updated */}
         {!compact && (
-        <div className="mt-1 grid grid-cols-[minmax(0,1fr)_120px_150px] items-center gap-3 text-sm text-muted-foreground">
+        <div className={cn(DEAL_LIST_GRID, 'mt-1 text-sm text-muted-foreground')}>
           <div className="min-w-0 flex items-center" onClick={(e) => e.stopPropagation()}>
             <InlineStageDropdown
               dealId={deal.id}

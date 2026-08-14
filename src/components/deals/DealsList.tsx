@@ -4,7 +4,7 @@ import { DealCard } from './DealCard';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { DealListRow } from './DealListRow';
-import { DealListCardRow } from './DealListCardRow';
+import { DealListCardRow, DEAL_LIST_GRID } from './DealListCardRow';
 import { FileX, ChevronDown, ChevronRight, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, X } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
@@ -452,7 +452,15 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                 : `${sortedDeals.length} ${sortedDeals.length === 1 ? 'deal' : 'deals'}`}
             </span>
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="rounded-lg border border-border/60 overflow-hidden">
+            <div className="flex items-center gap-3 border-b border-border bg-muted/20 px-2 py-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              <span className="h-4 w-4 shrink-0" aria-hidden />
+              <div className={cn(DEAL_LIST_GRID, 'flex-1 min-w-0')}>
+                <span>Deal</span>
+                <span className="text-right">Amount</span>
+                <span>Status</span>
+              </div>
+            </div>
             {sortedDeals.map((deal) => (
               <DealListCardRow
                 key={deal.id}
