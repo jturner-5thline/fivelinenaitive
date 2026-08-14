@@ -31,6 +31,7 @@ interface ContactsTableProps {
   search?: string;
   onSearchChange?: (value: string) => void;
   toolbarExtras?: React.ReactNode;
+  footer?: React.ReactNode;
   isFetching?: boolean;
 }
 
@@ -57,7 +58,7 @@ const statusColors: Record<string, string> = {
   closed: 'bg-muted text-muted-foreground',
 };
 
-export function ContactsTable({ contacts, onBulkAction, search: controlledSearch, onSearchChange, toolbarExtras, isFetching }: ContactsTableProps) {
+export function ContactsTable({ contacts, onBulkAction, search: controlledSearch, onSearchChange, toolbarExtras, footer, isFetching }: ContactsTableProps) {
   const navigate = useNavigate();
   const [localSearch, setLocalSearch] = useState('');
   const search = controlledSearch ?? localSearch;
