@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Upload, RefreshCw, Loader2, Link2, Download } from 'lucide-react';
+import { Plus, Upload, RefreshCw, Loader2, Link2, Download, Tags } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useContacts } from '@/hooks/useContacts';
 import { ContactsTable } from '@/components/contacts/ContactsTable';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { ImportContactsModal } from '@/components/contacts/ImportContactsModal';
+import { ContactTaggingRulesDialog } from '@/components/contacts/ContactTaggingRulesDialog';
 import { TablePagination } from '@/components/shared/TablePagination';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,6 +25,7 @@ import { useCompany } from '@/hooks/useCompany';
 export default function Contacts() {
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showTaggingRules, setShowTaggingRules] = useState(false);
   const [quickFilter, setQuickFilter] = useState('all');
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
@@ -157,6 +159,9 @@ export default function Contacts() {
             <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
             <div className="flex items-center gap-2">
               <CrmUpdateQueueButton />
+              <Button variant="outline" size="sm" onClick={() => setShowTaggingRules(true)}>
+                <Tags className="h-4 w-4 mr-1.5" /> Tagging Rules
+              </Button>
               <Button variant="outline" size="sm" onClick={handleMatchCompanies} disabled={isMatching}>
                 {isMatching ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Link2 className="h-4 w-4 mr-1.5" />}
                 Match Companies
@@ -252,6 +257,7 @@ export default function Contacts() {
 
       <CreateContactModal open={showCreate} onClose={() => setShowCreate(false)} />
       <ImportContactsModal open={showImport} onClose={() => setShowImport(false)} />
+      <ContactTaggingRulesDialog open={showTaggingRules} onOpenChange={setShowTaggingRules} />
     </>
   );
 }
