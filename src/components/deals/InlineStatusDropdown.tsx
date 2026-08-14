@@ -10,6 +10,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useOptionalRequestStatusChange } from '@/components/deal/StatusChangeGate';
 
+// Same translucent tone treatment used by the deal detail panel's
+// `DealStatusTag`, so inline list tags never diverge visually.
+const STATUS_TAG_THEME: Record<DealStatus, string> = {
+  'on-track': 'bg-teal-400/15 text-teal-300 border border-teal-400/30',
+  'at-risk': 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/20',
+  'off-track': 'bg-red-500/15 text-red-400 border border-red-500/20',
+  'on-hold': 'bg-blue-500/15 text-blue-400 border border-blue-500/20',
+  'archived': 'bg-orange-500/15 text-orange-400 border border-orange-500/20',
+};
+
 interface InlineStatusDropdownProps {
   dealId: string;
   status: DealStatus | null;
@@ -41,16 +51,6 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
     void requestStatusChange({ dealId, currentStatus: status, nextStatus: next });
   };
 
-  const onTrackStyle: React.CSSProperties | undefined =
-    status === 'on-track'
-      ? {
-          background: 'rgba(45, 212, 191, 0.14)',
-          border: '1px solid rgba(94, 234, 212, 0.35)',
-          color: '#5eead4',
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
-        }
-      : undefined;
-
   const handleTriggerClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -61,9 +61,8 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
   if (!requestStatusChange) {
     return statusConfig ? (
       <Badge
-        variant="outline"
-        style={onTrackStyle}
-        className={`${status === 'on-track' ? '' : `${statusConfig.badgeColor} border-0`} text-xs rounded-lg font-semibold ${className}`}
+        variant="secondary"
+        className={`${STATUS_TAG_THEME[status as DealStatus] ?? ''} text-xs rounded-lg font-semibold ${className}`}
       >
         {statusConfig.label}
       </Badge>
@@ -88,9 +87,8 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
         >
           {statusConfig ? (
             <Badge
-              variant="outline"
-              style={onTrackStyle}
-              className={`${status === 'on-track' ? '' : `${statusConfig.badgeColor} border-0`} text-xs rounded-lg font-semibold cursor-pointer hover:opacity-80 transition-opacity ${className}`}
+              variant="secondary"
+              className={`${STATUS_TAG_THEME[status as DealStatus] ?? ''} text-xs rounded-lg font-semibold cursor-pointer hover:opacity-80 transition-opacity ${className}`}
             >
               {statusConfig.label}
             </Badge>
