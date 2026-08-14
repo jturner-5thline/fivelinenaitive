@@ -5926,17 +5926,35 @@ export default function DealDetail() {
                 </TabsContent>
 
                 <TabsContent value="activity-log" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`activity-log-${tabDirection}`}>
-                  <Card className="w-full max-w-full overflow-hidden p-0" style={{ height: 'calc(100vh - 190px)' }}>
-                    <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading activity…</div>}>
-                      <DealActivityLogTab dealId={id!} />
+                  <div className="flex items-center gap-1 mb-3 p-1 rounded-md bg-white/[0.04] border border-white/10 w-fit">
+                    {(['activity', 'communications'] as const).map((view) => (
+                      <button
+                        key={view}
+                        type="button"
+                        onClick={() => setActivityView(view)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-3 h-7 rounded-sm text-[12px] font-medium transition-colors",
+                          activityView === view
+                            ? "bg-primary/15 text-primary"
+                            : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                        )}
+                      >
+                        {view === 'activity' ? <History className="h-3.5 w-3.5" /> : <Mail className="h-3.5 w-3.5" />}
+                        {view === 'activity' ? 'Activity' : 'Communications'}
+                      </button>
+                    ))}
+                  </div>
+                  {activityView === 'activity' ? (
+                    <Card className="w-full max-w-full overflow-hidden p-0" style={{ height: 'calc(100vh - 240px)' }}>
+                      <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading activity…</div>}>
+                        <DealActivityLogTab dealId={id!} />
+                      </Suspense>
+                    </Card>
+                  ) : (
+                    <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading communications…</div>}>
+                      <DealCommunicationsTab dealId={id!} />
                     </Suspense>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="communications" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`communications-${tabDirection}`}>
-                  <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading communications…</div>}>
-                    <DealCommunicationsTab dealId={id!} />
-                  </Suspense>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="crm-search" className={cn("mt-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`crm-search-${tabDirection}`}>
