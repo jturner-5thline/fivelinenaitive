@@ -100,7 +100,7 @@ export function DealsHeader() {
   // so it slides in sync with the sidebar (matching the Ask naitive AI
   // bar's behaviour). When the sidebar collapses to icon-only, the
   // header narrows; when it expands, the header shifts right.
-  const { state: sidebarState, isMobile: sidebarIsMobile, isHovering: sidebarIsHovering } = useSidebar();
+  const { isMobile: sidebarIsMobile } = useSidebar();
   // Mirror the math in `src/components/ui/sidebar.tsx`:
   //   expanded → var(--sidebar-width) (14rem)
   //   collapsed (icon) → calc(var(--sidebar-width-icon) + theme(spacing.4)) (3rem + 1rem)
