@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { formatUSDFromDollars } from '@/lib/formatters/currency';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
