@@ -460,6 +460,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                 <span className="text-right">Amount</span>
                 <span>Status</span>
                 <span>Stage</span>
+                <span>Updated</span>
               </div>
             </div>
             {sortedDeals.map((deal) => (
