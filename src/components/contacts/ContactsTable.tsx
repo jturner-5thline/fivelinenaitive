@@ -31,6 +31,7 @@ interface ContactsTableProps {
   search?: string;
   onSearchChange?: (value: string) => void;
   toolbarExtras?: React.ReactNode;
+  toolbarActions?: React.ReactNode;
   footer?: React.ReactNode;
   isFetching?: boolean;
 }
@@ -58,7 +59,7 @@ const statusColors: Record<string, string> = {
   closed: 'bg-muted text-muted-foreground',
 };
 
-export function ContactsTable({ contacts, onBulkAction, search: controlledSearch, onSearchChange, toolbarExtras, footer, isFetching }: ContactsTableProps) {
+export function ContactsTable({ contacts, onBulkAction, search: controlledSearch, onSearchChange, toolbarExtras, toolbarActions, footer, isFetching }: ContactsTableProps) {
   const navigate = useNavigate();
   const [localSearch, setLocalSearch] = useState('');
   const search = controlledSearch ?? localSearch;
@@ -207,13 +208,13 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
     <div className="space-y-3 crm-companies-surface">
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+        <div className="relative flex-1 min-w-[140px] max-w-[240px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search contacts..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9" />
         </div>
         {toolbarExtras}
         <Select value={contactTypeFilter} onValueChange={setContactTypeFilter}>
-          <SelectTrigger className="w-[150px] h-9">
+          <SelectTrigger className="w-[120px] h-9 shrink-0">
             <SelectValue placeholder="Contact Type" />
           </SelectTrigger>
           <SelectContent>
@@ -222,7 +223,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
           </SelectContent>
         </Select>
         <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-          <SelectTrigger className="w-[160px] h-9">
+          <SelectTrigger className="w-[125px] h-9 shrink-0">
             <SelectValue placeholder="Owner" />
           </SelectTrigger>
           <SelectContent>
@@ -252,6 +253,9 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        )}
+        {toolbarActions && (
+          <div className="ml-auto flex items-center gap-2 shrink-0">{toolbarActions}</div>
         )}
       </div>
 
