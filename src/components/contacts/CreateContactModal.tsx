@@ -11,6 +11,8 @@ import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useAuth } from '@/contexts/AuthContext';
 import { extractEmailDomain } from '@/lib/extractEmailDomain';
+import { useContactTaggingRules } from '@/hooks/useContactTaggingRules';
+import { applyTaggingRules } from '@/lib/contactTaggingRules';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -27,6 +29,7 @@ interface CreateContactModalProps {
 export function CreateContactModal({ open, onClose, defaultCompanyId, initialValues, onCreated }: CreateContactModalProps) {
   const createContact = useCreateContact();
   const teamMembers = useTeamMembers();
+  const { data: taggingRules = [] } = useContactTaggingRules({ activeOnly: true });
   const { user } = useAuth();
   const [form, setForm] = useState({
     first_name: '',
@@ -92,7 +95,12 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
     const payload = {
       ...form,
       crm_company_id: form.crm_company_id || null,
-      contact_type: form.contact_type?.trim() || null,
+      contact_type:
+        applyTaggingRules(taggingRules, {
+          email,
+          website_url: form.website_url,
+          contact_type: form.contact_type?.trim() || null,
+        }) || form.contact_type?.trim() || null,
       linkedin_url: linkedinTrim || null,
       job_title: form.job_title.trim() || null,
       owner_user_id: form.owner_user_id || user?.id || null,
