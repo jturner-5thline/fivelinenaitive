@@ -207,8 +207,8 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
   return (
     <div className="space-y-3 crm-companies-surface">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[140px] max-w-[240px]">
+      <div className="flex items-center gap-2 flex-nowrap">
+        <div className="relative flex-1 min-w-[140px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search contacts..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9" />
         </div>
@@ -255,7 +255,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
           </DropdownMenu>
         )}
         {toolbarActions && (
-          <div className="ml-auto flex items-center gap-2 shrink-0">{toolbarActions}</div>
+          <div className="flex items-center gap-2 shrink-0">{toolbarActions}</div>
         )}
       </div>
 
