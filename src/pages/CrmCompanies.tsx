@@ -153,26 +153,6 @@ export default function CrmCompanies() {
         <main className="w-full px-4 pt-4 pb-3 sm:px-6 space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-foreground">Companies</h1>
-            <div className="flex items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    {isExporting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
-                    Actions
-                    <ChevronDown className="h-4 w-4 ml-1.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
-                  <DropdownMenuItem onSelect={() => handleExport()} disabled={isExporting}>
-                    <Download className="h-4 w-4 mr-2" /> Export
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setShowImport(true)}>
-                    <Upload className="h-4 w-4 mr-2" /> Import
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button size="sm" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-1.5" /> Add Company</Button>
-            </div>
           </div>
 
           {showSyncBanner && (
@@ -218,6 +198,28 @@ export default function CrmCompanies() {
               <div>
                 <CrmCompaniesTable
                   companies={companies}
+                  toolbarActions={
+                    <>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-9">
+                            {isExporting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
+                            Actions
+                            <ChevronDown className="h-4 w-4 ml-1.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onSelect={() => handleExport()} disabled={isExporting}>
+                            <Download className="h-4 w-4 mr-2" /> Export
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => setShowImport(true)}>
+                            <Upload className="h-4 w-4 mr-2" /> Import
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <Button size="sm" className="h-9" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-1.5" /> Add Company</Button>
+                    </>
+                  }
                   leadingFilterSlot={
                     <>
                     <div className="relative w-[260px]">
