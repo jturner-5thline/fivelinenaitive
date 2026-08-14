@@ -226,13 +226,7 @@ function DealListCardRowImpl({
               {deal.company || 'Untitled deal'}
             </h3>
             <div className="mt-1 flex items-center gap-2 min-w-0">
-              <span
-                className="font-semibold tabular-nums text-[17px] leading-tight shrink-0 w-[84px] bg-clip-text text-transparent"
-                style={{
-                  backgroundImage:
-                    'linear-gradient(160deg, hsl(var(--foreground)) 0%, hsl(var(--foreground)) 35%, hsl(var(--primary)) 100%)',
-                }}
-              >
+              <span className="font-semibold text-foreground tabular-nums text-[17px] leading-tight shrink-0 w-[84px]">
                 {formatCurrencyValue(deal.value)}
               </span>
               {!compact && (
