@@ -210,6 +210,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { StickyNote } from 'lucide-react';
+import { DealSpaceNotesTab } from '@/components/deal/DealSpaceNotesTab';
 import {
   DropdownMenu,
   DropdownMenuContent,
