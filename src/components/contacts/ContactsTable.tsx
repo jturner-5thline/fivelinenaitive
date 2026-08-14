@@ -31,6 +31,7 @@ interface ContactsTableProps {
   search?: string;
   onSearchChange?: (value: string) => void;
   toolbarExtras?: React.ReactNode;
+  toolbarActions?: React.ReactNode;
   footer?: React.ReactNode;
   isFetching?: boolean;
 }
