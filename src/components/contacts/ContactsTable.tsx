@@ -537,9 +537,13 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
         onConfirm={async () => {
           setBulkBusy(true);
           try {
-            await Promise.all(Array.from(selectedIds).map(id => deleteContact.mutateAsync(id)));
-            setBulkDeleteOpen(false);
-            setSelectedIds(new Set());
+            const ids = Array.from(selectedIds);
+            const results = await Promise.allSettled(ids.map(id => deleteContact.mutateAsync(id)));
+            const failed = results.filter(r => r.status === 'rejected').length;
+            if (failed === 0) {
+              setBulkDeleteOpen(false);
+              setSelectedIds(new Set());
+            }
           } finally {
             setBulkBusy(false);
           }
