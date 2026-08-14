@@ -149,8 +149,8 @@ function DroppableStageColumnImpl({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex-shrink-0 w-[300px] rounded-lg border border-white/[0.06] bg-[hsl(var(--background))]/60 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-150",
-        "[background-image:linear-gradient(180deg,rgba(0,0,0,0.22),rgba(0,0,0,0.30))]",
+        "flex-shrink-0 w-[300px] rounded-lg border border-white/[0.06] bg-[hsl(var(--background))]/30 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-150",
+        "[background-image:linear-gradient(180deg,rgba(0,0,0,0.10),rgba(0,0,0,0.15))]",
         isDraggingAny && !isOver && "opacity-60",
         isOver && "ring-2 ring-primary border-primary bg-primary/5 shadow-lg shadow-primary/10 scale-[1.01]"
       )}
