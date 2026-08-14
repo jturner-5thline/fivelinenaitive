@@ -342,13 +342,6 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
     <div className="space-y-3 crm-companies-surface">
       <div className="flex items-center gap-2 flex-wrap">
         {leadingFilterSlot}
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[130px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            {CRM_COMPANY_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
         <Select value={companyTypeFilter} onValueChange={setCompanyTypeFilter}>
           <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Type" /></SelectTrigger>
           <SelectContent>
