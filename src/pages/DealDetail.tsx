@@ -3534,6 +3534,10 @@ export default function DealDetail() {
                 onSave={(value) => updateDeal('company' as any, value as any)}
                 displayClassName="text-[2rem] md:text-[2.7rem] font-bold leading-tight break-words text-foreground"
               />
+              <span
+                aria-hidden
+                className="hidden sm:block self-stretch w-px bg-border/70 my-1"
+              />
               <InlineEditField
                 value={formatUSD(deal.value)}
                 editValue={formatAmountWithCommas(String(deal.value ?? 0))}
