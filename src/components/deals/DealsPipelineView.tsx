@@ -100,6 +100,7 @@ interface DroppableStageColumnProps {
   flexNotificationCounts?: Record<string, number>;
   activeDealId: string | null;
   isOver: boolean;
+  isDraggingAny?: boolean;
   fullscreen?: boolean;
 }
 
@@ -116,6 +117,7 @@ function DroppableStageColumnImpl({
   flexNotificationCounts,
   activeDealId,
   isOver,
+  isDraggingAny,
   fullscreen,
 }: DroppableStageColumnProps) {
   const { setNodeRef } = useDroppable({
@@ -131,12 +133,13 @@ function DroppableStageColumnImpl({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex-shrink-0 w-[300px] bg-muted/30 rounded-lg border",
-        isOver && "ring-2 ring-primary bg-primary/5"
+        "flex-shrink-0 w-[300px] bg-muted/30 rounded-lg border transition-all duration-150",
+        isDraggingAny && !isOver && "opacity-60",
+        isOver && "ring-2 ring-primary border-primary bg-primary/5 shadow-lg shadow-primary/10 scale-[1.01]"
       )}
     >
       {/* Stage Header */}
-      <div className="p-3 border-b bg-muted/50 rounded-lg">
+      <div className={cn("p-3 border-b bg-muted/50 rounded-lg transition-colors", isOver && "bg-primary/10")}>
         <div className="flex items-center gap-2 min-w-0">
           <span
             className={cn(
@@ -163,6 +166,7 @@ function DroppableStageColumnImpl({
       <VirtualizedStageDeals
         deals={deals}
         isOver={isOver}
+        isDraggingAny={!!isDraggingAny}
         fullscreen={!!fullscreen}
         onStatusChange={onStatusChange}
         onStageChange={onStageChange}
