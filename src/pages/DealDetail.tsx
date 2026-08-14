@@ -3529,7 +3529,7 @@ export default function DealDetail() {
           {/* Deal identity header: name + amount pinned to the very top of
               the deal pop-up (moved out of the left context rail). */}
           {useContextRailLayout && (
-            <div className="flex flex-col sm:flex-row sm:items-baseline gap-x-4 gap-y-1 mt-4 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-baseline gap-x-2 gap-y-1 mt-4 min-w-0">
               <InlineEditField
                 value={deal.company}
                 manualCommit
