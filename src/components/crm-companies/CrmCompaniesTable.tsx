@@ -31,6 +31,7 @@ interface CrmCompaniesTableProps {
   companies: CrmCompany[];
   onBulkAction?: (action: string, ids: string[]) => void;
   leadingFilterSlot?: React.ReactNode;
+  toolbarActions?: React.ReactNode;
 }
 
 const lifecycleColors: Record<string, string> = {
@@ -49,7 +50,7 @@ const statusColors: Record<string, string> = {
   churned: 'bg-red-500/10 text-red-500',
 };
 
-export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }: CrmCompaniesTableProps) {
+export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, toolbarActions }: CrmCompaniesTableProps) {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [lifecycleFilter, setLifecycleFilter] = useState('all');
@@ -391,6 +392,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+        {toolbarActions && <div className="ml-auto flex items-center gap-2 shrink-0">{toolbarActions}</div>}
       </div>
 
       <div
