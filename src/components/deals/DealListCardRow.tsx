@@ -249,7 +249,7 @@ function DealListCardRowImpl({
             {formatCurrencyValue(deal.value)}
           </span>
           {!compact && (
-            <div onClick={(e) => e.stopPropagation()} className="justify-self-center">
+            <div onClick={(e) => e.stopPropagation()} className="justify-self-center w-[104px] [&_button]:w-full [&_span]:w-full [&_span]:justify-center">
               <InlineStatusDropdown
                 dealId={deal.id}
                 status={deal.status}
