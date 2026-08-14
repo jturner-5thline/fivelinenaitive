@@ -4,7 +4,6 @@ import {
   MoreHorizontal,
   User,
   Clock,
-  AlertTriangle,
   CheckCircle2,
   Flag,
   Trash2,
@@ -166,23 +165,6 @@ function DealListCardRowImpl({
         {/* Top row (table columns): name | amount | status */}
         <div className={DEAL_LIST_GRID}>
           <div className="flex items-center gap-2 min-w-0">
-          {!compact && timeAgoData.isStale && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <AlertTriangle
-                    className={cn(
-                      'h-4 w-4 shrink-0',
-                      timeAgoData.tone === 'critical' ? 'text-destructive' : 'text-warning',
-                    )}
-                  />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Stale deal — no updates for {timeAgoData.days} days</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
           {!compact && notificationCount > 0 &&
             deal.status !== 'archived' &&
             deal.stage !== 'closed-lost' && (
