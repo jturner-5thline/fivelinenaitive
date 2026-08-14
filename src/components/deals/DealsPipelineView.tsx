@@ -482,7 +482,7 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
       onDragCancel={handleDragCancel}
     >
       <ScrollArea className="w-full" viewportClassName="overflow-x-auto">
-        <div className="flex gap-4 pb-0 min-w-max">
+        <div className="flex gap-2 pb-0 min-w-max">
           {stages.map((stage) => {
             const stageDeals = dealsByStage.get(stage.id) || [];
 
