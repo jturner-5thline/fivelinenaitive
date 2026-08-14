@@ -70,8 +70,9 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
     return statusConfig ? (
       <Badge
         variant="secondary"
-        className={`${STATUS_TAG_THEME[status as DealStatus] ?? ''} text-xs rounded-lg font-semibold ${className}`}
+        className={`${STATUS_TAG_THEME[status as DealStatus] ?? ''} gap-1.5 text-xs rounded-lg font-semibold ${className}`}
       >
+        <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[status as DealStatus] ?? ''}`} />
         {statusConfig.label}
       </Badge>
     ) : (
@@ -96,8 +97,9 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
           {statusConfig ? (
             <Badge
               variant="secondary"
-              className={`${STATUS_TAG_THEME[status as DealStatus] ?? ''} text-xs rounded-lg font-semibold cursor-pointer hover:opacity-80 transition-opacity ${className}`}
+              className={`${STATUS_TAG_THEME[status as DealStatus] ?? ''} gap-1.5 text-xs rounded-lg font-semibold cursor-pointer hover:opacity-80 transition-opacity ${className}`}
             >
+              <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[status as DealStatus] ?? ''}`} />
               {statusConfig.label}
             </Badge>
           ) : (
