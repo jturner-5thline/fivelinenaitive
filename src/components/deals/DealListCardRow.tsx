@@ -201,7 +201,7 @@ function DealListCardRowImpl({
             </TooltipProvider>
           )}
           <div className="min-w-0">
-            <h3 className="font-medium truncate text-foreground">
+            <h3 className="font-medium truncate text-foreground text-base">
               {deal.company || 'Untitled deal'}
             </h3>
             {!compact && (engagementLabel || managerInitials) && (
@@ -245,7 +245,7 @@ function DealListCardRowImpl({
             </Badge>
           )}
           </div>
-          <span className="font-medium text-foreground tabular-nums text-right">
+          <span className="font-medium text-foreground tabular-nums text-right text-base">
             {formatCurrencyValue(deal.value)}
           </span>
           {!compact && (
