@@ -361,8 +361,23 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
     useSensor(KeyboardSensor)
   );
 
-  // Group deals by stage with stable sort order (created_at) to prevent
-  // card reordering when non-stage fields are updated
+  // Sort mode for cards inside each stage column (persisted per user)
+  const [sortMode, setSortMode] = useState<PipelineSortMode>(() => {
+    if (typeof window === 'undefined') return 'newest';
+    const saved = window.localStorage.getItem(PIPELINE_SORT_STORAGE_KEY);
+    return (saved as PipelineSortMode) || 'newest';
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(PIPELINE_SORT_STORAGE_KEY, sortMode);
+    } catch {
+      /* ignore quota / privacy-mode failures */
+    }
+  }, [sortMode]);
+
+  // Group deals by stage. Default sort is created_at (stable) so updates
+  // to non-stage fields don't cause visual reordering.
   const dealsByStage = useMemo(() => {
     const grouped = new Map<string, Deal[]>();
 
@@ -378,19 +393,28 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
       grouped.set(deal.stage, stageDeals);
     });
 
-    // Sort deals within each stage by created_at (stable) so updates
-    // to non-stage fields don't cause visual reordering
+    const dealAmount = (d: Deal) =>
+      Number((d.dealClass === 'finserv' ? d.mrr : d.value) ?? 0);
+
     grouped.forEach((stageDeals, stageId) => {
       stageDeals.sort((a, b) => {
-        const dateA = new Date(a.createdAt).getTime();
-        const dateB = new Date(b.createdAt).getTime();
-        return dateB - dateA; // newest first
+        switch (sortMode) {
+          case 'value_desc':
+            return dealAmount(b) - dealAmount(a);
+          case 'value_asc':
+            return dealAmount(a) - dealAmount(b);
+          case 'name_asc':
+            return (a.company || '').localeCompare(b.company || '');
+          case 'newest':
+          default:
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
       });
       grouped.set(stageId, stageDeals);
     });
 
     return grouped;
-  }, [deals, stages]);
+  }, [deals, stages, sortMode]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
