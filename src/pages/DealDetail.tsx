@@ -3676,7 +3676,7 @@ export default function DealDetail() {
                     // pushes the field flush right on sm+; `text-right`
                     // right-aligns the value within its inline input.
                     className="sm:ml-auto sm:justify-end shrink-0"
-                    displayClassName="text-right font-semibold leading-tight bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white whitespace-nowrap"
+                    displayClassName="text-right font-semibold leading-tight bg-brand-gradient bg-clip-text text-transparent dark:bg-[linear-gradient(165deg,hsl(0_0%_100%)_0%,hsl(0_0%_100%)_45%,hsl(var(--primary))_100%)] dark:text-transparent whitespace-nowrap"
                     displayStyle={{ fontSize: 'clamp(1.5rem, 3.2vw, 3rem)' }}
                   />
                 )}
