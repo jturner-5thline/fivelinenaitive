@@ -111,28 +111,41 @@ export async function saveNodePdfToDealSpace(
 ): Promise<{ id: string; name: string } | null> {
   const blob = await renderNodeToPdfBlob(node);
   const fileName = `${fileBaseName}.pdf`;
-  const storagePath = `${dealId}/${crypto.randomUUID()}.pdf`;
+  // Archive copies live in the Internal section of the Data Room
+  // (vdr_documents + `vdr-files` bucket), not in Deal Space.
+  const folderPath = '/Reports/';
+  const storagePath = `${dealId}${folderPath}${fileName}`;
 
   const { data: userRes } = await supabase.auth.getUser();
+  const { data: dealRow } = await supabase
+    .from('deals')
+    .select('company_id')
+    .eq('id', dealId)
+    .maybeSingle();
 
   const { error: uploadError } = await supabase.storage
-    .from('deal-space')
-    .upload(storagePath, blob, { contentType: 'application/pdf' });
+    .from('vdr-files')
+    .upload(storagePath, blob, { contentType: 'application/pdf', upsert: true });
   if (uploadError) throw uploadError;
 
   const { data, error } = await supabase
-    .from('deal_space_documents' as any)
+    .from('vdr_documents' as any)
     .insert({
       deal_id: dealId,
-      name: fileName,
+      company_id: (dealRow as any)?.company_id ?? null,
+      filename: fileName,
       file_path: storagePath,
-      content_type: 'application/pdf',
-      size_bytes: blob.size,
-      user_id: userRes?.user?.id ?? null,
+      file_size: blob.size,
+      file_type: 'application/pdf',
+      folder_path: folderPath,
+      is_folder: false,
+      source: 'dataroom',
+      uploaded_by: userRes?.user?.id ?? null,
+      ingestion_status: 'pending',
     })
-    .select('id, name')
+    .select('id, filename')
     .single();
   if (error) throw error;
 
-  return data as unknown as { id: string; name: string };
+  return { id: (data as any).id, name: (data as any).filename };
 }
