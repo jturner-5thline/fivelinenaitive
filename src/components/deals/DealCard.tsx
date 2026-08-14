@@ -407,12 +407,9 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
             </div>
           </div>
 
-          {/* ── ROW 2: "Deal size" label + value | type/engagement tags ── */}
+          {/* ── ROW 2: amount | type/engagement tags ── */}
           <div className="flex items-end justify-between gap-3 min-w-0">
             <div className="flex flex-col gap-0.5 min-w-0">
-              <span className="text-[11px] font-medium uppercase tracking-wide" style={{ color: 'rgba(180, 198, 224, 0.75)' }}>
-                {deal.dealClass === 'finserv' ? 'MRR' : 'Deal size'}
-              </span>
               <span
                 className="text-[28px] font-bold leading-none tracking-tight tabular-nums whitespace-nowrap"
                 style={{ color: '#f8fbff' }}
