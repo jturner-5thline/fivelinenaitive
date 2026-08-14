@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import naitiveLogoDark from "@/assets/naitive-logo-dark.png";
+import { ContactUsDialog } from "./ContactUsDialog";
 
 export const HomepageHeader = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -63,13 +64,14 @@ export const HomepageHeader = () => {
           >
             <Link to="/login">Log in</Link>
           </Button>
-          <Button 
-            size="sm" 
-            className="marketing-glass-cta h-9 border-0 text-[13px] font-semibold tracking-[-0.005em] px-4 sm:px-5 rounded-[8px]"
-            asChild
-          >
-            <Link to="/waitlist">Contact Us</Link>
-          </Button>
+          <ContactUsDialog>
+            <Button
+              size="sm"
+              className="marketing-glass-cta h-9 border-0 text-[13px] font-semibold tracking-[-0.005em] px-4 sm:px-5 rounded-[8px]"
+            >
+              Contact Us
+            </Button>
+          </ContactUsDialog>
         </div>
         </nav>
       </header>
