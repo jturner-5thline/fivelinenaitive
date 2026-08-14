@@ -1225,6 +1225,8 @@ export default function DealDetail() {
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
   const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'analysis' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication'>(initialTab === 'deal-space' ? 'deal-info' : (initialTab || 'deal-info'));
+  // Activity tab now hosts both the audit/activity log and communications.
+  const [activityView, setActivityView] = useState<'activity' | 'communications'>('activity');
   const prevTabRef = useRef<typeof dealInfoTab>(dealInfoTab);
 
   // Projects deals only expose Deal Info + Data Room. If the persisted/URL
