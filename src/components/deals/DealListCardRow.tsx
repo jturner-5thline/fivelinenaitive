@@ -51,6 +51,9 @@ import { DealFlexEngagement } from '@/hooks/useFlexEngagementScores';
 import { shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
 import { cn } from '@/lib/utils';
 
+/** Shared column template so the header row in DealsList stays aligned. */
+export const DEAL_LIST_GRID = 'grid grid-cols-[minmax(180px,1.3fr)_130px_150px] items-center gap-4';
+
 interface DealListCardRowProps {
   deal: Deal;
   onStatusChange: (dealId: string, newStatus: DealStatus | null) => void;
