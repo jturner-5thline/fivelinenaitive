@@ -19,6 +19,7 @@ import { useCrmCompanies } from '@/hooks/useCrmCompanies';
 import { useLinkContactToCompany, useLinkContactToDeal, useAllDeals } from '@/hooks/useCrmLinks';
 import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchModal';
 import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
+import { BulkAssignOwnerDialog } from '@/components/crm/BulkAssignOwnerDialog';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useTriStateSort } from '@/hooks/useTriStateSort';
@@ -76,6 +77,9 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
   const [linkCompanyContactId, setLinkCompanyContactId] = useState<string | null>(null);
   const [linkDealContactId, setLinkDealContactId] = useState<string | null>(null);
   const [deleteContactId, setDeleteContactId] = useState<string | null>(null);
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const { data: companiesResult } = useCrmCompanies({ pageSize: 1000 });
   const companies = companiesResult?.data ?? [];
@@ -253,24 +257,16 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem
-                onClick={() => {
-                  Array.from(selectedIds).forEach(id => updateContact.mutate({ id, owner_user_id: null } as any));
-                }}
-              >Unassign Owner</DropdownMenuItem>
-              {teamMembers.map(m => (
-                <DropdownMenuItem
-                  key={m.id}
-                  onClick={() => {
-                    Array.from(selectedIds).forEach(id => updateContact.mutate({ id, owner_user_id: m.id } as any));
-                  }}
-                >Assign Owner: {m.display_name}</DropdownMenuItem>
-              ))}
+              <DropdownMenuItem onClick={() => setBulkAssignOpen(true)}>Assign Owner</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => onBulkAction?.('assign_sdr', Array.from(selectedIds))}>Assign SDR Owner</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onBulkAction?.('assign_ae', Array.from(selectedIds))}>Assign AE Owner</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onBulkAction?.('update_status', Array.from(selectedIds))}>Update Status</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onBulkAction?.('update_lifecycle', Array.from(selectedIds))}>Update Lifecycle Stage</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive" onClick={() => setBulkDeleteOpen(true)}>
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
@@ -508,6 +504,44 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
             deleteContact.mutate(deleteContactId, {
               onSuccess: () => setDeleteContactId(null),
             });
+          }
+        }}
+      />
+
+      <BulkAssignOwnerDialog
+        open={bulkAssignOpen}
+        onClose={() => setBulkAssignOpen(false)}
+        count={selectedIds.size}
+        teamMembers={teamMembers}
+        isSaving={bulkBusy}
+        onConfirm={async (ownerId) => {
+          setBulkBusy(true);
+          try {
+            await Promise.all(
+              Array.from(selectedIds).map(id => updateContact.mutateAsync({ id, owner_user_id: ownerId } as any))
+            );
+            setBulkAssignOpen(false);
+            setSelectedIds(new Set());
+          } finally {
+            setBulkBusy(false);
+          }
+        }}
+      />
+
+      <DeleteConfirmDialog
+        open={bulkDeleteOpen}
+        onClose={() => setBulkDeleteOpen(false)}
+        title={`Delete ${selectedIds.size} contact${selectedIds.size === 1 ? '' : 's'}`}
+        description={`Are you sure you want to delete ${selectedIds.size} selected contact${selectedIds.size === 1 ? '' : 's'}? This will unlink all associated deals and companies.`}
+        isDeleting={bulkBusy}
+        onConfirm={async () => {
+          setBulkBusy(true);
+          try {
+            await Promise.all(Array.from(selectedIds).map(id => deleteContact.mutateAsync(id)));
+            setBulkDeleteOpen(false);
+            setSelectedIds(new Set());
+          } finally {
+            setBulkBusy(false);
           }
         }}
       />

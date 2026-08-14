@@ -13,12 +13,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Search, MoreHorizontal, Building2, ChevronDown, Trash2, Users, Briefcase, ExternalLink, Filter, ArrowUp, ArrowDown, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CrmCompany, CRM_COMPANY_LIFECYCLES, CRM_COMPANY_STATUSES, CRM_COMPANY_TYPES, useDeleteCrmCompany } from '@/hooks/useCrmCompanies';
+import { CrmCompany, CRM_COMPANY_LIFECYCLES, CRM_COMPANY_STATUSES, CRM_COMPANY_TYPES, useDeleteCrmCompany, useUpdateCrmCompany } from '@/hooks/useCrmCompanies';
 import { useContacts } from '@/hooks/useContacts';
 import { useLinkContactToCompany } from '@/hooks/useCrmLinks';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchModal';
 import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
+import { BulkAssignOwnerDialog } from '@/components/crm/BulkAssignOwnerDialog';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { MultiSelectFilter } from '@/components/deals/MultiSelectFilter';
 import { cn } from '@/lib/utils';
@@ -78,11 +79,15 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
   const [linkContactCompanyId, setLinkContactCompanyId] = useState<string | null>(null);
   const [createContactCompanyId, setCreateContactCompanyId] = useState<string | null>(null);
   const [deleteCompanyId, setDeleteCompanyId] = useState<string | null>(null);
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const { data: allContactsResult } = useContacts({ pageSize: 1000, enabled: !!linkContactCompanyId });
   const allContacts = allContactsResult?.data ?? [];
   const linkContact = useLinkContactToCompany();
   const deleteCompany = useDeleteCrmCompany();
+  const updateCompany = useUpdateCrmCompany();
   const teamMembers = useTeamMembers();
   const ownerNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -382,10 +387,14 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
               <Button variant="outline" size="sm">Bulk ({selectedIds.size}) <ChevronDown className="ml-1 h-3 w-3" /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => onBulkAction?.('assign_owner', Array.from(selectedIds))}>Assign Owner</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setBulkAssignOpen(true)}>Assign Owner</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onBulkAction?.('update_status', Array.from(selectedIds))}>Update Status</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onBulkAction?.('update_lifecycle', Array.from(selectedIds))}>Update Lifecycle</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onBulkAction?.('archive', Array.from(selectedIds))}>Archive</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive" onClick={() => setBulkDeleteOpen(true)}>
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
@@ -592,6 +601,44 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
             deleteCompany.mutate(deleteCompanyId, {
               onSuccess: () => setDeleteCompanyId(null),
             });
+          }
+        }}
+      />
+
+      <BulkAssignOwnerDialog
+        open={bulkAssignOpen}
+        onClose={() => setBulkAssignOpen(false)}
+        count={selectedIds.size}
+        teamMembers={teamMembers}
+        isSaving={bulkBusy}
+        onConfirm={async (ownerId) => {
+          setBulkBusy(true);
+          try {
+            await Promise.all(
+              Array.from(selectedIds).map(id => updateCompany.mutateAsync({ id, owner_user_id: ownerId } as any))
+            );
+            setBulkAssignOpen(false);
+            setSelectedIds(new Set());
+          } finally {
+            setBulkBusy(false);
+          }
+        }}
+      />
+
+      <DeleteConfirmDialog
+        open={bulkDeleteOpen}
+        onClose={() => setBulkDeleteOpen(false)}
+        title={`Delete ${selectedIds.size} compan${selectedIds.size === 1 ? 'y' : 'ies'}`}
+        description={`Are you sure you want to delete ${selectedIds.size} selected compan${selectedIds.size === 1 ? 'y' : 'ies'}? Contacts and deals will be unlinked but not deleted.`}
+        isDeleting={bulkBusy}
+        onConfirm={async () => {
+          setBulkBusy(true);
+          try {
+            await Promise.all(Array.from(selectedIds).map(id => deleteCompany.mutateAsync(id)));
+            setBulkDeleteOpen(false);
+            setSelectedIds(new Set());
+          } finally {
+            setBulkBusy(false);
           }
         }}
       />
