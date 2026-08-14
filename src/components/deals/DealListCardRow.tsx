@@ -245,7 +245,7 @@ function DealListCardRowImpl({
             </Badge>
           )}
           </div>
-          <span className="font-semibold text-foreground tabular-nums text-right text-[17px] leading-tight">
+          <span className="font-semibold text-foreground tabular-nums text-center text-[17px] leading-tight">
             {formatCurrencyValue(deal.value)}
           </span>
           {!compact && (
