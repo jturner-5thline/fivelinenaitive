@@ -2811,3 +2811,9 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-calendar-panel * {
   color: hsl(var(--foreground)) !important;
 }
+
+/* Day cells in the deal calendar need a slightly brighter edge to read
+   against the dark navy surface. */
+.deal-calendar-panel [class*="border"] {
+  border-color: hsl(var(--foreground) / 0.28) !important;
+}
