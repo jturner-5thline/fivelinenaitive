@@ -3604,7 +3604,7 @@ export default function DealDetail() {
             useContextRailLayout && "flex-1 min-w-0 w-full",
             // Tabs without the context rail retain the same readable content
             // width, centered within the full popup rather than left-aligned.
-            useContextRailLayout && dealInfoTab !== 'deal-info' && "lg:max-w-[calc(100%-230px)] mx-auto",
+            useContextRailLayout && dealInfoTab !== 'deal-info' && "lg:max-w-[calc(100%-92px)] mx-auto",
           )}>
           {/* Header Card */}
           <Card className={cn(
