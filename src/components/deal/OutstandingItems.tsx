@@ -482,9 +482,9 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
   }, [activeItems, groupBy]);
 
   const handleAdd = () => {
-    if (newItemText.trim()) {
-      onAdd(newItemText.trim(), newRequestedBy);
-      setNewItemText('');
+    if (searchQuery.trim()) {
+      onAdd(searchQuery.trim(), newRequestedBy);
+      setSearchQuery('');
       setNewRequestedBy([]);
       setNewPriority('normal');
     }
@@ -498,9 +498,9 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
     
     setNewRequestedBy(updatedRequestedBy);
 
-    if (!isRemoving && newItemText.trim()) {
-      onAdd(newItemText.trim(), updatedRequestedBy);
-      setNewItemText('');
+    if (!isRemoving && searchQuery.trim()) {
+      onAdd(searchQuery.trim(), updatedRequestedBy);
+      setSearchQuery('');
       setNewRequestedBy([]);
       // Bump key to force-close the uncontrolled Popover after auto-add.
       setRequesterPopoverKey(k => k + 1);
