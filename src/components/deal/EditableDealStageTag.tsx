@@ -138,7 +138,7 @@ export function EditableDealStageTag({
         >
           <Badge
             variant="outline"
-            className="rounded-full text-[10px] px-1.5 py-0 border-white/15 text-white/80 cursor-pointer hover:bg-white/10"
+            className="rounded-md text-[10px] font-semibold px-2 py-0 cursor-pointer border border-[rgba(150,200,255,0.95)] text-[rgba(232,244,255,1)] bg-[linear-gradient(135deg,rgba(126,184,247,0.26),rgba(74,144,217,0.20))] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] [text-shadow:0_1px_2px_rgba(0,0,0,0.55)] backdrop-blur-[8px] transition-colors hover:bg-[linear-gradient(135deg,rgba(148,200,255,0.36),rgba(90,160,235,0.28))] hover:border-[rgba(190,222,255,1)]"
           >
             {currentLabel ?? 'Set stage'}
           </Badge>
