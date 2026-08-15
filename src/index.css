@@ -2741,42 +2741,45 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [class*="bg-card"],
 .deal-detail-surface [class*="bg-muted/"],
 .deal-detail-surface .deal-glass {
+  background-color: rgba(10, 18, 34, 0.72) !important;
   background-image: linear-gradient(
     160deg,
-    rgba(255, 255, 255, 0.11) 0%,
-    rgba(255, 255, 255, 0.05) 55%,
-    rgba(255, 255, 255, 0.025) 100%
+    rgba(122, 168, 255, 0.10) 0%,
+    rgba(18, 30, 54, 0.55) 45%,
+    rgba(6, 12, 24, 0.72) 100%
   ) !important;
   border-width: 1px !important;
   border-style: solid !important;
-  border-color: rgba(178, 208, 255, 0.34) !important;
+  border-color: rgba(150, 190, 255, 0.42) !important;
   box-shadow:
-    0 18px 40px -22px rgba(0, 0, 0, 0.95),
-    0 2px 0 rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
-  backdrop-filter: blur(12px);
+    0 26px 50px -20px rgba(0, 0, 0, 0.95),
+    0 6px 16px -8px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10) !important;
+  backdrop-filter: blur(16px) saturate(130%);
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .deal-detail-surface .bg-card:hover,
 .deal-detail-surface [class*="bg-card"]:hover,
 .deal-detail-surface .deal-glass:hover {
-  border-color: rgba(198, 222, 255, 0.5) !important;
+  border-color: rgba(190, 218, 255, 0.62) !important;
   box-shadow:
-    0 22px 46px -22px rgba(0, 0, 0, 1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+    0 32px 60px -20px rgba(0, 0, 0, 1),
+    0 8px 20px -8px rgba(0, 0, 0, 0.75),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16) !important;
 }
 
 /* Nested modules step one level brighter so hierarchy stays readable. */
 .deal-detail-surface .bg-card .bg-card,
 .deal-detail-surface [class*="bg-card"] [class*="bg-muted/"] {
+  background-color: rgba(20, 32, 56, 0.78) !important;
   background-image: linear-gradient(
     160deg,
-    rgba(255, 255, 255, 0.14) 0%,
-    rgba(255, 255, 255, 0.06) 60%,
-    rgba(255, 255, 255, 0.03) 100%
+    rgba(140, 185, 255, 0.13) 0%,
+    rgba(24, 38, 66, 0.6) 55%,
+    rgba(12, 20, 38, 0.75) 100%
   ) !important;
-  border-color: rgba(210, 230, 255, 0.42) !important;
+  border-color: rgba(175, 208, 255, 0.5) !important;
 }
 
 /* Deal pop-up header identity fields (name / amount) must stay chrome-free
