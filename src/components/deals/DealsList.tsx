@@ -466,6 +466,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                 <span className="text-center">Actions</span>
               </div>
             </div>
+            <div className="flex flex-col gap-1.5 p-1.5">
             {sortedDeals.map((deal) => (
               <DealListCardRow
                 key={deal.id}
@@ -482,6 +483,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                 compact={detailPanelOpen}
               />
             ))}
+            </div>
           </div>
         </div>
         <DealsBulkActionBar
