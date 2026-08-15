@@ -3881,7 +3881,7 @@ export default function DealDetail() {
                 !useContextRailLayout && "mt-4 pt-4 border-t border-border",
               )}>
                 <div className="relative w-full sm:w-[70%] flex flex-col gap-1">
-                  <div className="relative flex items-start gap-2 h-[180px] overflow-y-auto [&_.ProseMirror]:min-h-[150px]">
+                  <div className="relative flex items-start gap-2">
                     <StaleStatusNudge
                       deal={deal}
                       onSave={(value) => {
@@ -3923,6 +3923,11 @@ export default function DealDetail() {
                       bulletMode
                     />
                   </div>
+                  {deal.notesUpdatedAt && (
+                    <p className="text-xs text-muted-foreground/70 pl-6">
+                      Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
+                    </p>
+                  )}
                   <div className="flex items-center gap-2 pl-6 pt-1">
                     <DealUpdatesUnified
                       activities={activityLogs}
@@ -3934,17 +3939,12 @@ export default function DealDetail() {
                     />
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-2 shrink-0 self-stretch">
+                <div className="flex flex-col items-end gap-2 shrink-0">
                   {deal.manager && !useContextRailLayout && (
                     <span className="text-sm text-white">{deal.manager}</span>
                   )}
                   {!useContextRailLayout && (
                     <div className="flex justify-end">{dealActionCluster}</div>
-                  )}
-                  {deal.notesUpdatedAt && (
-                    <p className="text-xs text-muted-foreground/70 mt-auto text-right whitespace-nowrap">
-                      Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
-                    </p>
                   )}
                 </div>
               </div>
