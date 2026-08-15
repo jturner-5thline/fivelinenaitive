@@ -4777,9 +4777,14 @@ export default function DealDetail() {
                               style={{ width: `${Math.max(4, r.pct)}%` }}
                             />
                           </div>
-                          <span className="w-44 shrink-0 truncate text-right text-xs text-muted-foreground" title={r.stageLabel}>
-                            {r.stageLabel}
-                          </span>
+                          <div className="w-44 shrink-0 flex justify-end">
+                            <span
+                              className="max-w-full truncate rounded-full border border-primary/40 bg-primary/15 px-2.5 py-0.5 text-[11px] font-semibold text-foreground backdrop-blur-sm"
+                              title={r.stageLabel}
+                            >
+                              {r.stageLabel}
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>
