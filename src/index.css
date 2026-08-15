@@ -2737,6 +2737,14 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    drop shadow so it reads as sitting *above* the deal-details base
    module — separated, but subtly.
    ------------------------------------------------------------------ */
+/* Standard module chrome tokens for the deal detail pop-up. */
+.deal-detail-surface {
+  --deal-module-radius: 12px;
+  --deal-module-border: 1px;
+  --deal-module-border-color: rgba(150, 190, 255, 0.42);
+  --deal-module-border-color-hover: rgba(190, 218, 255, 0.62);
+}
+
 .deal-detail-surface .bg-card,
 .deal-detail-surface [class*="bg-card"],
 .deal-detail-surface [class*="bg-muted/"],
@@ -2748,9 +2756,10 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
     rgba(18, 30, 54, 0.55) 45%,
     rgba(6, 12, 24, 0.72) 100%
   ) !important;
-  border-width: 1px !important;
+  border-width: var(--deal-module-border) !important;
   border-style: solid !important;
-  border-color: rgba(150, 190, 255, 0.42) !important;
+  border-color: var(--deal-module-border-color) !important;
+  border-radius: var(--deal-module-radius) !important;
   box-shadow:
     0 26px 50px -20px rgba(0, 0, 0, 0.95),
     0 6px 16px -8px rgba(0, 0, 0, 0.7),
@@ -2762,10 +2771,15 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   will-change: transform;
 }
 
+/* Pills, avatars and other fully-rounded chips keep their own radius. */
+.deal-detail-surface [class*="rounded-full"] {
+  border-radius: 9999px !important;
+}
+
 .deal-detail-surface .bg-card:hover,
 .deal-detail-surface [class*="bg-card"]:hover,
 .deal-detail-surface .deal-glass:hover {
-  border-color: rgba(190, 218, 255, 0.62) !important;
+  border-color: var(--deal-module-border-color-hover) !important;
   background-color: rgba(14, 24, 44, 0.78) !important;
   transform: translateY(-2px);
   box-shadow:
@@ -2803,7 +2817,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
     rgba(24, 38, 66, 0.6) 55%,
     rgba(12, 20, 38, 0.75) 100%
   ) !important;
-  border-color: rgba(175, 208, 255, 0.5) !important;
+  border-color: var(--deal-module-border-color-hover) !important;
 }
 
 /* Deal pop-up header identity fields (name / amount) must stay chrome-free
@@ -2832,6 +2846,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   box-shadow: none !important;
   backdrop-filter: none !important;
   transform: none !important;
+  border-radius: 0 !important;
 }
 
 /* Calendar widget on the deal detail sits on a dark navy surface — force all
