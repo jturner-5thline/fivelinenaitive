@@ -833,17 +833,6 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
             controls drop to row 2 before anything important is clipped.
           */}
           <div className="flex flex-row flex-wrap items-center gap-2 order-2 justify-end ml-auto min-w-0">
-            {/* Search */}
-            <div className="relative order-1">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search items..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8 w-36 pl-7 text-xs"
-              />
-            </div>
-            
             {/* Filter by requester — wraps to next line first at narrow widths */}
             <Popover>
               <PopoverTrigger asChild>
@@ -921,10 +910,23 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
             </Button>
           </div>
         </CardHeader>
-        
+
+        {/* Search */}
+        <div className="px-4 pt-2 pb-1 shrink-0">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search items..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-8 w-full pl-7 text-xs"
+            />
+          </div>
+        </div>
+
         {/* Progress Bar */}
         {items.length > 0 && (
-          <div className="px-6 pb-3">
+          <div className="px-4 pb-3">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-muted-foreground">{completedCount}/{items.length}</span>
             </div>
