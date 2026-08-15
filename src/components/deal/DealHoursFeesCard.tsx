@@ -20,7 +20,7 @@ export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged }: DealHour
   const refreshDeals = onHoursChanged;
   return (
       <div
-        className="space-y-3 rounded-xl border border-white/[0.08] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+        className="space-y-3 rounded-xl border border-white/[0.08] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] h-full overflow-y-auto"
         style={{ background: 'rgba(18, 24, 38, 0.82)' }}
       >
         <h4

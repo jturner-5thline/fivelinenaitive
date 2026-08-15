@@ -4707,7 +4707,7 @@ export default function DealDetail() {
                                 </div>
                               )}
                               {!isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && (
-                                <div className="shrink-0">
+                                <div className="flex-1 min-h-[280px] overflow-hidden">
                                   <DealHoursFeesCard
                                     deal={deal}
                                     updateDeal={(field, value) => updateDeal(field as any, value)}
