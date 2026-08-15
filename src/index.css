@@ -174,7 +174,7 @@
     --warning: 38 96% 56%;
     --warning-foreground: 230 33% 8%;
     --destructive: 0 82% 58%;
-    --destructive-foreground: 0 0% 95%;
+    --destructive-foreground: 0 0% 100%;
 
     /* Borders — clearly visible delineation between sections */
     --border: 224 28% 92%;
