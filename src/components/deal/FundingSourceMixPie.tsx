@@ -67,7 +67,12 @@ export function FundingSourceMixPie({ lenders, configuredStages = [], className,
   if (total === 0) return null;
 
   const active = drilldown ? BUCKETS.find((b) => b.id === drilldown)! : null;
-  const rows = drilldown ? grouped[drilldown] : [];
+  const baseRows = drilldown ? grouped[drilldown] : [];
+  const ts = (l: DealLender) => {
+    const d = new Date(l.lastStatusChangeAt || l.updatedAt || 0).getTime();
+    return Number.isNaN(d) ? 0 : d;
+  };
+  const rows = [...baseRows].sort((a, b) => (sortDir === 'desc' ? ts(b) - ts(a) : ts(a) - ts(b)));
 
   return (
     <div className={cn('rounded-xl border border-border/60 bg-card px-4 py-3', className)}>
@@ -148,20 +153,37 @@ export function FundingSourceMixPie({ lenders, configuredStages = [], className,
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[60vh] overflow-y-auto">
-            <div className="grid grid-cols-[1.4fr_1fr_auto] gap-2 border-b border-border/60 pb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-              <span>Name</span><span>Stage</span><span className="text-right">Last change</span>
+            <div className="sticky top-0 z-10 grid grid-cols-[1.3fr_88px_1fr_110px] gap-2 border-b border-border/60 bg-card pb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+              <span>Name</span>
+              <span>Bucket</span>
+              <span>Last status</span>
+              <button
+                type="button"
+                onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
+                className="flex items-center justify-end gap-1 uppercase tracking-wide transition-colors hover:text-foreground"
+              >
+                Last updated
+                <ArrowUpDown className="h-3 w-3" />
+              </button>
             </div>
             {rows.map((l) => {
               const stageLabel = configuredStages.find((s) => s.id === l.stage)?.label || l.stage || '—';
+              const statusLabel = l.trackingStatus || stageLabel;
               return (
                 <button
                   key={l.id}
                   type="button"
                   onClick={() => { onSelectLender?.(l.id); setDrilldown(null); }}
-                  className="grid w-full grid-cols-[1.4fr_1fr_auto] items-center gap-2 border-b border-border/30 py-2 text-left text-sm transition-colors hover:bg-muted/40"
+                  className="grid w-full grid-cols-[1.3fr_88px_1fr_110px] items-center gap-2 border-b border-border/30 py-2 text-left text-sm transition-colors hover:bg-muted/40"
                 >
                   <span className="truncate font-medium text-foreground" title={l.name}>{l.name}</span>
-                  <span className="truncate text-xs text-muted-foreground" title={String(stageLabel)}>{stageLabel}</span>
+                  <span
+                    className="w-fit rounded-full px-2 py-0.5 text-[10px] font-medium"
+                    style={{ background: `${active?.color}22`, color: active?.color }}
+                  >
+                    {active?.label}
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground" title={String(statusLabel)}>{statusLabel}</span>
                   <span className="text-right text-xs text-muted-foreground">{fmtDate(l.lastStatusChangeAt || l.updatedAt)}</span>
                 </button>
               );
