@@ -4546,11 +4546,11 @@ export default function DealDetail() {
                               key={id}
                               className={cn(
                                 "rounded-2xl border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
-                                isRailed && "w-full text-xs",
+                                isRailed && "w-full text-xs !border-0 !bg-transparent !shadow-none !rounded-none deal-plain-row",
                               )}
-                              style={{ background: 'rgba(20, 26, 40, 0.74)' }}
+                              style={isRailed ? undefined : { background: 'rgba(20, 26, 40, 0.74)' }}
                             >
-                              <CardHeader className={cn("flex flex-row items-center justify-between py-4", isRailed && "px-3 py-3")}>
+                              <CardHeader className={cn("flex flex-row items-center justify-between py-4", isRailed && "px-0 pt-0 pb-2")}>
                                 <CardTitle
                                   className={cn("text-[15px] font-semibold tracking-[0.01em]", isRailed && "text-[13px]")}
                                   style={{ color: 'rgba(226, 232, 240, 0.92)' }}
@@ -4558,7 +4558,7 @@ export default function DealDetail() {
                                   Deal Information
                                 </CardTitle>
                               </CardHeader>
-                              <CardContent className={cn("space-y-4", isRailed && "px-3 pb-3 space-y-3")}>
+                              <CardContent className={cn("space-y-4", isRailed && "px-0 pb-0 space-y-3")}>
                                 {isDealInfoFieldVisible('narrative') && renderDealInfoField('narrative')}
 
                                 {isFinServDeal ? (
