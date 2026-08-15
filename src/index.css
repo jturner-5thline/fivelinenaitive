@@ -151,7 +151,9 @@
 
     /* Primary: Logo blue accent #7EB8F7 */
     --primary: 213 90% 70%;
-    --primary-foreground: 0 0% 100%;
+    /* Deep navy on the light-blue primary keeps AA contrast (>10:1);
+       white text on #7EB8F7 only reached 2.4:1. */
+    --primary-foreground: 222 47% 11%;
 
     /* Secondary: glass-elevated surface */
     --secondary: 225 22% 77%;
