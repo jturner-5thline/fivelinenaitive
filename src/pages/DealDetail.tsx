@@ -3268,6 +3268,7 @@ export default function DealDetail() {
         key={deal.id}
         className={cn(
           "deal-carousel-viewport",
+          "deal-detail-surface",
           isEmbedded && "flex h-full min-h-0 flex-1 flex-col overflow-hidden"
         )}
       >
