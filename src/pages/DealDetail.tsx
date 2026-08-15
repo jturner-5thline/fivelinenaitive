@@ -3194,9 +3194,15 @@ export default function DealDetail() {
 
   // Deal Memo / Create Task / Status Report / Export cluster. Rendered in the
   // header card by default, or beneath the Ask AI bar in the context-rail layout.
+  const dealMemoButton = (!isSimplifiedDeal && companyFeatures.deal_memo_enabled && hasPageAccess('deal_memo')) ? (
+    <Suspense fallback={null}>
+      <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
+    </Suspense>
+  ) : null;
+
   const dealActionCluster = (
     <div className="flex flex-wrap items-center gap-2">
-      {!isSimplifiedDeal && companyFeatures.deal_memo_enabled && hasPageAccess('deal_memo') && (
+      {false && (
         <Suspense fallback={null}>
           <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
         </Suspense>
