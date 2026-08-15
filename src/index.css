@@ -2730,56 +2730,53 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 }
 
 /* ------------------------------------------------------------------
-   Deal detail pop-up — same scoped color system as /deals
+   Deal detail pop-up — subtle module separation
    ------------------------------------------------------------------
-   The pop-up renders in a portal, so it can't inherit `.deals-surface`.
-   It carries `.deal-detail-surface`, which re-declares the identical
-   deep-navy token set (see the /deals block below) plus the matching
-   three-level surface elevation for its modules. Colour only.
+   Inside the deal details surface, each module (card/panel) gets a
+   slightly brighter border, a soft translucent glass fill and a low
+   drop shadow so it reads as sitting *above* the deal-details base
+   module — separated, but subtly.
    ------------------------------------------------------------------ */
 .deal-detail-surface .bg-card,
 .deal-detail-surface [class*="bg-card"],
 .deal-detail-surface [class*="bg-muted/"],
 .deal-detail-surface .deal-glass {
-  background-image: none !important;
-  background-color: hsl(221 30% 12%) !important;
+  background-image: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.11) 0%,
+    rgba(255, 255, 255, 0.05) 55%,
+    rgba(255, 255, 255, 0.025) 100%
+  ) !important;
   border-width: 1px !important;
   border-style: solid !important;
-  border-color: hsl(219 20% 24%) !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35) !important;
-  transition: border-color 160ms ease, background-color 160ms ease;
+  border-color: rgba(178, 208, 255, 0.34) !important;
+  box-shadow:
+    0 18px 40px -22px rgba(0, 0, 0, 0.95),
+    0 2px 0 rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+  backdrop-filter: blur(12px);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .deal-detail-surface .bg-card:hover,
 .deal-detail-surface [class*="bg-card"]:hover,
 .deal-detail-surface .deal-glass:hover {
-  background-color: hsl(221 28% 15%) !important;
-  border-color: hsl(219 20% 32%) !important;
+  border-color: rgba(198, 222, 255, 0.5) !important;
+  box-shadow:
+    0 22px 46px -22px rgba(0, 0, 0, 1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
 }
 
-/* Nested modules step one level up so hierarchy stays readable. */
+/* Nested modules step one level brighter so hierarchy stays readable. */
 .deal-detail-surface .bg-card .bg-card,
 .deal-detail-surface [class*="bg-card"] [class*="bg-muted/"] {
-  background-color: hsl(221 27% 16%) !important;
-  border-color: hsl(219 20% 28%) !important;
-}
-
-/* Tertiary metadata + placeholders, mirroring /deals. */
-.deal-detail-surface .text-muted-foreground\/70,
-.deal-detail-surface .text-muted-foreground\/60,
-.deal-detail-surface .text-muted-foreground\/50,
-.deal-detail-surface .text-foreground\/50,
-.deal-detail-surface .text-foreground\/60 {
-  color: hsl(var(--deals-text-tertiary)) !important;
-}
-.deal-detail-surface input::placeholder,
-.deal-detail-surface textarea::placeholder {
-  color: hsl(var(--deals-text-tertiary)) !important;
-  opacity: 1;
-}
-.deal-detail-surface :is(button, a, input, select, textarea, [role="button"], [role="tab"], [role="menuitem"]):focus-visible {
-  outline: 2px solid hsl(var(--ring) / 0.85);
-  outline-offset: 2px;
+  background-image: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.06) 60%,
+    rgba(255, 255, 255, 0.03) 100%
+  ) !important;
+  border-color: rgba(210, 230, 255, 0.42) !important;
 }
 
 /* ═════════════════════════════════════════════════════════════════════════
