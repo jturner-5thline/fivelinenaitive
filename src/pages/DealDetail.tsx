@@ -209,6 +209,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogTrigger,
 } from '@/components/ui/dialog';
 import { StickyNote } from 'lucide-react';
 import { DealSpaceNotesTab } from '@/components/deal/DealSpaceNotesTab';
@@ -4850,31 +4851,32 @@ export default function DealDetail() {
                         </ToggleGroup>
                         </div>
                       )}
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="gap-2 h-8"
-                                aria-label="Activity"
-                                title="Activity"
-                              >
-                                <Activity className="h-4 w-4" />
-                                Activity
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              align="end"
-                              side="bottom"
-                              sideOffset={6}
-                              collisionPadding={8}
-                              className="w-[460px] max-w-[95vw] max-h-[min(85vh,720px)] overflow-y-auto p-3 bg-background border border-border shadow-xl"
-                            >
-                              <div className="text-sm font-semibold mb-2">Activity</div>
-                              <ActivityTimeline activities={activities} />
-                            </PopoverContent>
-                          </Popover>
+                           <Dialog>
+                             <DialogTrigger asChild>
+                               <Button
+                                 type="button"
+                                 variant="outline"
+                                 size="sm"
+                                 className="gap-2 h-8"
+                                 aria-label="Activity"
+                                 title="Activity"
+                               >
+                                 <Activity className="h-4 w-4" />
+                                 Activity
+                               </Button>
+                             </DialogTrigger>
+                             <DialogContent className="z-[120] w-[420px] max-w-[92vw] p-4 gap-3 bg-background border border-border shadow-2xl">
+                               <DialogHeader className="space-y-0">
+                                 <DialogTitle className="text-sm font-semibold flex items-center gap-2">
+                                   <Activity className="h-4 w-4" />
+                                   Activity
+                                 </DialogTitle>
+                               </DialogHeader>
+                               <div className="max-h-[55vh] overflow-y-auto pr-1">
+                                 <ActivityTimeline activities={activities} />
+                               </div>
+                             </DialogContent>
+                           </Dialog>
                           <div className="flex items-center gap-1 ml-2 pl-2 border-l border-white/10 shrink-0">
                           <Popover>
                             <PopoverTrigger asChild>
