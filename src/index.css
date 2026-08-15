@@ -2739,32 +2739,34 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    ------------------------------------------------------------------ */
 /* Standard module chrome tokens for the deal detail pop-up. */
 .deal-detail-surface {
-  --deal-module-radius: 12px;
+  --deal-module-radius: 19px;
   --deal-module-border: 1px;
-  --deal-module-border-color: rgba(150, 190, 255, 0.42);
-  --deal-module-border-color-hover: rgba(190, 218, 255, 0.62);
+  --deal-module-border-color: rgba(255, 255, 255, 0.14);
+  --deal-module-border-color-hover: rgba(255, 255, 255, 0.24);
 }
 
 .deal-detail-surface .bg-card,
 .deal-detail-surface [class*="bg-card"],
 .deal-detail-surface [class*="bg-muted/"],
 .deal-detail-surface .deal-glass {
-  background-color: rgba(6, 12, 23, 0.94) !important;
+  background-color: rgba(20, 22, 26, 0.62) !important;
   background-image: linear-gradient(
     160deg,
-    rgba(96, 140, 220, 0.06) 0%,
-    rgba(8, 15, 28, 0.94) 45%,
-    rgba(4, 9, 18, 0.96) 100%
+    rgba(255, 255, 255, 0.07) 0%,
+    rgba(255, 255, 255, 0.02) 42%,
+    rgba(255, 255, 255, 0.00) 100%
   ) !important;
   border-width: var(--deal-module-border) !important;
   border-style: solid !important;
   border-color: var(--deal-module-border-color) !important;
   border-radius: var(--deal-module-radius) !important;
   box-shadow:
-    0 26px 50px -20px rgba(0, 0, 0, 0.95),
-    0 6px 16px -8px rgba(0, 0, 0, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.10) !important;
-  backdrop-filter: blur(16px) saturate(130%);
+    0 24px 48px -24px rgba(0, 0, 0, 0.85),
+    0 8px 20px -12px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03) !important;
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
   transition: border-color 200ms ease, box-shadow 200ms ease,
     transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
     background-color 200ms ease;
@@ -2780,12 +2782,12 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [class*="bg-card"]:hover,
 .deal-detail-surface .deal-glass:hover {
   border-color: var(--deal-module-border-color-hover) !important;
-  background-color: rgba(9, 17, 31, 0.96) !important;
+  background-color: rgba(28, 31, 36, 0.66) !important;
   transform: translateY(-2px);
   box-shadow:
-    0 32px 60px -20px rgba(0, 0, 0, 1),
-    0 8px 20px -8px rgba(0, 0, 0, 0.75),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16) !important;
+    0 30px 60px -22px rgba(0, 0, 0, 0.95),
+    0 10px 24px -12px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
 }
 
 /* Nested modules shouldn't double-lift when the parent module is hovered. */
@@ -2810,14 +2812,46 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 /* Nested modules step one level brighter so hierarchy stays readable. */
 .deal-detail-surface .bg-card .bg-card,
 .deal-detail-surface [class*="bg-card"] [class*="bg-muted/"] {
-  background-color: rgba(14, 23, 40, 0.95) !important;
+  background-color: rgba(255, 255, 255, 0.045) !important;
   background-image: linear-gradient(
     160deg,
-    rgba(120, 165, 245, 0.08) 0%,
-    rgba(15, 25, 44, 0.95) 55%,
-    rgba(8, 14, 26, 0.97) 100%
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.015) 100%
   ) !important;
-  border-color: var(--deal-module-border-color-hover) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  border-radius: 14px !important;
+}
+
+/* Inputs / textareas / selects inside the glass modules: slightly darker
+   translucent fill so they read as recessed wells, not opaque boxes. */
+.deal-detail-surface input:not([type="checkbox"]):not([type="radio"]),
+.deal-detail-surface textarea,
+.deal-detail-surface select {
+  background-color: rgba(0, 0, 0, 0.28) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: hsl(0 0% 100% / 0.94);
+}
+
+.deal-detail-surface input:focus-visible,
+.deal-detail-surface textarea:focus-visible {
+  border-color: rgba(255, 255, 255, 0.28) !important;
+}
+
+/* Semantic status chips/badges (green / amber / red) keep their own tint —
+   never inherit the neutral glass fill. */
+.deal-detail-surface [class*="bg-green"],
+.deal-detail-surface [class*="bg-emerald"],
+.deal-detail-surface [class*="bg-yellow"],
+.deal-detail-surface [class*="bg-amber"],
+.deal-detail-surface [class*="bg-red"],
+.deal-detail-surface [class*="bg-destructive"] {
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transform: none !important;
 }
 
 /* Text contrast: keep body copy near-white and muted copy legible against
