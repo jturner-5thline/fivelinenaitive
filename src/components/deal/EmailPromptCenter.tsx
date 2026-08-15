@@ -21,14 +21,17 @@ import { formatDistanceToNow } from 'date-fns';
 import DOMPurify from 'dompurify';
 import { applyDemoLenderSalutation } from '@/lib/demoLenderSalutation';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { DraftAndSendDialog } from '@/components/deal/DraftAndSendDialog';
 
 interface EmailPromptCenterProps {
   dealId: string;
   dealName?: string;
+  contactEmail?: string | null;
 }
 
-export function EmailPromptCenterButton({ dealId, dealName }: EmailPromptCenterProps) {
+export function EmailPromptCenterButton({ dealId, dealName, contactEmail }: EmailPromptCenterProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const { pendingCount, data: prompts } = useDealEmailPrompts(dealId);
 
   // Per-tab session dedup: track which pending prompt ids we've already
@@ -63,18 +66,9 @@ export function EmailPromptCenterButton({ dealId, dealName }: EmailPromptCenterP
   // Badge click: when there is at least one pending prompt, open the
   // editable Workflow Email modal for the oldest one. Otherwise fall back
   // to the prompt-center list (history / sent / dismissed view).
-  const handleClick = () => {
-    if (pendingCount > 0) {
-      console.log('[email-prompt-center] badge click → open oldest pending modal', { dealId });
-      window.dispatchEvent(
-        new CustomEvent('workflow-email-prompt-open-oldest', {
-          detail: { dealId },
-        }),
-      );
-      return;
-    }
-    setIsOpen(true);
-  };
+  // Click now opens the same client email composer used by the deals list
+  // view, pre-filled with the deal's client contact email.
+  const handleClick = () => setIsEmailDialogOpen(true);
 
   return (
     <>
@@ -101,8 +95,22 @@ export function EmailPromptCenterButton({ dealId, dealName }: EmailPromptCenterP
         )}
           </Button>
         </TooltipTrigger>
-        <TooltipContent side="bottom">Email Prompt Center</TooltipContent>
+        <TooltipContent side="bottom">Email client</TooltipContent>
       </Tooltip>
+
+      {isEmailDialogOpen && (
+        <DraftAndSendDialog
+          open={isEmailDialogOpen}
+          onOpenChange={setIsEmailDialogOpen}
+          contextLabel="Client email"
+          initial={{
+            to: contactEmail ? [contactEmail] : [],
+            subject: `${dealName || 'Deal'} — update`,
+            body: '',
+            dealId,
+          }}
+        />
+      )}
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] p-0 gap-0 overflow-hidden border-[hsl(220,50%,30%,0.5)] bg-[hsl(222,30%,8%,0.95)] backdrop-blur-2xl shadow-[0_25px_60px_-12px_hsl(220,80%,10%,0.7)]">
