@@ -52,9 +52,13 @@ export interface DealContextRailProps {
   compact?: boolean;
   /** When true, hide the deal name + amount (rendered as a page header instead). */
   hideIdentity?: boolean;
+  /** Ref applied to the core facts block (used to size the header widget). */
+  measureRef?: (node: HTMLDivElement | null) => void;
+  /** Extra content merged into the same module, below the core facts. */
+  children?: React.ReactNode;
 }
 
-export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity }: DealContextRailProps) {
+export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, measureRef, children }: DealContextRailProps) {
   const lastActivity = deal.notesUpdatedAt || deal.updatedAt || null;
   const owner = deal.dealOwner || deal.manager || '';
 
@@ -71,11 +75,12 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
       className={cn(
         'shrink-0 w-full lg:w-[260px] lg:sticky lg:top-4 self-start',
         'rounded-lg border border-border/60 bg-card/70 backdrop-blur-xl',
-        'shadow-[0_8px_32px_hsl(0,0%,0%,0.35)] p-3 space-y-2.5',
+        'shadow-[0_8px_32px_hsl(0,0%,0%,0.35)] p-3',
         className,
       )}
       aria-label="Deal context"
     >
+      <div ref={measureRef} className="space-y-2.5">
       {!hideIdentity && (
       <div className="space-y-1.5">
         <InlineEditField
@@ -170,6 +175,10 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
       </div>
       </>
       )}
+      </div>
+      {children ? (
+        <div className="mt-3 border-t border-border/50 pt-3">{children}</div>
+      ) : null}
     </aside>
   );
 }
