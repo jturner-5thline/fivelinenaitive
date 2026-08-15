@@ -970,6 +970,16 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
           <div className="px-4 pb-3">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-muted-foreground">{completedCount}/{items.length}</span>
+              {activeItems.length > 1 && selectedIds.size === 0 && !readOnly && (
+                <button
+                  type="button"
+                  onClick={selectAllActive}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Square className="h-3 w-3" />
+                  Select all ({activeItems.length})
+                </button>
+              )}
             </div>
             <Progress value={progressPercent} className="h-1.5" />
           </div>
@@ -997,21 +1007,6 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                 <Button size="sm" variant="gradient" onClick={handleBulkMarkBoth}>Mark Both</Button>
                 <Button size="sm" variant="ghost" onClick={clearSelection}><X className="h-4 w-4" /></Button>
               </div>
-            </div>
-          )}
-
-          {/* Select All for Active Items */}
-          {activeItems.length > 1 && selectedIds.size === 0 && !readOnly && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs text-muted-foreground hover:text-foreground gap-1.5"
-                onClick={selectAllActive}
-              >
-                <Square className="h-3.5 w-3.5" />
-                Select all ({activeItems.length})
-              </Button>
             </div>
           )}
 
