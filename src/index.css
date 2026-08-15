@@ -2778,3 +2778,14 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   ) !important;
   border-color: rgba(210, 230, 255, 0.42) !important;
 }
+
+/* Deal pop-up header identity fields (name / amount) must stay chrome-free
+   even though their hover class matches the .bg-muted/ module selector. */
+.deal-detail-surface .deal-header-field,
+.deal-detail-surface .deal-header-field:hover {
+  background-image: none !important;
+  background-color: transparent !important;
+  border-width: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
