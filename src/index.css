@@ -2915,3 +2915,8 @@ body[data-deals-surface='1'] {
   background-color: hsl(222 34% 7%) !important;
   background-image: none !important;
 }
+
+/* Ambient app-background layer: flat deep navy on the Deals workspace. */
+body[data-deals-surface='1'] .app-bg-gradient {
+  background: hsl(222 34% 7%) !important;
+}
