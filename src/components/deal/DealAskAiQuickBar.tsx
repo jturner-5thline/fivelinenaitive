@@ -46,6 +46,9 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
   const [value, setValue] = useState('');
   const [expanded, setExpanded] = useState(false);
   const [latestOpen, setLatestOpen] = useState(true);
+  // Hides the collapsed "latest answer" card so clicking away restores the
+  // plain single-line bar the user sees when the deal pop-up first opens.
+  const [latestDismissed, setLatestDismissed] = useState(true);
   const [lastPrompt, setLastPrompt] = useState('');
   const [search, setSearch] = useState('');
   const [includeCitations, setIncludeCitations] = useState(true);
@@ -66,10 +69,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
     if (!expanded) return;
     const onPointerDown = (e: MouseEvent | TouchEvent) => {
       const el = containerRef.current;
-      if (el && !el.contains(e.target as Node)) {
-        setExpanded(false);
-        setLatestOpen(false);
-      }
+      if (el && !el.contains(e.target as Node)) collapseToDefault();
     };
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('touchstart', onPointerDown);
@@ -84,6 +84,14 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, isLoading, expanded]);
 
+  /** Returns the widget to the default collapsed bar. */
+  const collapseToDefault = () => {
+    setExpanded(false);
+    setLatestOpen(false);
+    setLatestDismissed(true);
+    setSearch('');
+  };
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const question = value.trim();
@@ -91,6 +99,8 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
     setValue('');
     setExpanded(true);
     setLastPrompt(question);
+    setLatestDismissed(false);
+    setLatestOpen(true);
     void sendMessage(question);
   };
 
@@ -112,6 +122,8 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
     setValue('');
     setExpanded(true);
     setLastPrompt(question);
+    setLatestDismissed(false);
+    setLatestOpen(true);
     void sendMessage(question);
   };
 
@@ -236,8 +248,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
         // Shrink back to the default bar once focus leaves the whole widget.
         const next = e.relatedTarget as Node | null;
         if (next && containerRef.current?.contains(next)) return;
-        setExpanded(false);
-        setLatestOpen(false);
+        collapseToDefault();
       }}
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
@@ -491,7 +502,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
       )}
       {/* Collapsed view: keep the latest answer on the deal page in an
           expandable section instead of forcing a trip to the Deal Space tab. */}
-      {!expanded && !isLoading && !error && lastAssistant && (
+      {!expanded && !isLoading && !error && !latestDismissed && lastAssistant && (
         <div className="rounded-lg border border-border/60 bg-card/60 backdrop-blur">
           <button
             type="button"
