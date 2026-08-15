@@ -168,7 +168,7 @@ function DealListCardRowImpl({
   return (
     <div
       className={cn(
-        'group flex items-center gap-3 border-b border-border/60 px-2 py-3 cursor-pointer transition-colors hover:bg-muted/30',
+        'group flex items-center gap-3 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-3 cursor-pointer transition-colors hover:bg-muted/30',
         isSelected && 'bg-primary/5',
       )}
       data-deal-open-id={deal.id}
