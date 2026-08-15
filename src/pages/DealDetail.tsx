@@ -4754,7 +4754,7 @@ export default function DealDetail() {
                 }).sort((a, b) => b.step - a.step);
                 if (rows.length === 0) return null;
                 return (
-                  <div className="rounded-xl border border-border/60 bg-card px-4 py-3">
+                  <div className="mx-auto w-full max-w-[50%] rounded-xl border border-border/60 bg-card px-4 py-3">
                     <div className="flex items-baseline justify-between">
                       <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Stage progress</p>
                       <p className="text-[11px] text-muted-foreground">Active &amp; On Deck</p>
