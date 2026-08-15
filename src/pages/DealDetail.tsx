@@ -1223,6 +1223,7 @@ export default function DealDetail() {
   const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'analysis' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication'>(initialTab === 'deal-space' ? 'deal-info' : (initialTab || 'deal-info'));
   // Activity tab now hosts both the audit/activity log and communications.
   const [activityView, setActivityView] = useState<'activity' | 'communications'>('activity');
+  const [isActivityDialogOpen, setIsActivityDialogOpen] = useState(false);
   const prevTabRef = useRef<typeof dealInfoTab>(dealInfoTab);
 
   // Projects deals only expose Deal Info + Data Room. If the persisted/URL
@@ -4851,7 +4852,7 @@ export default function DealDetail() {
                         </ToggleGroup>
                         </div>
                       )}
-                           <Dialog>
+                           <Dialog open={isActivityDialogOpen} onOpenChange={setIsActivityDialogOpen}>
                              <DialogTrigger asChild>
                                <Button
                                  type="button"
@@ -4865,7 +4866,25 @@ export default function DealDetail() {
                                  Activity
                                </Button>
                              </DialogTrigger>
-                             <DialogContent className="z-[120] w-[420px] max-w-[92vw] p-4 gap-3 bg-background border border-border shadow-2xl">
+                             <DialogContent
+                               className="z-[120] w-[420px] max-w-[92vw] p-4 gap-3 bg-background border border-border shadow-2xl"
+                               onEscapeKeyDown={(e) => {
+                                 // Close only this popup; keep the deal details modal open.
+                                 e.preventDefault();
+                                 e.stopPropagation();
+                                 setIsActivityDialogOpen(false);
+                               }}
+                               onPointerDownOutside={(e) => {
+                                 e.preventDefault();
+                                 e.stopPropagation();
+                                 setIsActivityDialogOpen(false);
+                               }}
+                               onInteractOutside={(e) => {
+                                 e.preventDefault();
+                                 e.stopPropagation();
+                                 setIsActivityDialogOpen(false);
+                               }}
+                             >
                                <DialogHeader className="space-y-0">
                                  <DialogTitle className="text-sm font-semibold flex items-center gap-2">
                                    <Activity className="h-4 w-4" />
