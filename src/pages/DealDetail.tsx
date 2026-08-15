@@ -4031,7 +4031,7 @@ export default function DealDetail() {
                   )}
 
                   {hasDealSpaceAccess && id && (
-                    <div className="-mx-2 rounded-lg px-2 py-2">
+                    <div className="-mx-2 rounded-lg px-2 pb-2 pt-px">
                       <DealAskAiQuickBar
                         dealId={id}
                         dealName={deal?.name || deal?.company}
