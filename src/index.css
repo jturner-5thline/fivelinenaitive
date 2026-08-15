@@ -2728,3 +2728,44 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   padding-left: 0.75rem;
   border-left: 2px solid hsl(var(--border));
 }
+
+/* ------------------------------------------------------------------
+   Deal detail pop-up — subtle module separation
+   ------------------------------------------------------------------
+   Inside the deal details surface, each module (card/panel) gets a
+   slightly brighter border, a soft translucent glass fill and a low
+   drop shadow so it reads as sitting *above* the deal-details base
+   module — separated, but subtly.
+   ------------------------------------------------------------------ */
+.deal-detail-surface .bg-card {
+  background-image: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.055) 0%,
+    rgba(255, 255, 255, 0.022) 55%,
+    rgba(255, 255, 255, 0.012) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.13);
+  box-shadow:
+    0 10px 26px -18px rgba(0, 0, 0, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(10px);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.deal-detail-surface .bg-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 14px 32px -18px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+}
+
+/* Nested modules step one level brighter so hierarchy stays readable. */
+.deal-detail-surface .bg-card .bg-card {
+  background-image: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.075) 0%,
+    rgba(255, 255, 255, 0.03) 60%,
+    rgba(255, 255, 255, 0.015) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.17);
+}
