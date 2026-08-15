@@ -3544,7 +3544,7 @@ export default function DealDetail() {
           {/* Deal identity header: name + amount pinned to the very top of
               the deal pop-up (moved out of the left context rail). */}
           {useContextRailLayout && (
-            <div className="flex flex-col sm:flex-row sm:items-baseline gap-x-0 gap-y-1 mt-4 min-w-0">
+            <div className="flex flex-row flex-wrap items-baseline gap-x-3 gap-y-1 mt-4 min-w-0">
               <InlineEditField
                 value={deal.company}
                 manualCommit
@@ -3554,8 +3554,10 @@ export default function DealDetail() {
               />
               <span
                 aria-hidden
-                className="hidden sm:block self-stretch w-px bg-border/70 my-1 -ml-6 mr-1"
-              />
+                className="text-[2rem] md:text-[2.7rem] font-bold leading-tight text-muted-foreground/70"
+              >
+                -
+              </span>
               <InlineEditField
                 value={formatUSD(deal.value)}
                 editValue={formatAmountWithCommas(String(deal.value ?? 0))}
