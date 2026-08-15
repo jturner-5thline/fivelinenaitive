@@ -55,7 +55,7 @@ import { cn } from '@/lib/utils';
 
 /** Shared column template so the header row in DealsList stays aligned. */
 export const DEAL_LIST_GRID =
-  'grid grid-cols-[minmax(160px,240px)_112px_158px_minmax(120px,1.4fr)_76px_72px] items-center gap-1.5';
+  'grid grid-cols-[minmax(160px,240px)_95px_134px_minmax(120px,1.4fr)_76px_72px] items-center gap-1.5';
 
 /** Strip HTML/markup from status note text and normalize whitespace. */
 function cleanStatusNote(raw?: string): string {
@@ -280,7 +280,7 @@ function DealListCardRowImpl({
           {!compact && (
             <div
               onClick={(e) => e.stopPropagation()}
-              className="justify-self-center w-[104px] [&_button]:w-full [&_button>*]:flex [&_button>*]:w-full [&_button>*]:justify-center [&_button>*]:items-center [&_button>*]:min-h-[26px]"
+              className="justify-self-center w-[88px] [&_button]:w-full [&_button>*]:flex [&_button>*]:w-full [&_button>*]:justify-center [&_button>*]:items-center [&_button>*]:min-h-[22px] [&_button>*]:text-[10px]"
             >
               <InlineStatusDropdown
                 dealId={deal.id}
@@ -292,7 +292,7 @@ function DealListCardRowImpl({
           )}
           {!compact && (
             <div
-              className="min-w-0 flex items-center justify-self-center w-[150px] [&_button]:w-full [&_button>*]:flex [&_button>*]:w-full [&_button>*]:justify-center [&_button>*]:items-center [&_button>*]:min-h-[26px]"
+              className="min-w-0 flex items-center justify-self-center w-[128px] [&_button]:w-full [&_button>*]:flex [&_button>*]:w-full [&_button>*]:justify-center [&_button>*]:items-center [&_button>*]:min-h-[22px] [&_button>*]:text-[10px]"
               onClick={(e) => e.stopPropagation()}
             >
               <InlineStageDropdown
