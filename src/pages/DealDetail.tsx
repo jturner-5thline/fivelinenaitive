@@ -4736,6 +4736,7 @@ export default function DealDetail() {
               <FundingSourceMixPie
                 lenders={deal.lenders || []}
                 configuredStages={configuredStages as any}
+                className="w-1/2 max-w-[50%]"
               />
               {/* Lender stage progress table */}
               {(() => {
