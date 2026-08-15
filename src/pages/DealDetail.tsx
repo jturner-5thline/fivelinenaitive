@@ -4778,7 +4778,7 @@ export default function DealDetail() {
                             />
                           </div>
                           <span className="w-44 shrink-0 truncate text-right text-xs text-muted-foreground" title={r.stageLabel}>
-                            {r.stageLabel}{r.step > 0 ? ` · ${r.step}/${funnel.length}` : ''}
+                            {r.stageLabel}
                           </span>
                         </div>
                       ))}
