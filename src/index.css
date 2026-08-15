@@ -2756,17 +2756,41 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
     0 6px 16px -8px rgba(0, 0, 0, 0.7),
     inset 0 1px 0 rgba(255, 255, 255, 0.10) !important;
   backdrop-filter: blur(16px) saturate(130%);
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  transition: border-color 200ms ease, box-shadow 200ms ease,
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 200ms ease;
+  will-change: transform;
 }
 
 .deal-detail-surface .bg-card:hover,
 .deal-detail-surface [class*="bg-card"]:hover,
 .deal-detail-surface .deal-glass:hover {
   border-color: rgba(190, 218, 255, 0.62) !important;
+  background-color: rgba(14, 24, 44, 0.78) !important;
+  transform: translateY(-2px);
   box-shadow:
     0 32px 60px -20px rgba(0, 0, 0, 1),
     0 8px 20px -8px rgba(0, 0, 0, 0.75),
     inset 0 1px 0 rgba(255, 255, 255, 0.16) !important;
+}
+
+/* Nested modules shouldn't double-lift when the parent module is hovered. */
+.deal-detail-surface .bg-card:hover [class*="bg-card"]:not(:hover),
+.deal-detail-surface [class*="bg-card"]:hover [class*="bg-muted/"]:not(:hover) {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deal-detail-surface .bg-card,
+  .deal-detail-surface [class*="bg-card"],
+  .deal-detail-surface [class*="bg-muted/"],
+  .deal-detail-surface .deal-glass,
+  .deal-detail-surface .bg-card:hover,
+  .deal-detail-surface [class*="bg-card"]:hover,
+  .deal-detail-surface .deal-glass:hover {
+    transform: none;
+    transition: none;
+  }
 }
 
 /* Nested modules step one level brighter so hierarchy stays readable. */
