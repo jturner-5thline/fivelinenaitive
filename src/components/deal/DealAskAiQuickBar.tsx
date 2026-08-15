@@ -551,6 +551,20 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
           ))}
         </div>
       )}
+      {!expanded && messages.length > 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            setExpanded(true);
+            setLatestDismissed(false);
+            setLatestOpen(true);
+          }}
+          className="flex animate-fade-in items-center gap-2 self-start rounded-full border border-border/60 bg-card/60 px-2.5 py-1 text-xs text-muted-foreground backdrop-blur transition-colors hover:border-primary/50 hover:text-foreground"
+        >
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
+          Continue conversation · {messages.length} message{messages.length === 1 ? '' : 's'}
+        </button>
+      )}
       <form
       onSubmit={submit}
       className="flex items-center gap-2 rounded-lg border border-border/60 bg-card/60 px-3 py-2 backdrop-blur transition-all duration-200 focus-within:border-primary/50 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]"
