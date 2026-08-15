@@ -479,6 +479,21 @@ function DealListCardRowImpl({
         />
       </div>
       )}
+      {isEmailDialogOpen && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <DraftAndSendDialog
+            open={isEmailDialogOpen}
+            onOpenChange={setIsEmailDialogOpen}
+            contextLabel="Client email"
+            initial={{
+              to: deal.contactEmail ? [deal.contactEmail] : [],
+              subject: `${deal.company} — update`,
+              body: '',
+              dealId: deal.id,
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
