@@ -4724,11 +4724,7 @@ export default function DealDetail() {
                 if (rows.length === 0) return null;
                 return (
                   <div className="flex h-[244px] w-full min-w-0 flex-col rounded-xl border border-border/60 bg-card px-4 py-3">
-                    <div className="flex shrink-0 items-baseline justify-between">
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Stage progress</p>
-                      <p className="text-[11px] text-muted-foreground">Active &amp; On Deck</p>
-                    </div>
-                    <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+                    <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
                       {rows.map(r => (
                         <div key={r.id} className="grid grid-cols-[minmax(120px,1fr)_2fr_auto] items-center gap-3">
                           <span className="truncate text-sm text-foreground" title={r.name}>{r.name}</span>
