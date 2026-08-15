@@ -3881,7 +3881,7 @@ export default function DealDetail() {
                 !useContextRailLayout && "mt-4 pt-4 border-t border-border",
               )}>
                 <div className="relative w-full sm:w-[70%] flex flex-col gap-1">
-                  <div className="relative flex items-start gap-2">
+                  <div className="relative flex items-start gap-2 h-[180px] overflow-y-auto [&_.ProseMirror]:min-h-[150px]">
                     <StaleStatusNudge
                       deal={deal}
                       onSave={(value) => {
