@@ -98,11 +98,12 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
       )}
 
       <div className="space-y-1.5">
-        <EditableDealStatusTag dealId={deal.id} status={deal.status} />
+        <EditableDealStatusTag dealId={deal.id} status={deal.status} className="deal-rail-control" />
         <EditableDealStageTag
           dealId={deal.id}
           stage={deal.stage}
           pipelineId={deal.pipelineId ?? null}
+          className="deal-rail-control"
         />
       </div>
 
@@ -118,7 +119,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
           }}
           size="sm"
           placeholder="Not set"
-          buttonClassName="border-none bg-transparent hover:bg-muted/40 px-1 -ml-1 h-7 text-sm"
+          buttonClassName="deal-rail-control px-2 h-8 text-sm justify-start w-full"
         />
         {isCloseDateDirty && (
           <div className="flex items-center gap-1 pt-1">
