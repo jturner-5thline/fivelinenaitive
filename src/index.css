@@ -2908,3 +2908,10 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   outline: 2px solid hsl(var(--ring) / 0.85);
   outline-offset: 2px;
 }
+
+/* App shell while the Deals workspace is mounted: deep navy / near-black,
+   replacing the bright blue gradient. Colour only. */
+body[data-deals-surface='1'] {
+  background-color: hsl(222 34% 7%) !important;
+  background-image: none !important;
+}
