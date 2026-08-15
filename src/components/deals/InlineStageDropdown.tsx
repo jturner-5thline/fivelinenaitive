@@ -62,7 +62,7 @@ export function InlineStageDropdown({ dealId, stage, pipelineId, onStageChange, 
         >
           <Badge
             variant="outline"
-            className={`relative overflow-hidden inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium leading-tight cursor-pointer max-w-full text-left whitespace-nowrap border border-[rgba(126,184,247,0.9)] text-[rgba(196,224,255,1)] bg-[linear-gradient(135deg,rgba(126,184,247,0.16),rgba(74,144,217,0.10))] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-[8px] transition-colors hover:bg-[linear-gradient(135deg,rgba(148,200,255,0.26),rgba(90,160,235,0.18))] hover:border-[rgba(178,214,255,1)] ${className}`}
+            className={`relative overflow-hidden inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold leading-tight cursor-pointer max-w-full text-left whitespace-nowrap border border-[rgba(150,200,255,0.95)] text-[rgba(232,244,255,1)] bg-[linear-gradient(135deg,rgba(126,184,247,0.26),rgba(74,144,217,0.20))] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] [text-shadow:0_1px_2px_rgba(0,0,0,0.55)] backdrop-blur-[8px] transition-colors hover:bg-[linear-gradient(135deg,rgba(148,200,255,0.36),rgba(90,160,235,0.28))] hover:border-[rgba(190,222,255,1)] ${className}`}
           >
             {currentConfig.label}
           </Badge>
