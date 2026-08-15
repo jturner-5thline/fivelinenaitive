@@ -66,7 +66,10 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
     if (!expanded) return;
     const onPointerDown = (e: MouseEvent | TouchEvent) => {
       const el = containerRef.current;
-      if (el && !el.contains(e.target as Node)) setExpanded(false);
+      if (el && !el.contains(e.target as Node)) {
+        setExpanded(false);
+        setLatestOpen(false);
+      }
     };
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('touchstart', onPointerDown);
@@ -225,7 +228,18 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
   };
 
   return (
-    <div ref={containerRef} className="space-y-2" onFocusCapture={() => setExpanded(true)}>
+    <div
+      ref={containerRef}
+      className="space-y-2"
+      onFocusCapture={() => setExpanded(true)}
+      onBlurCapture={(e) => {
+        // Shrink back to the default bar once focus leaves the whole widget.
+        const next = e.relatedTarget as Node | null;
+        if (next && containerRef.current?.contains(next)) return;
+        setExpanded(false);
+        setLatestOpen(false);
+      }}
+    >
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary shrink-0" />
         <div className="flex-1 min-w-0">
