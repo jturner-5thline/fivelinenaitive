@@ -164,6 +164,9 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
         {/* ── Body ── flex-1 so it fills remaining card height */}
         {isOpen && (
           <CardContent className="flex-1 flex flex-col px-4 pb-4 pt-0 space-y-3 min-h-0">
+            {/* Spacer matching the Outstanding Items search + progress rows so the
+                first task tile lines up with the first outstanding item tile. */}
+            <div className="h-[70px] shrink-0" aria-hidden />
             {isLoading && tasks.length === 0 ? (
               <div className="flex-1 flex items-center justify-center">
                 <p className="text-xs text-muted-foreground">Loading tasks…</p>
@@ -214,12 +217,9 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className={cn("text-sm font-medium truncate", isCompleted ? "text-muted-foreground line-through" : "text-foreground")}>{task.title}</p>
-                          {!isCompleted && task.description && (
-                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{task.description}</p>
-                          )}
-                          <div className="flex items-center gap-3 mt-1 flex-wrap">
+                          <div className="flex items-center gap-3 mt-0.5 flex-nowrap overflow-hidden">
                             {assignee && (
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1.5 shrink-0">
                                 <Avatar className="h-4 w-4">
                                   <AvatarImage src={assignee.avatar_url || undefined} />
                                   <AvatarFallback className="text-[8px]">{getInitials(assignee)}</AvatarFallback>
@@ -228,15 +228,18 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
                               </div>
                             )}
                             {task.due_date && dueDateObj && (
-                              <div className={cn("flex items-center gap-1 text-xs", isOverdue ? "text-destructive" : "text-muted-foreground")}>
+                              <div className={cn("flex items-center gap-1 text-xs shrink-0", isOverdue ? "text-destructive" : "text-muted-foreground")}>
                                 <CalendarIcon className="h-3 w-3" />
                                 {format(dueDateObj, 'MMM d, yyyy')}
                               </div>
                             )}
                             {!isCompleted && task.status === 'in_progress' && (
-                              <span className="flex items-center gap-1 text-xs text-primary">
+                              <span className="flex items-center gap-1 text-xs text-primary shrink-0">
                                 <Clock className="h-3 w-3" /> In Progress
                               </span>
+                            )}
+                            {!isCompleted && task.description && (
+                              <span className="text-xs text-muted-foreground truncate">{task.description}</span>
                             )}
                           </div>
                         </div>
