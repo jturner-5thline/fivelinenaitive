@@ -10,6 +10,7 @@ import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/Le
 import { LenderCommsTimeline } from '@/components/lenders/LenderCommsTimeline';
 import { DealLenderContactPicker } from '@/components/deal/DealLenderContactPicker';
 import { LenderHistoryHint } from '@/components/deal/LenderHistoryHint';
+import { FundingSourceMixPie } from '@/components/deal/FundingSourceMixPie';
 import { useRequestStatusChange } from '@/components/deal/StatusChangeGate';
 import { StaleStatusNudge } from '@/components/deal/StaleStatusNudge';
 import { LenderNotesField } from '@/components/deal/LenderNotesField';
@@ -4731,6 +4732,11 @@ export default function DealDetail() {
                   </div>
                 );
               })()}
+              {/* Funding source mix pie (with drilldown) */}
+              <FundingSourceMixPie
+                lenders={deal.lenders || []}
+                configuredStages={configuredStages as any}
+              />
               {/* Lender stage progress table */}
               {(() => {
                 const norm = (s?: string) => (s || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
