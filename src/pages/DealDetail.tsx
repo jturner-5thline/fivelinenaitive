@@ -3618,9 +3618,9 @@ export default function DealDetail() {
           {/* Context-rail layout (5th Line, scoped deals): pins identity +
               at-a-glance facts to a left rail and lets the main column
               carry the content. Everything below is unchanged. */}
-          <div className={cn(useContextRailLayout && "flex flex-col lg:flex-row gap-5 items-start mt-3")}>
+          <div className={cn(useContextRailLayout && "flex flex-col lg:flex-row gap-2.5 items-start mt-3")}>
           {useContextRailLayout && dealInfoTab === 'deal-info' && (
-            <div className="w-full lg:w-[210px] shrink-0 lg:sticky lg:top-4 self-start space-y-4">
+            <div className="w-full lg:w-[210px] shrink-0 lg:sticky lg:top-4 self-start space-y-2">
               <DealContextRail
                 deal={deal}
                 compact={dealInfoTab !== 'deal-info'}
@@ -3974,13 +3974,13 @@ export default function DealDetail() {
 
           {/* Main Content Grid */}
           <div className={cn(
-            "flex flex-col gap-6 min-w-0",
+            "flex flex-col gap-3 min-w-0",
             !isEmbedded && "overflow-hidden",
             isEmbedded && "flex-1 min-h-0"
           )}>
             {/* Main Content */}
             <div className={cn(
-              "flex flex-col gap-6 min-w-0 w-full",
+              "flex flex-col gap-3 min-w-0 w-full",
               isEmbedded ? "flex-1 min-h-0 pb-0" : "pb-24"
             )}>
               {/* Tab Navigation */}
@@ -3993,7 +3993,7 @@ export default function DealDetail() {
                       no debt panels (research, AI assistant, outstanding items,
                       activity timeline, benchmarks). */}
                   {isNaitiveDeal ? (
-                    <div className="space-y-6">
+                    <div className="space-y-3">
                       <NaitiveStageMilestonesSection dealId={deal.id} stage={deal.stage} />
                       <NaitiveDealInformation
                         deal={deal}
@@ -4083,7 +4083,7 @@ export default function DealDetail() {
                         case ('tasks-hours' as DealPanelId):
                           if (isNaitiveDeal || isProjectsDeal) return null;
                           return (
-                            <div key={id} className="h-full flex flex-col gap-4">
+                            <div key={id} className="h-full flex flex-col gap-2">
                                <div className="shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]">
                                 <DealTasksPanel dealId={deal.id} />
                               </div>
@@ -4647,7 +4647,7 @@ export default function DealDetail() {
                           // computed below; isolated block to keep variable scoped
                           }
                           return (
-                            <div key={id} className="h-full flex flex-col gap-4">
+                            <div key={id} className="h-full flex flex-col gap-2">
                                <div className="shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]">
                               <OutstandingItems
                                 items={outstandingItems}
@@ -4733,7 +4733,7 @@ export default function DealDetail() {
 
                     return [
                       ...acc,
-                      <div key={`row-${index}`} className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                      <div key={`row-${index}`} className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
                         {renderPanel(panelId)}
                         {nextPanelId && renderPanel(nextPanelId)}
                       </div>
@@ -4750,7 +4750,7 @@ export default function DealDetail() {
 
                 <TabsContent value="lenders" className={cn(useContextRailLayout ? "mt-1" : "mt-2", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`lenders-${tabDirection}`}>
               <div className="w-full max-w-full min-w-0 min-h-0 space-y-6 mx-auto overflow-x-hidden [&>*]:w-full [&>*]:min-w-0">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 items-start">
               {/* Funding source mix pie (with drilldown) */}
               <FundingSourceMixPie
                 lenders={deal.lenders || []}
