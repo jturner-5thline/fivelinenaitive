@@ -25,6 +25,11 @@ interface DealAuditLogPanelProps {
   onLoadMore: () => void;
   onRestore?: (entry: DealAuditEntry) => Promise<void>;
   onRevert?: (entry: DealAuditEntry) => Promise<void>;
+  /** Controlled filter value — when provided the internal chips are driven by the parent. */
+  activeFilter?: string;
+  onFilterChange?: (value: string) => void;
+  /** Hide the inline filter chip row (used when the parent renders them in a side rail). */
+  hideFilterChips?: boolean;
 }
 
 const ACTION_CONFIG: Record<string, { icon: typeof Upload; color: string; label: string }> = {
@@ -64,7 +69,7 @@ const ACTION_CONFIG: Record<string, { icon: typeof Upload; color: string; label:
   task_removed: { icon: Trash2, color: 'text-destructive', label: 'Task Removed' },
 };
 
-const FILTER_OPTIONS: { value: string; label: string; types?: string[] }[] = [
+export const ACTIVITY_FILTER_OPTIONS: { value: string; label: string; types?: string[] }[] = [
   { value: 'all', label: 'All activity' },
   { value: 'stage_change', label: 'Stage changes only', types: ['stage_change'] },
   { value: 'file', label: 'Files', types: ['file', 'folder', 'checklist'] },
@@ -133,9 +138,11 @@ function isRevertable(entry: DealAuditEntry): boolean {
   return ['file_moved', 'file_renamed', 'folder_renamed'].includes(entry.action_type);
 }
 
-export function DealAuditLogPanel({ entries, unresolvedStageEntries = [], loading, hasMore, onLoadMore, onRestore, onRevert }: DealAuditLogPanelProps) {
+export function DealAuditLogPanel({ entries, unresolvedStageEntries = [], loading, hasMore, onLoadMore, onRestore, onRevert, activeFilter: controlledFilter, onFilterChange, hideFilterChips }: DealAuditLogPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [internalFilter, setInternalFilter] = useState('all');
+  const activeFilter = controlledFilter ?? internalFilter;
+  const setActiveFilter = (v: string) => (onFilterChange ? onFilterChange(v) : setInternalFilter(v));
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [showUnresolved, setShowUnresolved] = useState(false);
   const { resolveLenderActivityLabel } = useLenderLabelResolver();
@@ -143,7 +150,7 @@ export function DealAuditLogPanel({ entries, unresolvedStageEntries = [], loadin
   const filtered = useMemo(() => {
     let result = entries;
     if (activeFilter !== 'all') {
-      const types = FILTER_OPTIONS.find(o => o.value === activeFilter)?.types ?? [activeFilter];
+      const types = ACTIVITY_FILTER_OPTIONS.find(o => o.value === activeFilter)?.types ?? [activeFilter];
       result = result.filter(e => types.includes(e.entity_type));
     }
     if (searchQuery.trim()) {
@@ -199,8 +206,8 @@ export function DealAuditLogPanel({ entries, unresolvedStageEntries = [], loadin
             className="h-8 pl-8 text-xs"
           />
         </div>
-        <div className="flex flex-wrap gap-1">
-          {FILTER_OPTIONS.map(opt => (
+        <div className={cn("flex flex-wrap gap-1", hideFilterChips && "hidden")}>
+          {ACTIVITY_FILTER_OPTIONS.map(opt => (
             <button
               key={opt.value}
               onClick={() => setActiveFilter(opt.value)}

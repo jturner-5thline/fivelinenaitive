@@ -8,9 +8,12 @@ import type { DealAuditEntry } from '@/hooks/useDealAuditLog';
 
 interface DealActivityLogTabProps {
   dealId: string;
+  activeFilter?: string;
+  onFilterChange?: (value: string) => void;
+  hideFilterChips?: boolean;
 }
 
-export function DealActivityLogTab({ dealId }: DealActivityLogTabProps) {
+export function DealActivityLogTab({ dealId, activeFilter, onFilterChange, hideFilterChips }: DealActivityLogTabProps) {
   const { entries, unresolvedStageEntries, loading, hasMore, loadMore, logAuditAction, refetch } = useDealAuditLog(dealId);
 
   const handleRestore = useCallback(async (entry: DealAuditEntry) => {
@@ -72,6 +75,9 @@ export function DealActivityLogTab({ dealId }: DealActivityLogTabProps) {
         onLoadMore={loadMore}
         onRestore={handleRestore}
         onRevert={handleRevert}
+        activeFilter={activeFilter}
+        onFilterChange={onFilterChange}
+        hideFilterChips={hideFilterChips}
       />
     </div>
   );

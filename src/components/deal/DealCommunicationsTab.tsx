@@ -20,6 +20,11 @@ interface EmailAttachmentMeta {
 
 interface Props {
   dealId: string;
+  /** Controlled "attachments only" filter, driven by the parent side rail. */
+  attachmentsOnly?: boolean;
+  onAttachmentsOnlyChange?: (value: boolean) => void;
+  /** Hide the inline attachments toggle when the parent renders it elsewhere. */
+  hideAttachmentsToggle?: boolean;
 }
 
 interface CommItem {
@@ -48,14 +53,17 @@ interface CommItem {
  *
  * Deduped on message_id, grouped by thread_id, newest first.
  */
-export function DealCommunicationsTab({ dealId }: Props) {
+export function DealCommunicationsTab({ dealId, attachmentsOnly: controlledAttachmentsOnly, onAttachmentsOnlyChange, hideAttachmentsToggle }: Props) {
   const [items, setItems] = useState<CommItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [viewer, setViewer] = useState<EmailViewerMessage | null>(null);
   const [dealMeta, setDealMeta] = useState<{ name: string | null }>({ name: null });
   const [search, setSearch] = useState('');
-  const [attachmentsOnly, setAttachmentsOnly] = useState(false);
+  const [internalAttachmentsOnly, setInternalAttachmentsOnly] = useState(false);
+  const attachmentsOnly = controlledAttachmentsOnly ?? internalAttachmentsOnly;
+  const setAttachmentsOnly = (next: boolean) =>
+    onAttachmentsOnlyChange ? onAttachmentsOnlyChange(next) : setInternalAttachmentsOnly(next);
   const toggleThread = useCallback((tid: string) => {
     setExpanded((prev) => ({ ...prev, [tid]: !prev[tid] }));
   }, []);
@@ -422,9 +430,10 @@ export function DealCommunicationsTab({ dealId }: Props) {
         <Button
           type="button"
           size="sm"
+          hidden={hideAttachmentsToggle}
           variant={attachmentsOnly ? 'default' : 'outline'}
-          onClick={() => setAttachmentsOnly((v) => !v)}
-          className="h-9 gap-1.5 text-xs"
+          onClick={() => setAttachmentsOnly(!attachmentsOnly)}
+          className={cn("h-9 gap-1.5 text-xs", hideAttachmentsToggle && "hidden")}
           aria-pressed={attachmentsOnly}
         >
           <Paperclip className="h-3.5 w-3.5" />
