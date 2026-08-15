@@ -4723,7 +4723,7 @@ export default function DealDetail() {
                 }).sort((a, b) => b.step - a.step);
                 if (rows.length === 0) return null;
                 return (
-                  <div className="flex h-[244px] w-full min-w-0 flex-col rounded-xl border border-border/60 bg-card px-4 py-3">
+                  <div className="flex h-[220px] w-full min-w-0 flex-col rounded-xl border border-border/60 bg-card px-4 py-2">
                     <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
                       {rows.map(r => (
                         <div key={r.id} className="grid grid-cols-[minmax(120px,1fr)_2fr_auto] items-center gap-3">
