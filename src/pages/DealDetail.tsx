@@ -4639,7 +4639,7 @@ export default function DealDetail() {
                           }
                           return (
                             <div key={id} className="h-full flex flex-col gap-4">
-                              <div className="shrink-0">
+                              <div className="shrink-0 h-[420px]">
                               <OutstandingItems
                                 items={outstandingItems}
                                 lenderNames={deal.lenders?.filter(l => {

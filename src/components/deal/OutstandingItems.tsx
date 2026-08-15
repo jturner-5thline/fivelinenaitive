@@ -938,7 +938,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
           </div>
         )}
         
-        <CardContent className="space-y-3 h-full flex-1">
+        <CardContent className="space-y-3 flex-1 min-h-0 overflow-y-auto">
           {readOnly && (
             <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-100">
               <span aria-hidden>🔒</span>
