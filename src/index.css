@@ -2771,6 +2771,11 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   will-change: transform;
 }
 
+/* Pills, avatars and other fully-rounded chips keep their own radius. */
+.deal-detail-surface [class*="rounded-full"] {
+  border-radius: 9999px !important;
+}
+
 .deal-detail-surface .bg-card:hover,
 .deal-detail-surface [class*="bg-card"]:hover,
 .deal-detail-surface .deal-glass:hover {
