@@ -265,7 +265,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
           </p>
         </div>
         {expanded && (
-          <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+          <div className="flex min-w-0 animate-fade-in flex-wrap items-center justify-end gap-1.5">
             {messages.length > 0 && (
               <>
               <Button
@@ -323,7 +323,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
         )}
       </div>
       {expanded && messages.length > 0 && (
-        <div className="relative">
+        <div className="relative animate-fade-in">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
@@ -352,7 +352,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
         <div
           ref={scrollRef}
           data-transcript
-          className="h-72 overflow-y-auto rounded-lg border border-border/60 bg-card/60 backdrop-blur p-3"
+          className="h-72 origin-top animate-[fade-in_0.22s_ease-out,scale-in_0.18s_ease-out] overflow-y-auto rounded-lg border border-border/60 bg-card/60 backdrop-blur p-3"
         >
           <div className="space-y-3">
             {includeCitations && !!missingCitations.length && (
@@ -503,7 +503,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
       {/* Collapsed view: keep the latest answer on the deal page in an
           expandable section instead of forcing a trip to the Deal Space tab. */}
       {!expanded && !isLoading && !error && !latestDismissed && lastAssistant && (
-        <div className="rounded-lg border border-border/60 bg-card/60 backdrop-blur">
+        <div className="origin-top animate-[fade-in_0.22s_ease-out,scale-in_0.18s_ease-out] rounded-lg border border-border/60 bg-card/60 backdrop-blur">
           <button
             type="button"
             onClick={() => setLatestOpen((o) => !o)}
@@ -522,7 +522,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
             )}
           </button>
           {latestOpen && (
-            <div className="max-h-56 overflow-y-auto border-t border-border/60 px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap">
+            <div className="max-h-56 animate-fade-in overflow-y-auto border-t border-border/60 px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap">
               {lastAssistant.content}
             </div>
           )}
@@ -538,7 +538,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
         </div>
       )}
       {expanded && !isLoading && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex animate-fade-in flex-wrap gap-1.5">
           {chips.map((chip) => (
             <button
               key={chip}
@@ -553,7 +553,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
       )}
       <form
       onSubmit={submit}
-      className="flex items-center gap-2 rounded-lg border border-border/60 bg-card/60 backdrop-blur px-3 py-2"
+      className="flex items-center gap-2 rounded-lg border border-border/60 bg-card/60 px-3 py-2 backdrop-blur transition-all duration-200 focus-within:border-primary/50 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]"
     >
       <Input
         value={value}
