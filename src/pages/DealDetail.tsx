@@ -3616,14 +3616,16 @@ export default function DealDetail() {
               carry the content. Everything below is unchanged. */}
           <div className={cn(useContextRailLayout && "flex flex-col lg:flex-row gap-5 items-start mt-3")}>
           {useContextRailLayout && dealInfoTab === 'deal-info' && (
-            <div ref={railMeasureRef} className="w-full lg:w-[210px] shrink-0 lg:sticky lg:top-4 self-start space-y-4">
-              <DealContextRail
-                deal={deal}
-                compact={dealInfoTab !== 'deal-info'}
-                hideIdentity
-                className="lg:w-full lg:static"
-                onUpdateField={(field, value) => updateDeal(field as any, value as any)}
-              />
+            <div className="w-full lg:w-[210px] shrink-0 lg:sticky lg:top-4 self-start space-y-4">
+              <div ref={railMeasureRef}>
+                <DealContextRail
+                  deal={deal}
+                  compact={dealInfoTab !== 'deal-info'}
+                  hideIdentity
+                  className="lg:w-full lg:static"
+                  onUpdateField={(field, value) => updateDeal(field as any, value as any)}
+                />
+              </div>
               <div ref={setRailPanelSlot} className="w-full" />
             </div>
           )}
