@@ -3602,9 +3602,9 @@ export default function DealDetail() {
           )}
           <div className={cn(
             useContextRailLayout && "flex-1 min-w-0 w-full",
-            // Funding sources tab: rail hidden, but keep the column width
-            // identical so the table only shifts left.
-            useContextRailLayout && dealInfoTab !== 'deal-info' && "lg:max-w-[calc(100%-230px)]",
+            // Tabs without the context rail retain the same readable content
+            // width, centered within the full popup rather than left-aligned.
+            useContextRailLayout && dealInfoTab !== 'deal-info' && "lg:max-w-[calc(100%-230px)] mx-auto",
           )}>
           {/* Header Card */}
           <Card className={cn(
