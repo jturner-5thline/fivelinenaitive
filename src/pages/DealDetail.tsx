@@ -3616,7 +3616,7 @@ export default function DealDetail() {
               carry the content. Everything below is unchanged. */}
           <div className={cn(useContextRailLayout && "flex flex-col lg:flex-row gap-5 items-start mt-3")}>
           {useContextRailLayout && dealInfoTab === 'deal-info' && (
-            <div className="w-full lg:w-[210px] shrink-0 lg:sticky lg:top-4 self-start space-y-4">
+            <div ref={railMeasureRef} className="w-full lg:w-[210px] shrink-0 lg:sticky lg:top-4 self-start space-y-4">
               <DealContextRail
                 deal={deal}
                 compact={dealInfoTab !== 'deal-info'}
@@ -3639,8 +3639,14 @@ export default function DealDetail() {
             useContextRailLayout && "mt-0",
             // Header widget (status + milestones) is scoped to the Deal Info tab only.
             dealInfoTab !== 'deal-info' && "hidden",
-          )}>
-            <CardHeader className={cn("pb-4", useContextRailLayout && "pt-3 pb-3")}>
+            useContextRailLayout && "flex flex-col overflow-hidden",
+          )}
+          style={
+            useContextRailLayout && dealInfoTab === 'deal-info' && railHeight
+              ? { height: railHeight }
+              : undefined
+          }>
+            <CardHeader className={cn("pb-4", useContextRailLayout && "pt-3 pb-3 flex-1 min-h-0 overflow-y-auto")}>
               <div className={cn(
                 "flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4",
                 useContextRailLayout && "hidden",
