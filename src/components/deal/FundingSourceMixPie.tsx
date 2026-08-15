@@ -136,21 +136,6 @@ export function FundingSourceMixPie({ lenders, configuredStages = [], className,
         </ResponsiveContainer>
       </div>
 
-      <div className="mt-1 grid grid-cols-4 gap-2">
-        {BUCKETS.map((b) => (
-          <button
-            key={b.id}
-            type="button"
-            onClick={() => grouped[b.id].length > 0 && setDrilldown(b.id)}
-            disabled={grouped[b.id].length === 0}
-            className="rounded-lg border border-border/50 bg-background/30 px-2 py-1.5 text-center transition-colors hover:bg-background/60 disabled:opacity-40 disabled:hover:bg-background/30"
-          >
-            <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">{b.label}</span>
-            <span className="block text-base font-bold tabular-nums" style={{ color: b.color }}>{grouped[b.id].length}</span>
-          </button>
-        ))}
-      </div>
-
       <Dialog open={!!drilldown} onOpenChange={(o) => !o && setDrilldown(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
