@@ -113,6 +113,7 @@ import { RequestedItemsSummary } from '@/components/deal/RequestedItemsSummary';
 import { RequestedItemsPanel } from '@/components/deal/RequestedItemsPanel';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { DealActivityTab } from '@/components/deal/DealActivityTab';
+import { ACTIVITY_FILTER_OPTIONS } from '@/components/deal/DealAuditLogPanel';
 import { DealTasksPanel } from '@/components/deal/DealTasksPanel';
 import { DealHoursFeesCard } from '@/components/deal/DealHoursFeesCard';
 import { InfoRequestsPanel } from '@/components/deal/InfoRequestsPanel';
@@ -1247,6 +1248,8 @@ export default function DealDetail() {
   const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'analysis' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication'>(initialTab === 'deal-space' ? 'deal-info' : (initialTab || 'deal-info'));
   // Activity tab now hosts both the audit/activity log and communications.
   const [activityView, setActivityView] = useState<'activity' | 'communications'>('activity');
+  const [activityFilter, setActivityFilter] = useState('all');
+  const [commsAttachmentsOnly, setCommsAttachmentsOnly] = useState(false);
   const [isActivityDialogOpen, setIsActivityDialogOpen] = useState(false);
   const prevTabRef = useRef<typeof dealInfoTab>(dealInfoTab);
 
@@ -5966,35 +5969,111 @@ export default function DealDetail() {
                 </TabsContent>
 
                 <TabsContent value="activity-log" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`activity-log-${tabDirection}`}>
-                  <div className="flex items-center gap-1 mb-3 p-1 rounded-md bg-white/[0.04] border border-white/10 w-fit">
-                    {(['activity', 'communications'] as const).map((view) => (
+                  <div className="flex min-w-0 gap-4" style={{ height: 'calc(100vh - 200px)' }}>
+                    {/* Left rail: Activity / Communications are the primary menu,
+                        their filters render as sub-items but keep toggle behaviour. */}
+                    <nav className="w-[196px] shrink-0 overflow-y-auto rounded-md border border-white/10 bg-white/[0.03] p-1.5">
                       <button
-                        key={view}
                         type="button"
-                        onClick={() => setActivityView(view)}
+                        onClick={() => setActivityView('activity')}
                         className={cn(
-                          "inline-flex items-center gap-1.5 px-3 h-7 rounded-sm text-[12px] font-medium transition-colors",
-                          activityView === view
+                          "w-full inline-flex items-center gap-1.5 px-2.5 h-8 rounded-sm text-[12px] font-medium transition-colors",
+                          activityView === 'activity'
                             ? "bg-primary/15 text-primary"
                             : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                         )}
                       >
-                        {view === 'activity' ? <History className="h-3.5 w-3.5" /> : <Mail className="h-3.5 w-3.5" />}
-                        {view === 'activity' ? 'Activity' : 'Communications'}
+                        <History className="h-3.5 w-3.5" />
+                        Activity
                       </button>
-                    ))}
+                      {activityView === 'activity' && (
+                        <div className="mt-0.5 mb-1 ml-3 border-l border-white/10 pl-1.5 animate-fade-in">
+                          {ACTIVITY_FILTER_OPTIONS.map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setActivityFilter(opt.value)}
+                              aria-pressed={activityFilter === opt.value}
+                              className={cn(
+                                "w-full text-left px-2 h-7 rounded-sm text-[11px] transition-colors",
+                                activityFilter === opt.value
+                                  ? "bg-primary/10 text-primary"
+                                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                              )}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setActivityView('communications')}
+                        className={cn(
+                          "w-full inline-flex items-center gap-1.5 px-2.5 h-8 rounded-sm text-[12px] font-medium transition-colors",
+                          activityView === 'communications'
+                            ? "bg-primary/15 text-primary"
+                            : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                        )}
+                      >
+                        <Mail className="h-3.5 w-3.5" />
+                        Communications
+                      </button>
+                      {activityView === 'communications' && (
+                        <div className="mt-0.5 ml-3 border-l border-white/10 pl-1.5 animate-fade-in">
+                          <button
+                            type="button"
+                            onClick={() => setCommsAttachmentsOnly(false)}
+                            aria-pressed={!commsAttachmentsOnly}
+                            className={cn(
+                              "w-full text-left px-2 h-7 rounded-sm text-[11px] transition-colors",
+                              !commsAttachmentsOnly
+                                ? "bg-primary/10 text-primary"
+                                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                            )}
+                          >
+                            All emails
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCommsAttachmentsOnly(true)}
+                            aria-pressed={commsAttachmentsOnly}
+                            className={cn(
+                              "w-full text-left px-2 h-7 rounded-sm text-[11px] transition-colors",
+                              commsAttachmentsOnly
+                                ? "bg-primary/10 text-primary"
+                                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                            )}
+                          >
+                            Attachments only
+                          </button>
+                        </div>
+                      )}
+                    </nav>
+                    <div className="min-w-0 flex-1 overflow-y-auto">
+                      {activityView === 'activity' ? (
+                        <Card className="w-full max-w-full overflow-hidden p-0 h-full">
+                          <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading activity…</div>}>
+                            <DealActivityLogTab
+                              dealId={id!}
+                              activeFilter={activityFilter}
+                              onFilterChange={setActivityFilter}
+                              hideFilterChips
+                            />
+                          </Suspense>
+                        </Card>
+                      ) : (
+                        <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading communications…</div>}>
+                          <DealCommunicationsTab
+                            dealId={id!}
+                            attachmentsOnly={commsAttachmentsOnly}
+                            onAttachmentsOnlyChange={setCommsAttachmentsOnly}
+                            hideAttachmentsToggle
+                          />
+                        </Suspense>
+                      )}
+                    </div>
                   </div>
-                  {activityView === 'activity' ? (
-                    <Card className="w-full max-w-full overflow-hidden p-0" style={{ height: 'calc(100vh - 240px)' }}>
-                      <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading activity…</div>}>
-                        <DealActivityLogTab dealId={id!} />
-                      </Suspense>
-                    </Card>
-                  ) : (
-                    <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading communications…</div>}>
-                      <DealCommunicationsTab dealId={id!} />
-                    </Suspense>
-                  )}
                 </TabsContent>
 
                 <TabsContent value="crm-search" className={cn("mt-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`crm-search-${tabDirection}`}>
