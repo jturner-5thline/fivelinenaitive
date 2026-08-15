@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ArrowUpDown } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, Label } from 'recharts';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import type { DealLender } from '@/types/deal';
@@ -104,6 +104,23 @@ export function FundingSourceMixPie({ lenders, configuredStages = [], className,
                   onMouseEnter={() => setHovered(d.id)}
                 />
               ))}
+              <Label
+                position="center"
+                content={({ viewBox }: any) => {
+                  const { cx, cy } = viewBox || {};
+                  if (cx == null || cy == null) return null;
+                  return (
+                    <g>
+                      <text x={cx} y={cy - 4} textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fontSize={26} fontWeight={600}>
+                        {total}
+                      </text>
+                      <text x={cx} y={cy + 16} textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fillOpacity={0.6} fontSize={10} letterSpacing={0.5}>
+                        {total === 1 ? 'SOURCE' : 'SOURCES'}
+                      </text>
+                    </g>
+                  );
+                }}
+              />
             </Pie>
             <Tooltip
               cursor={false}
