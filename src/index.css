@@ -2846,6 +2846,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   box-shadow: none !important;
   backdrop-filter: none !important;
   transform: none !important;
+  border-radius: 0 !important;
 }
 
 /* Calendar widget on the deal detail sits on a dark navy surface — force all
