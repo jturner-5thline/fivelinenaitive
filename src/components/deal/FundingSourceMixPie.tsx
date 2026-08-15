@@ -77,7 +77,7 @@ export function FundingSourceMixPie({ lenders, configuredStages = [], className,
   const rows = [...baseRows].sort((a, b) => (sortDir === 'desc' ? ts(b) - ts(a) : ts(a) - ts(b)));
 
   return (
-    <div className={cn('rounded-xl border border-border/60 bg-card px-4 py-3', className)}>
+    <div className={cn('rounded-xl border border-border/60 bg-card px-4 py-0', className)}>
       <div className="h-[220px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
