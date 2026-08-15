@@ -4696,7 +4696,7 @@ export default function DealDetail() {
                 </TabsContent>
 
                 <TabsContent value="lenders" className={cn(useContextRailLayout ? "mt-4" : "mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`lenders-${tabDirection}`}>
-              <div className="w-full min-h-0 space-y-6">
+              <div className="w-full min-h-0 space-y-6 mx-auto flex flex-col items-center [&>*]:w-full">
               {/* Funding source KPIs */}
               {(() => {
                 const norm = (s?: string) => (s || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
