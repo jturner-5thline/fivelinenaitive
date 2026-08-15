@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { ArrowUpDown } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
@@ -51,6 +52,7 @@ interface Props {
 export function FundingSourceMixPie({ lenders, configuredStages = [], className, onSelectLender }: Props) {
   const [drilldown, setDrilldown] = useState<BucketId | null>(null);
   const [hovered, setHovered] = useState<BucketId | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   const grouped = useMemo(() => {
     const map: Record<BucketId, DealLender[]> = { active: [], 'on-deck': [], 'on-hold': [], passed: [] };
