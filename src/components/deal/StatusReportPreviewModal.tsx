@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { FileText, Mail, Plus, X, Eye, EyeOff, Loader2, Sparkles, Download } from 'lucide-react';
+import { FileText, Mail, Plus, X, Eye, EyeOff, Loader2, Sparkles, Download, Save } from 'lucide-react';
+import { useStatusReportDraft } from '@/hooks/useStatusReportDraft';
 import { Deal } from '@/types/deal';
 import type { StatusReportEditableContent, LenderStageConfig, OutstandingItem } from '@/utils/dealExport';
 import { bucketLenders, extractPassDetails, isExcludedFromClientReport } from '@/lib/lenderStatusBuckets';
@@ -240,6 +241,34 @@ export function StatusReportPreviewModal({
   const [aiPassFeedbackLoading, setAiPassFeedbackLoading] = useState(false);
   const passFeedbackTriedRef = useRef<string | null>(null);
 
+  // ── Saved (resumable) draft ──────────────────────────────────────────────
+  const {
+    draft: savedDraft,
+    savedAt: draftSavedAt,
+    isChecked: draftChecked,
+    isSaving: isSavingDraft,
+    saveDraft,
+    discardDraft,
+    reset: resetDraftCheck,
+  } = useStatusReportDraft(deal.id, open);
+  const [resumedDraft, setResumedDraft] = useState(false);
+  const appliedDraftForRef = useRef<string | null>(null);
+
+  // When a saved draft exists, resume from it instead of the freshly
+  // generated content (and skip the AI autogen so it can't clobber edits).
+  useEffect(() => {
+    if (!open || !draftChecked) return;
+    if (appliedDraftForRef.current === deal.id) return;
+    appliedDraftForRef.current = deal.id;
+    if (savedDraft) {
+      setContent((prev) => ({ ...prev, ...savedDraft }));
+      setResumedDraft(true);
+      setAiTriedForDeal(deal.id);
+    } else {
+      setResumedDraft(false);
+    }
+  }, [open, draftChecked, savedDraft, deal.id]);
+
   const buckets = useMemo(
     () => bucketLenders(deal.lenders, configuredStages),
     [deal.lenders, configuredStages],
@@ -279,6 +308,8 @@ export function StatusReportPreviewModal({
   // Run Claude generation when modal opens for a given deal (once per deal/open).
   useEffect(() => {
     if (!open) return;
+    // Wait until we know whether a saved draft should be resumed.
+    if (!draftChecked) return;
     if (aiTriedForDeal === deal.id) return;
     setAiTriedForDeal(deal.id);
 
@@ -371,15 +402,38 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         toast({ title: 'AI generation failed', description: 'You can still edit sections manually.' });
       })
       .finally(() => setAiLoading(false));
-  }, [open, deal, configuredStages, outstandingItems, aiTriedForDeal]);
+  }, [open, deal, configuredStages, outstandingItems, aiTriedForDeal, draftChecked]);
 
   const handleOpenChange = (v: boolean) => {
     if (v) {
       setContent(initialContent);
       setAiTriedForDeal(null); // re-trigger AI on next open
       passFeedbackTriedRef.current = null; // re-rewrite pass feedback on next open
+      appliedDraftForRef.current = null; // re-check for a saved draft
+      resetDraftCheck();
     }
     onOpenChange(v);
+  };
+
+  const handleSaveDraft = async () => {
+    const ok = await saveDraft(content);
+    toast(
+      ok
+        ? { title: 'Draft saved', description: 'You can reopen this report and pick up where you left off.' }
+        : { title: 'Could not save draft', description: 'Please try again.', variant: 'destructive' },
+    );
+    if (ok) setResumedDraft(true);
+  };
+
+  const handleDiscardDraft = async () => {
+    const ok = await discardDraft();
+    if (ok) {
+      setContent(initialContent);
+      setResumedDraft(false);
+      toast({ title: 'Draft discarded', description: 'Report reset to the generated version.' });
+    } else {
+      toast({ title: 'Could not discard draft', variant: 'destructive' });
+    }
   };
 
   // ── Edit helpers ─────────────────────────────────────────────────────────
@@ -931,7 +985,31 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         </div>
 
         <DialogFooter className="px-6 py-3 border-t border-slate-200 dark:border-slate-700 shrink-0 bg-white dark:bg-slate-800 gap-2">
+          {(resumedDraft || draftSavedAt) && (
+            <span className="mr-auto text-xs text-muted-foreground self-center">
+              {draftSavedAt
+                ? `Draft saved ${new Date(draftSavedAt).toLocaleString()}`
+                : 'Draft saved'}
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="ml-2 underline hover:text-foreground"
+              >
+                Discard draft
+              </button>
+            </span>
+          )}
           <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSaveDraft}
+            disabled={isSavingDraft}
+            className="gap-2"
+          >
+            {isSavingDraft ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Save draft
+          </Button>
           <Button
             variant="outline"
             size="sm"
