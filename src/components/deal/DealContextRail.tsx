@@ -109,7 +109,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
 
       {!compact && (
       <>
-      <div className="space-y-0.5">
+      <div className="flex flex-col gap-1 !mt-1">
         <RailLabel>Close date</RailLabel>
         <NaitiveDatePicker
           value={pendingCloseDate}
