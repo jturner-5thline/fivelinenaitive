@@ -78,11 +78,7 @@ export function FundingSourceMixPie({ lenders, configuredStages = [], className,
 
   return (
     <div className={cn('rounded-xl border border-border/60 bg-card px-4 py-3', className)}>
-      <div className="flex flex-col items-center gap-0.5 text-center">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Funding source mix</p>
-        <p className="text-[11px] text-muted-foreground">{total} sources · click a slice</p>
-      </div>
-      <div className="mt-2 h-[220px] w-full">
+      <div className="h-[220px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
