@@ -2920,3 +2920,16 @@ body[data-deals-surface='1'] {
 body[data-deals-surface='1'] .app-bg-gradient {
   background: hsl(222 34% 7%) !important;
 }
+
+/* Primary CTA on the Deals workspace — the one place gold is used as a
+   filled surface. Colour only; size, spacing and icons are unchanged. */
+.deals-surface [data-deals-cta] {
+  background: hsl(41 74% 58%) !important;
+  background-image: none !important;
+  border: 1px solid hsl(41 66% 50%) !important;
+  color: hsl(222 40% 9%) !important;
+  box-shadow: none !important;
+}
+.deals-surface [data-deals-cta]:hover {
+  background: hsl(41 78% 64%) !important;
+}
