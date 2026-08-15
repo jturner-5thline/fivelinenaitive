@@ -25,6 +25,7 @@ import { useEmailContacts } from '@/hooks/useEmailContacts';
 import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useGmail } from '@/hooks/useGmail';
 import { supabase } from '@/integrations/supabase/client';
+import { useActivityLog } from '@/hooks/useActivityLog';
 
 export interface DraftAndSendInitial {
   to?: string[];
@@ -107,6 +108,7 @@ export function DraftAndSendDialog({
   const { search } = useEmailContacts();
   const signature = useUserEmailSignature();
   const { sendEmail } = useGmail();
+  const { logActivity } = useActivityLog(initial?.dealId);
 
   const [to, setTo] = useState<string[]>([]);
   const [cc, setCc] = useState<string[]>([]);
@@ -258,6 +260,23 @@ export function DraftAndSendDialog({
         replyToMessageId,
       });
       if (!result) throw new Error('Send failed');
+      if (initial?.dealId) {
+        logActivity(
+          'email_sent',
+          `Email sent to ${to.join(', ')} — ${subject.trim()}`,
+          {
+            to,
+            cc: cc.length > 0 ? cc : undefined,
+            bcc: bcc.length > 0 ? bcc : undefined,
+            subject: subject.trim(),
+            context: contextLabel,
+            thread_id: selectedThreadId !== 'new' ? selectedThreadId : undefined,
+            attachment_count: files.length,
+            status: 'sent',
+            sent_at: new Date().toISOString(),
+          },
+        );
+      }
       toast.success(contextLabel ? `${contextLabel} sent` : 'Email sent');
       onOpenChange(false);
       onSent?.();
