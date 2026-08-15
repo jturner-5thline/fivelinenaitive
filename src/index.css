@@ -2851,6 +2851,25 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 
 /* Calendar widget on the deal detail sits on a dark navy surface — force all
    of its text (including muted metadata) to the high-contrast foreground. */
+/* Rail controls (status, stage, close date) share the "Deal Memo" button
+   chrome: 1px primary-tinted border and the standard button radius. */
+.deal-rail-control,
+.deal-detail-surface .deal-rail-control,
+.deal-detail-surface [class*="rounded-full"].deal-rail-control {
+  border-radius: calc(var(--radius) - 2px) !important;
+  border: 1px solid hsl(var(--primary) / 0.55) !important;
+  background-image: linear-gradient(
+    to right,
+    hsl(var(--primary) / 0.10),
+    transparent
+  ) !important;
+}
+
+.deal-rail-control:hover,
+.deal-detail-surface .deal-rail-control:hover {
+  border-color: hsl(var(--primary) / 0.8) !important;
+}
+
 .deal-calendar-panel,
 .deal-calendar-panel * {
   color: hsl(var(--foreground)) !important;
