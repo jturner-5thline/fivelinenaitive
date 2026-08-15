@@ -11,6 +11,8 @@ import {
   UserPlus,
   Bell,
   ArrowRightLeft,
+  Mail,
+  FileText,
 } from 'lucide-react';
 import {
   differenceInMinutes,
@@ -42,6 +44,7 @@ import { InlineStatusDropdown } from './InlineStatusDropdown';
 import { InlineStageDropdown } from './InlineStageDropdown';
 import { FlagNoteDialog } from './FlagNoteDialog';
 import { MoveToPipelineDialog } from './MoveToPipelineDialog';
+import { DraftAndSendDialog } from '@/components/deal/DraftAndSendDialog';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
@@ -52,7 +55,7 @@ import { cn } from '@/lib/utils';
 
 /** Shared column template so the header row in DealsList stays aligned. */
 export const DEAL_LIST_GRID =
-  'grid grid-cols-[minmax(160px,240px)_112px_158px_minmax(120px,1.4fr)_76px] items-center gap-1.5';
+  'grid grid-cols-[minmax(160px,240px)_112px_158px_minmax(120px,1.4fr)_76px_72px] items-center gap-1.5';
 
 /** Strip HTML/markup from status note text and normalize whitespace. */
 function cleanStatusNote(raw?: string): string {
@@ -105,6 +108,7 @@ function DealListCardRowImpl({
   const effectiveFlagCount = activeFlagCount ?? (deal.isFlagged ? 1 : 0);
   const showFlagIndicator = effectiveFlagCount > 0;
   const [isPipelineDialogOpen, setIsPipelineDialogOpen] = useState(false);
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { formatCurrencyValue, preferences } = usePreferences();
@@ -320,6 +324,54 @@ function DealListCardRowImpl({
               <Clock className="h-3 w-3" />
               {timeAgoData.text}
             </span>
+          )}
+          {!compact && (
+            <div
+              className="flex items-center justify-center gap-0.5 justify-self-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                      aria-label="Email client contact"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsEmailDialogOpen(true);
+                      }}
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    {deal.contactEmail ? `Email ${deal.contactEmail}` : 'Email client contact'}
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                      aria-label="Draft status report"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const next = new URLSearchParams(searchParams);
+                        next.set('deal', deal.id);
+                        next.set('dealAction', 'status-report');
+                        setSearchParams(next, { replace: false });
+                      }}
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Draft status report</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           )}
         </div>
 
