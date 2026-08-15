@@ -3194,13 +3194,14 @@ export default function DealDetail() {
 
   // Deal Memo / Create Task / Status Report / Export cluster. Rendered in the
   // header card by default, or beneath the Ask AI bar in the context-rail layout.
+  const dealMemoButton = (!isSimplifiedDeal && companyFeatures.deal_memo_enabled && hasPageAccess('deal_memo')) ? (
+    <Suspense fallback={null}>
+      <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
+    </Suspense>
+  ) : null;
+
   const dealActionCluster = (
     <div className="flex flex-wrap items-center gap-2">
-      {!isSimplifiedDeal && companyFeatures.deal_memo_enabled && hasPageAccess('deal_memo') && (
-        <Suspense fallback={null}>
-          <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
-        </Suspense>
-      )}
       <CreateTaskButton dealId={id!} dealName={deal?.company} />
       {hasNaitivePipelineAccess && <EmailPromptCenterButton dealId={id!} dealName={deal?.company} />}
       {!isSimplifiedDeal && companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
@@ -3887,6 +3888,9 @@ export default function DealDetail() {
               )}>
                 <div className="relative w-full sm:w-[70%] flex flex-col gap-1">
                   <div className="relative flex items-start gap-2">
+                    {dealMemoButton && (
+                      <div className="order-last shrink-0 self-start">{dealMemoButton}</div>
+                    )}
                     <StaleStatusNudge
                       deal={deal}
                       onSave={(value) => {
