@@ -240,21 +240,21 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
         setLatestOpen(false);
       }}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
         <Sparkles className="h-4 w-4 text-primary shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold leading-none">Ask AI</h3>
-            <span className="rounded-full border border-amber-400/70 bg-amber-400/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300 backdrop-blur-sm">
+        <div className="min-w-[180px] flex-1 basis-[220px]">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="truncate text-sm font-semibold leading-none">Ask AI</h3>
+            <span className="shrink-0 rounded-full border border-amber-400/70 bg-amber-400/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300 backdrop-blur-sm">
               Beta
             </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="mt-1 text-xs text-muted-foreground">
             Ask questions about this deal's data, documents, and activity
           </p>
         </div>
         {expanded && (
-          <>
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
             {messages.length > 0 && (
               <>
               <Button
@@ -278,7 +278,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 gap-1 text-xs text-muted-foreground"
+                className="h-7 shrink-0 gap-1 text-xs text-muted-foreground"
                 onClick={copyTranscript}
               >
                 <Copy className="h-3.5 w-3.5" />
@@ -287,7 +287,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 gap-1 text-xs text-muted-foreground"
+                className="h-7 shrink-0 gap-1 text-xs text-muted-foreground"
                 onClick={exportTranscript}
               >
                 <Download className="h-3.5 w-3.5" />
@@ -296,7 +296,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 gap-1 text-xs text-muted-foreground"
+                className="h-7 shrink-0 gap-1 text-xs text-muted-foreground"
                 onClick={clearMessages}
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -304,11 +304,11 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
               </Button>
               </>
             )}
-          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={openFullTab}>
-            <Maximize2 className="h-3.5 w-3.5" />
+          <Button variant="ghost" size="sm" className="h-7 shrink-0 gap-1 text-xs" onClick={openFullTab}>
+            <Maximize2 className="h-3.5 w-3.5 shrink-0" />
             Open full chat
           </Button>
-          </>
+          </div>
         )}
       </div>
       {expanded && messages.length > 0 && (
