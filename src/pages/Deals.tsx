@@ -648,15 +648,6 @@ export default function Dashboard() {
     }
   };
 
-  // Colour-only: flags the document body while the Deals workspace is
-  // mounted so the app shell can render its deep-navy variant (see the
-  // `/deals — scoped color system` block in index.css). No layout or
-  // behaviour is affected.
-  useEffect(() => {
-    document.body.setAttribute('data-deals-surface', '1');
-    return () => document.body.removeAttribute('data-deals-surface');
-  }, []);
-
   return (
     <>
       <Helmet>

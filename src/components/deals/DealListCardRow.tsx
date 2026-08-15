@@ -250,12 +250,8 @@ function DealListCardRowImpl({
                     <TooltipTrigger asChild>
                       {managerInitials ? (
                         <span
-                          className="inline-flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded text-[8px] font-semibold"
-                          style={{
-                            background: 'hsl(221 24% 22%)',
-                            border: '1px solid hsl(219 20% 32%)',
-                            color: 'hsl(210 22% 92%)',
-                          }}
+                          className="inline-flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded text-[8px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,.18),0_1px_2px_rgba(0,0,0,.4)]"
+                          style={{ background: 'linear-gradient(135deg, #9b6fd4, #5f3f9e)' }}
                         >
                           {managerInitials}
                         </span>
