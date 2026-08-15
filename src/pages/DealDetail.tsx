@@ -4698,40 +4698,6 @@ export default function DealDetail() {
 
                 <TabsContent value="lenders" className={cn(useContextRailLayout ? "mt-4" : "mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`lenders-${tabDirection}`}>
               <div className="w-full max-w-full min-w-0 min-h-0 space-y-6 mx-auto overflow-x-hidden [&>*]:w-full [&>*]:min-w-0">
-              {/* Funding source KPIs */}
-              {(() => {
-                const norm = (s?: string) => (s || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
-                const labelFor = (l: any) => norm(configuredStages.find(s => s.id === l.stage)?.label || l.stage);
-                const all = deal.lenders || [];
-                const isExcluded = (l: any) => {
-                  const ts = norm(l.trackingStatus);
-                  return ts === 'excluded' || labelFor(l) === 'excluded';
-                };
-                const notExcluded = all.filter(l => !isExcluded(l));
-                const isPassed = (l: any) => {
-                  const ts = norm(l.trackingStatus);
-                  const lb = labelFor(l);
-                  return ts === 'passed' || ts === 'pass' || ts === 'not a fit' ||
-                    lb === 'passed' || lb.includes('not a fit');
-                };
-                const activeCount = notExcluded.filter(l => norm(l.trackingStatus) === 'active' && !isPassed(l)).length;
-                const passedCount = notExcluded.filter(isPassed).length;
-                const kpis = [
-                  { label: 'Total', value: notExcluded.length, color: 'text-foreground' },
-                  { label: 'Active', value: activeCount, color: 'text-emerald-400' },
-                  { label: 'Passed', value: passedCount, color: 'text-red-400' },
-                ];
-                return (
-                  <div className={cn("grid grid-cols-3 gap-4 items-stretch", useContextRailLayout && "-mt-3")}>
-                    {kpis.map(k => (
-                      <div key={k.label} className="rounded-xl border border-border/60 bg-card px-4 py-3 text-center flex flex-col justify-center min-h-[7rem]">
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{k.label}</p>
-                        <p className={cn("mt-1 text-2xl font-bold font-mono tabular-nums", k.color)}>{k.value}</p>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
               {/* Funding source mix pie (with drilldown) */}
               <FundingSourceMixPie
                 lenders={deal.lenders || []}
