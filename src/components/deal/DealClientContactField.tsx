@@ -128,8 +128,8 @@ export function DealClientContactField({
   };
 
   return (
-    <div className="grid grid-cols-[minmax(5rem,6.5rem)_minmax(0,1fr)] items-start gap-2 min-w-0">
-      <span className="text-muted-foreground text-sm break-words mt-1.5">Client Contacts</span>
+    <div className="flex flex-col gap-1 min-w-0">
+      <span className="text-muted-foreground text-sm break-words">Client Contacts</span>
       <div className="min-w-0 w-full flex flex-wrap items-center gap-1.5">
         {chips.length === 0 && (
           <span className="text-sm text-muted-foreground italic mr-1" data-testid="deal-client-contact-value">
