@@ -820,11 +820,6 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-y-2 min-h-[44px] py-0 px-4 space-y-0 shrink-0">
           <div className="flex items-center gap-2 min-w-0 shrink-0 order-1">
             <CardTitle className="text-sm font-medium whitespace-nowrap">Outstanding Items</CardTitle>
-            {items.length > 0 ? (
-              <span className="text-sm font-normal text-muted-foreground">
-                ({deliveredCount}/{items.length} delivered)
-              </span>
-            ) : null}
             {overdueCount > 0 && (
               <span className="text-xs font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-md">
                 {overdueCount} overdue
