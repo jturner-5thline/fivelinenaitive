@@ -220,7 +220,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
                         onClick={() => handleOpenTask(task.id)}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleOpenTask(task.id); }}
                         className={cn(
-                          "flex items-center gap-3 group rounded-lg border p-3 transition-colors cursor-pointer",
+                          "flex items-center gap-3 group rounded-lg border p-3 transition-colors cursor-pointer min-h-[62px] overflow-hidden",
                           isCompleted
                             ? "border-border/50 opacity-60 hover:opacity-100"
                             : isOverdue
