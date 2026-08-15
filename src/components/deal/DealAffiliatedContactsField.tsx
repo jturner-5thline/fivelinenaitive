@@ -125,8 +125,8 @@ export function DealAffiliatedContactsField({ dealId }: Props) {
   };
 
   return (
-    <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-start md:gap-2">
-      <span className="text-muted-foreground text-sm md:pt-1">Affiliated Contacts</span>
+    <div className="flex flex-col gap-1 min-w-0">
+      <span className="text-muted-foreground text-sm">Affiliated Contacts</span>
       <div className="min-h-8 rounded-md border border-input bg-background px-2 py-1 flex flex-wrap items-center gap-1.5">
         {rows.map((r) => (
           <Badge
