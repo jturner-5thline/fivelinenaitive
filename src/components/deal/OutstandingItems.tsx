@@ -482,9 +482,9 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
   }, [activeItems, groupBy]);
 
   const handleAdd = () => {
-    if (newItemText.trim()) {
-      onAdd(newItemText.trim(), newRequestedBy);
-      setNewItemText('');
+    if (searchQuery.trim()) {
+      onAdd(searchQuery.trim(), newRequestedBy);
+      setSearchQuery('');
       setNewRequestedBy([]);
       setNewPriority('normal');
     }
@@ -498,9 +498,9 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
     
     setNewRequestedBy(updatedRequestedBy);
 
-    if (!isRemoving && newItemText.trim()) {
-      onAdd(newItemText.trim(), updatedRequestedBy);
-      setNewItemText('');
+    if (!isRemoving && searchQuery.trim()) {
+      onAdd(searchQuery.trim(), updatedRequestedBy);
+      setSearchQuery('');
       setNewRequestedBy([]);
       // Bump key to force-close the uncontrolled Popover after auto-add.
       setRequesterPopoverKey(k => k + 1);
@@ -911,17 +911,58 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
           </div>
         </CardHeader>
 
-        {/* Search */}
-        <div className="px-4 pt-2 pb-1 shrink-0">
+        {/* Search / add combo */}
+        <div className="px-4 pt-2 pb-1 shrink-0 space-y-2">
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Search items..."
+              placeholder="Search items or type to add..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (readOnly) return;
+                if (e.key === 'Enter' && searchQuery.trim()) handleAdd();
+                if (e.key === 'Escape') setSearchQuery('');
+              }}
               className="h-8 w-full pl-7 text-xs"
             />
           </div>
+          {!readOnly && searchQuery.trim() && (
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 flex-1 justify-start gap-1.5 text-xs min-w-0"
+                onClick={handleAdd}
+              >
+                <Plus className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Add "{searchQuery.trim()}"</span>
+              </Button>
+              <Popover key={requesterPopoverKey}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      'h-8 w-40 justify-between gap-2 text-xs font-normal shrink-0',
+                      newRequestedBy.length > 0 ? 'border-primary/50 bg-primary/5' : 'text-muted-foreground'
+                    )}
+                  >
+                    <span className="truncate">{getDisplayText(newRequestedBy, true)}</span>
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[220px] p-0 bg-popover" align="end">
+                  <SearchableRequesterList
+                    options={requestedByOptions}
+                    selected={newRequestedBy}
+                    onToggle={toggleRequestedBy}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
         </div>
 
         {/* Progress Bar */}
@@ -972,45 +1013,6 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                 Select all ({activeItems.length})
               </Button>
             </div>
-          )}
-
-          {/* Add item input */}
-          {!readOnly && (
-          <div className={`${items.length > 0 ? 'pb-3 border-b border-border' : ''}`}>
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Type to add an item..."
-                value={newItemText}
-                onChange={(e) => setNewItemText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newItemText.trim()) handleAdd();
-                  if (e.key === 'Escape') setNewItemText('');
-                }}
-                className="flex-1"
-              />
-              <Popover key={requesterPopoverKey}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-48 justify-between gap-2 font-normal',
-                      newRequestedBy.length > 0 ? 'border-primary/50 bg-primary/5' : 'border-destructive/50 text-muted-foreground'
-                    )}
-                  >
-                    <span className="truncate">{getDisplayText(newRequestedBy, true)}</span>
-                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[220px] p-0 bg-popover" align="end">
-                  <SearchableRequesterList
-                    options={requestedByOptions}
-                    selected={newRequestedBy}
-                    onToggle={toggleRequestedBy}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
           )}
 
           {filteredItems.length === 0 && (
