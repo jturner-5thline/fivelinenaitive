@@ -4731,6 +4731,11 @@ export default function DealDetail() {
                   </div>
                 );
               })()}
+              {/* Funding source mix pie (with drilldown) */}
+              <FundingSourceMixPie
+                lenders={deal.lenders || []}
+                configuredStages={configuredStages as any}
+              />
               {/* Lender stage progress table */}
               {(() => {
                 const norm = (s?: string) => (s || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
