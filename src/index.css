@@ -2793,7 +2793,10 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 /* Funding-source list rows are plain table rows — the module glass/blur
    treatment must not paint a grey overlay over the lender names. */
 .deal-detail-surface .deal-plain-row,
-.deal-detail-surface .deal-plain-row:hover {
+.deal-detail-surface .deal-plain-row:hover,
+.deal-detail-surface [class*="bg-card"] .deal-plain-row,
+.deal-detail-surface [class*="bg-card"] .deal-plain-row:hover,
+.deal-detail-surface [class*="bg-card"] [class*="bg-card"] .deal-plain-row {
   background-image: none !important;
   background-color: transparent !important;
   border-width: 0 0 1px 0 !important;
