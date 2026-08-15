@@ -278,7 +278,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 gap-1 text-xs text-muted-foreground"
+                className="h-7 shrink-0 gap-1 text-xs text-muted-foreground"
                 onClick={copyTranscript}
               >
                 <Copy className="h-3.5 w-3.5" />
@@ -287,7 +287,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 gap-1 text-xs text-muted-foreground"
+                className="h-7 shrink-0 gap-1 text-xs text-muted-foreground"
                 onClick={exportTranscript}
               >
                 <Download className="h-3.5 w-3.5" />
@@ -296,7 +296,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 gap-1 text-xs text-muted-foreground"
+                className="h-7 shrink-0 gap-1 text-xs text-muted-foreground"
                 onClick={clearMessages}
               >
                 <Trash2 className="h-3.5 w-3.5" />
