@@ -701,6 +701,16 @@ export default function DealDetail() {
     return () => window.removeEventListener('naitive:open-status-report', handler as EventListener);
   }, [id]);
 
+  // Deep-link support: `?dealAction=status-report` (used by the deals list
+  // quick actions) opens the Status Report Preview right after mount.
+  useEffect(() => {
+    if (searchParams.get('dealAction') !== 'status-report') return;
+    setShowStatusReportPreview(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('dealAction');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   // Prefetch every tab's chunk on idle after DealDetail mounts. Tab switches
   // then render from the in-memory module cache instead of blocking on a
   // network round-trip for the JS bundle. Fire-and-forget; individual chunk
