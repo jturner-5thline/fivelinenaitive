@@ -209,7 +209,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
       <BodyScrollLock />
       {/* App background — diagonal gradient */}
       <div
-        className="pointer-events-none fixed inset-0 z-0"
+        className="app-bg-gradient pointer-events-none fixed inset-0 z-0"
         aria-hidden="true"
         style={{
           minHeight: '100vh',
