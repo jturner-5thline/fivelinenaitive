@@ -130,9 +130,11 @@ export function FundingSourceMixPie({ lenders, configuredStages = [], className,
               }}
             />
             <Legend
-              verticalAlign="bottom"
-              height={24}
+              layout="vertical"
+              align="right"
+              verticalAlign="middle"
               iconType="circle"
+              wrapperStyle={{ paddingLeft: 12 }}
               formatter={(value: string) => <span className="text-xs text-muted-foreground">{value}</span>}
             />
           </PieChart>
