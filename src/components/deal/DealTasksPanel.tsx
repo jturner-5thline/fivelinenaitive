@@ -18,7 +18,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Plus, Trash2, CalendarIcon, CheckCircle2, Clock, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, CalendarIcon, CheckCircle2, Clock, ChevronUp, ChevronDown, Search } from 'lucide-react';
 import { useDealTasks } from '@/hooks/useDealTasks';
 import { isTaskCompleted, TASK_STATUS_COMPLETE, TASK_STATUS_REOPENED } from '@/lib/taskCache';
 import { useTeamMembers, type TeamMember } from '@/hooks/useTeamMembers';
@@ -72,6 +72,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
   };
   const [isOpen, setIsOpen] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'incomplete' | 'completed'>('incomplete');
+  const [searchQuery, setSearchQuery] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -125,7 +126,11 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
   const pendingTasks = tasks.filter(t => !isTaskCompleted(t));
   const completedTasks = tasks.filter(t => isTaskCompleted(t));
 
-  const displayedTasks = statusFilter === 'incomplete' ? pendingTasks : completedTasks;
+  const displayedTasks = (statusFilter === 'incomplete' ? pendingTasks : completedTasks).filter(t => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return `${t.title || ''} ${t.description || ''}`.toLowerCase().includes(q);
+  });
 
   const getInitials = (member: TeamMember | undefined) => {
     if (!member) return '?';
@@ -164,9 +169,20 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
         {/* ── Body ── flex-1 so it fills remaining card height */}
         {isOpen && (
           <CardContent className="flex-1 flex flex-col px-4 pb-4 pt-0 space-y-3 min-h-0">
-            {/* Spacer matching the Outstanding Items search + progress rows so the
-                first task tile lines up with the first outstanding item tile. */}
-            <div className="h-[70px] shrink-0" aria-hidden />
+            {/* Search row — mirrors the Outstanding Items search bar (size + offset)
+                so the first task tile lines up with the first outstanding item tile. */}
+            <div className="shrink-0 pt-2 pb-[30px]">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search tasks..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Escape') setSearchQuery(''); }}
+                  className="h-8 w-full pl-7 text-xs"
+                />
+              </div>
+            </div>
             {isLoading && tasks.length === 0 ? (
               <div className="flex-1 flex items-center justify-center">
                 <p className="text-xs text-muted-foreground">Loading tasks…</p>
