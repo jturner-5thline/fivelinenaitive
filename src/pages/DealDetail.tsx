@@ -4748,7 +4748,7 @@ export default function DealDetail() {
                  <Card className={cn("flex flex-col min-h-0", useContextRailLayout && "border-border/60")}>
                    <CardHeader className="pb-3 pt-3">
                        <div className="flex items-center gap-2 flex-wrap">
-                         <div className="flex-1 min-w-[160px] max-w-[260px]">
+                          <div className="flex-1 shrink basis-[180px] min-w-[120px] max-w-[260px]">
                            <LenderSearchInput
                              lenderNames={lenderNames}
                              existingLenderNames={existingLenderNames}
@@ -4785,7 +4785,7 @@ export default function DealDetail() {
                       />
                           </Suspense>
                         </div>
-                      <div className="flex items-center gap-1.5 ml-auto min-w-0">
+                       <div className="flex flex-wrap items-center justify-end gap-1.5 ml-auto min-w-0 shrink">
                       {deal.lenders && deal.lenders.length > 0 && (
                         <div className="min-w-0">
                         <ToggleGroup
