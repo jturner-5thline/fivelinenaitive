@@ -4085,7 +4085,7 @@ export default function DealDetail() {
                               </div>
                               {/* Calendar panel is hidden on FinServ deal detail by request */}
                               {!isFinServDeal && (
-                                <Card className="overflow-hidden flex-1 flex flex-col min-h-[280px]">
+                                <Card className="deal-calendar-panel overflow-hidden flex-1 flex flex-col min-h-[280px]">
                                   <div className="flex-1 flex flex-col">
                                     <CalendarPanel deal={deal} />
                                   </div>
