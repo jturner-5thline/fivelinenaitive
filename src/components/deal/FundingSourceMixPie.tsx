@@ -50,6 +50,7 @@ interface Props {
 
 export function FundingSourceMixPie({ lenders, configuredStages = [], className, onSelectLender }: Props) {
   const [drilldown, setDrilldown] = useState<BucketId | null>(null);
+  const [hovered, setHovered] = useState<BucketId | null>(null);
 
   const grouped = useMemo(() => {
     const map: Record<BucketId, DealLender[]> = { active: [], 'on-deck': [], 'on-hold': [], passed: [] };
@@ -87,15 +88,43 @@ export function FundingSourceMixPie({ lenders, configuredStages = [], className,
               outerRadius={82}
               paddingAngle={2}
               stroke="transparent"
+              isAnimationActive={false}
+              onMouseLeave={() => setHovered(null)}
               onClick={(entry: any) => setDrilldown((entry?.payload?.id ?? entry?.id) as BucketId)}
             >
               {data.map((d) => (
-                <Cell key={d.id} fill={d.color} className="cursor-pointer outline-none" fillOpacity={0.82} />
+                <Cell
+                  key={d.id}
+                  fill={d.color}
+                  className="cursor-pointer outline-none transition-opacity"
+                  fillOpacity={hovered && hovered !== d.id ? 0.35 : hovered === d.id ? 1 : 0.82}
+                  onMouseEnter={() => setHovered(d.id)}
+                />
               ))}
             </Pie>
             <Tooltip
-              contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
-              formatter={(value: any, name: any) => [`${value} (${Math.round((Number(value) / total) * 100)}%)`, name]}
+              cursor={false}
+              wrapperStyle={{ outline: 'none', zIndex: 50 }}
+              content={({ active: isActive, payload }: any) => {
+                if (!isActive || !payload?.length) return null;
+                const p = payload[0]?.payload;
+                if (!p) return null;
+                const pct = total > 0 ? (p.value / total) * 100 : 0;
+                return (
+                  <div className="rounded-lg border border-border/70 bg-card/95 px-3 py-2 shadow-lg backdrop-blur">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: p.color }} />
+                      <span className="text-xs font-semibold text-foreground">{p.label}</span>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      <span className="font-semibold tabular-nums text-foreground">{p.value}</span>
+                      {` ${p.value === 1 ? 'source' : 'sources'} · `}
+                      <span className="font-semibold tabular-nums text-foreground">{pct.toFixed(pct < 10 ? 1 : 0)}%</span>
+                      {` of ${total}`}
+                    </div>
+                  </div>
+                );
+              }}
             />
             <Legend
               verticalAlign="bottom"
