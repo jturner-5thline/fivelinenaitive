@@ -591,7 +591,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
         data-outstanding-tile="true"
         data-selected={isSelected ? "true" : undefined}
         className={cn(
-          "outstanding-item-tile flex items-center gap-3 p-3 rounded-lg border bg-card transition-colors cursor-pointer",
+          "outstanding-item-tile flex items-center gap-3 p-3 rounded-lg border bg-card transition-colors cursor-pointer min-h-[62px] overflow-hidden",
           isCompletedRow && "opacity-60",
           "border-border hover:border-primary/50",
           isSelected && "border-primary/50 bg-primary/5"
@@ -672,7 +672,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
               )}>
                 {item.text}
               </span>
-              <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5 flex-wrap">
+              <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5 flex-nowrap overflow-hidden whitespace-nowrap">
                 {isCompletedRow && item.completedAt && (
                   <span className="flex items-center gap-1 text-emerald-600">
                     <Check className="h-3 w-3" />
@@ -703,7 +703,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
             
             {!isCompletedRow && (
               <>
-                <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-2 sm:gap-4 shrink-0" onClick={(e) => e.stopPropagation()}>
                   <div className={cn(
                     "flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors",
                     item.received && "bg-emerald-500/10"
@@ -775,7 +775,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
             
             {isCompletedRow && (
               <>
-                <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-2 sm:gap-4 shrink-0" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10">
                     <Checkbox
                       checked={item.received}
