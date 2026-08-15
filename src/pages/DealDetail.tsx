@@ -3202,11 +3202,6 @@ export default function DealDetail() {
 
   const dealActionCluster = (
     <div className="flex flex-wrap items-center gap-2">
-      {false && (
-        <Suspense fallback={null}>
-          <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
-        </Suspense>
-      )}
       <CreateTaskButton dealId={id!} dealName={deal?.company} />
       {hasNaitivePipelineAccess && <EmailPromptCenterButton dealId={id!} dealName={deal?.company} />}
       {!isSimplifiedDeal && companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
