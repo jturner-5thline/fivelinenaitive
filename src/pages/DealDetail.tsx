@@ -3888,6 +3888,9 @@ export default function DealDetail() {
               )}>
                 <div className="relative w-full sm:w-[70%] flex flex-col gap-1">
                   <div className="relative flex items-start gap-2">
+                    {dealMemoButton && (
+                      <div className="order-last shrink-0 self-start">{dealMemoButton}</div>
+                    )}
                     <StaleStatusNudge
                       deal={deal}
                       onSave={(value) => {
