@@ -657,6 +657,20 @@ export default function DealDetail() {
   const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingStatusNotes } = useStatusNotes(id);
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const [activeFlagCount, setActiveFlagCount] = useState(0);
+  // Measure the left context rail so the header widget (status note +
+  // milestones) always matches its height regardless of note length.
+  const [railHeight, setRailHeight] = useState<number | null>(null);
+  const railMeasureRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) {
+      setRailHeight(null);
+      return;
+    }
+    const ro = new ResizeObserver(() => setRailHeight(node.offsetHeight));
+    ro.observe(node);
+    setRailHeight(node.offsetHeight);
+    (node as any).__railRo?.disconnect?.();
+    (node as any).__railRo = ro;
+  }, []);
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones, pendingClosingDateSync, dismissClosingDateSync } = useDealMilestones(id);
   const { user } = useAuth();
   const { company, members } = useCompany();
