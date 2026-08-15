@@ -3639,9 +3639,11 @@ export default function DealDetail() {
           <Card className={cn(
             "w-full mt-4 mb-6 border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]",
             useContextRailLayout && "mt-0",
-            // Header widget (status + milestones) is scoped to the Deal Info tab only.
-            dealInfoTab !== 'deal-info' && "hidden",
             useContextRailLayout && "flex flex-col overflow-hidden",
+            // Header widget (status + milestones) is scoped to the Deal Space tab
+            // only. Keep this last so `hidden` wins over the `flex` display
+            // class above when tailwind-merge resolves the display group.
+            dealInfoTab !== 'deal-info' && "hidden",
           )}
           style={
             useContextRailLayout && dealInfoTab === 'deal-info' && railHeight
