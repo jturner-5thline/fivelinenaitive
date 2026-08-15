@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { FileText, Mail, Plus, X, Eye, EyeOff, Loader2, Sparkles, Download } from 'lucide-react';
+import { FileText, Mail, Plus, X, Eye, EyeOff, Loader2, Sparkles, Download, Save } from 'lucide-react';
+import { useStatusReportDraft } from '@/hooks/useStatusReportDraft';
 import { Deal } from '@/types/deal';
 import type { StatusReportEditableContent, LenderStageConfig, OutstandingItem } from '@/utils/dealExport';
 import { bucketLenders, extractPassDetails, isExcludedFromClientReport } from '@/lib/lenderStatusBuckets';
