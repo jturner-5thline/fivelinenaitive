@@ -3645,7 +3645,7 @@ export default function DealDetail() {
           )}
           style={
             useContextRailLayout && dealInfoTab === 'deal-info' && railHeight
-              ? { height: railHeight }
+              ? { height: Math.round(railHeight * 0.75) }
               : undefined
           }>
             <CardHeader className={cn("pb-4", useContextRailLayout && "pt-3 pb-3 flex-1 min-h-0 overflow-y-auto")}>
