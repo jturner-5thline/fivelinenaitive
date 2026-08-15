@@ -657,6 +657,20 @@ export default function DealDetail() {
   const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingStatusNotes } = useStatusNotes(id);
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const [activeFlagCount, setActiveFlagCount] = useState(0);
+  // Measure the left context rail so the header widget (status note +
+  // milestones) always matches its height regardless of note length.
+  const [railHeight, setRailHeight] = useState<number | null>(null);
+  const railMeasureRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) {
+      setRailHeight(null);
+      return;
+    }
+    const ro = new ResizeObserver(() => setRailHeight(node.offsetHeight));
+    ro.observe(node);
+    setRailHeight(node.offsetHeight);
+    (node as any).__railRo?.disconnect?.();
+    (node as any).__railRo = ro;
+  }, []);
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones, pendingClosingDateSync, dismissClosingDateSync } = useDealMilestones(id);
   const { user } = useAuth();
   const { company, members } = useCompany();
@@ -3602,7 +3616,7 @@ export default function DealDetail() {
               carry the content. Everything below is unchanged. */}
           <div className={cn(useContextRailLayout && "flex flex-col lg:flex-row gap-5 items-start mt-3")}>
           {useContextRailLayout && dealInfoTab === 'deal-info' && (
-            <div className="w-full lg:w-[210px] shrink-0 lg:sticky lg:top-4 self-start space-y-4">
+            <div ref={railMeasureRef} className="w-full lg:w-[210px] shrink-0 lg:sticky lg:top-4 self-start space-y-4">
               <DealContextRail
                 deal={deal}
                 compact={dealInfoTab !== 'deal-info'}
@@ -3625,8 +3639,14 @@ export default function DealDetail() {
             useContextRailLayout && "mt-0",
             // Header widget (status + milestones) is scoped to the Deal Info tab only.
             dealInfoTab !== 'deal-info' && "hidden",
-          )}>
-            <CardHeader className={cn("pb-4", useContextRailLayout && "pt-3 pb-3")}>
+            useContextRailLayout && "flex flex-col overflow-hidden",
+          )}
+          style={
+            useContextRailLayout && dealInfoTab === 'deal-info' && railHeight
+              ? { height: railHeight }
+              : undefined
+          }>
+            <CardHeader className={cn("pb-4", useContextRailLayout && "pt-3 pb-3 flex-1 min-h-0 overflow-y-auto")}>
               <div className={cn(
                 "flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4",
                 useContextRailLayout && "hidden",
@@ -3928,7 +3948,7 @@ export default function DealDetail() {
               </div>
             </CardHeader>
             {useContextRailLayout && !isSimplifiedDeal && (
-              <CardContent className="pt-2 pb-2 border-t border-white/10">
+              <CardContent className="pt-2 pb-2 border-t border-white/10 shrink-0">
                 <DealMilestones
                   milestones={dbMilestones}
                   onAdd={addMilestone}
