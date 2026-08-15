@@ -260,9 +260,6 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
               Beta
             </span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Ask questions about this deal's data, documents, and activity
-          </p>
         </div>
         {expanded && (
           <div className="flex min-w-0 animate-fade-in flex-wrap items-center justify-end gap-1.5">
