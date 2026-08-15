@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2, Paperclip, Send, X, MessageSquare } from 'lucide-react';
+import { Loader2, Paperclip, Send, X, MessageSquare, FileText } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -225,6 +225,51 @@ export function DraftAndSendDialog({
   };
   const removeFile = (idx: number) => setFiles((prev) => prev.filter((_, i) => i !== idx));
 
+  // Pull the most recent archived Status Report for this deal out of the
+  // Internal Data Room and attach it to the draft.
+  const [isAttachingReport, setIsAttachingReport] = useState(false);
+  const handleAttachLatestStatusReport = async () => {
+    if (!initial?.dealId) return;
+    setIsAttachingReport(true);
+    try {
+      const { data, error } = await (supabase as any)
+        .from('vdr_documents')
+        .select('filename, file_path, file_type, file_size, created_at')
+        .eq('deal_id', initial.dealId)
+        .eq('is_folder', false)
+        .eq('folder_path', '/Status Reports/')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      const doc = data?.[0];
+      if (!doc) {
+        toast.error('No status report found for this deal yet');
+        return;
+      }
+      if (files.some((f) => f.name === doc.filename)) {
+        toast.info('Latest status report is already attached');
+        return;
+      }
+      const { data: blob, error: dlError } = await supabase.storage
+        .from('vdr-files')
+        .download(doc.file_path);
+      if (dlError || !blob) throw dlError || new Error('Download failed');
+      if (blob.size > MAX_FILE_BYTES) {
+        toast.error('Status report is over the 25 MB limit');
+        return;
+      }
+      const file = new File([blob], doc.filename, {
+        type: doc.file_type || blob.type || 'application/octet-stream',
+      });
+      setFiles((prev) => [...prev, file]);
+      toast.success('Latest status report attached');
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not attach the status report');
+    } finally {
+      setIsAttachingReport(false);
+    }
+  };
+
   // Block send while any pre-attached file is still empty (e.g. the generated
   // status report PDF hasn't finished rendering). Prevents shipping a chip
   // with an empty payload.
@@ -433,6 +478,23 @@ export function DraftAndSendDialog({
                 <Paperclip className="h-3.5 w-3.5 mr-1.5" />
                 Attach
               </Button>
+              {initial?.dealId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  disabled={isAttachingReport}
+                  onClick={handleAttachLatestStatusReport}
+                >
+                  {isAttachingReport ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <FileText className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  Latest status report
+                </Button>
+              )}
               <input
                 ref={fileInputRef}
                 type="file"
