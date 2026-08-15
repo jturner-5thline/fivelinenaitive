@@ -3923,11 +3923,6 @@ export default function DealDetail() {
                       bulletMode
                     />
                   </div>
-                  {deal.notesUpdatedAt && (
-                    <p className="text-xs text-muted-foreground/70 pl-6">
-                      Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
-                    </p>
-                  )}
                   <div className="flex items-center gap-2 pl-6 pt-1">
                     <DealUpdatesUnified
                       activities={activityLogs}
@@ -3939,12 +3934,17 @@ export default function DealDetail() {
                     />
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-2 shrink-0">
+                <div className="flex flex-col items-end gap-2 shrink-0 self-stretch">
                   {deal.manager && !useContextRailLayout && (
                     <span className="text-sm text-white">{deal.manager}</span>
                   )}
                   {!useContextRailLayout && (
                     <div className="flex justify-end">{dealActionCluster}</div>
+                  )}
+                  {deal.notesUpdatedAt && (
+                    <p className="text-xs text-muted-foreground/70 mt-auto text-right whitespace-nowrap">
+                      Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
+                    </p>
                   )}
                 </div>
               </div>
