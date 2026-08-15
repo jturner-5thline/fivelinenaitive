@@ -201,7 +201,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
                         onClick={() => handleOpenTask(task.id)}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleOpenTask(task.id); }}
                         className={cn(
-                          "flex items-start gap-3 group rounded-lg border p-2.5 transition-colors cursor-pointer",
+                          "flex items-center gap-3 group rounded-lg border p-3 transition-colors cursor-pointer",
                           isCompleted
                             ? "border-border/50 opacity-60 hover:opacity-100"
                             : isOverdue
@@ -210,10 +210,10 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
                         )}
                       >
                         <div onClick={(e) => e.stopPropagation()}>
-                          <Checkbox checked={isCompleted} onCheckedChange={() => handleToggleStatus(task.id, task.status)} className="mt-0.5" />
+                          <Checkbox checked={isCompleted} onCheckedChange={() => handleToggleStatus(task.id, task.status)} className="shrink-0" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={cn("text-sm", isCompleted ? "text-muted-foreground line-through" : "font-medium text-foreground")}>{task.title}</p>
+                          <p className={cn("text-sm font-medium truncate", isCompleted ? "text-muted-foreground line-through" : "text-foreground")}>{task.title}</p>
                           {!isCompleted && task.description && (
                             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{task.description}</p>
                           )}
