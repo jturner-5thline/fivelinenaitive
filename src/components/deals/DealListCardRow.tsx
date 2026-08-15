@@ -52,7 +52,7 @@ import { cn } from '@/lib/utils';
 
 /** Shared column template so the header row in DealsList stays aligned. */
 export const DEAL_LIST_GRID =
-  'grid grid-cols-[minmax(160px,240px)_112px_158px_minmax(120px,1.4fr)_minmax(0,1fr)] items-center gap-2';
+  'grid grid-cols-[minmax(160px,240px)_112px_158px_minmax(120px,1.4fr)_76px] items-center gap-1.5';
 
 /** Strip HTML/markup from status note text and normalize whitespace. */
 function cleanStatusNote(raw?: string): string {
@@ -312,7 +312,7 @@ function DealListCardRowImpl({
           {!compact && (
             <span
               className={cn(
-                'inline-flex items-center justify-center gap-1 text-xs text-muted-foreground justify-self-center text-center',
+                'inline-flex items-center justify-center gap-0.5 whitespace-nowrap px-0 text-[11px] text-muted-foreground justify-self-center text-center',
                 timeAgoData.tone === 'critical' && 'text-destructive',
                 timeAgoData.tone === 'warning' && 'text-warning',
               )}
