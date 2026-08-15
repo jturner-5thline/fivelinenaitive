@@ -926,7 +926,6 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
         {items.length > 0 && (
           <div className="px-6 pb-3">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-muted-foreground">{progressPercent}% complete</span>
               <span className="text-xs text-muted-foreground">{completedCount}/{items.length}</span>
             </div>
             <Progress value={progressPercent} className="h-1.5" />
