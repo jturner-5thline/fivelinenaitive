@@ -12,12 +12,14 @@ import { useOptionalRequestStatusChange } from '@/components/deal/StatusChangeGa
 
 // Brighter gradient tone treatment so list tags read clearly against the
 // dark glass table fill (the flat 15% translucency looked near-black).
+// Glassy bordered treatment: opaque colored border + translucent gradient
+// fill + bright legible label (matches the stage tag / "+ New Deal" button).
 const STATUS_TAG_THEME: Record<DealStatus, string> = {
-  'on-track': '!bg-gradient-to-r !from-teal-400/45 !to-emerald-400/30 !text-teal-100 border !border-teal-300/45',
-  'at-risk': '!bg-gradient-to-r !from-yellow-400/45 !to-amber-400/30 !text-yellow-100 border !border-yellow-300/45',
-  'off-track': '!bg-gradient-to-r !from-red-500/45 !to-rose-400/30 !text-red-100 border !border-red-300/45',
-  'on-hold': '!bg-gradient-to-r !from-blue-500/45 !to-sky-400/30 !text-blue-100 border !border-blue-300/45',
-  'archived': '!bg-gradient-to-r !from-orange-500/45 !to-amber-500/30 !text-orange-100 border !border-orange-300/45',
+  'on-track': '!bg-gradient-to-br !from-teal-400/25 !to-emerald-400/15 !text-teal-50 border !border-teal-300/95 backdrop-blur-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]',
+  'at-risk': '!bg-gradient-to-br !from-yellow-400/25 !to-amber-400/15 !text-yellow-50 border !border-yellow-300/95 backdrop-blur-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]',
+  'off-track': '!bg-gradient-to-br !from-red-500/25 !to-rose-400/15 !text-red-50 border !border-red-300/95 backdrop-blur-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]',
+  'on-hold': '!bg-gradient-to-br !from-blue-500/25 !to-sky-400/15 !text-blue-50 border !border-blue-300/95 backdrop-blur-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]',
+  'archived': '!bg-gradient-to-br !from-orange-500/25 !to-amber-500/15 !text-orange-50 border !border-orange-300/95 backdrop-blur-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]',
 };
 
 const STATUS_DOT: Record<DealStatus, string> = {

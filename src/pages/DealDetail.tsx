@@ -3720,7 +3720,15 @@ export default function DealDetail() {
                     });
                   }}
                 >
-                  <SelectTrigger className={`w-auto ${statusConfig.badgeColor} text-white border-0 text-xs rounded-lg h-6 px-2`}>
+                  <SelectTrigger className={`w-auto text-xs rounded-md h-6 px-2 font-semibold border backdrop-blur-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] [text-shadow:0_1px_2px_rgba(0,0,0,0.55)] ${
+                    ({
+                      'on-track': 'border-teal-300/95 text-teal-50 bg-gradient-to-br from-teal-400/25 to-emerald-400/15',
+                      'at-risk': 'border-yellow-300/95 text-yellow-50 bg-gradient-to-br from-yellow-400/25 to-amber-400/15',
+                      'off-track': 'border-red-300/95 text-red-50 bg-gradient-to-br from-red-500/25 to-rose-400/15',
+                      'on-hold': 'border-blue-300/95 text-blue-50 bg-gradient-to-br from-blue-500/25 to-sky-400/15',
+                      'archived': 'border-orange-300/95 text-orange-50 bg-gradient-to-br from-orange-500/25 to-amber-500/15',
+                    } as Record<string, string>)[deal.status as string] ?? 'border-white/40 text-white bg-white/10'
+                  }`}>
                     <SelectValue>
                       {STATUS_CONFIG[deal.status as DealStatus]?.label || deal.status}
                     </SelectValue>
