@@ -416,9 +416,9 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                 key={c.key}
                 className="inline-flex items-center gap-1 h-6 pl-2 pr-1 rounded-full text-[11px]"
                 style={{
-                  color: '#b79bf0',
-                  background: 'rgba(155,111,212,.14)',
-                  border: '1px solid rgba(155,111,212,.28)',
+                  color: 'hsl(41 72% 74%)',
+                  background: 'hsl(41 60% 55% / 0.12)',
+                  border: '1px solid hsl(41 55% 58% / 0.30)',
                 }}
               >
                 {c.label}

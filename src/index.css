@@ -2778,3 +2778,158 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   ) !important;
   border-color: rgba(210, 230, 255, 0.42) !important;
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   /deals — scoped color system
+   ------------------------------------------------------------------------
+   Colour ONLY. No layout, spacing, typography or behaviour is expressed
+   here. The page root carries `.deals-surface` (display: contents), so
+   these token overrides cascade into every panel, table, card, badge and
+   control rendered inside the Deals workspace without leaking to the rest
+   of the app.
+
+   Hierarchy:
+     surface 0  page shell          deep navy / near-black
+     surface 1  panels + tables     one step up
+     surface 2  cards + popovers    two steps up
+     surface 3  hover / selected    three steps up
+   Accent: gold/amber only for primary CTAs, selected nav, active tabs,
+   focus rings and important counts. Green = positive, red = destructive,
+   amber = attention.
+   ═══════════════════════════════════════════════════════════════════════ */
+.deals-surface {
+  /* ── shell + surfaces ───────────────────────────────────────────── */
+  --background: 222 34% 7%;
+  --card: 221 30% 10%;
+  --card-foreground: 210 22% 96%;
+  --popover: 221 28% 12%;
+  --popover-foreground: 210 22% 96%;
+  --secondary: 221 26% 14%;
+  --secondary-foreground: 210 20% 94%;
+  --muted: 221 24% 15%;
+  --accent: 221 26% 18%;
+  --accent-foreground: 210 22% 96%;
+
+  --surface-tile: 221 30% 11%;
+  --surface-tile-hover: 221 27% 15%;
+  --surface-tile-selected: 221 30% 18%;
+
+  /* ── text hierarchy ─────────────────────────────────────────────── */
+  --foreground: 210 22% 96%;          /* primary — off-white          */
+  --muted-foreground: 214 18% 74%;    /* secondary — muted slate      */
+  --deals-text-tertiary: 214 14% 62%; /* timestamps / labels / meta   */
+
+  /* ── accent: gold, used sparingly ───────────────────────────────── */
+  --primary: 41 76% 60%;
+  --primary-foreground: 222 40% 9%;
+  --ring: 41 76% 60%;
+  --brand: 41 76% 60%;
+
+  /* ── semantic status ────────────────────────────────────────────── */
+  --success: 152 42% 52%;
+  --success-foreground: 222 40% 9%;
+  --warning: 38 72% 58%;
+  --warning-foreground: 222 40% 9%;
+  --destructive: 358 58% 57%;
+  --destructive-foreground: 210 22% 96%;
+
+  /* ── borders: subtle blue-gray, never harsh white ───────────────── */
+  --border: 219 20% 24%;
+  --input: 219 20% 26%;
+  --sidebar-background: 222 32% 8%;
+  --sidebar-foreground: 210 20% 90%;
+  --sidebar-primary: 41 76% 60%;
+  --sidebar-primary-foreground: 222 40% 9%;
+  --sidebar-accent: 221 26% 16%;
+  --sidebar-accent-foreground: 210 22% 96%;
+  --sidebar-border: 219 20% 22%;
+  --sidebar-ring: 41 76% 60%;
+}
+
+/* Tertiary metadata tone — timestamps, column labels, inactive controls.
+   Mapped onto the existing low-emphasis utilities so no markup changes. */
+.deals-surface .text-muted-foreground\/70,
+.deals-surface .text-muted-foreground\/60,
+.deals-surface .text-muted-foreground\/50,
+.deals-surface .text-foreground\/50,
+.deals-surface .text-foreground\/60 {
+  color: hsl(var(--deals-text-tertiary)) !important;
+}
+
+/* Placeholders keep AA contrast instead of fading into the surface. */
+.deals-surface input::placeholder,
+.deals-surface textarea::placeholder {
+  color: hsl(var(--deals-text-tertiary)) !important;
+  opacity: 1;
+}
+
+/* Calm the glass surfaces down to flat, near-gradient-free navy planes so
+   panels separate by tone rather than by gradient, glow or heavy border. */
+.deals-surface .deal-glass,
+.deals-surface .deal-glass:hover {
+  background: hsl(221 30% 11%) !important;
+  border-color: hsl(219 20% 24%) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35) !important;
+}
+.deals-surface .deal-glass:hover {
+  background: hsl(221 28% 13%) !important;
+  border-color: hsl(219 20% 30%) !important;
+}
+.deals-surface .deal-glass::before { background: none !important; }
+
+.deals-surface .deal-tile.deal-glass,
+.deals-surface .deal-glass.deal-tile,
+.deals-surface div.deal-tile.deal-glass,
+.deals-surface .deal-tile[class*="deal-glass"] {
+  background: hsl(221 30% 10%) !important;
+  background-color: hsl(221 30% 10%) !important;
+  border-color: hsl(219 20% 24%) !important;
+  color: hsl(var(--foreground)) !important;
+}
+.deals-surface .deal-tile.deal-glass:hover,
+.deals-surface .deal-glass.deal-tile:hover,
+.deals-surface div.deal-tile.deal-glass:hover,
+.deals-surface .deal-tile[class*="deal-glass"]:hover {
+  background: hsl(221 28% 13%) !important;
+  background-color: hsl(221 28% 13%) !important;
+  border-color: hsl(219 20% 30%) !important;
+}
+
+/* Selected deal row — restrained gold-tinted navy wash with a thin rim,
+   replacing the bright violet ring. */
+.deals-surface tr[data-deal-open-id] > td,
+.deals-surface div[data-deal-open-id] {
+  background-color: hsl(41 40% 55% / 0.07) !important;
+  box-shadow: inset 0 0 0 1px hsl(41 60% 60% / 0.32) !important;
+}
+
+/* Focus visibility on every interactive control in the workspace. */
+.deals-surface :is(button, a, input, select, textarea, [role="button"], [role="tab"], [role="menuitem"]):focus-visible {
+  outline: 2px solid hsl(var(--ring) / 0.85);
+  outline-offset: 2px;
+}
+
+/* App shell while the Deals workspace is mounted: deep navy / near-black,
+   replacing the bright blue gradient. Colour only. */
+body[data-deals-surface='1'] {
+  background-color: hsl(222 34% 7%) !important;
+  background-image: none !important;
+}
+
+/* Ambient app-background layer: flat deep navy on the Deals workspace. */
+body[data-deals-surface='1'] .app-bg-gradient {
+  background: hsl(222 34% 7%) !important;
+}
+
+/* Primary CTA on the Deals workspace — the one place gold is used as a
+   filled surface. Colour only; size, spacing and icons are unchanged. */
+.deals-surface [data-deals-cta] {
+  background: hsl(41 74% 58%) !important;
+  background-image: none !important;
+  border: 1px solid hsl(41 66% 50%) !important;
+  color: hsl(222 40% 9%) !important;
+  box-shadow: none !important;
+}
+.deals-surface [data-deals-cta]:hover {
+  background: hsl(41 78% 64%) !important;
+}
