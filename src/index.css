@@ -2739,7 +2739,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    ------------------------------------------------------------------ */
 /* Standard module chrome tokens for the deal detail pop-up. */
 .deal-detail-surface {
-  --deal-module-radius: 19px;
+  --deal-module-radius: 10px;
   --deal-module-border: 1px;
   --deal-module-border-color: rgba(255, 255, 255, 0.14);
   --deal-module-border-color-hover: rgba(255, 255, 255, 0.24);
