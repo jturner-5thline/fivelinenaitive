@@ -5132,7 +5132,7 @@ export default function DealDetail() {
                                       data-lender-id={lender.id}
                                       data-lender-stale={staleStatus.isStale ? 'true' : undefined}
                                       className={cn(
-                                        'relative border-b border-border/60 px-2 py-3 transition-colors hover:bg-muted/30',
+                                        'deal-plain-row relative border-b border-border/60 px-2 py-3 transition-colors hover:bg-muted/30',
                                         staleStatus.isStale && staleStatus.isUrgent && 'bg-destructive/5',
                                         staleStatus.isStale && !staleStatus.isUrgent && 'bg-warning/5',
                                         shouldAnimate && 'animate-pulse-highlight'
