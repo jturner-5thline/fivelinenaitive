@@ -914,7 +914,6 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
         {/* Search / add combo */}
         <div className="px-4 pt-2 pb-1 shrink-0 space-y-2">
           <div className="relative">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               placeholder="Search items or type to add..."
               value={searchQuery}
@@ -924,7 +923,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                 if (e.key === 'Enter' && searchQuery.trim()) handleAdd();
                 if (e.key === 'Escape') setSearchQuery('');
               }}
-              className="h-8 w-full pl-7 text-xs"
+              className="h-8 w-full text-xs"
             />
           </div>
           {!readOnly && searchQuery.trim() && (
