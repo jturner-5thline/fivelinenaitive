@@ -2892,6 +2892,13 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   box-shadow: none !important;
   backdrop-filter: none !important;
   transform: none !important;
+  /* Deal name + amount always render as pure, fully opaque white. */
+  color: #ffffff !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #ffffff !important;
+  text-shadow: none !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
 }
 
 /* Funding-source list rows are plain table rows — the module glass/blur
