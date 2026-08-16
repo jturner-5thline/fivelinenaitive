@@ -2846,7 +2846,8 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   border-radius: 12px !important;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  color: hsl(0 0% 100% / 0.94);
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
 }
 
 /* Placeholder copy inside deal detail inputs. */
@@ -2858,7 +2859,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 
 /* Module / widget titles. */
 .deal-detail-surface [data-slot="card-title"] {
-  color: #eaeaf4 !important;
+  color: #ffffff !important;
 }
 
 .deal-detail-surface input:focus-visible,
@@ -2921,8 +2922,8 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .status-note-2rows .ProseMirror,
 .status-note-2rows [contenteditable="true"],
 .status-note-2rows textarea {
-  color: #cfd0e2 !important;
-  -webkit-text-fill-color: #cfd0e2 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
 }
 /* Keep the two-row scroll behavior but hide the visible scrollbar. */
 .status-note-2rows .status-note-editor,
@@ -2988,12 +2989,12 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   border: 1px solid rgba(157, 162, 245, 0.25) !important;
   background-color: #171b2c !important;
   background-image: none !important;
-  color: #dcdcec !important;
+  color: #ffffff !important;
 }
 
 .deal-rail-control *,
 .deal-detail-surface .deal-rail-control * {
-  color: #dcdcec !important;
+  color: #ffffff !important;
 }
 
 /* Inner badge/pill of the status & stage tags must match the 8px control radius. */
