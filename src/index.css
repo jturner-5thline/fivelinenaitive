@@ -1227,7 +1227,7 @@
       rgba(132, 186, 248, 0.078) 100%
     ) !important;
   border: 1px solid rgba(150, 198, 250, 0.32) !important;
-  border-radius: 10px !important;
+  border-radius: 8px !important;
   backdrop-filter: blur(14px) saturate(128%);
   -webkit-backdrop-filter: blur(14px) saturate(128%);
   /* Layered premium shadow — one tight close shadow + one wider soft
@@ -1291,6 +1291,7 @@ div.deal-tile.deal-glass,
     linear-gradient(180deg, #050d20 0%, #020611 50%, #000208 100%) !important;
   background-color: #020611 !important;
   border-color: rgba(190, 220, 255, 0.34) !important;
+  border-radius: 8px !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   color: #ffffff !important;
