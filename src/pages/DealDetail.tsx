@@ -3255,14 +3255,23 @@ export default function DealDetail() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 pl-6 pt-1">
-                    <DealUpdatesUnified
-                      activities={activityLogs}
-                      isLoadingActivities={isLoadingActivities}
-                      timeAgoText={timeAgoData.text}
-                      highlightClass={timeAgoData.highlightClass}
-                      statusNotes={statusNotes}
-                      onDeleteNote={deleteStatusNote}
+                    <EditableDealStatusTag dealId={deal.id} status={deal.status} className="deal-rail-control" />
+                    <EditableDealStageTag
+                      dealId={deal.id}
+                      stage={deal.stage}
+                      pipelineId={deal.pipelineId ?? null}
+                      className="deal-rail-control"
                     />
+                    <div className="ml-auto flex items-center">
+                      <DealUpdatesUnified
+                        activities={activityLogs}
+                        isLoadingActivities={isLoadingActivities}
+                        timeAgoText={timeAgoData.text}
+                        highlightClass={timeAgoData.highlightClass}
+                        statusNotes={statusNotes}
+                        onDeleteNote={deleteStatusNote}
+                      />
+                    </div>
                   </div>
                 </div>
   );
