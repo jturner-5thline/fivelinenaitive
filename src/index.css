@@ -3209,3 +3209,36 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface .deal-info-railed-card input::placeholder {
   color: rgba(255, 255, 255, 0.55) !important;
 }
+
+/* ── Deal detail: brighter white text ─────────────────────────────────────
+   Deal title/amount, widget & task titles, and any field/textbox text render
+   at full-strength #FFFFFF with crisp antialiasing (no dimmed opacity). */
+.deal-detail-surface .deal-header-field,
+.deal-detail-surface .deal-header-field input,
+.deal-detail-surface [data-slot="card-title"],
+.deal-detail-surface .card-title,
+.deal-detail-surface h1,
+.deal-detail-surface h2,
+.deal-detail-surface h3,
+.deal-detail-surface h4,
+.deal-detail-surface input,
+.deal-detail-surface textarea,
+.deal-detail-surface [contenteditable="true"],
+.deal-detail-surface .ProseMirror,
+.deal-detail-surface .ProseMirror * {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+  filter: none !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Muted text inside modules — lift from 85% to full white. */
+.deal-detail-surface .bg-card .text-muted-foreground,
+.deal-detail-surface [class*="bg-card"] [class*="text-muted"],
+.deal-detail-surface .deal-glass .text-muted-foreground,
+.deal-detail-surface .deal-glass [class*="text-muted"] {
+  color: rgba(255, 255, 255, 0.96) !important;
+}
