@@ -1291,6 +1291,7 @@ div.deal-tile.deal-glass,
     linear-gradient(180deg, #050d20 0%, #020611 50%, #000208 100%) !important;
   background-color: #020611 !important;
   border-color: rgba(190, 220, 255, 0.34) !important;
+  border-radius: 8px !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   color: #ffffff !important;
