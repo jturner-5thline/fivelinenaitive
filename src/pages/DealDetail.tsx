@@ -3249,6 +3249,15 @@ export default function DealDetail() {
                       bulletMode
                     />
                     </div>
+                    <div className="shrink-0 flex flex-col justify-between items-start gap-1">
+                      {dealMemoButton}
+                      {deal.notesUpdatedAt && (
+                        <p className="mt-auto whitespace-nowrap text-xs text-muted-foreground/70">
+                          Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
+                        </p>
+                      )}
+                    </div>
+                    </div>
                     <div className="flex items-center gap-2 pt-1">
                       <EditableDealStatusTag dealId={deal.id} status={deal.status} className="deal-rail-control" />
                       <EditableDealStageTag
@@ -3258,14 +3267,6 @@ export default function DealDetail() {
                         className="deal-rail-control"
                       />
                     </div>
-                    </div>
-                    <div className="shrink-0 self-stretch flex flex-col justify-between items-start gap-1">
-                      {dealMemoButton}
-                      {deal.notesUpdatedAt && (
-                        <p className="mt-auto whitespace-nowrap text-xs text-muted-foreground/70">
-                          Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
-                        </p>
-                      )}
                     </div>
                   </div>
                 </div>
