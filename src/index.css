@@ -2769,8 +2769,8 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface {
   --deal-module-radius: 8px;
   --deal-module-border: 1px;
-  --deal-module-border-color: rgba(190, 220, 255, 0.34);
-  --deal-module-border-color-hover: rgba(214, 234, 255, 0.52);
+  --deal-module-border-color: rgba(190, 220, 255, 0.18);
+  --deal-module-border-color-hover: rgba(214, 234, 255, 0.32);
   /* Bright white primary text across the deal detail surface */
   --foreground: 0 0% 100%;
   --card-foreground: 0 0% 100%;
