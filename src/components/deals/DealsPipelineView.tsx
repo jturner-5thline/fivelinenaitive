@@ -135,7 +135,7 @@ function DroppableStageColumnImpl({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex-shrink-0 w-[300px] rounded-lg border border-white/[0.10] bg-[hsl(var(--background))]/30 backdrop-blur-xl transition-all duration-150",
+        "flex-shrink-0 w-[300px] rounded-[8px] border border-white/[0.10] bg-[hsl(var(--background))]/30 backdrop-blur-xl transition-all duration-150",
         "shadow-[inset_0_1px_0_rgba(255,255,255,0.07),inset_0_0_0_1px_rgba(255,255,255,0.03),inset_0_-14px_28px_-18px_rgba(0,0,0,0.55),0_1px_2px_rgba(0,0,0,0.25)]",
         "[background-image:linear-gradient(180deg,rgba(0,0,0,0.10),rgba(0,0,0,0.15))]",
         isDraggingAny && !isOver && "opacity-60",
@@ -144,7 +144,7 @@ function DroppableStageColumnImpl({
     >
       {/* Stage Header */}
       <div
-        className={cn("p-3 border-b rounded-t-lg transition-colors", isOver && "bg-primary/10")}
+        className={cn("p-3 border-b rounded-t-[8px] transition-colors", isOver && "bg-primary/10")}
         style={
           isOver
             ? undefined
@@ -267,7 +267,7 @@ function VirtualizedStageDealsImpl({
       >
         <div
           className={cn(
-            'text-center py-8 text-sm text-muted-foreground rounded-lg border-2 border-dashed transition-colors',
+            'text-center py-8 text-sm text-muted-foreground rounded-[8px] border-2 border-dashed transition-colors',
             isOver ? 'border-primary bg-primary/5' : 'border-transparent',
           )}
         >
