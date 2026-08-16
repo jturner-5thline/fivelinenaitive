@@ -4571,7 +4571,7 @@ export default function DealDetail() {
                               key={id}
                               className={cn(
                                 "rounded-2xl border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
-                                isRailed && "w-full text-xs !border-0 !bg-transparent !shadow-none !rounded-none deal-plain-row",
+                                isRailed && "w-full text-xs !border-0 !bg-transparent !shadow-none !rounded-none deal-plain-row deal-info-railed-card",
                               )}
                               style={isRailed ? undefined : { background: 'rgba(20, 26, 40, 0.74)' }}
                             >
