@@ -1226,7 +1226,7 @@
       rgba(132, 186, 248, 0.088) 0%,
       rgba(132, 186, 248, 0.078) 100%
     ) !important;
-  border: 1px solid rgba(178, 214, 255, 0.55) !important;
+  border: 1px solid rgba(150, 198, 250, 0.32) !important;
   border-radius: 8px !important;
   backdrop-filter: blur(14px) saturate(128%);
   -webkit-backdrop-filter: blur(14px) saturate(128%);
@@ -1246,7 +1246,7 @@
       rgba(142, 196, 252, 0.115) 0%,
       rgba(142, 196, 252, 0.103) 100%
     ) !important;
-  border-color: rgba(196, 226, 255, 0.7) !important;
+  border-color: rgba(168, 212, 253, 0.44) !important;
   box-shadow:
     inset 0 1px 0 0 rgba(200, 225, 255, 0.12),
     0 1px 2px rgba(0, 0, 0, 0.36),
@@ -2744,8 +2744,8 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface {
   --deal-module-radius: 5px;
   --deal-module-border: 1px;
-  --deal-module-border-color: rgba(160, 175, 235, 0.30);
-  --deal-module-border-color-hover: rgba(175, 190, 255, 0.45);
+  --deal-module-border-color: rgba(255, 255, 255, 0.09);
+  --deal-module-border-color-hover: rgba(255, 255, 255, 0.16);
   /* Bright white primary text across the deal detail surface */
   --foreground: 0 0% 100%;
   --card-foreground: 0 0% 100%;
@@ -2765,21 +2765,21 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [class*="bg-card"],
 .deal-detail-surface [class*="bg-muted/"],
 .deal-detail-surface .deal-glass {
-  background-color: #191d2c !important;
+  background-color: #12141f !important;
   background-image: linear-gradient(
     160deg,
-    rgba(130, 165, 235, 0.075) 0%,
-    rgba(110, 150, 225, 0.025) 42%,
+    rgba(110, 150, 225, 0.038) 0%,
+    rgba(100, 140, 215, 0.012) 42%,
     rgba(255, 255, 255, 0.00) 100%
   ) !important;
   border-width: var(--deal-module-border) !important;
   border-style: solid !important;
-  border-color: var(--deal-module-border-color) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   border-radius: var(--deal-module-radius) !important;
   box-shadow:
-    0 24px 48px -20px rgba(0, 0, 0, 0.85),
-    0 10px 20px -10px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.09) !important;
+    0 18px 36px -22px rgba(0, 0, 0, 0.7),
+    0 6px 14px -10px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
   backdrop-filter: blur(14px) saturate(118%);
   -webkit-backdrop-filter: blur(14px) saturate(118%);
   transition: border-color 200ms ease, box-shadow 200ms ease,
@@ -2796,13 +2796,13 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface .bg-card:hover,
 .deal-detail-surface [class*="bg-card"]:hover,
 .deal-detail-surface .deal-glass:hover {
-  border-color: var(--deal-module-border-color-hover) !important;
-  background-color: #1c2133 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: #12141f !important;
   transform: translateY(-1px);
   box-shadow:
-    0 28px 56px -20px rgba(0, 0, 0, 0.9),
-    0 12px 24px -12px rgba(0, 0, 0, 0.65),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+    0 22px 44px -22px rgba(0, 0, 0, 0.8),
+    0 8px 18px -12px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
 }
 
 /* Nested modules shouldn't double-lift when the parent module is hovered. */
@@ -2827,13 +2827,13 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 /* Nested modules step one level brighter so hierarchy stays readable. */
 .deal-detail-surface .bg-card .bg-card,
 .deal-detail-surface [class*="bg-card"] [class*="bg-muted/"] {
-  background-color: rgba(90, 128, 200, 0.10) !important;
+  background-color: rgba(80, 118, 190, 0.055) !important;
   background-image: linear-gradient(
     160deg,
-    rgba(120, 158, 235, 0.05) 0%,
-    rgba(110, 150, 225, 0.015) 100%
+    rgba(110, 150, 225, 0.030) 0%,
+    rgba(110, 150, 225, 0.008) 100%
   ) !important;
-  border-color: rgba(150, 175, 235, 0.22) !important;
+  border-color: rgba(130, 165, 225, 0.10) !important;
   border-radius: var(--deal-module-radius) !important;
 }
 
