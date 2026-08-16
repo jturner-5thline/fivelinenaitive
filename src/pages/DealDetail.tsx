@@ -3264,6 +3264,7 @@ export default function DealDetail() {
 
   const dealActionCluster = (
     <div className="flex flex-wrap items-center gap-2">
+      {dealMemoButton}
       <CreateTaskButton dealId={id!} dealName={deal?.company} />
       {hasNaitivePipelineAccess && <EmailPromptCenterButton dealId={id!} dealName={deal?.company} contactEmail={(deal as any)?.contactEmail ?? null} />}
       {!isSimplifiedDeal && companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
