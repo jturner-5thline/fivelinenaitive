@@ -3245,7 +3245,7 @@ export default function DealDetail() {
                       bulletMode
                     />
                     </div>
-                    <div className="shrink-0 self-stretch flex flex-col justify-between items-end gap-1">
+                    <div className="shrink-0 self-stretch flex flex-col justify-between items-start gap-1">
                       {dealMemoButton}
                       {deal.notesUpdatedAt && (
                         <p className="mt-auto whitespace-nowrap text-xs text-muted-foreground/70">
