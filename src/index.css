@@ -620,13 +620,30 @@
   /* Shared hover/focus for the Insights DarkNativeSelect component. */
   /* ─── Unified dashboard panel borders (ActionQueue + EndOfDay) ─── */
   :root {
+    --app-surface-gradient:
+      radial-gradient(
+          circle at 112% 116%,
+          rgba(10, 110, 220, 0.42) 0%,
+          rgba(8, 78, 165, 0.24) 28%,
+          rgba(4, 40, 92, 0.10) 52%,
+          rgba(0, 0, 0, 0) 74%
+        ),
+      linear-gradient(135deg, #01030a 0%, #020715 32%, #031028 62%, #04204c 84%, #06336e 100%);
+    --app-surface-gradient-soft:
+      radial-gradient(
+          circle at 112% 116%,
+          rgba(10, 110, 220, 0.28) 0%,
+          rgba(8, 78, 165, 0.16) 30%,
+          rgba(0, 0, 0, 0) 70%
+        ),
+      linear-gradient(135deg, #040810 0%, #050d1f 55%, #061a3c 100%);
     --panel-border-rgb: 255, 255, 255;
     --panel-accent-glow: 94, 205, 245; /* cyan accent */
   }
   .panel-shell {
     border-radius: 0.75rem;
     border: 1px solid rgba(var(--panel-border-rgb), 0.6);
-    background-image: linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%);
+    background-image: var(--app-surface-gradient);
     overflow: hidden;
   }
   .panel-divider-b {
@@ -1917,7 +1934,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .create-deal-compact button[role="combobox"],
 .create-deal-compact [data-slot="select-trigger"],
 .create-deal-compact .create-deal-dropdown-trigger {
-  background: linear-gradient(135deg, #0a1224 0%, #060b18 50%, #04060f 100%) !important;
+  background: var(--app-surface-gradient-soft) !important;
   border: 1px solid rgba(255,255,255,0.18) !important;
   color: rgba(255,255,255,0.95) !important;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.3) !important;
@@ -1966,7 +1983,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 [data-create-deal-popover],
 .create-deal-dropdown-content,
 [data-radix-popper-content-wrapper]:has(> [data-create-deal-popover]) > * {
-  background: linear-gradient(135deg, #0a1224 0%, #060b18 50%, #04060f 100%) !important;
+  background: var(--app-surface-gradient-soft) !important;
   border: 1px solid rgba(255,255,255,0.18) !important;
   box-shadow: 0 16px 40px rgba(0,0,0,0.55) !important;
   backdrop-filter: none !important;
@@ -2040,7 +2057,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .popup-shell-surface .glass-module,
 .popup-shell-surface .glass-module-interactive {
   background:
-    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+    var(--app-surface-gradient) !important;
   border: 1px solid rgba(255, 255, 255, 0.10) !important;
   border-radius: 6px !important;
   box-shadow:
@@ -2065,7 +2082,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .popup-shell-surface [data-radix-select-trigger],
 .popup-shell-surface button[role="combobox"] {
   background:
-    linear-gradient(135deg, #050d1f 0%, #02080f 50%, #040008 100%) !important;
+    var(--app-surface-gradient-soft) !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
   color: rgb(226, 232, 240) !important;
 }
@@ -2106,7 +2123,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 [data-radix-hover-card-content],
 [cmdk-root][role="dialog"] {
   background:
-    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+    var(--app-surface-gradient) !important;
   /* Solid base color underneath the gradient — guarantees no pop-up is
      ever see-through, even if a later rule strips the gradient image. */
   background-color: #02040c !important;
@@ -2191,7 +2208,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .bg-stone-50, .bg-stone-100, .bg-stone-200 {
   background-color: transparent !important;
   background-image:
-    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+    var(--app-surface-gradient) !important;
   color: hsl(0 0% 96%);
 }
 
@@ -2215,7 +2232,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .sales-bd-page .glass-module,
 .sales-bd-page .glass-module-interactive {
   background:
-    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+    var(--app-surface-gradient) !important;
   border: 1px solid rgba(255, 255, 255, 0.10) !important;
   box-shadow:
     0 12px 32px rgba(0, 0, 0, 0.45),
@@ -2234,7 +2251,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .sales-bd-page [class*="bg-muted/30"],
 .sales-bd-page [class*="bg-background/60"] {
   background:
-    linear-gradient(135deg, #050d1f 0%, #02080f 50%, #040008 100%) !important;
+    var(--app-surface-gradient-soft) !important;
   border-color: rgba(255, 255, 255, 0.10) !important;
 }
 .sales-bd-page [class*="hover\\:bg-background/30"]:hover,
@@ -2245,7 +2262,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 /* Partner Insights Feed wrapper (uses inline bg-card + dark:bg variant) */
 .sales-bd-page .bg-card {
   background:
-    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+    var(--app-surface-gradient) !important;
   border-color: rgba(255, 255, 255, 0.10) !important;
 }
 
@@ -2275,7 +2292,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .naitive-pipeline-page .glass-module,
 .naitive-pipeline-page .glass-module-interactive {
   background:
-    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+    var(--app-surface-gradient) !important;
   border: 1px solid rgba(255, 255, 255, 0.10) !important;
   box-shadow:
     0 12px 32px rgba(0, 0, 0, 0.45),
@@ -2291,7 +2308,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .naitive-pipeline-page .bg-card,
 .naitive-pipeline-page [class*="bg-card"] {
   background:
-    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+    var(--app-surface-gradient) !important;
   border-color: rgba(255, 255, 255, 0.10) !important;
 }
 
@@ -2300,7 +2317,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .naitive-pipeline-page [class*="bg-background/60"],
 .naitive-pipeline-page [class*="bg-background/40"] {
   background:
-    linear-gradient(135deg, #050d1f 0%, #02080f 50%, #040008 100%) !important;
+    var(--app-surface-gradient-soft) !important;
   border-color: rgba(255, 255, 255, 0.10) !important;
 }
 
@@ -2317,7 +2334,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .naitive-pipeline-page [data-radix-select-trigger],
 .naitive-pipeline-page button[role="combobox"] {
   background:
-    linear-gradient(135deg, #050d1f 0%, #02080f 50%, #040008 100%) !important;
+    var(--app-surface-gradient-soft) !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
   color: rgb(226, 232, 240) !important;
 }
@@ -2373,7 +2390,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .popup-shell-surface.create-deal-compact [data-slot="select-trigger"].create-deal-dropdown-trigger,
 .popup-shell-surface.create-deal-compact [data-radix-select-trigger].create-deal-dropdown-trigger {
   background-color: #060b18 !important;
-  background-image: linear-gradient(135deg, #0a1224 0%, #060b18 52%, #04060f 100%) !important;
+  background-image: var(--app-surface-gradient-soft) !important;
   border: 1px solid rgba(148, 163, 184, 0.22) !important;
   color: rgba(255, 255, 255, 0.95) !important;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 1px 2px rgba(0,0,0,0.35) !important;
@@ -2397,7 +2414,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 [data-radix-popper-content-wrapper] .create-deal-dropdown-content,
 .popup-shell-surface.create-deal-compact .create-deal-dropdown-content {
   background-color: #060b18 !important;
-  background-image: linear-gradient(135deg, #0a1224 0%, #060b18 52%, #04060f 100%) !important;
+  background-image: var(--app-surface-gradient-soft) !important;
   border: 1px solid rgba(255, 255, 255, 0.20) !important;
   color: rgba(255, 255, 255, 0.95) !important;
   box-shadow: 0 18px 44px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.07) !important;
@@ -2443,7 +2460,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .app-dropdown-surface.app-dropdown-surface.app-dropdown-surface,
 [data-radix-popper-content-wrapper] .app-dropdown-surface {
   background-color: #060b18 !important;
-  background-image: linear-gradient(135deg, #0a1224 0%, #060b18 52%, #04060f 100%) !important;
+  background-image: var(--app-surface-gradient-soft) !important;
   border: 1px solid rgba(255, 255, 255, 0.20) !important;
   color: rgba(255, 255, 255, 0.95) !important;
   box-shadow: 0 18px 44px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.07) !important;
@@ -2502,7 +2519,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .revenue-per-hour-tooltip.revenue-per-hour-tooltip {
   background-color: #020208 !important;
   background-image:
-    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+    var(--app-surface-gradient) !important;
   border: 1px solid rgba(255, 255, 255, 0.14) !important;
   border-radius: 8px !important;
   box-shadow:
