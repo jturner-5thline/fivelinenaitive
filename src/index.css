@@ -2926,17 +2926,21 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface .deal-rail-control,
 .deal-detail-surface [class*="rounded-full"].deal-rail-control {
   border-radius: calc(var(--radius) - 2px) !important;
-  border: 1px solid hsl(var(--primary) / 0.55) !important;
-  background-image: linear-gradient(
-    to right,
-    hsl(var(--primary) / 0.10),
-    transparent
-  ) !important;
+  border: 1px solid rgba(157, 162, 245, 0.2) !important;
+  background-color: #171b2c !important;
+  background-image: none !important;
+  color: #dcdcec !important;
+}
+
+.deal-rail-control *,
+.deal-detail-surface .deal-rail-control * {
+  color: #dcdcec !important;
 }
 
 .deal-rail-control:hover,
 .deal-detail-surface .deal-rail-control:hover {
-  border-color: hsl(var(--primary) / 0.8) !important;
+  border-color: rgba(157, 162, 245, 0.35) !important;
+  background-color: #1c2137 !important;
 }
 
 .deal-calendar-panel,
