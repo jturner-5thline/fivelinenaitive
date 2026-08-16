@@ -1226,7 +1226,7 @@
       rgba(132, 186, 248, 0.088) 0%,
       rgba(132, 186, 248, 0.078) 100%
     ) !important;
-  border: 1px solid rgba(150, 198, 250, 0.32) !important;
+  border: 1px solid rgba(178, 214, 255, 0.55) !important;
   border-radius: 8px !important;
   backdrop-filter: blur(14px) saturate(128%);
   -webkit-backdrop-filter: blur(14px) saturate(128%);
@@ -1246,7 +1246,7 @@
       rgba(142, 196, 252, 0.115) 0%,
       rgba(142, 196, 252, 0.103) 100%
     ) !important;
-  border-color: rgba(168, 212, 253, 0.44) !important;
+  border-color: rgba(196, 226, 255, 0.7) !important;
   box-shadow:
     inset 0 1px 0 0 rgba(200, 225, 255, 0.12),
     0 1px 2px rgba(0, 0, 0, 0.36),
