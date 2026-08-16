@@ -53,6 +53,8 @@ export interface DealContextRailProps {
   /** When true, hide the deal name + amount (rendered as a page header instead). */
   hideIdentity?: boolean;
   hideStatusStage?: boolean;
+  /** Optional clickable node rendered in place of the plain last-activity text. */
+  lastActivityNode?: React.ReactNode;
   /** Ref applied to the core facts block (used to size the header widget). */
   measureRef?: (node: HTMLDivElement | null) => void;
   /** Extra content merged into the same module, below the core facts. */
