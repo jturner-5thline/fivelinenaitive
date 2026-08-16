@@ -2764,7 +2764,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [class*="bg-card"],
 .deal-detail-surface [class*="bg-muted/"],
 .deal-detail-surface .deal-glass {
-  background-color: rgba(13, 19, 33, 0.82) !important;
+  background-color: #12141f !important;
   background-image: linear-gradient(
     160deg,
     rgba(110, 150, 225, 0.038) 0%,
@@ -2773,7 +2773,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   ) !important;
   border-width: var(--deal-module-border) !important;
   border-style: solid !important;
-  border-color: var(--deal-module-border-color) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   border-radius: var(--deal-module-radius) !important;
   box-shadow:
     0 18px 36px -22px rgba(0, 0, 0, 0.7),
@@ -2795,8 +2795,8 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface .bg-card:hover,
 .deal-detail-surface [class*="bg-card"]:hover,
 .deal-detail-surface .deal-glass:hover {
-  border-color: var(--deal-module-border-color-hover) !important;
-  background-color: rgba(18, 26, 43, 0.85) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: #12141f !important;
   transform: translateY(-1px);
   box-shadow:
     0 22px 44px -22px rgba(0, 0, 0, 0.8),
@@ -2841,12 +2841,24 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface input:not([type="checkbox"]):not([type="radio"]),
 .deal-detail-surface textarea,
 .deal-detail-surface select {
-  background-color: rgba(0, 0, 0, 0.28) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  background-color: #171b2c !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   border-radius: 12px !important;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   color: hsl(0 0% 100% / 0.94);
+}
+
+/* Placeholder copy inside deal detail inputs. */
+.deal-detail-surface input::placeholder,
+.deal-detail-surface textarea::placeholder {
+  color: #83839a !important;
+  opacity: 1;
+}
+
+/* Module / widget titles. */
+.deal-detail-surface [data-slot="card-title"] {
+  color: #eaeaf4 !important;
 }
 
 .deal-detail-surface input:focus-visible,
