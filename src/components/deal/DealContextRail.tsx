@@ -74,8 +74,8 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
     <aside
       className={cn(
         'shrink-0 w-full lg:w-[260px] lg:sticky lg:top-4 self-start',
-        'rounded-lg border border-border/60 bg-card/70 backdrop-blur-xl',
-        'shadow-[0_8px_32px_hsl(0,0%,0%,0.35)] p-3',
+        'rounded-lg border-0 bg-transparent',
+        'shadow-none p-3',
         className,
       )}
       aria-label="Deal context"
