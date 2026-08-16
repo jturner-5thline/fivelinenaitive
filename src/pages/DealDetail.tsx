@@ -37,6 +37,8 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSo
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
 import { DealMilestones } from '@/components/deals/DealMilestones';
 import { DealContextRail } from '@/components/deal/DealContextRail';
+import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
+import { EditableDealStageTag } from '@/components/deal/EditableDealStageTag';
 import { DealAskAiQuickBar } from '@/components/deal/DealAskAiQuickBar';
 import { NaitiveStageMilestonesSection } from '@/components/naitive-pipeline/NaitiveStageMilestonesSection';
 import { NaitiveDealInformation } from '@/components/naitive-pipeline/NaitiveDealInformation';
@@ -3255,14 +3257,23 @@ export default function DealDetail() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 pl-6 pt-1">
-                    <DealUpdatesUnified
-                      activities={activityLogs}
-                      isLoadingActivities={isLoadingActivities}
-                      timeAgoText={timeAgoData.text}
-                      highlightClass={timeAgoData.highlightClass}
-                      statusNotes={statusNotes}
-                      onDeleteNote={deleteStatusNote}
+                    <EditableDealStatusTag dealId={deal.id} status={deal.status} className="deal-rail-control" />
+                    <EditableDealStageTag
+                      dealId={deal.id}
+                      stage={deal.stage}
+                      pipelineId={deal.pipelineId ?? null}
+                      className="deal-rail-control"
                     />
+                    <div className="ml-auto flex items-center">
+                      <DealUpdatesUnified
+                        activities={activityLogs}
+                        isLoadingActivities={isLoadingActivities}
+                        timeAgoText={timeAgoData.text}
+                        highlightClass={timeAgoData.highlightClass}
+                        statusNotes={statusNotes}
+                        onDeleteNote={deleteStatusNote}
+                      />
+                    </div>
                   </div>
                 </div>
   );
@@ -3699,6 +3710,7 @@ export default function DealDetail() {
                 deal={deal}
                 compact={dealInfoTab !== 'deal-info'}
                 hideIdentity
+                hideStatusStage
                 measureRef={railMeasureRef}
                 className="lg:w-full lg:static"
                 onUpdateField={(field, value) => updateDeal(field as any, value as any)}
