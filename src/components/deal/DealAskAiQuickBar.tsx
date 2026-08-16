@@ -256,7 +256,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
         <div className="min-w-[180px] flex-1 basis-[220px]">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="truncate text-sm font-semibold leading-none">Ask AI</h3>
-            <span className="shrink-0 rounded-full border border-[#5EEAD4] bg-[#5EEAD4] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#0A2B27] backdrop-blur-sm">
+            <span className="shrink-0 rounded-full border border-amber-400/70 bg-amber-400/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300 backdrop-blur-sm">
               Beta
             </span>
           </div>
