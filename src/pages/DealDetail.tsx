@@ -3216,6 +3216,7 @@ export default function DealDetail() {
                         }
                       }}
                     />
+                    <div className="flex-1 min-w-0 status-note-editor">
                     <RichTextInlineEdit
                       value={deal.notes || ''}
                       onSave={(value) => {
@@ -3243,12 +3244,13 @@ export default function DealDetail() {
                       mentionUsers={mentionUsers}
                       bulletMode
                     />
+                    </div>
+                    {deal.notesUpdatedAt && (
+                      <p className="shrink-0 self-start whitespace-nowrap text-xs text-muted-foreground/70 pt-1">
+                        Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
+                      </p>
+                    )}
                   </div>
-                  {deal.notesUpdatedAt && (
-                    <p className="text-xs text-muted-foreground/70 pl-6">
-                      Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
-                    </p>
-                  )}
                   <div className="flex items-center gap-2 pl-6 pt-1">
                     <DealUpdatesUnified
                       activities={activityLogs}

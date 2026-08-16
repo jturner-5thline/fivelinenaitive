@@ -2897,7 +2897,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 /* Deal pop-up header identity fields (name / amount) must stay chrome-free
    even though their hover class matches the .bg-muted/ module selector. */
 /* Status note box: hard-capped at two rows of text at any screen size. */
-.status-note-2rows > div:last-child,
+.status-note-2rows .status-note-editor,
 .status-note-2rows .ProseMirror,
 .status-note-2rows [contenteditable="true"],
 .status-note-2rows textarea {
