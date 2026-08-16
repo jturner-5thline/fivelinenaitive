@@ -2996,6 +2996,14 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   color: #dcdcec !important;
 }
 
+/* Inner badge/pill of the status & stage tags must match the 8px control radius. */
+.deal-rail-control > *,
+.deal-rail-control > * > *,
+.deal-detail-surface .deal-rail-control > *,
+.deal-detail-surface .deal-rail-control > * > * {
+  border-radius: 8px !important;
+}
+
 .deal-rail-control:hover,
 .deal-detail-surface .deal-rail-control:hover {
   border-color: rgba(157, 162, 245, 0.35) !important;
