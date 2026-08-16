@@ -3113,3 +3113,34 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-inline-panel .text-white {
   color: #ffffff !important;
 }
+
+/* Deal Information field controls (close date, owner/manager, type, engagement,
+   affiliated + client contacts, company URL, business model, referral source,
+   analyst, sourced via) share one chrome: dark navy fill, indigo-tinted hairline
+   border and pure-white text. */
+.deal-detail-surface .deal-info-railed-card :is(
+  input,
+  [role="combobox"],
+  button[role="combobox"],
+  [data-slot="select-trigger"],
+  button[data-state]
+):not(textarea):not(.status-note-editor):not([class*="rounded-full"]) {
+  background-color: #171b2c !important;
+  background-image: none !important;
+  border: 1px solid rgba(157, 162, 245, 0.2) !important;
+  color: #ffffff !important;
+}
+
+.deal-detail-surface .deal-info-railed-card :is(
+  input,
+  [role="combobox"],
+  button[role="combobox"],
+  [data-slot="select-trigger"]
+) :is(span, svg, .text-muted-foreground) {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.deal-detail-surface .deal-info-railed-card input::placeholder {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
