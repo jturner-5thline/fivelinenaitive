@@ -3017,6 +3017,13 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   border-radius: 0 !important;
 }
 
+/* The railed Deal Information card reuses .deal-plain-row for its transparent
+   fill, but must not paint the row divider under its last field. */
+.deal-detail-surface .deal-info-railed-card,
+.deal-detail-surface .deal-info-railed-card:hover {
+  border-width: 0 !important;
+}
+
 /* Calendar widget on the deal detail sits on a dark navy surface — force all
    of its text (including muted metadata) to the high-contrast foreground. */
 /* Rail controls (status, stage, close date) share the "Deal Memo" button
