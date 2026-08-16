@@ -3714,6 +3714,16 @@ export default function DealDetail() {
                 hideIdentity
                 hideStatusStage
                 measureRef={railMeasureRef}
+                lastActivityNode={
+                  <DealUpdatesUnified
+                    activities={activityLogs}
+                    isLoadingActivities={isLoadingActivities}
+                    timeAgoText={timeAgoData.text}
+                    highlightClass={timeAgoData.highlightClass}
+                    statusNotes={statusNotes}
+                    onDeleteNote={deleteStatusNote}
+                  />
+                }
                 className="lg:w-full lg:static"
                 onUpdateField={(field, value) => updateDeal(field as any, value as any)}
               >
