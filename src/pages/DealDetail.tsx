@@ -3699,6 +3699,7 @@ export default function DealDetail() {
                 deal={deal}
                 compact={dealInfoTab !== 'deal-info'}
                 hideIdentity
+                hideStatusStage
                 measureRef={railMeasureRef}
                 className="lg:w-full lg:static"
                 onUpdateField={(field, value) => updateDeal(field as any, value as any)}
