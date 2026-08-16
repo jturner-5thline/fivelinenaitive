@@ -2745,6 +2745,16 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   --deal-module-border: 1px;
   --deal-module-border-color: rgba(255, 255, 255, 0.09);
   --deal-module-border-color-hover: rgba(255, 255, 255, 0.16);
+  /* Soft off-white (#F2F2F8) replaces pure white for all primary text */
+  --foreground: 240 30% 96%;
+  --card-foreground: 240 30% 96%;
+  --popover-foreground: 240 30% 96%;
+}
+
+.deal-detail-surface .text-white,
+.deal-detail-surface .hover\:text-white:hover,
+.deal-detail-surface [class*="data-\[state\=active\]\:text-white"][data-state="active"] {
+  color: #f2f2f8 !important;
 }
 
 .deal-detail-surface .bg-card,
