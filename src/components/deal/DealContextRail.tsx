@@ -52,13 +52,14 @@ export interface DealContextRailProps {
   compact?: boolean;
   /** When true, hide the deal name + amount (rendered as a page header instead). */
   hideIdentity?: boolean;
+  hideStatusStage?: boolean;
   /** Ref applied to the core facts block (used to size the header widget). */
   measureRef?: (node: HTMLDivElement | null) => void;
   /** Extra content merged into the same module, below the core facts. */
   children?: React.ReactNode;
 }
 
-export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, measureRef, children }: DealContextRailProps) {
+export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, hideStatusStage, measureRef, children }: DealContextRailProps) {
   const lastActivity = deal.notesUpdatedAt || deal.updatedAt || null;
   const owner = deal.dealOwner || deal.manager || '';
 
@@ -102,6 +103,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
       </div>
       )}
 
+      {!hideStatusStage && (
       <div className="space-y-1.5">
         <EditableDealStatusTag dealId={deal.id} status={deal.status} className="deal-rail-control" />
         <EditableDealStageTag
@@ -111,6 +113,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
           className="deal-rail-control"
         />
       </div>
+      )}
 
       {!compact && (
       <>
