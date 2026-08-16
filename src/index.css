@@ -2898,6 +2898,25 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   border-color: rgba(255, 255, 255, 0.28) !important;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Deal detail pop-up container + header chrome — matches the grid tiles
+   (8px radius, rgba(190, 220, 255, 0.34) hairline border).
+   ───────────────────────────────────────────────────────────────────── */
+.deal-popup-shell,
+.deal-popup-shell.popup-shell-surface {
+  border: 1px solid rgba(190, 220, 255, 0.34) !important;
+  border-radius: 8px !important;
+}
+
+/* Header bands inside the deal detail surface (card headers, sticky top
+   bars) share the same rim + radius. */
+.deal-detail-surface [data-slot="card-header"],
+.deal-detail-surface > header,
+.deal-detail-surface .deal-detail-header {
+  border-color: rgba(190, 220, 255, 0.34) !important;
+  border-radius: 8px !important;
+}
+
 /* Semantic status chips/badges (green / amber / red) keep their own tint —
    never inherit the neutral glass fill. */
 .deal-detail-surface [class*="bg-green"],
