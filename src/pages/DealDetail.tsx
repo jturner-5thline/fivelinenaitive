@@ -3673,7 +3673,7 @@ export default function DealDetail() {
 
           {/* Status note sits directly under the deal name, half-width. */}
           {useContextRailLayout && dealInfoTab === 'deal-info' && (
-            <div className="w-full sm:w-[65%] mt-2 ml-3">
+            <div className="w-full sm:w-[85%] mt-2 ml-3">
               {statusNoteColumn}
             </div>
           )}

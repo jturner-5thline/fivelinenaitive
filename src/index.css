@@ -2904,6 +2904,10 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   max-height: calc(2 * 1.5em + 0.5rem);
   overflow-y: auto;
 }
+.status-note-2rows .status-note-editor > * {
+  max-height: calc(2 * 1.5em + 0.5rem);
+  overflow-y: auto;
+}
 .status-note-2rows textarea {
   resize: none;
 }
