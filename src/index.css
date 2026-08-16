@@ -2962,6 +2962,29 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface .deal-header-field,
 .deal-detail-surface .deal-header-field:hover {
   background-image: none !important;
+}
+
+/* Unified 8px corner radius across every widget, field and control inside the
+   deal detail pop-up. */
+.deal-detail-surface :is(
+  [data-slot="card"],
+  .deal-glass,
+  .card,
+  input,
+  textarea,
+  select,
+  button,
+  [role="combobox"],
+  [role="button"],
+  .badge,
+  .deal-rail-control,
+  .status-note-editor
+) {
+  border-radius: 8px !important;
+}
+/* Keep genuinely circular elements round (avatars, icon-only round buttons). */
+.deal-detail-surface :is(.rounded-full, [class*="rounded-full"]) {
+  border-radius: 9999px !important;
   background-color: transparent !important;
   border-width: 0 !important;
   box-shadow: none !important;
