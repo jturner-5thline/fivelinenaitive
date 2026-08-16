@@ -189,9 +189,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                   </TooltipContent>
                 </Tooltip>
               )}
-              <span className="ml-auto text-[10px] leading-none text-primary/80 font-medium">
-                Click to edit
-              </span>
+              <span className="ml-auto" />
             </button>
         </div>
 
