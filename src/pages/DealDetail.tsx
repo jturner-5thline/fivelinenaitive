@@ -3245,11 +3245,14 @@ export default function DealDetail() {
                       bulletMode
                     />
                     </div>
-                    {deal.notesUpdatedAt && (
-                      <p className="shrink-0 self-start whitespace-nowrap text-xs text-muted-foreground/70 pt-1">
-                        Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
-                      </p>
-                    )}
+                    <div className="shrink-0 self-stretch flex flex-col justify-between items-end gap-1">
+                      {dealMemoButton}
+                      {deal.notesUpdatedAt && (
+                        <p className="mt-auto whitespace-nowrap text-xs text-muted-foreground/70">
+                          Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 pl-6 pt-1">
                     <DealUpdatesUnified
@@ -3266,7 +3269,6 @@ export default function DealDetail() {
 
   const dealActionCluster = (
     <div className="flex flex-wrap items-center gap-2">
-      {dealMemoButton}
       <CreateTaskButton dealId={id!} dealName={deal?.company} />
       {hasNaitivePipelineAccess && <EmailPromptCenterButton dealId={id!} dealName={deal?.company} contactEmail={(deal as any)?.contactEmail ?? null} />}
       {!isSimplifiedDeal && companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
