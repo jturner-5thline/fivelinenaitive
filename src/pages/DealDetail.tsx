@@ -3671,6 +3671,13 @@ export default function DealDetail() {
             </div>
           )}
 
+          {/* Status note sits directly under the deal name, half-width. */}
+          {useContextRailLayout && dealInfoTab === 'deal-info' && (
+            <div className="w-full sm:w-1/2 mt-2">
+              {statusNoteColumn}
+            </div>
+          )}
+
           <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
             <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
               <DialogHeader>
