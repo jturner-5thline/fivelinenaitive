@@ -61,7 +61,7 @@ export interface DealContextRailProps {
   children?: React.ReactNode;
 }
 
-export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, hideStatusStage, measureRef, children }: DealContextRailProps) {
+export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, hideStatusStage, lastActivityNode, measureRef, children }: DealContextRailProps) {
   const lastActivity = deal.notesUpdatedAt || deal.updatedAt || null;
   const owner = deal.dealOwner || deal.manager || '';
 
@@ -162,11 +162,15 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
 
       <div className="space-y-0.5">
         <RailLabel>Last activity</RailLabel>
-        <div className="text-sm text-foreground">
-          {lastActivity
-            ? formatDistanceToNow(new Date(lastActivity), { addSuffix: true })
-            : '—'}
-        </div>
+        {lastActivityNode ? (
+          <div className="flex items-center">{lastActivityNode}</div>
+        ) : (
+          <div className="text-sm text-foreground">
+            {lastActivity
+              ? formatDistanceToNow(new Date(lastActivity), { addSuffix: true })
+              : '—'}
+          </div>
+        )}
       </div>
 
       <div className="space-y-0.5">
