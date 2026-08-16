@@ -1236,6 +1236,12 @@
     inset 0 1px 0 0 rgba(200, 225, 255, 0.09),
     0 1px 2px rgba(0, 0, 0, 0.32),
     0 12px 32px -16px rgba(0, 0, 0, 0.62);
+  transition:
+    border-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-image 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
   /* No overflow:hidden — corner overlays (notification dot) must be able
      to overhang the tile edge. Inner content that needs clipping handles
      its own overflow locally. */
@@ -1303,10 +1309,17 @@ div.deal-tile.deal-glass:hover,
   background:
     linear-gradient(180deg, #08132c 0%, #04091c 50%, #01030c 100%) !important;
   background-color: #04091c !important;
+  border-color: rgba(214, 234, 255, 0.52) !important;
 }
 .deal-tile.deal-glass::before,
 .deal-glass.deal-tile::before {
   display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deal-glass {
+    transition: none !important;
+  }
 }
 /* Brighten text inside deal tiles for stronger readability */
 .deal-tile.deal-glass,
