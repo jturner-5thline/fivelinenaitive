@@ -3218,7 +3218,8 @@ export default function DealDetail() {
                         }
                       }}
                     />
-                    <div className="flex-1 min-w-0 status-note-editor">
+                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <div className="min-w-0 status-note-editor">
                     <RichTextInlineEdit
                       value={deal.notes || ''}
                       onSave={(value) => {
@@ -3247,6 +3248,26 @@ export default function DealDetail() {
                       bulletMode
                     />
                     </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <EditableDealStatusTag dealId={deal.id} status={deal.status} className="deal-rail-control" />
+                      <EditableDealStageTag
+                        dealId={deal.id}
+                        stage={deal.stage}
+                        pipelineId={deal.pipelineId ?? null}
+                        className="deal-rail-control"
+                      />
+                      <div className="ml-auto flex items-center">
+                        <DealUpdatesUnified
+                          activities={activityLogs}
+                          isLoadingActivities={isLoadingActivities}
+                          timeAgoText={timeAgoData.text}
+                          highlightClass={timeAgoData.highlightClass}
+                          statusNotes={statusNotes}
+                          onDeleteNote={deleteStatusNote}
+                        />
+                      </div>
+                    </div>
+                    </div>
                     <div className="shrink-0 self-stretch flex flex-col justify-between items-start gap-1">
                       {dealMemoButton}
                       {deal.notesUpdatedAt && (
@@ -3254,25 +3275,6 @@ export default function DealDetail() {
                           Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
                         </p>
                       )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 pl-6 pt-1">
-                    <EditableDealStatusTag dealId={deal.id} status={deal.status} className="deal-rail-control" />
-                    <EditableDealStageTag
-                      dealId={deal.id}
-                      stage={deal.stage}
-                      pipelineId={deal.pipelineId ?? null}
-                      className="deal-rail-control"
-                    />
-                    <div className="ml-auto flex items-center">
-                      <DealUpdatesUnified
-                        activities={activityLogs}
-                        isLoadingActivities={isLoadingActivities}
-                        timeAgoText={timeAgoData.text}
-                        highlightClass={timeAgoData.highlightClass}
-                        statusNotes={statusNotes}
-                        onDeleteNote={deleteStatusNote}
-                      />
                     </div>
                   </div>
                 </div>
