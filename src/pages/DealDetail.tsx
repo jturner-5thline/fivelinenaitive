@@ -3205,7 +3205,7 @@ export default function DealDetail() {
   // otherwise it stays inside the header card.
   const statusNoteColumn = (
                 <div className="relative w-full flex flex-col gap-1">
-                  <div className="relative flex items-start gap-2">
+                   <div className="relative flex items-start gap-2 status-note-2rows">
                     <StaleStatusNudge
                       deal={deal}
                       onSave={(value) => {
@@ -3671,7 +3671,7 @@ export default function DealDetail() {
 
           {/* Status note sits directly under the deal name, half-width. */}
           {useContextRailLayout && dealInfoTab === 'deal-info' && (
-            <div className="w-full sm:w-1/2 mt-2 ml-3">
+            <div className="w-full sm:w-[65%] mt-2 ml-3">
               {statusNoteColumn}
             </div>
           )}
