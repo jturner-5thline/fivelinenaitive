@@ -2997,6 +2997,15 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   color: #ffffff !important;
 }
 
+/* Close-date picker placeholder ("Not set") reads white like other rail text. */
+.deal-rail-control .text-muted-foreground,
+.deal-detail-surface .deal-rail-control .text-muted-foreground,
+.deal-rail-control span,
+.deal-detail-surface .deal-rail-control span {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
 /* Inner badge/pill of the status & stage tags must match the 8px control radius. */
 .deal-rail-control > *,
 .deal-rail-control > * > *,
