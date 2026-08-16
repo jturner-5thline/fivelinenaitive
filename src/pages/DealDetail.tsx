@@ -37,6 +37,8 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSo
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
 import { DealMilestones } from '@/components/deals/DealMilestones';
 import { DealContextRail } from '@/components/deal/DealContextRail';
+import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
+import { EditableDealStageTag } from '@/components/deal/EditableDealStageTag';
 import { DealAskAiQuickBar } from '@/components/deal/DealAskAiQuickBar';
 import { NaitiveStageMilestonesSection } from '@/components/naitive-pipeline/NaitiveStageMilestonesSection';
 import { NaitiveDealInformation } from '@/components/naitive-pipeline/NaitiveDealInformation';
