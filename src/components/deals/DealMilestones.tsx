@@ -329,11 +329,11 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                           >
                             <defs>
                               <linearGradient id={`diamond-grad-stroke-${milestone.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor="#7C3AED" stopOpacity="0.5" />
-                                <stop offset="100%" stopColor="#38BDF8" stopOpacity="0.3" />
+                                <stop offset="0%" stopColor="#A78BFA" stopOpacity="0.95" />
+                                <stop offset="100%" stopColor="#38BDF8" stopOpacity="0.9" />
                               </linearGradient>
                             </defs>
-                            <path d="M12 2L22 12L12 22L2 12L12 2Z" stroke={`url(#diamond-grad-stroke-${milestone.id})`} strokeWidth="1.5" />
+                            <path d="M12 2L22 12L12 22L2 12L12 2Z" fill="none" stroke={`url(#diamond-grad-stroke-${milestone.id})`} strokeWidth="1.5" strokeLinejoin="round" />
                           </svg>
                         )}
                       </div>
