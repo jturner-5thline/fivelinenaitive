@@ -3219,7 +3219,8 @@ export default function DealDetail() {
                       }}
                     />
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                    <div className="min-w-0 status-note-editor">
+                    <div className="flex items-stretch gap-2">
+                    <div className="flex-1 min-w-0 status-note-editor">
                     <RichTextInlineEdit
                       value={deal.notes || ''}
                       onSave={(value) => {
