@@ -173,13 +173,12 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
                 so the first task tile lines up with the first outstanding item tile. */}
             <div className="shrink-0 pt-2 pb-[30px]">
               <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Search tasks..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Escape') setSearchQuery(''); }}
-                  className="h-8 w-full pl-7 text-xs"
+                  className="h-8 w-full text-xs"
                 />
               </div>
             </div>
