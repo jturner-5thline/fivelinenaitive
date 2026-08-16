@@ -150,7 +150,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
   };
 
   return (
-    <div className="deal-mod-milestones pt-0">
+    <div className="pt-0">
       <div>
         <div className="flex items-center gap-2 mb-0.5">
             <button
@@ -172,7 +172,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                   <TooltipTrigger asChild>
                     <Badge
                       variant="outline"
-                      className="deal-milestone-count-chip ml-1 text-[10px] px-1 py-0 h-4 leading-none font-semibold border-primary/30 text-primary cursor-help"
+                      className="ml-1 text-[10px] px-1 py-0 h-4 leading-none font-semibold border-primary/30 text-primary cursor-help"
                       onClick={(e) => e.stopPropagation()}
                     >
                       {completedCount}/{totalCount}

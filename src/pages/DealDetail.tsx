@@ -4038,7 +4038,7 @@ export default function DealDetail() {
                   )}
 
                   {hasDealSpaceAccess && id && (
-                    <div className="deal-mod-askai -mx-2 rounded-lg border border-white/15 px-2 pb-2 pt-px">
+                    <div className="-mx-2 rounded-lg border border-white/15 px-2 pb-2 pt-px">
                       <DealAskAiQuickBar
                         dealId={id}
                         dealName={deal?.name || deal?.company}
