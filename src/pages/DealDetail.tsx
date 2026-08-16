@@ -3205,7 +3205,7 @@ export default function DealDetail() {
   // otherwise it stays inside the header card.
   const statusNoteColumn = (
                 <div className="relative w-full flex flex-col gap-1">
-                  <div className="relative flex items-start gap-2">
+                   <div className="relative flex items-start gap-2 status-note-2rows">
                     <StaleStatusNudge
                       deal={deal}
                       onSave={(value) => {
