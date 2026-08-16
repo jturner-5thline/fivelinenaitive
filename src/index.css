@@ -2924,6 +2924,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .status-note-2rows textarea {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
+  opacity: 1 !important;
 }
 /* Keep the two-row scroll behavior but hide the visible scrollbar. */
 .status-note-2rows .status-note-editor,
