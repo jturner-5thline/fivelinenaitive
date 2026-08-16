@@ -2751,11 +2751,11 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [class*="bg-card"],
 .deal-detail-surface [class*="bg-muted/"],
 .deal-detail-surface .deal-glass {
-  background-color: rgba(20, 27, 42, 0.76) !important;
+  background-color: rgba(13, 19, 33, 0.82) !important;
   background-image: linear-gradient(
     160deg,
-    rgba(150, 185, 255, 0.045) 0%,
-    rgba(140, 175, 255, 0.016) 42%,
+    rgba(110, 150, 225, 0.038) 0%,
+    rgba(100, 140, 215, 0.012) 42%,
     rgba(255, 255, 255, 0.00) 100%
   ) !important;
   border-width: var(--deal-module-border) !important;
@@ -2783,7 +2783,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [class*="bg-card"]:hover,
 .deal-detail-surface .deal-glass:hover {
   border-color: var(--deal-module-border-color-hover) !important;
-  background-color: rgba(26, 34, 52, 0.80) !important;
+  background-color: rgba(18, 26, 43, 0.85) !important;
   transform: translateY(-1px);
   box-shadow:
     0 22px 44px -22px rgba(0, 0, 0, 0.8),
@@ -2813,13 +2813,13 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 /* Nested modules step one level brighter so hierarchy stays readable. */
 .deal-detail-surface .bg-card .bg-card,
 .deal-detail-surface [class*="bg-card"] [class*="bg-muted/"] {
-  background-color: rgba(120, 160, 235, 0.055) !important;
+  background-color: rgba(80, 118, 190, 0.055) !important;
   background-image: linear-gradient(
     160deg,
-    rgba(150, 185, 255, 0.035) 0%,
-    rgba(150, 185, 255, 0.010) 100%
+    rgba(110, 150, 225, 0.030) 0%,
+    rgba(110, 150, 225, 0.008) 100%
   ) !important;
-  border-color: rgba(170, 200, 255, 0.09) !important;
+  border-color: rgba(130, 165, 225, 0.10) !important;
   border-radius: var(--deal-module-radius) !important;
 }
 
