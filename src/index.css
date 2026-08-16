@@ -1309,10 +1309,17 @@ div.deal-tile.deal-glass:hover,
   background:
     linear-gradient(180deg, #08132c 0%, #04091c 50%, #01030c 100%) !important;
   background-color: #04091c !important;
+  border-color: rgba(214, 234, 255, 0.52) !important;
 }
 .deal-tile.deal-glass::before,
 .deal-glass.deal-tile::before {
   display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deal-glass {
+    transition: none !important;
+  }
 }
 /* Brighten text inside deal tiles for stronger readability */
 .deal-tile.deal-glass,
