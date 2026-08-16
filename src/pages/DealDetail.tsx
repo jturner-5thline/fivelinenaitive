@@ -3200,6 +3200,71 @@ export default function DealDetail() {
     </Suspense>
   ) : null;
 
+  // Status note column. In the context-rail layout this is rendered directly
+  // beneath the deal name (above the status/stage selectors) at 50% width;
+  // otherwise it stays inside the header card.
+  const statusNoteColumn = (
+                <div className="relative w-full flex flex-col gap-1">
+                  <div className="relative flex items-start gap-2">
+                    {dealMemoButton && (
+                      <div className="order-last shrink-0 self-start">{dealMemoButton}</div>
+                    )}
+                    <StaleStatusNudge
+                      deal={deal}
+                      onSave={(value) => {
+                        const oldNotes = deal.notes || '';
+                        updateDeal('notes', value);
+                        if (oldNotes && oldNotes.trim() && oldNotes !== '<p></p>' && value !== oldNotes) {
+                          addStatusNote(oldNotes.trim());
+                        }
+                      }}
+                    />
+                    <RichTextInlineEdit
+                      value={deal.notes || ''}
+                      onSave={(value) => {
+                        const oldNotes = deal.notes || '';
+                        updateDeal('notes', value);
+                        if (oldNotes && oldNotes.trim() && oldNotes !== '<p></p>' && value !== oldNotes) {
+                          addStatusNote(oldNotes.trim());
+                        }
+                      }}
+                      onExplicitSave={(value) => {
+                        const oldMentions = extractMentionsFromHtml(deal.notes || '');
+                        const allMentions = extractMentionsFromHtml(value);
+                        const oldIds = new Set(oldMentions.map(m => m.id));
+                        const freshMentions = allMentions.filter(m => !oldIds.has(m.id));
+                        if (freshMentions.length > 0) {
+                          setMentionTaskUsers(freshMentions);
+                          setMentionNoteContext(value);
+                          setIsTaskDialogOpen(true);
+                        }
+                      }}
+                      placeholder="Click to add status notes..."
+                      displayClassName="text-lg text-foreground/90"
+                      autoSave
+                      autoSaveDelay={1500}
+                      mentionUsers={mentionUsers}
+                      bulletMode
+                    />
+                  </div>
+                  {deal.notesUpdatedAt && (
+                    <p className="text-xs text-muted-foreground/70 pl-6">
+                      Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2 pl-6 pt-1">
+                    <DealUpdatesUnified
+                      activities={activityLogs}
+                      isLoadingActivities={isLoadingActivities}
+                      timeAgoText={timeAgoData.text}
+                      highlightClass={timeAgoData.highlightClass}
+                      statusNotes={statusNotes}
+                      onDeleteNote={deleteStatusNote}
+                    />
+                  </div>
+                </div>
+  );
+
   const dealActionCluster = (
     <div className="flex flex-wrap items-center gap-2">
       <CreateTaskButton dealId={id!} dealName={deal?.company} />
