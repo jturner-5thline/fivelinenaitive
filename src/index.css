@@ -2746,9 +2746,9 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   --deal-module-border-color: rgba(255, 255, 255, 0.09);
   --deal-module-border-color-hover: rgba(255, 255, 255, 0.16);
   /* Soft off-white (#F2F2F8) replaces pure white for all primary text */
-  --foreground: 240 30% 96%;
-  --card-foreground: 240 30% 96%;
-  --popover-foreground: 240 30% 96%;
+  --foreground: 0 0% 100%;
+  --card-foreground: 0 0% 100%;
+  --popover-foreground: 0 0% 100%;
 }
 
 .deal-detail-surface .text-white,
@@ -2757,7 +2757,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .dark .deal-detail-surface .dark\:text-white,
 .deal-detail-surface .text-foreground,
 .deal-detail-surface [class*="data-\[state\=active\]\:text-white"][data-state="active"] {
-  color: #f2f2f8 !important;
+  color: #ffffff !important;
 }
 
 .deal-detail-surface .bg-card,
