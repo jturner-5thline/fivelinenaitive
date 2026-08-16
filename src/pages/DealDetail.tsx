@@ -3256,16 +3256,6 @@ export default function DealDetail() {
                         pipelineId={deal.pipelineId ?? null}
                         className="deal-rail-control"
                       />
-                      <div className="ml-auto flex items-center">
-                        <DealUpdatesUnified
-                          activities={activityLogs}
-                          isLoadingActivities={isLoadingActivities}
-                          timeAgoText={timeAgoData.text}
-                          highlightClass={timeAgoData.highlightClass}
-                          statusNotes={statusNotes}
-                          onDeleteNote={deleteStatusNote}
-                        />
-                      </div>
                     </div>
                     </div>
                     <div className="shrink-0 self-stretch flex flex-col justify-between items-start gap-1">
@@ -3714,6 +3704,16 @@ export default function DealDetail() {
                 hideIdentity
                 hideStatusStage
                 measureRef={railMeasureRef}
+                lastActivityNode={
+                  <DealUpdatesUnified
+                    activities={activityLogs}
+                    isLoadingActivities={isLoadingActivities}
+                    timeAgoText={timeAgoData.text}
+                    highlightClass={timeAgoData.highlightClass}
+                    statusNotes={statusNotes}
+                    onDeleteNote={deleteStatusNote}
+                  />
+                }
                 className="lg:w-full lg:static"
                 onUpdateField={(field, value) => updateDeal(field as any, value as any)}
               >

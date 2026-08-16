@@ -53,13 +53,15 @@ export interface DealContextRailProps {
   /** When true, hide the deal name + amount (rendered as a page header instead). */
   hideIdentity?: boolean;
   hideStatusStage?: boolean;
+  /** Optional clickable node rendered in place of the plain last-activity text. */
+  lastActivityNode?: React.ReactNode;
   /** Ref applied to the core facts block (used to size the header widget). */
   measureRef?: (node: HTMLDivElement | null) => void;
   /** Extra content merged into the same module, below the core facts. */
   children?: React.ReactNode;
 }
 
-export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, hideStatusStage, measureRef, children }: DealContextRailProps) {
+export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, hideStatusStage, lastActivityNode, measureRef, children }: DealContextRailProps) {
   const lastActivity = deal.notesUpdatedAt || deal.updatedAt || null;
   const owner = deal.dealOwner || deal.manager || '';
 
@@ -160,11 +162,15 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
 
       <div className="space-y-0.5">
         <RailLabel>Last activity</RailLabel>
-        <div className="text-sm text-foreground">
-          {lastActivity
-            ? formatDistanceToNow(new Date(lastActivity), { addSuffix: true })
-            : '—'}
-        </div>
+        {lastActivityNode ? (
+          <div className="flex items-center">{lastActivityNode}</div>
+        ) : (
+          <div className="text-sm text-foreground">
+            {lastActivity
+              ? formatDistanceToNow(new Date(lastActivity), { addSuffix: true })
+              : '—'}
+          </div>
+        )}
       </div>
 
       <div className="space-y-0.5">
