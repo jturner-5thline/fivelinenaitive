@@ -50,8 +50,7 @@ export default function Homepage() {
             aria-hidden
             className="h-56 sm:h-64 md:h-72 lg:h-80 w-full"
             style={{
-              background:
-                'linear-gradient(to bottom, rgba(1,3,12,0) 0%, rgba(1,3,12,0.04) 25%, rgba(1,3,12,0.18) 50%, rgba(1,3,12,0.5) 78%, rgba(1,3,12,0.85) 100%)',
+              background: 'transparent',
             }}
           />
         </div>
