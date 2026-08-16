@@ -22,7 +22,7 @@ export function DealInlineSummary({ deal, onOpenDeal, onClose }: DealInlineSumma
   const { data: milestonesByDeal } = usePipelineDealMilestones([deal.id], true);
 
   return (
-    <div className="flex flex-col h-full min-h-0 min-w-0 overflow-auto [&>*]:flex-1 [&>*]:min-h-0 [&>*]:h-full [&>*]:!bg-transparent [&>*]:!border-0 [&>*]:!rounded-none [&>*]:!shadow-none">
+    <div className="deal-inline-panel flex flex-col h-full min-h-0 min-w-0 overflow-auto [&>*]:flex-1 [&>*]:min-h-0 [&>*]:h-full [&>*]:!bg-transparent [&>*]:!border-0 [&>*]:!rounded-none [&>*]:!shadow-none">
       <PipelineMemoCard
         deal={deal}
         digest={digestMap.get(deal.id)}
