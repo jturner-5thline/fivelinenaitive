@@ -2911,6 +2911,19 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .status-note-2rows textarea {
   resize: none;
 }
+/* Status note box colors */
+.status-note-2rows .status-note-editor {
+  background-color: #12141f !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+.status-note-2rows .status-note-editor,
+.status-note-2rows .status-note-editor *,
+.status-note-2rows .ProseMirror,
+.status-note-2rows [contenteditable="true"],
+.status-note-2rows textarea {
+  color: #cfd0e2 !important;
+  -webkit-text-fill-color: #cfd0e2 !important;
+}
 /* Keep the two-row scroll behavior but hide the visible scrollbar. */
 .status-note-2rows .status-note-editor,
 .status-note-2rows .status-note-editor > *,
