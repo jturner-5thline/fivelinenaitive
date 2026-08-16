@@ -3069,3 +3069,40 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-calendar-panel [class*="border"] {
   border-color: hsl(var(--foreground) / 0.28) !important;
 }
+
+/* ------------------------------------------------------------------
+   Deals list-view right detail panel (DealInlineSummary):
+   uniform 8px radii on widgets/buttons/inputs and pure-white titles.
+   ------------------------------------------------------------------ */
+.deal-inline-panel :where(
+  .card,
+  [class*="rounded-sm"],
+  [class*="rounded-md"],
+  [class*="rounded-lg"],
+  [class*="rounded-xl"],
+  [class*="rounded-2xl"],
+  button,
+  input,
+  textarea,
+  select,
+  [role="combobox"],
+  [data-slot="card"]
+):not([class*="rounded-full"]) {
+  border-radius: 8px !important;
+}
+
+/* Circular chips, avatars and toggles keep their pill shape. */
+.deal-inline-panel [class*="rounded-full"] {
+  border-radius: 9999px !important;
+}
+
+.deal-inline-panel h1,
+.deal-inline-panel h2,
+.deal-inline-panel h3,
+.deal-inline-panel h4,
+.deal-inline-panel h5,
+.deal-inline-panel [data-slot="card-title"],
+.deal-inline-panel .text-foreground,
+.deal-inline-panel .text-white {
+  color: #ffffff !important;
+}
