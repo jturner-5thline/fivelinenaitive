@@ -279,7 +279,7 @@
     @apply bg-background text-foreground font-sans;
     min-height: 100vh;
     background-color: #030310;
-    background-image: linear-gradient(180deg, #030310 0%, #030b1e 10%, #051a39 25%, #063765 50%, #065193 75%, #076cc1 100%);
+    background-image: radial-gradient(circle at 118% 118%, #0a7ce0 0%, rgba(6, 92, 168, 0.62) 26%, rgba(5, 42, 88, 0.22) 55%, rgba(0, 0, 0, 0) 78%), linear-gradient(135deg, #030310 0%, #030b1e 20%, #051a39 44%, #063765 70%, #0765b4 100%);
     background-attachment: fixed;
     background-repeat: no-repeat;
     background-size: cover;
@@ -319,7 +319,7 @@
 
   .dark body {
     background-color: #030310 !important;
-    background-image: linear-gradient(180deg, #030310 0%, #030b1e 10%, #051a39 25%, #063765 50%, #065193 75%, #076cc1 100%) !important;
+    background-image: radial-gradient(circle at 118% 118%, #0a7ce0 0%, rgba(6, 92, 168, 0.62) 26%, rgba(5, 42, 88, 0.22) 55%, rgba(0, 0, 0, 0) 78%), linear-gradient(135deg, #030310 0%, #030b1e 20%, #051a39 44%, #063765 70%, #0765b4 100%) !important;
     background-attachment: fixed !important;
     background-repeat: no-repeat !important;
     background-size: cover !important;
@@ -2730,7 +2730,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    shared Insights widget skin so widgets keep clear, visible borders. */
 .sales-dashboard-popup {
   background-color: #030310 !important;
-  background-image: linear-gradient(180deg, #030310 0%, #030b1e 10%, #051a39 25%, #063765 50%, #065193 75%, #076cc1 100%) !important;
+  background-image: radial-gradient(circle at 118% 118%, #0a7ce0 0%, rgba(6, 92, 168, 0.62) 26%, rgba(5, 42, 88, 0.22) 55%, rgba(0, 0, 0, 0) 78%), linear-gradient(135deg, #030310 0%, #030b1e 20%, #051a39 44%, #063765 70%, #0765b4 100%) !important;
   background-repeat: no-repeat !important;
   background-size: cover !important;
 }
