@@ -213,8 +213,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
         aria-hidden="true"
         style={{
           minHeight: '100vh',
-          background:
-            'linear-gradient(180deg, #030310 0%, #030b1e 10%, #051a39 25%, #063765 50%, #065193 75%, #076cc1 100%)',
+          background: 'var(--app-backdrop)',
         }}
       />
 

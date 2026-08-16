@@ -37,7 +37,10 @@ const Index = () => {
         />
       </Helmet>
       
-      <div className="min-h-screen bg-[hsl(270,30%,8%)] relative overflow-hidden">
+      <div
+        className="min-h-screen relative overflow-hidden"
+        style={{ background: 'var(--app-backdrop)' }}
+      >
         {/* YouTube Video Background */}
         <div className="absolute inset-0 w-full h-full overflow-hidden">
           <iframe
@@ -49,8 +52,11 @@ const Index = () => {
           />
         </div>
         
-        {/* Dark blue overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[hsl(270,35%,10%)]/90 via-[hsl(280,45%,15%)]/85 to-[hsl(270,35%,10%)]/90" />
+        {/* Dark blue overlay — matches the app backdrop */}
+        <div
+          className="absolute inset-0"
+          style={{ background: 'var(--app-backdrop)', opacity: 0.88 }}
+        />
         
         {/* Content */}
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
