@@ -816,7 +816,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
 
   return (
     <>
-      <Card className="h-full flex flex-col">
+      <Card className="deal-mod-outstanding h-full flex flex-col">
         <CardHeader className="@container flex flex-row flex-nowrap items-center justify-between gap-x-2 min-h-[44px] py-2 px-3 space-y-0 shrink-0 overflow-hidden">
           <div className="flex items-center gap-2 min-w-0 flex-1 basis-[140px] order-1">
             <CardTitle className="text-sm font-medium truncate">Outstanding Items</CardTitle>
