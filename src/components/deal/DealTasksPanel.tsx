@@ -141,7 +141,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
     <>
       <Card className="h-full w-full flex flex-col">
         {/* ── Header ── fixed height, vertically centered */}
-        <CardHeader className="flex flex-row items-center justify-between min-h-[44px] h-[44px] py-0 px-4 space-y-0 shrink-0 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setIsOpen(o => !o)}>
+        <CardHeader className="flex flex-row items-center justify-between min-h-[44px] h-[44px] py-0 px-4 space-y-0 shrink-0 cursor-pointer hover:bg-white/5 transition-colors" onClick={() => setIsOpen(o => !o)}>
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             Tasks
             {pendingTasks.length > 0 && !isOpen && (
