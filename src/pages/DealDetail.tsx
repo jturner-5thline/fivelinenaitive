@@ -4322,7 +4322,7 @@ export default function DealDetail() {
                               case 'narrative':
                                 return (
                                   <div key={fieldId} className="space-y-1.5">
-                                    <label className="text-sm text-muted-foreground">Narrative</label>
+                                    <label className="text-xs font-medium text-muted-foreground">Narrative</label>
                                     <DebouncedTextarea
                                       value={deal.narrative || ''}
                                       onValueChange={(value) => updateDeal('narrative', value)}

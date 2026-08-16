@@ -37,7 +37,7 @@ function initials(name?: string | null): string {
 
 function RailLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+    <span className="text-xs font-medium normal-case tracking-normal text-muted-foreground">
       {children}
     </span>
   );
