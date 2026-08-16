@@ -2751,13 +2751,10 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [class*="bg-card"],
 .deal-detail-surface [class*="bg-muted/"],
 .deal-detail-surface .deal-glass {
-  background-color: rgba(12, 22, 44, 0.86) !important;
-  background-image: linear-gradient(
-    160deg,
-    rgba(90, 145, 250, 0.10) 0%,
-    rgba(70, 120, 230, 0.045) 42%,
-    rgba(255, 255, 255, 0.00) 100%
-  ) !important;
+  /* Same hue as the pop-up shell gradient (~#050d1f), lifted ~20% toward
+     white so modules separate subtly from the pop-up background. */
+  background-color: rgb(38, 48, 68) !important;
+  background-image: none !important;
   border-width: var(--deal-module-border) !important;
   border-style: solid !important;
   border-color: var(--deal-module-border-color) !important;
@@ -2783,7 +2780,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [class*="bg-card"]:hover,
 .deal-detail-surface .deal-glass:hover {
   border-color: var(--deal-module-border-color-hover) !important;
-  background-color: rgba(17, 32, 60, 0.88) !important;
+  background-color: rgb(46, 57, 79) !important;
   transform: translateY(-1px);
   box-shadow:
     0 22px 44px -22px rgba(0, 0, 0, 0.8),
@@ -2813,12 +2810,8 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 /* Nested modules step one level brighter so hierarchy stays readable. */
 .deal-detail-surface .bg-card .bg-card,
 .deal-detail-surface [class*="bg-card"] [class*="bg-muted/"] {
-  background-color: rgba(70, 120, 210, 0.10) !important;
-  background-image: linear-gradient(
-    160deg,
-    rgba(100, 155, 250, 0.065) 0%,
-    rgba(100, 155, 250, 0.020) 100%
-  ) !important;
+  background-color: rgb(50, 61, 84) !important;
+  background-image: none !important;
   border-color: rgba(130, 175, 250, 0.20) !important;
   border-radius: var(--deal-module-radius) !important;
 }
