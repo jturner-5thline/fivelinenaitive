@@ -3018,6 +3018,16 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface .deal-header-field,
 .deal-detail-surface .deal-header-field:hover {
   background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  ring: 0 !important;
+}
+.deal-detail-surface .deal-header-field:focus,
+.deal-detail-surface .deal-header-field:focus-visible {
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 /* Unified 8px corner radius across every widget, field and control inside the
