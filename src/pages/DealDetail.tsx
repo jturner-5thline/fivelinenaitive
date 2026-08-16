@@ -3240,7 +3240,7 @@ export default function DealDetail() {
                         }
                       }}
                       placeholder="Click to add status notes..."
-                      displayClassName="text-lg text-foreground/90"
+                      displayClassName="text-lg text-white"
                       autoSave
                       autoSaveDelay={1500}
                       mentionUsers={mentionUsers}
