@@ -3719,12 +3719,8 @@ export default function DealDetail() {
             // class above when tailwind-merge resolves the display group.
             dealInfoTab !== 'deal-info' && "hidden",
           )}
-          style={
-            useContextRailLayout && dealInfoTab === 'deal-info' && railHeight
-              ? { height: railHeight }
-              : undefined
-          }>
-            <CardHeader className={cn("pb-4", useContextRailLayout && "pt-3 pb-3 flex-1 min-h-0 overflow-y-auto")}>
+          >
+            <CardHeader className={cn("pb-4", useContextRailLayout && "hidden")}>
               <div className={cn(
                 "flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4",
                 useContextRailLayout && "hidden",
