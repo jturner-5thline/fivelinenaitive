@@ -2984,8 +2984,8 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-rail-control,
 .deal-detail-surface .deal-rail-control,
 .deal-detail-surface [class*="rounded-full"].deal-rail-control {
-  border-radius: calc(var(--radius) - 2px) !important;
-  border: 1px solid rgba(157, 162, 245, 0.2) !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(157, 162, 245, 0.25) !important;
   background-color: #171b2c !important;
   background-image: none !important;
   color: #dcdcec !important;
