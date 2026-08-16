@@ -1,5 +1,6 @@
 import { Clock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AddHoursButton } from '@/components/deal/DealHoursEntriesEditor';
 import { DealWeeklyHoursChart } from '@/components/deal/DealWeeklyHoursChart';
@@ -19,10 +20,7 @@ export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged }: DealHour
   const feesVisibility = useCompanyFeesVisibility();
   const refreshDeals = onHoursChanged;
   return (
-      <div
-        className="space-y-3 rounded-xl border border-white/[0.08] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] h-full overflow-y-auto"
-        style={{ background: 'rgba(18, 24, 38, 0.82)' }}
-      >
+      <Card className="deal-hours-fees-panel space-y-3 p-4 h-full overflow-y-auto">
         <h4
           className="text-[13px] font-medium flex items-center gap-2 tracking-[0.01em]"
           style={{ color: 'rgba(148, 163, 184, 0.88)' }}
@@ -184,6 +182,6 @@ export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged }: DealHour
             </div>
           </div>
         </div>
-      </div>
+      </Card>
   );
 }
