@@ -2753,6 +2753,9 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 
 .deal-detail-surface .text-white,
 .deal-detail-surface .hover\:text-white:hover,
+.deal-detail-surface .dark\:text-white,
+.dark .deal-detail-surface .dark\:text-white,
+.deal-detail-surface .text-foreground,
 .deal-detail-surface [class*="data-\[state\=active\]\:text-white"][data-state="active"] {
   color: #f2f2f8 !important;
 }
