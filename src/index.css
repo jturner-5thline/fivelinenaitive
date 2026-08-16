@@ -2911,6 +2911,24 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .status-note-2rows textarea {
   resize: none;
 }
+/* Keep the two-row scroll behavior but hide the visible scrollbar. */
+.status-note-2rows .status-note-editor,
+.status-note-2rows .status-note-editor > *,
+.status-note-2rows .ProseMirror,
+.status-note-2rows [contenteditable="true"],
+.status-note-2rows textarea {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.status-note-2rows .status-note-editor::-webkit-scrollbar,
+.status-note-2rows .status-note-editor > *::-webkit-scrollbar,
+.status-note-2rows .ProseMirror::-webkit-scrollbar,
+.status-note-2rows [contenteditable="true"]::-webkit-scrollbar,
+.status-note-2rows textarea::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
 
 .deal-detail-surface .deal-header-field,
 .deal-detail-surface .deal-header-field:hover {
