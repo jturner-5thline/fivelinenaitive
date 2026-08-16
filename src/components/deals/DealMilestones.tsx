@@ -160,7 +160,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                 "flex items-center gap-2 flex-1 px-3 py-0.5 -mx-3 rounded-lg",
                 "cursor-pointer transition-all duration-200",
                 "border border-transparent",
-                "bg-primary/[0.06] hover:bg-primary/[0.12] hover:border-primary/30 hover:shadow-[0_0_16px_rgba(126,184,247,0.18)]",
+                "bg-transparent hover:bg-primary/[0.08] hover:border-primary/30 hover:shadow-[0_0_16px_rgba(126,184,247,0.18)]",
                 "active:scale-[0.99]",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               )}
