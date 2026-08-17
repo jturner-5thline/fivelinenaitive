@@ -6146,7 +6146,7 @@ export default function DealDetail() {
                     side="top"
                   >
                     <TabsList
-                      className="pointer-events-auto inline-flex h-auto items-center justify-start rounded-sm bg-gradient-to-t from-slate-800/95 to-slate-950 backdrop-blur-xl p-0 gap-0 border border-white/10 border-l-0 shadow-[0_-10px_30px_-10px_rgba(0,0,0,0.75),inset_0_-1px_0_0_rgba(255,255,255,0.07)] max-w-full overflow-x-visible overflow-y-visible scrollbar-none [&>button+button]:border-l [&>button+button]:border-white/10 [&>button[data-state=active]]:border-l-transparent [&>button[data-state=active]+button]:border-l-transparent"
+                      className="pointer-events-auto inline-flex h-auto items-center justify-start rounded-sm bg-gradient-to-t from-slate-800/95 to-slate-950 backdrop-blur-xl p-0 gap-0 border border-white/10 border-l-0 shadow-[0_-10px_30px_-10px_rgba(0,0,0,0.75),inset_0_-1px_0_0_rgba(255,255,255,0.07)] max-w-full overflow-x-visible overflow-y-visible scrollbar-none [&>button+button]:border-l [&>button+button]:border-white/10 [&>button[data-state=active]]:border-l-transparent [&>button[data-state=active]+button]:border-l-transparent [&>button:hover]:border-l-transparent [&>button:hover+button]:border-l-transparent [&>button]:transition-[background-color,color,border-color] [&>button]:duration-150"
                       style={{ scrollbarWidth: 'none' }}
                     >
                       <TabsTrigger
