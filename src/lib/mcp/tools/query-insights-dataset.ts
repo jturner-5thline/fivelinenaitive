@@ -42,8 +42,10 @@ export default defineTool({
         case "is":
           q = q.is(f.column, f.value as null | boolean);
           break;
-        default:
-          q = q[f.op](f.column, f.value as never);
+        default: {
+          const apply = q as unknown as Record<string, (col: string, val: unknown) => typeof q>;
+          q = apply[f.op].call(q, f.column, f.value);
+        }
       }
     }
     if (order_by) q = q.order(order_by, { ascending, nullsFirst: false });

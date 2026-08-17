@@ -1311,8 +1311,10 @@ var query_insights_dataset_default = defineTool31({
         case "is":
           q = q.is(f.column, f.value);
           break;
-        default:
-          q = q[f.op](f.column, f.value);
+        default: {
+          const apply = q;
+          q = apply[f.op].call(q, f.column, f.value);
+        }
       }
     }
     if (order_by) q = q.order(order_by, { ascending, nullsFirst: false });
