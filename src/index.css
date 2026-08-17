@@ -3313,3 +3313,10 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   padding-left: 0 !important;
   padding-right: 0 !important;
 }
+
+/* Status note: divider line above the text instead of a boxed border. */
+.deal-detail-surface .status-note-2rows .status-note-editor {
+  border: 0 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.55) !important;
+  border-radius: 0 !important;
+}
