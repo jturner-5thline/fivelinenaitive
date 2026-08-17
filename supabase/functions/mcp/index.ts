@@ -890,13 +890,449 @@ var reorder_daily_rundown_items_default = defineTool24({
   }
 });
 
+// src/lib/mcp/tools/list-insights-dashboards.ts
+import { defineTool as defineTool25 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z25 } from "npm:zod@^3.23.0";
+
+// src/lib/mcp/insights.ts
+var EXCLUDED_EXACT = /* @__PURE__ */ new Set(["test-niki's store", "example deal"]);
+function isExcludedDealName(name) {
+  const n = (name ?? "").trim().toLowerCase();
+  if (!n) return false;
+  if (EXCLUDED_EXACT.has(n)) return true;
+  return n.startsWith("test ");
+}
+function monthKey(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+function sum(values) {
+  return values.reduce((acc, v) => acc + (Number(v) || 0), 0);
+}
+function groupAggregate(rows, keyOf, valueOf) {
+  const map = /* @__PURE__ */ new Map();
+  for (const row of rows) {
+    const key = keyOf(row) || "unknown";
+    const entry = map.get(key) ?? { key, count: 0, total_value: 0 };
+    entry.count += 1;
+    entry.total_value += Number(valueOf(row)) || 0;
+    map.set(key, entry);
+  }
+  return [...map.values()].sort((a, b) => b.total_value - a.total_value);
+}
+var INSIGHTS_DATASETS = [
+  "deals",
+  "deal_lenders",
+  "deal_pipelines",
+  "deal_stage_history",
+  "deal_milestones",
+  "deal_computed_metrics",
+  "deal_stage_durations",
+  "deal_stage_transitions",
+  "outstanding_items",
+  "tasks",
+  "activity_logs",
+  "contacts",
+  "crm_companies",
+  "master_lenders",
+  "custom_metrics",
+  "insights_metric_targets",
+  "metric_manual_inputs",
+  "dashboard_grid_layouts",
+  "dashboard_layouts",
+  "quickbooks_invoices",
+  "quickbooks_customers",
+  "quickbooks_payments",
+  "quickbooks_expenses",
+  "quickbooks_bills",
+  "quickbooks_reports",
+  "qbo_pnl_snapshots",
+  "qbo_cashflow_snapshots",
+  "claap_meetings",
+  "team_interaction_metrics"
+];
+var DASHBOARD_OPTIONS = [
+  { id: "management-snapshot", name: "Weekly Rundown", isFavorite: true, folder: "management-insights" },
+  { id: "revenue-customers", name: "Revenue & Customers", isFavorite: false, folder: "financial" },
+  { id: "controller-dashboard", name: "Controller Dashboard", isFavorite: false, folder: "financial" },
+  { id: "sales-dashboard-v2", name: "Sales Dashboard", isFavorite: false, folder: "sales-bd" },
+  { id: "finserv-financial-metrics", name: "FinServ Financial Metrics", isFavorite: false, folder: null },
+  { id: "consolidated-debt-pipeline", name: "Debt Advisory Metrics", isFavorite: false, folder: "sales-bd" },
+  { id: "lender-intelligence", name: "Lender Intelligence Dashboard", isFavorite: false, folder: "sales-bd" },
+  { id: "sales-bd-roi", name: "Sales & BD ROI", isFavorite: false, folder: "sales-bd" },
+  { id: "management-review", name: "Insights Dashboard", isFavorite: false, folder: "management-insights" }
+];
+
+// src/lib/mcp/tools/list-insights-dashboards.ts
+var list_insights_dashboards_default = defineTool25({
+  name: "list_insights_dashboards",
+  title: "List Insights dashboards and widgets",
+  description: "List every dashboard available on the Insights page (id, display name, folder, favorite flag) together with the caller's saved widget layouts and any custom (formula-based) metrics defined for the workspace. Use this to discover which dashboards and widgets exist before pulling their data with get_pipeline_metrics, get_revenue_metrics, get_lender_metrics, get_metric_targets, or query_insights_dataset.",
+  inputSchema: {
+    dashboard_id: z25.string().trim().max(80).optional().describe("Only return layouts for this dashboard id.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ dashboard_id }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    let layoutQuery = sb.from("dashboard_grid_layouts").select("id, dashboard_id, layout, updated_at").order("updated_at", { ascending: false }).limit(100);
+    if (dashboard_id) layoutQuery = layoutQuery.eq("dashboard_id", dashboard_id);
+    const [{ data: layouts, error: layoutError }, { data: custom, error: customError }] = await Promise.all([
+      layoutQuery,
+      sb.from("custom_metrics").select("id, name, description, formula, result_type, format_options, updated_at").limit(200)
+    ]);
+    if (layoutError) return errorResult(layoutError.message);
+    if (customError) return errorResult(customError.message);
+    const payload = {
+      dashboards: dashboard_id ? DASHBOARD_OPTIONS.filter((d) => d.id === dashboard_id) : DASHBOARD_OPTIONS,
+      saved_layouts: layouts ?? [],
+      custom_metrics: custom ?? []
+    };
+    return textResult(payload, payload);
+  }
+});
+
+// src/lib/mcp/tools/get-pipeline-metrics.ts
+import { defineTool as defineTool26 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z26 } from "npm:zod@^3.23.0";
+var get_pipeline_metrics_default = defineTool26({
+  name: "get_pipeline_metrics",
+  title: "Get pipeline metrics (Insights)",
+  description: "Compute the deal-pipeline metrics that power the Insights dashboards: total and average deal value, fee totals (total/retainer/milestone), deal counts, and breakdowns by stage, status, deal type, manager, owner, pipeline, and month. Supports a timeframe window on created_at, updated_at, or closing date, plus optional pipeline/manager/status filters. Global test-deal exclusions (Test-Niki's Store, Example Deal, names starting with 'test ') are applied exactly as in the UI.",
+  inputSchema: {
+    date_field: z26.enum(["created_at", "updated_at", "closing_date", "dashboard_closing_date"]).default("created_at").describe("Which date column the timeframe window applies to."),
+    from: z26.string().trim().max(40).optional().describe("ISO date/timestamp lower bound (inclusive)."),
+    to: z26.string().trim().max(40).optional().describe("ISO date/timestamp upper bound (exclusive)."),
+    pipeline_id: z26.string().uuid().optional(),
+    manager: z26.string().trim().max(120).optional(),
+    status: z26.string().trim().max(60).optional(),
+    stage: z26.string().trim().max(100).optional(),
+    include_deals: z26.boolean().default(false).describe("Also return the underlying deal rows used in the aggregation.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ date_field, from, to, pipeline_id, manager, status, stage, include_deals }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const select = "id, company, value, total_fee, retainer_fee, milestone_fee, status, stage, deal_type, manager, deal_owner, on_hold, pipeline_id, created_at, updated_at, closing_date, dashboard_closing_date";
+    const rows = [];
+    const pageSize = 1e3;
+    for (let offset = 0; ; offset += pageSize) {
+      let q = sb.from("deals").select(select).order("created_at", { ascending: false }).range(offset, offset + pageSize - 1);
+      if (from) q = q.gte(date_field, from);
+      if (to) q = q.lt(date_field, to);
+      if (pipeline_id) q = q.eq("pipeline_id", pipeline_id);
+      if (manager) q = q.eq("manager", manager);
+      if (status) q = q.eq("status", status);
+      if (stage) q = q.eq("stage", stage);
+      const { data, error } = await q;
+      if (error) return errorResult(error.message);
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < pageSize) break;
+    }
+    const deals = rows.filter((r) => !isExcludedDealName(r.company));
+    const value = (r) => Number(r.value) || 0;
+    const summary = {
+      deal_count: deals.length,
+      total_value: sum(deals.map(value)),
+      avg_deal_size: deals.length ? sum(deals.map(value)) / deals.length : 0,
+      total_fees: sum(deals.map((d) => d.total_fee)),
+      retainer_fees: sum(deals.map((d) => d.retainer_fee)),
+      milestone_fees: sum(deals.map((d) => d.milestone_fee)),
+      on_hold_count: deals.filter((d) => d.on_hold).length
+    };
+    const payload = {
+      timeframe: { date_field, from: from ?? null, to: to ?? null },
+      filters: { pipeline_id: pipeline_id ?? null, manager: manager ?? null, status: status ?? null, stage: stage ?? null },
+      summary,
+      by_stage: groupAggregate(deals, (d) => d.stage ?? "unknown", value),
+      by_status: groupAggregate(deals, (d) => d.status ?? "unknown", value),
+      by_type: groupAggregate(deals, (d) => d.deal_type ?? "unknown", value),
+      by_manager: groupAggregate(deals, (d) => d.manager ?? "unassigned", value),
+      by_owner: groupAggregate(deals, (d) => d.deal_owner ?? "unassigned", value),
+      by_pipeline: groupAggregate(deals, (d) => d.pipeline_id ?? "none", value),
+      by_month: groupAggregate(deals, (d) => monthKey(d[date_field]) ?? "unknown", value).sort(
+        (a, b) => a.key.localeCompare(b.key)
+      ),
+      excluded_test_deals: rows.length - deals.length,
+      ...include_deals ? { deals } : {}
+    };
+    return textResult(payload, payload);
+  }
+});
+
+// src/lib/mcp/tools/get-funnel-velocity.ts
+import { defineTool as defineTool27 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z27 } from "npm:zod@^3.23.0";
+var get_funnel_velocity_default = defineTool27({
+  name: "get_funnel_velocity",
+  title: "Get funnel velocity / stage durations",
+  description: "Return stage-conversion and time-in-stage analytics used by the Insights funnel and velocity widgets. Provide an ordered stage_path (stage ids) to get conversion counts and median/average days between those stages; set consecutive_only to require direct stage-to-stage transitions. Optionally pass deal_id instead to get that single deal's per-stage durations.",
+  inputSchema: {
+    stage_path: z27.array(z27.string().trim().min(1).max(100)).min(2).max(20).optional().describe("Ordered list of stage ids, e.g. ['nda-needs-list','on-deck','closed-won']."),
+    consecutive_only: z27.boolean().default(false),
+    deal_id: z27.string().uuid().optional().describe("When set, returns per-stage durations for this deal instead.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ stage_path, consecutive_only, deal_id }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    if (deal_id) {
+      const { data: data2, error: error2 } = await sb.rpc("get_deal_stage_durations", { p_deal_id: deal_id });
+      if (error2) return errorResult(error2.message);
+      return textResult(data2 ?? [], { deal_id, stages: data2 ?? [] });
+    }
+    if (!stage_path || stage_path.length < 2) {
+      return errorResult("Provide either stage_path (2+ stage ids) or deal_id.");
+    }
+    const { data, error } = await sb.rpc("get_funnel_velocity", {
+      p_stage_path: stage_path,
+      p_consecutive_only: consecutive_only
+    });
+    if (error) return errorResult(error.message);
+    return textResult(data ?? [], { stage_path, consecutive_only, steps: data ?? [] });
+  }
+});
+
+// src/lib/mcp/tools/get-revenue-metrics.ts
+import { defineTool as defineTool28 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z28 } from "npm:zod@^3.23.0";
+var get_revenue_metrics_default = defineTool28({
+  name: "get_revenue_metrics",
+  title: "Get revenue metrics (QuickBooks / Insights financial widgets)",
+  description: "Return the accounting data behind the Insights financial dashboards: invoiced revenue by month, by customer, and by QuickBooks entity (realm), plus outstanding balances, and the P&L snapshots (income, COGS, gross profit, operating expenses, net operating income) for the requested window. Use from/to to bound the period and realm_id to scope to a single entity.",
+  inputSchema: {
+    from: z28.string().trim().max(40).optional().describe("ISO date lower bound (inclusive) on invoice txn_date / snapshot period."),
+    to: z28.string().trim().max(40).optional().describe("ISO date upper bound (exclusive)."),
+    realm_id: z28.string().trim().max(64).optional().describe("QuickBooks entity/realm id to scope to."),
+    include_invoices: z28.boolean().default(false).describe("Also return the underlying invoice rows.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ from, to, realm_id, include_invoices }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const invoices = [];
+    const pageSize = 1e3;
+    for (let offset = 0; ; offset += pageSize) {
+      let q = sb.from("quickbooks_invoices").select("id, realm_id, customer_name, txn_date, total_amt, balance, status").order("txn_date", { ascending: false }).range(offset, offset + pageSize - 1);
+      if (from) q = q.gte("txn_date", from);
+      if (to) q = q.lt("txn_date", to);
+      if (realm_id) q = q.eq("realm_id", realm_id);
+      const { data, error } = await q;
+      if (error) return errorResult(error.message);
+      const page = data ?? [];
+      invoices.push(...page);
+      if (page.length < pageSize) break;
+    }
+    let pnlQuery = sb.from("qbo_pnl_snapshots").select(
+      "realm_id, period_start, period_end, accounting_method, income_total, cogs_total, gross_profit, operating_expenses, net_operating_income"
+    ).order("period_start", { ascending: true }).limit(500);
+    if (from) pnlQuery = pnlQuery.gte("period_start", from);
+    if (to) pnlQuery = pnlQuery.lt("period_end", to);
+    if (realm_id) pnlQuery = pnlQuery.eq("realm_id", realm_id);
+    const { data: pnl, error: pnlError } = await pnlQuery;
+    if (pnlError) return errorResult(pnlError.message);
+    const amount = (i) => Number(i.total_amt) || 0;
+    const payload = {
+      timeframe: { from: from ?? null, to: to ?? null, realm_id: realm_id ?? null },
+      summary: {
+        invoice_count: invoices.length,
+        invoiced_total: sum(invoices.map(amount)),
+        outstanding_balance: sum(invoices.map((i) => i.balance))
+      },
+      by_month: groupAggregate(invoices, (i) => (i.txn_date ?? "").slice(0, 7) || "unknown", amount).sort(
+        (a, b) => a.key.localeCompare(b.key)
+      ),
+      by_customer: groupAggregate(invoices, (i) => i.customer_name ?? "unknown", amount).slice(0, 100),
+      by_entity: groupAggregate(invoices, (i) => i.realm_id ?? "unknown", amount),
+      pnl_snapshots: pnl ?? [],
+      ...include_invoices ? { invoices } : {}
+    };
+    return textResult(payload, payload);
+  }
+});
+
+// src/lib/mcp/tools/get-lender-metrics.ts
+import { defineTool as defineTool29 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z29 } from "npm:zod@^3.23.0";
+var get_lender_metrics_default = defineTool29({
+  name: "get_lender_metrics",
+  title: "Get lender / funding-source metrics (Lender Intelligence dashboard)",
+  description: "Return the funding-source analytics behind the Lender Intelligence and funnel widgets: counts and quoted amounts by lender stage, tracking bucket (active / on-deck / on-hold / passed / excluded), and by lender name, plus top pass reasons and submission-to-approval conversion. Timeframe bounds apply to created_at or last_status_change_at; test deals are excluded.",
+  inputSchema: {
+    date_field: z29.enum(["created_at", "last_status_change_at", "submitted_at"]).default("created_at"),
+    from: z29.string().trim().max(40).optional(),
+    to: z29.string().trim().max(40).optional(),
+    deal_id: z29.string().uuid().optional().describe("Scope to a single deal."),
+    lender_name: z29.string().trim().max(160).optional()
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ date_field, from, to, deal_id, lender_name }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const rows = [];
+    const pageSize = 1e3;
+    for (let offset = 0; ; offset += pageSize) {
+      let q = sb.from("deal_lenders").select(
+        "id, deal_id, name, stage, tracking_status, quote_amount, pass_reason, submitted_at, approved_at, declined_at, passed_at, created_at, last_status_change_at"
+      ).order("created_at", { ascending: false }).range(offset, offset + pageSize - 1);
+      if (from) q = q.gte(date_field, from);
+      if (to) q = q.lt(date_field, to);
+      if (deal_id) q = q.eq("deal_id", deal_id);
+      if (lender_name) q = q.ilike("name", `%${lender_name}%`);
+      const { data, error } = await q;
+      if (error) return errorResult(error.message);
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < pageSize) break;
+    }
+    const dealIds = [...new Set(rows.map((r) => r.deal_id))];
+    const excluded = /* @__PURE__ */ new Set();
+    for (let i = 0; i < dealIds.length; i += 200) {
+      const { data, error } = await sb.from("deals").select("id, company").in("id", dealIds.slice(i, i + 200));
+      if (error) return errorResult(error.message);
+      for (const d of data ?? []) {
+        if (isExcludedDealName(d.company)) excluded.add(d.id);
+      }
+    }
+    const lenders = rows.filter((r) => !excluded.has(r.deal_id));
+    const quote = (r) => Number(r.quote_amount) || 0;
+    const submitted = lenders.filter((l) => l.submitted_at).length;
+    const approved = lenders.filter((l) => l.approved_at).length;
+    const payload = {
+      timeframe: { date_field, from: from ?? null, to: to ?? null },
+      filters: { deal_id: deal_id ?? null, lender_name: lender_name ?? null },
+      summary: {
+        entry_count: lenders.length,
+        distinct_lenders: new Set(lenders.map((l) => l.name ?? "unknown")).size,
+        distinct_deals: new Set(lenders.map((l) => l.deal_id)).size,
+        total_quoted: sum(lenders.map(quote)),
+        submitted,
+        approved,
+        passed: lenders.filter((l) => l.passed_at).length,
+        declined: lenders.filter((l) => l.declined_at).length,
+        submit_to_approve_rate: submitted ? approved / submitted : 0
+      },
+      by_stage: groupAggregate(lenders, (l) => l.stage ?? "unknown", quote),
+      by_tracking_status: groupAggregate(lenders, (l) => l.tracking_status ?? "unknown", quote),
+      by_lender: groupAggregate(lenders, (l) => l.name ?? "unknown", quote).slice(0, 100),
+      top_pass_reasons: groupAggregate(
+        lenders.filter((l) => l.pass_reason),
+        (l) => (l.pass_reason ?? "").slice(0, 120),
+        () => 0
+      ).sort((a, b) => b.count - a.count).slice(0, 25)
+    };
+    return textResult(payload, payload);
+  }
+});
+
+// src/lib/mcp/tools/get-metric-targets.ts
+import { defineTool as defineTool30 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z30 } from "npm:zod@^3.23.0";
+var get_metric_targets_default = defineTool30({
+  name: "get_metric_targets",
+  title: "Get Insights plan targets and manual metric inputs",
+  description: "Return the Master Plan targets (insights_metric_targets: metric key/label, month, target value, notes) and the manually entered metric values (metric_manual_inputs) that the Insights 'Performance to Plan' and 'Variance' widgets compare actuals against. Filter by metric_key and/or a month range (YYYY-MM).",
+  inputSchema: {
+    metric_key: z30.string().trim().max(120).optional(),
+    month_from: z30.string().trim().max(7).optional().describe("Inclusive lower bound, format YYYY-MM."),
+    month_to: z30.string().trim().max(7).optional().describe("Inclusive upper bound, format YYYY-MM.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ metric_key, month_from, month_to }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    let targets = sb.from("insights_metric_targets").select("id, metric_key, metric_label, period_month, target_value, notes, updated_at").order("period_month", { ascending: true }).limit(1e3);
+    let manual = sb.from("metric_manual_inputs").select("id, metric_key, month_key, value, updated_at").order("month_key", { ascending: true }).limit(1e3);
+    if (metric_key) {
+      targets = targets.eq("metric_key", metric_key);
+      manual = manual.eq("metric_key", metric_key);
+    }
+    if (month_from) {
+      targets = targets.gte("period_month", month_from);
+      manual = manual.gte("month_key", month_from);
+    }
+    if (month_to) {
+      targets = targets.lte("period_month", month_to);
+      manual = manual.lte("month_key", month_to);
+    }
+    const [{ data: targetRows, error: targetError }, { data: manualRows, error: manualError }] = await Promise.all([
+      targets,
+      manual
+    ]);
+    if (targetError) return errorResult(targetError.message);
+    if (manualError) return errorResult(manualError.message);
+    const payload = { targets: targetRows ?? [], manual_inputs: manualRows ?? [] };
+    return textResult(payload, payload);
+  }
+});
+
+// src/lib/mcp/tools/query-insights-dataset.ts
+import { defineTool as defineTool31 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z31 } from "npm:zod@^3.23.0";
+var OPERATORS = ["eq", "neq", "gt", "gte", "lt", "lte", "like", "ilike", "is", "in"];
+var query_insights_dataset_default = defineTool31({
+  name: "query_insights_dataset",
+  title: "Query any Insights source dataset",
+  description: `Read-only escape hatch for the Insights page: query any of its underlying datasets directly when no purpose-built metric tool covers the question. Allowed datasets: ${INSIGHTS_DATASETS.join(", ")}. Supply optional column selection, filters (column + operator + value), ordering, and a row limit. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.`,
+  inputSchema: {
+    dataset: z31.enum(INSIGHTS_DATASETS),
+    columns: z31.string().trim().max(1e3).optional().describe("Comma-separated column list; defaults to all columns."),
+    filters: z31.array(
+      z31.object({
+        column: z31.string().trim().min(1).max(80),
+        op: z31.enum(OPERATORS).default("eq"),
+        value: z31.union([z31.string(), z31.number(), z31.boolean(), z31.null(), z31.array(z31.union([z31.string(), z31.number()]))])
+      })
+    ).max(10).optional(),
+    order_by: z31.string().trim().max(80).optional(),
+    ascending: z31.boolean().default(false),
+    limit: z31.number().int().min(1).max(1e3).default(200)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ dataset, columns, filters, order_by, ascending, limit }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    let q = sb.from(dataset).select(columns?.trim() || "*").limit(limit);
+    for (const f of filters ?? []) {
+      switch (f.op) {
+        case "in":
+          q = q.in(f.column, Array.isArray(f.value) ? f.value : [f.value]);
+          break;
+        case "is":
+          q = q.is(f.column, f.value);
+          break;
+        default:
+          q = q[f.op](f.column, f.value);
+      }
+    }
+    if (order_by) q = q.order(order_by, { ascending, nullsFirst: false });
+    const { data, error } = await q;
+    if (error) {
+      console.error("[query_insights_dataset] error", { dataset, user_id: ctx.getUserId?.(), message: error.message });
+      return errorResult(error.message);
+    }
+    const rows = data ?? [];
+    return textResult(rows, { dataset, count: rows.length, rows });
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "tgkksvazruzbghssnxde";
 var mcp_default = defineMcp({
   name: "naitive-api",
   title: "naitive API",
   version: "0.1.0",
-  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals, `update_deal` to move stage or edit fields, `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups, `search_lenders`/`add_lender_to_deal` for the funding-source directory, `list_deal_funding_sources` to read the lenders attached to a specific deal (matches the deal's Funding Sources tab), and \u2014 for deep deal context \u2014 `search_deal_notes`, `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal. Daily rundown tools (`get_daily_rundown`, `add_daily_rundown_item`, `update_daily_rundown_item`, `complete_daily_rundown_item`, `reorder_daily_rundown_items`) manage the personal dashboard rundown \u2014 access is restricted to jturner@5thline.co and enforced at the database (RLS) and edge-function layers.",
+  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals, `update_deal` to move stage or edit fields, `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups, `search_lenders`/`add_lender_to_deal` for the funding-source directory, `list_deal_funding_sources` to read the lenders attached to a specific deal (matches the deal's Funding Sources tab), and \u2014 for deep deal context \u2014 `search_deal_notes`, `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal. Daily rundown tools (`get_daily_rundown`, `add_daily_rundown_item`, `update_daily_rundown_item`, `complete_daily_rundown_item`, `reorder_daily_rundown_items`) manage the personal dashboard rundown \u2014 access is restricted to jturner@5thline.co and enforced at the database (RLS) and edge-function layers. Insights analytics tools give full read access to everything on the Insights page: `list_insights_dashboards` enumerates dashboards, saved widget layouts, and custom formula metrics; `get_pipeline_metrics` returns deal-pipeline aggregates (value, fees, counts) broken down by stage, status, type, manager, owner, pipeline, and month for any timeframe; `get_funnel_velocity` returns stage conversion and time-in-stage analytics; `get_revenue_metrics` returns QuickBooks invoiced revenue by month/customer/entity plus P&L snapshots; `get_lender_metrics` returns funding-source funnel analytics; `get_metric_targets` returns Master Plan targets and manual inputs for plan-vs-actual comparisons; and `query_insights_dataset` is a read-only escape hatch over every underlying Insights dataset. All of them apply the same global test-deal exclusions and RLS scoping as the UI.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
@@ -925,7 +1361,14 @@ var mcp_default = defineMcp({
     add_daily_rundown_item_default,
     update_daily_rundown_item_default,
     complete_daily_rundown_item_default,
-    reorder_daily_rundown_items_default
+    reorder_daily_rundown_items_default,
+    list_insights_dashboards_default,
+    get_pipeline_metrics_default,
+    get_funnel_velocity_default,
+    get_revenue_metrics_default,
+    get_lender_metrics_default,
+    get_metric_targets_default,
+    query_insights_dataset_default
   ]
 });
 

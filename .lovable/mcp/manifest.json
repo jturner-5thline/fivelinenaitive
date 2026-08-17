@@ -986,6 +986,375 @@
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
+      },
+      {
+        "name": "list_insights_dashboards",
+        "title": "List Insights dashboards and widgets",
+        "description": "List every dashboard available on the Insights page (id, display name, folder, favorite flag) together with the caller's saved widget layouts and any custom (formula-based) metrics defined for the workspace. Use this to discover which dashboards and widgets exist before pulling their data with get_pipeline_metrics, get_revenue_metrics, get_lender_metrics, get_metric_targets, or query_insights_dataset.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "dashboard_id": {
+              "type": "string",
+              "maxLength": 80,
+              "description": "Only return layouts for this dashboard id."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_pipeline_metrics",
+        "title": "Get pipeline metrics (Insights)",
+        "description": "Compute the deal-pipeline metrics that power the Insights dashboards: total and average deal value, fee totals (total/retainer/milestone), deal counts, and breakdowns by stage, status, deal type, manager, owner, pipeline, and month. Supports a timeframe window on created_at, updated_at, or closing date, plus optional pipeline/manager/status filters. Global test-deal exclusions (Test-Niki's Store, Example Deal, names starting with 'test ') are applied exactly as in the UI.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "date_field": {
+              "type": "string",
+              "enum": [
+                "created_at",
+                "updated_at",
+                "closing_date",
+                "dashboard_closing_date"
+              ],
+              "default": "created_at",
+              "description": "Which date column the timeframe window applies to."
+            },
+            "from": {
+              "type": "string",
+              "maxLength": 40,
+              "description": "ISO date/timestamp lower bound (inclusive)."
+            },
+            "to": {
+              "type": "string",
+              "maxLength": 40,
+              "description": "ISO date/timestamp upper bound (exclusive)."
+            },
+            "pipeline_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "manager": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "status": {
+              "type": "string",
+              "maxLength": 60
+            },
+            "stage": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "include_deals": {
+              "type": "boolean",
+              "default": false,
+              "description": "Also return the underlying deal rows used in the aggregation."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_funnel_velocity",
+        "title": "Get funnel velocity / stage durations",
+        "description": "Return stage-conversion and time-in-stage analytics used by the Insights funnel and velocity widgets. Provide an ordered stage_path (stage ids) to get conversion counts and median/average days between those stages; set consecutive_only to require direct stage-to-stage transitions. Optionally pass deal_id instead to get that single deal's per-stage durations.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "stage_path": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "minItems": 2,
+              "maxItems": 20,
+              "description": "Ordered list of stage ids, e.g. ['nda-needs-list','on-deck','closed-won']."
+            },
+            "consecutive_only": {
+              "type": "boolean",
+              "default": false
+            },
+            "deal_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "When set, returns per-stage durations for this deal instead."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_revenue_metrics",
+        "title": "Get revenue metrics (QuickBooks / Insights financial widgets)",
+        "description": "Return the accounting data behind the Insights financial dashboards: invoiced revenue by month, by customer, and by QuickBooks entity (realm), plus outstanding balances, and the P&L snapshots (income, COGS, gross profit, operating expenses, net operating income) for the requested window. Use from/to to bound the period and realm_id to scope to a single entity.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "maxLength": 40,
+              "description": "ISO date lower bound (inclusive) on invoice txn_date / snapshot period."
+            },
+            "to": {
+              "type": "string",
+              "maxLength": 40,
+              "description": "ISO date upper bound (exclusive)."
+            },
+            "realm_id": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "QuickBooks entity/realm id to scope to."
+            },
+            "include_invoices": {
+              "type": "boolean",
+              "default": false,
+              "description": "Also return the underlying invoice rows."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_lender_metrics",
+        "title": "Get lender / funding-source metrics (Lender Intelligence dashboard)",
+        "description": "Return the funding-source analytics behind the Lender Intelligence and funnel widgets: counts and quoted amounts by lender stage, tracking bucket (active / on-deck / on-hold / passed / excluded), and by lender name, plus top pass reasons and submission-to-approval conversion. Timeframe bounds apply to created_at or last_status_change_at; test deals are excluded.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "date_field": {
+              "type": "string",
+              "enum": [
+                "created_at",
+                "last_status_change_at",
+                "submitted_at"
+              ],
+              "default": "created_at"
+            },
+            "from": {
+              "type": "string",
+              "maxLength": 40
+            },
+            "to": {
+              "type": "string",
+              "maxLength": 40
+            },
+            "deal_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Scope to a single deal."
+            },
+            "lender_name": {
+              "type": "string",
+              "maxLength": 160
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_metric_targets",
+        "title": "Get Insights plan targets and manual metric inputs",
+        "description": "Return the Master Plan targets (insights_metric_targets: metric key/label, month, target value, notes) and the manually entered metric values (metric_manual_inputs) that the Insights 'Performance to Plan' and 'Variance' widgets compare actuals against. Filter by metric_key and/or a month range (YYYY-MM).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "metric_key": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "month_from": {
+              "type": "string",
+              "maxLength": 7,
+              "description": "Inclusive lower bound, format YYYY-MM."
+            },
+            "month_to": {
+              "type": "string",
+              "maxLength": 7,
+              "description": "Inclusive upper bound, format YYYY-MM."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "query_insights_dataset",
+        "title": "Query any Insights source dataset",
+        "description": "Read-only escape hatch for the Insights page: query any of its underlying datasets directly when no purpose-built metric tool covers the question. Allowed datasets: deals, deal_lenders, deal_pipelines, deal_stage_history, deal_milestones, deal_computed_metrics, deal_stage_durations, deal_stage_transitions, outstanding_items, tasks, activity_logs, contacts, crm_companies, master_lenders, custom_metrics, insights_metric_targets, metric_manual_inputs, dashboard_grid_layouts, dashboard_layouts, quickbooks_invoices, quickbooks_customers, quickbooks_payments, quickbooks_expenses, quickbooks_bills, quickbooks_reports, qbo_pnl_snapshots, qbo_cashflow_snapshots, claap_meetings, team_interaction_metrics. Supply optional column selection, filters (column + operator + value), ordering, and a row limit. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "dataset": {
+              "type": "string",
+              "enum": [
+                "deals",
+                "deal_lenders",
+                "deal_pipelines",
+                "deal_stage_history",
+                "deal_milestones",
+                "deal_computed_metrics",
+                "deal_stage_durations",
+                "deal_stage_transitions",
+                "outstanding_items",
+                "tasks",
+                "activity_logs",
+                "contacts",
+                "crm_companies",
+                "master_lenders",
+                "custom_metrics",
+                "insights_metric_targets",
+                "metric_manual_inputs",
+                "dashboard_grid_layouts",
+                "dashboard_layouts",
+                "quickbooks_invoices",
+                "quickbooks_customers",
+                "quickbooks_payments",
+                "quickbooks_expenses",
+                "quickbooks_bills",
+                "quickbooks_reports",
+                "qbo_pnl_snapshots",
+                "qbo_cashflow_snapshots",
+                "claap_meetings",
+                "team_interaction_metrics"
+              ]
+            },
+            "columns": {
+              "type": "string",
+              "maxLength": 1000,
+              "description": "Comma-separated column list; defaults to all columns."
+            },
+            "filters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "column": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "op": {
+                    "type": "string",
+                    "enum": [
+                      "eq",
+                      "neq",
+                      "gt",
+                      "gte",
+                      "lt",
+                      "lte",
+                      "like",
+                      "ilike",
+                      "is",
+                      "in"
+                    ],
+                    "default": "eq"
+                  },
+                  "value": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": [
+                            "string",
+                            "number"
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "column",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 10
+            },
+            "order_by": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "ascending": {
+              "type": "boolean",
+              "default": false
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 200
+            }
+          },
+          "required": [
+            "dataset"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
       }
     ]
   }
