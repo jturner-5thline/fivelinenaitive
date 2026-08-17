@@ -7436,14 +7436,17 @@ export default function DealDetail() {
         </Suspense>
       )}
 
-      {/* Floating left/right pipeline navigation arrows */}
       </div>
-      <DealDetailSideNavigation
-        currentDealId={deal.id}
-        pipelineId={deal.pipelineId}
-        dealClass={deal.dealClass}
-        companyId={company?.id}
-      />
+      {/* Floating left/right pipeline arrows are only for the standalone
+          /deal route. Inside the modal, navigation lives in the header. */}
+      {!isEmbedded && (
+        <DealDetailSideNavigation
+          currentDealId={deal.id}
+          pipelineId={deal.pipelineId}
+          dealClass={deal.dealClass}
+          companyId={company?.id}
+        />
+      )}
     </>
   );
 }
