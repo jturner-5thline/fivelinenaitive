@@ -20,6 +20,13 @@ import { loadDealDetail } from '@/lib/lazyDealDetail';
 // one in-flight promise and one emitted chunk.
 const DealDetail = lazy(() => loadDealDetail());
 
+/** Compact, enterprise-grade header nav button. 44px min hit area. */
+const navButtonClass =
+  'inline-flex h-11 items-center gap-1.5 rounded-lg border border-white/15 bg-background/85 px-3 text-[13px] font-medium text-foreground shadow-sm backdrop-blur transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40 whitespace-nowrap';
+
+const segmentButtonClass =
+  'inline-flex h-11 w-11 items-center justify-center text-foreground transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-40';
+
 interface Props {
   /** Currently open deal. Null when overlay is closed. */
   deal: Deal | null;
