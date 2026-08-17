@@ -2967,7 +2967,9 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   /* Match the Tasks widget surface exactly. */
   background-color: #020611 !important;
   background-image: none !important;
-  border: var(--deal-module-border) solid var(--deal-module-border-color) !important;
+  border: 0 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.55) !important;
+  border-radius: 0 !important;
 }
 /* Breathing room between the box's left edge and the status text. */
 .status-note-2rows .status-note-editor .ProseMirror,
