@@ -65,6 +65,9 @@ export function CreateCrmCompanyModal({ open, onClose, initialName, onCreated }:
       const d = new Date(String(payload.created_at));
       payload.created_at = isNaN(d.getTime()) ? null : d.toISOString();
     }
+    // created_at is NOT NULL in the database — never send an explicit null,
+    // just omit it so the default (now()) applies.
+    if (payload.created_at == null) delete payload.created_at;
     create.mutate(payload as any, {
       onSuccess: (created: any) => {
         onClose();
