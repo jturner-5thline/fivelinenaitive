@@ -2964,8 +2964,10 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 }
 /* Status note box colors */
 .status-note-2rows .status-note-editor {
-  background-color: #12141f !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  /* Match the Tasks widget surface exactly. */
+  background-color: #020611 !important;
+  background-image: none !important;
+  border: var(--deal-module-border) solid var(--deal-module-border-color) !important;
 }
 /* Breathing room between the box's left edge and the status text. */
 .status-note-2rows .status-note-editor .ProseMirror,
