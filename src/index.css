@@ -3346,3 +3346,36 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
     rgba(0, 0, 0, 0) 100%
   );
 }
+
+/* Theme-aware status note divider + fade.
+   The line keeps a readable contrast in both themes and the corner fade is
+   spread over a wider band so it reads as a dissolve, not a cut. */
+.status-note-2rows .status-note-editor,
+.deal-detail-surface .status-note-2rows .status-note-editor {
+  --status-note-line: hsl(var(--foreground) / 0.35);
+  border-image: linear-gradient(
+      100deg,
+      var(--status-note-line) 0%,
+      hsl(var(--foreground) / 0.22) 62%,
+      hsl(var(--foreground) / 0) 100%
+    )
+    1 !important;
+  -webkit-mask-image: radial-gradient(
+    165% 230% at 2% 0%,
+    #000 70%,
+    rgba(0, 0, 0, 0.72) 84%,
+    rgba(0, 0, 0, 0.3) 94%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  mask-image: radial-gradient(
+    165% 230% at 2% 0%,
+    #000 70%,
+    rgba(0, 0, 0, 0.72) 84%,
+    rgba(0, 0, 0, 0.3) 94%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+.dark .status-note-2rows .status-note-editor,
+.dark .deal-detail-surface .status-note-2rows .status-note-editor {
+  --status-note-line: hsl(var(--foreground) / 0.55);
+}
