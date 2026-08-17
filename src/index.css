@@ -3266,8 +3266,11 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 
 /* The inner badge is flush with the trigger — the outer control owns the
    fill, border and radius. Keeps the status dot / stage accent. */
+.deal-rail-control > span,
+.deal-rail-control > span > span,
 .deal-detail-surface .deal-rail-control > span,
 .deal-detail-surface .deal-rail-control > span > span,
+.deal-rail-control [class*="rounded-full"]:not(.h-1\.5):not([class*="h-1.5"]),
 .deal-detail-surface .deal-rail-control [class*="rounded-full"]:not(.h-1\.5):not([class*="h-1.5"]) {
   height: auto !important;
   min-height: 0 !important;
@@ -3283,6 +3286,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 }
 
 /* Colored status dots stay circular. */
+.deal-rail-control span[class*="h-1.5"][class*="w-1.5"],
 .deal-detail-surface .deal-rail-control span[class*="h-1.5"][class*="w-1.5"] {
   border-radius: 9999px !important;
   height: 6px !important;
@@ -3291,8 +3295,10 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 
 /* Any badge nested inside the status/stage trigger is chrome-free — the
    outer control supplies the fill, border and radius. */
+.deal-rail-control :is(div, span):not([class*="h-1.5"]):not(.rounded-full[class*="w-1.5"]),
 .deal-detail-surface .deal-rail-control :is(div, span):not([class*="h-1.5"]):not(.rounded-full[class*="w-1.5"]) {
   border: 0 !important;
+  outline: none !important;
   background: transparent !important;
   background-image: none !important;
   box-shadow: none !important;
