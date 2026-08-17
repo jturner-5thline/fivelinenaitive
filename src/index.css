@@ -3258,8 +3258,8 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    controls. Width stays content-sized. */
 .deal-detail-surface .deal-rail-control,
 .deal-rail-control {
-  min-height: 48px;
-  height: 48px;
+  min-height: 36px;
+  height: 36px;
   padding: 0 8px !important;
   display: inline-flex;
   align-items: center;
