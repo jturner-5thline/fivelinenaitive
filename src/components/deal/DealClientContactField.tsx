@@ -235,9 +235,9 @@ export function DealClientContactField({
         <Popover open={contactPopoverOpen} onOpenChange={onContactPopoverOpenChange}>
           <PopoverTrigger asChild>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="h-7 px-2 text-xs gap-1 font-normal"
+              className="h-6 px-2 text-xs gap-1 font-normal text-muted-foreground hover:text-foreground"
               type="button"
             >
               {chips.length === 0 ? (
