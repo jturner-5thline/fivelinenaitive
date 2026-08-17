@@ -478,10 +478,9 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
                 aria-expanded={jumpOpen}
                 aria-label="Jump to deal"
                 title="Jump to deal"
-                className={cn(navButtonClass, 'max-w-[14rem] md:max-w-[18rem]')}
+                className={cn(navButtonClass, 'px-2')}
               >
-                <span className="truncate">{deal?.company || 'Jump to deal'}</span>
-                <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-60" />
+                <ChevronsUpDown className="h-4 w-4 shrink-0" />
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" className="z-[70] w-[20rem] p-0">
