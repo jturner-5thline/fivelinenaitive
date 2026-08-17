@@ -322,6 +322,21 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
     }, 360);
   };
 
+  /** Jump directly to any deal in the current ordered list. */
+  const jumpTo = (target: Deal) => {
+    setJumpOpen(false);
+    if (!target || target.id === deal?.id) return;
+    const targetIdx = orderedDeals.findIndex(d => d.id === target.id);
+    const dir: 'prev' | 'next' = targetIdx < idx ? 'prev' : 'next';
+    navDirRef.current = dir;
+    setNavDir(dir);
+    onNavigate(target);
+    window.setTimeout(() => {
+      navDirRef.current = null;
+      setNavDir(null);
+    }, 360);
+  };
+
   // Esc + arrow key navigation. Skip when focus is in an editable element
   // inside the overlay so typing still works inside DealDetail.
   useEffect(() => {
