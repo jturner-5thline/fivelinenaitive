@@ -469,6 +469,48 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
         {/* Header navigation zone — prev/next deal + close, all on one
             row so nothing floats over the modal body content. */}
         <div className="absolute top-2 right-2 z-[60] flex items-center gap-1.5">
+          {/* Jump to any deal without leaving the modal */}
+          <Popover open={jumpOpen} onOpenChange={setJumpOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                role="combobox"
+                aria-expanded={jumpOpen}
+                aria-label="Jump to deal"
+                title="Jump to deal"
+                className={cn(navButtonClass, 'max-w-[14rem] md:max-w-[18rem]')}
+              >
+                <span className="truncate">{deal?.company || 'Jump to deal'}</span>
+                <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-60" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="z-[70] w-[20rem] p-0">
+              <Command>
+                <CommandInput placeholder="Search deals…" />
+                <CommandList className="max-h-[18rem]">
+                  <CommandEmpty>No deals found.</CommandEmpty>
+                  <CommandGroup>
+                    {orderedDeals.map((d) => (
+                      <CommandItem
+                        key={d.id}
+                        value={`${d.company ?? ''} ${d.id}`}
+                        onSelect={() => jumpTo(d)}
+                      >
+                        <Check
+                          className={cn(
+                            'mr-2 h-4 w-4 shrink-0',
+                            d.id === deal?.id ? 'opacity-100' : 'opacity-0',
+                          )}
+                        />
+                        <span className="truncate">{d.company || 'Untitled deal'}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+
           {/* Desktop: labeled buttons. Mobile/tablet: compact segmented control. */}
           <div className="hidden md:flex items-center gap-1.5">
             <button
