@@ -3250,3 +3250,56 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   -webkit-text-fill-color: #ffffff !important;
   opacity: 1 !important;
 }
+
+/* ── Status & Stage selectors: match the rail field chrome ────────────────
+   Same 32px height, 8px radius and padding as the Close date / Deal manager
+   controls. Width stays content-sized. */
+.deal-detail-surface .deal-rail-control,
+.deal-rail-control {
+  min-height: 32px;
+  height: 32px;
+  padding: 0 8px !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The inner badge is flush with the trigger — the outer control owns the
+   fill, border and radius. Keeps the status dot / stage accent. */
+.deal-detail-surface .deal-rail-control > span,
+.deal-detail-surface .deal-rail-control > span > span,
+.deal-detail-surface .deal-rail-control [class*="rounded-full"]:not(.h-1\.5):not([class*="h-1.5"]) {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  border-radius: 0 !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+}
+
+/* Colored status dots stay circular. */
+.deal-detail-surface .deal-rail-control span[class*="h-1.5"][class*="w-1.5"] {
+  border-radius: 9999px !important;
+  height: 6px !important;
+  width: 6px !important;
+}
+
+/* Any badge nested inside the status/stage trigger is chrome-free — the
+   outer control supplies the fill, border and radius. */
+.deal-detail-surface .deal-rail-control :is(div, span):not([class*="h-1.5"]):not(.rounded-full[class*="w-1.5"]) {
+  border: 0 !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  text-shadow: none !important;
+  border-radius: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
