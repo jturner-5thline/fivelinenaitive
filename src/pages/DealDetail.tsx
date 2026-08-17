@@ -3648,7 +3648,14 @@ export default function DealDetail() {
           {/* Deal identity header: name + amount pinned to the very top of
               the deal pop-up (moved out of the left context rail). */}
           {useContextRailLayout && (
-            <div className="flex flex-row flex-wrap items-baseline gap-x-3 gap-y-1 mt-4 min-w-0">
+            <div
+              className={cn(
+                "flex flex-row flex-wrap items-baseline gap-x-3 gap-y-1 mt-4 min-w-0",
+                // Reserve the modal header's navigation zone (prev/next + close)
+                // so the deal title never sits underneath it.
+                isEmbedded && "pr-32 md:pr-[22rem]",
+              )}
+            >
               <InlineEditField
                 value={deal.company}
                 manualCommit
