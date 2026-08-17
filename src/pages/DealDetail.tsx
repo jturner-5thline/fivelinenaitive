@@ -1065,6 +1065,33 @@ export default function DealDetail() {
   const [railPanelSlot, setRailPanelSlot] = useState<HTMLDivElement | null>(null);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
 
+  // Deal name + amount header: shrink the font so the line never wraps on
+  // narrow viewports. Measured against the available header width.
+  const headerFitRef = useRef<HTMLDivElement | null>(null);
+  const [headerFontPx, setHeaderFontPx] = useState(43.2); // 2.7rem
+
+  useEffect(() => {
+    const el = headerFitRef.current;
+    if (!el) return;
+    const MAX = 43.2;
+    const MIN = 16;
+    const fit = () => {
+      const available = el.clientWidth;
+      if (!available) return;
+      el.style.fontSize = `${MAX}px`;
+      const needed = el.scrollWidth;
+      const next = needed > available
+        ? Math.max(MIN, Math.floor((MAX * available) / needed))
+        : MAX;
+      el.style.fontSize = `${next}px`;
+      setHeaderFontPx(next);
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [deal?.company, deal?.value, useContextRailLayout, isEmbedded]);
+
   // Projects pipeline (currently Blount Capital only) is a fully siloed
   // pipeline: only Deal Info + Data Room tabs are visible/functional, no
   // outstanding items widget, no dollar value, and pipeline moves are
