@@ -3649,25 +3649,27 @@ export default function DealDetail() {
               the deal pop-up (moved out of the left context rail). */}
           {useContextRailLayout && (
             <div
+              ref={headerFitRef}
               className={cn(
-                "flex flex-row flex-wrap items-baseline gap-x-3 gap-y-1 mt-4 min-w-0",
+                "flex flex-row flex-nowrap items-baseline gap-x-3 mt-4 min-w-0 whitespace-nowrap",
                 // Reserve the modal header's navigation zone (prev/next + close)
                 // so the deal title never sits underneath it.
                 isEmbedded && "pr-32 md:pr-[22rem]",
               )}
+              style={{ fontSize: headerFontPx }}
             >
               <InlineEditField
                 value={deal.company}
                 manualCommit
                 fieldName="Deal name"
                 onSave={(value) => updateDeal('company' as any, value as any)}
-                className="w-auto max-w-full shrink"
-                displayClassName="text-[2rem] md:text-[2.7rem] font-bold leading-tight break-words text-foreground"
+                className="w-auto max-w-full shrink-0"
+                displayClassName="text-[1em] font-bold leading-tight whitespace-nowrap text-foreground"
                 inputClassName="w-auto max-w-full [field-sizing:content] deal-header-field"
               />
               <span
                 aria-hidden
-                className="text-[2rem] md:text-[2.7rem] font-bold leading-tight text-muted-foreground/70"
+                className="text-[1em] font-bold leading-tight text-muted-foreground/70"
               >
                 -
               </span>
@@ -3679,7 +3681,7 @@ export default function DealDetail() {
                 fieldName="Deal amount"
                 onSave={(value) => updateDeal('value' as any, (parseCurrencyInputValue(value) ?? 0) as any)}
                 className="w-auto shrink-0"
-                displayClassName="text-[2rem] md:text-[2.7rem] font-bold leading-none text-primary"
+                displayClassName="text-[1em] font-bold leading-none whitespace-nowrap text-primary"
                 inputClassName="w-auto [field-sizing:content] deal-header-field"
               />
             </div>
