@@ -1,7 +1,7 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser, requireAuth, textResult, errorResult } from "../supabase";
-import { DASHBOARD_OPTIONS } from "@/config/insightsDashboards";
+import { DASHBOARD_OPTIONS } from "../insights";
 
 export default defineTool({
   name: "list_insights_dashboards",

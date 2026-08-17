@@ -76,3 +76,19 @@ export const INSIGHTS_DATASETS = [
 ] as const;
 
 export type InsightsDataset = (typeof INSIGHTS_DATASETS)[number];
+
+/**
+ * Insights dashboard catalog. Mirrors `src/config/insightsDashboards.ts`; kept
+ * inline so the MCP bundle stays free of app-path aliases.
+ */
+export const DASHBOARD_OPTIONS = [
+  { id: "management-snapshot", name: "Weekly Rundown", isFavorite: true, folder: "management-insights" },
+  { id: "revenue-customers", name: "Revenue & Customers", isFavorite: false, folder: "financial" },
+  { id: "controller-dashboard", name: "Controller Dashboard", isFavorite: false, folder: "financial" },
+  { id: "sales-dashboard-v2", name: "Sales Dashboard", isFavorite: false, folder: "sales-bd" },
+  { id: "finserv-financial-metrics", name: "FinServ Financial Metrics", isFavorite: false, folder: null },
+  { id: "consolidated-debt-pipeline", name: "Debt Advisory Metrics", isFavorite: false, folder: "sales-bd" },
+  { id: "lender-intelligence", name: "Lender Intelligence Dashboard", isFavorite: false, folder: "sales-bd" },
+  { id: "sales-bd-roi", name: "Sales & BD ROI", isFavorite: false, folder: "sales-bd" },
+  { id: "management-review", name: "Insights Dashboard", isFavorite: false, folder: "management-insights" },
+] as const;
