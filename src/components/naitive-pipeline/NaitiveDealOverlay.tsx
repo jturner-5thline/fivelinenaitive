@@ -20,6 +20,13 @@ import { loadDealDetail } from '@/lib/lazyDealDetail';
 // one in-flight promise and one emitted chunk.
 const DealDetail = lazy(() => loadDealDetail());
 
+/** Compact, enterprise-grade header nav button. 44px min hit area. */
+const navButtonClass =
+  'inline-flex h-11 items-center gap-1.5 rounded-lg border border-white/15 bg-background/85 px-3 text-[13px] font-medium text-foreground shadow-sm backdrop-blur transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40 whitespace-nowrap';
+
+const segmentButtonClass =
+  'inline-flex h-11 w-11 items-center justify-center text-foreground transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-40';
+
 interface Props {
   /** Currently open deal. Null when overlay is closed. */
   deal: Deal | null;
@@ -434,56 +441,80 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
               'linear-gradient(180deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.015) 18%, rgba(255,255,255,0) 40%)',
           }}
         />
-        {/* Floating close — preserves close behavior without adding header chrome */}
-        <Button
-          ref={closeBtnRef}
-          variant="ghost"
-          size="icon"
-          className="absolute top-2 right-2 z-[60] h-8 w-8 rounded-full bg-background/70 backdrop-blur hover:bg-background"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            animateClose();
-          }}
-          onPointerDown={(e) => {
-            // Prevent the pointerdown from leaking to underlying page controls
-            // (e.g., the "New Deal" button) while the overlay is animating closed.
-            e.stopPropagation();
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
-          onPointerUp={(e) => e.stopPropagation()}
-          onMouseUp={(e) => e.stopPropagation()}
-          aria-label="Close"
-          title="Close (Esc)"
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        {/* Header navigation zone — prev/next deal + close, all on one
+            row so nothing floats over the modal body content. */}
+        <div className="absolute top-2 right-2 z-[60] flex items-center gap-1.5">
+          {/* Desktop: labeled buttons. Mobile/tablet: compact segmented control. */}
+          <div className="hidden md:flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={goPrev}
+              disabled={!prevDeal}
+              aria-label={`Previous deal${prevDeal?.company ? `: ${prevDeal.company}` : ''}`}
+              title="Previous deal (←)"
+              className={navButtonClass}
+            >
+              <ChevronLeft className="h-4 w-4 shrink-0" />
+              <span>Previous deal</span>
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={!nextDeal}
+              aria-label={`Next deal${nextDeal?.company ? `: ${nextDeal.company}` : ''}`}
+              title="Next deal (→)"
+              className={navButtonClass}
+            >
+              <span>Next deal</span>
+              <ChevronRight className="h-4 w-4 shrink-0" />
+            </button>
+          </div>
 
-        {/* Side carousel arrows — subtle hint that ←/→ navigates between deals */}
-        {prevDeal && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={goPrev}
-            aria-label={`Previous deal${prevDeal.company ? `: ${prevDeal.company}` : ''}`}
-            title="Previous deal (←)"
-            className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-background/40 backdrop-blur-md border border-white/10 text-foreground/70 opacity-60 hover:opacity-100 hover:bg-background/70 hover:text-foreground transition-opacity"
+          <div className="flex md:hidden items-center rounded-lg border border-white/15 bg-background/85 shadow-sm backdrop-blur overflow-hidden">
+            <button
+              type="button"
+              onClick={goPrev}
+              disabled={!prevDeal}
+              aria-label="Previous deal"
+              className={segmentButtonClass}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span aria-hidden className="h-6 w-px bg-white/15" />
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={!nextDeal}
+              aria-label="Next deal"
+              className={segmentButtonClass}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          <button
+            ref={closeBtnRef}
+            type="button"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-white/15 bg-background/85 text-foreground shadow-sm backdrop-blur transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              animateClose();
+            }}
+            onPointerDown={(e) => {
+              // Prevent the pointerdown from leaking to underlying page controls
+              // (e.g., the "New Deal" button) while the overlay is animating closed.
+              e.stopPropagation();
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
+            onMouseUp={(e) => e.stopPropagation()}
+            aria-label="Close"
+            title="Close (Esc)"
           >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-        )}
-        {nextDeal && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={goNext}
-            aria-label={`Next deal${nextDeal.company ? `: ${nextDeal.company}` : ''}`}
-            title="Next deal (→)"
-            className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-background/40 backdrop-blur-md border border-white/10 text-foreground/70 opacity-60 hover:opacity-100 hover:bg-background/70 hover:text-foreground transition-opacity"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-        )}
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
         {/* Body — render the deal detail page directly in the same React
             tree (was previously an iframe). This shares the parent app's
