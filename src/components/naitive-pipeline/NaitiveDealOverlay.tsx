@@ -4,7 +4,16 @@ import { Routes, Route, useResolvedPath } from 'react-router-dom';
 import { Deal } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsUpDown, Check, X } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import {
   consumeDealOpenOriginRect,
@@ -52,6 +61,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
   const [reduceMotion, setReduceMotion] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [jumpOpen, setJumpOpen] = useState(false);
 
   // Expand-from-tile animation state. When `originTransform` is set, the
   // panel renders pinned to the clicked tile's rect and then transitions
@@ -312,6 +322,21 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
     }, 360);
   };
 
+  /** Jump directly to any deal in the current ordered list. */
+  const jumpTo = (target: Deal) => {
+    setJumpOpen(false);
+    if (!target || target.id === deal?.id) return;
+    const targetIdx = orderedDeals.findIndex(d => d.id === target.id);
+    const dir: 'prev' | 'next' = targetIdx < idx ? 'prev' : 'next';
+    navDirRef.current = dir;
+    setNavDir(dir);
+    onNavigate(target);
+    window.setTimeout(() => {
+      navDirRef.current = null;
+      setNavDir(null);
+    }, 360);
+  };
+
   // Esc + arrow key navigation. Skip when focus is in an editable element
   // inside the overlay so typing still works inside DealDetail.
   useEffect(() => {
@@ -444,6 +469,48 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
         {/* Header navigation zone — prev/next deal + close, all on one
             row so nothing floats over the modal body content. */}
         <div className="absolute top-2 right-2 z-[60] flex items-center gap-1.5">
+          {/* Jump to any deal without leaving the modal */}
+          <Popover open={jumpOpen} onOpenChange={setJumpOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                role="combobox"
+                aria-expanded={jumpOpen}
+                aria-label="Jump to deal"
+                title="Jump to deal"
+                className={cn(navButtonClass, 'max-w-[14rem] md:max-w-[18rem]')}
+              >
+                <span className="truncate">{deal?.company || 'Jump to deal'}</span>
+                <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-60" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="z-[70] w-[20rem] p-0">
+              <Command>
+                <CommandInput placeholder="Search deals…" />
+                <CommandList className="max-h-[18rem]">
+                  <CommandEmpty>No deals found.</CommandEmpty>
+                  <CommandGroup>
+                    {orderedDeals.map((d) => (
+                      <CommandItem
+                        key={d.id}
+                        value={`${d.company ?? ''} ${d.id}`}
+                        onSelect={() => jumpTo(d)}
+                      >
+                        <Check
+                          className={cn(
+                            'mr-2 h-4 w-4 shrink-0',
+                            d.id === deal?.id ? 'opacity-100' : 'opacity-0',
+                          )}
+                        />
+                        <span className="truncate">{d.company || 'Untitled deal'}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+
           {/* Desktop: labeled buttons. Mobile/tablet: compact segmented control. */}
           <div className="hidden md:flex items-center gap-1.5">
             <button
