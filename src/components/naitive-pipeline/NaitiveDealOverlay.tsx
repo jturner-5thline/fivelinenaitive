@@ -483,7 +483,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
                 <ChevronsUpDown className="h-4 w-4 shrink-0" />
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="z-[70] w-[20rem] p-0">
+            <PopoverContent align="end" className="w-[20rem] p-0">
               <Command>
                 <CommandInput placeholder="Search deals…" />
                 <CommandList className="max-h-[18rem]">
