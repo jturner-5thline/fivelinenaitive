@@ -1298,6 +1298,9 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
         <div className="flex items-center justify-between gap-4 min-w-0">
           <div className="min-w-0 flex items-center gap-3">
             <CardTitle>Deal Write Up</CardTitle>
+            <Badge variant="outline" className="shrink-0 h-5 px-1.5 text-[10px] font-medium uppercase tracking-wide border-amber-400/40 text-amber-300 bg-amber-400/10">
+              Beta
+            </Badge>
             {canPushToFlex && (
             <Badge 
               variant={isPublishedOnFlex ? 'green' : data.status === 'Closed' ? 'gray' : 'amber'}

@@ -6197,6 +6197,9 @@ export default function DealDetail() {
                           className="relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-slate-900 shadow-none hover:text-white hover:bg-slate-800 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mb-2 data-[state=active]:rounded-b-sm data-[state=active]:rounded-t-none data-[state=active]:bg-gradient-to-t data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_8px_18px_-8px_rgba(0,0,0,0.7)] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-top-px data-[state=active]:after:z-20 data-[state=active]:after:h-[2px] data-[state=active]:after:bg-slate-900"
                         >
                           Write Up
+                          <Badge variant="outline" className="ml-1.5 h-4 px-1 text-[9px] font-medium uppercase tracking-wide border-amber-400/40 text-amber-300 bg-amber-400/10">
+                            Beta
+                          </Badge>
                         </TabsTrigger>
                       )}
                       {(!isSimplifiedDeal || isFinServDeal) && (
