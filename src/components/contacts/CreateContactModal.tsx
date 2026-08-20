@@ -296,12 +296,6 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
                   <Input id="lead_source" value={form.lead_source} onChange={(e) => setForm(p => ({ ...p, lead_source: e.target.value }))} />
                 </div>
               )}
-              {!isFieldDisabled('source_system') && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="source_system" className="text-xs">Source System</Label>
-                  <Input id="source_system" value={form.source_system} onChange={(e) => setForm(p => ({ ...p, source_system: e.target.value }))} />
-                </div>
-              )}
             </div>
             <CustomContactFieldsSection
               fields={fieldConfig.custom}
