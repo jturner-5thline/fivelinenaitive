@@ -3320,3 +3320,40 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   border-top: 1px solid rgba(255, 255, 255, 0.55) !important;
   border-radius: 0 !important;
 }
+
+/* ── Deal status chips: flat glassy tint (matches the "Stale" flag) ───────
+   Must outrank the platform-wide `.bg-secondary` surface reset above. */
+.deal-status-chip[data-status],
+.deal-detail-surface .deal-status-chip[data-status],
+.popup-shell-surface .deal-status-chip[data-status] {
+  background-image: none !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+.deal-status-chip[data-status="on-track"] {
+  background-color: rgba(45, 212, 191, 0.15) !important;
+  border-color: rgba(94, 234, 212, 0.45) !important;
+  color: rgb(153, 246, 228) !important;
+}
+.deal-status-chip[data-status="at-risk"] {
+  background-color: rgba(250, 204, 21, 0.15) !important;
+  border-color: rgba(253, 224, 71, 0.45) !important;
+  color: rgb(254, 240, 138) !important;
+}
+.deal-status-chip[data-status="off-track"] {
+  background-color: rgba(239, 68, 68, 0.16) !important;
+  border-color: rgba(252, 165, 165, 0.45) !important;
+  color: rgb(254, 202, 202) !important;
+}
+.deal-status-chip[data-status="on-hold"] {
+  background-color: rgba(59, 130, 246, 0.16) !important;
+  border-color: rgba(147, 197, 253, 0.45) !important;
+  color: rgb(191, 219, 254) !important;
+}
+.deal-status-chip[data-status="archived"] {
+  background-color: rgba(249, 115, 22, 0.15) !important;
+  border-color: rgba(253, 186, 116, 0.45) !important;
+  color: rgb(254, 215, 170) !important;
+}
