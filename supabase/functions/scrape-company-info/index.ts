@@ -69,6 +69,20 @@ serve(async (req) => {
       );
     }
 
+    // Firecrawl rejects hosts without a valid TLD — validate up front with a clear message.
+    const host = parsed.hostname.replace(/\.+$/, '');
+    const isIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(':');
+    const hasTld = /^([a-z0-9-]+\.)+[a-z]{2,}$/i.test(host);
+    if (!isIp && !hasTld) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `"${url}" is not a valid website. Enter a domain like example.com.`,
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
     if (!apiKey) {
       console.error('FIRECRAWL_API_KEY not configured');
@@ -78,11 +92,8 @@ serve(async (req) => {
       );
     }
 
-    // Format URL
-    let formattedUrl = url.trim();
-    if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
-      formattedUrl = `https://${formattedUrl}`;
-    }
+    // Use the normalized, validated URL
+    const formattedUrl = parsed.toString();
 
     console.log('Scraping company URL:', formattedUrl);
 
