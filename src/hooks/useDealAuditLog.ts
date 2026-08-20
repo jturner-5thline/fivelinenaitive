@@ -71,7 +71,7 @@ export function useDealAuditLog(dealId: string | undefined) {
           ? supabase.from('deal_pipelines').select('id, name, stages')
           : Promise.resolve({ data: [] as any[], error: null }),
         pageNum === 0
-          ? supabase.from('deals').select('id, created_at').eq('id', dealId).maybeSingle()
+          ? supabase.from('deals').select('id, created_at, pipeline_id').eq('id', dealId).maybeSingle()
           : Promise.resolve({ data: null as any, error: null }),
         pageNum === 0
           ? supabase
@@ -112,20 +112,38 @@ export function useDealAuditLog(dealId: string | undefined) {
 
       // Build pipeline → stage label map for friendly stage names
       const pipelineStageLabels: Record<string, string> = {};
+      // Also map normalized labels back to labels so raw label strings resolve.
+      const pipelineLabelByLabel: Record<string, string> = {};
+      const normLabel = (v: string) => v.toLowerCase().replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
       for (const p of (pipelinesRes?.data || []) as any[]) {
         const stages = Array.isArray(p?.stages) ? p.stages : [];
         for (const s of stages) {
           if (s && typeof s.id === 'string') {
-            pipelineStageLabels[`${p.id}::${s.id}`] = s.label || s.id;
+            const lbl = s.label || s.id;
+            pipelineStageLabels[`${p.id}::${s.id}`] = lbl;
+            pipelineLabelByLabel[`${p.id}::${normLabel(s.id)}`] = lbl;
+            if (s.label) pipelineLabelByLabel[`${p.id}::${normLabel(s.label)}`] = lbl;
             // also store an unscoped fallback
-            if (!pipelineStageLabels[s.id]) pipelineStageLabels[s.id] = s.label || s.id;
+            if (!pipelineStageLabels[s.id]) pipelineStageLabels[s.id] = lbl;
           }
         }
       }
-      const labelFor = (pipelineId: string | null, stageId: string | null) => {
-        if (!stageId) return '—';
-        if (pipelineId && pipelineStageLabels[`${pipelineId}::${stageId}`]) return pipelineStageLabels[`${pipelineId}::${stageId}`];
-        return pipelineStageLabels[stageId] || stageId.replace(/-/g, ' ');
+      // The deal's CURRENT pipeline wins over whatever pipeline_id the history
+      // row carries: stage ids are overloaded across pipelines (e.g. `on-hold`
+      // is "Unresponsive" in the In Development pipeline but "On Hold" in the
+      // Active Pipeline), and legacy/live rows often stamped the wrong
+      // pipeline_id.
+      const dealPipelineId: string | null = (dealRes as any)?.data?.pipeline_id ?? null;
+      const labelFor = (pipelineId: string | null, stageRef: string | null) => {
+        if (!stageRef) return '—';
+        const candidates = [dealPipelineId, pipelineId].filter(Boolean) as string[];
+        for (const pid of candidates) {
+          const byId = pipelineStageLabels[`${pid}::${stageRef}`];
+          if (byId) return byId;
+          const byLabel = pipelineLabelByLabel[`${pid}::${normLabel(stageRef)}`];
+          if (byLabel) return byLabel;
+        }
+        return pipelineStageLabels[stageRef] || stageRef.replace(/-/g, ' ');
       };
 
       const stageRowsRaw: DealAuditEntry[] = ((stageRes?.data || []) as any[]).map((row) => {
@@ -135,11 +153,11 @@ export function useDealAuditLog(dealId: string | undefined) {
         const resolvedFromId = row.from_stage_id || null;
         const toLabel = resolvedToId
           ? labelFor(row.pipeline_id, resolvedToId)
-          : (row.to_stage_label_raw || row.to_stage || '');
+          : labelFor(row.pipeline_id, row.to_stage_label_raw || row.to_stage || null);
         // For exits, the "anchor" stage label is the from-stage they left
         const exitStageLabel = resolvedFromId
           ? labelFor(row.pipeline_id, resolvedFromId)
-          : (row.from_stage_label_raw || row.from_stage || '');
+          : labelFor(row.pipeline_id, row.from_stage_label_raw || row.from_stage || null);
         const ts = isExit ? (row.exited_at || row.changed_at) : row.changed_at;
         return {
           id: `stage-${row.id}`,
