@@ -953,6 +953,9 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
         confirming={linkDeal.isPending}
       />
 
+      <ManageIndustryOptionsDialog open={manageIndustriesOpen} onOpenChange={setManageIndustriesOpen} />
+
+
       <DeleteConfirmDialog
         open={showDelete}
         onClose={() => setShowDelete(false)}
