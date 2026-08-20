@@ -719,7 +719,10 @@ export function MeetingClaapInlineAction(props: Props) {
 
   return (
     <>
-      {buttonCell}
+      <div className="flex w-full min-w-0 flex-col gap-1">
+        {buttonCell}
+        {updateContactCell}
+      </div>
       <ClaapBarPortal eventId={eventId}>{bar}</ClaapBarPortal>
     </>
   );
