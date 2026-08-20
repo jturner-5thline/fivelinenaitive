@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useCreateContact, LIFECYCLE_STAGES, CONTACT_STATUSES } from '@/hooks/useContacts';
+import { useCreateContact, CONTACT_STATUSES } from '@/hooks/useContacts';
 import { CompanyComboBox } from '@/components/contacts/CompanyComboBox';
 import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -164,17 +164,6 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
           <div className="space-y-1.5">
             <Label htmlFor="department" className="text-xs">Department</Label>
             <Input id="department" value={form.department} onChange={(e) => setForm(p => ({ ...p, department: e.target.value }))} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Lifecycle Stage</Label>
-            <Select value={form.lifecycle_stage} onValueChange={(v) => setForm(p => ({ ...p, lifecycle_stage: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {LIFECYCLE_STAGES.map(s => (
-                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Status</Label>
