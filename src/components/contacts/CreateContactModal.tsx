@@ -5,14 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useCreateContact } from '@/hooks/useContacts';
-
-const STATUS_OPTIONS = [
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
-  { value: 'went_dark', label: 'Went Dark' },
-  { value: 'do_not_contact', label: 'Do Not Contact' },
-];
+import { useCreateContact, CONTACT_STATUSES, DEFAULT_CONTACT_STATUS } from '@/hooks/useContacts';
 import { CompanyComboBox } from '@/components/contacts/CompanyComboBox';
 import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
