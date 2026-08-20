@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { DynamicFieldRenderer } from '@/components/crm/DynamicFieldRenderer';
 import { EditableField } from '@/components/crm/EditableField';
+import { useIndustryOptions } from '@/hooks/useIndustryOptions';
+import { ManageIndustryOptionsDialog } from '@/components/crm/ManageIndustryOptionsDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
