@@ -70,7 +70,8 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
   const updateType = useUpdateContactType();
   const deleteType = useDeleteContactType();
   const [open, setOpen] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dialogScrollRef = useRef<{ element: HTMLElement; top: number } | null>(null);
   const [manage, setManage] = useState(false);
   const [search, setSearch] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -202,6 +203,20 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
     setReplacements(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]);
   };
 
+  const preserveDialogScroll = () => {
+    const dialog = triggerRef.current?.closest<HTMLElement>('[role="dialog"]');
+    if (dialog) dialogScrollRef.current = { element: dialog, top: dialog.scrollTop };
+  };
+
+  const restoreDialogScroll = () => {
+    const saved = dialogScrollRef.current;
+    if (!saved) return;
+    saved.element.scrollTop = saved.top;
+    requestAnimationFrame(() => {
+      saved.element.scrollTop = saved.top;
+    });
+  };
+
   return (
     <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
       {selected.map(tag => (
@@ -217,10 +232,20 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
           </button>
         </span>
       ))}
-      <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setManage(false); setSearch(''); setEditingId(null); } }}>
+      <Popover
+        open={open}
+        onOpenChange={(o) => {
+          if (o) preserveDialogScroll();
+          setOpen(o);
+          if (o) requestAnimationFrame(restoreDialogScroll);
+          if (!o) { setManage(false); setSearch(''); setEditingId(null); }
+        }}
+      >
         <PopoverTrigger asChild>
           <button
+            ref={triggerRef}
             type="button"
+            onPointerDown={preserveDialogScroll}
             className="inline-flex items-center gap-1 rounded-full border border-dashed border-border/60 px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground hover:border-border"
           >
             <Plus className="h-3 w-3" /> {selected.length ? 'Add' : 'Add type'}
@@ -235,7 +260,12 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
           collisionPadding={12}
           onOpenAutoFocus={(e) => {
             e.preventDefault();
-            requestAnimationFrame(() => searchInputRef.current?.focus({ preventScroll: true }));
+            restoreDialogScroll();
+          }}
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            triggerRef.current?.focus({ preventScroll: true });
+            restoreDialogScroll();
           }}
         >
           {manage && isAdmin ? (
@@ -319,7 +349,7 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
             </div>
           ) : (
             <Command>
-              <CommandInput ref={searchInputRef} placeholder="Search types..." value={search} onValueChange={setSearch} />
+              <CommandInput placeholder="Search types..." value={search} onValueChange={setSearch} />
               <CommandList>
                 <CommandEmpty>
                   {isAdmin && trimmed ? (
