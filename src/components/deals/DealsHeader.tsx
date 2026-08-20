@@ -61,8 +61,10 @@ const DealsOverlay = lazy(loadDealsOverlay);
 const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   Calendar: loadCalendar,
   Mail: loadMail,
-  Tasks: loadTasks,
-  'Today': loadTasks,
+  // Tasks / Today both live inside the Dashboard popup, so prefetch that chunk.
+  Tasks: () => import('@/components/dashboard/DashboardModal'),
+  'Today': () => import('@/components/dashboard/DashboardModal'),
+
   'Dashboard': loadDailyBriefing,
   "Niki's Daily Rundown": loadDailyBriefing,
   "Moffitt's Daily Rundown": loadDailyBriefing,
@@ -572,10 +574,14 @@ export function DealsHeader() {
                 isOpen,
                 hasBadge: !!BADGES[label],
                 badgeCount: COUNT_BADGES[label] || 0,
-                // When some overlay is already open, route the click
-                // through goToOverlay so the swap animates directionally
-                // (and never double-mounts two overlays).
-                onClick: () => goToOverlay(label),
+                // Tasks always simply opens the Dashboard popup on its
+                // Tasks tab — no overlay swap animation, no Tasks page.
+                // Other labels route through goToOverlay so the swap
+                // animates directionally (and never double-mounts).
+                onClick: () =>
+                  label === 'Tasks'
+                    ? (setDashboardInitialTab('tasks'), setIsDashboardOpen(true))
+                    : goToOverlay(label),
               }));
             })().map(({ label, Icon, isOpen, onClick, hasBadge, badgeCount }) => (
               <Tooltip key={label}>
