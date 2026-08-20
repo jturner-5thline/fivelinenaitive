@@ -15,6 +15,11 @@ import { useContactTaggingRules } from '@/hooks/useContactTaggingRules';
 import { applyTaggingRules } from '@/lib/contactTaggingRules';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { COUNTRY_OPTIONS } from '@/lib/countries';
+import { normalizeLinkedInUrl } from '@/lib/linkedin';
+import { normalizeDomain } from '@/lib/extractEmailDomain';
+import { useContactFieldConfig } from '@/hooks/useContactFieldConfig';
+import { CustomContactFieldsSection } from '@/components/contacts/CustomContactFieldsSection';
 
 interface CreateContactModalProps {
   open: boolean;
@@ -31,6 +36,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
   const teamMembers = useTeamMembers();
   const { data: taggingRules = [] } = useContactTaggingRules({ activeOnly: true });
   const { user } = useAuth();
+  const { config: fieldConfig, isDisabled: isFieldDisabled } = useContactFieldConfig();
   const [form, setForm] = useState({
     first_name: '',
     last_name: '',
@@ -48,6 +54,12 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
     crm_company_id: defaultCompanyId || '' as string,
     contact_type: '' as string,
     owner_user_id: '' as string,
+    city: '',
+    state: '',
+    country: '',
+    timezone: '',
+    source_system: '',
+    custom_fields: {} as Record<string, any>,
   });
 
   // Seed name/email from the caller each time the modal opens.
@@ -101,7 +113,16 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
           website_url: form.website_url,
           contact_type: form.contact_type?.trim() || null,
         }) || form.contact_type?.trim() || null,
-      linkedin_url: linkedinTrim || null,
+      linkedin_url: linkedinTrim ? normalizeLinkedInUrl(linkedinTrim) : null,
+      website_url: normalizeDomain(form.website_url) || null,
+      city: form.city.trim() || null,
+      state: form.state.trim() || null,
+      country: form.country || null,
+      timezone: form.timezone.trim() || null,
+      source_system: form.source_system.trim() || null,
+      department: form.department.trim() || null,
+      lead_source: form.lead_source.trim() || null,
+      custom_fields: Object.keys(form.custom_fields || {}).length ? form.custom_fields : null,
       job_title: form.job_title.trim() || null,
       owner_user_id: form.owner_user_id || user?.id || null,
     };
@@ -113,6 +134,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
           first_name: '', last_name: '', email: '', phone_work: '', phone_mobile: '',
           job_title: '', department: '', lifecycle_stage: 'lead', status: DEFAULT_CONTACT_STATUS,
           lead_source: '', linkedin_url: '', website_url: '', description: '', crm_company_id: '', contact_type: '', owner_user_id: '',
+          city: '', state: '', country: '', timezone: '', source_system: '', custom_fields: {},
         });
       },
     });
@@ -134,12 +156,14 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
             <Label htmlFor="last_name" className="text-xs">Last Name <span className="text-destructive">*</span></Label>
             <Input id="last_name" value={form.last_name} onChange={(e) => setForm(p => ({ ...p, last_name: e.target.value }))} />
           </div>
-          <div className="space-y-1.5 col-span-2">
-            <Label htmlFor="email" className="text-xs">Email <span className="text-destructive">*</span></Label>
-            <Input id="email" type="email" value={form.email} onChange={(e) => handleEmailChange(e.target.value)} />
-          </div>
 
-          {/* Company selector */}
+          {!isFieldDisabled('job_title') && (
+            <div className="space-y-1.5 col-span-2">
+              <Label htmlFor="job_title" className="text-xs">Job Title</Label>
+              <Input id="job_title" value={form.job_title} onChange={(e) => setForm(p => ({ ...p, job_title: e.target.value }))} />
+            </div>
+          )}
+
           <div className="space-y-1.5 col-span-2">
             <Label className="text-xs">Company</Label>
             <CompanyComboBox
@@ -149,52 +173,6 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="phone_work" className="text-xs">Work Phone</Label>
-            <Input id="phone_work" value={form.phone_work} onChange={(e) => setForm(p => ({ ...p, phone_work: e.target.value }))} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="phone_mobile" className="text-xs">Mobile</Label>
-            <Input id="phone_mobile" value={form.phone_mobile} onChange={(e) => setForm(p => ({ ...p, phone_mobile: e.target.value }))} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="job_title" className="text-xs">Job Title</Label>
-            <Input id="job_title" value={form.job_title} onChange={(e) => setForm(p => ({ ...p, job_title: e.target.value }))} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="department" className="text-xs">Department</Label>
-            <Input id="department" value={form.department} onChange={(e) => setForm(p => ({ ...p, department: e.target.value }))} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Status</Label>
-            <Select value={form.status} onValueChange={(v) => setForm(p => ({ ...p, status: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {CONTACT_STATUSES.map(s => (
-                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="lead_source" className="text-xs">Lead Source</Label>
-            <Input id="lead_source" value={form.lead_source} onChange={(e) => setForm(p => ({ ...p, lead_source: e.target.value }))} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="linkedin_url" className="text-xs">LinkedIn URL</Label>
-            <Input id="linkedin_url" value={form.linkedin_url} onChange={(e) => setForm(p => ({ ...p, linkedin_url: e.target.value }))} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Contact Type</Label>
-            <ContactTypeMultiSelect
-              value={form.contact_type}
-              onChange={(v) => setForm(p => ({ ...p, contact_type: v || '' }))}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="website_url" className="text-xs">Website / Domain</Label>
-            <Input id="website_url" placeholder="auto from email" value={form.website_url} onChange={(e) => setForm(p => ({ ...p, website_url: e.target.value }))} />
-          </div>
           <div className="space-y-1.5 col-span-2">
             <Label className="text-xs">Owner</Label>
             <Select
@@ -208,6 +186,130 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
               </SelectContent>
             </Select>
           </div>
+
+          {!isFieldDisabled('linkedin_url') && (
+            <div className="space-y-1.5 col-span-2">
+              <Label htmlFor="linkedin_url" className="text-xs">LinkedIn</Label>
+              <Input
+                id="linkedin_url"
+                placeholder="https://linkedin.com/in/… or handle"
+                value={form.linkedin_url}
+                onChange={(e) => setForm(p => ({ ...p, linkedin_url: e.target.value }))}
+              />
+            </div>
+          )}
+
+          <div className="space-y-1.5 col-span-2">
+            <Label htmlFor="email" className="text-xs">Work Email <span className="text-destructive">*</span></Label>
+            <Input id="email" type="email" value={form.email} onChange={(e) => handleEmailChange(e.target.value)} />
+          </div>
+
+          {!isFieldDisabled('phone_mobile') && (
+            <div className="space-y-1.5">
+              <Label htmlFor="phone_mobile" className="text-xs">Mobile</Label>
+              <Input id="phone_mobile" value={form.phone_mobile} onChange={(e) => setForm(p => ({ ...p, phone_mobile: e.target.value }))} />
+            </div>
+          )}
+          {!isFieldDisabled('phone_work') && (
+            <div className="space-y-1.5">
+              <Label htmlFor="phone_work" className="text-xs">Office Phone</Label>
+              <Input id="phone_work" value={form.phone_work} onChange={(e) => setForm(p => ({ ...p, phone_work: e.target.value }))} />
+            </div>
+          )}
+
+          {!isFieldDisabled('city') && (
+            <div className="space-y-1.5">
+              <Label htmlFor="city" className="text-xs">City</Label>
+              <Input id="city" value={form.city} onChange={(e) => setForm(p => ({ ...p, city: e.target.value }))} />
+            </div>
+          )}
+          {!isFieldDisabled('state') && (
+            <div className="space-y-1.5">
+              <Label htmlFor="state" className="text-xs">State</Label>
+              <Input id="state" value={form.state} onChange={(e) => setForm(p => ({ ...p, state: e.target.value }))} />
+            </div>
+          )}
+          {!isFieldDisabled('country') && (
+            <div className="space-y-1.5 col-span-2">
+              <Label className="text-xs">Country</Label>
+              <Select value={form.country || 'unset'} onValueChange={(v) => setForm(p => ({ ...p, country: v === 'unset' ? '' : v }))}>
+                <SelectTrigger><SelectValue placeholder="Select country" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unset">—</SelectItem>
+                  {COUNTRY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {!isFieldDisabled('website_url') && (
+            <div className="space-y-1.5 col-span-2">
+              <Label htmlFor="website_url" className="text-xs">Domain</Label>
+              <Input id="website_url" placeholder="auto from email" value={form.website_url} onChange={(e) => setForm(p => ({ ...p, website_url: e.target.value }))} />
+            </div>
+          )}
+
+          <div className="space-y-1.5 col-span-2">
+            <Label className="text-xs">Contact Type</Label>
+            <ContactTypeMultiSelect
+              value={form.contact_type}
+              onChange={(v) => setForm(p => ({ ...p, contact_type: v || '' }))}
+            />
+          </div>
+
+          <div className="space-y-1.5 col-span-2">
+            <Label className="text-xs">Status</Label>
+            <Select value={form.status} onValueChange={(v) => setForm(p => ({ ...p, status: v }))}>
+              <SelectTrigger><SelectValue placeholder="Set status" /></SelectTrigger>
+              <SelectContent>
+                {CONTACT_STATUSES.map(s => (
+                  <SelectItem key={s.value} value={s.value}>
+                    <span className="inline-flex items-center gap-2">
+                      <span className={cn('h-2 w-2 rounded-full', s.dot)} />
+                      {s.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Additional details — mirrors the detail page rail */}
+          <div className="col-span-2 pt-1 border-t border-border/40 space-y-3">
+            <p className="text-[10px] uppercase tracking-wider text-foreground/80 font-semibold">Additional Details</p>
+            <div className="grid grid-cols-2 gap-4">
+              {!isFieldDisabled('department') && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="department" className="text-xs">Department</Label>
+                  <Input id="department" value={form.department} onChange={(e) => setForm(p => ({ ...p, department: e.target.value }))} />
+                </div>
+              )}
+              {!isFieldDisabled('timezone') && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="timezone" className="text-xs">Timezone</Label>
+                  <Input id="timezone" value={form.timezone} onChange={(e) => setForm(p => ({ ...p, timezone: e.target.value }))} />
+                </div>
+              )}
+              {!isFieldDisabled('lead_source') && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="lead_source" className="text-xs">Lead Source</Label>
+                  <Input id="lead_source" value={form.lead_source} onChange={(e) => setForm(p => ({ ...p, lead_source: e.target.value }))} />
+                </div>
+              )}
+              {!isFieldDisabled('source_system') && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="source_system" className="text-xs">Source System</Label>
+                  <Input id="source_system" value={form.source_system} onChange={(e) => setForm(p => ({ ...p, source_system: e.target.value }))} />
+                </div>
+              )}
+            </div>
+            <CustomContactFieldsSection
+              fields={fieldConfig.custom}
+              values={form.custom_fields}
+              onChange={(_key, nextObj) => setForm(p => ({ ...p, custom_fields: nextObj }))}
+            />
+          </div>
+
           <div className="space-y-1.5 col-span-2">
             <Label htmlFor="description" className="text-xs">Notes</Label>
             <Textarea id="description" value={form.description} onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))} rows={3} />
