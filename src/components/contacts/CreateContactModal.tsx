@@ -82,7 +82,8 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
     setForm(p => {
       const next: any = { ...p };
       for (const key of FORM_KEYS) {
-        const incoming = (initialValues as any)[key];
+        const src = key === 'state' ? 'state_region' : key === 'country' ? 'hs_country' : key;
+        const incoming = (initialValues as any)[src] ?? (initialValues as any)[key];
         if (incoming === undefined || incoming === null || incoming === '') continue;
         if (isEdit || !next[key]) next[key] = String(incoming);
       }
@@ -148,8 +149,9 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
     if (linkedinTrim && !/^https?:\/\//i.test(linkedinTrim) && !/^([\w-]+\.)+[a-z]{2,}/i.test(linkedinTrim)) {
       // soft validation: warn but do not block; let it through
     }
+    const { state: _stateField, country: _countryField, ...formRest } = form;
     const payload = {
-      ...form,
+      ...formRest,
       crm_company_id: form.crm_company_id || null,
       contact_type:
         applyTaggingRules(taggingRules, {
@@ -160,8 +162,8 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
       linkedin_url: linkedinTrim ? normalizeLinkedInUrl(linkedinTrim) : null,
       website_url: normalizeDomain(form.website_url) || null,
       city: form.city.trim() || null,
-      state: form.state.trim() || null,
-      country: form.country || null,
+      state_region: form.state.trim() || null,
+      hs_country: form.country || null,
       timezone: form.timezone.trim() || null,
       source_system: form.source_system.trim() || null,
       department: form.department.trim() || null,
