@@ -98,8 +98,8 @@
 
     /* App backdrop — corner-anchored blue glow (bottom-right) */
     --app-backdrop:
-      radial-gradient(120% 110% at 100% 100%, rgba(10, 118, 220, 0.95) 0%, rgba(8, 86, 168, 0.62) 24%, rgba(5, 44, 94, 0.32) 46%, rgba(3, 16, 40, 0.08) 66%, rgba(2, 6, 18, 0) 82%),
-      linear-gradient(145deg, #01030c 0%, #020616 26%, #03102a 52%, #052048 74%, #0a4f9e 100%);
+      radial-gradient(120% 110% at 100% 100%, rgba(10, 110, 220, 0.45) 0%, rgba(8, 78, 165, 0.24) 21%, rgba(4, 40, 92, 0.09) 41%, rgba(2, 6, 18, 0) 62%),
+      linear-gradient(145deg, #01030a 0%, #01050f 43%, #020a1c 69%, #03163a 89%, #05285a 100%);
 
     /* Email / Outlook tokens */
     --outlook-blue: 207 90% 42%;
