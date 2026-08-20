@@ -415,7 +415,26 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
               <EditableField label="Name" type="text" value={company.name} onSave={(v) => handleQuickUpdate('name', v)} />
               <EditableField label="Type" type="select" value={company.company_type} options={CRM_COMPANY_TYPES.map(t => ({ value: t.value, label: t.label }))} onSave={(v) => handleQuickUpdate('company_type', v)} />
-              <EditableField label="Industry" type="text" value={company.industry} onSave={(v) => handleQuickUpdate('industry', v)} />
+              <div className="flex items-end gap-1">
+                <div className="flex-1 min-w-0">
+                  <EditableField
+                    label="Industry"
+                    type="select"
+                    value={company.industry}
+                    options={industryOptions.map(o => ({ value: o, label: o }))}
+                    onSave={(v) => handleQuickUpdate('industry', v)}
+                  />
+                </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 shrink-0"
+                  title="Manage industries"
+                  onClick={() => setManageIndustriesOpen(true)}
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                </Button>
+              </div>
               <EditableField label="Sub-Industry" type="text" value={company.sub_industry} onSave={(v) => handleQuickUpdate('sub_industry', v)} />
               <EditableField
                 label="Company Size"
