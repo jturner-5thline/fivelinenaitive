@@ -1305,9 +1305,9 @@
 .deal-glass.deal-tile,
 div.deal-tile.deal-glass,
 .deal-tile[class*="deal-glass"] {
-  background:
-    linear-gradient(180deg, #050d20 0%, #020611 50%, #000208 100%) !important;
+  background: #020611 !important;
   background-color: #020611 !important;
+  background-image: none !important;
   border-color: rgba(190, 220, 255, 0.34) !important;
   border-radius: 8px !important;
   backdrop-filter: none !important;
@@ -1318,9 +1318,9 @@ div.deal-tile.deal-glass,
 .deal-glass.deal-tile:hover,
 div.deal-tile.deal-glass:hover,
 .deal-tile[class*="deal-glass"]:hover {
-  background:
-    linear-gradient(180deg, #08132c 0%, #04091c 50%, #01030c 100%) !important;
+  background: #04091c !important;
   background-color: #04091c !important;
+  background-image: none !important;
   border-color: rgba(214, 234, 255, 0.52) !important;
 }
 .deal-tile.deal-glass::before,
