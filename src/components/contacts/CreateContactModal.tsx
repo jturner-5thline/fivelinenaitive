@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useCreateContact, LIFECYCLE_STAGES, CONTACT_STATUSES } from '@/hooks/useContacts';
+import { useCreateContact, CONTACT_STATUSES } from '@/hooks/useContacts';
 import { CompanyComboBox } from '@/components/contacts/CompanyComboBox';
 import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
