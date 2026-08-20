@@ -86,6 +86,7 @@ export function EditableDealStatusTag({
           aria-haspopup="menu"
           aria-expanded={open}
           disabled={pending}
+          data-status={current ?? undefined}
           onClick={(e) => { e.stopPropagation(); }}
           onPointerDown={(e) => { e.stopPropagation(); }}
           onMouseDown={(e) => { e.stopPropagation(); }}
@@ -98,7 +99,7 @@ export function EditableDealStatusTag({
             else e.stopPropagation();
           }}
           className={cn(
-            'inline-flex items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            'deal-status-control inline-flex items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             'transition-opacity',
             pending && 'opacity-70 cursor-progress',
             className,

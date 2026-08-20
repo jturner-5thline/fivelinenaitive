@@ -40,8 +40,9 @@ export function DealStatusTag({ status, className, hideDot = false }: DealStatus
   return (
     <Badge
       variant="secondary"
+      data-status={key}
       className={cn(
-        'inline-flex items-center gap-1 px-1.5 py-0 h-[18px] rounded-md text-[10px] font-semibold leading-none whitespace-nowrap border backdrop-blur-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] [text-shadow:0_1px_2px_rgba(0,0,0,0.55)] transition-colors',
+        'deal-status-chip inline-flex items-center gap-1 px-1.5 py-0 h-[18px] rounded-md text-[10px] font-semibold leading-none whitespace-nowrap border backdrop-blur-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] [text-shadow:0_1px_2px_rgba(0,0,0,0.55)] transition-colors',
         tone,
         className,
       )}
