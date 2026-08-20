@@ -29,6 +29,9 @@ interface CreateContactModalProps {
   initialValues?: Record<string, any>;
   /** When set, the modal edits this existing contact instead of creating a new one. */
   contactId?: string | null;
+  /** Optional class overrides (e.g. z-index when nested inside another dialog). */
+  contentClassName?: string;
+  overlayClassName?: string;
   /** Called with the created/updated contact row after a successful save. */
   onCreated?: (contact: any) => void;
 }
@@ -39,7 +42,7 @@ const FORM_KEYS = [
   'crm_company_id','contact_type','owner_user_id','city','state','country','timezone','source_system',
 ] as const;
 
-export function CreateContactModal({ open, onClose, defaultCompanyId, initialValues, contactId, onCreated }: CreateContactModalProps) {
+export function CreateContactModal({ open, onClose, defaultCompanyId, initialValues, contactId, contentClassName, overlayClassName, onCreated }: CreateContactModalProps) {
   const createContact = useCreateContact();
   const updateContact = useUpdateContact();
   const isEdit = !!contactId;
@@ -187,7 +190,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-y-auto">
+      <DialogContent className={cn('sm:max-w-[550px] max-h-[85vh] overflow-y-auto', contentClassName)} overlayClassName={overlayClassName}>
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Update Contact' : 'Create Contact'}</DialogTitle>
         </DialogHeader>

@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,7 +34,6 @@ function splitName(display?: string | null, email?: string | null): { first: str
 }
 
 export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, organizerEmail, eventTitle }: Props) {
-  const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
   const [editContact, setEditContact] = useState<any | null>(null);
 
@@ -177,6 +175,8 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
 
       {/* Existing contact → open the same form fully pre-filled for editing */}
       <CreateContactModal
+        contentClassName="z-[1520]"
+        overlayClassName="z-[1510]"
         open={!!editContact}
         contactId={editContact?.id || null}
         onClose={() => setEditContact(null)}
@@ -185,6 +185,8 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
       />
 
       <CreateContactModal
+        contentClassName="z-[1520]"
+        overlayClassName="z-[1510]"
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         initialValues={active ? { first_name: active.first, last_name: active.last, email: active.email } : undefined}
