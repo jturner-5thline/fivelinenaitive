@@ -177,10 +177,17 @@ export const LenderListCard = memo(function LenderListCard({
               <>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center">
+                    <div
+                      className="flex items-center cursor-pointer select-none"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleDocFlag?.(lender.name, 'nda', !summary.hasNda);
+                      }}
+                    >
                       <Checkbox
                         checked={summary.hasNda}
-                        disabled
+                        onCheckedChange={(v) => onToggleDocFlag?.(lender.name, 'nda', !!v)}
+                        onClick={(e) => e.stopPropagation()}
                         className="h-4 w-4 data-[state=checked]:bg-success data-[state=checked]:border-success"
                       />
                       <span className="ml-1 text-xs text-muted-foreground">NDA</span>
@@ -192,10 +199,17 @@ export const LenderListCard = memo(function LenderListCard({
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center">
+                    <div
+                      className="flex items-center cursor-pointer select-none"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleDocFlag?.(lender.name, 'marketing', !summary.hasMarketingMaterials);
+                      }}
+                    >
                       <Checkbox
                         checked={summary.hasMarketingMaterials}
-                        disabled
+                        onCheckedChange={(v) => onToggleDocFlag?.(lender.name, 'marketing', !!v)}
+                        onClick={(e) => e.stopPropagation()}
                         className="h-4 w-4 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                       />
                       <span className="ml-1 text-xs text-muted-foreground">Marketing</span>
@@ -208,6 +222,7 @@ export const LenderListCard = memo(function LenderListCard({
               </>
             );
           })()}
+
           {lender.flex_lender_id && (
             <Badge className="text-xs bg-[#d0e7ff] text-[#1d4ed8] hover:bg-[#d0e7ff]">
               FLEx
