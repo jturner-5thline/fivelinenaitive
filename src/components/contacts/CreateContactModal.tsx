@@ -5,7 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useCreateContact, CONTACT_STATUSES } from '@/hooks/useContacts';
+import { useCreateContact } from '@/hooks/useContacts';
+
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+  { value: 'went_dark', label: 'Went Dark' },
+  { value: 'do_not_contact', label: 'Do Not Contact' },
+];
 import { CompanyComboBox } from '@/components/contacts/CompanyComboBox';
 import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -170,7 +177,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
             <Select value={form.status} onValueChange={(v) => setForm(p => ({ ...p, status: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {CONTACT_STATUSES.map(s => (
+                {STATUS_OPTIONS.map(s => (
                   <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                 ))}
               </SelectContent>
