@@ -37,6 +37,7 @@ function splitName(display?: string | null, email?: string | null): { first: str
 export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, organizerEmail, eventTitle }: Props) {
   const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
+  const [editContact, setEditContact] = useState<any | null>(null);
 
   const candidates = useMemo(() => {
     const seen = new Set<string>();
@@ -73,7 +74,7 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
       if (active.name) filters.push(`full_name.ilike.%${active.name}%`);
       const { data, error } = await supabase
         .from('contacts')
-        .select('id, first_name, last_name, full_name, email, job_title, hs_company_name')
+        .select('*')
         .or(filters.join(','))
         .limit(10);
       if (error) throw error;
@@ -143,7 +144,7 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
                       return (
                         <button
                           key={m.id}
-                          onClick={() => { onOpenChange(false); navigate(`/contacts/${m.id}`); }}
+                          onClick={() => setEditContact(m)}
                           className="flex w-full items-center justify-between gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-left hover:bg-white/[0.08]"
                         >
                           <div className="min-w-0">
@@ -173,6 +174,15 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Existing contact → open the same form fully pre-filled for editing */}
+      <CreateContactModal
+        open={!!editContact}
+        contactId={editContact?.id || null}
+        onClose={() => setEditContact(null)}
+        initialValues={editContact || undefined}
+        onCreated={() => { setEditContact(null); onOpenChange(false); }}
+      />
 
       <CreateContactModal
         open={createOpen}
