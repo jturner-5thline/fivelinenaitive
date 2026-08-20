@@ -31,7 +31,7 @@ const DealDetail = lazy(() => loadDealDetail());
 
 /** Compact, enterprise-grade header nav button. 44px min hit area. */
 const navButtonClass =
-  'inline-flex h-11 items-center gap-1.5 rounded-lg border border-[rgba(180,212,255,0.42)] bg-background/85 px-3 text-[13px] font-medium text-foreground shadow-[0_2px_10px_-4px_rgba(0,0,0,0.6)] backdrop-blur transition-colors hover:border-[rgba(180,212,255,0.72)] hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40 whitespace-nowrap';
+  'inline-flex h-11 items-center gap-1.5 rounded-lg border border-[rgba(180,212,255,0.42)] bg-[#0b1226] px-3 text-[13px] font-medium text-foreground shadow-[0_2px_10px_-4px_rgba(0,0,0,0.6)] transition-colors hover:border-[rgba(180,212,255,0.72)] hover:bg-[#101836] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40 whitespace-nowrap';
 
 const segmentButtonClass =
   'inline-flex h-11 w-11 items-center justify-center text-foreground transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-40';
@@ -468,7 +468,9 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
         />
         {/* Header navigation zone — prev/next deal + close, all on one
             row so nothing floats over the modal body content. */}
-        <div className="absolute top-2 right-2 z-[60] flex items-center gap-1.5">
+        <div
+          className="absolute top-2 right-2 z-[60] flex items-center gap-1.5 rounded-lg border border-[rgba(180,212,255,0.34)] bg-[#0b1226] p-1 shadow-[0_8px_24px_-10px_rgba(0,0,0,0.85)]"
+        >
           {/* Jump to any deal without leaving the modal */}
           <Popover open={jumpOpen} onOpenChange={setJumpOpen}>
             <PopoverTrigger asChild>
@@ -536,7 +538,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             </button>
           </div>
 
-          <div className="flex md:hidden items-center rounded-lg border border-[rgba(180,212,255,0.42)] bg-background/85 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.6)] backdrop-blur overflow-hidden">
+          <div className="flex md:hidden items-center rounded-lg border border-[rgba(180,212,255,0.42)] bg-[#0b1226] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.6)] overflow-hidden">
             <button
               type="button"
               onClick={goPrev}
@@ -561,7 +563,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           <button
             ref={closeBtnRef}
             type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[rgba(180,212,255,0.42)] bg-background/85 text-foreground shadow-[0_2px_10px_-4px_rgba(0,0,0,0.6)] backdrop-blur transition-colors hover:border-[rgba(180,212,255,0.72)] hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[rgba(180,212,255,0.42)] bg-[#0b1226] text-foreground shadow-[0_2px_10px_-4px_rgba(0,0,0,0.6)] transition-colors hover:border-[rgba(180,212,255,0.72)] hover:bg-[#101836] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
