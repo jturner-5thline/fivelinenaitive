@@ -61,8 +61,10 @@ const DealsOverlay = lazy(loadDealsOverlay);
 const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   Calendar: loadCalendar,
   Mail: loadMail,
-  Tasks: loadTasks,
-  'Today': loadTasks,
+  // Tasks / Today both live inside the Dashboard popup, so prefetch that chunk.
+  Tasks: () => import('@/components/dashboard/DashboardModal'),
+  'Today': () => import('@/components/dashboard/DashboardModal'),
+
   'Dashboard': loadDailyBriefing,
   "Niki's Daily Rundown": loadDailyBriefing,
   "Moffitt's Daily Rundown": loadDailyBriefing,
