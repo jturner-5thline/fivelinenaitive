@@ -179,32 +179,40 @@ export default function Dashboard() {
   // Persist board scroll position when the deal overlay opens/closes.
   const boardScrollContainerRef = useRef<HTMLDivElement | null>(null);
   usePipelineScrollPersistence(boardScrollContainerRef, !!overlaySearchParams.get('deal'));
-  // Soft fade on the vertical scroll edges of the board (grid / list views)
+  // Soft fade on the vertical scroll edges of the board (grid / list views).
+  // Implemented as cheap overlay gradients (not mask-image on the scroller,
+  // which forces a full-surface repaint on every scroll frame).
   const [boardEdges, setBoardEdges] = useState({ top: false, bottom: false });
   useEffect(() => {
     const el = boardScrollContainerRef.current;
     if (!el) return;
-    const update = () => {
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
       const { scrollTop, scrollHeight, clientHeight } = el;
-      setBoardEdges({
+      const next = {
         top: scrollTop > 4,
         bottom: scrollTop + clientHeight < scrollHeight - 4,
-      });
+      };
+      setBoardEdges((prev) =>
+        prev.top === next.top && prev.bottom === next.bottom ? prev : next
+      );
     };
-    update();
+    const update = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(measure);
+    };
+    measure();
     el.addEventListener('scroll', update, { passive: true });
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => {
+      if (frame) cancelAnimationFrame(frame);
       el.removeEventListener('scroll', update);
       ro.disconnect();
     };
   }, [viewMode]);
-  const boardFadeWidth = 48;
-  const boardEdgeMask =
-    boardEdges.top || boardEdges.bottom
-      ? `linear-gradient(to bottom, transparent 0px, #000 ${boardEdges.top ? boardFadeWidth : 0}px, #000 calc(100% - ${boardEdges.bottom ? boardFadeWidth : 0}px), transparent 100%)`
-      : undefined;
+
   // Vertical offset (px) applied to the inline detail aside so its top
   // aligns with the clicked tile in the left list. Clamped so items near
   // the bottom of the list don't push the panel into excessive blank
