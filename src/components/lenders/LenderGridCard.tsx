@@ -54,6 +54,7 @@ interface LenderGridCardProps {
   onEdit: (lenderName: string) => void;
   onDelete: (id: string, name: string) => void;
   onQuickUpload: (lenderName: string, category: 'nda' | 'marketing_materials') => void;
+  onToggleDocFlag?: (lenderName: string, field: 'nda' | 'marketing', value: boolean) => void;
 }
 
 // Helper to format currency - moved outside component for stability
@@ -76,6 +77,7 @@ export const LenderGridCard = memo(function LenderGridCard({
   onEdit,
   onDelete,
   onQuickUpload,
+  onToggleDocFlag,
 }: LenderGridCardProps) {
   // Memoize computed values
   const dealSizeRange = useMemo(() => {
@@ -316,10 +318,17 @@ export const LenderGridCard = memo(function LenderGridCard({
           {tileDisplaySettings.showNdaStatus && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-center">
+                <div
+                  className="flex items-center cursor-pointer select-none"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleDocFlag?.(lender.name, 'nda', !summary.hasNda);
+                  }}
+                >
                   <Checkbox
                     checked={summary.hasNda}
-                    disabled
+                    onCheckedChange={(v) => onToggleDocFlag?.(lender.name, 'nda', !!v)}
+                    onClick={(e) => e.stopPropagation()}
                     className="h-3.5 w-3.5 data-[state=checked]:bg-success data-[state=checked]:border-success"
                   />
                   <span className="ml-1 text-xs text-muted-foreground">NDA</span>
@@ -333,10 +342,17 @@ export const LenderGridCard = memo(function LenderGridCard({
           {tileDisplaySettings.showMarketingStatus && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-center">
+                <div
+                  className="flex items-center cursor-pointer select-none"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleDocFlag?.(lender.name, 'marketing', !summary.hasMarketingMaterials);
+                  }}
+                >
                   <Checkbox
                     checked={summary.hasMarketingMaterials}
-                    disabled
+                    onCheckedChange={(v) => onToggleDocFlag?.(lender.name, 'marketing', !!v)}
+                    onClick={(e) => e.stopPropagation()}
                     className="h-3.5 w-3.5 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                   />
                   <span className="ml-1 text-xs text-muted-foreground">Marketing</span>
@@ -347,6 +363,7 @@ export const LenderGridCard = memo(function LenderGridCard({
               </TooltipContent>
             </Tooltip>
           )}
+
         </div>
       )}
     </div>

@@ -287,7 +287,7 @@ export default function Lenders() {
   const navigate = useNavigate();
   const { deals, addLenderToDeal } = useDealsContext();
   const { getStageConfigForDeal } = usePipelineStageConfig();
-  const { getLenderSummary, refetch: refetchAttachmentSummaries } = useLenderAttachmentsSummary();
+  const { getLenderSummary, setManualFlag, refetch: refetchAttachmentSummaries } = useLenderAttachmentsSummary();
   const { user } = useAuth();
   const { company, members: companyMembers } = useCompany();
   const quickUploadRef = useRef<HTMLInputElement>(null);
@@ -2027,6 +2027,7 @@ export default function Lenders() {
                                     onEdit={openEditDialogStable}
                                     onDelete={handleDeleteStable}
                                     onQuickUpload={handleQuickUploadStable}
+                                    onToggleDocFlag={setManualFlag}
                                   />
                                 </div>
                               ))}
@@ -2067,6 +2068,7 @@ export default function Lenders() {
                             onEdit={openEditDialogStable}
                             onDelete={handleDeleteStable}
                             onQuickUpload={handleQuickUploadStable}
+                                    onToggleDocFlag={setManualFlag}
                           />
                         </div>
                       );
@@ -2103,6 +2105,7 @@ export default function Lenders() {
                           onEdit={openEditDialogStable}
                           onDelete={handleDeleteStable}
                           onQuickUpload={handleQuickUploadStable}
+                                    onToggleDocFlag={setManualFlag}
                         />
                       );
                     }}

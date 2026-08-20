@@ -17848,6 +17848,39 @@ export type Database = {
           },
         ]
       }
+      lender_doc_flags: {
+        Row: {
+          company_id: string
+          created_at: string
+          has_marketing: boolean
+          has_nda: boolean
+          id: string
+          lender_name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          has_marketing?: boolean
+          has_nda?: boolean
+          id?: string
+          lender_name: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          has_marketing?: boolean
+          has_nda?: boolean
+          id?: string
+          lender_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       lender_duplicate_dismissals: {
         Row: {
           company_id: string
