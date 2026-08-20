@@ -120,6 +120,8 @@ export function useLenderAttachmentsSummary() {
     summaries,
     isLoading,
     getLenderSummary,
+    setManualFlag,
     refetch: fetchSummaries,
   };
+
 }
