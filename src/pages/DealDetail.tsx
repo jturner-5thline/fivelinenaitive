@@ -4392,7 +4392,7 @@ export default function DealDetail() {
                                           <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
                                         </Button>
                                       </PopoverTrigger>
-                                      <PopoverContent className="w-56 p-2" align="start">
+                                      <PopoverContent className="w-56 p-2 bg-[#171B2C] border-[rgba(157,162,245,0.2)] text-white backdrop-blur-none" align="start">
                                         <div className="space-y-1">
                                           {availableDealTypes.map((type) => {
                                             const isSelected = deal.dealTypes?.includes(type.id) || false;
