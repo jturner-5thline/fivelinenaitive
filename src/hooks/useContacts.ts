@@ -724,6 +724,17 @@ const LEGACY_STATUS_MAP: Record<string, string> = {
   closed: 'inactive',
   opt_out: 'do_not_contact',
   unsubscribed: 'do_not_contact',
+  in_progress: 'active',
+  client: 'active',
+  past_client: 'inactive',
+  referred: 'active',
+  secondary: 'inactive',
+  future_need: 'inactive',
+  no_current_need: 'inactive',
+  bad_timing: 'inactive',
+  closed_won: 'active',
+  closed_lost: 'inactive',
+  na: 'inactive',
 };
 
 /** Normalize any stored/imported status string to a canonical value (or null). */
