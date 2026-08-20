@@ -3408,3 +3408,17 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   color: inherit !important;
   -webkit-text-fill-color: currentColor !important;
 }
+
+/* ── Deal stage chips: plain cyan outline, no fill ────────────────────── */
+.deal-stage-chip,
+.deal-detail-surface .deal-stage-chip,
+.popup-shell-surface .deal-stage-chip {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  text-shadow: none !important;
+  border: 1px solid rgba(103, 232, 249, 0.7) !important;
+  color: rgb(165, 243, 252) !important;
+}
