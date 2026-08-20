@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Search, MoreHorizontal, UserPlus, ChevronDown, Building2, Briefcase, Trash2, Linkedin } from 'lucide-react';
-import { Contact, LIFECYCLE_STAGES, CONTACT_STATUSES, useDeleteContact } from '@/hooks/useContacts';
+import { Contact, LIFECYCLE_STAGES, CONTACT_STATUSES, normalizeContactStatus, useDeleteContact } from '@/hooks/useContacts';
 import { useUpdateContact } from '@/hooks/useContacts';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useContactTypes } from '@/hooks/useContactTypes';
@@ -48,17 +48,9 @@ const lifecycleColors: Record<string, string> = {
   other: 'bg-muted text-muted-foreground',
 };
 
-const statusColors: Record<string, string> = {
-  new: 'bg-blue-500/10 text-blue-500',
-  working: 'bg-amber-500/10 text-amber-500',
-  meeting_scheduled: 'bg-green-500/10 text-green-500',
-  no_show: 'bg-red-500/10 text-red-500',
-  no_fit: 'bg-muted text-muted-foreground',
-  nurture: 'bg-purple-500/10 text-purple-500',
-  bad_data: 'bg-red-500/10 text-red-500',
-  converted: 'bg-green-500/10 text-green-500',
-  closed: 'bg-muted text-muted-foreground',
-};
+const statusColors: Record<string, string> = Object.fromEntries(
+  CONTACT_STATUSES.map((s) => [s.value, s.badge]),
+);
 
 export function ContactsTable({ contacts, onBulkAction, search: controlledSearch, onSearchChange, toolbarExtras, toolbarActions, footer, isFetching }: ContactsTableProps) {
   const navigate = useNavigate();
@@ -113,7 +105,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
       result = result.filter(c => c.lifecycle_stage === lifecycleFilter);
     }
     if (statusFilter !== 'all') {
-      result = result.filter(c => c.status === statusFilter);
+      result = result.filter(c => normalizeContactStatus(c.status) === statusFilter);
     }
     if (contactTypeFilter !== 'all') {
       result = result.filter(c => ((c as any).contact_type || '') === contactTypeFilter);
