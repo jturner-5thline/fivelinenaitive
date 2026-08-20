@@ -15,11 +15,11 @@ import { useOptionalRequestStatusChange } from '@/components/deal/StatusChangeGa
 // Glassy bordered treatment: opaque colored border + translucent gradient
 // fill + bright legible label (matches the stage tag / "+ New Deal" button).
 const STATUS_TAG_THEME: Record<DealStatus, string> = {
-  'on-track': '!bg-gradient-to-br !from-teal-400/25 !to-emerald-400/15 !text-teal-50 border !border-teal-300/95 backdrop-blur-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]',
-  'at-risk': '!bg-gradient-to-br !from-yellow-400/25 !to-amber-400/15 !text-yellow-50 border !border-yellow-300/95 backdrop-blur-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]',
-  'off-track': '!bg-gradient-to-br !from-red-500/25 !to-rose-400/15 !text-red-50 border !border-red-300/95 backdrop-blur-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]',
-  'on-hold': '!bg-gradient-to-br !from-blue-500/25 !to-sky-400/15 !text-blue-50 border !border-blue-300/95 backdrop-blur-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]',
-  'archived': '!bg-gradient-to-br !from-orange-500/25 !to-amber-500/15 !text-orange-50 border !border-orange-300/95 backdrop-blur-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]',
+  'on-track': '!bg-teal-400/15 !text-teal-200 border !border-teal-300/40 backdrop-blur-[8px]',
+  'at-risk': '!bg-yellow-400/15 !text-yellow-200 border !border-yellow-300/40 backdrop-blur-[8px]',
+  'off-track': '!bg-red-500/15 !text-red-200 border !border-red-300/40 backdrop-blur-[8px]',
+  'on-hold': '!bg-blue-500/15 !text-blue-200 border !border-blue-300/40 backdrop-blur-[8px]',
+  'archived': '!bg-orange-500/15 !text-orange-200 border !border-orange-300/40 backdrop-blur-[8px]',
 };
 
 const STATUS_DOT: Record<DealStatus, string> = {
