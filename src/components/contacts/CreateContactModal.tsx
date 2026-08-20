@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,12 +73,20 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
     }));
   }, [open, initialValues]);
 
+  const domainAutoFilledRef = useRef(true);
+
   const handleEmailChange = (email: string) => {
     setForm(p => {
       const next = { ...p, email };
-      if (!p.website_url) {
+      // Keep the domain in sync with the email until the user edits it manually.
+      if (!p.website_url || domainAutoFilledRef.current) {
         const domain = extractEmailDomain(email);
-        if (domain) next.website_url = `https://${domain}`;
+        if (domain) {
+          next.website_url = domain;
+          domainAutoFilledRef.current = true;
+        } else if (domainAutoFilledRef.current) {
+          next.website_url = '';
+        }
       }
       return next;
     });
@@ -136,6 +144,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
           lead_source: '', linkedin_url: '', website_url: '', description: '', crm_company_id: '', contact_type: '', owner_user_id: '',
           city: '', state: '', country: '', timezone: '', source_system: '', custom_fields: {},
         });
+        domainAutoFilledRef.current = true;
       },
     });
   };
@@ -245,7 +254,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
           {!isFieldDisabled('website_url') && (
             <div className="space-y-1.5 col-span-2">
               <Label htmlFor="website_url" className="text-xs">Domain</Label>
-              <Input id="website_url" placeholder="auto from email" value={form.website_url} onChange={(e) => setForm(p => ({ ...p, website_url: e.target.value }))} />
+              <Input id="website_url" placeholder="auto from email" value={form.website_url} onChange={(e) => { domainAutoFilledRef.current = false; setForm(p => ({ ...p, website_url: e.target.value })); }} />
             </div>
           )}
 
