@@ -361,7 +361,9 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
               createContact.isPending ||
               !form.first_name.trim() ||
               !form.last_name.trim() ||
-              !form.email.trim()
+              !form.email.trim() ||
+              !!emailError ||
+              !!domainError
             }
           >
             {createContact.isPending ? 'Creating...' : 'Create Contact'}
