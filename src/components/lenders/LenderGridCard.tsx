@@ -77,6 +77,7 @@ export const LenderGridCard = memo(function LenderGridCard({
   onEdit,
   onDelete,
   onQuickUpload,
+  onToggleDocFlag,
 }: LenderGridCardProps) {
   // Memoize computed values
   const dealSizeRange = useMemo(() => {
