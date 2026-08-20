@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Check, Plus, X, Pencil, Trash2, Settings2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -70,6 +70,7 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
   const updateType = useUpdateContactType();
   const deleteType = useDeleteContactType();
   const [open, setOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [manage, setManage] = useState(false);
   const [search, setSearch] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -225,7 +226,18 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
             <Plus className="h-3 w-3" /> {selected.length ? 'Add' : 'Add type'}
           </button>
         </PopoverTrigger>
-        <PopoverContent className="p-0 w-72" align="start">
+        <PopoverContent
+          className="p-0 w-72 max-h-[min(24rem,var(--radix-popover-content-available-height))] overflow-y-auto"
+          align="start"
+          side="bottom"
+          sideOffset={6}
+          avoidCollisions
+          collisionPadding={12}
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            requestAnimationFrame(() => searchInputRef.current?.focus({ preventScroll: true }));
+          }}
+        >
           {manage && isAdmin ? (
             <div className="p-2 space-y-2">
               <div className="flex items-center justify-between px-1 pb-1 border-b border-border/60">
@@ -307,7 +319,7 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
             </div>
           ) : (
             <Command>
-              <CommandInput placeholder="Search types..." value={search} onValueChange={setSearch} />
+              <CommandInput ref={searchInputRef} placeholder="Search types..." value={search} onValueChange={setSearch} />
               <CommandList>
                 <CommandEmpty>
                   {isAdmin && trimmed ? (
