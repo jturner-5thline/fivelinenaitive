@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { ArrowUpDown, ChevronDown, Layers, LayoutGrid, List, Kanban, ChartGantt, RotateCcw } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, Layers, LayoutGrid, List, Kanban, ChartGantt, RotateCcw, Flag, CopyCheck, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -30,6 +30,12 @@ interface Props {
   setGroupBy: (v: string | null) => void;
   toggleGroup: (v: string) => void;
   timelineEnabled: boolean;
+  flaggedOnly?: boolean;
+  onFlaggedOnlyChange?: (v: boolean) => void;
+  duplicatesEnabled?: boolean;
+  showDuplicates?: boolean;
+  onShowDuplicatesChange?: (v: boolean) => void;
+  duplicateCount?: number;
 }
 
 export function DealsViewMenu({
@@ -37,6 +43,12 @@ export function DealsViewMenu({
   sortField, sortDirection, setSortField, setSortDirection, toggleSort,
   groupBy, setGroupBy, toggleGroup,
   timelineEnabled,
+  flaggedOnly = false,
+  onFlaggedOnlyChange,
+  duplicatesEnabled = false,
+  showDuplicates = false,
+  onShowDuplicatesChange,
+  duplicateCount = 0,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState<SubmenuId>(null);
@@ -247,6 +259,36 @@ export function DealsViewMenu({
               </DropdownMenuItem>
             ))}
           </>,
+        )}
+        {(onFlaggedOnlyChange || (duplicatesEnabled && onShowDuplicatesChange)) && <DropdownMenuSeparator />}
+        {onFlaggedOnlyChange && (
+          <DropdownMenuItem
+            onSelect={(e) => { e.preventDefault(); onFlaggedOnlyChange(!flaggedOnly); }}
+            className={cn('justify-between', flaggedOnly && 'bg-accent')}
+          >
+            <span className="inline-flex items-center gap-2">
+              <Flag className="h-4 w-4 opacity-70" />
+              <span>Flagged deals only</span>
+            </span>
+            {flaggedOnly && <Check className="h-3.5 w-3.5 opacity-80" />}
+          </DropdownMenuItem>
+        )}
+        {duplicatesEnabled && onShowDuplicatesChange && (
+          <DropdownMenuItem
+            onSelect={(e) => { e.preventDefault(); onShowDuplicatesChange(!showDuplicates); }}
+            className={cn('justify-between', showDuplicates && 'bg-accent')}
+          >
+            <span className="inline-flex items-center gap-2">
+              <CopyCheck className="h-4 w-4 opacity-70" />
+              <span>Find duplicates</span>
+            </span>
+            <span className="inline-flex items-center gap-2">
+              {showDuplicates && duplicateCount > 0 && (
+                <span className="text-xs text-muted-foreground">{duplicateCount}</span>
+              )}
+              {showDuplicates && <Check className="h-3.5 w-3.5 opacity-80" />}
+            </span>
+          </DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
