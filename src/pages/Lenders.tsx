@@ -1781,7 +1781,7 @@ export default function Lenders() {
               </div>
             </div>
 
-            <div className="lg-shell px-3 pt-3 pb-0 flex-1 min-h-0 flex flex-col gap-3">
+            <div className="px-3 pt-3 pb-0 flex-1 min-h-0 flex flex-col gap-3 bg-transparent border-0 shadow-none backdrop-blur-none">
 
                 {/* AI-driven filter banner */}
                 {aiFilter && (
