@@ -830,7 +830,7 @@ serve(async (req: Request): Promise<Response> => {
           mail_connected: false,
           messages: [],
           threads: [],
-み        }),
+        }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
