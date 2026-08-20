@@ -379,6 +379,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
             onClick={handleSubmit}
             disabled={
               createContact.isPending ||
+              updateContact.isPending ||
               !form.first_name.trim() ||
               !form.last_name.trim() ||
               !form.email.trim() ||
@@ -386,7 +387,9 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
               !!domainError
             }
           >
-            {createContact.isPending ? 'Creating...' : 'Create Contact'}
+            {isEdit
+              ? (updateContact.isPending ? 'Saving...' : 'Save Contact')
+              : (createContact.isPending ? 'Creating...' : 'Create Contact')}
           </Button>
         </DialogFooter>
       </DialogContent>
