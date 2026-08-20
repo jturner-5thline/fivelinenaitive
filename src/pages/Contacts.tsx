@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Upload, RefreshCw, Loader2, Link2, Download, Tags, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -36,6 +37,7 @@ import { cn } from '@/lib/utils';
 import { TOOLBAR_CONTROL_CLASS } from '@/lib/toolbarControlClass';
 
 export default function Contacts() {
+  const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showTaggingRules, setShowTaggingRules] = useState(false);
@@ -335,7 +337,13 @@ export default function Contacts() {
         </main>
       </div>
 
-      <CreateContactModal open={showCreate} onClose={() => setShowCreate(false)} />
+      <CreateContactModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreated={(contact) => {
+          if (contact?.id) navigate(`/contacts/${contact.id}`);
+        }}
+      />
       <ImportContactsModal open={showImport} onClose={() => setShowImport(false)} />
       <ContactTaggingRulesDialog open={showTaggingRules} onOpenChange={setShowTaggingRules} />
 
