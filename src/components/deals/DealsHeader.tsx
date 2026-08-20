@@ -526,7 +526,7 @@ export function DealsHeader() {
         className="pt-4 px-2 sm:px-4 pointer-events-none"
       >
         <div
-          className="floating-header pointer-events-auto mx-auto relative flex h-10 sm:h-11 items-center gap-1 sm:gap-2 px-2 sm:px-4 min-w-0 rounded-[5px] overflow-hidden border border-[rgba(126,184,247,0.35)] bg-[rgba(126,184,247,0.12)] text-foreground backdrop-blur-xl shadow-glass hover:bg-[rgba(126,184,247,0.2)] hover:border-[rgba(126,184,247,0.5)] hover:shadow-glass-hover before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.15)_0%,transparent_50%)]"
+          className="floating-header pointer-events-auto mx-auto relative flex h-10 sm:h-11 items-center gap-1 sm:gap-2 px-2 sm:px-4 min-w-0 rounded-[5px] overflow-hidden text-foreground shadow-glass hover:shadow-glass-hover"
           style={{
             // Size the bar to fit the visible icon cluster: each icon is
             // ~40px wide (sm:w-10) with a 6px gap (gap-1.5), plus 16px of
