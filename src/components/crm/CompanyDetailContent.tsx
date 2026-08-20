@@ -532,7 +532,26 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 pt-2 border-t">
                   {!snapshotFields.isDisabled('industry') && (
-                  <EditableKV label="Industry" value={company.industry} onSave={(v) => handleQuickUpdate('industry', v)} />
+                  <div className="flex items-end gap-1 min-w-0">
+                    <div className="flex-1 min-w-0">
+                      <EditableKV
+                        label="Industry"
+                        type="select"
+                        value={company.industry}
+                        options={industryOptions.map(o => ({ value: o, label: o }))}
+                        onSave={(v) => handleQuickUpdate('industry', v)}
+                      />
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 shrink-0"
+                      title="Manage industries"
+                      onClick={() => setManageIndustriesOpen(true)}
+                    >
+                      <Settings className="h-3 w-3" />
+                    </Button>
+                  </div>
                   )}
                   {!snapshotFields.isDisabled('owner_user_id') && (
                   <EditableKV
