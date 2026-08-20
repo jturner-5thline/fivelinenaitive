@@ -19,8 +19,10 @@ import type { FilterRule, MatchMode } from '@/lib/filterTypes';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { exportCrmCompaniesToXlsx } from '@/lib/crmCompaniesXlsxExport';
 import { useCompany } from '@/hooks/useCompany';
+import { useNavigate } from 'react-router-dom';
 
 export default function CrmCompanies() {
+  const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [quickFilter, setQuickFilter] = useState('all');
@@ -269,7 +271,11 @@ export default function CrmCompanies() {
         </main>
       </div>
 
-      <CreateCrmCompanyModal open={showCreate} onClose={() => setShowCreate(false)} />
+      <CreateCrmCompanyModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreated={(company) => { if (company?.id) navigate(`/crm-companies/${company.id}`); }}
+      />
       <ImportCrmCompaniesModal open={showImport} onClose={() => setShowImport(false)} />
     </>
   );
