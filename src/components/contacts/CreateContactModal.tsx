@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateContact, CONTACT_STATUSES, DEFAULT_CONTACT_STATUS } from '@/hooks/useContacts';
 import { CompanyComboBox } from '@/components/contacts/CompanyComboBox';
-import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
+import { ContactTypeMultiSelect } from '@/components/contacts/ContactTypeMultiSelect';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useAuth } from '@/contexts/AuthContext';
 import { extractEmailDomain } from '@/lib/extractEmailDomain';
@@ -186,10 +186,9 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Contact Type</Label>
-            <ContactTypeSelect
+            <ContactTypeMultiSelect
               value={form.contact_type}
               onChange={(v) => setForm(p => ({ ...p, contact_type: v || '' }))}
-              triggerClassName="h-9"
             />
           </div>
           <div className="space-y-1.5">
