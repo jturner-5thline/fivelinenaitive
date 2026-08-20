@@ -76,9 +76,15 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
   const handleEmailChange = (email: string) => {
     setForm(p => {
       const next = { ...p, email };
-      if (!p.website_url) {
+      // Keep the domain in sync with the email until the user edits it manually.
+      if (!p.website_url || domainAutoFilledRef.current) {
         const domain = extractEmailDomain(email);
-        if (domain) next.website_url = `https://${domain}`;
+        if (domain) {
+          next.website_url = domain;
+          domainAutoFilledRef.current = true;
+        } else if (domainAutoFilledRef.current) {
+          next.website_url = '';
+        }
       }
       return next;
     });
