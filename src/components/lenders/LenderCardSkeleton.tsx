@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export function LenderGridCardSkeleton() {
   return (
-    <div className="deal-glass relative p-3 flex flex-col h-full min-h-[180px] overflow-hidden">
+    <div className="deal-glass deal-tile relative p-3 flex flex-col h-full min-h-[180px] overflow-hidden">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -translate-x-full animate-shimmer-sweep bg-gradient-to-r from-transparent via-white/[0.04] to-transparent"
@@ -31,7 +31,7 @@ export function LenderGridCardSkeleton() {
 
 export function LenderListCardSkeleton() {
   return (
-    <div className="deal-glass relative flex items-center gap-3 p-3 overflow-hidden">
+    <div className="deal-glass deal-tile relative flex items-center gap-3 p-3 overflow-hidden">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -translate-x-full animate-shimmer-sweep bg-gradient-to-r from-transparent via-white/[0.04] to-transparent"
