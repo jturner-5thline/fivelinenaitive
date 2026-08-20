@@ -156,7 +156,7 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
         className="pl-8"
       />
       {open && (
-        <div className="absolute z-50 top-full mt-1 w-full border rounded-md bg-popover shadow-md max-h-[220px] overflow-y-auto">
+        <div className="absolute z-50 top-full mt-1 w-full rounded-md border border-[rgba(157,162,245,0.2)] bg-[#171B2C] text-white backdrop-blur-none shadow-lg max-h-[220px] overflow-y-auto">
           {filtered.map(c => (
             <button
               key={c.id}
