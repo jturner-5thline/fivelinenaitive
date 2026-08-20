@@ -308,7 +308,9 @@ async function getGrantId(supabase: any, userId: string): Promise<string | null>
     .from("gmail_tokens")
     .select("grant_id, account_id, is_demo_seed")
     .eq("user_id", userId)
-    .single();
+    .order("updated_at", { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
 
   if (error || !data) return null;
   if (data.is_demo_seed || data.grant_id === "demo-seed") return "demo-seed";
@@ -825,8 +827,11 @@ serve(async (req: Request): Promise<Response> => {
         JSON.stringify({
           error: "Mail not connected. Please connect Gmail or Microsoft in Integrations.",
           error_code: "mail_not_connected",
-        }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          mail_connected: false,
+          messages: [],
+          threads: [],
+み        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
     console.log(`Nylas messages action: ${action} for user: ${user.id}`);
