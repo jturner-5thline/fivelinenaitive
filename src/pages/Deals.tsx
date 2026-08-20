@@ -838,62 +838,7 @@ export default function Dashboard() {
 
                 {viewMode === 'pipeline' && <PipelineSortButton />}
 
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Toggle
-                        pressed={filters.flaggedOnly}
-                        onPressedChange={(pressed) => {
-                          if (pressed) {
-                            updateFilters({ flaggedOnly: true, staleOnly: false, hasNotificationsOnly: false });
-                          } else {
-                            updateFilters({ flaggedOnly: false });
-                          }
-                          setSavedViewWarningDismissed(false);
-                        }}
-                        variant="outline"
-                        size="sm"
-                        className={`h-9 w-9 p-0 shrink-0 rounded-md backdrop-blur-md border transition-all duration-200 ${filters.flaggedOnly ? 'bg-gradient-to-br from-red-500/25 to-red-900/20 border-red-500/50 text-red-400 shadow-[0_0_12px_hsl(0,70%,45%,0.2)] hover:from-red-500/30 hover:to-red-900/25' : 'bg-gradient-to-br from-red-500/10 to-red-900/5 border-red-500/20 text-red-400/60 hover:from-red-500/15 hover:to-red-900/10 hover:border-red-500/35 hover:text-red-400'}`}
-                      >
-                        <Flag className="h-4 w-4" />
-                      </Toggle>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Show only flagged deals</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-
-                {/* Notifications tri-state removed: merged into the Flag toggle above. */}
-
-                {is5thLine && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Toggle
-                        pressed={showDuplicates}
-                        onPressedChange={(pressed) => setShowDuplicates(pressed)}
-                        variant="outline"
-                        size="sm"
-                        className={`h-9 w-9 p-0 shrink-0 rounded-md relative backdrop-blur-md border transition-all duration-200 ${showDuplicates ? 'bg-gradient-to-br from-violet-500/25 to-purple-600/20 border-violet-500/50 text-violet-400 shadow-[0_0_12px_hsl(270,70%,50%,0.2)] hover:from-violet-500/30 hover:to-purple-600/25' : 'bg-gradient-to-br from-violet-500/10 to-purple-600/5 border-violet-500/20 text-violet-400/60 hover:from-violet-500/15 hover:to-purple-600/10 hover:border-violet-500/35 hover:text-violet-400'}`}
-                      >
-                        <CopyCheck className="h-4 w-4" />
-                        {showDuplicates && duplicateClusters.length > 0 && (
-                          <Badge 
-                            variant="destructive" 
-                            className="absolute -top-2 -right-2 h-5 min-w-5 px-1.5 text-xs rounded-full"
-                          >
-                            {duplicateClusters.length}
-                          </Badge>
-                        )}
-                      </Toggle>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Find duplicate deals</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                )}
+                {/* Flag + Duplicates toggles moved into the Layout, sort & group menu. */}
 
                 <div className="relative self-center">
                   <DealSavedViewsMenu
