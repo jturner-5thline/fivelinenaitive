@@ -997,6 +997,12 @@ export default function Dashboard() {
                  }}
 
               >
+              {/* Cheap sticky top fade (composited, no per-frame repaint) */}
+              <div
+                aria-hidden
+                className="pointer-events-none sticky top-0 z-20 -mb-10 h-10 shrink-0 bg-gradient-to-b from-[hsl(var(--background))] to-transparent opacity-90"
+              />
+
               {showInlineDetail && selectedDeal ? (
                 /*
                  * Unified workspace container: list + detail share one
