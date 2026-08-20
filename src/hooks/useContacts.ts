@@ -695,17 +695,49 @@ export const LIFECYCLE_STAGES = [
   { value: 'other', label: 'Other' },
 ];
 
+/**
+ * Canonical contact status values. Single source of truth for the create-contact
+ * modal, the contact detail page, the contacts table filter, and any API mapping.
+ * Stored values are the lowercase snake_case `value`.
+ */
 export const CONTACT_STATUSES = [
-  { value: 'new', label: 'New' },
-  { value: 'working', label: 'Working' },
-  { value: 'meeting_scheduled', label: 'Meeting Scheduled' },
-  { value: 'no_show', label: 'No Show' },
-  { value: 'no_fit', label: 'No Fit' },
-  { value: 'nurture', label: 'Nurture' },
-  { value: 'bad_data', label: 'Bad Data' },
-  { value: 'converted', label: 'Converted' },
-  { value: 'closed', label: 'Closed' },
-];
+  { value: 'active', label: 'Active', dot: 'bg-green-500', badge: 'bg-green-500/10 text-green-500' },
+  { value: 'inactive', label: 'Inactive', dot: 'bg-blue-500', badge: 'bg-blue-500/10 text-blue-500' },
+  { value: 'went_dark', label: 'Went Dark', dot: 'bg-yellow-500', badge: 'bg-yellow-500/10 text-yellow-500' },
+  { value: 'do_not_contact', label: 'Do Not Contact', dot: 'bg-red-500', badge: 'bg-red-500/10 text-red-500' },
+] as const;
+
+export const DEFAULT_CONTACT_STATUS = 'active';
+
+/** Legacy/imported status values mapped onto the canonical set. */
+const LEGACY_STATUS_MAP: Record<string, string> = {
+  new: 'active',
+  working: 'active',
+  meeting_scheduled: 'active',
+  open: 'active',
+  nurture: 'inactive',
+  no_show: 'went_dark',
+  unqualified: 'inactive',
+  no_fit: 'inactive',
+  bad_data: 'inactive',
+  converted: 'active',
+  closed: 'inactive',
+  opt_out: 'do_not_contact',
+  unsubscribed: 'do_not_contact',
+};
+
+/** Normalize any stored/imported status string to a canonical value (or null). */
+export function normalizeContactStatus(raw?: string | null): string | null {
+  const v = String(raw ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (!v) return null;
+  if (CONTACT_STATUSES.some((s) => s.value === v)) return v;
+  return LEGACY_STATUS_MAP[v] ?? null;
+}
+
+export function contactStatusLabel(raw?: string | null): string {
+  const v = normalizeContactStatus(raw);
+  return CONTACT_STATUSES.find((s) => s.value === v)?.label ?? '—';
+}
 
 export const BUYING_ROLES = [
   { value: 'economic_buyer', label: 'Economic Buyer' },
