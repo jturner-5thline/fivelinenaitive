@@ -3357,3 +3357,54 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   border-color: rgba(253, 186, 116, 0.45) !important;
   color: rgb(254, 215, 170) !important;
 }
+
+/* ── Deal detail rail: the status trigger itself carries the status colour
+   (its inner badge is stripped of chrome by the rail rules above). ─────── */
+.deal-status-control[data-status],
+.deal-detail-surface .deal-rail-control.deal-status-control[data-status],
+.deal-rail-control.deal-status-control[data-status] {
+  background-image: none !important;
+  border: 1px solid transparent !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+.deal-status-control[data-status="on-track"],
+.deal-rail-control.deal-status-control[data-status="on-track"],
+.deal-detail-surface .deal-rail-control.deal-status-control[data-status="on-track"] {
+  background-color: rgba(45, 212, 191, 0.15) !important;
+  border-color: rgba(94, 234, 212, 0.45) !important;
+  color: rgb(153, 246, 228) !important;
+}
+.deal-status-control[data-status="at-risk"],
+.deal-rail-control.deal-status-control[data-status="at-risk"],
+.deal-detail-surface .deal-rail-control.deal-status-control[data-status="at-risk"] {
+  background-color: rgba(250, 204, 21, 0.15) !important;
+  border-color: rgba(253, 224, 71, 0.45) !important;
+  color: rgb(254, 240, 138) !important;
+}
+.deal-status-control[data-status="off-track"],
+.deal-rail-control.deal-status-control[data-status="off-track"],
+.deal-detail-surface .deal-rail-control.deal-status-control[data-status="off-track"] {
+  background-color: rgba(239, 68, 68, 0.16) !important;
+  border-color: rgba(252, 165, 165, 0.45) !important;
+  color: rgb(254, 202, 202) !important;
+}
+.deal-status-control[data-status="on-hold"],
+.deal-rail-control.deal-status-control[data-status="on-hold"],
+.deal-detail-surface .deal-rail-control.deal-status-control[data-status="on-hold"] {
+  background-color: rgba(59, 130, 246, 0.16) !important;
+  border-color: rgba(147, 197, 253, 0.45) !important;
+  color: rgb(191, 219, 254) !important;
+}
+.deal-status-control[data-status="archived"],
+.deal-rail-control.deal-status-control[data-status="archived"],
+.deal-detail-surface .deal-rail-control.deal-status-control[data-status="archived"] {
+  background-color: rgba(249, 115, 22, 0.15) !important;
+  border-color: rgba(253, 186, 116, 0.45) !important;
+  color: rgb(254, 215, 170) !important;
+}
+/* Label + chevron inherit the status colour inside the trigger. */
+.deal-status-control[data-status] :is(span, div, svg) {
+  color: inherit !important;
+  -webkit-text-fill-color: currentColor !important;
+}
