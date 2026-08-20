@@ -90,7 +90,8 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="max-w-lg z-[120] border-white/10 bg-[#171B2C] text-white"
+          className="max-w-lg z-[1420] border-white/10 bg-[#171B2C] text-white"
+          overlayClassName="z-[1410]"
           onClick={(e) => e.stopPropagation()}
         >
           <DialogHeader>
