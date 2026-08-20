@@ -337,7 +337,13 @@ export default function Contacts() {
         </main>
       </div>
 
-      <CreateContactModal open={showCreate} onClose={() => setShowCreate(false)} />
+      <CreateContactModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreated={(contact) => {
+          if (contact?.id) navigate(`/contacts/${contact.id}`);
+        }}
+      />
       <ImportContactsModal open={showImport} onClose={() => setShowImport(false)} />
       <ContactTaggingRulesDialog open={showTaggingRules} onOpenChange={setShowTaggingRules} />
 
