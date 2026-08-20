@@ -534,11 +534,11 @@ export function DealsHeader() {
             // viewports so the cluster never clips.
             width: `min(${overlayRegistry.length * 40 + Math.max(0, overlayRegistry.length - 1) * 6 + 48}px, calc(100vw - 16px))`,
             borderRadius: 8,
-            background:
-              'linear-gradient(180deg, rgba(20, 34, 58, 0.72) 0%, rgba(14, 24, 42, 0.66) 100%)',
-            backdropFilter: 'blur(20px) saturate(150%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(150%)',
-            border: '1px solid rgba(120, 170, 255, 0.16)',
+            background: '#0b1226',
+            backgroundColor: '#0b1226',
+            backdropFilter: 'none',
+            WebkitBackdropFilter: 'none',
+            border: '1px solid rgba(190, 220, 255, 0.34)',
             boxShadow:
               '0 10px 28px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
           }}
