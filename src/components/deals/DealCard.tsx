@@ -460,24 +460,6 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                   onStageChange={onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))}
                 />
               )}
-              {timeAgoData.isStale && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Badge
-                        variant="outline"
-                        className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-warning/15 text-warning border-warning/40 gap-1"
-                      >
-                        <Flag className="h-3 w-3" />
-                        Stale
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>No update in {timeAgoData.days} days</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
             </div>
           )}
 
