@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Video, Check, Pencil, X, ExternalLink, RefreshCw, Sparkles } from 'lucide-react';
 import { LinkedCallActionsDialog } from '@/components/claap/LinkedCallActionsDialog';
+import { MeetingContactUpdateDialog } from '@/components/dashboard/MeetingContactUpdateDialog';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -98,6 +99,7 @@ export function MeetingClaapInlineAction(props: Props) {
   const [refreshTick, setRefreshTick] = useState(0);
   const [rankPending, setRankPending] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [contactDialogOpen, setContactDialogOpen] = useState(false);
 
   // Client-side gate: once we auto-attempt a search for this event and it
   // completes (whether or not a match was found and whether or not the DB
@@ -571,18 +573,26 @@ export function MeetingClaapInlineAction(props: Props) {
     </Button>
   );
 
-  // Placeholder action rendered directly beneath the Claap button (no
-  // functionality wired up yet).
+  // Opens the attendee → contact reconciliation dialog above the current popup.
   const updateContactCell = (
-    <Button
-      size="sm"
-      variant="outline"
-      className="h-8 w-full min-w-0 justify-start gap-1.5 px-2 text-xs text-white border-white/15 bg-white/[0.04] hover:bg-white/[0.08]"
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-    >
-      <Pencil className="h-3.5 w-3.5 text-primary shrink-0" />
-      <span className="truncate">Update Contact</span>
-    </Button>
+    <>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-8 w-full min-w-0 justify-start gap-1.5 px-2 text-xs text-white border-white/15 bg-white/[0.04] hover:bg-white/[0.08]"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setContactDialogOpen(true); }}
+      >
+        <Pencil className="h-3.5 w-3.5 text-primary shrink-0" />
+        <span className="truncate">Update Contact</span>
+      </Button>
+      <MeetingContactUpdateDialog
+        open={contactDialogOpen}
+        onOpenChange={setContactDialogOpen}
+        attendees={attendees}
+        organizerEmail={organizerEmail}
+        eventTitle={eventTitle}
+      />
+    </>
   );
 
   // Once a recording is officially linked (manual approve or post-refresh
