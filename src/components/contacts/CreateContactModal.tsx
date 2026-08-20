@@ -166,17 +166,6 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
             <Input id="department" value={form.department} onChange={(e) => setForm(p => ({ ...p, department: e.target.value }))} />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Lifecycle Stage</Label>
-            <Select value={form.lifecycle_stage} onValueChange={(v) => setForm(p => ({ ...p, lifecycle_stage: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {LIFECYCLE_STAGES.map(s => (
-                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
             <Label className="text-xs">Status</Label>
             <Select value={form.status} onValueChange={(v) => setForm(p => ({ ...p, status: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
