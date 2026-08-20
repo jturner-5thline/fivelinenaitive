@@ -251,7 +251,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
       onPointerEnter={preloadDealDetail}
     >
       <Card
-        className={`deal-glass deal-tile group relative cursor-pointer h-full flex flex-col transition-all duration-200 hover:-translate-y-0.5 min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-1 ring-warning shadow-none' : ''}`}>
+        className="deal-glass deal-tile group relative cursor-pointer h-full flex flex-col transition-all duration-200 hover:-translate-y-0.5 min-w-0 max-w-full">
 
         {/*
           Flagged-for-discussion indicator — small red flag pinned to the
