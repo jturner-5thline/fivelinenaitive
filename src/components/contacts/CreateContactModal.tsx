@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useCreateContact, CONTACT_STATUSES, DEFAULT_CONTACT_STATUS } from '@/hooks/useContacts';
+import { useCreateContact, useUpdateContact, CONTACT_STATUSES, DEFAULT_CONTACT_STATUS } from '@/hooks/useContacts';
 import { CompanyComboBox } from '@/components/contacts/CompanyComboBox';
 import { ContactTypeMultiSelect } from '@/components/contacts/ContactTypeMultiSelect';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -25,14 +25,27 @@ interface CreateContactModalProps {
   open: boolean;
   onClose: () => void;
   defaultCompanyId?: string;
-  /** Pre-fill values (e.g. parsed from a search term). */
-  initialValues?: { first_name?: string; last_name?: string; email?: string };
-  /** Called with the created contact row after a successful save. */
+  /** Pre-fill values (e.g. parsed from a search term, or an existing contact row). */
+  initialValues?: Record<string, any>;
+  /** When set, the modal edits this existing contact instead of creating a new one. */
+  contactId?: string | null;
+  /** Optional class overrides (e.g. z-index when nested inside another dialog). */
+  contentClassName?: string;
+  overlayClassName?: string;
+  /** Called with the created/updated contact row after a successful save. */
   onCreated?: (contact: any) => void;
 }
 
-export function CreateContactModal({ open, onClose, defaultCompanyId, initialValues, onCreated }: CreateContactModalProps) {
+const FORM_KEYS = [
+  'first_name','last_name','email','phone_work','phone_mobile','job_title','department',
+  'lifecycle_stage','status','lead_source','linkedin_url','website_url','description',
+  'crm_company_id','contact_type','owner_user_id','city','state','country','timezone','source_system',
+] as const;
+
+export function CreateContactModal({ open, onClose, defaultCompanyId, initialValues, contactId, contentClassName, overlayClassName, onCreated }: CreateContactModalProps) {
   const createContact = useCreateContact();
+  const updateContact = useUpdateContact();
+  const isEdit = !!contactId;
   const teamMembers = useTeamMembers();
   const { data: taggingRules = [] } = useContactTaggingRules({ activeOnly: true });
   const { user } = useAuth();
@@ -62,16 +75,23 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
     custom_fields: {} as Record<string, any>,
   });
 
-  // Seed name/email from the caller each time the modal opens.
+  // Seed the form from the caller each time the modal opens. When editing an
+  // existing contact every known field is hydrated as-is so the user can adjust it.
   useEffect(() => {
     if (!open || !initialValues) return;
-    setForm(p => ({
-      ...p,
-      first_name: p.first_name || initialValues.first_name || '',
-      last_name: p.last_name || initialValues.last_name || '',
-      email: p.email || initialValues.email || '',
-    }));
-  }, [open, initialValues]);
+    setForm(p => {
+      const next: any = { ...p };
+      for (const key of FORM_KEYS) {
+        const incoming = (initialValues as any)[key];
+        if (incoming === undefined || incoming === null || incoming === '') continue;
+        if (isEdit || !next[key]) next[key] = String(incoming);
+      }
+      if (initialValues.custom_fields && typeof initialValues.custom_fields === 'object') {
+        next.custom_fields = { ...(next.custom_fields || {}), ...initialValues.custom_fields };
+      }
+      return next;
+    });
+  }, [open, initialValues, isEdit]);
 
   const domainAutoFilledRef = useRef(true);
 
@@ -150,26 +170,29 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
       job_title: form.job_title.trim() || null,
       owner_user_id: form.owner_user_id || user?.id || null,
     };
-    createContact.mutate(payload as any, {
-      onSuccess: (created: any) => {
-        onClose();
-        onCreated?.({ ...payload, ...(created || {}) });
-        setForm({
-          first_name: '', last_name: '', email: '', phone_work: '', phone_mobile: '',
-          job_title: '', department: '', lifecycle_stage: 'lead', status: DEFAULT_CONTACT_STATUS,
-          lead_source: '', linkedin_url: '', website_url: '', description: '', crm_company_id: '', contact_type: '', owner_user_id: '',
-          city: '', state: '', country: '', timezone: '', source_system: '', custom_fields: {},
-        });
-        domainAutoFilledRef.current = true;
-      },
-    });
+    const onSaved = (created: any) => {
+      onClose();
+      onCreated?.({ ...payload, ...(created || {}) });
+      setForm({
+        first_name: '', last_name: '', email: '', phone_work: '', phone_mobile: '',
+        job_title: '', department: '', lifecycle_stage: 'lead', status: DEFAULT_CONTACT_STATUS,
+        lead_source: '', linkedin_url: '', website_url: '', description: '', crm_company_id: '', contact_type: '', owner_user_id: '',
+        city: '', state: '', country: '', timezone: '', source_system: '', custom_fields: {},
+      });
+      domainAutoFilledRef.current = true;
+    };
+    if (isEdit) {
+      updateContact.mutate({ id: contactId as string, ...(payload as any) }, { onSuccess: onSaved });
+    } else {
+      createContact.mutate(payload as any, { onSuccess: onSaved });
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-y-auto">
+      <DialogContent className={cn('sm:max-w-[550px] max-h-[85vh] overflow-y-auto', contentClassName)} overlayClassName={overlayClassName}>
         <DialogHeader>
-          <DialogTitle>Create Contact</DialogTitle>
+          <DialogTitle>{isEdit ? 'Update Contact' : 'Create Contact'}</DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-4">
@@ -359,6 +382,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
             onClick={handleSubmit}
             disabled={
               createContact.isPending ||
+              updateContact.isPending ||
               !form.first_name.trim() ||
               !form.last_name.trim() ||
               !form.email.trim() ||
@@ -366,7 +390,9 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
               !!domainError
             }
           >
-            {createContact.isPending ? 'Creating...' : 'Create Contact'}
+            {isEdit
+              ? (updateContact.isPending ? 'Saving...' : 'Save Contact')
+              : (createContact.isPending ? 'Creating...' : 'Create Contact')}
           </Button>
         </DialogFooter>
       </DialogContent>
