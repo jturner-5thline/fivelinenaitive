@@ -251,7 +251,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
       onPointerEnter={preloadDealDetail}
     >
       <Card
-        className={`deal-glass deal-tile group relative cursor-pointer h-full flex flex-col transition-all duration-200 hover:-translate-y-0.5 min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-1 ring-warning shadow-none' : ''}`}>
+        className="deal-glass deal-tile group relative cursor-pointer h-full flex flex-col transition-all duration-200 hover:-translate-y-0.5 min-w-0 max-w-full">
 
         {/*
           Flagged-for-discussion indicator — small red flag pinned to the
@@ -460,8 +460,27 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                   onStageChange={onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))}
                 />
               )}
+              {timeAgoData.isStale && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge
+                        variant="outline"
+                        className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-warning/15 text-warning border-warning/40 gap-1"
+                      >
+                        <Flag className="h-3 w-3" />
+                        Stale
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>No update in {timeAgoData.days} days</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
           )}
+
 
           {/* Migrated + FLEx badges row */}
           {(deal.migratedFromPersonal || (flexEngagement && flexEngagement.level !== "none")) && (
