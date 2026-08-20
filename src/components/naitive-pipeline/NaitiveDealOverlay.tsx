@@ -538,7 +538,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             </button>
           </div>
 
-          <div className="flex md:hidden items-center rounded-lg border border-[rgba(180,212,255,0.42)] bg-background/85 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.6)] backdrop-blur overflow-hidden">
+          <div className="flex md:hidden items-center rounded-lg border border-[rgba(180,212,255,0.42)] bg-[#0b1226] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.6)] overflow-hidden">
             <button
               type="button"
               onClick={goPrev}
@@ -563,7 +563,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           <button
             ref={closeBtnRef}
             type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[rgba(180,212,255,0.42)] bg-background/85 text-foreground shadow-[0_2px_10px_-4px_rgba(0,0,0,0.6)] backdrop-blur transition-colors hover:border-[rgba(180,212,255,0.72)] hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[rgba(180,212,255,0.42)] bg-[#0b1226] text-foreground shadow-[0_2px_10px_-4px_rgba(0,0,0,0.6)] transition-colors hover:border-[rgba(180,212,255,0.72)] hover:bg-[#101836] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
