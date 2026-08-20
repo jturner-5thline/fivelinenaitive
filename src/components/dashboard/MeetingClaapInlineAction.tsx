@@ -571,29 +571,54 @@ export function MeetingClaapInlineAction(props: Props) {
     </Button>
   );
 
+  // Placeholder action rendered directly beneath the Claap button (no
+  // functionality wired up yet).
+  const updateContactCell = (
+    <Button
+      size="sm"
+      variant="outline"
+      className="h-8 w-full min-w-0 justify-start gap-1.5 px-2 text-xs text-white border-white/15 bg-white/[0.04] hover:bg-white/[0.08]"
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+    >
+      <Pencil className="h-3.5 w-3.5 text-primary shrink-0" />
+      <span className="truncate">Update Contact</span>
+    </Button>
+  );
+
   // Once a recording is officially linked (manual approve or post-refresh
   // hydration from event_claap_recordings), collapse back to the plain button
   // cell — no banner. The button itself reflects the linked state via color.
   if (band === 'linked') {
     return (
-      <div className="flex w-full min-w-0 items-center gap-1">
-        <div
-          className="min-w-0 flex-1"
-          onClickCapture={(e) => { e.preventDefault(); e.stopPropagation(); setActionsOpen(true); }}
-        >
-          {buttonCell}
+      <div className="flex w-full min-w-0 flex-col gap-1">
+        <div className="flex w-full min-w-0 items-center gap-1">
+          <div
+            className="min-w-0 flex-1"
+            onClickCapture={(e) => { e.preventDefault(); e.stopPropagation(); setActionsOpen(true); }}
+          >
+            {buttonCell}
+          </div>
+          <LinkedCallActionsDialog
+            open={actionsOpen}
+            onOpenChange={setActionsOpen}
+            eventTitle={eventTitle}
+            recordingTitle={title}
+            recordingId={existing?.recording_id ?? null}
+          />
         </div>
-        <LinkedCallActionsDialog
-          open={actionsOpen}
-          onOpenChange={setActionsOpen}
-          eventTitle={eventTitle}
-          recordingTitle={title}
-          recordingId={existing?.recording_id ?? null}
-        />
+        {updateContactCell}
       </div>
     );
   }
-  if (band === 'none') return buttonCell;
+  if (band === 'none') {
+    return (
+      <div className="flex w-full min-w-0 flex-col gap-1">
+        {buttonCell}
+        {updateContactCell}
+      </div>
+    );
+  }
+
 
   // Suggestion / linked detail bar — rendered via portal below the 4-button
   // action row so it can use full width and never clips the equal-width cell.
@@ -694,7 +719,10 @@ export function MeetingClaapInlineAction(props: Props) {
 
   return (
     <>
-      {buttonCell}
+      <div className="flex w-full min-w-0 flex-col gap-1">
+        {buttonCell}
+        {updateContactCell}
+      </div>
       <ClaapBarPortal eventId={eventId}>{bar}</ClaapBarPortal>
     </>
   );
