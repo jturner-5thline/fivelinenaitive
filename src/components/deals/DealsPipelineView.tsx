@@ -354,36 +354,12 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
   const [overId, setOverId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Soft fade on the horizontal scroll edges (only where there is more to scroll)
+  // The board wrapper previously applied a mask-image edge fade updated on
+  // every scroll event. Masking the whole board forced expensive repaints
+  // whenever a column scrolled vertically, so it has been removed.
   const scrollWrapRef = useRef<HTMLDivElement | null>(null);
-  const [edges, setEdges] = useState({ left: false, right: false });
+  const edgeMask = undefined;
 
-  useEffect(() => {
-    const wrap = scrollWrapRef.current;
-    const viewport = wrap?.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
-    if (!viewport) return;
-    const update = () => {
-      const { scrollLeft, scrollWidth, clientWidth } = viewport;
-      setEdges({
-        left: scrollLeft > 4,
-        right: scrollLeft + clientWidth < scrollWidth - 4,
-      });
-    };
-    update();
-    viewport.addEventListener('scroll', update, { passive: true });
-    const ro = new ResizeObserver(update);
-    ro.observe(viewport);
-    return () => {
-      viewport.removeEventListener('scroll', update);
-      ro.disconnect();
-    };
-  }, [isFullscreen, deals.length]);
-
-  const fadeWidth = 48;
-  const edgeMask =
-    edges.left || edges.right
-      ? `linear-gradient(to right, transparent 0px, #000 ${edges.left ? fadeWidth : 0}px, #000 calc(100% - ${edges.right ? fadeWidth : 0}px), transparent 100%)`
-      : undefined;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
