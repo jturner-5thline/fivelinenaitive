@@ -15,6 +15,7 @@ interface Props {
   attendees: Attendee[];
   organizerEmail?: string | null;
   eventTitle?: string;
+  claapSummary?: string | null;
 }
 
 const INTERNAL_DOMAINS = ['naitive.co', '5thline.co'];
@@ -33,7 +34,21 @@ function splitName(display?: string | null, email?: string | null): { first: str
   };
 }
 
-export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, organizerEmail, eventTitle }: Props) {
+export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, organizerEmail, eventTitle, claapSummary }: Props) {
+  const claapNote = useMemo(() => {
+    const body = (claapSummary || '').trim();
+    if (!body) return '';
+    const header = `Claap Summary${eventTitle ? ` — ${eventTitle}` : ''}`;
+    return `${header}\n${body}`;
+  }, [claapSummary, eventTitle]);
+
+  const withClaapNote = (existing?: string | null) => {
+    if (!claapNote) return existing || '';
+    const prev = (existing || '').trim();
+    if (prev.includes(claapNote)) return prev;
+    return prev ? `${prev}\n\n${claapNote}` : claapNote;
+  };
+
   const [createOpen, setCreateOpen] = useState(false);
   const [editContact, setEditContact] = useState<any | null>(null);
 
@@ -180,7 +195,7 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
         open={!!editContact}
         contactId={editContact?.id || null}
         onClose={() => setEditContact(null)}
-        initialValues={editContact || undefined}
+        initialValues={editContact ? { ...editContact, description: withClaapNote(editContact.description) } : undefined}
         onCreated={() => { setEditContact(null); onOpenChange(false); }}
       />
 
@@ -189,7 +204,7 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
         overlayClassName="z-[1510]"
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        initialValues={active ? { first_name: active.first, last_name: active.last, email: active.email } : undefined}
+        initialValues={active ? { first_name: active.first, last_name: active.last, email: active.email, description: withClaapNote(null) } : undefined}
         onCreated={() => { setCreateOpen(false); onOpenChange(false); }}
       />
     </>

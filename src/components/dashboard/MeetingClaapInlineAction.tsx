@@ -591,6 +591,7 @@ export function MeetingClaapInlineAction(props: Props) {
         attendees={attendees}
         organizerEmail={organizerEmail}
         eventTitle={eventTitle}
+        claapSummary={canonical.summary}
       />
     </>
   );
