@@ -53,6 +53,7 @@ interface LenderListCardProps {
   onEdit: (lenderName: string) => void;
   onDelete: (id: string, name: string) => void;
   onQuickUpload: (lenderName: string, category: 'nda' | 'marketing_materials') => void;
+  onToggleDocFlag?: (lenderName: string, field: 'nda' | 'marketing', value: boolean) => void;
 }
 
 // Helper to format currency - moved outside component for stability
