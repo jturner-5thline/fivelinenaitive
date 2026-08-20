@@ -468,7 +468,9 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
         />
         {/* Header navigation zone — prev/next deal + close, all on one
             row so nothing floats over the modal body content. */}
-        <div className="absolute top-2 right-2 z-[60] flex items-center gap-1.5">
+        <div
+          className="absolute top-2 right-2 z-[60] flex items-center gap-1.5 rounded-lg border border-[rgba(180,212,255,0.34)] bg-[#0b1226] p-1 shadow-[0_8px_24px_-10px_rgba(0,0,0,0.85)]"
+        >
           {/* Jump to any deal without leaving the modal */}
           <Popover open={jumpOpen} onOpenChange={setJumpOpen}>
             <PopoverTrigger asChild>
