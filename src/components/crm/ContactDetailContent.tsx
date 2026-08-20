@@ -473,13 +473,8 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                     onChange={(v) => handleQuickUpdate('contact_type', v)}
                   />
                   {(() => {
-                    const STATUS_OPTIONS: Array<{ value: string; label: string; dot: string }> = [
-                      { value: 'active', label: 'Active', dot: 'bg-green-500' },
-                      { value: 'inactive', label: 'Inactive', dot: 'bg-blue-500' },
-                      { value: 'went_dark', label: 'Went Dark', dot: 'bg-yellow-500' },
-                      { value: 'do_not_contact', label: 'Do Not Contact', dot: 'bg-red-500' },
-                    ];
-                    const current = String((contact as any).status || '').toLowerCase();
+                    const STATUS_OPTIONS = CONTACT_STATUSES;
+                    const current = normalizeContactStatus((contact as any).status) || '';
                     return (
                       <div className="mt-2">
                         <p className="text-[10px] text-foreground/80 uppercase font-semibold tracking-wide mb-1">Status</p>
