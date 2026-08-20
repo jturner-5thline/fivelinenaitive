@@ -96,6 +96,8 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   const [editingNoteBody, setEditingNoteBody] = useState('');
   const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [manageIndustriesOpen, setManageIndustriesOpen] = useState(false);
+  const { options: industryOptions } = useIndustryOptions();
   const [activityFilter, setActivityFilter] = useState('all');
   const [showLinkContact, setShowLinkContact] = useState(false);
   const [showCreateContact, setShowCreateContact] = useState(false);
