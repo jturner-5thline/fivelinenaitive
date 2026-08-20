@@ -47,7 +47,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
     job_title: '',
     department: '',
     lifecycle_stage: 'lead' as string,
-    status: 'new' as string,
+    status: 'active' as string,
     lead_source: '',
     linkedin_url: '',
     website_url: '',
@@ -118,7 +118,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
         onCreated?.({ ...payload, ...(created || {}) });
         setForm({
           first_name: '', last_name: '', email: '', phone_work: '', phone_mobile: '',
-          job_title: '', department: '', lifecycle_stage: 'lead', status: 'new',
+          job_title: '', department: '', lifecycle_stage: 'lead', status: 'active',
           lead_source: '', linkedin_url: '', website_url: '', description: '', crm_company_id: '', contact_type: '', owner_user_id: '',
         });
       },
