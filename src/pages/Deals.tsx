@@ -821,6 +821,19 @@ export default function Dashboard() {
                               setGroupBy={setGroupBy}
                               toggleGroup={toggleGroup}
                               timelineEnabled={!!companyFeatures.timeline_view_enabled}
+                              flaggedOnly={filters.flaggedOnly}
+                              onFlaggedOnlyChange={(pressed) => {
+                                if (pressed) {
+                                  updateFilters({ flaggedOnly: true, staleOnly: false, hasNotificationsOnly: false });
+                                } else {
+                                  updateFilters({ flaggedOnly: false });
+                                }
+                                setSavedViewWarningDismissed(false);
+                              }}
+                              duplicatesEnabled={is5thLine}
+                              showDuplicates={showDuplicates}
+                              onShowDuplicatesChange={setShowDuplicates}
+                              duplicateCount={duplicateClusters.length}
                             />
                             </>
                           );
