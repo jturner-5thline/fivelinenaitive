@@ -614,7 +614,8 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                 </div>
               </div>
 
-              {/* Row 3: Deal owner | Deal originator (referral source) — 5th Line shows Deal Manager instead */}
+              {/* Row 3: Deal owner | Deal manager / Deal originator (own user field).
+                  Referral source now always lives next to "Sourced via". */}
               <div className="grid grid-cols-2 gap-2">
                 {showOwner ? (
                   <div className="grid gap-1">
@@ -631,12 +632,12 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     </Select>
                   </div>
                 ) : <div />}
-                {is5thLine ? (
+                {showManager ? (
                   <div className="grid gap-1">
-                    <LabelWithBadge htmlFor="dealManager">Deal Manager</LabelWithBadge>
+                    <LabelWithBadge htmlFor="dealManager">{is5thLine ? 'Deal Manager' : 'Deal originator'}</LabelWithBadge>
                     <Select value={dealManager} onValueChange={setDealManager}>
                       <SelectTrigger className={createDealDropdownTriggerClass} style={createDealDropdownTriggerStyle}>
-                        <SelectValue placeholder="Select manager" />
+                        <SelectValue placeholder={is5thLine ? 'Select manager' : 'Select originator'} />
                       </SelectTrigger>
                       <SelectContent data-create-deal-popover className={createDealDropdownContentClass} style={createDealDropdownSurfaceStyle}>
                         {memberOptions.map(option => (
@@ -644,25 +645,6 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
-                ) : showReferral ? (
-                  <div className="grid gap-1">
-                    <LabelWithBadge>Deal originator</LabelWithBadge>
-                    <MultiContactPickerField
-                      id="referralContact"
-                      value={referralContacts}
-                      onChange={(list) => {
-                        const one = list.slice(-1);
-                        setReferralContacts(one);
-                        const first = one[0];
-                        setReferralName(first?.name || '');
-                        setReferralEmail(first?.email || '');
-                      }}
-                      placeholder="Select referral source (optional)"
-                      dialogTitle="Select referral source"
-                      dialogDescription="Pick a contact from the Contacts database or create a new one."
-                      addButtonLabel="Select referral"
-                    />
                   </div>
                 ) : <div />}
               </div>
@@ -857,7 +839,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     </Select>
                   </div>
                 ) : <div />}
-                {is5thLine && showReferral ? (
+                {showReferral ? (
                   <div className="grid gap-1">
                     <LabelWithBadge>Referral source</LabelWithBadge>
                     <MultiContactPickerField
