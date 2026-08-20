@@ -40,7 +40,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
     job_title: '',
     department: '',
     lifecycle_stage: 'lead' as string,
-    status: 'active' as string,
+    status: DEFAULT_CONTACT_STATUS as string,
     lead_source: '',
     linkedin_url: '',
     website_url: '',
@@ -111,7 +111,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
         onCreated?.({ ...payload, ...(created || {}) });
         setForm({
           first_name: '', last_name: '', email: '', phone_work: '', phone_mobile: '',
-          job_title: '', department: '', lifecycle_stage: 'lead', status: 'active',
+          job_title: '', department: '', lifecycle_stage: 'lead', status: DEFAULT_CONTACT_STATUS,
           lead_source: '', linkedin_url: '', website_url: '', description: '', crm_company_id: '', contact_type: '', owner_user_id: '',
         });
       },
@@ -170,7 +170,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
             <Select value={form.status} onValueChange={(v) => setForm(p => ({ ...p, status: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {STATUS_OPTIONS.map(s => (
+                {CONTACT_STATUSES.map(s => (
                   <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                 ))}
               </SelectContent>
