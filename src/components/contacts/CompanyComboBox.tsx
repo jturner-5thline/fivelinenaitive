@@ -35,7 +35,8 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
     const atIdx = email.indexOf('@');
     if (atIdx < 0) return;
     const domain = email.slice(atIdx + 1).toLowerCase();
-    if (!domain || domain.includes(' ') || !domain.includes('.')) return;
+    // Only act on a fully-formed domain (avoids firing mid-typing on "gmai.")
+    if (!/^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(domain)) return;
 
     // Common free email providers to skip
     const freeProviders = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com', 'mail.com', 'protonmail.com'];
