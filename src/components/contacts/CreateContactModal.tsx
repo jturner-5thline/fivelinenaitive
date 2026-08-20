@@ -75,6 +75,18 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
 
   const domainAutoFilledRef = useRef(true);
 
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
+  const DOMAIN_RE = /^(?:https?:\/\/)?(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?:\/.*)?$/i;
+
+  const emailValue = form.email.trim();
+  const domainValue = form.website_url.trim();
+  const emailError = emailValue && !EMAIL_RE.test(emailValue)
+    ? 'Enter a valid email address (e.g. name@company.com)'
+    : null;
+  const domainError = domainValue && !DOMAIN_RE.test(domainValue)
+    ? 'Enter a valid domain (e.g. company.com)'
+    : null;
+
   const handleEmailChange = (email: string) => {
     setForm(p => {
       const next = { ...p, email };
@@ -104,8 +116,12 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
       toast.error(`Missing required field${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}`);
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast.error('Please enter a valid email address');
+    if (!EMAIL_RE.test(email)) {
+      toast.error('Enter a valid email address (e.g. name@company.com)');
+      return;
+    }
+    if (domainError) {
+      toast.error(domainError);
       return;
     }
     const linkedinTrim = form.linkedin_url.trim();
@@ -210,7 +226,16 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
 
           <div className="space-y-1.5 col-span-2">
             <Label htmlFor="email" className="text-xs">Work Email <span className="text-destructive">*</span></Label>
-            <Input id="email" type="email" value={form.email} onChange={(e) => handleEmailChange(e.target.value)} />
+            <Input
+              id="email"
+              type="email"
+              value={form.email}
+              onChange={(e) => handleEmailChange(e.target.value)}
+              aria-invalid={!!emailError}
+              aria-describedby={emailError ? 'email-error' : undefined}
+              className={emailError ? 'border-destructive focus-visible:ring-destructive' : undefined}
+            />
+            {emailError && <p id="email-error" className="text-xs text-destructive">{emailError}</p>}
           </div>
 
           {!isFieldDisabled('phone_mobile') && (
@@ -254,7 +279,16 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
           {!isFieldDisabled('website_url') && (
             <div className="space-y-1.5 col-span-2">
               <Label htmlFor="website_url" className="text-xs">Domain</Label>
-              <Input id="website_url" placeholder="auto from email" value={form.website_url} onChange={(e) => { domainAutoFilledRef.current = false; setForm(p => ({ ...p, website_url: e.target.value })); }} />
+              <Input
+                id="website_url"
+                placeholder="auto from email"
+                value={form.website_url}
+                onChange={(e) => { domainAutoFilledRef.current = false; setForm(p => ({ ...p, website_url: e.target.value })); }}
+                aria-invalid={!!domainError}
+                aria-describedby={domainError ? 'website-url-error' : undefined}
+                className={domainError ? 'border-destructive focus-visible:ring-destructive' : undefined}
+              />
+              {domainError && <p id="website-url-error" className="text-xs text-destructive">{domainError}</p>}
             </div>
           )}
 
