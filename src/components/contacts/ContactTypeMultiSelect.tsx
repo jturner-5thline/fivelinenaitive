@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Check, Plus, X, Pencil, Trash2, Settings2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -70,6 +70,7 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
   const updateType = useUpdateContactType();
   const deleteType = useDeleteContactType();
   const [open, setOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [manage, setManage] = useState(false);
   const [search, setSearch] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -232,7 +233,10 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
           sideOffset={6}
           avoidCollisions
           collisionPadding={12}
-          onOpenAutoFocus={(e) => e.preventDefault()}
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            requestAnimationFrame(() => searchInputRef.current?.focus({ preventScroll: true }));
+          }}
         >
           {manage && isAdmin ? (
             <div className="p-2 space-y-2">
@@ -315,7 +319,7 @@ export function ContactTypeMultiSelect({ value, onChange, className }: Props) {
             </div>
           ) : (
             <Command>
-              <CommandInput placeholder="Search types..." value={search} onValueChange={setSearch} />
+              <CommandInput ref={searchInputRef} placeholder="Search types..." value={search} onValueChange={setSearch} />
               <CommandList>
                 <CommandEmpty>
                   {isAdmin && trimmed ? (
