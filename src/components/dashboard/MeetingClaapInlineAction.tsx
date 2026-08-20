@@ -571,14 +571,13 @@ export function MeetingClaapInlineAction(props: Props) {
     </Button>
   );
 
-  // Placeholder action rendered directly beneath the Claap button (no
-  // functionality wired up yet).
+  // Opens the attendee → contact reconciliation dialog above the current popup.
   const updateContactCell = (
     <Button
       size="sm"
       variant="outline"
       className="h-8 w-full min-w-0 justify-start gap-1.5 px-2 text-xs text-white border-white/15 bg-white/[0.04] hover:bg-white/[0.08]"
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setContactDialogOpen(true); }}
     >
       <Pencil className="h-3.5 w-3.5 text-primary shrink-0" />
       <span className="truncate">Update Contact</span>
