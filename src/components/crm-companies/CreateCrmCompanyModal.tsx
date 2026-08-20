@@ -11,6 +11,7 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useIndustryOptions } from '@/hooks/useIndustryOptions';
 import { ManageIndustryOptionsDialog } from '@/components/crm/ManageIndustryOptionsDialog';
 import { EMPLOYEE_RANGE_OPTIONS } from '@/constants/employeeRanges';
+import { useCompanySnapshotFieldConfig } from '@/hooks/useCompanySnapshotFieldConfig';
 
 interface CreateCrmCompanyModalProps {
   open: boolean;
@@ -23,31 +24,27 @@ interface CreateCrmCompanyModalProps {
 
 const EMPTY_FORM = {
   name: '',
-  company_type: 'prospect' as string,
+  description: '',
   industry: '',
-  sub_industry: '',
+  owner_user_id: '',
+  company_type: 'prospect' as string,
   employee_range: '',
-  annual_revenue: '',
-  phone: '',
-  main_contact_email: '',
-  domain: '',
-  linkedin_url: '',
   hq_city: '',
   hq_country: '',
-  hq_address: '',
-  segment: '',
-  customer_tier: '',
-  source_system: '',
-  owner_user_id: '',
-  description: '',
+  domain: '',
+  linkedin_url: '',
+  phone: '',
+  main_contact_email: '',
 };
 
 export function CreateCrmCompanyModal({ open, onClose, initialName, onCreated }: CreateCrmCompanyModalProps) {
   const create = useCreateCrmCompany();
   const teamMembers = useTeamMembers();
   const { options: industryOptions } = useIndustryOptions();
+  const snapshotFields = useCompanySnapshotFieldConfig();
   const [manageIndustriesOpen, setManageIndustriesOpen] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [customValues, setCustomValues] = useState<Record<string, any>>({});
 
   // Seed the name from the caller each time the modal opens.
   useEffect(() => {
@@ -57,22 +54,30 @@ export function CreateCrmCompanyModal({ open, onClose, initialName, onCreated }:
   }, [open, initialName]);
 
   const set = (k: keyof typeof EMPTY_FORM, v: string) => setForm(p => ({ ...p, [k]: v }));
+  const shown = (key: string) => !snapshotFields.isDisabled(key);
 
   const handleSubmit = () => {
     if (!form.name.trim()) return;
-    // Convert empty strings to null so optional fields stay blank rather than empty text.
-    const payload: Record<string, any> = Object.fromEntries(
-      Object.entries(form).map(([k, v]) => [k, typeof v === 'string' && v.trim() === '' ? null : v])
+    // Only send fields that are visible on this account's company detail page.
+    const entries = Object.entries(form).filter(([k]) =>
+      k === 'name' || k === 'description' || shown(k)
     );
-    if (payload.annual_revenue != null) {
-      const n = Number(String(payload.annual_revenue).replace(/[^\d.-]/g, ''));
-      payload.annual_revenue = isNaN(n) ? null : n;
-    }
+    const payload: Record<string, any> = Object.fromEntries(
+      entries.map(([k, v]) => [k, typeof v === 'string' && v.trim() === '' ? null : v])
+    );
+    const custom = Object.fromEntries(
+      Object.entries(customValues).filter(([, v]) =>
+        Array.isArray(v) ? v.length > 0 : v != null && String(v).trim() !== ''
+      )
+    );
+    if (Object.keys(custom).length) payload.custom_fields = custom;
+
     create.mutate(payload as any, {
       onSuccess: (created: any) => {
         onClose();
         onCreated?.(created);
         setForm({ ...EMPTY_FORM });
+        setCustomValues({});
       },
     });
   };
@@ -90,132 +95,173 @@ export function CreateCrmCompanyModal({ open, onClose, initialName, onCreated }:
             <Input id="name" value={form.name} onChange={(e) => set('name', e.target.value)} />
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs">Type</Label>
-            <Select value={form.company_type} onValueChange={v => set('company_type', v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {CRM_COMPANY_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs">Industry</Label>
-            <div className="flex items-center gap-1">
-              <div className="flex-1 min-w-0">
-                <Select value={form.industry || 'unset'} onValueChange={v => set('industry', v === 'unset' ? '' : v)}>
-                  <SelectTrigger><SelectValue placeholder="Select industry" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unset">—</SelectItem>
-                    {industryOptions.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                size="icon"
-                variant="ghost"
-                type="button"
-                className="h-8 w-8 shrink-0"
-                title="Manage industries"
-                onClick={() => setManageIndustriesOpen(true)}
-              >
-                <Settings className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="sub_industry" className="text-xs">Sub-Industry</Label>
-            <Input id="sub_industry" value={form.sub_industry} onChange={(e) => set('sub_industry', e.target.value)} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs">Company Size</Label>
-            <Select value={form.employee_range || 'unset'} onValueChange={v => set('employee_range', v === 'unset' ? '' : v)}>
-              <SelectTrigger><SelectValue placeholder="Select size" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="unset">—</SelectItem>
-                {EMPLOYEE_RANGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="annual_revenue" className="text-xs">Annual Revenue</Label>
-            <Input id="annual_revenue" inputMode="numeric" value={form.annual_revenue} onChange={(e) => set('annual_revenue', e.target.value)} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="phone" className="text-xs">Phone</Label>
-            <Input id="phone" type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="main_contact_email" className="text-xs">Email</Label>
-            <Input id="main_contact_email" type="email" value={form.main_contact_email} onChange={(e) => set('main_contact_email', e.target.value)} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="domain" className="text-xs">Website</Label>
-            <Input id="domain" placeholder="example.com" value={form.domain} onChange={(e) => set('domain', e.target.value)} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="linkedin_url" className="text-xs">LinkedIn</Label>
-            <Input id="linkedin_url" value={form.linkedin_url} onChange={(e) => set('linkedin_url', e.target.value)} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="hq_city" className="text-xs">City</Label>
-            <Input id="hq_city" value={form.hq_city} onChange={(e) => set('hq_city', e.target.value)} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="hq_country" className="text-xs">HQ Country</Label>
-            <Input id="hq_country" value={form.hq_country} onChange={(e) => set('hq_country', e.target.value)} />
-          </div>
-
-          <div className="space-y-1.5 col-span-2">
-            <Label htmlFor="hq_address" className="text-xs">HQ Address</Label>
-            <Textarea id="hq_address" rows={2} value={form.hq_address} onChange={(e) => set('hq_address', e.target.value)} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="segment" className="text-xs">Segment</Label>
-            <Input id="segment" placeholder="SMB, Mid-Market, Enterprise" value={form.segment} onChange={(e) => set('segment', e.target.value)} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="customer_tier" className="text-xs">Tier</Label>
-            <Input id="customer_tier" value={form.customer_tier} onChange={(e) => set('customer_tier', e.target.value)} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="source_system" className="text-xs">Source</Label>
-            <Input id="source_system" value={form.source_system} onChange={(e) => set('source_system', e.target.value)} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs">Company owner</Label>
-            <Select
-              value={form.owner_user_id || 'unassigned'}
-              onValueChange={v => set('owner_user_id', v === 'unassigned' ? '' : v)}
-            >
-              <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="unassigned">Unassigned</SelectItem>
-                {teamMembers.map(m => (
-                  <SelectItem key={m.id} value={m.id}>{m.display_name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className="space-y-1.5 col-span-2">
             <Label htmlFor="description" className="text-xs">Description</Label>
-            <Textarea id="description" placeholder="Add a company description…" value={form.description} onChange={(e) => set('description', e.target.value)} rows={3} />
+            <Textarea
+              id="description"
+              rows={3}
+              placeholder="Add a short brief about positioning, traction, and current status…"
+              value={form.description}
+              onChange={(e) => set('description', e.target.value)}
+            />
           </div>
+
+          {shown('industry') && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Industry</Label>
+              <div className="flex items-center gap-1">
+                <div className="flex-1 min-w-0">
+                  <Select value={form.industry || 'unset'} onValueChange={v => set('industry', v === 'unset' ? '' : v)}>
+                    <SelectTrigger><SelectValue placeholder="Select industry" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unset">—</SelectItem>
+                      {industryOptions.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  type="button"
+                  className="h-8 w-8 shrink-0"
+                  title="Manage industries"
+                  onClick={() => setManageIndustriesOpen(true)}
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {shown('owner_user_id') && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Company owner</Label>
+              <Select
+                value={form.owner_user_id || 'unassigned'}
+                onValueChange={v => set('owner_user_id', v === 'unassigned' ? '' : v)}
+              >
+                <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {teamMembers.map(m => (
+                    <SelectItem key={m.id} value={m.id}>{m.display_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {shown('company_type') && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Type</Label>
+              <Select value={form.company_type} onValueChange={v => set('company_type', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CRM_COMPANY_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {shown('employee_range') && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Employees</Label>
+              <Select value={form.employee_range || 'unset'} onValueChange={v => set('employee_range', v === 'unset' ? '' : v)}>
+                <SelectTrigger><SelectValue placeholder="Select range" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unset">—</SelectItem>
+                  {EMPLOYEE_RANGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {shown('hq_city') && (
+            <div className="space-y-1.5">
+              <Label htmlFor="hq_city" className="text-xs">City</Label>
+              <Input id="hq_city" value={form.hq_city} onChange={(e) => set('hq_city', e.target.value)} />
+            </div>
+          )}
+
+          {shown('hq_country') && (
+            <div className="space-y-1.5">
+              <Label htmlFor="hq_country" className="text-xs">Country</Label>
+              <Input id="hq_country" value={form.hq_country} onChange={(e) => set('hq_country', e.target.value)} />
+            </div>
+          )}
+
+          {shown('domain') && (
+            <div className="space-y-1.5">
+              <Label htmlFor="domain" className="text-xs">Website</Label>
+              <Input id="domain" placeholder="example.com" value={form.domain} onChange={(e) => set('domain', e.target.value)} />
+            </div>
+          )}
+
+          {shown('linkedin_url') && (
+            <div className="space-y-1.5">
+              <Label htmlFor="linkedin_url" className="text-xs">LinkedIn</Label>
+              <Input id="linkedin_url" value={form.linkedin_url} onChange={(e) => set('linkedin_url', e.target.value)} />
+            </div>
+          )}
+
+          {shown('phone') && (
+            <div className="space-y-1.5">
+              <Label htmlFor="phone" className="text-xs">Phone</Label>
+              <Input id="phone" type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} />
+            </div>
+          )}
+
+          {shown('main_contact_email') && (
+            <div className="space-y-1.5">
+              <Label htmlFor="main_contact_email" className="text-xs">Primary email</Label>
+              <Input id="main_contact_email" type="email" value={form.main_contact_email} onChange={(e) => set('main_contact_email', e.target.value)} />
+            </div>
+          )}
+
+          {snapshotFields.config.custom.map((f) => (
+            <div key={f.key} className="space-y-1.5">
+              <Label className="text-xs">{f.label}</Label>
+              {f.type === 'select' ? (
+                <Select
+                  value={customValues[f.key] || 'unset'}
+                  onValueChange={v => setCustomValues(p => ({ ...p, [f.key]: v === 'unset' ? '' : v }))}
+                >
+                  <SelectTrigger><SelectValue placeholder={`Select ${f.label.toLowerCase()}`} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unset">—</SelectItem>
+                    {(f.options || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              ) : f.type === 'multiselect' ? (
+                <div className="flex flex-wrap gap-1.5 rounded-md border border-border/60 p-2">
+                  {(f.options || []).map(o => {
+                    const vals: string[] = Array.isArray(customValues[f.key]) ? customValues[f.key] : [];
+                    const active = vals.includes(o);
+                    return (
+                      <Button
+                        key={o}
+                        type="button"
+                        size="sm"
+                        variant={active ? 'default' : 'outline'}
+                        className="h-6 text-xs"
+                        onClick={() => setCustomValues(p => ({
+                          ...p,
+                          [f.key]: active ? vals.filter(x => x !== o) : [...vals, o],
+                        }))}
+                      >
+                        {o}
+                      </Button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <Input
+                  value={customValues[f.key] ?? ''}
+                  onChange={(e) => setCustomValues(p => ({ ...p, [f.key]: e.target.value }))}
+                />
+              )}
+            </div>
+          ))}
         </div>
 
         <DialogFooter>
