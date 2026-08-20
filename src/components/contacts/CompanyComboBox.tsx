@@ -42,6 +42,7 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
     const freeProviders = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com', 'mail.com', 'protonmail.com'];
     if (freeProviders.includes(domain)) return;
 
+    const timer = setTimeout(() => {
     const match = companies.find(c => {
       const cDomain = c.domain?.toLowerCase()?.replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/$/, '');
       const additionalDomains = (c.additional_domains || []).map((d: string) => d.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/$/, ''));
@@ -74,6 +75,8 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
         }
       })();
     }
+    }, 700);
+    return () => clearTimeout(timer);
   }, [email, companies, value, domainSuggested, onChange]);
 
   // Close dropdown on outside click
