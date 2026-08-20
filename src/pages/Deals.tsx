@@ -1023,9 +1023,8 @@ export default function Dashboard() {
                 )}
                 style={{
                    animation: 'fadeInUp 0.4s ease-out 0.3s forwards',
-                   WebkitMaskImage: boardEdgeMask,
-                   maskImage: boardEdgeMask,
                  }}
+
               >
               {showInlineDetail && selectedDeal ? (
                 /*
