@@ -92,7 +92,7 @@ export const LenderListCard = memo(function LenderListCard({
 
   return (
     <div 
-      className={`deal-glass flex items-center gap-3 p-3 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 ${isSelected ? 'ring-2 ring-primary' : ''}`}
+      className={`deal-glass deal-tile flex items-center gap-3 p-3 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 ${isSelected ? 'ring-2 ring-primary' : ''}`}
       onClick={() => onOpenDetail(lender)}
     >
       {onToggleSelect && (
