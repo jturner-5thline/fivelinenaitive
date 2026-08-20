@@ -37,6 +37,7 @@ import { cn } from '@/lib/utils';
 import { TOOLBAR_CONTROL_CLASS } from '@/lib/toolbarControlClass';
 
 export default function Contacts() {
+  const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showTaggingRules, setShowTaggingRules] = useState(false);
