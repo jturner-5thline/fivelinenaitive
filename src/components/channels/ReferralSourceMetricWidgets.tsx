@@ -285,7 +285,9 @@ export function ReferralSourceMetricWidgets() {
         />
       </div>
 
-      <ChannelMixDonut />
+      <div className="w-full lg:w-1/2">
+        <ChannelMixDonut />
+      </div>
     </div>
   );
 }
