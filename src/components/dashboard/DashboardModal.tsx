@@ -437,28 +437,10 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
       <div className="db-root flex flex-col flex-1 min-h-0 min-w-0 max-w-full overflow-hidden" style={{ borderRadius: 'inherit', boxSizing: 'border-box' }}>
           <style dangerouslySetInnerHTML={{ __html: DASHBOARD_CSS }} />
           <Tabs
-            value={activeTab}
-            onValueChange={(v) => setActiveTab(v as 'dashboard' | 'analytics' | 'performance' | 'today' | 'tasks')}
+            value="dashboard"
             className="flex flex-col flex-1 min-h-0"
           >
-            <div className="px-5 pt-2 pb-1 shrink-0">
-              <TabsList>
-                <TabsTrigger value="dashboard" className="gap-1.5">
-                  <LayoutDashboard className="h-3.5 w-3.5" />
-                  Dashboard
-                </TabsTrigger>
-                <TabsTrigger value="analytics" className="gap-1.5">
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  Analytics
-                </TabsTrigger>
-                {canSeePerformance && (
-                  <TabsTrigger value="performance" className="gap-1.5">
-                    <Briefcase className="h-3.5 w-3.5" />
-                    Performance
-                  </TabsTrigger>
-                )}
-              </TabsList>
-            </div>
+
 
             <TabsContent
               value="dashboard"
