@@ -61,19 +61,9 @@ const TABLE_COLUMNS: { key: SortColumn; label: string; align?: 'left' }[] = [
   { key: 'closing', label: 'Closing Mo.' },
 ];
 
-// Analytics is the legacy /analytics page repurposed as the second tab here.
-// Lazy so the heavy chart bundle only loads when the user picks the tab.
-const AnalyticsTabContent = lazy(() => import('@/pages/Analytics'));
-const NikiPerformanceTab = lazy(() =>
-  import('@/components/dashboard/NikiPerformanceTab').then(m => ({ default: m.NikiPerformanceTab })),
-);
-const TasksTabContent = lazy(() => import('@/pages/Tasks'));
-
 export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'dashboard', embedded = false }: DashboardModalProps) {
   const open = embedded ? true : openProp;
   const { user } = useAuth();
-  const canSeePerformance =
-    user?.email === 'nheikali@5thline.co' || user?.email === 'jturner@5thline.co';
   const { enabled: queueEnabled } = useApprovalQueueAccess();
   const { data: queueItems = [] } = useAiActionQueue();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'performance' | 'today' | 'tasks'>(initialTab);
