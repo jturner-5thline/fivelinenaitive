@@ -478,8 +478,33 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
                             ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
                             : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
                         </td>
-                        <td className="p-3 font-medium text-foreground">{entry.referredBy}</td>
-                        <td className="p-3 text-muted-foreground">{entry.companyName || '—'}</td>
+                        <td className="p-3 font-medium text-foreground">
+                          {entry.contactId || entry.crmCompanyId ? (
+                            <button
+                              type="button"
+                              className="text-left hover:text-primary hover:underline underline-offset-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setQuickView(entry.contactId
+                                  ? { type: 'contact', id: entry.contactId }
+                                  : { type: 'company', id: entry.crmCompanyId! });
+                              }}
+                            >
+                              {entry.referredBy}
+                            </button>
+                          ) : entry.referredBy}
+                        </td>
+                        <td className="p-3 text-muted-foreground">
+                          {entry.companyName && entry.crmCompanyId ? (
+                            <button
+                              type="button"
+                              className="text-left hover:text-primary hover:underline underline-offset-2"
+                              onClick={(e) => { e.stopPropagation(); setQuickView({ type: 'company', id: entry.crmCompanyId! }); }}
+                            >
+                              {entry.companyName}
+                            </button>
+                          ) : (entry.companyName || '—')}
+                        </td>
                         <td className="p-3">
                           {entry.channelType ? (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-muted-foreground">
