@@ -1,8 +1,7 @@
-import { useEffect, useRef, useMemo, useState, useCallback, lazy, Suspense } from 'react';
+import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LayoutDashboard, BarChart3, Pencil, AlertTriangle, AlertCircle, Clock, Briefcase, Inbox, ListChecks } from 'lucide-react';
-import { TodayTab } from '@/components/dashboard/TodayTab';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { Pencil, AlertTriangle, AlertCircle, Clock } from 'lucide-react';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { useNavigate } from 'react-router-dom';
