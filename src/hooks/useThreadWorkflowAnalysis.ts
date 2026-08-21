@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { hasAuthSession } from '@/lib/ai/requireSession';
 import type { Database } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
@@ -165,6 +166,7 @@ export async function preloadThreadWorkflowAnalysis({
 
   const promise = (async () => {
     try {
+      if (!(await hasAuthSession())) return null;
       const { data, error } = await supabase.functions.invoke('smart-email-ai', {
         body: {
           action: 'analyze_thread_workflow',
