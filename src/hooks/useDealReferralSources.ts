@@ -310,11 +310,31 @@ export function useDealReferralSources(filters?: {
   const referralSources = useMemo(() => {
     const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
-    const grouped = new Map<string, { raw: string; deals: typeof deals }>();
+    const contactById = new Map(linkedContacts.map(c => [c.id, c]));
+    const companyById = new Map(linkedCompanies.map(c => [c.id, c]));
+
+    // Group STRICTLY by linked CRM record (contact first, else company).
+    // Deals whose referrer isn't linked to a real record are ignored.
+    const grouped = new Map<string, {
+      raw: string;
+      contactId: string | null;
+      crmCompanyId: string | null;
+      deals: typeof deals;
+    }>();
     for (const deal of deals) {
-      const key = normalize(deal.referred_by);
+      const contact = deal.referred_by_contact_id ? contactById.get(deal.referred_by_contact_id) : undefined;
+      const directCompany = deal.referred_by_crm_company_id ? companyById.get(deal.referred_by_crm_company_id) : undefined;
+      if (!contact && !directCompany) continue;
+
+      const key = contact ? `contact:${contact.id}` : `company:${directCompany!.id}`;
+      const raw = (contact?.full_name?.trim() || directCompany?.name?.trim() || deal.referred_by);
       if (!grouped.has(key)) {
-        grouped.set(key, { raw: deal.referred_by, deals: [] });
+        grouped.set(key, {
+          raw,
+          contactId: contact?.id ?? null,
+          crmCompanyId: contact?.crm_company_id ?? directCompany?.id ?? null,
+          deals: [],
+        });
       }
       grouped.get(key)!.deals.push(deal);
     }
@@ -332,14 +352,14 @@ export function useDealReferralSources(filters?: {
       }
     }
 
-    // Contact-name → CRM company lookup. Since a referral source is a
-    // contact, its Company should come from the contact's linked company.
+    // Contact-name → CRM company lookup, built from the linked contact records.
     const contactCompanyLookup = new Map<string, string>();
-    for (const c of contactRows) {
+    for (const c of linkedContacts) {
       const name = c.full_name?.trim();
       const cname = c.crm_company?.name?.trim();
       if (name && cname) contactCompanyLookup.set(normalize(name), cname);
     }
+
 
     // Pre-compute tier-relevant windows once.
     const now = Date.now();
