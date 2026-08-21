@@ -770,33 +770,6 @@ export function CopilotToggleButton() {
             </>
           }
         />
-        {focused && !value && !demoMode && (!isOpen || isMinimized) && (
-          <div
-            className="mt-2 flex flex-wrap gap-1.5"
-            style={{ width: `${barWidth}px`, maxWidth: 'calc(100% - 32px)' }}
-            onMouseDown={(e) => e.preventDefault()}
-          >
-            {[
-              'Which deals need tasks?',
-              'Show deals with no activity in 7 days',
-              'Summarize today’s pipeline changes',
-              'Which lenders are unresponsive?',
-              'Draft a follow-up email for my stalest deal',
-            ].map((prompt) => (
-              <button
-                key={prompt}
-                type="button"
-                onClick={() => {
-                  void loadAICopilotPanel();
-                  openPanelWithPrompt(prompt);
-                }}
-                className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-white/70 backdrop-blur-sm transition-colors hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
-        )}
         </div>
       </div>
     </div>,
