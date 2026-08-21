@@ -12,9 +12,6 @@ import { Building2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PartnerSourcedDeals } from "@/components/partners/PartnerSourcedDeals";
 import { ReferralSourceDeals } from "@/components/partners/ReferralSourceDeals";
-import { ReEngagementInsights } from "@/components/partners/ReEngagementInsights";
-import { ReferralsNeedingAttention } from "@/components/partners/ReferralsNeedingAttention";
-import { PartnerInsightsFeed, PartnerInsightsProvider, PartnerInsightsHeaderActions, PartnerInsightsTabLabel } from "@/components/partners/PartnerInsightsFeed";
 import { PartnerDetailPanel } from "@/components/partners/PartnerDetailPanel";
 import { usePartners } from "@/hooks/usePartnersPipeline";
 import { ChannelsBoard } from "@/components/channels/ChannelsBoard";
@@ -134,33 +131,12 @@ function SalesBDInner() {
         >
             <TabsContent value="partners-channels" className="mt-4">
               <div className="space-y-8">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Left: Partners Insights */}
-                  <div className="space-y-4">
-                    <PartnerInsightsProvider>
-                    <Tabs defaultValue="activity">
-                      <div className="flex items-center justify-between gap-2">
-                        <TabsList>
-                          <TabsTrigger value="activity"><PartnerInsightsTabLabel label="Activity" kind="activity" /></TabsTrigger>
-                          <TabsTrigger value="attention"><PartnerInsightsTabLabel label="Needs Attention" kind="attention" /></TabsTrigger>
-                        </TabsList>
-                        <PartnerInsightsHeaderActions />
-                      </div>
-                      <TabsContent value="activity" className="mt-4">
-                        <PartnerInsightsFeed sourceFilter="partners" />
-                      </TabsContent>
-                      <TabsContent value="attention" className="mt-4">
-                        <ReEngagementInsights onViewPartner={(id) => setViewPartnerId(id)} />
-                      </TabsContent>
-                    </Tabs>
-                    </PartnerInsightsProvider>
-                  </div>
-                  {/* Right: Partner-sourced KPI widgets */}
-                  <PartnerSourcedDeals
-                    kpisOnly
-                    kpiGridClassName="grid grid-cols-1 gap-3 auto-rows-fr h-full"
-                  />
-                </div>
+                {/* Partner Insights (Activity / Needs Attention) hidden — see mem://features/sales-bd/partner-insights-tabs-hidden */}
+                <PartnerSourcedDeals
+                  kpisOnly
+                  kpiGridClassName="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 auto-rows-fr"
+                />
+
                 <PartnerSourcedDeals hideKpis />
                 <div className="space-y-6">
                   {/* Sub-navigation */}
@@ -224,33 +200,12 @@ function SalesBDInner() {
             <TabsContent value="referral-sources" className="mt-4">
               <div className="space-y-8">
                 <ReferralSourceMetricWidgets />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Left: Referral Sources Insights */}
-                  <div className="space-y-4">
-                    <PartnerInsightsProvider>
-                    <Tabs defaultValue="activity">
-                      <div className="flex items-center justify-between gap-2">
-                        <TabsList>
-                          <TabsTrigger value="activity"><PartnerInsightsTabLabel label="Activity" kind="activity" /></TabsTrigger>
-                          <TabsTrigger value="attention"><PartnerInsightsTabLabel label="Needs Attention" kind="attention" /></TabsTrigger>
-                        </TabsList>
-                        <PartnerInsightsHeaderActions />
-                      </div>
-                      <TabsContent value="activity" className="mt-4">
-                        <PartnerInsightsFeed sourceFilter="referrals" />
-                      </TabsContent>
-                      <TabsContent value="attention" className="mt-4">
-                        <ReferralsNeedingAttention />
-                      </TabsContent>
-                    </Tabs>
-                    </PartnerInsightsProvider>
-                  </div>
-                  {/* Right: 2×3 metric widgets */}
-                  <ReferralSourceDeals
-                    kpisOnly
-                    kpiGridClassName="grid grid-cols-2 gap-3 auto-rows-fr h-full"
-                  />
-                </div>
+                {/* Referral Insights (Activity / Needs Attention) hidden — see mem://features/sales-bd/partner-insights-tabs-hidden */}
+                <ReferralSourceDeals
+                  kpisOnly
+                  kpiGridClassName="grid grid-cols-2 xl:grid-cols-3 gap-3 auto-rows-fr"
+                />
+
                 <ReferralSourceDeals hideKpis />
                 <ReferralSourcesView hideKpis initialSearch={referralSearchSeed} />
               </div>
