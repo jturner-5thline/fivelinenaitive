@@ -3432,7 +3432,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .popup-shell-surface .deal-rail-control:has(.deal-stage-chip) {
   background-color: transparent !important;
   background-image: none !important;
-  border: 0 !important;
+  border: 1px solid rgba(103, 232, 249, 0.7) !important;
 }
 
 .deal-rail-control .deal-stage-chip,
