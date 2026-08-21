@@ -38,23 +38,19 @@ function formatCurrency(v: number): string {
 }
 
 const glassCard = [
-  "relative isolate rounded-xl overflow-hidden",
-  "border border-[hsl(260,40%,50%,0.12)]",
-  "ring-1 ring-inset ring-white/[0.05]",
-  "bg-[linear-gradient(145deg,hsl(260,25%,16%,0.72)_0%,hsl(255,20%,11%,0.58)_50%,hsl(250,18%,9%,0.65)_100%)]",
-  "backdrop-blur-2xl backdrop-saturate-150",
-  "shadow-[0_2px_4px_hsl(0,0%,0%,0.2),0_8px_32px_hsl(260,40%,8%,0.5)]",
-  "before:pointer-events-none before:absolute before:inset-0 before:rounded-xl",
-  "before:bg-[linear-gradient(175deg,hsl(0,0%,100%,0.07)_0%,transparent_50%)]",
-  "after:pointer-events-none after:absolute after:inset-0 after:rounded-xl",
-  "after:bg-[radial-gradient(ellipse_at_50%_100%,hsl(263,50%,40%,0.06)_0%,transparent_70%)]",
+  "relative isolate rounded-lg overflow-hidden",
+  "border border-[rgba(126,184,247,0.22)]",
+  "bg-[#0b1226]",
+  "shadow-[inset_0_1px_0_rgba(200,225,255,0.09),0_1px_2px_rgba(0,0,0,0.32),0_12px_32px_-16px_rgba(0,0,0,0.62)]",
 ].join(" ");
 
 const glassCardKPI = [
   glassCard,
-  "hover:border-[hsl(263,50%,55%,0.2)] hover:shadow-[0_2px_4px_hsl(0,0%,0%,0.2),0_12px_40px_hsl(260,50%,10%,0.55)]",
-  "transition-all duration-300",
+  "hover:bg-[#101836] hover:border-[rgba(126,184,247,0.4)]",
+  "hover:shadow-[inset_0_1px_0_rgba(200,225,255,0.12),0_2px_4px_rgba(0,0,0,0.4),0_18px_40px_-16px_rgba(0,0,0,0.7)]",
+  "transition-all duration-200",
 ].join(" ");
+
 
 function MultiSelectFilter({ label, options, selected, onChange }: {
   label: string;
