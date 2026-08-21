@@ -708,7 +708,7 @@ export default function Dashboard() {
               <DropdownMenu>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-md" aria-label="Actions">
+                    <Button variant="outline" size="sm" className="gap-1.5 rounded-md" aria-label="Actions">
                       <Settings2 className="h-4 w-4" />
                       <span className="hidden sm:inline">Actions</span>
                       <ChevronDown className="h-3.5 w-3.5 opacity-60" />
