@@ -231,21 +231,49 @@ export function useDealReferralSources(filters?: {
     },
   });
 
-  // Contacts (with their linked CRM company) — used to resolve the "Company"
-  // for a referral source by matching the referrer name to a contact.
-  const { data: contactRows = [] } = useQuery({
-    queryKey: ['deal_referral_contacts_with_company', company?.id],
-    enabled: !!company?.id,
+  // Linked contact records for the referral sources on these deals. Referral
+  // sources are STRICTLY real CRM records — a deal only counts as referred
+  // when `referred_by_contact_id` / `referred_by_crm_company_id` resolves.
+  const linkedContactIds = useMemo(
+    () => Array.from(new Set(deals.map(d => d.referred_by_contact_id).filter(Boolean) as string[])).sort(),
+    [deals],
+  );
+  const linkedCompanyIds = useMemo(
+    () => Array.from(new Set(deals.map(d => d.referred_by_crm_company_id).filter(Boolean) as string[])).sort(),
+    [deals],
+  );
+
+  const { data: linkedContacts = [] } = useQuery({
+    queryKey: ['deal_referral_linked_contacts', company?.id, linkedContactIds],
+    enabled: !!company?.id && linkedContactIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('contacts')
-        .select('full_name, crm_company:crm_companies!contacts_crm_company_id_fkey(name)')
-        .eq('org_company_id', company!.id)
-        .not('full_name', 'is', null);
+        .select('id, full_name, crm_company_id, crm_company:crm_companies!contacts_crm_company_id_fkey(name)')
+        .in('id', linkedContactIds);
       if (error) throw error;
-      return (data || []) as Array<{ full_name: string | null; crm_company: { name: string | null } | null }>;
+      return (data || []) as Array<{
+        id: string;
+        full_name: string | null;
+        crm_company_id: string | null;
+        crm_company: { name: string | null } | null;
+      }>;
     },
   });
+
+  const { data: linkedCompanies = [] } = useQuery({
+    queryKey: ['deal_referral_linked_companies', company?.id, linkedCompanyIds],
+    enabled: !!company?.id && linkedCompanyIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('crm_companies')
+        .select('id, name')
+        .in('id', linkedCompanyIds);
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; name: string | null }>;
+    },
+  });
+
 
   // All deals (any date) used purely to compute tier inputs against trailing
   // windows defined by sales_bd_rules. We intentionally don't filter by the
