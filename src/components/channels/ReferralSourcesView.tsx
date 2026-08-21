@@ -167,6 +167,7 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
   const [tierFilter, setTierFilter] = useState<TierValue[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<DealReferralSourceEntry | null>(null);
+  const [quickView, setQuickView] = useState<QuickViewTarget | null>(null);
   const [search, setSearch] = useState(initialSearch || '');
   useEffect(() => {
     if (typeof initialSearch === 'string') setSearch(initialSearch);
