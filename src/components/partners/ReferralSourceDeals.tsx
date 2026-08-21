@@ -15,15 +15,22 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useTtmActivePipelineConversion } from '@/lib/salesBdActivePipelineConversion';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 
-const kpiCard = [
-  "[container-type:inline-size] relative isolate rounded-xl overflow-hidden p-4",
-  "border border-[hsl(260,40%,50%,0.12)]",
-  "ring-1 ring-inset ring-white/[0.05]",
-  "bg-[linear-gradient(145deg,hsl(260,25%,16%,0.72)_0%,hsl(255,20%,11%,0.58)_50%,hsl(250,18%,9%,0.65)_100%)]",
-  "backdrop-blur-2xl backdrop-saturate-150",
-  "shadow-[0_2px_4px_hsl(0,0%,0%,0.2),0_8px_32px_hsl(260,40%,8%,0.5)]",
-  "hover:border-[hsl(263,50%,55%,0.2)] transition-all duration-300",
-].join(" ");
+const kpiCard = "rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-2 justify-between";
+
+function KpiTile({ label, value, subtext, badge }: { label: React.ReactNode; value: string | number; subtext?: string; badge?: React.ReactNode }) {
+  return (
+    <div className={kpiCard}>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground leading-tight">
+          {label}
+        </p>
+        {badge}
+      </div>
+      <p className="text-3xl font-bold tabular-nums leading-none text-[hsl(var(--chart-2))]">{value}</p>
+      {subtext ? <p className="text-[11px] text-muted-foreground leading-snug">{subtext}</p> : null}
+    </div>
+  );
+}
 
 function formatCurrencyCompact(v: number): string {
   if (v >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(2)}B`;
