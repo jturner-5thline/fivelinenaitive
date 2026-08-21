@@ -17,6 +17,8 @@ import { ChannelsBoard } from "@/components/channels/ChannelsBoard";
 import { ChannelsDashboard } from "@/components/channels/ChannelsDashboard";
 import { ReferralSourcesView } from "@/components/channels/ReferralSourcesView";
 import { ReferralSourceMetricWidgets } from "@/components/channels/ReferralSourceMetricWidgets";
+import { ReferralSourcePipelineWidget } from "@/components/partners/ReferralSourcePipelineWidget";
+
 import { ChannelEntityDetailModal } from "@/components/channels/ChannelEntityDetailModal";
 import type { ChannelEntry } from "@/hooks/useChannelEntries";
 import { SalesBdSearch } from "@/components/partners/SalesBdSearch";
@@ -203,7 +205,9 @@ function SalesBDInner() {
                 />
                 {/* Referral Insights (Activity / Needs Attention) hidden — see mem://features/sales-bd/partner-insights-tabs-hidden */}
 
+                <ReferralSourcePipelineWidget />
                 <ReferralSourceDeals hideKpis />
+
                 <ReferralSourcesView hideKpis initialSearch={referralSearchSeed} />
               </div>
             </TabsContent>
