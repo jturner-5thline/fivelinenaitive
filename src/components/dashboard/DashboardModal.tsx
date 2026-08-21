@@ -1,8 +1,7 @@
-import { useEffect, useRef, useMemo, useState, useCallback, lazy, Suspense } from 'react';
+import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LayoutDashboard, BarChart3, Pencil, AlertTriangle, AlertCircle, Clock, Briefcase, Inbox, ListChecks } from 'lucide-react';
-import { TodayTab } from '@/components/dashboard/TodayTab';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { Pencil, AlertTriangle, AlertCircle, Clock } from 'lucide-react';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { useNavigate } from 'react-router-dom';
@@ -12,7 +11,6 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
 import {
   useDashboardKpiYtd,
   useIsKpiPlanAdmin,
@@ -62,19 +60,9 @@ const TABLE_COLUMNS: { key: SortColumn; label: string; align?: 'left' }[] = [
   { key: 'closing', label: 'Closing Mo.' },
 ];
 
-// Analytics is the legacy /analytics page repurposed as the second tab here.
-// Lazy so the heavy chart bundle only loads when the user picks the tab.
-const AnalyticsTabContent = lazy(() => import('@/pages/Analytics'));
-const NikiPerformanceTab = lazy(() =>
-  import('@/components/dashboard/NikiPerformanceTab').then(m => ({ default: m.NikiPerformanceTab })),
-);
-const TasksTabContent = lazy(() => import('@/pages/Tasks'));
-
 export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'dashboard', embedded = false }: DashboardModalProps) {
   const open = embedded ? true : openProp;
-  const { user } = useAuth();
-  const canSeePerformance =
-    user?.email === 'nheikali@5thline.co' || user?.email === 'jturner@5thline.co';
+  
   const { enabled: queueEnabled } = useApprovalQueueAccess();
   const { data: queueItems = [] } = useAiActionQueue();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'performance' | 'today' | 'tasks'>(initialTab);
@@ -437,28 +425,10 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
       <div className="db-root flex flex-col flex-1 min-h-0 min-w-0 max-w-full overflow-hidden" style={{ borderRadius: 'inherit', boxSizing: 'border-box' }}>
           <style dangerouslySetInnerHTML={{ __html: DASHBOARD_CSS }} />
           <Tabs
-            value={activeTab}
-            onValueChange={(v) => setActiveTab(v as 'dashboard' | 'analytics' | 'performance' | 'today' | 'tasks')}
+            value="dashboard"
             className="flex flex-col flex-1 min-h-0"
           >
-            <div className="px-5 pt-2 pb-1 shrink-0">
-              <TabsList>
-                <TabsTrigger value="dashboard" className="gap-1.5">
-                  <LayoutDashboard className="h-3.5 w-3.5" />
-                  Dashboard
-                </TabsTrigger>
-                <TabsTrigger value="analytics" className="gap-1.5">
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  Analytics
-                </TabsTrigger>
-                {canSeePerformance && (
-                  <TabsTrigger value="performance" className="gap-1.5">
-                    <Briefcase className="h-3.5 w-3.5" />
-                    Performance
-                  </TabsTrigger>
-                )}
-              </TabsList>
-            </div>
+
 
             <TabsContent
               value="dashboard"
@@ -769,61 +739,6 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
               </div>
             </TabsContent>
 
-            <TabsContent
-              value="analytics"
-              className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-x-hidden overflow-y-auto data-[state=inactive]:hidden bg-transparent"
-            >
-              <Suspense
-                fallback={
-                  <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                    Loading Analytics…
-                  </div>
-                }
-              >
-                <div className="db-analytics-host min-w-0 max-w-full">
-                  <AnalyticsTabContent />
-                </div>
-              </Suspense>
-            </TabsContent>
-
-            {canSeePerformance && (
-              <TabsContent
-                value="performance"
-                className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-x-hidden overflow-y-auto data-[state=inactive]:hidden bg-transparent"
-              >
-                <Suspense
-                  fallback={
-                    <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                      Loading Performance…
-                    </div>
-                  }
-                >
-                  <div className="db-r min-w-0 max-w-full">
-                    <NikiPerformanceTab />
-                  </div>
-                </Suspense>
-              </TabsContent>
-            )}
-            <TabsContent
-              value="today"
-              className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-hidden data-[state=inactive]:hidden bg-transparent flex flex-col px-1"
-            >
-              <TodayTab enabled={activeTab === 'today'} onClose={() => setActiveTab('dashboard')} />
-            </TabsContent>
-            <TabsContent
-              value="tasks"
-              className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-hidden data-[state=inactive]:hidden bg-transparent flex flex-col"
-            >
-              <Suspense
-                fallback={
-                  <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
-                    Loading tasks…
-                  </div>
-                }
-              >
-                <TasksTabContent overlayMode />
-              </Suspense>
-            </TabsContent>
           </Tabs>
         </div>
       {editingPlan && (
