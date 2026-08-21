@@ -372,17 +372,24 @@ export function useDealReferralSources(filters?: {
     const win12 = now - ms(12);
 
     const entries: DealReferralSourceEntry[] = [];
-    for (const [key, { raw, deals: groupDeals }] of grouped) {
+    for (const [, { raw, contactId, crmCompanyId, deals: groupDeals }] of grouped) {
+      const nameKey = normalize(raw);
       const sorted = [...groupDeals].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       const totalVolume = groupDeals.reduce((sum, d) => sum + Number(d.value || 0), 0);
       const latest = sorted[0];
 
-      const match = channelLookup.get(key);
+      const match = channelLookup.get(nameKey);
 
-      // === Derive company ===
-      let derivedCompany: string | null = match?.companyName || null;
+      // === Derive company (linked CRM company record wins) ===
+      const linkedCompanyName = crmCompanyId
+        ? (companyById.get(crmCompanyId)?.name?.trim()
+          || contactById.get(contactId ?? '')?.crm_company?.name?.trim()
+          || null)
+        : null;
+      let derivedCompany: string | null = linkedCompanyName || match?.companyName || null;
       if (!derivedCompany) {
-        derivedCompany = contactCompanyLookup.get(key) || null;
+        derivedCompany = contactCompanyLookup.get(nameKey) || null;
+
         if (!derivedCompany) {
           // Referrer may be "Jane Doe @ Firm" or "Jane Doe - Firm"; try the
           // leading name part before the separator.
