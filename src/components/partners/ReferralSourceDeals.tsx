@@ -17,14 +17,20 @@ import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 
 const kpiCard = "h-full rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-2 justify-between";
 
-function KpiTile({ label, value, subtext, badge }: { label: React.ReactNode; value: string | number; subtext?: string; badge?: React.ReactNode }) {
+function KpiTile({ label, value, subtext, badge, onClick }: { label: React.ReactNode; value: string | number; subtext?: string; badge?: React.ReactNode; onClick?: () => void }) {
   return (
-    <div className={kpiCard}>
+    <div
+      className={`${kpiCard} ${onClick ? 'cursor-pointer transition-colors hover:border-[hsl(var(--chart-2)/0.5)] hover:bg-card/80' : ''}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+    >
       <div className="flex items-start justify-between gap-2">
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground leading-tight">
           {label}
         </p>
-        {badge}
+        {badge ?? (onClick ? <span className="text-[10px] text-muted-foreground/70 whitespace-nowrap">Drill →</span> : null)}
       </div>
       <p className="text-3xl font-bold tabular-nums leading-none text-[hsl(var(--chart-2))]">{value}</p>
       {subtext ? <p className="text-[11px] text-muted-foreground leading-snug">{subtext}</p> : null}
