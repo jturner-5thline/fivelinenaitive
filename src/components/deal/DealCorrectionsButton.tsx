@@ -19,6 +19,7 @@ interface Props {
 export function DealCorrectionsButton({ dealId }: Props) {
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(0);
+  const { hasAccess } = useNaitivePipelineAccess();
 
   useEffect(() => {
     let cancelled = false;
