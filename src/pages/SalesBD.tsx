@@ -10,7 +10,6 @@ import {
 import { lazy, Suspense, useState } from "react";
 import { Building2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PartnerSourcedDeals } from "@/components/partners/PartnerSourcedDeals";
 import { ReferralSourceDeals } from "@/components/partners/ReferralSourceDeals";
 import { PartnerDetailPanel } from "@/components/partners/PartnerDetailPanel";
 import { usePartners } from "@/hooks/usePartnersPipeline";
