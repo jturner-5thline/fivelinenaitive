@@ -505,6 +505,13 @@ export function useDealReferralSources(filters?: {
     return Array.from(set).sort().map(c => ({ value: c, label: c }));
   }, [referralSources]);
 
+  // Deals whose referrer text isn't linked to a CRM contact/company — these
+  // are excluded from the referral source list entirely.
+  const unlinkedDealCount = useMemo(
+    () => deals.filter(d => !d.referred_by_contact_id && !d.referred_by_crm_company_id).length,
+    [deals],
+  );
+
   return {
     referralSources,
     isLoading: dealsLoading,
@@ -512,5 +519,6 @@ export function useDealReferralSources(filters?: {
     totalVolume: referralSources.reduce((s, r) => s + r.totalVolume, 0),
     totalDeals: referralSources.reduce((s, r) => s + r.dealCount, 0),
     companyOptions,
+    unlinkedDealCount,
   };
 }
