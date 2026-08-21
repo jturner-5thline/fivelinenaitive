@@ -56,6 +56,8 @@ export interface AskNaitiveBarProps {
    */
   activeAgentLabel?: string;
   activeAgentEmoji?: string;
+  /** Optional controls rendered just before the ⌘J hint (e.g. prompt history). */
+  trailingSlot?: ReactNode;
 }
 
 export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(function AskNaitiveBar(
@@ -85,6 +87,7 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
     dataTour,
     activeAgentLabel,
     activeAgentEmoji,
+    trailingSlot,
   },
   ref,
 ) {
@@ -202,6 +205,8 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
         ariaExpanded={ariaExpanded}
         ariaControls={ariaControls}
       />
+
+      {trailingSlot}
 
       {showShortcutHint && (
         <kbd className="relative z-10 hidden sm:inline-flex items-center gap-0.5 rounded border border-sky-400/20 bg-sky-400/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-sky-200/60 group-hover:text-sky-100/85 transition-colors shrink-0">

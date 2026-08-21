@@ -30,6 +30,8 @@ const loadAICopilotPanel = () =>
   import('@/components/AICopilotPanel').then((m) => ({ default: m.AICopilotPanel }));
 const AICopilotPanel = lazy(loadAICopilotPanel);
 import { AskNaitiveBar } from '@/components/copilot/AskNaitiveBar';
+import { AskNaitivePromptHistory } from '@/components/copilot/AskNaitivePromptHistory';
+import { recordAskNaitivePrompt } from '@/lib/askNaitiveHistory';
 
 const QUICK_PAGES: { name: string; path: string }[] = [
   { name: 'Dashboard', path: '/dashboard' },
@@ -452,6 +454,7 @@ export function CopilotToggleButton() {
     const trimmed = text.trim();
     if (!trimmed) return;
     setLastSentPrompt(trimmed);
+    recordAskNaitivePrompt(trimmed);
     openPanelWithPrompt(trimmed);
     setValue('');
   };
@@ -740,6 +743,15 @@ export function CopilotToggleButton() {
           forceFocused={isOpen && !isMinimized}
           activeAgentLabel={selectedAgent?.name || 'Ask naitive'}
           activeAgentEmoji={selectedAgent?.emoji}
+          trailingSlot={
+            <AskNaitivePromptHistory
+              onReuse={(prompt) => {
+                setValue(prompt);
+                requestAnimationFrame(() => inputRef.current?.focus());
+              }}
+              onRun={(prompt) => askAi(prompt)}
+            />
+          }
           style={{ width: `${barWidth}px`, maxWidth: 'calc(100% - 32px)' }}
           onResizeStart={onResizeStart}
           onResizeDoubleClick={onResizeDoubleClick}
