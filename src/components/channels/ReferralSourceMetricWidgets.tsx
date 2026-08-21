@@ -224,6 +224,8 @@ export function ReferralSourceMetricWidgets() {
           subtext="by fee revenue in selected timeframe"
         />
       </div>
+
+      <ChannelMixDonut />
     </div>
   );
 }
