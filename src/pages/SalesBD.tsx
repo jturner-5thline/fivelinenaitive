@@ -203,7 +203,9 @@ function SalesBDInner() {
                 />
                 {/* Referral Insights (Activity / Needs Attention) hidden — see mem://features/sales-bd/partner-insights-tabs-hidden */}
 
+                <ReferralSourcePipelineWidget />
                 <ReferralSourceDeals hideKpis />
+
                 <ReferralSourcesView hideKpis initialSearch={referralSearchSeed} />
               </div>
             </TabsContent>
