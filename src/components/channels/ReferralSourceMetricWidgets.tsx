@@ -24,7 +24,7 @@ function ChannelMixDonut() {
   const total = data.reduce((s, d) => s + d.value, 0);
 
   return (
-    <div className="rounded-lg border border-border bg-card/60 p-4">
+    <div className="rounded-lg border border-border bg-transparent p-4">
       <div className="flex items-start justify-between gap-2 mb-2">
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground leading-tight">
           Channel Mix
