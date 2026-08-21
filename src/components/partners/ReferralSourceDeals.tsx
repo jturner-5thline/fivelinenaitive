@@ -154,8 +154,8 @@ export function ReferralSourceDeals({
   );
 
   const drillMeta: Record<string, { title: string; kind: 'deals' | 'sources' | 'conversion' }> = {
-    deals: { title: 'Total Referred · deals in selected timeframe', kind: 'deals' },
-    value: { title: 'Referred Value · deals in selected timeframe', kind: 'deals' },
+    deals: { title: 'Deals Signed from Referral Sources · selected timeframe', kind: 'deals' },
+    value: { title: 'Dollars Signed from Referral Sources · selected timeframe', kind: 'deals' },
     conversion: { title: 'Conversion Rate · trailing 12 months', kind: 'conversion' },
     sources: { title: 'Referral Sources · linked CRM records', kind: 'sources' },
     sourceDeals: { title: 'Referred Deals · by referral source', kind: 'sources' },
@@ -267,8 +267,8 @@ export function ReferralSourceDeals({
         'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-3'
       }
     >
-        <KpiTile label="Total Referred" value={matchedDeals.length} subtext="deals in selected timeframe" onClick={() => setDrill('deals')} />
-        <KpiTile label="Referred Value" value={formatCurrencyCompact(totalValue)} subtext="deal value in selected timeframe" onClick={() => setDrill('value')} />
+        <KpiTile label="Deals Signed from Referral Sources" value={matchedDeals.length} subtext="deals in selected timeframe" onClick={() => setDrill('deals')} />
+        <KpiTile label="Dollars Signed from Referral Sources" value={formatCurrencyCompact(totalValue)} subtext="deal value in selected timeframe" onClick={() => setDrill('value')} />
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
