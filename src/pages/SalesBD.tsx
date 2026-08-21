@@ -20,6 +20,7 @@ import { usePartners } from "@/hooks/usePartnersPipeline";
 import { ChannelsBoard } from "@/components/channels/ChannelsBoard";
 import { ChannelsDashboard } from "@/components/channels/ChannelsDashboard";
 import { ReferralSourcesView } from "@/components/channels/ReferralSourcesView";
+import { ReferralSourceMetricWidgets } from "@/components/channels/ReferralSourceMetricWidgets";
 import { ChannelEntityDetailModal } from "@/components/channels/ChannelEntityDetailModal";
 import type { ChannelEntry } from "@/hooks/useChannelEntries";
 import { SalesBdSearch } from "@/components/partners/SalesBdSearch";
