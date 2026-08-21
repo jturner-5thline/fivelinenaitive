@@ -4,9 +4,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from 'recharts';
 import { useChannelEntries } from '@/hooks/useChannelEntries';
 import { CHANNEL_TYPE_OPTIONS } from './channelOptions';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 function ChannelMixDonut() {
   const { data: entries = [], isLoading } = useChannelEntries();
+  const [drill, setDrill] = useState<{ value: string; label: string; color: string } | null>(null);
 
   const data = useMemo(() => {
     const counts = new Map<string, number>();
@@ -16,12 +18,23 @@ function ChannelMixDonut() {
     });
     return CHANNEL_TYPE_OPTIONS.map((o) => ({
       name: o.label,
+      channel: o.value as string,
       color: o.color,
       value: counts.get(o.value) || 0,
     })).filter((d) => d.value > 0);
   }, [entries]);
 
   const total = data.reduce((s, d) => s + d.value, 0);
+
+  const drillRows = useMemo(
+    () => (drill ? entries.filter((e) => String(e.channel_type) === drill.value) : []),
+    [entries, drill],
+  );
+
+  const openDrill = (name: string) => {
+    const d = data.find((x) => x.name === name);
+    if (d) setDrill({ value: d.channel, label: d.name, color: d.color });
+  };
 
   return (
     <div className="rounded-lg border border-border bg-transparent p-4">
@@ -49,9 +62,11 @@ function ChannelMixDonut() {
                 outerRadius={92}
                 paddingAngle={2}
                 stroke="none"
+                onClick={(d: any) => openDrill(d?.name ?? d?.payload?.name)}
+                className="cursor-pointer"
               >
                 {data.map((d) => (
-                  <Cell key={d.name} fill={d.color} />
+                  <Cell key={d.name} fill={d.color} className="cursor-pointer" />
                 ))}
               </Pie>
               <RechartsTooltip
@@ -66,14 +81,59 @@ function ChannelMixDonut() {
                   n,
                 ]}
               />
-              <Legend wrapperStyle={{ fontSize: '11px' }} />
+              <Legend
+                wrapperStyle={{ fontSize: '11px', cursor: 'pointer' }}
+                onClick={(e: any) => openDrill(e?.value)}
+              />
             </PieChart>
           </ResponsiveContainer>
         )}
       </div>
       <p className="text-[11px] text-muted-foreground leading-snug mt-1">
-        Share of channel partners by type
+        Share of channel partners by type — click a slice to drill down
       </p>
+
+      <Dialog open={!!drill} onOpenChange={(o) => !o && setDrill(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: drill?.color }}
+              />
+              {drill?.label} · {drillRows.length} {drillRows.length === 1 ? 'record' : 'records'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col divide-y divide-border">
+            {drillRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">No records in this channel.</p>
+            ) : (
+              drillRows.map((e) => (
+                <div key={e.id} className="py-2.5 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {e.crm_company?.name || e.contact?.full_name || 'Untitled'}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {[
+                        e.crm_company?.name && e.contact?.full_name ? e.contact.full_name : null,
+                        e.contact?.job_title,
+                        e.contact?.email || e.crm_company?.main_contact_email,
+                        e.crm_company?.domain,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ') || '—'}
+                    </p>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground/70 whitespace-nowrap">
+                    {e.crm_company?.name ? 'Company' : 'Contact'}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
