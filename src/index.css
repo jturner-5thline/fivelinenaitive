@@ -1308,7 +1308,7 @@ div.deal-tile.deal-glass,
   background: #0b1226 !important;
   background-color: #0b1226 !important;
   background-image: none !important;
-  border-color: rgba(190, 220, 255, 0.34) !important;
+  border-color: rgba(126, 184, 247, 0.22) !important;
   border-radius: 8px !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -1321,7 +1321,7 @@ div.deal-tile.deal-glass:hover,
   background: #101836 !important;
   background-color: #101836 !important;
   background-image: none !important;
-  border-color: rgba(214, 234, 255, 0.52) !important;
+  border-color: rgba(126, 184, 247, 0.4) !important;
 }
 .deal-tile.deal-glass::before,
 .deal-glass.deal-tile::before {
