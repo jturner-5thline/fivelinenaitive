@@ -108,13 +108,34 @@ export function ReferralSourceDeals({
   // All deals in the result set already match sourced_via ~ 'Referral%'.
   const matchedDeals = deals;
 
-  // "On Board" = deals that ENTERED the "NDA / Needs List Sent" stage of the
-  // Active pipeline within the selected timeframe, sourced via Referral.
-  // Entry date = the stage_enter event in deal_stage_history when one exists,
-  // otherwise the deal's created_at (deals created directly into the stage,
-  // which predate stage-history tracking).
+  // "On Board" = deals that ENTERED (or became) the "NDA / Needs List Sent"
+  // stage of the Active pipeline within the selected timeframe, sourced via
+  // Referral. Entry date = the stage_enter event in deal_stage_history when
+  // one exists, otherwise the deal's created_at (stage-history tracking is
+  // recent, so most deals only have their creation date).
   const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
   const NDA_STAGE_ID = 'ndaneeds-list-sent';
+  // Stages that imply the deal reached NDA / Needs List Sent. `on-hold` and
+  // `closed-lost` are excluded because a deal can land there without ever
+  // having reached the NDA stage.
+  const REACHED_NDA_STAGES = [
+    'ndaneeds-list-sent',
+    'pre-credit-needs',
+    'initial-lender-review',
+    'initial-feedback',
+    'proposal-in-development',
+    'proposal-issued',
+    'agreement-pending',
+    'final-credit-items',
+    'client-strategy-review',
+    'write-up-pending',
+    'submitted-to-lenders',
+    'lenders-in-review',
+    'terms-issued',
+    'in-due-diligence',
+    'funded-invoiced',
+    'closed-won',
+  ];
 
   const { data: onBoardDeals = [] } = useQuery({
     queryKey: [
@@ -139,14 +160,15 @@ export function ReferralSourceDeals({
       if (rangeStart) hq = hq.gte('changed_at', rangeStart.toISOString());
       if (rangeEnd) hq = hq.lte('changed_at', rangeEnd.toISOString());
 
-      // 2) Deals created into the NDA stage within the timeframe (no history row).
+      // 2) Deals created within the timeframe that are at (or past) the NDA
+      //    stage — they became NDA / Needs List Sent in the period.
       let dq = supabase
         .from('deals')
         .select(select)
         .eq('company_id', company!.id)
         .eq('pipeline_id', ACTIVE_PIPELINE_ID)
         .ilike('sourced_via', 'referral%')
-        .eq('stage', NDA_STAGE_ID);
+        .in('stage', REACHED_NDA_STAGES);
       if (rangeStart) dq = dq.gte('created_at', rangeStart.toISOString());
       if (rangeEnd) dq = dq.lte('created_at', rangeEnd.toISOString());
 
@@ -176,6 +198,7 @@ export function ReferralSourceDeals({
       return rows;
     },
   });
+
 
 
 
