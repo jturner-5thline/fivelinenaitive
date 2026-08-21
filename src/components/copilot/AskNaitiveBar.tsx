@@ -208,16 +208,6 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
           ⌘J
         </kbd>
       )}
-      {activeAgentLabel && (
-        <span
-          title={`Handled by ${activeAgentLabel}`}
-          className="relative z-10 hidden md:inline-flex items-center gap-1 rounded-full border border-sky-400/25 bg-gradient-to-r from-sky-500/15 to-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-100/85 shrink-0"
-        >
-          {activeAgentEmoji && <span aria-hidden="true">{activeAgentEmoji}</span>}
-          <span className="opacity-70">Handled by</span>
-          <span className="text-white/90">{activeAgentLabel}</span>
-        </span>
-      )}
     </div>
   );
 });
