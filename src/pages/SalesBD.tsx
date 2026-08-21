@@ -199,12 +199,15 @@ function SalesBDInner() {
 
             <TabsContent value="referral-sources" className="mt-4">
               <div className="space-y-8">
-                <ReferralSourceMetricWidgets />
-                {/* Referral Insights (Activity / Needs Attention) hidden — see mem://features/sales-bd/partner-insights-tabs-hidden */}
-                <ReferralSourceDeals
-                  kpisOnly
-                  kpiGridClassName="grid grid-cols-2 xl:grid-cols-3 gap-3 auto-rows-fr"
+                <ReferralSourceMetricWidgets
+                  sideSlot={
+                    <ReferralSourceDeals
+                      kpisOnly
+                      kpiGridClassName="grid h-full grid-cols-2 sm:grid-cols-3 grid-rows-2 gap-3 auto-rows-fr"
+                    />
+                  }
                 />
+                {/* Referral Insights (Activity / Needs Attention) hidden — see mem://features/sales-bd/partner-insights-tabs-hidden */}
 
                 <ReferralSourceDeals hideKpis />
                 <ReferralSourcesView hideKpis initialSearch={referralSearchSeed} />
