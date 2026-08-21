@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { DealCorrectionsLog } from '@/components/deal/DealCorrectionsLog';
+import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 
 interface Props {
   dealId: string;
@@ -18,6 +19,7 @@ interface Props {
 export function DealCorrectionsButton({ dealId }: Props) {
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(0);
+  const { hasAccess } = useNaitivePipelineAccess();
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +56,8 @@ export function DealCorrectionsButton({ dealId }: Props) {
       cancelled = true;
     };
   }, [dealId, open]);
+
+  if (!hasAccess) return null;
 
   return (
     <>
