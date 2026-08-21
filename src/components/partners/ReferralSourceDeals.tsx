@@ -108,33 +108,13 @@ export function ReferralSourceDeals({
   // All deals in the result set already match sourced_via ~ 'Referral%'.
   const matchedDeals = deals;
 
-  // "On Board" = deals in the Active pipeline sourced via Referral that have
-  // reached the "NDA / Needs List Sent" stage or beyond. deal_stage_history is
-  // only sparsely populated (historical imports predate it), so we derive this
-  // from the deal's current stage position in the pipeline instead.
+  // "On Board" = deals that ENTERED the "NDA / Needs List Sent" stage of the
+  // Active pipeline within the selected timeframe, sourced via Referral.
+  // Entry date = the stage_enter event in deal_stage_history when one exists,
+  // otherwise the deal's created_at (deals created directly into the stage,
+  // which predate stage-history tracking).
   const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
   const NDA_STAGE_ID = 'ndaneeds-list-sent';
-  // Stages that mean the deal has been put on board (NDA sent or later).
-  const ON_BOARD_STAGES = [
-    NDA_STAGE_ID,
-    'pre-credit-needs',
-    'initial-lender-review',
-    'initial-feedback',
-    'proposal-in-development',
-    'proposal-issued',
-    'agreement-pending',
-    'final-credit-items',
-    'client-strategy-review',
-    'write-up-pending',
-    'submitted-to-lenders',
-    'lenders-in-review',
-    'terms-issued',
-    'in-due-diligence',
-    'funded-invoiced',
-    'closed-won',
-    'closed-lost',
-    'on-hold',
-  ];
 
   const { data: onBoardDeals = [] } = useQuery({
     queryKey: [
@@ -145,29 +125,58 @@ export function ReferralSourceDeals({
     ],
     enabled: !!company?.id,
     queryFn: async () => {
-      let q = supabase
+      const select = 'id, company, value, stage, referred_by, sourced_via, created_at';
+
+      // 1) Explicit stage-enter events into the NDA stage within the timeframe.
+      let hq = supabase
+        .from('deal_stage_history')
+        .select(`deal_id, changed_at, deals!inner(${select}, company_id, pipeline_id)`)
+        .eq('event_type', 'stage_enter')
+        .or(`to_stage_id.eq.${NDA_STAGE_ID},to_stage.eq.${NDA_STAGE_ID}`)
+        .eq('deals.company_id', company!.id)
+        .eq('deals.pipeline_id', ACTIVE_PIPELINE_ID)
+        .ilike('deals.sourced_via', 'referral%');
+      if (rangeStart) hq = hq.gte('changed_at', rangeStart.toISOString());
+      if (rangeEnd) hq = hq.lte('changed_at', rangeEnd.toISOString());
+
+      // 2) Deals created into the NDA stage within the timeframe (no history row).
+      let dq = supabase
         .from('deals')
-        .select('id, company, value, stage, referred_by, sourced_via, created_at')
+        .select(select)
         .eq('company_id', company!.id)
         .eq('pipeline_id', ACTIVE_PIPELINE_ID)
         .ilike('sourced_via', 'referral%')
-        .in('stage', ON_BOARD_STAGES);
-      if (rangeStart) q = q.gte('created_at', rangeStart.toISOString());
-      if (rangeEnd) q = q.lte('created_at', rangeEnd.toISOString());
-      const { data, error } = await q.order('created_at', { ascending: false });
-      if (error) throw error;
-      return ((data || []) as any[]).map((d) => ({
-        id: d.id,
-        company: d.company,
-        value: d.value,
-        stage: d.stage,
-        referred_by: d.referred_by,
-        sourced_via: d.sourced_via,
-        created_at: d.created_at,
-        closing_date: null,
-      })) as DealRow[];
+        .eq('stage', NDA_STAGE_ID);
+      if (rangeStart) dq = dq.gte('created_at', rangeStart.toISOString());
+      if (rangeEnd) dq = dq.lte('created_at', rangeEnd.toISOString());
+
+      const [hist, created] = await Promise.all([hq, dq]);
+      if (hist.error) throw hist.error;
+      if (created.error) throw created.error;
+
+      const seen = new Set<string>();
+      const rows: DealRow[] = [];
+      const push = (d: any, enteredAt: string) => {
+        if (!d?.id || seen.has(d.id)) return;
+        seen.add(d.id);
+        rows.push({
+          id: d.id,
+          company: d.company,
+          value: d.value,
+          stage: d.stage,
+          referred_by: d.referred_by,
+          sourced_via: d.sourced_via,
+          created_at: enteredAt,
+          closing_date: null,
+        });
+      };
+      for (const r of (hist.data || []) as any[]) push(r.deals, r.changed_at);
+      for (const d of (created.data || []) as any[]) push(d, d.created_at);
+      rows.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+      return rows;
     },
   });
+
 
 
   const totalValue = onBoardDeals.reduce((sum, d) => sum + (d.value || 0), 0);
