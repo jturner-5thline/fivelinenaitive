@@ -204,8 +204,8 @@ export function ReferralSourceDeals({
   );
 
   const drillMeta: Record<string, { title: string; kind: 'deals' | 'sources' | 'conversion' }> = {
-    deals: { title: 'Deals Signed from Referral Sources · selected timeframe', kind: 'deals' },
-    value: { title: 'Dollars Signed from Referral Sources · selected timeframe', kind: 'deals' },
+    deals: { title: 'Deals on Board from Referral Sources · entered NDA / Needs List Sent', kind: 'deals' },
+    value: { title: 'Dollars on Board from Referral Sources · entered NDA / Needs List Sent', kind: 'deals' },
     conversion: { title: 'Conversion Rate · trailing 12 months', kind: 'conversion' },
     sources: { title: 'Referral Sources · linked CRM records', kind: 'sources' },
     sourceDeals: { title: 'Referred Deals · by referral source', kind: 'sources' },
@@ -270,7 +270,7 @@ export function ReferralSourceDeals({
               </TableBody>
             </Table>
           )
-        ) : matchedDeals.length === 0 ? (
+        ) : onBoardDeals.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">No referral-source deals found.</p>
         ) : (
           <Table>
@@ -284,7 +284,7 @@ export function ReferralSourceDeals({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...matchedDeals]
+              {[...onBoardDeals]
                 .sort((a, b) =>
                   drill === 'value'
                     ? (b.value || 0) - (a.value || 0)
@@ -317,8 +317,10 @@ export function ReferralSourceDeals({
         'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-3'
       }
     >
-        <KpiTile label="Deals Signed from Referral Sources" value={matchedDeals.length} subtext="deals in selected timeframe" onClick={() => setDrill('deals')} />
-        <KpiTile label="Dollars Signed from Referral Sources" value={formatCurrencyCompact(totalValue)} subtext="deal value in selected timeframe" onClick={() => setDrill('value')} />
+        <KpiTile label="Deals on Board from Referral Sources" value={onBoardDeals.length} subtext="entered NDA / Needs List Sent" onClick={() => setDrill('deals')} />
+        <KpiTile label="Dollars on Board from Referral Sources" value={formatCurrencyCompact(totalValue)} subtext="entered NDA / Needs List Sent" onClick={() => setDrill('value')} />
+
+
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
