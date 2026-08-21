@@ -586,6 +586,9 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
         referredBy={editTarget?.referredBy ?? ''}
         initialCompany={editTarget?.companyName}
       />
+
+      <ReferralEntityQuickView target={quickView} onClose={() => setQuickView(null)} />
+
     </div>
   );
 }
