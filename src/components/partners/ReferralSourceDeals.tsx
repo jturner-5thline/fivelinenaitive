@@ -351,6 +351,7 @@ export function ReferralSourceDeals({
           )}
         </CollapsibleContent>
       </Collapsible>
+      {drillDialog}
     </div>
   );
 }
