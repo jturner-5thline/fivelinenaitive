@@ -81,7 +81,10 @@ function ChannelMixDonut() {
                   n,
                 ]}
               />
-              <Legend wrapperStyle={{ fontSize: '11px' }} />
+              <Legend
+                wrapperStyle={{ fontSize: '11px', cursor: 'pointer' }}
+                onClick={(e: any) => openDrill(e?.value)}
+              />
             </PieChart>
           </ResponsiveContainer>
         )}
