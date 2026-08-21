@@ -1,6 +1,82 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from 'recharts';
+import { useChannelEntries } from '@/hooks/useChannelEntries';
+import { CHANNEL_TYPE_OPTIONS } from './channelOptions';
+
+function ChannelMixDonut() {
+  const { data: entries = [], isLoading } = useChannelEntries();
+
+  const data = useMemo(() => {
+    const counts = new Map<string, number>();
+    entries.forEach((e) => {
+      const key = String(e.channel_type ?? 'Other');
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    return CHANNEL_TYPE_OPTIONS.map((o) => ({
+      name: o.label,
+      color: o.color,
+      value: counts.get(o.value) || 0,
+    })).filter((d) => d.value > 0);
+  }, [entries]);
+
+  const total = data.reduce((s, d) => s + d.value, 0);
+
+  return (
+    <div className="rounded-lg border border-border bg-card/60 p-4">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground leading-tight">
+          Channel Mix
+        </p>
+        <span className="text-[11px] text-muted-foreground/70 tabular-nums">{total} total</span>
+      </div>
+      <div className="h-[260px] w-full">
+        {isLoading || total === 0 ? (
+          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+            {isLoading ? 'Loading…' : 'No channel data yet'}
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius={58}
+                outerRadius={92}
+                paddingAngle={2}
+                stroke="none"
+              >
+                {data.map((d) => (
+                  <Cell key={d.name} fill={d.color} />
+                ))}
+              </Pie>
+              <RechartsTooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px',
+                  fontSize: 12,
+                }}
+                formatter={(v: number, n: string) => [
+                  `${v} (${total ? Math.round((v / total) * 100) : 0}%)`,
+                  n,
+                ]}
+              />
+              <Legend wrapperStyle={{ fontSize: '11px' }} />
+            </PieChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+      <p className="text-[11px] text-muted-foreground leading-snug mt-1">
+        Share of channel partners by type
+      </p>
+    </div>
+  );
+}
 
 interface MetricTileProps {
   label: string;
@@ -148,6 +224,8 @@ export function ReferralSourceMetricWidgets() {
           subtext="by fee revenue in selected timeframe"
         />
       </div>
+
+      <ChannelMixDonut />
     </div>
   );
 }
