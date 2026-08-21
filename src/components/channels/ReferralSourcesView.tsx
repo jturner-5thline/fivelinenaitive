@@ -14,6 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DollarSign, Users, TrendingUp, Briefcase, ChevronDown, ChevronUp, X, RotateCcw, ExternalLink, Pencil, Search, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { ReferralSourceEditDialog } from './ReferralSourceEditDialog';
+import { ReferralEntityQuickView, type QuickViewTarget } from './ReferralEntityQuickView';
 import { Input } from '@/components/ui/input';
 import { useTriStateSort } from '@/hooks/useTriStateSort';
 
