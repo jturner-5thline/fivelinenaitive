@@ -743,6 +743,15 @@ export function CopilotToggleButton() {
           forceFocused={isOpen && !isMinimized}
           activeAgentLabel={selectedAgent?.name || 'Ask naitive'}
           activeAgentEmoji={selectedAgent?.emoji}
+          trailingSlot={
+            <AskNaitivePromptHistory
+              onReuse={(prompt) => {
+                setValue(prompt);
+                requestAnimationFrame(() => inputRef.current?.focus());
+              }}
+              onRun={(prompt) => askAi(prompt)}
+            />
+          }
           style={{ width: `${barWidth}px`, maxWidth: 'calc(100% - 32px)' }}
           onResizeStart={onResizeStart}
           onResizeDoubleClick={onResizeDoubleClick}
