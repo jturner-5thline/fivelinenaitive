@@ -494,7 +494,7 @@ export function useDealReferralSources(filters?: {
     filtered.sort((a, b) => b.totalVolume - a.totalVolume);
 
     return filtered;
-  }, [deals, channelEntries, contactRows, pipelineMap, filters?.channelFilter, filters?.companyFilter, allDeals, rules]);
+  }, [deals, channelEntries, linkedContacts, linkedCompanies, pipelineMap, filters?.channelFilter, filters?.companyFilter, allDeals, rules]);
 
   // Unique companies for filter options
   const companyOptions = useMemo(() => {
