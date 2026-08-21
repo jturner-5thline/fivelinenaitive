@@ -56,6 +56,8 @@ export interface AskNaitiveBarProps {
    */
   activeAgentLabel?: string;
   activeAgentEmoji?: string;
+  /** Optional controls rendered just before the ⌘J hint (e.g. prompt history). */
+  trailingSlot?: ReactNode;
 }
 
 export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(function AskNaitiveBar(
