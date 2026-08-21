@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 
-import { ChevronDown, ChevronRight, DollarSign, Hash, TrendingUp, Users, Briefcase } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useTriStateSort } from '@/hooks/useTriStateSort';
@@ -15,15 +15,22 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useTtmActivePipelineConversion } from '@/lib/salesBdActivePipelineConversion';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 
-const kpiCard = [
-  "[container-type:inline-size] relative isolate rounded-xl overflow-hidden p-4",
-  "border border-[hsl(260,40%,50%,0.12)]",
-  "ring-1 ring-inset ring-white/[0.05]",
-  "bg-[linear-gradient(145deg,hsl(260,25%,16%,0.72)_0%,hsl(255,20%,11%,0.58)_50%,hsl(250,18%,9%,0.65)_100%)]",
-  "backdrop-blur-2xl backdrop-saturate-150",
-  "shadow-[0_2px_4px_hsl(0,0%,0%,0.2),0_8px_32px_hsl(260,40%,8%,0.5)]",
-  "hover:border-[hsl(263,50%,55%,0.2)] transition-all duration-300",
-].join(" ");
+const kpiCard = "h-full rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-2 justify-between";
+
+function KpiTile({ label, value, subtext, badge }: { label: React.ReactNode; value: string | number; subtext?: string; badge?: React.ReactNode }) {
+  return (
+    <div className={kpiCard}>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground leading-tight">
+          {label}
+        </p>
+        {badge}
+      </div>
+      <p className="text-3xl font-bold tabular-nums leading-none text-[hsl(var(--chart-2))]">{value}</p>
+      {subtext ? <p className="text-[11px] text-muted-foreground leading-snug">{subtext}</p> : null}
+    </div>
+  );
+}
 
 function formatCurrencyCompact(v: number): string {
   if (v >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(2)}B`;
@@ -144,47 +151,20 @@ export function ReferralSourceDeals({
         'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-3'
       }
     >
-        {/* 1. Total Referred (deals) */}
-        <div className={kpiCard}>
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-[hsl(263,60%,55%,0.15)] shrink-0">
-              <Hash className="h-4 w-4 text-primary" />
-            </div>
-            <div className="min-w-0">
-              <p className="font-bold font-mono tabular-nums text-foreground truncate text-[clamp(1rem,2.2cqi+0.75rem,1.5rem)]">{matchedDeals.length}</p>
-              <p className="text-[10px] text-muted-foreground truncate">Total Referred</p>
-            </div>
-          </div>
-        </div>
-        {/* 2. Referred Value */}
-        <div className={kpiCard}>
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-[hsl(160,65%,45%,0.15)] shrink-0">
-              <DollarSign className="h-4 w-4" style={{ color: 'hsl(160, 65%, 45%)' }} />
-            </div>
-            <div className="min-w-0">
-              <p className="font-bold font-mono tabular-nums text-foreground truncate text-[clamp(1rem,2.2cqi+0.75rem,1.5rem)]">{formatCurrencyCompact(totalValue)}</p>
-              <p className="text-[10px] text-muted-foreground truncate">Referred Value</p>
-            </div>
-          </div>
-        </div>
-        {/* 3. Conversion Rate TTM */}
+        <KpiTile label="Total Referred" value={matchedDeals.length} subtext="deals in selected timeframe" />
+        <KpiTile label="Referred Value" value={formatCurrencyCompact(totalValue)} subtext="deal value in selected timeframe" />
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className={`${kpiCard} cursor-help`}>
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-[hsl(38,92%,55%,0.15)] shrink-0">
-                    <TrendingUp className="h-4 w-4" style={{ color: 'hsl(38, 92%, 55%)' }} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-bold font-mono tabular-nums text-foreground truncate text-[clamp(1rem,2.2cqi+0.75rem,1.5rem)]">{conversionRateLabel}</p>
-                    <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
-                      Conversion Rate
-                      <span className="rounded-full border border-border/60 bg-muted/40 px-1 py-px text-[9px] font-medium">TTM</span>
-                    </p>
-                  </div>
-                </div>
+              <div className="cursor-help h-full">
+                <KpiTile
+                  label="Conversion Rate"
+                  value={conversionRateLabel}
+                  subtext="trailing 12 months"
+                  badge={
+                    <span className="rounded-full border border-border/60 bg-muted/40 px-1.5 py-px text-[9px] font-medium text-muted-foreground">TTM</span>
+                  }
+                />
               </div>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
@@ -192,42 +172,9 @@ export function ReferralSourceDeals({
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        {/* 4. Referral Sources count */}
-        <div className={kpiCard}>
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-[hsl(263,60%,55%,0.15)] shrink-0">
-              <Users className="h-4 w-4 text-primary" />
-            </div>
-            <div className="min-w-0">
-              <p className="font-bold font-mono tabular-nums text-foreground truncate text-[clamp(1rem,2.2cqi+0.75rem,1.5rem)]">{sourcesCount}</p>
-              <p className="text-[10px] text-muted-foreground truncate">Referral Sources</p>
-            </div>
-          </div>
-        </div>
-        {/* 5. Referred Deals (all sources) */}
-        <div className={kpiCard}>
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-[hsl(160,65%,45%,0.15)] shrink-0">
-              <Briefcase className="h-4 w-4" style={{ color: 'hsl(160, 65%, 45%)' }} />
-            </div>
-            <div className="min-w-0">
-              <p className="font-bold font-mono tabular-nums text-foreground truncate text-[clamp(1rem,2.2cqi+0.75rem,1.5rem)]">{sourcesDeals}</p>
-              <p className="text-[10px] text-muted-foreground truncate">Referred Deals</p>
-            </div>
-          </div>
-        </div>
-        {/* 6. Total Referred Volume */}
-        <div className={kpiCard}>
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-[hsl(38,92%,55%,0.15)] shrink-0">
-              <DollarSign className="h-4 w-4" style={{ color: 'hsl(38, 92%, 55%)' }} />
-            </div>
-            <div className="min-w-0">
-              <p className="font-bold font-mono tabular-nums text-foreground truncate text-[clamp(1rem,2.2cqi+0.75rem,1.5rem)]">{formatCurrencyCompact(sourcesVolume)}</p>
-              <p className="text-[10px] text-muted-foreground truncate">Total Referred Volume</p>
-            </div>
-          </div>
-        </div>
+        <KpiTile label="Referral Sources" value={sourcesCount} subtext="linked CRM records" />
+        <KpiTile label="Referred Deals" value={sourcesDeals} subtext="across all referral sources" />
+        <KpiTile label="Total Referred Volume" value={formatCurrencyCompact(sourcesVolume)} subtext="across all referral sources" />
     </div>
   );
 

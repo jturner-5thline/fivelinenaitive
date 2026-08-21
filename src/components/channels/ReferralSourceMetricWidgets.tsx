@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
 import { Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from 'recharts';
@@ -231,7 +231,7 @@ function LeaderboardTile({ label, tooltip, subtext, toggleable }: LeaderboardTil
   );
 }
 
-export function ReferralSourceMetricWidgets() {
+export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
@@ -282,8 +282,9 @@ export function ReferralSourceMetricWidgets() {
         />
       </div>
 
-      <div className="w-full lg:w-1/2">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
         <ChannelMixDonut />
+        {sideSlot ? <div className="min-w-0">{sideSlot}</div> : null}
       </div>
     </div>
   );
