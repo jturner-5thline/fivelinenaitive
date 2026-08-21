@@ -28,7 +28,7 @@ function KpiTile({ label, value, subtext, badge, onClick }: { label: React.React
       onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground leading-tight">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#FFFFFF] leading-tight">
           {label}
         </p>
         {badge ?? (onClick ? <span className="text-[10px] text-muted-foreground/70 whitespace-nowrap">Drill →</span> : null)}

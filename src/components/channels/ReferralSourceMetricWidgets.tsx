@@ -145,7 +145,7 @@ function MetricTile({ label, value, subtext }: MetricTileProps) {
   return (
     <div className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-2">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground leading-tight">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#FFFFFF] leading-tight">
           {label}
         </p>
         <span className="text-[10px] text-muted-foreground/70 whitespace-nowrap">Drill →</span>
@@ -174,7 +174,7 @@ function LeaderboardTile({ label, tooltip, subtext, toggleable }: LeaderboardTil
     <div className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground leading-tight">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#FFFFFF] leading-tight">
             {label}
           </p>
           <TooltipProvider delayDuration={150}>
