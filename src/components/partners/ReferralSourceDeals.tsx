@@ -107,7 +107,57 @@ export function ReferralSourceDeals({
 
   // All deals in the result set already match sourced_via ~ 'Referral%'.
   const matchedDeals = deals;
-  const totalValue = matchedDeals.reduce((sum, d) => sum + (d.value || 0), 0);
+
+  // "On Board" = distinct deals that ENTERED the "NDA / Needs List Sent" stage
+  // in the Active pipeline within the selected timeframe and are sourced via
+  // Referral. Source: deal_stage_history stage_enter events.
+  const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
+  const NDA_STAGE_ID = 'ndaneeds-list-sent';
+
+  const { data: onBoardDeals = [] } = useQuery({
+    queryKey: [
+      'referral_on_board_deals',
+      company?.id,
+      rangeStart?.toISOString() ?? null,
+      rangeEnd?.toISOString() ?? null,
+    ],
+    enabled: !!company?.id,
+    queryFn: async () => {
+      let q = supabase
+        .from('deal_stage_history')
+        .select('deal_id, changed_at, deals!inner(id, company, value, stage, referred_by, sourced_via, created_at, company_id)')
+        .eq('pipeline_id', ACTIVE_PIPELINE_ID)
+        .eq('event_type', 'stage_enter')
+        .or(`to_stage_id.eq.${NDA_STAGE_ID},to_stage.eq.${NDA_STAGE_ID}`)
+        .eq('deals.company_id', company!.id)
+        .ilike('deals.sourced_via', 'referral%');
+      if (rangeStart) q = q.gte('changed_at', rangeStart.toISOString());
+      if (rangeEnd) q = q.lte('changed_at', rangeEnd.toISOString());
+      const { data, error } = await q.order('changed_at', { ascending: false });
+      if (error) throw error;
+      const seen = new Set<string>();
+      const rows: DealRow[] = [];
+      for (const r of (data || []) as any[]) {
+        const d = r.deals;
+        if (!d?.id || seen.has(d.id)) continue;
+        seen.add(d.id);
+        rows.push({
+          id: d.id,
+          company: d.company,
+          value: d.value,
+          stage: d.stage,
+          referred_by: d.referred_by,
+          sourced_via: d.sourced_via,
+          created_at: r.changed_at,
+          closing_date: null,
+        });
+      }
+      return rows;
+    },
+  });
+
+  const totalValue = onBoardDeals.reduce((sum, d) => sum + (d.value || 0), 0);
+
 
   // Conversion Rate is TTM (trailing 12 months) and INDEPENDENT of the header
   // date filter — see useTtmActivePipelineConversion for the exact formula.
