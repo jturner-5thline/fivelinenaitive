@@ -457,10 +457,6 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
                     Performance
                   </TabsTrigger>
                 )}
-                <TabsTrigger value="tasks" className="gap-1.5">
-                  <ListChecks className="h-3.5 w-3.5" />
-                  Tasks
-                </TabsTrigger>
               </TabsList>
             </div>
 
