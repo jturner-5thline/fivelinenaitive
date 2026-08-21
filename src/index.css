@@ -2220,7 +2220,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .sales-bd-page .glass-module,
 .sales-bd-page .glass-module-interactive,
 .sales-bd-page [data-slot="card"],
-.sales-bd-page .bg-card {
+.sales-bd-page [class*="bg-card"] {
   background: #0b1226 !important;
   background-color: #0b1226 !important;
   background-image: none !important;
