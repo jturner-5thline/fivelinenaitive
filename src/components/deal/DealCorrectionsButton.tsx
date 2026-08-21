@@ -57,6 +57,8 @@ export function DealCorrectionsButton({ dealId }: Props) {
     };
   }, [dealId, open]);
 
+  if (!hasAccess) return null;
+
   return (
     <>
       <Button
