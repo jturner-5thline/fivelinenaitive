@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useTtmActivePipelineConversion } from '@/lib/salesBdActivePipelineConversion';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 
-const kpiCard = "rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-2 justify-between";
+const kpiCard = "h-full rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-2 justify-between";
 
 function KpiTile({ label, value, subtext, badge }: { label: React.ReactNode; value: string | number; subtext?: string; badge?: React.ReactNode }) {
   return (
@@ -156,7 +156,7 @@ export function ReferralSourceDeals({
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="cursor-help">
+              <div className="cursor-help h-full">
                 <KpiTile
                   label="Conversion Rate"
                   value={conversionRateLabel}
