@@ -20,6 +20,7 @@ import { usePartners } from "@/hooks/usePartnersPipeline";
 import { ChannelsBoard } from "@/components/channels/ChannelsBoard";
 import { ChannelsDashboard } from "@/components/channels/ChannelsDashboard";
 import { ReferralSourcesView } from "@/components/channels/ReferralSourcesView";
+import { ReferralSourceMetricWidgets } from "@/components/channels/ReferralSourceMetricWidgets";
 import { ChannelEntityDetailModal } from "@/components/channels/ChannelEntityDetailModal";
 import type { ChannelEntry } from "@/hooks/useChannelEntries";
 import { SalesBdSearch } from "@/components/partners/SalesBdSearch";
@@ -222,6 +223,7 @@ function SalesBDInner() {
 
             <TabsContent value="referral-sources" className="mt-4">
               <div className="space-y-8">
+                <ReferralSourceMetricWidgets />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Left: Referral Sources Insights */}
                   <div className="space-y-4">
