@@ -2218,19 +2218,36 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    are unaffected.
    ========================================================================= */
 .sales-bd-page .glass-module,
-.sales-bd-page .glass-module-interactive {
-  background:
-    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+.sales-bd-page .glass-module-interactive,
+.sales-bd-page [data-slot="card"],
+.sales-bd-page .bg-card {
+  background: #0b1226 !important;
+  background-color: #0b1226 !important;
+  background-image: none !important;
+  border: 1px solid rgba(126, 184, 247, 0.22) !important;
+  border-radius: 8px !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  color: #ffffff !important;
   box-shadow:
-    0 12px 32px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    inset 0 1px 0 rgba(200, 225, 255, 0.09),
+    0 1px 2px rgba(0, 0, 0, 0.32),
+    0 12px 32px -16px rgba(0, 0, 0, 0.62) !important;
 }
-.sales-bd-page .glass-module::before {
-  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.00) 60%) !important;
+.sales-bd-page .glass-module::before,
+.sales-bd-page .glass-module-interactive::before {
+  display: none !important;
 }
-.sales-bd-page .glass-module-interactive:hover {
-  border-color: rgba(126, 184, 247, 0.30) !important;
+.sales-bd-page .glass-module-interactive:hover,
+.sales-bd-page [data-slot="card"]:hover,
+.sales-bd-page .bg-card:hover {
+  background: #101836 !important;
+  background-color: #101836 !important;
+  border-color: rgba(126, 184, 247, 0.4) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(200, 225, 255, 0.12),
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    0 18px 40px -16px rgba(0, 0, 0, 0.7) !important;
 }
 
 /* Sub-navigation/filter toolbars (Channels / Companies / Referral Sources,
@@ -2238,21 +2255,14 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .sales-bd-page [class*="bg-muted/40"],
 .sales-bd-page [class*="bg-muted/30"],
 .sales-bd-page [class*="bg-background/60"] {
-  background:
-    linear-gradient(135deg, #050d1f 0%, #02080f 50%, #040008 100%) !important;
-  border-color: rgba(255, 255, 255, 0.10) !important;
+  background: #0b1226 !important;
+  border-color: rgba(126, 184, 247, 0.22) !important;
 }
 .sales-bd-page [class*="hover\\:bg-background/30"]:hover,
 .sales-bd-page [class*="hover\\:bg-muted/40"]:hover {
-  background-color: rgba(255, 255, 255, 0.04) !important;
+  background-color: rgba(126, 184, 247, 0.08) !important;
 }
 
-/* Partner Insights Feed wrapper (uses inline bg-card + dark:bg variant) */
-.sales-bd-page .bg-card {
-  background:
-    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
-  border-color: rgba(255, 255, 255, 0.10) !important;
-}
 
 /* Nested chips/badges using bg-muted should drop to a subtle translucent tint
    rather than the bright unified .bg-muted override above. */
