@@ -6,8 +6,12 @@ import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext'
 import { partnerMatches } from '@/lib/partnerNameMatch';
 
 export interface DealReferralSourceEntry {
-  /** The raw referred_by value (deduplicated key) */
+  /** Canonical display name — the linked contact's name (or company name). */
   referredBy: string;
+  /** Linked contact record id (contacts.id), when the source is a person. */
+  contactId: string | null;
+  /** Linked CRM company record id (crm_companies.id). */
+  crmCompanyId: string | null;
   /** Number of deals referred */
   dealCount: number;
   /** Total dollar volume across referred deals */
@@ -35,7 +39,7 @@ export interface DealReferralSourceEntry {
   }[];
   /** Channel type from channel_entries if matched */
   channelType: string | null;
-  /** Linked company name from channel_entries if matched */
+  /** Linked company name (from the linked CRM company record) */
   companyName: string | null;
   /** Computed tier (1|2|3) using sales_bd_rules thresholds, or null when no data */
   tier: 1 | 2 | 3 | null;
@@ -50,10 +54,13 @@ interface RawDealRow {
   stage: string;
   status: string;
   referred_by: string;
+  referred_by_contact_id: string | null;
+  referred_by_crm_company_id: string | null;
   sourced_via: string | null;
   created_at: string;
   pipeline_id: string;
 }
+
 
 interface AllDealRow {
   id: string;
