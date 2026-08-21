@@ -537,7 +537,15 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
                           {formatCurrency(entry.totalVolume)}
                         </td>
                         <td className="p-3 text-muted-foreground truncate max-w-[140px]">
-                          {entry.latestDeal.company}
+                          {entry.latestDeal.id ? (
+                            <button
+                              type="button"
+                              className="text-left truncate max-w-[140px] hover:text-primary hover:underline underline-offset-2"
+                              onClick={(e) => { e.stopPropagation(); setQuickView({ type: 'deal', id: entry.latestDeal.id }); }}
+                            >
+                              {entry.latestDeal.company}
+                            </button>
+                          ) : entry.latestDeal.company}
                         </td>
                         <td className="p-3">
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-muted-foreground">
