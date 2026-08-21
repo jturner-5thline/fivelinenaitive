@@ -90,8 +90,50 @@ function ChannelMixDonut() {
         )}
       </div>
       <p className="text-[11px] text-muted-foreground leading-snug mt-1">
-        Share of channel partners by type
+        Share of channel partners by type — click a slice to drill down
       </p>
+
+      <Dialog open={!!drill} onOpenChange={(o) => !o && setDrill(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: drill?.color }}
+              />
+              {drill?.label} · {drillRows.length} {drillRows.length === 1 ? 'record' : 'records'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col divide-y divide-border">
+            {drillRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">No records in this channel.</p>
+            ) : (
+              drillRows.map((e) => (
+                <div key={e.id} className="py-2.5 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {e.crm_company?.name || e.contact?.full_name || 'Untitled'}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {[
+                        e.crm_company?.name && e.contact?.full_name ? e.contact.full_name : null,
+                        e.contact?.job_title,
+                        e.contact?.email || e.crm_company?.main_contact_email,
+                        e.crm_company?.domain,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ') || '—'}
+                    </p>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground/70 whitespace-nowrap">
+                    {e.crm_company?.name ? 'Company' : 'Contact'}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
