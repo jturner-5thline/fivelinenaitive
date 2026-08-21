@@ -154,8 +154,8 @@ export function ReferralSourceDeals({
   );
 
   const drillMeta: Record<string, { title: string; kind: 'deals' | 'sources' | 'conversion' }> = {
-    deals: { title: 'Total Referred · deals in selected timeframe', kind: 'deals' },
-    value: { title: 'Referred Value · deals in selected timeframe', kind: 'deals' },
+    deals: { title: 'Deals Signed from Referral Sources · selected timeframe', kind: 'deals' },
+    value: { title: 'Dollars Signed from Referral Sources · selected timeframe', kind: 'deals' },
     conversion: { title: 'Conversion Rate · trailing 12 months', kind: 'conversion' },
     sources: { title: 'Referral Sources · linked CRM records', kind: 'sources' },
     sourceDeals: { title: 'Referred Deals · by referral source', kind: 'sources' },
