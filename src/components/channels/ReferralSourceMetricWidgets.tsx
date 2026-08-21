@@ -89,9 +89,6 @@ function ChannelMixDonut() {
           </ResponsiveContainer>
         )}
       </div>
-      <p className="text-[11px] text-muted-foreground leading-snug mt-1">
-        Share of channel partners by type — click a slice to drill down
-      </p>
 
       <Dialog open={!!drill} onOpenChange={(o) => !o && setDrill(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
