@@ -159,7 +159,7 @@ export function ReferralSourcePipelineWidget() {
                 {stage.cards.map(card => (
                   <div
                     key={card.id}
-                    className="group rounded-md border border-white/[0.07] bg-white/[0.03] px-2 py-1.5 hover:bg-white/[0.06] transition-colors"
+                    className="group rounded-md border border-[rgba(126,184,247,0.22)] bg-[#0b1226] px-2 py-1.5 hover:bg-[#101836] hover:border-[rgba(126,184,247,0.4)] transition-colors"
                   >
                     <div className="flex items-start justify-between gap-1">
                       <p className="text-[11px] font-medium text-foreground leading-tight truncate">{card.name}</p>
