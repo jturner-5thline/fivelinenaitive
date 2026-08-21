@@ -14,17 +14,24 @@ import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTtmActivePipelineConversion } from '@/lib/salesBdActivePipelineConversion';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const kpiCard = "h-full rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-2 justify-between";
 
-function KpiTile({ label, value, subtext, badge }: { label: React.ReactNode; value: string | number; subtext?: string; badge?: React.ReactNode }) {
+function KpiTile({ label, value, subtext, badge, onClick }: { label: React.ReactNode; value: string | number; subtext?: string; badge?: React.ReactNode; onClick?: () => void }) {
   return (
-    <div className={kpiCard}>
+    <div
+      className={`${kpiCard} ${onClick ? 'cursor-pointer transition-colors hover:border-[hsl(var(--chart-2)/0.5)] hover:bg-card/80' : ''}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+    >
       <div className="flex items-start justify-between gap-2">
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground leading-tight">
           {label}
         </p>
-        {badge}
+        {badge ?? (onClick ? <span className="text-[10px] text-muted-foreground/70 whitespace-nowrap">Drill →</span> : null)}
       </div>
       <p className="text-3xl font-bold tabular-nums leading-none text-[hsl(var(--chart-2))]">{value}</p>
       {subtext ? <p className="text-[11px] text-muted-foreground leading-snug">{subtext}</p> : null}
@@ -110,8 +117,10 @@ export function ReferralSourceDeals({
   // Aggregate referral sources totals (unfiltered) to display alongside the
   // referral-deal KPIs. These are the same numbers previously shown at the top
   // of ReferralSourcesView.
-  const { totalCount: sourcesCount, totalDeals: sourcesDeals, totalVolume: sourcesVolume } =
+  const { referralSources, totalCount: sourcesCount, totalDeals: sourcesDeals, totalVolume: sourcesVolume } =
     useDealReferralSources({ channelFilter: [], pipelineFilter: 'all' });
+
+  const [drill, setDrill] = useState<null | 'deals' | 'value' | 'conversion' | 'sources' | 'sourceDeals' | 'volume'>(null);
 
   if (typeof window !== 'undefined') {
     (window as any).__salesBdReferralTtm = ttm;
@@ -144,6 +153,113 @@ export function ReferralSourceDeals({
     </SortableHeader>
   );
 
+  const drillMeta: Record<string, { title: string; kind: 'deals' | 'sources' | 'conversion' }> = {
+    deals: { title: 'Total Referred · deals in selected timeframe', kind: 'deals' },
+    value: { title: 'Referred Value · deals in selected timeframe', kind: 'deals' },
+    conversion: { title: 'Conversion Rate · trailing 12 months', kind: 'conversion' },
+    sources: { title: 'Referral Sources · linked CRM records', kind: 'sources' },
+    sourceDeals: { title: 'Referred Deals · by referral source', kind: 'sources' },
+    volume: { title: 'Total Referred Volume · by referral source', kind: 'sources' },
+  };
+
+  const drillDialog = (
+    <Dialog open={!!drill} onOpenChange={(o) => !o && setDrill(null)}>
+      <DialogContent className="sm:max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-sm">{drill ? drillMeta[drill].title : ''}</DialogTitle>
+        </DialogHeader>
+
+        {drill && drillMeta[drill].kind === 'conversion' ? (
+          <div className="space-y-3 text-sm">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-lg border border-border bg-card/60 p-3">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Reached Final Credit</p>
+                <p className="text-2xl font-bold tabular-nums text-[hsl(var(--chart-2))]">{ttm.numerator}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-card/60 p-3">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Referral deals (TTM)</p>
+                <p className="text-2xl font-bold tabular-nums text-[hsl(var(--chart-2))]">{ttm.denominator}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-card/60 p-3">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Rate</p>
+                <p className="text-2xl font-bold tabular-nums text-[hsl(var(--chart-2))]">{conversionRateLabel}</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Trailing-12-month conversion: active-pipeline deals sourced via Referral that reached the Final Credit
+              Items stage, divided by all active-pipeline referral deals added in the trailing 12 months. Independent of
+              the header date filter.
+            </p>
+          </div>
+        ) : drill && drillMeta[drill].kind === 'sources' ? (
+          referralSources.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">No linked referral sources.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead>Referral Source</TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Channel</TableHead>
+                  <TableHead className="text-right">Deals</TableHead>
+                  <TableHead className="text-right">Volume</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...referralSources]
+                  .sort((a, b) => (drill === 'sourceDeals' ? b.dealCount - a.dealCount : b.totalVolume - a.totalVolume))
+                  .map((s) => (
+                    <TableRow key={`${s.contactId ?? ''}-${s.crmCompanyId ?? ''}-${s.referredBy}`} className="border-border hover:bg-muted/40">
+                      <TableCell className="text-sm font-medium text-foreground">{s.referredBy}</TableCell>
+                      <TableCell className="text-sm text-foreground/80">{s.companyName || '—'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{s.channelType || '—'}</TableCell>
+                      <TableCell className="text-sm text-right tabular-nums">{s.dealCount}</TableCell>
+                      <TableCell className="text-sm text-right tabular-nums">{formatCurrencyCompact(s.totalVolume)}</TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          )
+        ) : matchedDeals.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">No referral-source deals found.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead>Deal Name</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Stage</TableHead>
+                <TableHead>Referral Source</TableHead>
+                <TableHead>Referral Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[...matchedDeals]
+                .sort((a, b) =>
+                  drill === 'value'
+                    ? (b.value || 0) - (a.value || 0)
+                    : new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+                )
+                .map((d) => (
+                  <TableRow key={d.id} className="border-border hover:bg-muted/40">
+                    <TableCell className="text-sm font-medium text-foreground">{d.company}</TableCell>
+                    <TableCell className="text-sm text-right tabular-nums text-foreground/80">
+                      {d.value ? `$${d.value.toLocaleString()}` : '—'}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{d.stage || '—'}</TableCell>
+                    <TableCell className="text-sm text-foreground/80">{d.referred_by || d.sourced_via || '—'}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {format(new Date(d.created_at), 'MMM d, yyyy')}
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+
   const kpiGrid = (
     <div
       className={
@@ -151,8 +267,8 @@ export function ReferralSourceDeals({
         'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-3'
       }
     >
-        <KpiTile label="Total Referred" value={matchedDeals.length} subtext="deals in selected timeframe" />
-        <KpiTile label="Referred Value" value={formatCurrencyCompact(totalValue)} subtext="deal value in selected timeframe" />
+        <KpiTile label="Total Referred" value={matchedDeals.length} subtext="deals in selected timeframe" onClick={() => setDrill('deals')} />
+        <KpiTile label="Referred Value" value={formatCurrencyCompact(totalValue)} subtext="deal value in selected timeframe" onClick={() => setDrill('value')} />
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -161,6 +277,7 @@ export function ReferralSourceDeals({
                   label="Conversion Rate"
                   value={conversionRateLabel}
                   subtext="trailing 12 months"
+                  onClick={() => setDrill('conversion')}
                   badge={
                     <span className="rounded-full border border-border/60 bg-muted/40 px-1.5 py-px text-[9px] font-medium text-muted-foreground">TTM</span>
                   }
@@ -172,15 +289,21 @@ export function ReferralSourceDeals({
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        <KpiTile label="Referral Sources" value={sourcesCount} subtext="linked CRM records" />
-        <KpiTile label="Referred Deals" value={sourcesDeals} subtext="across all referral sources" />
-        <KpiTile label="Total Referred Volume" value={formatCurrencyCompact(sourcesVolume)} subtext="across all referral sources" />
+        <KpiTile label="Referral Sources" value={sourcesCount} subtext="linked CRM records" onClick={() => setDrill('sources')} />
+        <KpiTile label="Referred Deals" value={sourcesDeals} subtext="across all referral sources" onClick={() => setDrill('sourceDeals')} />
+        <KpiTile label="Total Referred Volume" value={formatCurrencyCompact(sourcesVolume)} subtext="across all referral sources" onClick={() => setDrill('volume')} />
     </div>
   );
 
   if (kpisOnly) {
-    return kpiGrid;
+    return (
+      <>
+        {kpiGrid}
+        {drillDialog}
+      </>
+    );
   }
+
 
   return (
     <div>
@@ -228,6 +351,7 @@ export function ReferralSourceDeals({
           )}
         </CollapsibleContent>
       </Collapsible>
+      {drillDialog}
     </div>
   );
 }
