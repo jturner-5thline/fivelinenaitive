@@ -62,9 +62,11 @@ function ChannelMixDonut() {
                 outerRadius={92}
                 paddingAngle={2}
                 stroke="none"
+                onClick={(d: any) => openDrill(d?.name ?? d?.payload?.name)}
+                className="cursor-pointer"
               >
                 {data.map((d) => (
-                  <Cell key={d.name} fill={d.color} />
+                  <Cell key={d.name} fill={d.color} className="cursor-pointer" />
                 ))}
               </Pie>
               <RechartsTooltip
