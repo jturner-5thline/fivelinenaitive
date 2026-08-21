@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { hasAuthSession } from '@/lib/ai/requireSession';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { toast } from 'sonner';
@@ -84,6 +85,7 @@ export function useLenderPassDetection({
   // Run the classifier (will upsert in the edge function).
   const runClassifier = useCallback(async () => {
     if (!dealId || !messageId || !threadData || !latestInbound) return;
+    if (!(await hasAuthSession())) return;
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('smart-email-ai', {

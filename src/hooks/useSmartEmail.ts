@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { hasAuthSession } from '@/lib/ai/requireSession';
 import { toast } from 'sonner';
 
 export type SmartEmailAction = 
@@ -30,6 +31,7 @@ export function useSmartEmail({ dealId }: UseSmartEmailOptions) {
   ) => {
     setLoading(prev => ({ ...prev, [action]: true }));
     try {
+      if (!(await hasAuthSession())) return null;
       const { data, error } = await supabase.functions.invoke('smart-email-ai', {
         body: { action, dealId, emailData, threadData },
       });
