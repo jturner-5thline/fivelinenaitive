@@ -452,6 +452,8 @@ export function useDealReferralSources(filters?: {
 
       entries.push({
         referredBy: raw,
+        contactId,
+        crmCompanyId,
         dealCount: groupDeals.length,
         totalVolume,
         latestDeal: {
