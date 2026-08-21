@@ -33,7 +33,7 @@ function KpiTile({ label, value, subtext, badge, onClick }: { label: React.React
         </p>
         {badge ?? (onClick ? <span className="text-[10px] text-muted-foreground/70 whitespace-nowrap">Drill →</span> : null)}
       </div>
-      <p className="text-3xl font-bold tabular-nums leading-none text-[hsl(var(--chart-2))]">{value}</p>
+      <p className="text-3xl font-bold tabular-nums leading-none text-[#FFFFFF]">{value}</p>
       {subtext ? <p className="text-[11px] text-muted-foreground leading-snug">{subtext}</p> : null}
     </div>
   );
@@ -270,15 +270,15 @@ export function ReferralSourceDeals({
             <div className="grid grid-cols-3 gap-3">
               <div className="rounded-lg border border-border bg-card/60 p-3">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Reached Final Credit</p>
-                <p className="text-2xl font-bold tabular-nums text-[hsl(var(--chart-2))]">{ttm.numerator}</p>
+                <p className="text-2xl font-bold tabular-nums text-[#FFFFFF]">{ttm.numerator}</p>
               </div>
               <div className="rounded-lg border border-border bg-card/60 p-3">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Referral deals (TTM)</p>
-                <p className="text-2xl font-bold tabular-nums text-[hsl(var(--chart-2))]">{ttm.denominator}</p>
+                <p className="text-2xl font-bold tabular-nums text-[#FFFFFF]">{ttm.denominator}</p>
               </div>
               <div className="rounded-lg border border-border bg-card/60 p-3">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Rate</p>
-                <p className="text-2xl font-bold tabular-nums text-[hsl(var(--chart-2))]">{conversionRateLabel}</p>
+                <p className="text-2xl font-bold tabular-nums text-[#FFFFFF]">{conversionRateLabel}</p>
               </div>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">

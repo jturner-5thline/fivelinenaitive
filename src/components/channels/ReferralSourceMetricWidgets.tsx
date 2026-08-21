@@ -150,7 +150,7 @@ function MetricTile({ label, value, subtext }: MetricTileProps) {
         </p>
         <span className="text-[10px] text-muted-foreground/70 whitespace-nowrap">Drill →</span>
       </div>
-      <p className="text-3xl font-bold tabular-nums leading-none text-[hsl(var(--chart-2))]">{value}</p>
+      <p className="text-3xl font-bold tabular-nums leading-none text-[#FFFFFF]">{value}</p>
       <p className="text-[11px] text-muted-foreground leading-snug">{subtext}</p>
     </div>
   );
@@ -219,7 +219,7 @@ function LeaderboardTile({ label, tooltip, subtext, toggleable }: LeaderboardTil
               <span className="text-[10px] tabular-nums text-muted-foreground/60 w-3">{rank}</span>
               <span className="text-xs text-muted-foreground/70 truncate">—</span>
             </div>
-            <span className="text-sm font-semibold tabular-nums text-[hsl(var(--chart-2))]">
+            <span className="text-sm font-semibold tabular-nums text-[#FFFFFF]">
               {mode === 'dollars' && toggleable ? '$0' : '0'}
             </span>
           </div>
