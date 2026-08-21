@@ -454,6 +454,7 @@ export function CopilotToggleButton() {
     const trimmed = text.trim();
     if (!trimmed) return;
     setLastSentPrompt(trimmed);
+    recordAskNaitivePrompt(trimmed);
     openPanelWithPrompt(trimmed);
     setValue('');
   };
