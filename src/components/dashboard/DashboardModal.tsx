@@ -769,61 +769,6 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
               </div>
             </TabsContent>
 
-            <TabsContent
-              value="analytics"
-              className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-x-hidden overflow-y-auto data-[state=inactive]:hidden bg-transparent"
-            >
-              <Suspense
-                fallback={
-                  <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                    Loading Analytics…
-                  </div>
-                }
-              >
-                <div className="db-analytics-host min-w-0 max-w-full">
-                  <AnalyticsTabContent />
-                </div>
-              </Suspense>
-            </TabsContent>
-
-            {canSeePerformance && (
-              <TabsContent
-                value="performance"
-                className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-x-hidden overflow-y-auto data-[state=inactive]:hidden bg-transparent"
-              >
-                <Suspense
-                  fallback={
-                    <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                      Loading Performance…
-                    </div>
-                  }
-                >
-                  <div className="db-r min-w-0 max-w-full">
-                    <NikiPerformanceTab />
-                  </div>
-                </Suspense>
-              </TabsContent>
-            )}
-            <TabsContent
-              value="today"
-              className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-hidden data-[state=inactive]:hidden bg-transparent flex flex-col px-1"
-            >
-              <TodayTab enabled={activeTab === 'today'} onClose={() => setActiveTab('dashboard')} />
-            </TabsContent>
-            <TabsContent
-              value="tasks"
-              className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-hidden data-[state=inactive]:hidden bg-transparent flex flex-col"
-            >
-              <Suspense
-                fallback={
-                  <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
-                    Loading tasks…
-                  </div>
-                }
-              >
-                <TasksTabContent overlayMode />
-              </Suspense>
-            </TabsContent>
           </Tabs>
         </div>
       {editingPlan && (
