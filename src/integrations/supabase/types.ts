@@ -12740,6 +12740,8 @@ export type Database = {
           referral_source_contact_id: string | null
           referral_source_id: string | null
           referred_by: string | null
+          referred_by_contact_id: string | null
+          referred_by_crm_company_id: string | null
           retainer_fee: number | null
           services_offered: string[] | null
           sourced_via: string | null
@@ -12832,6 +12834,8 @@ export type Database = {
           referral_source_contact_id?: string | null
           referral_source_id?: string | null
           referred_by?: string | null
+          referred_by_contact_id?: string | null
+          referred_by_crm_company_id?: string | null
           retainer_fee?: number | null
           services_offered?: string[] | null
           sourced_via?: string | null
@@ -12924,6 +12928,8 @@ export type Database = {
           referral_source_contact_id?: string | null
           referral_source_id?: string | null
           referred_by?: string | null
+          referred_by_contact_id?: string | null
+          referred_by_crm_company_id?: string | null
           retainer_fee?: number | null
           services_offered?: string[] | null
           sourced_via?: string | null
@@ -12987,6 +12993,20 @@ export type Database = {
             columns: ["referral_source_id"]
             isOneToOne: false
             referencedRelation: "referral_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_referred_by_contact_id_fkey"
+            columns: ["referred_by_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_referred_by_crm_company_id_fkey"
+            columns: ["referred_by_crm_company_id"]
+            isOneToOne: false
+            referencedRelation: "crm_companies"
             referencedColumns: ["id"]
           },
         ]

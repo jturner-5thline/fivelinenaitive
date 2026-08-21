@@ -6,8 +6,12 @@ import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext'
 import { partnerMatches } from '@/lib/partnerNameMatch';
 
 export interface DealReferralSourceEntry {
-  /** The raw referred_by value (deduplicated key) */
+  /** Canonical display name — the linked contact's name (or company name). */
   referredBy: string;
+  /** Linked contact record id (contacts.id), when the source is a person. */
+  contactId: string | null;
+  /** Linked CRM company record id (crm_companies.id). */
+  crmCompanyId: string | null;
   /** Number of deals referred */
   dealCount: number;
   /** Total dollar volume across referred deals */
@@ -35,7 +39,7 @@ export interface DealReferralSourceEntry {
   }[];
   /** Channel type from channel_entries if matched */
   channelType: string | null;
-  /** Linked company name from channel_entries if matched */
+  /** Linked company name (from the linked CRM company record) */
   companyName: string | null;
   /** Computed tier (1|2|3) using sales_bd_rules thresholds, or null when no data */
   tier: 1 | 2 | 3 | null;
@@ -50,10 +54,13 @@ interface RawDealRow {
   stage: string;
   status: string;
   referred_by: string;
+  referred_by_contact_id: string | null;
+  referred_by_crm_company_id: string | null;
   sourced_via: string | null;
   created_at: string;
   pipeline_id: string;
 }
+
 
 interface AllDealRow {
   id: string;
@@ -192,7 +199,7 @@ export function useDealReferralSources(filters?: {
     queryFn: async () => {
       let query = supabase
         .from('deals')
-        .select('id, company, value, stage, status, referred_by, sourced_via, created_at, pipeline_id')
+        .select('id, company, value, stage, status, referred_by, referred_by_contact_id, referred_by_crm_company_id, sourced_via, created_at, pipeline_id')
         .eq('company_id', company!.id)
         .not('referred_by', 'is', null)
         .neq('referred_by', '')
@@ -224,21 +231,49 @@ export function useDealReferralSources(filters?: {
     },
   });
 
-  // Contacts (with their linked CRM company) — used to resolve the "Company"
-  // for a referral source by matching the referrer name to a contact.
-  const { data: contactRows = [] } = useQuery({
-    queryKey: ['deal_referral_contacts_with_company', company?.id],
-    enabled: !!company?.id,
+  // Linked contact records for the referral sources on these deals. Referral
+  // sources are STRICTLY real CRM records — a deal only counts as referred
+  // when `referred_by_contact_id` / `referred_by_crm_company_id` resolves.
+  const linkedContactIds = useMemo(
+    () => Array.from(new Set(deals.map(d => d.referred_by_contact_id).filter(Boolean) as string[])).sort(),
+    [deals],
+  );
+  const linkedCompanyIds = useMemo(
+    () => Array.from(new Set(deals.map(d => d.referred_by_crm_company_id).filter(Boolean) as string[])).sort(),
+    [deals],
+  );
+
+  const { data: linkedContacts = [] } = useQuery({
+    queryKey: ['deal_referral_linked_contacts', company?.id, linkedContactIds],
+    enabled: !!company?.id && linkedContactIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('contacts')
-        .select('full_name, crm_company:crm_companies!contacts_crm_company_id_fkey(name)')
-        .eq('org_company_id', company!.id)
-        .not('full_name', 'is', null);
+        .select('id, full_name, crm_company_id, crm_company:crm_companies!contacts_crm_company_id_fkey(name)')
+        .in('id', linkedContactIds);
       if (error) throw error;
-      return (data || []) as Array<{ full_name: string | null; crm_company: { name: string | null } | null }>;
+      return (data || []) as Array<{
+        id: string;
+        full_name: string | null;
+        crm_company_id: string | null;
+        crm_company: { name: string | null } | null;
+      }>;
     },
   });
+
+  const { data: linkedCompanies = [] } = useQuery({
+    queryKey: ['deal_referral_linked_companies', company?.id, linkedCompanyIds],
+    enabled: !!company?.id && linkedCompanyIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('crm_companies')
+        .select('id, name')
+        .in('id', linkedCompanyIds);
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; name: string | null }>;
+    },
+  });
+
 
   // All deals (any date) used purely to compute tier inputs against trailing
   // windows defined by sales_bd_rules. We intentionally don't filter by the
@@ -275,11 +310,31 @@ export function useDealReferralSources(filters?: {
   const referralSources = useMemo(() => {
     const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
-    const grouped = new Map<string, { raw: string; deals: typeof deals }>();
+    const contactById = new Map(linkedContacts.map(c => [c.id, c]));
+    const companyById = new Map(linkedCompanies.map(c => [c.id, c]));
+
+    // Group STRICTLY by linked CRM record (contact first, else company).
+    // Deals whose referrer isn't linked to a real record are ignored.
+    const grouped = new Map<string, {
+      raw: string;
+      contactId: string | null;
+      crmCompanyId: string | null;
+      deals: typeof deals;
+    }>();
     for (const deal of deals) {
-      const key = normalize(deal.referred_by);
+      const contact = deal.referred_by_contact_id ? contactById.get(deal.referred_by_contact_id) : undefined;
+      const directCompany = deal.referred_by_crm_company_id ? companyById.get(deal.referred_by_crm_company_id) : undefined;
+      if (!contact && !directCompany) continue;
+
+      const key = contact ? `contact:${contact.id}` : `company:${directCompany!.id}`;
+      const raw = (contact?.full_name?.trim() || directCompany?.name?.trim() || deal.referred_by);
       if (!grouped.has(key)) {
-        grouped.set(key, { raw: deal.referred_by, deals: [] });
+        grouped.set(key, {
+          raw,
+          contactId: contact?.id ?? null,
+          crmCompanyId: contact?.crm_company_id ?? directCompany?.id ?? null,
+          deals: [],
+        });
       }
       grouped.get(key)!.deals.push(deal);
     }
@@ -297,14 +352,14 @@ export function useDealReferralSources(filters?: {
       }
     }
 
-    // Contact-name → CRM company lookup. Since a referral source is a
-    // contact, its Company should come from the contact's linked company.
+    // Contact-name → CRM company lookup, built from the linked contact records.
     const contactCompanyLookup = new Map<string, string>();
-    for (const c of contactRows) {
+    for (const c of linkedContacts) {
       const name = c.full_name?.trim();
       const cname = c.crm_company?.name?.trim();
       if (name && cname) contactCompanyLookup.set(normalize(name), cname);
     }
+
 
     // Pre-compute tier-relevant windows once.
     const now = Date.now();
@@ -317,17 +372,24 @@ export function useDealReferralSources(filters?: {
     const win12 = now - ms(12);
 
     const entries: DealReferralSourceEntry[] = [];
-    for (const [key, { raw, deals: groupDeals }] of grouped) {
+    for (const [, { raw, contactId, crmCompanyId, deals: groupDeals }] of grouped) {
+      const nameKey = normalize(raw);
       const sorted = [...groupDeals].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       const totalVolume = groupDeals.reduce((sum, d) => sum + Number(d.value || 0), 0);
       const latest = sorted[0];
 
-      const match = channelLookup.get(key);
+      const match = channelLookup.get(nameKey);
 
-      // === Derive company ===
-      let derivedCompany: string | null = match?.companyName || null;
+      // === Derive company (linked CRM company record wins) ===
+      const linkedCompanyName = crmCompanyId
+        ? (companyById.get(crmCompanyId)?.name?.trim()
+          || contactById.get(contactId ?? '')?.crm_company?.name?.trim()
+          || null)
+        : null;
+      let derivedCompany: string | null = linkedCompanyName || match?.companyName || null;
       if (!derivedCompany) {
-        derivedCompany = contactCompanyLookup.get(key) || null;
+        derivedCompany = contactCompanyLookup.get(nameKey) || null;
+
         if (!derivedCompany) {
           // Referrer may be "Jane Doe @ Firm" or "Jane Doe - Firm"; try the
           // leading name part before the separator.
@@ -390,6 +452,8 @@ export function useDealReferralSources(filters?: {
 
       entries.push({
         referredBy: raw,
+        contactId,
+        crmCompanyId,
         dealCount: groupDeals.length,
         totalVolume,
         latestDeal: {
@@ -430,7 +494,7 @@ export function useDealReferralSources(filters?: {
     filtered.sort((a, b) => b.totalVolume - a.totalVolume);
 
     return filtered;
-  }, [deals, channelEntries, contactRows, pipelineMap, filters?.channelFilter, filters?.companyFilter, allDeals, rules]);
+  }, [deals, channelEntries, linkedContacts, linkedCompanies, pipelineMap, filters?.channelFilter, filters?.companyFilter, allDeals, rules]);
 
   // Unique companies for filter options
   const companyOptions = useMemo(() => {
@@ -441,6 +505,13 @@ export function useDealReferralSources(filters?: {
     return Array.from(set).sort().map(c => ({ value: c, label: c }));
   }, [referralSources]);
 
+  // Deals whose referrer text isn't linked to a CRM contact/company — these
+  // are excluded from the referral source list entirely.
+  const unlinkedDealCount = useMemo(
+    () => deals.filter(d => !d.referred_by_contact_id && !d.referred_by_crm_company_id).length,
+    [deals],
+  );
+
   return {
     referralSources,
     isLoading: dealsLoading,
@@ -448,5 +519,6 @@ export function useDealReferralSources(filters?: {
     totalVolume: referralSources.reduce((s, r) => s + r.totalVolume, 0),
     totalDeals: referralSources.reduce((s, r) => s + r.dealCount, 0),
     companyOptions,
+    unlinkedDealCount,
   };
 }
