@@ -131,14 +131,9 @@ function SalesBDInner() {
         >
             <TabsContent value="partners-channels" className="mt-4">
               <div className="space-y-8">
-                {/* Partner Insights (Activity / Needs Attention) hidden — see mem://features/sales-bd/partner-insights-tabs-hidden */}
-                <PartnerSourcedDeals
-                  kpisOnly
-                  kpiGridClassName="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 auto-rows-fr"
-                />
-
-                <PartnerSourcedDeals hideKpis />
+                {/* Partner widgets (KPI tiles + charts) hidden — see mem://features/sales-bd/partner-insights-tabs-hidden */}
                 <div className="space-y-6">
+
                   {/* Sub-navigation */}
                   <div className="flex items-center gap-1 bg-muted/40 backdrop-blur-xl border border-border rounded-lg p-0.5 w-fit">
                     <button
