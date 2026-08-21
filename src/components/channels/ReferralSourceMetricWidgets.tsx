@@ -4,9 +4,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from 'recharts';
 import { useChannelEntries } from '@/hooks/useChannelEntries';
 import { CHANNEL_TYPE_OPTIONS } from './channelOptions';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 function ChannelMixDonut() {
   const { data: entries = [], isLoading } = useChannelEntries();
+  const [drill, setDrill] = useState<{ value: string; label: string; color: string } | null>(null);
 
   const data = useMemo(() => {
     const counts = new Map<string, number>();
@@ -16,12 +18,23 @@ function ChannelMixDonut() {
     });
     return CHANNEL_TYPE_OPTIONS.map((o) => ({
       name: o.label,
+      channel: o.value as string,
       color: o.color,
       value: counts.get(o.value) || 0,
     })).filter((d) => d.value > 0);
   }, [entries]);
 
   const total = data.reduce((s, d) => s + d.value, 0);
+
+  const drillRows = useMemo(
+    () => (drill ? entries.filter((e) => String(e.channel_type) === drill.value) : []),
+    [entries, drill],
+  );
+
+  const openDrill = (name: string) => {
+    const d = data.find((x) => x.name === name);
+    if (d) setDrill({ value: d.channel, label: d.name, color: d.color });
+  };
 
   return (
     <div className="rounded-lg border border-border bg-transparent p-4">
