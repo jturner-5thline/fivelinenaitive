@@ -107,7 +107,57 @@ export function ReferralSourceDeals({
 
   // All deals in the result set already match sourced_via ~ 'Referral%'.
   const matchedDeals = deals;
-  const totalValue = matchedDeals.reduce((sum, d) => sum + (d.value || 0), 0);
+
+  // "On Board" = distinct deals that ENTERED the "NDA / Needs List Sent" stage
+  // in the Active pipeline within the selected timeframe and are sourced via
+  // Referral. Source: deal_stage_history stage_enter events.
+  const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
+  const NDA_STAGE_ID = 'ndaneeds-list-sent';
+
+  const { data: onBoardDeals = [] } = useQuery({
+    queryKey: [
+      'referral_on_board_deals',
+      company?.id,
+      rangeStart?.toISOString() ?? null,
+      rangeEnd?.toISOString() ?? null,
+    ],
+    enabled: !!company?.id,
+    queryFn: async () => {
+      let q = supabase
+        .from('deal_stage_history')
+        .select('deal_id, changed_at, deals!inner(id, company, value, stage, referred_by, sourced_via, created_at, company_id)')
+        .eq('pipeline_id', ACTIVE_PIPELINE_ID)
+        .eq('event_type', 'stage_enter')
+        .or(`to_stage_id.eq.${NDA_STAGE_ID},to_stage.eq.${NDA_STAGE_ID}`)
+        .eq('deals.company_id', company!.id)
+        .ilike('deals.sourced_via', 'referral%');
+      if (rangeStart) q = q.gte('changed_at', rangeStart.toISOString());
+      if (rangeEnd) q = q.lte('changed_at', rangeEnd.toISOString());
+      const { data, error } = await q.order('changed_at', { ascending: false });
+      if (error) throw error;
+      const seen = new Set<string>();
+      const rows: DealRow[] = [];
+      for (const r of (data || []) as any[]) {
+        const d = r.deals;
+        if (!d?.id || seen.has(d.id)) continue;
+        seen.add(d.id);
+        rows.push({
+          id: d.id,
+          company: d.company,
+          value: d.value,
+          stage: d.stage,
+          referred_by: d.referred_by,
+          sourced_via: d.sourced_via,
+          created_at: r.changed_at,
+          closing_date: null,
+        });
+      }
+      return rows;
+    },
+  });
+
+  const totalValue = onBoardDeals.reduce((sum, d) => sum + (d.value || 0), 0);
+
 
   // Conversion Rate is TTM (trailing 12 months) and INDEPENDENT of the header
   // date filter — see useTtmActivePipelineConversion for the exact formula.
@@ -154,8 +204,8 @@ export function ReferralSourceDeals({
   );
 
   const drillMeta: Record<string, { title: string; kind: 'deals' | 'sources' | 'conversion' }> = {
-    deals: { title: 'Deals Signed from Referral Sources · selected timeframe', kind: 'deals' },
-    value: { title: 'Dollars Signed from Referral Sources · selected timeframe', kind: 'deals' },
+    deals: { title: 'Deals on Board from Referral Sources · entered NDA / Needs List Sent', kind: 'deals' },
+    value: { title: 'Dollars on Board from Referral Sources · entered NDA / Needs List Sent', kind: 'deals' },
     conversion: { title: 'Conversion Rate · trailing 12 months', kind: 'conversion' },
     sources: { title: 'Referral Sources · linked CRM records', kind: 'sources' },
     sourceDeals: { title: 'Referred Deals · by referral source', kind: 'sources' },
@@ -220,7 +270,7 @@ export function ReferralSourceDeals({
               </TableBody>
             </Table>
           )
-        ) : matchedDeals.length === 0 ? (
+        ) : onBoardDeals.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">No referral-source deals found.</p>
         ) : (
           <Table>
@@ -234,7 +284,7 @@ export function ReferralSourceDeals({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...matchedDeals]
+              {[...onBoardDeals]
                 .sort((a, b) =>
                   drill === 'value'
                     ? (b.value || 0) - (a.value || 0)
@@ -267,8 +317,10 @@ export function ReferralSourceDeals({
         'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-3'
       }
     >
-        <KpiTile label="Deals Signed from Referral Sources" value={matchedDeals.length} subtext="deals in selected timeframe" onClick={() => setDrill('deals')} />
-        <KpiTile label="Dollars Signed from Referral Sources" value={formatCurrencyCompact(totalValue)} subtext="deal value in selected timeframe" onClick={() => setDrill('value')} />
+        <KpiTile label="Deals on Board from Referral Sources" value={onBoardDeals.length} subtext="entered NDA / Needs List Sent" onClick={() => setDrill('deals')} />
+        <KpiTile label="Dollars on Board from Referral Sources" value={formatCurrencyCompact(totalValue)} subtext="entered NDA / Needs List Sent" onClick={() => setDrill('value')} />
+
+
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
