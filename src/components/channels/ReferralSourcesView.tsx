@@ -14,6 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DollarSign, Users, TrendingUp, Briefcase, ChevronDown, ChevronUp, X, RotateCcw, ExternalLink, Pencil, Search, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { ReferralSourceEditDialog } from './ReferralSourceEditDialog';
+import { ReferralEntityQuickView, type QuickViewTarget } from './ReferralEntityQuickView';
 import { Input } from '@/components/ui/input';
 import { useTriStateSort } from '@/hooks/useTriStateSort';
 
@@ -167,6 +168,7 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
   const [tierFilter, setTierFilter] = useState<TierValue[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<DealReferralSourceEntry | null>(null);
+  const [quickView, setQuickView] = useState<QuickViewTarget | null>(null);
   const [search, setSearch] = useState(initialSearch || '');
   useEffect(() => {
     if (typeof initialSearch === 'string') setSearch(initialSearch);
@@ -476,8 +478,33 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
                             ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
                             : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
                         </td>
-                        <td className="p-3 font-medium text-foreground">{entry.referredBy}</td>
-                        <td className="p-3 text-muted-foreground">{entry.companyName || '—'}</td>
+                        <td className="p-3 font-medium text-foreground">
+                          {entry.contactId || entry.crmCompanyId ? (
+                            <button
+                              type="button"
+                              className="text-left hover:text-primary hover:underline underline-offset-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setQuickView(entry.contactId
+                                  ? { type: 'contact', id: entry.contactId }
+                                  : { type: 'company', id: entry.crmCompanyId! });
+                              }}
+                            >
+                              {entry.referredBy}
+                            </button>
+                          ) : entry.referredBy}
+                        </td>
+                        <td className="p-3 text-muted-foreground">
+                          {entry.companyName && entry.crmCompanyId ? (
+                            <button
+                              type="button"
+                              className="text-left hover:text-primary hover:underline underline-offset-2"
+                              onClick={(e) => { e.stopPropagation(); setQuickView({ type: 'company', id: entry.crmCompanyId! }); }}
+                            >
+                              {entry.companyName}
+                            </button>
+                          ) : (entry.companyName || '—')}
+                        </td>
                         <td className="p-3">
                           {entry.channelType ? (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-muted-foreground">
@@ -510,7 +537,15 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
                           {formatCurrency(entry.totalVolume)}
                         </td>
                         <td className="p-3 text-muted-foreground truncate max-w-[140px]">
-                          {entry.latestDeal.company}
+                          {entry.latestDeal.id ? (
+                            <button
+                              type="button"
+                              className="text-left truncate max-w-[140px] hover:text-primary hover:underline underline-offset-2"
+                              onClick={(e) => { e.stopPropagation(); setQuickView({ type: 'deal', id: entry.latestDeal.id }); }}
+                            >
+                              {entry.latestDeal.company}
+                            </button>
+                          ) : entry.latestDeal.company}
                         </td>
                         <td className="p-3">
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-muted-foreground">
@@ -551,6 +586,9 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
         referredBy={editTarget?.referredBy ?? ''}
         initialCompany={editTarget?.companyName}
       />
+
+      <ReferralEntityQuickView target={quickView} onClose={() => setQuickView(null)} />
+
     </div>
   );
 }
