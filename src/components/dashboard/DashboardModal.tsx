@@ -63,7 +63,7 @@ const TABLE_COLUMNS: { key: SortColumn; label: string; align?: 'left' }[] = [
 
 export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'dashboard', embedded = false }: DashboardModalProps) {
   const open = embedded ? true : openProp;
-  const { user } = useAuth();
+  
   const { enabled: queueEnabled } = useApprovalQueueAccess();
   const { data: queueItems = [] } = useAiActionQueue();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'performance' | 'today' | 'tasks'>(initialTab);
