@@ -3422,3 +3422,33 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   border: 1px solid rgba(103, 232, 249, 0.7) !important;
   color: rgb(165, 243, 252) !important;
 }
+
+/* The stage tag in the deal detail pop-up sits inside a `.deal-rail-control`
+   wrapper, whose navy fill + white text would otherwise mask the chip. Keep
+   the wrapper chrome-free so the chip renders as a plain cyan outline with
+   cyan text, exactly like the stage tags on the deal tiles. */
+.deal-rail-control:has(.deal-stage-chip),
+.deal-detail-surface .deal-rail-control:has(.deal-stage-chip),
+.popup-shell-surface .deal-rail-control:has(.deal-stage-chip) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+}
+
+.deal-rail-control .deal-stage-chip,
+.deal-rail-control > * > .deal-stage-chip,
+.deal-detail-surface .deal-rail-control .deal-stage-chip,
+.popup-shell-surface .deal-rail-control .deal-stage-chip,
+.deal-rail-control:has(.deal-stage-chip) *,
+.deal-detail-surface .deal-rail-control:has(.deal-stage-chip) * {
+  background-color: transparent !important;
+  background-image: none !important;
+  color: rgb(165, 243, 252) !important;
+  -webkit-text-fill-color: rgb(165, 243, 252) !important;
+}
+
+.deal-rail-control .deal-stage-chip,
+.deal-detail-surface .deal-rail-control .deal-stage-chip,
+.popup-shell-surface .deal-rail-control .deal-stage-chip {
+  border: 1px solid rgba(103, 232, 249, 0.7) !important;
+}
