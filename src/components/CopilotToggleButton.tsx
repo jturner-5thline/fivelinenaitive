@@ -30,6 +30,8 @@ const loadAICopilotPanel = () =>
   import('@/components/AICopilotPanel').then((m) => ({ default: m.AICopilotPanel }));
 const AICopilotPanel = lazy(loadAICopilotPanel);
 import { AskNaitiveBar } from '@/components/copilot/AskNaitiveBar';
+import { AskNaitivePromptHistory } from '@/components/copilot/AskNaitivePromptHistory';
+import { recordAskNaitivePrompt } from '@/lib/askNaitiveHistory';
 
 const QUICK_PAGES: { name: string; path: string }[] = [
   { name: 'Dashboard', path: '/dashboard' },
