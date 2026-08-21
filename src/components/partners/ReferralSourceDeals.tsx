@@ -267,8 +267,8 @@ export function ReferralSourceDeals({
         'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-3'
       }
     >
-        <KpiTile label="Total Referred" value={matchedDeals.length} subtext="deals in selected timeframe" onClick={() => setDrill('deals')} />
-        <KpiTile label="Referred Value" value={formatCurrencyCompact(totalValue)} subtext="deal value in selected timeframe" onClick={() => setDrill('value')} />
+        <KpiTile label="Deals Signed from Referral Sources" value={matchedDeals.length} subtext="deals in selected timeframe" onClick={() => setDrill('deals')} />
+        <KpiTile label="Dollars Signed from Referral Sources" value={formatCurrencyCompact(totalValue)} subtext="deal value in selected timeframe" onClick={() => setDrill('value')} />
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
