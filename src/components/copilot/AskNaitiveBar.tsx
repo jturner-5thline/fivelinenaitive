@@ -87,6 +87,7 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
     dataTour,
     activeAgentLabel,
     activeAgentEmoji,
+    trailingSlot,
   },
   ref,
 ) {
