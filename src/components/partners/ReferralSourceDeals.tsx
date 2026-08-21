@@ -116,8 +116,10 @@ export function ReferralSourceDeals({
   // Aggregate referral sources totals (unfiltered) to display alongside the
   // referral-deal KPIs. These are the same numbers previously shown at the top
   // of ReferralSourcesView.
-  const { totalCount: sourcesCount, totalDeals: sourcesDeals, totalVolume: sourcesVolume } =
+  const { referralSources, totalCount: sourcesCount, totalDeals: sourcesDeals, totalVolume: sourcesVolume } =
     useDealReferralSources({ channelFilter: [], pipelineFilter: 'all' });
+
+  const [drill, setDrill] = useState<null | 'deals' | 'value' | 'conversion' | 'sources' | 'sourceDeals' | 'volume'>(null);
 
   if (typeof window !== 'undefined') {
     (window as any).__salesBdReferralTtm = ttm;
