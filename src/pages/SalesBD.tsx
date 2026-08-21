@@ -203,33 +203,12 @@ function SalesBDInner() {
             <TabsContent value="referral-sources" className="mt-4">
               <div className="space-y-8">
                 <ReferralSourceMetricWidgets />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Left: Referral Sources Insights */}
-                  <div className="space-y-4">
-                    <PartnerInsightsProvider>
-                    <Tabs defaultValue="activity">
-                      <div className="flex items-center justify-between gap-2">
-                        <TabsList>
-                          <TabsTrigger value="activity"><PartnerInsightsTabLabel label="Activity" kind="activity" /></TabsTrigger>
-                          <TabsTrigger value="attention"><PartnerInsightsTabLabel label="Needs Attention" kind="attention" /></TabsTrigger>
-                        </TabsList>
-                        <PartnerInsightsHeaderActions />
-                      </div>
-                      <TabsContent value="activity" className="mt-4">
-                        <PartnerInsightsFeed sourceFilter="referrals" />
-                      </TabsContent>
-                      <TabsContent value="attention" className="mt-4">
-                        <ReferralsNeedingAttention />
-                      </TabsContent>
-                    </Tabs>
-                    </PartnerInsightsProvider>
-                  </div>
-                  {/* Right: 2×3 metric widgets */}
-                  <ReferralSourceDeals
-                    kpisOnly
-                    kpiGridClassName="grid grid-cols-2 gap-3 auto-rows-fr h-full"
-                  />
-                </div>
+                {/* Referral Insights (Activity / Needs Attention) hidden — see mem://features/sales-bd/partner-insights-tabs-hidden */}
+                <ReferralSourceDeals
+                  kpisOnly
+                  kpiGridClassName="grid grid-cols-2 xl:grid-cols-3 gap-3 auto-rows-fr"
+                />
+
                 <ReferralSourceDeals hideKpis />
                 <ReferralSourcesView hideKpis initialSearch={referralSearchSeed} />
               </div>
