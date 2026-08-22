@@ -5,6 +5,11 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTo
 import { useChannelEntries } from '@/hooks/useChannelEntries';
 import { CHANNEL_TYPE_OPTIONS } from './channelOptions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  useReferralSourceMetrics,
+  type DrillRow,
+  type LeaderboardRow,
+} from './useReferralSourceMetrics';
 
 function ChannelMixDonut() {
   const { data: entries = [], isLoading } = useChannelEntries();
