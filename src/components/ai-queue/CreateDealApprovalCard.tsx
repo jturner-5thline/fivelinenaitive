@@ -136,6 +136,10 @@ export function CreateDealApprovalCard({ item }: Props) {
     dealAmount: payload.dealAmount || '',
     contactName: payload.contactName || '',
     contactInfo: payload.contactInfo || '',
+    additionalContactEmails: Array.isArray(payload.additionalContactEmails)
+      ? (payload.additionalContactEmails as string[])
+      : [],
+
     dealStatusNote: payload.dealStatusNote || '',
     narrative: payload.narrative || '',
     referralName: payload.referralName || '',
