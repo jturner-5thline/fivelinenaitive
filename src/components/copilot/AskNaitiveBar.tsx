@@ -103,7 +103,8 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
         // bar to grow downward when the textarea wraps. Rounded radius is
         // pinned to the resting half-height so the shape stays consistent
         // when expanded instead of warping into giant semicircles.
-        'min-h-11 rounded-[22px]',
+        // Radius matches the floating menu bar shell (12px).
+        'min-h-11 rounded-[12px]',
         'flex items-center gap-3 pl-1.5 pr-4 py-1',
         'text-left flex-none shrink-0',
         'opacity-70 hover:opacity-100 focus-within:opacity-100',
