@@ -1888,7 +1888,31 @@ function FinServFinancialMetricsDashboardInner() {
           )}
         </CardContent>
       </Card>
+
+      <Card className="glass-module">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">New MRR Added</CardTitle>
+          <Badge variant="outline" className="w-fit text-xs">{periodBadge} · Entered Active Client</Badge>
+        </CardHeader>
+        <CardContent>
+          {newMrr.isLoading ? (
+            <Skeleton className="h-10 w-40" />
+          ) : newMrr.error ? (
+            <WidgetError />
+          ) : (
+            <div className="space-y-1">
+              <p className="text-3xl font-semibold tabular-nums text-foreground">
+                {fmtCurrencyFull(newMrr.total)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {newMrr.deals.length} deal{newMrr.deals.length === 1 ? '' : 's'} entered Active Client
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
       </div>
+
 
       {/* ── Row 8: Placeholder widgets ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
