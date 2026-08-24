@@ -64,6 +64,9 @@ export interface CreateDealInitialValues {
   dealAmount?: string;
   contactName?: string;
   contactInfo?: string;
+  /** Extra client-contact emails (e.g. other call attendees) prefilled alongside the primary contact */
+  additionalContactEmails?: string[];
+
   dealStatusNote?: string;
   narrative?: string;
   referralName?: string;
@@ -168,11 +171,20 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const [dealOwner, setDealOwner] = useState(initialValues?.dealOwner || '');
   const [contactName, setContactName] = useState(initialValues?.contactName || '');
   const [contactInfo, setContactInfo] = useState(initialValues?.contactInfo || '');
-  const [clientContacts, setClientContacts] = useState<ContactPickerValue[]>(
-    initialValues?.contactName || initialValues?.contactInfo
-      ? [{ name: initialValues?.contactName || '', email: initialValues?.contactInfo || '' }]
-      : [],
-  );
+  const [clientContacts, setClientContacts] = useState<ContactPickerValue[]>(() => {
+    const list: ContactPickerValue[] = [];
+    if (initialValues?.contactName || initialValues?.contactInfo) {
+      list.push({ name: initialValues?.contactName || '', email: initialValues?.contactInfo || '' });
+    }
+    for (const email of initialValues?.additionalContactEmails ?? []) {
+      const e = (email || '').trim();
+      if (e && !list.some((c) => (c.email || '').toLowerCase() === e.toLowerCase())) {
+        list.push({ name: '', email: e });
+      }
+    }
+    return list;
+  });
+
   const [dealStatusNote, setDealStatusNote] = useState(initialValues?.dealStatusNote || '');
   const [narrative, setNarrative] = useState(initialValues?.narrative || '');
   const [referralName, setReferralName] = useState(initialValues?.referralName || '');
