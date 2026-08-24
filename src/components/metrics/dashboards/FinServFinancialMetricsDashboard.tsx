@@ -22,6 +22,7 @@ import {
   useFinServActiveClients,
 } from '@/hooks/useFinServFinancialMetrics';
 import { FINSERV_PIPELINE_ID, ACTIVE_CLIENT_STAGE, applyActiveClientOverride } from '@/hooks/useFinServFinancialMetrics';
+import { useFinServNewMrrAdded } from '@/hooks/useFinServNewMrrAdded';
 import {
   useQBStackedFinServRevenue,
   FINSERV_STACKED_CATEGORIES,
@@ -1126,6 +1127,9 @@ function FinServFinancialMetricsDashboardInner() {
     label: range.resolved.label,
   }), [range.resolved.start, range.resolved.end, range.resolved.label]);
 
+  const newMrr = useFinServNewMrrAdded(selectedPeriod);
+
+
   // Derive a QuarterOption-shaped value for legacy widgets bound to selectedQuarter.
   const selectedQuarter = useMemo(() => {
     const s = new Date(range.resolved.start + 'T00:00:00');
@@ -1888,7 +1892,31 @@ function FinServFinancialMetricsDashboardInner() {
           )}
         </CardContent>
       </Card>
+
+      <Card className="glass-module">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">New MRR Added</CardTitle>
+          <Badge variant="outline" className="w-fit text-xs">{periodBadge} · Entered Active Client</Badge>
+        </CardHeader>
+        <CardContent>
+          {newMrr.isLoading ? (
+            <Skeleton className="h-10 w-40" />
+          ) : newMrr.error ? (
+            <WidgetError />
+          ) : (
+            <div className="space-y-1">
+              <p className="text-3xl font-semibold tabular-nums text-foreground">
+                {fmtCurrencyFull(newMrr.total)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {newMrr.deals.length} deal{newMrr.deals.length === 1 ? '' : 's'} entered Active Client
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
       </div>
+
 
       {/* ── Row 8: Placeholder widgets ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
