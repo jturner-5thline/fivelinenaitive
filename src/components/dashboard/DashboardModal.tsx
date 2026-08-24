@@ -428,29 +428,8 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
     <>
       <div className="db-root flex flex-row flex-1 min-h-0 min-w-0 max-w-full overflow-hidden" style={{ borderRadius: 'inherit', boxSizing: 'border-box' }}>
           <style dangerouslySetInnerHTML={{ __html: DASHBOARD_CSS }} />
-          {/* Side tab rail — Dashboard / Tasks */}
-          <div className="shrink-0 flex flex-col gap-1 py-3 px-2 border-r border-[rgba(126,184,247,0.22)]">
-            {([
-              { key: 'dashboard' as const, label: 'Dashboard', Icon: LayoutDashboard },
-              { key: 'tasks' as const, label: 'Tasks', Icon: ListChecks },
-            ]).map(({ key, label, Icon }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setActiveTab(key)}
-                aria-label={label}
-                aria-current={paneTab === key}
-                className={`flex flex-col items-center gap-1 rounded-[8px] px-2 py-2 w-[62px] text-[10px] font-semibold transition-colors ${
-                  paneTab === key
-                    ? 'bg-blue-400/15 text-blue-300 border border-[rgba(126,184,247,0.4)]'
-                    : 'text-blue-300/70 hover:text-blue-300 hover:bg-blue-400/10 border border-transparent'
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </button>
-            ))}
-          </div>
+          {/* Side tab rail removed — tab switching handled by the header tabs */}
+
           <Tabs
             value={paneTab}
             className="flex flex-col flex-1 min-h-0 min-w-0"
