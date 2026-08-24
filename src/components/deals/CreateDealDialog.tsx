@@ -64,6 +64,9 @@ export interface CreateDealInitialValues {
   dealAmount?: string;
   contactName?: string;
   contactInfo?: string;
+  /** Extra client-contact emails (e.g. other call attendees) prefilled alongside the primary contact */
+  additionalContactEmails?: string[];
+
   dealStatusNote?: string;
   narrative?: string;
   referralName?: string;
