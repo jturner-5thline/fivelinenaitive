@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { Pencil, AlertTriangle, AlertCircle, Clock, LayoutDashboard, ListChecks } from 'lucide-react';
+import { Pencil, AlertTriangle, AlertCircle, Clock } from 'lucide-react';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { useNavigate } from 'react-router-dom';
