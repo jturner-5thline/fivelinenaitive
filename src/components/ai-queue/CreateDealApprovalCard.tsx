@@ -288,18 +288,25 @@ export function CreateDealApprovalCard({ item }: Props) {
         ) : null}
       </div>
 
-      <CreateDealDialog
-        open={open}
-        onOpenChange={setOpen}
-        initialValues={{
-          ...initialValues,
-          onCreated: (dealId) => {
-            setOpen(false);
-            void markApproved(dealId);
-          },
-          onDismiss: () => setOpen(false),
-        }}
-      />
+      {open ? (
+        <CreateDealDialog
+          // Keyed on the drafted payload so the form always initializes from
+          // the values currently shown in the approval card (narrative and
+          // deal status are drafted asynchronously after this card mounts).
+          key={`${item.id}:${initialValues.dealStatusNote}:${initialValues.narrative}:${initialValues.dealStage}`}
+          open={open}
+          onOpenChange={setOpen}
+          initialValues={{
+            ...initialValues,
+            onCreated: (dealId) => {
+              setOpen(false);
+              void markApproved(dealId);
+            },
+            onDismiss: () => setOpen(false),
+          }}
+        />
+      ) : null}
+
     </div>
   );
 }
