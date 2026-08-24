@@ -243,11 +243,12 @@ export function useDealReferralSources(filters?: {
     firstActivityByDeal.get(d.id) || d.created_at;
 
   const deals = useMemo(() => {
-    if (!rangeStart && !rangeEnd) return dealsRaw;
+    const withDate = dealsRaw.map(d => ({ ...d, created_at: effectiveDealDate(d) }));
+    if (!rangeStart && !rangeEnd) return withDate;
     const startMs = rangeStart ? rangeStart.getTime() : -Infinity;
     const endMs = rangeEnd ? rangeEnd.getTime() : Infinity;
-    return dealsRaw.filter(d => {
-      const t = new Date(effectiveDealDate(d)).getTime();
+    return withDate.filter(d => {
+      const t = new Date(d.created_at).getTime();
       return Number.isFinite(t) && t >= startMs && t <= endMs;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
