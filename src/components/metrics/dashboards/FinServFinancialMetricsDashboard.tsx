@@ -22,6 +22,7 @@ import {
   useFinServActiveClients,
 } from '@/hooks/useFinServFinancialMetrics';
 import { FINSERV_PIPELINE_ID, ACTIVE_CLIENT_STAGE, applyActiveClientOverride } from '@/hooks/useFinServFinancialMetrics';
+import { useFinServNewMrrAdded } from '@/hooks/useFinServNewMrrAdded';
 import {
   useQBStackedFinServRevenue,
   FINSERV_STACKED_CATEGORIES,
