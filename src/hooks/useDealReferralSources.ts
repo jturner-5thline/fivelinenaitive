@@ -193,26 +193,66 @@ export function useDealReferralSources(filters?: {
     return m;
   }, [pipelines]);
 
-  const { data: deals = [], isLoading: dealsLoading } = useQuery({
-    queryKey: ['deal_referral_deals', company?.id, targetPipelineIds, rangeStart?.toISOString() ?? null, rangeEnd?.toISOString() ?? null, granularity],
+  // Deals are fetched without a date filter — `created_at` is the CRM import
+  // timestamp, not when the deal actually happened. We timebound below using
+  // each deal's effective date (earliest stage-history event, else created_at).
+  const { data: dealsRaw = [], isLoading: dealsLoading } = useQuery({
+    queryKey: ['deal_referral_deals', company?.id, targetPipelineIds],
     enabled: !!company?.id && targetPipelineIds.length > 0,
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from('deals')
         .select('id, company, value, stage, status, referred_by, referred_by_contact_id, referred_by_crm_company_id, sourced_via, created_at, pipeline_id')
         .eq('company_id', company!.id)
         .not('referred_by', 'is', null)
         .neq('referred_by', '')
         .in('pipeline_id', targetPipelineIds);
-
-      if (rangeStart) query = query.gte('created_at', rangeStart.toISOString());
-      if (rangeEnd) query = query.lte('created_at', rangeEnd.toISOString());
-
-      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as RawDealRow[];
     },
   });
+
+  const rawDealIds = useMemo(() => dealsRaw.map(d => d.id).sort(), [dealsRaw]);
+
+  // Earliest stage-history event per deal = the real "deal started" date.
+  const { data: firstActivityByDeal = new Map<string, string>() } = useQuery({
+    queryKey: ['deal_referral_first_activity', company?.id, rawDealIds.length, rawDealIds[0] ?? null, rawDealIds[rawDealIds.length - 1] ?? null],
+    enabled: !!company?.id && rawDealIds.length > 0,
+    queryFn: async () => {
+      const map = new Map<string, string>();
+      const chunkSize = 200;
+      for (let i = 0; i < rawDealIds.length; i += chunkSize) {
+        const chunk = rawDealIds.slice(i, i + chunkSize);
+        const { data, error } = await supabase
+          .from('deal_stage_history')
+          .select('deal_id, changed_at')
+          .in('deal_id', chunk);
+        if (error) throw error;
+        for (const row of (data || []) as { deal_id: string; changed_at: string | null }[]) {
+          if (!row.changed_at) continue;
+          const prev = map.get(row.deal_id);
+          if (!prev || row.changed_at < prev) map.set(row.deal_id, row.changed_at);
+        }
+      }
+      return map;
+    },
+  });
+
+  /** Effective activity date used for all timeframe filtering. */
+  const effectiveDealDate = (d: RawDealRow): string =>
+    firstActivityByDeal.get(d.id) || d.created_at;
+
+  const deals = useMemo(() => {
+    if (!rangeStart && !rangeEnd) return dealsRaw;
+    const startMs = rangeStart ? rangeStart.getTime() : -Infinity;
+    const endMs = rangeEnd ? rangeEnd.getTime() : Infinity;
+    return dealsRaw.filter(d => {
+      const t = new Date(effectiveDealDate(d)).getTime();
+      return Number.isFinite(t) && t >= startMs && t <= endMs;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dealsRaw, firstActivityByDeal, rangeStart, rangeEnd, granularity]);
+
 
   const { data: channelEntries = [] } = useQuery({
     queryKey: ['deal_referral_channel_entries', company?.id],
