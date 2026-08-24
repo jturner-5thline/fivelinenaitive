@@ -1126,6 +1126,9 @@ function FinServFinancialMetricsDashboardInner() {
     label: range.resolved.label,
   }), [range.resolved.start, range.resolved.end, range.resolved.label]);
 
+  const newMrr = useFinServNewMrrAdded(selectedPeriod);
+
+
   // Derive a QuarterOption-shaped value for legacy widgets bound to selectedQuarter.
   const selectedQuarter = useMemo(() => {
     const s = new Date(range.resolved.start + 'T00:00:00');
