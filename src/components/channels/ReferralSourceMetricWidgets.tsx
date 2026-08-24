@@ -5,6 +5,11 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTo
 import { useChannelEntries } from '@/hooks/useChannelEntries';
 import { CHANNEL_TYPE_OPTIONS } from './channelOptions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  useReferralSourceMetrics,
+  type DrillRow,
+  type LeaderboardRow,
+} from './useReferralSourceMetrics';
 
 function ChannelMixDonut() {
   const { data: entries = [], isLoading } = useChannelEntries();
@@ -139,36 +144,135 @@ interface MetricTileProps {
   label: string;
   value: string;
   subtext: string;
+  rows: DrillRow[];
+  drillTitle: string;
+  isLoading?: boolean;
 }
 
-function MetricTile({ label, value, subtext }: MetricTileProps) {
+function MetricTile({ label, value, subtext, rows, drillTitle, isLoading }: MetricTileProps) {
+  const [open, setOpen] = useState(false);
+  const canDrill = rows.length > 0;
   return (
-    <div className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-2">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#FFFFFF] leading-tight">
-          {label}
+    <>
+      <div
+        className={`rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-2 ${
+          canDrill ? 'cursor-pointer transition-colors hover:border-[hsl(var(--chart-2)/0.5)] hover:bg-card/80' : ''
+        }`}
+        role={canDrill ? 'button' : undefined}
+        tabIndex={canDrill ? 0 : undefined}
+        onClick={canDrill ? () => setOpen(true) : undefined}
+        onKeyDown={
+          canDrill
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setOpen(true);
+                }
+              }
+            : undefined
+        }
+      >
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#FFFFFF] leading-tight">
+            {label}
+          </p>
+          {canDrill ? (
+            <span className="text-[10px] text-muted-foreground/70 whitespace-nowrap">Drill →</span>
+          ) : null}
+        </div>
+        <p className="text-3xl font-bold tabular-nums leading-none text-[#FFFFFF]">
+          {isLoading ? '—' : value}
         </p>
-        <span className="text-[10px] text-muted-foreground/70 whitespace-nowrap">Drill →</span>
+        <p className="text-[11px] text-muted-foreground leading-snug">
+          {isLoading ? 'Loading…' : canDrill ? subtext : 'No data in selected timeframe'}
+        </p>
       </div>
-      <p className="text-3xl font-bold tabular-nums leading-none text-[#FFFFFF]">{value}</p>
-      <p className="text-[11px] text-muted-foreground leading-snug">{subtext}</p>
-    </div>
+      <DrillDialog open={open} onOpenChange={setOpen} title={drillTitle} rows={rows} />
+    </>
+  );
+}
+
+function DrillDialog({
+  open,
+  onOpenChange,
+  title,
+  rows,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  title: string;
+  rows: DrillRow[];
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {title} · {rows.length} {rows.length === 1 ? 'record' : 'records'}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col divide-y divide-border">
+          {rows.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">No records.</p>
+          ) : (
+            rows.map((r) => (
+              <div key={r.id} className="py-2.5 min-w-0">
+                <p className="text-sm font-medium truncate">{r.primary}</p>
+                {r.secondary ? (
+                  <p className="text-xs text-muted-foreground truncate">{r.secondary}</p>
+                ) : null}
+              </div>
+            ))
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 type ToggleMode = 'deals' | 'dollars';
 
+function formatCompactUsd(v: number): string {
+  if (v >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(2)}B`;
+  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
+  return `$${Math.round(v).toLocaleString()}`;
+}
+
 interface LeaderboardTileProps {
   label: string;
   tooltip: string;
   subtext: string;
+  entries: LeaderboardRow[];
   /** Show the deals/dollars toggle */
   toggleable?: boolean;
+  /** Rank by fee revenue rather than deal count / volume */
+  byFees?: boolean;
+  emptyMessage?: string;
+  isLoading?: boolean;
 }
 
-function LeaderboardTile({ label, tooltip, subtext, toggleable }: LeaderboardTileProps) {
+function LeaderboardTile({
+  label,
+  tooltip,
+  subtext,
+  entries,
+  toggleable,
+  byFees,
+  emptyMessage = 'No data in selected timeframe',
+  isLoading,
+}: LeaderboardTileProps) {
   const [mode, setMode] = useState<ToggleMode>('deals');
-  const rows = [1, 2, 3];
+  const [drill, setDrill] = useState<LeaderboardRow | null>(null);
+
+  const ranked = useMemo(() => {
+    const metric = (r: LeaderboardRow) =>
+      byFees ? r.fees : mode === 'dollars' ? r.dollars : r.deals;
+    return [...entries].filter((r) => metric(r) > 0).sort((a, b) => metric(b) - metric(a)).slice(0, 3);
+  }, [entries, mode, byFees]);
+
+  const renderValue = (r: LeaderboardRow) =>
+    byFees ? formatCompactUsd(r.fees) : mode === 'dollars' ? formatCompactUsd(r.dollars) : String(r.deals);
 
   return (
     <div className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3">
@@ -207,53 +311,76 @@ function LeaderboardTile({ label, tooltip, subtext, toggleable }: LeaderboardTil
               </button>
             ))}
           </div>
-        ) : (
+        ) : ranked.length > 0 ? (
           <span className="text-[10px] text-muted-foreground/70 whitespace-nowrap">Drill →</span>
-        )}
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-1.5">
-        {rows.map((rank) => (
-          <div key={rank} className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-[10px] tabular-nums text-muted-foreground/60 w-3">{rank}</span>
-              <span className="text-xs text-muted-foreground/70 truncate">—</span>
-            </div>
-            <span className="text-sm font-semibold tabular-nums text-[#FFFFFF]">
-              {mode === 'dollars' && toggleable ? '$0' : '0'}
-            </span>
-          </div>
-        ))}
+        {isLoading ? (
+          <p className="text-xs text-muted-foreground py-2">Loading…</p>
+        ) : ranked.length === 0 ? (
+          <p className="text-xs text-muted-foreground py-2">{emptyMessage}</p>
+        ) : (
+          ranked.map((r, i) => (
+            <button
+              key={r.key}
+              type="button"
+              onClick={() => setDrill(r)}
+              className="flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[10px] tabular-nums text-muted-foreground/60 w-3">{i + 1}</span>
+                <span className="text-xs text-muted-foreground/90 truncate">{r.label}</span>
+              </div>
+              <span className="text-sm font-semibold tabular-nums text-[#FFFFFF]">{renderValue(r)}</span>
+            </button>
+          ))
+        )}
       </div>
 
       <p className="text-[11px] text-muted-foreground leading-snug">{subtext}</p>
+
+      <DrillDialog
+        open={!!drill}
+        onOpenChange={(o) => !o && setDrill(null)}
+        title={drill?.label ?? ''}
+        rows={drill?.rows ?? []}
+      />
     </div>
   );
 }
 
 export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode }) {
+  const {
+    isLoading,
+    meetingCount,
+    meetingRows,
+    newSourceCount,
+    newSourceRows,
+    sourceLeaderboard,
+    channelLeaderboard,
+    hasFeeData,
+  } = useReferralSourceMetrics();
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <MetricTile
           label="Meetings w/ Existing Referral Sources"
-          value="0"
+          value={String(meetingCount)}
           subtext="meetings held in selected timeframe"
-        />
-        <MetricTile
-          label="Deals on Board from Referral Sources"
-          value="0"
-          subtext="deals sourced in selected timeframe"
-        />
-        <MetricTile
-          label="Dollars on Board from Referral Sources"
-          value="$0"
-          subtext="deal value sourced in selected timeframe"
+          rows={meetingRows}
+          drillTitle="Meetings with referral sources"
+          isLoading={isLoading}
         />
         <MetricTile
           label="New Referral Sources Added"
-          value="0"
+          value={String(newSourceCount)}
           subtext="added in selected timeframe"
+          rows={newSourceRows}
+          drillTitle="New referral sources"
+          isLoading={isLoading}
         />
       </div>
 
@@ -262,23 +389,35 @@ export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode
           label="Most Active Referral Sources"
           tooltip="The referral sources who refer the most deals or dollars. Toggle between deal count (#) and dollar volume ($)."
           subtext="top 3 in selected timeframe"
+          entries={sourceLeaderboard}
           toggleable
+          isLoading={isLoading}
         />
         <LeaderboardTile
           label="Most Profitable Referral Sources"
           tooltip="The referral sources who have referred the most revenue-generating activity to us."
           subtext="by fee revenue in selected timeframe"
+          entries={sourceLeaderboard}
+          byFees
+          emptyMessage={hasFeeData ? 'No fee revenue in selected timeframe' : 'No fee data yet'}
+          isLoading={isLoading}
         />
         <LeaderboardTile
           label="Most Active Channels"
           tooltip="Top 3 channels (banks, service providers, etc.) by count of deals on the board. Toggle for dollars on the board."
           subtext="top 3 channels in selected timeframe"
+          entries={channelLeaderboard}
           toggleable
+          isLoading={isLoading}
         />
         <LeaderboardTile
           label="Most Profitable Channels"
           tooltip="Top 3 channels (banks, service providers, etc.) by fee revenue generated from their referrals."
           subtext="by fee revenue in selected timeframe"
+          entries={channelLeaderboard}
+          byFees
+          emptyMessage={hasFeeData ? 'No fee revenue in selected timeframe' : 'No fee data yet'}
+          isLoading={isLoading}
         />
       </div>
 
@@ -289,3 +428,4 @@ export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode
     </div>
   );
 }
+
