@@ -80,13 +80,12 @@ export function ReferralSourceDeals({
     direction: 'desc',
   });
 
-  const { data: deals = [] } = useQuery({
-    queryKey: [
-      'referral_source_deals',
-      company?.id,
-      rangeStart?.toISOString() ?? null,
-      rangeEnd?.toISOString() ?? null,
-    ],
+  // Deals are fetched without a date filter — `created_at` is the CRM import
+  // timestamp. Timeframe filtering uses each deal's effective activity date
+  // (earliest stage-history event, else created_at) — same basis as
+  // useDealReferralSources.
+  const { data: dealsRaw = [] } = useQuery({
+    queryKey: ['referral_source_deals', company?.id],
     enabled: !!company?.id,
     queryFn: async () => {
       const { getNaitivePipelineId } = await import('@/utils/naitivePipelineExclusion');
@@ -97,16 +96,22 @@ export function ReferralSourceDeals({
         .eq('company_id', company!.id)
         .ilike('sourced_via', 'referral%');
       if (naitivePipelineId) query = query.neq('pipeline_id', naitivePipelineId);
-      if (rangeStart) query = query.gte('created_at', rangeStart.toISOString());
-      if (rangeEnd) query = query.lte('created_at', rangeEnd.toISOString());
       const { data, error } = await query;
       if (error) throw error;
       return (data || []) as DealRow[];
     },
   });
 
+  const dealIds = useMemo(() => dealsRaw.map(d => d.id), [dealsRaw]);
+  const { data: firstActivityByDeal = new Map<string, string>() } = useDealFirstActivityDates(dealIds);
+  const deals = useMemo(
+    () => filterByEffectiveDate(dealsRaw, firstActivityByDeal, rangeStart, rangeEnd),
+    [dealsRaw, firstActivityByDeal, rangeStart, rangeEnd],
+  );
+
   // All deals in the result set already match sourced_via ~ 'Referral%'.
   const matchedDeals = deals;
+
 
   // "On Board" = deals that ENTERED (or became) the "NDA / Needs List Sent"
   // stage of the Active pipeline within the selected timeframe, sourced via
