@@ -215,44 +215,15 @@ export function useDealReferralSources(filters?: {
   const rawDealIds = useMemo(() => dealsRaw.map(d => d.id).sort(), [dealsRaw]);
 
   // Earliest stage-history event per deal = the real "deal started" date.
-  const { data: firstActivityByDeal = new Map<string, string>() } = useQuery({
-    queryKey: ['deal_referral_first_activity', company?.id, rawDealIds.length, rawDealIds[0] ?? null, rawDealIds[rawDealIds.length - 1] ?? null],
-    enabled: !!company?.id && rawDealIds.length > 0,
-    queryFn: async () => {
-      const map = new Map<string, string>();
-      const chunkSize = 200;
-      for (let i = 0; i < rawDealIds.length; i += chunkSize) {
-        const chunk = rawDealIds.slice(i, i + chunkSize);
-        const { data, error } = await supabase
-          .from('deal_stage_history')
-          .select('deal_id, changed_at')
-          .in('deal_id', chunk);
-        if (error) throw error;
-        for (const row of (data || []) as { deal_id: string; changed_at: string | null }[]) {
-          if (!row.changed_at) continue;
-          const prev = map.get(row.deal_id);
-          if (!prev || row.changed_at < prev) map.set(row.deal_id, row.changed_at);
-        }
-      }
-      return map;
-    },
-  });
+  const { data: firstActivityByDeal = new Map<string, string>() } =
+    useDealFirstActivityDates(rawDealIds);
 
-  /** Effective activity date used for all timeframe filtering. */
-  const effectiveDealDate = (d: RawDealRow): string =>
-    firstActivityByDeal.get(d.id) || d.created_at;
-
-  const deals = useMemo(() => {
-    const withDate = dealsRaw.map(d => ({ ...d, created_at: effectiveDealDate(d) }));
-    if (!rangeStart && !rangeEnd) return withDate;
-    const startMs = rangeStart ? rangeStart.getTime() : -Infinity;
-    const endMs = rangeEnd ? rangeEnd.getTime() : Infinity;
-    return withDate.filter(d => {
-      const t = new Date(d.created_at).getTime();
-      return Number.isFinite(t) && t >= startMs && t <= endMs;
-    });
+  const deals = useMemo(
+    () => filterByEffectiveDate(dealsRaw, firstActivityByDeal, rangeStart, rangeEnd),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dealsRaw, firstActivityByDeal, rangeStart, rangeEnd, granularity]);
+    [dealsRaw, firstActivityByDeal, rangeStart, rangeEnd, granularity],
+  );
+
 
 
   const { data: channelEntries = [] } = useQuery({
