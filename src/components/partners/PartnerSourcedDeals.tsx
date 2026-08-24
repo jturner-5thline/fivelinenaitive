@@ -14,6 +14,8 @@ import { liquidGlassCard, liquidGlassSectionTitle } from '@/components/metrics/l
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTtmActivePipelineConversion } from '@/lib/salesBdActivePipelineConversion';
+import { useDealFirstActivityDates, filterByEffectiveDate } from '@/hooks/useDealFirstActivityDates';
+
 
 interface DealRow {
   id: string;
@@ -76,8 +78,10 @@ export function PartnerSourcedDeals({
     [partners]
   );
 
-  const { data: deals = [] } = useQuery({
-    queryKey: ['partner_referred_deals', company?.id, rangeStart?.toISOString() ?? null, rangeEnd?.toISOString() ?? null, granularity],
+  // Timeframe filtering uses each deal's effective activity date (earliest
+  // stage-history event, else created_at) — same basis as the referral metrics.
+  const { data: dealsRaw = [] } = useQuery({
+    queryKey: ['partner_referred_deals', company?.id],
     enabled: !!company?.id,
     queryFn: async () => {
       const { getNaitivePipelineId } = await import('@/utils/naitivePipelineExclusion');
@@ -88,13 +92,20 @@ export function PartnerSourcedDeals({
         .eq('company_id', company!.id)
         .not('referred_by', 'is', null);
       if (naitivePipelineId) query = query.neq('pipeline_id', naitivePipelineId);
-      if (rangeStart) query = query.gte('created_at', rangeStart.toISOString());
-      if (rangeEnd) query = query.lte('created_at', rangeEnd.toISOString());
       const { data, error } = await query;
       if (error) throw error;
       return (data || []) as DealRow[];
     },
   });
+
+  const dealIds = useMemo(() => dealsRaw.map(d => d.id), [dealsRaw]);
+  const { data: firstActivityByDeal = new Map<string, string>() } = useDealFirstActivityDates(dealIds);
+  const deals = useMemo(
+    () => filterByEffectiveDate(dealsRaw, firstActivityByDeal, rangeStart, rangeEnd),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dealsRaw, firstActivityByDeal, rangeStart, rangeEnd, granularity],
+  );
+
 
   // Filter deals that match partner/referral source names
   const matchedDeals = useMemo(() => {
