@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
 import { partnerMatches } from '@/lib/partnerNameMatch';
+import { useDealFirstActivityDates, filterByEffectiveDate } from '@/hooks/useDealFirstActivityDates';
+
 
 export interface DealReferralSourceEntry {
   /** Canonical display name — the linked contact's name (or company name). */
