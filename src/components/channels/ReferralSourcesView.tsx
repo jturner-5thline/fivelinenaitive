@@ -299,8 +299,8 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
     });
   }, [filteredSources, sortField, sortDir, tierLookup]);
 
-  const hasActiveFilters = channelFilter.length > 0 || companyFilter.length > 0 || pipelineFilter !== 'all' || tierFilter.length > 0 || search.length > 0;
-  const clearAll = () => { setChannelFilter([]); setCompanyFilter([]); setPipelineFilter('all'); setTierFilter([]); setSearch(''); };
+  const hasActiveFilters = channelFilter.length > 0 || companyFilter.length > 0 || ownerFilter.length > 0 || pipelineFilter !== 'all' || tierFilter.length > 0 || search.length > 0;
+  const clearAll = () => { setChannelFilter([]); setCompanyFilter([]); setOwnerFilter([]); setPipelineFilter('all'); setTierFilter([]); setSearch(''); };
 
   if (isLoading) {
     return (
@@ -372,6 +372,16 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
           />
         )}
 
+        {ownerOptions.length > 0 && (
+          <MultiSelectFilter
+            label="Owners"
+            options={ownerOptions}
+            selected={ownerFilter}
+            onChange={setOwnerFilter}
+          />
+        )}
+
+
         <div className="relative ml-auto">
           <Search className="h-3 w-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -405,7 +415,7 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
       </div>
 
       {/* Active filter chips */}
-      {(channelFilter.length > 0 || companyFilter.length > 0) && (
+      {(channelFilter.length > 0 || companyFilter.length > 0 || ownerFilter.length > 0) && (
         <div className="flex items-center gap-1.5 flex-wrap">
           {channelFilter.map(ct => {
             const label = CHANNEL_OPTIONS.find(o => o.value === ct)?.label || ct;
