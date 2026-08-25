@@ -140,9 +140,6 @@ export function TodayTab({
             briefingType={briefingType}
           />
         </div>
-        <div className={cn('h-full min-h-0 flex-col pt-1', activeSection === 'tasks' ? 'flex' : 'hidden')}>
-          {activeSection === 'tasks' && <TodayTasksPanel />}
-        </div>
       </div>
     </div>
   );
