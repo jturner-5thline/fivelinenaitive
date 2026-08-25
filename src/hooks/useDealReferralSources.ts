@@ -43,6 +43,9 @@ export interface DealReferralSourceEntry {
   channelType: string | null;
   /** Linked company name (from the linked CRM company record) */
   companyName: string | null;
+  /** Owner (profiles.user_id) of the linked contact, when the source is a person. */
+  ownerUserId: string | null;
+
   /** Computed tier (1|2|3) using sales_bd_rules thresholds, or null when no data */
   tier: 1 | 2 | 3 | null;
   /** Alternate channels seen (for tooltip) when the modal is mixed */
@@ -282,15 +285,17 @@ export function useDealReferralSources(filters?: {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('contacts')
-        .select('id, full_name, crm_company_id, crm_company:crm_companies!contacts_crm_company_id_fkey(name)')
+        .select('id, full_name, owner_user_id, crm_company_id, crm_company:crm_companies!contacts_crm_company_id_fkey(name)')
         .in('id', linkedContactIds);
       if (error) throw error;
       return (data || []) as Array<{
         id: string;
         full_name: string | null;
+        owner_user_id: string | null;
         crm_company_id: string | null;
         crm_company: { name: string | null } | null;
       }>;
+
     },
   });
 
