@@ -206,11 +206,6 @@ function MetricTile({
         <p className="text-[11px] text-muted-foreground leading-snug">
           {isLoading ? 'Loading…' : canDrill ? subtext : 'No data in selected timeframe'}
         </p>
-        {filterBar ? (
-          <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-            {filterBar}
-          </div>
-        ) : null}
       </div>
       <DrillDialog
         open={open}
