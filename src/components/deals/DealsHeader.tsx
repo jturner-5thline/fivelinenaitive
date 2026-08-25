@@ -377,11 +377,12 @@ export function DealsHeader() {
     { label: 'Mail' as const, isOpen: isMailOpen, open: () => setIsMailOpen(true), close: () => setIsMailOpen(false), available: true },
     { label: 'Dashboard' as const, isOpen: isBriefingOpen, open: () => setIsBriefingOpen(true), close: () => setIsBriefingOpen(false), available: canSeeBriefingHeaderItems },
     {
+      // Opens the exact same dashboard pop-up as the Dashboard icon.
       label: 'Tasks' as const,
-      isOpen: isDashboardOpen && dashboardInitialTab === 'tasks',
-      open: () => { setDashboardInitialTab('tasks'); setIsDashboardOpen(true); },
-      close: () => setIsDashboardOpen(false),
-      available: true,
+      isOpen: isBriefingOpen,
+      open: () => setIsBriefingOpen(true),
+      close: () => setIsBriefingOpen(false),
+      available: canSeeBriefingHeaderItems,
     },
     {
       label: 'Today' as const,
@@ -578,10 +579,7 @@ export function DealsHeader() {
                 // Tasks tab — no overlay swap animation, no Tasks page.
                 // Other labels route through goToOverlay so the swap
                 // animates directionally (and never double-mounts).
-                onClick: () =>
-                  label === 'Tasks'
-                    ? (setDashboardInitialTab('tasks'), setIsDashboardOpen(true))
-                    : goToOverlay(label),
+                onClick: () => goToOverlay(label),
               }));
             })().map(({ label, Icon, isOpen, onClick, hasBadge, badgeCount }) => (
               <Tooltip key={label}>
