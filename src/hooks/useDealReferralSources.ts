@@ -247,6 +247,23 @@ export function useDealReferralSources(filters?: {
     },
   });
 
+  // Manual overrides saved from the "Edit Referral Source" dialog. These win
+  // over channel_entries / sourced_via inference for both channel and company.
+  const { data: referralSourceRecords = [] } = useQuery({
+    queryKey: ['referral_source_records', company?.id],
+    enabled: !!company?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('referral_sources')
+        .select('id, name, company, channel, company_id')
+        .or(`company_id.eq.${company!.id},company_id.is.null`);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
+
+
   // Linked contact records for the referral sources on these deals. Referral
   // sources are STRICTLY real CRM records — a deal only counts as referred
   // when `referred_by_contact_id` / `referred_by_crm_company_id` resolves.
@@ -368,6 +385,25 @@ export function useDealReferralSources(filters?: {
       }
     }
 
+    // Manual overrides (referral_sources rows edited in "Edit Referral Source").
+    // Keyed by both the source name and its saved company so the override
+    // applies however the referrer appears on the deal.
+    const overrideLookup = new Map<string, { channel: string | null; companyName: string | null }>();
+    for (const rs of referralSourceRecords) {
+      const value = { channel: rs.channel || null, companyName: rs.company || null };
+      if (rs.name) {
+        const k = normalize(rs.name);
+        // Tenant-scoped rows win over global ones.
+        if (!overrideLookup.has(k) || rs.company_id) overrideLookup.set(k, value);
+      }
+      if (rs.company) {
+        const k = normalize(rs.company);
+        if (!overrideLookup.has(k)) overrideLookup.set(k, value);
+      }
+    }
+
+
+
     // Contact-name → CRM company lookup, built from the linked contact records.
     const contactCompanyLookup = new Map<string, string>();
     for (const c of linkedContacts) {
@@ -434,13 +470,19 @@ export function useDealReferralSources(filters?: {
         derivedCompany = bestN >= 2 ? best : null;
       }
 
+      // Manual override for this referrer (by name, or by its resolved company).
+      const override =
+        overrideLookup.get(nameKey)
+        || (derivedCompany ? overrideLookup.get(normalize(derivedCompany)) : undefined);
+      if (override?.companyName) derivedCompany = override.companyName;
+
       // === Derive channel from modal sourced_via across this referrer's deals ===
       const channelCounts = new Map<string, number>();
       for (const d of groupDeals) {
         const c = sourcedViaToChannel((d as any).sourced_via ?? null);
         if (c) channelCounts.set(c, (channelCounts.get(c) || 0) + 1);
       }
-      let modalChannel: string | null = match?.channelType || null;
+      let modalChannel: string | null = override?.channel || match?.channelType || null;
       const alternateChannels: string[] = [];
       if (!modalChannel && channelCounts.size > 0) {
         const sortedC = [...channelCounts.entries()].sort((a, b) => b[1] - a[1]);
@@ -510,7 +552,7 @@ export function useDealReferralSources(filters?: {
     filtered.sort((a, b) => b.totalVolume - a.totalVolume);
 
     return filtered;
-  }, [deals, channelEntries, linkedContacts, linkedCompanies, pipelineMap, filters?.channelFilter, filters?.companyFilter, allDeals, rules]);
+  }, [deals, channelEntries, referralSourceRecords, linkedContacts, linkedCompanies, pipelineMap, filters?.channelFilter, filters?.companyFilter, allDeals, rules]);
 
   // Unique companies for filter options
   const companyOptions = useMemo(() => {

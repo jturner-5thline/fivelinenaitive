@@ -117,8 +117,38 @@ export function ReferralSourceEditDialog({ open, onOpenChange, referredBy, initi
           });
         if (error) throw error;
       }
+      // Keep the Channel Mix pie (channel_entries) in sync when the chosen
+      // channel is one of the canonical channel types.
+      if (channelValue && CHANNEL_PRESETS.includes(channelValue) && channelValue !== 'Other') {
+        const { data: entries } = await supabase
+          .from('channel_entries')
+          .select(`
+            id,
+            contact:contacts!channel_entries_contact_id_fkey(full_name),
+            crm_company:crm_companies!channel_entries_crm_company_id_fkey(name)
+          `)
+          .eq('company_id', company.id);
+        const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+        const targets = new Set([norm(name), companyName.trim() ? norm(companyName) : ''].filter(Boolean));
+        const matchIds = (entries || [])
+          .filter((e: any) => {
+            const cn = e.contact?.full_name ? norm(e.contact.full_name) : '';
+            const co = e.crm_company?.name ? norm(e.crm_company.name) : '';
+            return (cn && targets.has(cn)) || (co && targets.has(co));
+          })
+          .map((e: any) => e.id);
+        if (matchIds.length) {
+          await supabase
+            .from('channel_entries')
+            .update({ channel_type: channelValue as any })
+            .in('id', matchIds);
+        }
+      }
+
       toast.success('Referral source updated');
       qc.invalidateQueries({ queryKey: ['referral_source_records'] });
+      qc.invalidateQueries({ queryKey: ['channel_entries'] });
+      qc.invalidateQueries({ queryKey: ['deal_referral_channel_entries'] });
       onSaved?.();
       onOpenChange(false);
     } catch (e: any) {
