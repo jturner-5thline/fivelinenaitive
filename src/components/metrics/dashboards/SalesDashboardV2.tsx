@@ -1093,6 +1093,8 @@ function TopSourcedViaWidget() {
     referral_source: string | null;
     referral_source_id: string | null;
     referred_by: string | null;
+    referred_by_contact_id: string | null;
+    referred_by_crm_company_id: string | null;
     lead_source: string | null;
     created_at: string;
   };
