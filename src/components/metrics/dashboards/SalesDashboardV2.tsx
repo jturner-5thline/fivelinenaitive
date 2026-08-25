@@ -1244,7 +1244,7 @@ function TopSourcedViaWidget() {
 
       const { data: dealsData, error: dealsErr } = await supabase
         .from('deals')
-        .select('id, company, sourced_via, referral_source, referral_source_id, referred_by, lead_source, created_at')
+        .select('id, company, sourced_via, referral_source, referral_source_id, referred_by, referred_by_contact_id, referred_by_crm_company_id, lead_source, created_at')
         .in('id', Array.from(dealIds));
       if (dealsErr) throw dealsErr;
       return { events, deals: (dealsData ?? []) as DealRow[] };
