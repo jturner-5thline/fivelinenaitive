@@ -179,7 +179,7 @@ export function ReferralSourcePipelineWidget() {
         color: LIQUID_GLASS_SERIES[i % LIQUID_GLASS_SERIES.length],
       };
     });
-  }, [referralSources, manualSources]);
+  }, [referralSources, manualSources, ownerFilter]);
 
   const total = columns.reduce((sum, c) => sum + c.count, 0);
 
