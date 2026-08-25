@@ -202,7 +202,9 @@ export function ReferralSourcePipelineWidget() {
           </p>
         </div>
         <div className="flex items-center gap-1.5">
+          <OwnerMultiSelect options={ownerOptions} selected={ownerFilter} onChange={setOwnerFilter} />
           <Popover>
+
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-[11px] text-muted-foreground">
                 <Info className="h-3.5 w-3.5" /> Rules
