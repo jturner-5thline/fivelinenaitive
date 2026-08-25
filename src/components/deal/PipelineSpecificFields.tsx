@@ -88,7 +88,7 @@ function renderPipelineFieldInput(
     case 'multi-select': {
       const selected: string[] = Array.isArray(value) ? value : [];
       return (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex w-full min-w-0 flex-wrap gap-1.5">
           {(field.options || []).map((opt) => {
             const checked = selected.includes(opt);
             return (
@@ -102,7 +102,7 @@ function renderPipelineFieldInput(
                   onUpdate(field.key as keyof Deal, next);
                 }}
                 className={cn(
-                  'h-7 px-2.5 rounded-full text-xs font-medium border transition-colors',
+                  'min-h-7 max-w-full px-2.5 py-1 rounded-full text-xs font-medium border transition-colors text-left whitespace-normal break-words leading-tight',
                   checked
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'bg-background text-foreground border-input hover:bg-muted',
@@ -115,6 +115,7 @@ function renderPipelineFieldInput(
         </div>
       );
     }
+
     case 'switch':
       return (
         <Switch
@@ -134,22 +135,45 @@ function lookupPipelineField(dealClass: string | undefined | null, fieldKey: str
 }
 
 /**
- * Renders a single pipeline-specific field as a labeled inline row
- * (label + input on one line). Use this when interleaving pipeline
- * fields with shared Deal Information fields in a custom grid.
- * Label width is aligned with the shared Deal Information rows (6.5rem).
+ * Renders a single pipeline-specific field.
+ *
+ * Default (`stacked={false}`) keeps the legacy inline label + input row used
+ * by wide layouts. Pass `stacked` inside narrow containers (e.g. the FinServ
+ * deal detail left rail) to get a strict "label above full-width control"
+ * block that never re-flows unpredictably.
  */
 export function PipelineFieldRow({
   deal,
   fieldKey,
   onUpdate,
+  stacked = false,
 }: {
   deal: Deal;
   fieldKey: string;
   onUpdate: (field: keyof Deal, value: any) => void;
+  stacked?: boolean;
 }) {
   const field = lookupPipelineField(deal.dealClass, fieldKey);
   if (!field) return null;
+
+  if (stacked) {
+    // Switches read best as an explicit single row: label left, control right.
+    if (field.type === 'switch') {
+      return (
+        <div className="flex w-full min-w-0 items-center justify-between gap-2">
+          <span className="min-w-0 text-xs font-medium text-muted-foreground break-words">{field.label}</span>
+          <div className="shrink-0">{renderPipelineFieldInput(field, deal, onUpdate)}</div>
+        </div>
+      );
+    }
+    return (
+      <div className="flex w-full min-w-0 flex-col gap-1">
+        <span className="text-xs font-medium text-muted-foreground break-words">{field.label}</span>
+        <div className="w-full min-w-0">{renderPipelineFieldInput(field, deal, onUpdate)}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-1 md:grid md:grid-cols-[minmax(5rem,6.5rem)_minmax(0,1fr)] md:items-center md:gap-2 min-w-0">
       <span className="text-muted-foreground text-sm break-words">{field.label}</span>
@@ -175,19 +199,20 @@ export function PipelineFullFieldRow({
   if (!field) return null;
   if (field.type === 'switch') {
     return (
-      <div className="flex flex-wrap items-center justify-between gap-3 min-w-0">
-        <span className="text-muted-foreground text-sm">{field.label}</span>
-        {renderPipelineFieldInput(field, deal, onUpdate)}
+      <div className="flex w-full min-w-0 items-center justify-between gap-2">
+        <span className="min-w-0 text-xs font-medium text-muted-foreground break-words">{field.label}</span>
+        <div className="shrink-0">{renderPipelineFieldInput(field, deal, onUpdate)}</div>
       </div>
     );
   }
   return (
-    <div className="space-y-1.5 min-w-0">
-      <span className="text-sm text-muted-foreground">{field.label}</span>
-      {renderPipelineFieldInput(field, deal, onUpdate)}
+    <div className="flex w-full min-w-0 flex-col gap-1">
+      <span className="text-xs font-medium text-muted-foreground break-words">{field.label}</span>
+      <div className="w-full min-w-0">{renderPipelineFieldInput(field, deal, onUpdate)}</div>
     </div>
   );
 }
+
 
 const parseISODate = (value?: string | null): Date | undefined => {
   if (!value) return undefined;

@@ -128,9 +128,10 @@ export function DealClientContactField({
   };
 
   return (
-    <div className="flex flex-col gap-1 min-w-0">
+    <div className="flex w-full min-w-0 flex-col gap-1">
       <span className="text-muted-foreground text-xs font-medium break-words">Client Contacts</span>
-      <div className="min-h-8 w-full min-w-0 rounded-md border border-input bg-background px-2 py-1 flex flex-wrap items-center gap-1.5">
+      <div className="flex min-h-8 w-full min-w-0 flex-col gap-1.5 rounded-md border border-input bg-background px-2 py-1.5">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5">
         {chips.length === 0 && (
           <span className="text-xs text-muted-foreground italic mr-1" data-testid="deal-client-contact-value">
             {EMPTY_CLIENT_CONTACT_LABEL}
@@ -142,8 +143,9 @@ export function DealClientContactField({
               <TooltipTrigger asChild>
                 <Badge
                   variant="secondary"
-                  className="h-6 pl-2 pr-1 gap-1 text-xs font-normal max-w-full"
+                  className="h-6 pl-2 pr-1 gap-1 text-xs font-normal max-w-full min-w-0"
                 >
+
                   {chip.id && chips.length > 1 ? (
                     <button
                       type="button"
@@ -178,7 +180,7 @@ export function DealClientContactField({
                     <DealContactQuickView contactId={chip.id} contactName={chip.name} dealId={deal.id}>
                       <button
                         type="button"
-                        className="truncate max-w-[180px] hover:underline"
+                        className="truncate max-w-full hover:underline"
                         data-testid="deal-client-contact-value"
                         onClick={(e) => e.stopPropagation()}
                       >
@@ -186,7 +188,7 @@ export function DealClientContactField({
                       </button>
                     </DealContactQuickView>
                   ) : (
-                    <span className="truncate max-w-[180px]" data-testid="deal-client-contact-value">
+                    <span className="truncate max-w-full" data-testid="deal-client-contact-value">
                       {chip.name}
                     </span>
                   )}
@@ -232,7 +234,10 @@ export function DealClientContactField({
             </Tooltip>
           ))}
         </TooltipProvider>
+        </div>
+        <div className="flex w-full min-w-0 flex-nowrap items-center justify-between gap-1.5">
         <Popover open={contactPopoverOpen} onOpenChange={onContactPopoverOpenChange}>
+
           <PopoverTrigger asChild>
             <Button
               variant="ghost"
@@ -277,6 +282,7 @@ export function DealClientContactField({
           label="Draft email to client contact"
           className="shrink-0"
         />
+        </div>
       </div>
     </div>
   );
