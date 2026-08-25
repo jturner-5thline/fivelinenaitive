@@ -517,6 +517,8 @@ export function useDealReferralSources(filters?: {
         referredBy: raw,
         contactId,
         crmCompanyId,
+        ownerUserId: contactId ? (contactById.get(contactId)?.owner_user_id ?? null) : null,
+
         dealCount: groupDeals.length,
         totalVolume,
         latestDeal: {
