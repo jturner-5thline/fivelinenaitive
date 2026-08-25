@@ -234,7 +234,10 @@ export function DealClientContactField({
             </Tooltip>
           ))}
         </TooltipProvider>
+        </div>
+        <div className="flex w-full min-w-0 flex-nowrap items-center justify-between gap-1.5">
         <Popover open={contactPopoverOpen} onOpenChange={onContactPopoverOpenChange}>
+
           <PopoverTrigger asChild>
             <Button
               variant="ghost"
