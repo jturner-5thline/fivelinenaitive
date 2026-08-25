@@ -1737,7 +1737,6 @@ function SourcedViaDrilldownDialog({
                   <td className="py-2 pr-3" style={{ color: C.textPrimary }}>{r.company}</td>
                   <td className="py-2 pr-3" style={{ color: C.textMuted }}>{r.referralName}</td>
                   <td className="py-2 pr-3" style={{ color: C.textMuted }}>{r.channel}</td>
-                  <td className="py-2 pr-3" style={{ color: C.textMuted }}>{r.type}</td>
                   <td className="py-2 pr-3" style={{ color: C.textMuted }}>{r.partner}</td>
                   <td className="py-2 pr-3 whitespace-nowrap" style={{ color: C.textFaint }}>
                     {new Date(r.created).toLocaleDateString()}
@@ -1746,7 +1745,7 @@ function SourcedViaDrilldownDialog({
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center" style={{ color: C.textMuted }}>
+                  <td colSpan={5} className="py-6 text-center" style={{ color: C.textMuted }}>
                     No deals to display.
                   </td>
                 </tr>
