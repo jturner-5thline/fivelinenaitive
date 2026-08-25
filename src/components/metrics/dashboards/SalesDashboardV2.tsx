@@ -1594,7 +1594,7 @@ function SourcedViaDrilldownDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('contacts')
-        .select('id, first_name, last_name, email, company')
+        .select('id, first_name, last_name, email, hs_company_name')
         .in('id', contactIds);
       if (error) throw error;
       return data ?? [];
@@ -1619,7 +1619,7 @@ function SourcedViaDrilldownDialog({
     const m = new Map<string, { name: string; company: string | null }>();
     for (const c of refContacts ?? []) {
       const name = [c.first_name, c.last_name].filter(Boolean).join(' ').trim() || c.email || '';
-      if (name) m.set(c.id, { name, company: (c as any).company ?? null });
+      if (name) m.set(c.id, { name, company: c.hs_company_name ?? null });
     }
     return m;
   }, [refContacts]);
