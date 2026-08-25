@@ -4596,56 +4596,75 @@ export default function DealDetail() {
                                 {isDealInfoFieldVisible('narrative') && renderDealInfoField('narrative')}
 
                                 {isFinServDeal ? (
-                                  // FinServ-only: render shared + pipeline fields
-                                  // in a single dense 2-column grid so rows pack
-                                  // tightly with no orphan gaps between shared
-                                  // fields and the FinServ-specific block.
-                                  <>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                                  // FinServ-only strict form architecture:
+                                  //   panel  = vertical flex column
+                                  //   section= stacked block with a heading
+                                  //   field  = label above a full-width control
+                                  // No viewport-breakpoint grids here — the panel
+                                  // is portaled into a narrow (~210px) rail, so
+                                  // md: columns would wrap unpredictably.
+                                  <div className="flex w-full min-w-0 flex-col gap-4 overflow-x-hidden [&_*]:min-w-0">
+                                    <section className="flex w-full min-w-0 flex-col gap-2.5">
+                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">Ownership</h4>
                                       {renderDealInfoField('dealOwner')}
-                                      <PipelineFieldRow deal={deal} fieldKey="opportunityType" onUpdate={(f, v) => updateDeal(f as any, v)} />
                                       {renderDealInfoField('companyUrl')}
-                                      <PipelineFieldRow deal={deal} fieldKey="feeType" onUpdate={(f, v) => updateDeal(f as any, v)} />
                                       {renderDealInfoField('businessModel')}
-                                      {renderDealInfoField('sourcedVia')}
+                                    </section>
+
+                                    <section className="flex w-full min-w-0 flex-col gap-2.5">
+                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">Contacts &amp; Source</h4>
                                       {renderDealInfoField('clientContact')}
+                                      {renderDealInfoField('sourcedVia')}
                                       {renderDealInfoField('referralSource')}
-                                      <div className={`min-w-0 ${(deal.mrrMode ?? 'manual') === 'calculated' ? 'md:col-span-2' : ''}`}>
-                                        <FinServMrrField
-                                          dealId={deal.id}
-                                          mrr={deal.mrr}
-                                          mode={deal.mrrMode ?? 'manual'}
-                                          onMrrCommit={(v) => updateDeal('mrr', v)}
-                                          onModeChange={(m) => updateDeal('mrrMode' as any, m)}
-                                          onCalculatedTotal={(t) =>
-                                            setDeal((prev) =>
-                                              prev && (prev.mrrMode ?? 'manual') === 'calculated'
-                                                ? { ...prev, mrr: t }
-                                                : prev,
-                                            )
-                                          }
-                                        />
-                                      </div>
-                                      <div className="flex flex-col gap-1 md:grid md:grid-cols-[minmax(5rem,6.5rem)_minmax(0,1fr)] md:items-center md:gap-2 min-w-0">
-                                        <span className="text-muted-foreground text-sm break-words">One-Time Revenue</span>
+                                    </section>
+
+                                    <section className="flex w-full min-w-0 flex-col gap-2.5">
+                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">Commercial</h4>
+                                      <PipelineFieldRow stacked deal={deal} fieldKey="opportunityType" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                      <PipelineFieldRow stacked deal={deal} fieldKey="feeType" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                      <FinServMrrField
+                                        dealId={deal.id}
+                                        mrr={deal.mrr}
+                                        mode={deal.mrrMode ?? 'manual'}
+                                        onMrrCommit={(v) => updateDeal('mrr', v)}
+                                        onModeChange={(m) => updateDeal('mrrMode' as any, m)}
+                                        onCalculatedTotal={(t) =>
+                                          setDeal((prev) =>
+                                            prev && (prev.mrrMode ?? 'manual') === 'calculated'
+                                              ? { ...prev, mrr: t }
+                                              : prev,
+                                          )
+                                        }
+                                      />
+                                      <div className="flex w-full min-w-0 flex-col gap-1">
+                                        <span className="text-xs font-medium text-muted-foreground break-words">One-Time Revenue</span>
                                         <div
-                                          className="min-w-0 w-full h-8 px-2 text-sm rounded-md border border-input bg-muted/40 text-foreground flex items-center justify-between"
+                                          className="flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-muted/40 px-2 text-sm text-foreground"
                                           title="Calculated from Projects"
                                         >
-                                          <span className="tabular-nums">
+                                          <span className="tabular-nums truncate">
                                             {(deal.oneTimeRevenue ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
                                           </span>
-                                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground ml-2">from projects</span>
+                                          <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">from projects</span>
                                         </div>
                                       </div>
-                                      <PipelineFieldRow deal={deal} fieldKey="contractStartDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
-                                      <PipelineFieldRow deal={deal} fieldKey="projectedCloseDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
-                                      <PipelineFieldRow deal={deal} fieldKey="contractEndDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
-                                      <PipelineFieldRow deal={deal} fieldKey="onHold" onUpdate={(f, v) => updateDeal(f as any, v)} />
-                                    </div>
-                                    <PipelineFullFieldRow deal={deal} fieldKey="servicesOffered" onUpdate={(f, v) => updateDeal(f as any, v)} />
-                                  </>
+                                    </section>
+
+                                    <section className="flex w-full min-w-0 flex-col gap-2.5">
+                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">Dates &amp; Status</h4>
+                                      <PipelineFieldRow stacked deal={deal} fieldKey="contractStartDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                      <PipelineFieldRow stacked deal={deal} fieldKey="projectedCloseDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                      <PipelineFieldRow stacked deal={deal} fieldKey="contractEndDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                      <PipelineFieldRow stacked deal={deal} fieldKey="onHold" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                    </section>
+
+                                    <section className="flex w-full min-w-0 flex-col gap-2.5">
+                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">Services</h4>
+                                      <PipelineFullFieldRow deal={deal} fieldKey="servicesOffered" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                    </section>
+                                  </div>
                                 ) : (
+
                                   <>
                                      {(leftFields.length > 0 || rightFields.length > 0) && (
                                        <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-6", isRailed && "md:grid-cols-1 gap-3")}>
