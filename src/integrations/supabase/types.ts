@@ -23306,6 +23306,44 @@ export type Database = {
         }
         Relationships: []
       }
+      referral_meeting_exclusions: {
+        Row: {
+          company_id: string
+          created_at: string
+          excluded_by: string | null
+          id: string
+          meeting_id: string
+          reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          excluded_by?: string | null
+          id?: string
+          meeting_id: string
+          reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          excluded_by?: string | null
+          id?: string
+          meeting_id?: string
+          reason?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_meeting_exclusions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       referral_sources: {
         Row: {
           channel: string | null

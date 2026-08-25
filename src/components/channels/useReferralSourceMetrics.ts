@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
@@ -114,6 +115,7 @@ function titleMatchesEntity(title: string, entityName: string) {
  */
 export function useReferralSourceMetrics() {
   const { company } = useCompany();
+  const queryClient = useQueryClient();
   const dateCtx = useOptionalSalesBdDateRange();
   const start = dateCtx?.start ?? null;
   const end = dateCtx?.end ?? null;
@@ -293,6 +295,51 @@ export function useReferralSourceMetrics() {
     },
   });
 
+  // ---- Manual removals (user "removes" a call from the count) --------------
+  const exclusionsKey = ['referral_meeting_exclusions', company?.id] as const;
+  const { data: excludedMeetingIds = new Set<string>() } = useQuery({
+    queryKey: exclusionsKey,
+    enabled: !!company?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('referral_meeting_exclusions')
+        .select('meeting_id')
+        .eq('company_id', company!.id);
+      if (error) throw error;
+      return new Set<string>((data || []).map((r: any) => r.meeting_id as string));
+    },
+  });
+
+  const removeMeeting = useMutation({
+    mutationFn: async (meetingId: string) => {
+      const { data: auth } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from('referral_meeting_exclusions')
+        .upsert(
+          { company_id: company!.id, meeting_id: meetingId, excluded_by: auth?.user?.id ?? null },
+          { onConflict: 'company_id,meeting_id' },
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: exclusionsKey }),
+    onError: (e: any) => toast.error(e?.message || 'Could not remove that call'),
+  });
+
+  const restoreMeeting = useMutation({
+    mutationFn: async (meetingId: string) => {
+      const { error } = await supabase
+        .from('referral_meeting_exclusions')
+        .delete()
+        .eq('company_id', company!.id)
+        .eq('meeting_id', meetingId);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: exclusionsKey }),
+    onError: (e: any) => toast.error(e?.message || 'Could not restore that call'),
+  });
+
+
+
 
   // ---- New referral sources added in the timeframe -------------------------
   const { data: newSources = [], isLoading: newSourcesLoading } = useQuery({
@@ -388,16 +435,34 @@ export function useReferralSourceMetrics() {
     return [...map.values()].filter((r) => r.deals > 0);
   }, [sources, feeByDeal]);
 
+  const visibleMeetings = useMemo(
+    () => meetings.filter((m) => !excludedMeetingIds.has(m.id)),
+    [meetings, excludedMeetingIds],
+  );
+
   const meetingRows = useMemo<DrillRow[]>(
     () =>
-      [...meetings]
+      [...visibleMeetings]
         .sort((a, b) => (b.started_at || '').localeCompare(a.started_at || ''))
         .map((m) => ({
           id: m.id,
           primary: m.title || 'Untitled meeting',
           secondary: m.started_at ? new Date(m.started_at).toLocaleDateString() : undefined,
         })),
-    [meetings],
+    [visibleMeetings],
+  );
+
+  const removedMeetingRows = useMemo<DrillRow[]>(
+    () =>
+      meetings
+        .filter((m) => excludedMeetingIds.has(m.id))
+        .sort((a, b) => (b.started_at || '').localeCompare(a.started_at || ''))
+        .map((m) => ({
+          id: m.id,
+          primary: m.title || 'Untitled meeting',
+          secondary: m.started_at ? new Date(m.started_at).toLocaleDateString() : undefined,
+        })),
+    [meetings, excludedMeetingIds],
   );
 
   const newSourceRows = useMemo<DrillRow[]>(
@@ -412,8 +477,13 @@ export function useReferralSourceMetrics() {
 
   return {
     isLoading: sourcesLoading || meetingsLoading || newSourcesLoading,
-    meetingCount: meetings.length,
+    meetingCount: visibleMeetings.length,
     meetingRows,
+    /** Calls a user manually removed from the meetings count. */
+    removedMeetingRows,
+    removeMeeting: (meetingId: string) => removeMeeting.mutate(meetingId),
+    restoreMeeting: (meetingId: string) => restoreMeeting.mutate(meetingId),
+    isUpdatingMeetingExclusions: removeMeeting.isPending || restoreMeeting.isPending,
     newSourceCount: newSources.length,
     newSourceRows,
     sourceLeaderboard,
@@ -422,3 +492,4 @@ export function useReferralSourceMetrics() {
     hasFeeData: sourceLeaderboard.some((r) => r.fees > 0),
   };
 }
+
