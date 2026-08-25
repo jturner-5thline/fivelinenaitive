@@ -324,6 +324,11 @@ export function LenderAnalyticsDialog({
 }: Props) {
   const [dateRange, setDateRange] = useState<DateRange>('ytd');
   const [openCalls, setOpenCalls] = useState<'existing' | 'new' | null>(null);
+  const { data: lenderCalls, isLoading: lenderCallsLoading } = useLenderCallCounts(
+    rangeStart(dateRange),
+    rangeEnd(dateRange),
+    open || !!embedded,
+  );
   const [dealLenders, setDealLenders] = useState<DealLenderRow[]>([]);
   const [deals, setDeals] = useState<DealRow[]>([]);
   const [stageConfigs, setStageConfigs] = useState<StageConfigRow[]>([]);
