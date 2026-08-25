@@ -1065,6 +1065,24 @@ export function LenderAnalyticsDialog({
 
           {!isEmpty && (
             <>
+              {/* Calls with funding sources, split by active status */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <IntelKpi
+                  label="Calls w/ Existing Lenders"
+                  value={lenderCalls?.existing.length ?? 0}
+                  hint={`calendar events with an active funding source · ${dateRangeLabel(dateRange)}`}
+                  loading={lenderCallsLoading}
+                  onClick={() => setOpenCalls('existing')}
+                />
+                <IntelKpi
+                  label="Calls w/ New Lenders"
+                  value={lenderCalls?.fresh.length ?? 0}
+                  hint={`calendar events with a non-active funding source · ${dateRangeLabel(dateRange)}`}
+                  loading={lenderCallsLoading}
+                  onClick={() => setOpenCalls('new')}
+                />
+              </div>
+
               {/* Row 2 — narrow left volume list + right stacked (conversion chart + pass reasons) */}
               <div className="grid grid-cols-1 lg:grid-cols-[minmax(240px,300px)_1fr] gap-3">
                 <IntelPanel title="Deal Volume by Lender">
