@@ -461,20 +461,6 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
               <EditableField label="Description" type="textarea" value={company.description} placeholder="Add a company description…" onSave={(v) => handleQuickUpdate('description', v)} />
               <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase mb-1">Lifecycle Stage</p>
-                  <Select value={company.lifecycle_stage} onValueChange={v => handleQuickUpdate('lifecycle_stage', v)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>{CRM_COMPANY_LIFECYCLES.map(l => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <p className="text-[10px] text-muted-foreground uppercase mb-1">Status</p>
-                  <Select value={company.status} onValueChange={v => handleQuickUpdate('status', v)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>{CRM_COMPANY_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div>
                   <p className="text-[10px] text-muted-foreground uppercase mb-1">Owner</p>
                   <Select
                     value={company.owner_user_id || 'unassigned'}
