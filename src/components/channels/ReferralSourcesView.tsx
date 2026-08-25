@@ -460,7 +460,6 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
                   <SortHeaderCell field="dealCount" sortField={sortField} sortDir={sortDir} onSort={handleSort} align="right">Deals</SortHeaderCell>
                   <SortHeaderCell field="totalVolume" sortField={sortField} sortDir={sortDir} onSort={handleSort} align="right">Volume</SortHeaderCell>
                   <SortHeaderCell field="latestDeal" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Latest Deal</SortHeaderCell>
-                  <SortHeaderCell field="stage" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Stage</SortHeaderCell>
                   <th className="text-right p-3 text-muted-foreground font-medium w-10"></th>
                 </tr>
               </thead>
@@ -547,11 +546,6 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
                             </button>
                           ) : entry.latestDeal.company}
                         </td>
-                        <td className="p-3">
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-muted-foreground">
-                            {entry.latestDeal.stage}
-                          </span>
-                        </td>
                         <td className="p-3 text-right">
                           <Button
                             variant="ghost"
@@ -566,7 +560,7 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
                       </tr>
                       {isExpanded && (
                         <tr>
-                          <td colSpan={10} className="p-0">
+                          <td colSpan={9} className="p-0">
                             <ExpandedDeals entry={entry} />
                           </td>
                         </tr>
