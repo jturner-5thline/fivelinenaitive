@@ -2082,7 +2082,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
   const [activeTab, setActiveTab] = useState<string>(resolveInitialTab());
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
   const [, startTabTransition] = useTransition();
-  const [operationalView, setOperationalView] = useState<'operations' | 'mytasks'>('operations');
+  const [operationalView, setOperationalView] = useState<'operations' | 'mytasks'>('mytasks');
 
   // Render tab bodies immediately on open — the shell + sidebar + header
   // and the active tab's first paint must all happen on the same frame
@@ -2465,18 +2465,6 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                         <div className="flex items-center gap-1 p-1 mb-3 rounded-lg bg-white/[0.03] glass-border-softer self-start">
                           <button
                             type="button"
-                            onClick={() => setOperationalView('operations')}
-                            className={cn(
-                              'px-3 py-1.5 rounded-md text-xs font-medium transition-all',
-                              operationalView === 'operations'
-                                ? 'bg-white/[0.08] text-foreground shadow-sm'
-                                : 'text-muted-foreground hover:text-foreground',
-                            )}
-                          >
-                            Operations
-                          </button>
-                          <button
-                            type="button"
                             onClick={() => setOperationalView('mytasks')}
                             className={cn(
                               'px-3 py-1.5 rounded-md text-xs font-medium transition-all',
@@ -2486,6 +2474,18 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                             )}
                           >
                             My Tasks
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setOperationalView('operations')}
+                            className={cn(
+                              'px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+                              operationalView === 'operations'
+                                ? 'bg-white/[0.08] text-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground',
+                            )}
+                          >
+                            Operations
                           </button>
                         </div>
                         <div className="flex-1 min-h-0">
