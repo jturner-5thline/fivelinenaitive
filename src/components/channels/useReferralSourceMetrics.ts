@@ -31,6 +31,42 @@ interface MeetingRow {
   matched_crm_company_id: string | null;
 }
 
+const FUNDING_SOURCE_NAME_SUFFIXES = new Set([
+  'capital',
+  'credit',
+  'finance',
+  'financial',
+  'fund',
+  'funding',
+  'global',
+  'group',
+  'holdings',
+  'management',
+  'partners',
+]);
+
+function normalizeEntityName(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function fundingSourceTitleAliases(value: string) {
+  const normalized = normalizeEntityName(value);
+  if (!normalized) return [];
+
+  const words = normalized.split(' ');
+  while (words.length > 1 && FUNDING_SOURCE_NAME_SUFFIXES.has(words[words.length - 1])) {
+    words.pop();
+  }
+
+  const shortened = words.join(' ');
+  return Array.from(new Set([normalized, shortened])).filter((name) => name.length >= 3);
+}
+
 /**
  * Real data behind the Sales & BD referral widgets. Everything is scoped to the
  * Sales & BD header timeframe (via SalesBdDateRangeContext) and the active
@@ -69,7 +105,7 @@ export function useReferralSourceMetrics() {
   //    contact on a deal in the Active or In Development pipelines)
   const { data: meetings = [], isLoading: meetingsLoading } = useQuery({
     queryKey: [
-      'referral_source_meetings_v4',
+      'referral_source_meetings_v5',
       company?.id,
       start?.toISOString() ?? null,
       end?.toISOString() ?? null,
@@ -174,8 +210,7 @@ export function useReferralSourceMetrics() {
           );
           if (dom && !INTERNAL_DOMAINS.has(dom)) lenderDomains.add(dom);
         }
-        const nm = String(l.name || '').trim().toLowerCase();
-        if (nm.length >= 3) lenderNames.push(nm);
+        lenderNames.push(...fundingSourceTitleAliases(String(l.name || '')));
       }
       const { data: lenderPeople } = await supabase
         .from('lender_contacts')
@@ -197,7 +232,7 @@ export function useReferralSourceMetrics() {
       }
 
       return candidates.filter((m) => {
-        const title = (m.title || '').toLowerCase();
+        const title = normalizeEntityName(m.title || '');
         // Funding-source name in the title.
         if (title && lenderNames.some((n) => title.includes(n))) return false;
         // Meeting matched directly to a funding-source contact.
