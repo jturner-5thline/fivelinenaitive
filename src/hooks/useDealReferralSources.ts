@@ -149,11 +149,13 @@ export function useDealReferralSources(filters?: {
   channelFilter?: string[];
   companyFilter?: string[];
   pipelineFilter?: 'all' | 'active' | 'in-development';
+  /** Use all deal history. Intended for current pipeline-stage classification. */
+  ignoreDateRange?: boolean;
 }) {
   const { company } = useCompany();
   const dateCtx = useOptionalSalesBdDateRange();
-  const rangeStart = dateCtx?.start ?? null;
-  const rangeEnd = dateCtx?.end ?? null;
+  const rangeStart = filters?.ignoreDateRange ? null : dateCtx?.start ?? null;
+  const rangeEnd = filters?.ignoreDateRange ? null : dateCtx?.end ?? null;
   const granularity = dateCtx?.range.granularity ?? null;
 
   const { data: pipelines = [] } = useQuery({
