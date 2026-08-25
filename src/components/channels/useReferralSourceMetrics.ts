@@ -565,12 +565,12 @@ export function useReferralSourceMetrics() {
 
   const newSourceRows = useMemo<DrillRow[]>(
     () =>
-      newSources.map((s) => ({
+      nurturingNewSources.map((s) => ({
         id: s.id,
         primary: s.name || s.contact_name || 'Untitled source',
         secondary: [s.company, s.channel].filter(Boolean).join(' · ') || undefined,
       })),
-    [newSources],
+    [nurturingNewSources],
   );
 
   return {
@@ -587,7 +587,7 @@ export function useReferralSourceMetrics() {
     meetingOwnerFilter,
     setMeetingOwnerFilter,
 
-    newSourceCount: newSources.length,
+    newSourceCount: nurturingNewSources.length,
     newSourceRows,
     sourceLeaderboard,
     channelLeaderboard,
