@@ -280,7 +280,10 @@ export function useDealReferralSources(filters?: {
   );
 
   const { data: linkedContacts = [] } = useQuery({
-    queryKey: ['deal_referral_linked_contacts', company?.id, linkedContactIds],
+    // Keep the projection versioned: this query originally omitted
+    // owner_user_id, so an existing React Query cache could keep every source
+    // looking unassigned after the owner filter shipped.
+    queryKey: ['deal_referral_linked_contacts', 'with-owner-v1', company?.id, linkedContactIds],
     enabled: !!company?.id && linkedContactIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
