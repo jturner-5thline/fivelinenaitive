@@ -67,6 +67,46 @@ function fundingSourceTitleAliases(value: string) {
   return Array.from(new Set([normalized, shortened])).filter((name) => name.length >= 3);
 }
 
+function isNearToken(left: string, right: string) {
+  if (left === right) return true;
+  if (left.length < 5 || right.length < 5 || Math.abs(left.length - right.length) > 1) return false;
+
+  let edits = 0;
+  let leftIndex = 0;
+  let rightIndex = 0;
+  while (leftIndex < left.length && rightIndex < right.length) {
+    if (left[leftIndex] === right[rightIndex]) {
+      leftIndex += 1;
+      rightIndex += 1;
+      continue;
+    }
+    edits += 1;
+    if (edits > 1) return false;
+    if (left.length > right.length) leftIndex += 1;
+    else if (right.length > left.length) rightIndex += 1;
+    else {
+      leftIndex += 1;
+      rightIndex += 1;
+    }
+  }
+  return edits + Number(leftIndex < left.length || rightIndex < right.length) <= 1;
+}
+
+function titleMatchesEntity(title: string, entityName: string) {
+  if (!title || !entityName) return false;
+  if (title.includes(entityName)) return true;
+
+  const titleTokens = title.split(' ').filter(Boolean);
+  const entityTokens = entityName.split(' ').filter(Boolean);
+  if (entityTokens.length === 0) return false;
+
+  // Match independently of word order and tolerate a one-character typo in
+  // meaningful words (for example, "Bar Back Project" vs "Back Bar Project").
+  return entityTokens.every((entityToken) =>
+    titleTokens.some((titleToken) => isNearToken(entityToken, titleToken)),
+  );
+}
+
 /**
  * Real data behind the Sales & BD referral widgets. Everything is scoped to the
  * Sales & BD header timeframe (via SalesBdDateRangeContext) and the active
@@ -105,7 +145,7 @@ export function useReferralSourceMetrics() {
   //    contact on a deal in the Active or In Development pipelines)
   const { data: meetings = [], isLoading: meetingsLoading } = useQuery({
     queryKey: [
-      'referral_source_meetings_v5',
+      'referral_source_meetings_v6',
       company?.id,
       start?.toISOString() ?? null,
       end?.toISOString() ?? null,
@@ -140,15 +180,15 @@ export function useReferralSourceMetrics() {
       const dealNames = Array.from(
         new Set(
           (dealNameRows || [])
-            .map((d: any) => String(d.company || '').trim().toLowerCase())
+            .map((d: any) => normalizeEntityName(String(d.company || '')))
             .filter((n) => n.length >= 4 && !isExcludedDealName(n)),
         ),
       );
       if (dealNames.length > 0) {
         candidates = candidates.filter((m) => {
-          const t = (m.title || '').toLowerCase();
+          const t = normalizeEntityName(m.title || '');
           if (!t) return true;
-          return !dealNames.some((n) => t.includes(n));
+          return !dealNames.some((n) => titleMatchesEntity(t, n));
         });
       }
       if (candidates.length === 0) return [];
@@ -196,7 +236,7 @@ export function useReferralSourceMetrics() {
       // 4) Funding sources (lenders): exclude by attendee domain, matched contact,
       //    or a funding-source name appearing in the call title.
       const lenderDomains = new Set<string>();
-      const lenderNames: string[] = [];
+      const lenderNames = new Set<string>();
       const lenderContactIds = new Set<string>();
       const { data: lenders } = await supabase
         .from('master_lenders')
@@ -210,7 +250,9 @@ export function useReferralSourceMetrics() {
           );
           if (dom && !INTERNAL_DOMAINS.has(dom)) lenderDomains.add(dom);
         }
-        lenderNames.push(...fundingSourceTitleAliases(String(l.name || '')));
+        for (const alias of fundingSourceTitleAliases(String(l.name || ''))) {
+          lenderNames.add(alias);
+        }
       }
       const { data: lenderPeople } = await supabase
         .from('lender_contacts')
@@ -234,7 +276,7 @@ export function useReferralSourceMetrics() {
       return candidates.filter((m) => {
         const title = normalizeEntityName(m.title || '');
         // Funding-source name in the title.
-        if (title && lenderNames.some((n) => title.includes(n))) return false;
+        if (title && [...lenderNames].some((n) => titleMatchesEntity(title, n))) return false;
         // Meeting matched directly to a funding-source contact.
         if (m.matched_contact_id && lenderContactIds.has(m.matched_contact_id)) return false;
         const doms = attendees.get(m.id) || [];
