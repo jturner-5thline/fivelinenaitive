@@ -67,7 +67,7 @@ export function TodayTab({
           ? { key: 'decisions' as const, label: 'Decisions', icon: Inbox, count: decisionCount }
           : null,
         { key: 'wrapups' as const, label: 'Wrap-ups', icon: Sunset, count: eodCount },
-        { key: 'tasks' as const, label: "Today's Tasks", icon: CheckSquare, count: taskCounts.total },
+
       ].filter(Boolean) as Array<{
         key: TodaySection;
         label: string;
