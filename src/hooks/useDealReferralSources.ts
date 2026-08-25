@@ -247,6 +247,23 @@ export function useDealReferralSources(filters?: {
     },
   });
 
+  // Manual overrides saved from the "Edit Referral Source" dialog. These win
+  // over channel_entries / sourced_via inference for both channel and company.
+  const { data: referralSourceRecords = [] } = useQuery({
+    queryKey: ['referral_source_records', company?.id],
+    enabled: !!company?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('referral_sources')
+        .select('id, name, company, channel, company_id')
+        .or(`company_id.eq.${company!.id},company_id.is.null`);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
+
+
   // Linked contact records for the referral sources on these deals. Referral
   // sources are STRICTLY real CRM records — a deal only counts as referred
   // when `referred_by_contact_id` / `referred_by_crm_company_id` resolves.
