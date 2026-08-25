@@ -6,6 +6,7 @@ import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext'
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import { channelLabel } from './channelOptions';
+import { INTERNAL_DOMAINS, domainOf } from '@/lib/internalDomains';
 
 export interface DrillRow {
   id: string;
