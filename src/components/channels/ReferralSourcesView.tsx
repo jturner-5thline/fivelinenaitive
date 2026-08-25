@@ -17,6 +17,10 @@ import { ReferralSourceEditDialog } from './ReferralSourceEditDialog';
 import { ReferralEntityQuickView, type QuickViewTarget } from './ReferralEntityQuickView';
 import { Input } from '@/components/ui/input';
 import { useTriStateSort } from '@/hooks/useTriStateSort';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
+
+const UNASSIGNED_OWNER = '__unassigned__';
+
 
 const CHANNEL_OPTIONS = [
   { value: 'Banks', label: 'Banks' },
@@ -215,10 +219,36 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
   };
 
   const [companyFilter, setCompanyFilter] = useState<string[]>([]);
+  const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
+
+  const teamMembers = useTeamMembers();
+  const ownerNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of teamMembers) m.set(t.id, t.display_name);
+    return m;
+  }, [teamMembers]);
+
+  const ownerOptions = useMemo(() => {
+    const ids = new Set<string>();
+    let hasUnassigned = false;
+    for (const r of referralSources) {
+      if (r.ownerUserId) ids.add(r.ownerUserId);
+      else hasUnassigned = true;
+    }
+    const opts = Array.from(ids)
+      .map(id => ({ value: id, label: ownerNameById.get(id) || 'Unknown user' }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    if (hasUnassigned) opts.push({ value: UNASSIGNED_OWNER, label: 'Unassigned' });
+    return opts;
+  }, [referralSources, ownerNameById]);
+
   const filteredSources = useMemo(() => {
     let list = referralSources;
     if (companyFilter.length) {
       list = list.filter(r => r.companyName && companyFilter.includes(r.companyName));
+    }
+    if (ownerFilter.length) {
+      list = list.filter(r => ownerFilter.includes(r.ownerUserId || UNASSIGNED_OWNER));
     }
     if (tierFilter.length > 0) {
       list = list.filter(r => {
@@ -237,7 +267,8 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
       );
     }
     return list;
-  }, [referralSources, companyFilter, tierFilter, tierLookup, search]);
+  }, [referralSources, companyFilter, ownerFilter, tierFilter, tierLookup, search]);
+
 
   const sortedSources = useMemo(() => {
     if (!sortField || !sortDir) return filteredSources;
