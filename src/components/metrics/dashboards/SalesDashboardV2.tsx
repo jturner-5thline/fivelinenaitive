@@ -1726,7 +1726,7 @@ function SourcedViaDrilldownDialog({
                 <th className="py-2 pr-3 font-medium">Deal</th>
                 <th className="py-2 pr-3 font-medium">Referral Source</th>
                 <th className="py-2 pr-3 font-medium">Channel</th>
-                <th className="py-2 pr-3 font-medium">Type</th>
+                
                 <th className="py-2 pr-3 font-medium">Partner</th>
                 <th className="py-2 pr-3 font-medium whitespace-nowrap">Created</th>
               </tr>
