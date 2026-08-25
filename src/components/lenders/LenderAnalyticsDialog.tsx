@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { CalendarRange, TrendingUp, Download, Search, Target, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { isExcludedDealName } from '@/utils/excludedDeals';
+import { useLenderCallCounts } from '@/hooks/useLenderCallCounts';
 import type { MasterLender } from '@/hooks/useMasterLenders';
 import {
   useNaitivePipelineAccess,
