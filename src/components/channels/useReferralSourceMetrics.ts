@@ -115,6 +115,7 @@ function titleMatchesEntity(title: string, entityName: string) {
  */
 export function useReferralSourceMetrics() {
   const { company } = useCompany();
+  const queryClient = useQueryClient();
   const dateCtx = useOptionalSalesBdDateRange();
   const start = dateCtx?.start ?? null;
   const end = dateCtx?.end ?? null;
