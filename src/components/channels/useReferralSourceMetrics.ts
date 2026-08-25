@@ -565,13 +565,32 @@ export function useReferralSourceMetrics() {
 
   const newSourceRows = useMemo<DrillRow[]>(
     () =>
-      nurturingNewSources.map((s) => ({
-        id: s.id,
-        primary: s.name || s.contact_name || 'Untitled source',
-        secondary: [s.company, s.channel].filter(Boolean).join(' · ') || undefined,
-      })),
+      [...nurturingNewSources]
+        .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+        .map((s) => {
+          const added = s.created_at
+            ? new Date(s.created_at).toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })
+            : null;
+          return {
+            id: s.id,
+            primary: s.name || s.contact_name || 'Untitled source',
+            secondary:
+              [
+                added ? `Added to Nurturing ${added}` : null,
+                s.company,
+                s.channel ? channelLabel(s.channel) : null,
+              ]
+                .filter(Boolean)
+                .join(' · ') || undefined,
+          };
+        }),
     [nurturingNewSources],
   );
+
 
   return {
     isLoading: sourcesLoading || meetingsLoading || newSourcesLoading,
