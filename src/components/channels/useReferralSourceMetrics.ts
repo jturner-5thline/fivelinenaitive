@@ -560,6 +560,11 @@ export function useReferralSourceMetrics() {
     removeMeeting: (meetingId: string) => removeMeeting.mutate(meetingId),
     restoreMeeting: (meetingId: string) => restoreMeeting.mutate(meetingId),
     isUpdatingMeetingExclusions: removeMeeting.isPending || restoreMeeting.isPending,
+    /** Internal users (host/attendees) available to filter the meetings count by. */
+    meetingOwnerOptions,
+    meetingOwnerFilter,
+    setMeetingOwnerFilter,
+
     newSourceCount: newSources.length,
     newSourceRows,
     sourceLeaderboard,
