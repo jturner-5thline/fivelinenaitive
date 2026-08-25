@@ -180,7 +180,7 @@ export function DealClientContactField({
                     <DealContactQuickView contactId={chip.id} contactName={chip.name} dealId={deal.id}>
                       <button
                         type="button"
-                        className="truncate max-w-[180px] hover:underline"
+                        className="truncate max-w-full hover:underline"
                         data-testid="deal-client-contact-value"
                         onClick={(e) => e.stopPropagation()}
                       >
@@ -188,7 +188,7 @@ export function DealClientContactField({
                       </button>
                     </DealContactQuickView>
                   ) : (
-                    <span className="truncate max-w-[180px]" data-testid="deal-client-contact-value">
+                    <span className="truncate max-w-full" data-testid="deal-client-contact-value">
                       {chip.name}
                     </span>
                   )}
