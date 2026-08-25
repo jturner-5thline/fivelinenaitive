@@ -108,14 +108,41 @@ export function ReferralSourcePipelineWidget() {
   const [addOpen, setAddOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
+
+  const teamMembers = useTeamMembers();
+  const ownerNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of teamMembers) m.set(t.id, t.display_name);
+    return m;
+  }, [teamMembers]);
+
+  const ownerOptions = useMemo(() => {
+    const ids = new Set<string>();
+    let hasUnassigned = false;
+    for (const r of referralSources) {
+      if (r.ownerUserId) ids.add(r.ownerUserId);
+      else hasUnassigned = true;
+    }
+    if (manualSources.length > 0) hasUnassigned = true;
+    const opts = Array.from(ids)
+      .map(id => ({ value: id, label: ownerNameById.get(id) || 'Unknown user' }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    if (hasUnassigned) opts.push({ value: UNASSIGNED_OWNER, label: 'Unassigned' });
+    return opts;
+  }, [referralSources, manualSources, ownerNameById]);
 
   const columns = useMemo(() => {
     const byStage = new Map<StageKey, PipelineCard[]>(STAGES.map(s => [s.key, [] as PipelineCard[]]));
     const seen = new Set<string>();
+    const ownerAllows = (ownerId: string | null) =>
+      ownerFilter.length === 0 || ownerFilter.includes(ownerId || UNASSIGNED_OWNER);
 
     for (const r of referralSources) {
       const key: StageKey = r.tier === null ? 'nurturing' : r.tier;
       seen.add(normalize(r.referredBy));
+      if (!ownerAllows(r.ownerUserId ?? null)) continue;
+
       byStage.get(key)!.push({
         id: `deal:${r.contactId || r.crmCompanyId || r.referredBy}`,
         name: r.referredBy,
