@@ -105,7 +105,7 @@ export function useReferralSourceMetrics() {
   //    contact on a deal in the Active or In Development pipelines)
   const { data: meetings = [], isLoading: meetingsLoading } = useQuery({
     queryKey: [
-      'referral_source_meetings_v5',
+      'referral_source_meetings_v6',
       company?.id,
       start?.toISOString() ?? null,
       end?.toISOString() ?? null,
@@ -140,13 +140,13 @@ export function useReferralSourceMetrics() {
       const dealNames = Array.from(
         new Set(
           (dealNameRows || [])
-            .map((d: any) => String(d.company || '').trim().toLowerCase())
+            .map((d: any) => normalizeEntityName(String(d.company || '')))
             .filter((n) => n.length >= 4 && !isExcludedDealName(n)),
         ),
       );
       if (dealNames.length > 0) {
         candidates = candidates.filter((m) => {
-          const t = (m.title || '').toLowerCase();
+          const t = normalizeEntityName(m.title || '');
           if (!t) return true;
           return !dealNames.some((n) => t.includes(n));
         });
@@ -196,7 +196,7 @@ export function useReferralSourceMetrics() {
       // 4) Funding sources (lenders): exclude by attendee domain, matched contact,
       //    or a funding-source name appearing in the call title.
       const lenderDomains = new Set<string>();
-      const lenderNames: string[] = [];
+      const lenderNames = new Set<string>();
       const lenderContactIds = new Set<string>();
       const { data: lenders } = await supabase
         .from('master_lenders')
@@ -210,7 +210,9 @@ export function useReferralSourceMetrics() {
           );
           if (dom && !INTERNAL_DOMAINS.has(dom)) lenderDomains.add(dom);
         }
-        lenderNames.push(...fundingSourceTitleAliases(String(l.name || '')));
+        for (const alias of fundingSourceTitleAliases(String(l.name || ''))) {
+          lenderNames.add(alias);
+        }
       }
       const { data: lenderPeople } = await supabase
         .from('lender_contacts')
@@ -234,7 +236,7 @@ export function useReferralSourceMetrics() {
       return candidates.filter((m) => {
         const title = normalizeEntityName(m.title || '');
         // Funding-source name in the title.
-        if (title && lenderNames.some((n) => title.includes(n))) return false;
+        if (title && [...lenderNames].some((n) => title.includes(n))) return false;
         // Meeting matched directly to a funding-source contact.
         if (m.matched_contact_id && lenderContactIds.has(m.matched_contact_id)) return false;
         const doms = attendees.get(m.id) || [];
