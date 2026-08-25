@@ -6,6 +6,7 @@ import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext'
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import { channelLabel } from './channelOptions';
+import { INTERNAL_DOMAINS, domainOf } from '@/lib/internalDomains';
 
 export interface DrillRow {
   id: string;
@@ -61,16 +62,19 @@ export function useReferralSourceMetrics() {
   );
 
   // ---- Meetings with existing referral sources -----------------------------
+  // Definition: every call on the calendar in the timeframe EXCEPT
+  //  • sales calls (titled "[COMPANY] <> 5th Line / naitive")
+  //  • internal calls (all attendees on an internal domain)
+  //  • existing client calls (an attendee shares the email domain of a client
+  //    contact on a deal in the Active or In Development pipelines)
   const { data: meetings = [], isLoading: meetingsLoading } = useQuery({
     queryKey: [
-      'referral_source_meetings',
+      'referral_source_meetings_v2',
       company?.id,
       start?.toISOString() ?? null,
       end?.toISOString() ?? null,
-      contactIds.length,
-      crmCompanyIds.length,
     ],
-    enabled: !!company?.id && (contactIds.length > 0 || crmCompanyIds.length > 0),
+    enabled: !!company?.id,
     queryFn: async () => {
       let q = supabase
         .from('claap_meetings')
@@ -81,29 +85,64 @@ export function useReferralSourceMetrics() {
       const { data, error } = await q;
       if (error) throw error;
       const all = (data || []) as MeetingRow[];
+      if (all.length === 0) return [];
 
-      const contactSet = new Set(contactIds);
-      const companySet = new Set(crmCompanyIds);
-      const direct = all.filter(
-        (m) =>
-          (m.matched_contact_id && contactSet.has(m.matched_contact_id)) ||
-          (m.matched_crm_company_id && companySet.has(m.matched_crm_company_id)),
-      );
+      // 1) Drop sales-titled calls.
+      const SALES_TITLE = /<>\s*(5th\s*line|5thline|naitive)/i;
+      const candidates = all.filter((m) => !SALES_TITLE.test(m.title || ''));
+      if (candidates.length === 0) return [];
 
-      // Also count meetings where a referral-source contact attended.
-      const remaining = all.filter((m) => !direct.some((d) => d.id === m.id));
-      if (remaining.length === 0 || contactIds.length === 0) return direct;
+      // Attendees for the remaining meetings.
+      const ids = candidates.map((m) => m.id);
+      const attendees = new Map<string, string[]>();
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data: parts, error: pErr } = await supabase
+          .from('claap_meeting_participants')
+          .select('meeting_id, email')
+          .in('meeting_id', ids.slice(i, i + 200));
+        if (pErr) throw pErr;
+        for (const p of (parts || []) as { meeting_id: string; email: string | null }[]) {
+          const d = domainOf(p.email);
+          if (!d) continue;
+          const arr = attendees.get(p.meeting_id) || [];
+          arr.push(d);
+          attendees.set(p.meeting_id, arr);
+        }
+      }
 
-      const { data: parts, error: pErr } = await supabase
-        .from('claap_meeting_participants')
-        .select('meeting_id, contact_id')
-        .in('meeting_id', remaining.map((m) => m.id).slice(0, 500))
-        .in('contact_id', contactIds.slice(0, 500));
-      if (pErr) throw pErr;
-      const hit = new Set((parts || []).map((p: any) => p.meeting_id as string));
-      return [...direct, ...remaining.filter((m) => hit.has(m.id))];
+      // Client contact domains from Active / In Development pipeline deals.
+      const { data: pipelines } = await supabase
+        .from('deal_pipelines')
+        .select('id, name')
+        .eq('company_id', company!.id);
+      const pipelineIds = (pipelines || [])
+        .filter((p: any) => /^(active|in development)/i.test(String(p.name || '')))
+        .map((p: any) => p.id as string);
+      const clientDomains = new Set<string>();
+      if (pipelineIds.length > 0) {
+        const { data: clientDeals } = await supabase
+          .from('deals')
+          .select('contact_email')
+          .in('pipeline_id', pipelineIds)
+          .not('contact_email', 'is', null);
+        for (const d of (clientDeals || []) as { contact_email: string | null }[]) {
+          const dom = domainOf(d.contact_email);
+          if (dom && !INTERNAL_DOMAINS.has(dom)) clientDomains.add(dom);
+        }
+      }
+
+      return candidates.filter((m) => {
+        const doms = attendees.get(m.id) || [];
+        if (doms.length === 0) return true; // unknown attendees — keep
+        // 2) internal-only calls
+        if (doms.every((d) => INTERNAL_DOMAINS.has(d))) return false;
+        // 3) existing client calls
+        if (doms.some((d) => clientDomains.has(d))) return false;
+        return true;
+      });
     },
   });
+
 
   // ---- New referral sources added in the timeframe -------------------------
   const { data: newSources = [], isLoading: newSourcesLoading } = useQuery({
