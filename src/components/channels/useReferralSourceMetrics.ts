@@ -455,9 +455,57 @@ export function useReferralSourceMetrics() {
     return [...map.values()].filter((r) => r.deals > 0);
   }, [sources, feeByDeal]);
 
+  // ---- Per-user (internal host/attendee) filtering -------------------------
+  const internalEmailList = useMemo(() => {
+    const set = new Set<string>();
+    meetings.forEach((m) => (m.internal_emails || []).forEach((e) => set.add(e)));
+    return Array.from(set).sort();
+  }, [meetings]);
+
+  const { data: internalProfiles = new Map<string, string>() } = useQuery({
+    queryKey: ['referral_meeting_owner_profiles', internalEmailList.join(',')],
+    enabled: internalEmailList.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('email, full_name, first_name, last_name')
+        .in('email', internalEmailList);
+      if (error) throw error;
+      const map = new Map<string, string>();
+      for (const p of (data || []) as any[]) {
+        const label =
+          p.full_name ||
+          [p.first_name, p.last_name].filter(Boolean).join(' ') ||
+          String(p.email || '');
+        if (p.email) map.set(String(p.email).toLowerCase(), label);
+      }
+      return map;
+    },
+  });
+
+  const meetingOwnerOptions = useMemo(
+    () =>
+      internalEmailList.map((email) => ({
+        email,
+        label: internalProfiles.get(email) || email.split('@')[0].replace(/[._]/g, ' '),
+        count: meetings.filter(
+          (m) => !excludedMeetingIds.has(m.id) && (m.internal_emails || []).includes(email),
+        ).length,
+      })).filter((o) => o.count > 0),
+    [internalEmailList, internalProfiles, meetings, excludedMeetingIds],
+  );
+
+  const [meetingOwnerFilter, setMeetingOwnerFilter] = useState<string[]>([]);
+
   const visibleMeetings = useMemo(
-    () => meetings.filter((m) => !excludedMeetingIds.has(m.id)),
-    [meetings, excludedMeetingIds],
+    () =>
+      meetings.filter(
+        (m) =>
+          !excludedMeetingIds.has(m.id) &&
+          (meetingOwnerFilter.length === 0 ||
+            (m.internal_emails || []).some((e) => meetingOwnerFilter.includes(e))),
+      ),
+    [meetings, excludedMeetingIds, meetingOwnerFilter],
   );
 
   const meetingRows = useMemo<DrillRow[]>(
@@ -467,10 +515,18 @@ export function useReferralSourceMetrics() {
         .map((m) => ({
           id: m.id,
           primary: m.title || 'Untitled meeting',
-          secondary: m.started_at ? new Date(m.started_at).toLocaleDateString() : undefined,
+          secondary: [
+            m.started_at ? new Date(m.started_at).toLocaleDateString() : null,
+            (m.internal_emails || [])
+              .map((e) => internalProfiles.get(e) || e)
+              .join(', ') || null,
+          ]
+            .filter(Boolean)
+            .join(' · ') || undefined,
         })),
-    [visibleMeetings],
+    [visibleMeetings, internalProfiles],
   );
+
 
   const removedMeetingRows = useMemo<DrillRow[]>(
     () =>
