@@ -418,69 +418,80 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
               <EditableField label="Name" type="text" value={company.name} onSave={(v) => handleQuickUpdate('name', v)} />
-              <EditableField label="Type" type="select" value={company.company_type} options={CRM_COMPANY_TYPES.map(t => ({ value: t.value, label: t.label }))} onSave={(v) => handleQuickUpdate('company_type', v)} />
-              <div className="flex items-end gap-1">
-                <div className="flex-1 min-w-0">
-                  <EditableField
-                    label="Industry"
-                    type="select"
-                    value={company.industry}
-                    options={industryOptions.map(o => ({ value: o, label: o }))}
-                    onSave={(v) => handleQuickUpdate('industry', v)}
-                  />
-                </div>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-7 w-7 shrink-0"
-                  title="Manage industries"
-                  onClick={() => setManageIndustriesOpen(true)}
-                >
-                  <Settings className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-              <EditableField label="Sub-Industry" type="text" value={company.sub_industry} onSave={(v) => handleQuickUpdate('sub_industry', v)} />
-              <EditableField
-                label="Company Size"
-                type="select"
-                value={company.employee_range}
-                options={EMPLOYEE_RANGE_OPTIONS.map(o => ({ value: o, label: o }))}
-                onSave={(v) => handleQuickUpdate('employee_range', v)}
-              />
-              <EditableField label="Annual Revenue" type="number" value={company.annual_revenue} onSave={(v) => handleQuickUpdate('annual_revenue', v)} />
-              <EditableField label="Phone" type="tel" value={company.phone} onSave={(v) => handleQuickUpdate('phone', v)} />
-              <EditableField label="Email" type="email" asLink value={company.main_contact_email} onSave={(v) => handleQuickUpdate('main_contact_email', v)} />
-              <EditableField label="Website" type="text" value={(company as any).domain} onSave={(v) => handleQuickUpdate('domain', v)} />
-              <EditableField label="LinkedIn" type="url" asLink value={company.linkedin_url} onSave={(v) => handleQuickUpdate('linkedin_url', v)} />
-              <EditableField label="City" type="text" value={(company as any).hq_city} onSave={(v) => handleQuickUpdate('hq_city', v)} />
-              <EditableField label="HQ Country" type="text" value={(company as any).hq_country} onSave={(v) => handleQuickUpdate('hq_country', v)} />
-              <EditableField label="HQ Address" type="textarea" value={company.hq_address} onSave={(v) => handleQuickUpdate('hq_address', v)} />
-              <EditableField label="Segment" type="text" value={company.segment} onSave={(v) => handleQuickUpdate('segment', v)} />
-              <EditableField label="Tier" type="text" value={company.customer_tier} onSave={(v) => handleQuickUpdate('customer_tier', v)} />
-              <EditableField label="Source" type="text" value={company.source_system} onSave={(v) => handleQuickUpdate('source_system', v)} />
-              <EditableField label="Description" type="textarea" value={company.description} placeholder="Add a company description…" onSave={(v) => handleQuickUpdate('description', v)} />
-              <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <p className="text-[10px] text-muted-foreground uppercase mb-1">Owner</p>
-                  <Select
-                    value={company.owner_user_id || 'unassigned'}
-                    onValueChange={v => handleQuickUpdate('owner_user_id', v === 'unassigned' ? null : v)}
-                  >
-                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Unassigned" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {teamMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.display_name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
               <div className="md:col-span-3">
-                <DynamicFieldRenderer
-                  objectType="company"
-                  record={company}
-                  onFieldUpdate={(field, value) => handleQuickUpdate(field, value)}
-                />
+                <EditableField label="Description" type="textarea" value={company.description} placeholder="Add a company description…" onSave={(v) => handleQuickUpdate('description', v)} />
               </div>
+              {!snapshotFields.isDisabled('industry') && (
+                <div className="flex items-end gap-1 min-w-0">
+                  <div className="flex-1 min-w-0">
+                    <EditableField
+                      label="Industry"
+                      type="select"
+                      value={company.industry}
+                      options={industryOptions.map(o => ({ value: o, label: o }))}
+                      onSave={(v) => handleQuickUpdate('industry', v)}
+                    />
+                  </div>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 shrink-0"
+                    title="Manage industries"
+                    onClick={() => setManageIndustriesOpen(true)}
+                  >
+                    <Settings className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
+              {!snapshotFields.isDisabled('owner_user_id') && (
+                <EditableField
+                  label="Company owner"
+                  type="select"
+                  value={(company as any).owner_user_id}
+                  options={teamMembers.map(m => ({ value: m.id, label: m.display_name }))}
+                  onSave={(v) => handleQuickUpdate('owner_user_id', v)}
+                />
+              )}
+              {!snapshotFields.isDisabled('company_type') && (
+                <EditableField label="Type" type="select" value={company.company_type} options={CRM_COMPANY_TYPES.map(t => ({ value: t.value, label: t.label }))} onSave={(v) => handleQuickUpdate('company_type', v)} />
+              )}
+              {!snapshotFields.isDisabled('employee_range') && (
+                <EditableField
+                  label="Employees"
+                  type="select"
+                  value={company.employee_range}
+                  options={EMPLOYEE_RANGE_OPTIONS.map(o => ({ value: o, label: o }))}
+                  onSave={(v) => handleQuickUpdate('employee_range', v)}
+                />
+              )}
+              {!snapshotFields.isDisabled('hq_city') && (
+                <EditableField label="City" type="text" value={(company as any).hq_city} onSave={(v) => handleQuickUpdate('hq_city', v)} />
+              )}
+              {!snapshotFields.isDisabled('hq_country') && (
+                <EditableField label="Country" type="text" value={(company as any).hq_country} onSave={(v) => handleQuickUpdate('hq_country', v)} />
+              )}
+              {!snapshotFields.isDisabled('domain') && (
+                <EditableField label="Website" type="text" value={(company as any).domain} onSave={(v) => handleQuickUpdate('domain', v)} />
+              )}
+              {!snapshotFields.isDisabled('linkedin_url') && (
+                <EditableField label="LinkedIn" type="url" asLink value={company.linkedin_url} onSave={(v) => handleQuickUpdate('linkedin_url', v)} />
+              )}
+              {!snapshotFields.isDisabled('phone') && (
+                <EditableField label="Phone" type="tel" value={company.phone} onSave={(v) => handleQuickUpdate('phone', v)} />
+              )}
+              {!snapshotFields.isDisabled('main_contact_email') && (
+                <EditableField label="Primary email" type="email" asLink value={company.main_contact_email} onSave={(v) => handleQuickUpdate('main_contact_email', v)} />
+              )}
+              {snapshotFields.config.custom.map((f) => (
+                <EditableField
+                  key={f.key}
+                  label={f.label}
+                  type={f.type === 'select' ? 'select' : 'text'}
+                  value={customFieldValues[f.key] != null ? String(customFieldValues[f.key]) : null}
+                  options={(f.options || []).map(o => ({ value: o, label: o }))}
+                  onSave={(v) => handleCustomFieldUpdate(f.key, v)}
+                />
+              ))}
             </CardContent>
           </Card>
         )}
