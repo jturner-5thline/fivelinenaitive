@@ -470,13 +470,19 @@ export function useDealReferralSources(filters?: {
         derivedCompany = bestN >= 2 ? best : null;
       }
 
+      // Manual override for this referrer (by name, or by its resolved company).
+      const override =
+        overrideLookup.get(nameKey)
+        || (derivedCompany ? overrideLookup.get(normalize(derivedCompany)) : undefined);
+      if (override?.companyName) derivedCompany = override.companyName;
+
       // === Derive channel from modal sourced_via across this referrer's deals ===
       const channelCounts = new Map<string, number>();
       for (const d of groupDeals) {
         const c = sourcedViaToChannel((d as any).sourced_via ?? null);
         if (c) channelCounts.set(c, (channelCounts.get(c) || 0) + 1);
       }
-      let modalChannel: string | null = match?.channelType || null;
+      let modalChannel: string | null = override?.channel || match?.channelType || null;
       const alternateChannels: string[] = [];
       if (!modalChannel && channelCounts.size > 0) {
         const sortedC = [...channelCounts.entries()].sort((a, b) => b[1] - a[1]);
