@@ -4,14 +4,73 @@ import { liquidGlassCard, LIQUID_GLASS_SERIES } from '@/components/metrics/liqui
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 import { useReferralSources } from '@/hooks/useReferralSources';
 import { usePartnerRules, DEFAULT_PARTNER_RULES } from '@/hooks/usePartnerRules';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
+
+const UNASSIGNED_OWNER = '__unassigned__';
+
+function OwnerMultiSelect({ options, selected, onChange }: {
+  options: { value: string; label: string }[];
+  selected: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const toggle = (val: string) => {
+    onChange(selected.includes(val) ? selected.filter(v => v !== val) : [...selected, val]);
+  };
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className={`h-7 text-[11px] gap-1.5 border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] ${selected.length > 0 ? 'border-primary/30 text-foreground' : 'text-muted-foreground'}`}
+        >
+          Owners
+          {selected.length > 0 && (
+            <Badge variant="secondary" className="h-4 px-1 text-[9px] rounded-full bg-primary/20 text-primary">
+              {selected.length}
+            </Badge>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-52 p-2" align="end">
+        <ScrollArea className="max-h-48">
+          {options.map(opt => (
+            <label
+              key={opt.value}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent/40 cursor-pointer text-xs"
+            >
+              <Checkbox
+                checked={selected.includes(opt.value)}
+                onCheckedChange={() => toggle(opt.value)}
+                className="h-3.5 w-3.5"
+              />
+              <span className="truncate">{opt.label}</span>
+            </label>
+          ))}
+          {options.length === 0 && (
+            <p className="px-2 py-3 text-[11px] text-muted-foreground text-center">No owners</p>
+          )}
+        </ScrollArea>
+        {selected.length > 0 && (
+          <Button variant="ghost" size="sm" className="w-full mt-1 h-6 text-[10px]" onClick={() => onChange([])}>
+            Clear selection
+          </Button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 
 type StageKey = 'nurturing' | 3 | 2 | 1;
 
