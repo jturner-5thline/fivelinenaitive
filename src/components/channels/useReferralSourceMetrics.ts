@@ -157,15 +157,62 @@ export function useReferralSourceMetrics() {
         }
       }
 
+      // 4) Funding sources (lenders): exclude by attendee domain, matched contact,
+      //    or a funding-source name appearing in the call title.
+      const lenderDomains = new Set<string>();
+      const lenderNames: string[] = [];
+      const lenderContactIds = new Set<string>();
+      const { data: lenders } = await supabase
+        .from('master_lenders')
+        .select('id, name, email, website');
+      for (const l of (lenders || []) as any[]) {
+        for (const raw of [l.email, l.website]) {
+          const dom = domainOf(
+            typeof raw === 'string' && raw.includes('@')
+              ? raw
+              : `x@${String(raw || '').replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0]}`,
+          );
+          if (dom && !INTERNAL_DOMAINS.has(dom)) lenderDomains.add(dom);
+        }
+        const nm = String(l.name || '').trim().toLowerCase();
+        if (nm.length >= 3) lenderNames.push(nm);
+      }
+      const { data: lenderPeople } = await supabase
+        .from('lender_contacts')
+        .select('email, contact_id');
+      for (const c of (lenderPeople || []) as any[]) {
+        const dom = domainOf(c.email);
+        if (dom && !INTERNAL_DOMAINS.has(dom)) lenderDomains.add(dom);
+        if (c.contact_id) lenderContactIds.add(c.contact_id as string);
+      }
+      const { data: lenderContactRows } = await supabase
+        .from('contacts')
+        .select('id, email')
+        .eq('company_id', company!.id)
+        .ilike('contact_type', '%lender%');
+      for (const c of (lenderContactRows || []) as any[]) {
+        lenderContactIds.add(c.id as string);
+        const dom = domainOf(c.email);
+        if (dom && !INTERNAL_DOMAINS.has(dom)) lenderDomains.add(dom);
+      }
+
       return candidates.filter((m) => {
+        const title = (m.title || '').toLowerCase();
+        // Funding-source name in the title.
+        if (title && lenderNames.some((n) => title.includes(n))) return false;
+        // Meeting matched directly to a funding-source contact.
+        if (m.matched_contact_id && lenderContactIds.has(m.matched_contact_id)) return false;
         const doms = attendees.get(m.id) || [];
         if (doms.length === 0) return true; // unknown attendees — keep
         // 2) internal-only calls
         if (doms.every((d) => INTERNAL_DOMAINS.has(d))) return false;
         // 3) existing client calls
         if (doms.some((d) => clientDomains.has(d))) return false;
+        // 4) funding-source attendees
+        if (doms.some((d) => lenderDomains.has(d))) return false;
         return true;
       });
+
     },
   });
 
