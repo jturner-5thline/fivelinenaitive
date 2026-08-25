@@ -300,12 +300,12 @@ export function FinServMrrField({
   }, [dealId, mrr]);
 
   return (
-    <div className="space-y-2 min-w-0 w-full">
+    <div className="flex w-full min-w-0 flex-col gap-2">
       {/* Line 1: label + mode dropdown pill */}
-      <div className="flex flex-wrap items-center gap-2 min-w-0">
-        <span className="text-muted-foreground text-sm">MRR</span>
+      <div className="flex w-full min-w-0 items-center justify-between gap-2">
+        <span className="text-xs font-medium text-muted-foreground">MRR</span>
         <Select value={mode} onValueChange={(v) => onModeChange(v as 'manual' | 'calculated')}>
-          <SelectTrigger className="h-6 w-auto min-w-[6rem] px-2 py-0 text-xs rounded-full">
+          <SelectTrigger className="h-6 w-auto shrink-0 px-2 py-0 text-xs rounded-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -318,11 +318,11 @@ export function FinServMrrField({
       {/* Line 2: value + Update MRR action */}
       {isCalc ? (
         <div
-          className="min-w-0 w-full h-8 px-2 text-sm rounded-md border border-input bg-muted/40 text-foreground flex items-center justify-between"
+          className="flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-muted/40 px-2 text-sm text-foreground"
           title="Calculated from hourly-rate rows"
         >
-          <span className="tabular-nums">{fmtUSD(total)}</span>
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground ml-2">calculated</span>
+          <span className="tabular-nums truncate">{fmtUSD(total)}</span>
+          <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">calculated</span>
         </div>
       ) : (
         <ManualMrrDisplay value={mrr} onCommit={onMrrCommit} />
@@ -330,20 +330,20 @@ export function FinServMrrField({
 
       {/* Line 3: last change tag (only when present) */}
       {lastChange && (
-        <div className="flex items-center">
+        <div className="flex w-full min-w-0">
           <Badge
             variant="outline"
             className={
               lastChange.type === 'expansion'
-                ? 'h-5 px-2 gap-1 text-[10px] border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
-                : 'h-5 px-2 gap-1 text-[10px] border-rose-500/40 bg-rose-500/10 text-rose-400'
+                ? 'h-auto max-w-full whitespace-normal break-words text-left px-2 py-0.5 gap-1 text-[10px] border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                : 'h-auto max-w-full whitespace-normal break-words text-left px-2 py-0.5 gap-1 text-[10px] border-rose-500/40 bg-rose-500/10 text-rose-400'
             }
             title={`On ${new Date(lastChange.at).toLocaleDateString()}`}
           >
             {lastChange.type === 'expansion'
-              ? <TrendingUp className="h-3 w-3" />
-              : <TrendingDown className="h-3 w-3" />}
-            <span>
+              ? <TrendingUp className="h-3 w-3 shrink-0" />
+              : <TrendingDown className="h-3 w-3 shrink-0" />}
+            <span className="min-w-0">
               Last change: {lastChange.type === 'expansion' ? 'Expansion' : 'Contraction'}
               {' '}{lastChange.delta >= 0 ? '+' : '−'}{fmtUSD(Math.abs(lastChange.delta))}
               {lastChange.deltaPct != null && (
@@ -355,21 +355,15 @@ export function FinServMrrField({
       )}
 
       {isCalc && (
-        <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2 w-full min-w-0">
-          <div className="flex items-center justify-between gap-2 pb-1 border-b border-border/60">
+        <div className="flex w-full min-w-0 flex-col gap-2 rounded-md border border-border bg-muted/20 p-2">
+          <div className="flex w-full min-w-0 flex-col gap-0.5 pb-1 border-b border-border/60">
             <span className="text-xs font-medium text-foreground">Hourly breakdown</span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-[11px] text-muted-foreground">
               Calculated MRR:{' '}
               <span className="font-semibold text-foreground tabular-nums">{fmtUSD(total)}</span>
             </span>
           </div>
-          <div className="grid grid-cols-[minmax(0,1fr)_6rem_5rem_minmax(5rem,auto)_2rem] gap-2 text-[10px] uppercase tracking-wide text-muted-foreground px-1">
-            <span>Label</span>
-            <span className="text-right">Rate /hr</span>
-            <span className="text-right">Hours</span>
-            <span className="text-right">Row total</span>
-            <span />
-          </div>
+
           {components.map((c) => (
             <ComponentRow
               key={c.id}
