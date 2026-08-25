@@ -167,11 +167,14 @@ export function ReferralSourceDeals({
       if (rangeStart) hq = hq.gte('changed_at', rangeStart.toISOString());
       if (rangeEnd) hq = hq.lte('changed_at', rangeEnd.toISOString());
 
-      // 2) Deals created within the timeframe that are at (or past) the NDA
-      //    stage — they became NDA / Needs List Sent in the period.
+      // 2) Deals with no explicit NDA stage-enter event: fall back to the best
+      //    available evidence of when they actually reached the stage. NOTE:
+      //    `deals.created_at` is the CRM *import* timestamp, so it can only be
+      //    trusted when nothing else proves earlier activity (an earlier
+      //    stage-history event or a closing date before the range).
       let dq = supabase
         .from('deals')
-        .select(select)
+        .select(`${select}, closing_date`)
         .eq('company_id', company!.id)
         .eq('pipeline_id', ACTIVE_PIPELINE_ID)
         .ilike('sourced_via', 'referral%')
@@ -200,7 +203,38 @@ export function ReferralSourceDeals({
         });
       };
       for (const r of (hist.data || []) as any[]) push(r.deals, r.changed_at);
-      for (const d of (created.data || []) as any[]) push(d, d.created_at);
+
+      // Earliest recorded stage activity for the fallback candidates.
+      const candidates = ((created.data || []) as any[]).filter(d => !seen.has(d.id));
+      const earliestActivity = new Map<string, string>();
+      for (let i = 0; i < candidates.length; i += 200) {
+        const chunk = candidates.slice(i, i + 200).map(d => d.id);
+        if (!chunk.length) continue;
+        const { data: hRows, error: hErr } = await supabase
+          .from('deal_stage_history')
+          .select('deal_id, changed_at')
+          .in('deal_id', chunk);
+        if (hErr) throw hErr;
+        for (const r of (hRows || []) as { deal_id: string; changed_at: string | null }[]) {
+          if (!r.changed_at) continue;
+          const prev = earliestActivity.get(r.deal_id);
+          if (!prev || r.changed_at < prev) earliestActivity.set(r.deal_id, r.changed_at);
+        }
+      }
+
+      const startMs = rangeStart ? rangeStart.getTime() : -Infinity;
+      const endMs = rangeEnd ? rangeEnd.getTime() : Infinity;
+      for (const d of candidates) {
+        // Effective NDA-entry date = earliest credible activity signal.
+        const signals = [d.created_at, earliestActivity.get(d.id), d.closing_date]
+          .filter(Boolean)
+          .map((s: string) => new Date(s).getTime())
+          .filter(t => Number.isFinite(t));
+        if (!signals.length) continue;
+        const effective = Math.min(...signals);
+        if (effective < startMs || effective > endMs) continue;
+        push(d, new Date(effective).toISOString());
+      }
       rows.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
       return rows;
     },
