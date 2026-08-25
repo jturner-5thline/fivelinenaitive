@@ -156,6 +156,8 @@ export function ReferralSourcePipelineWidget() {
     // Manually added sources with no qualifying deals yet start in Nurturing.
     for (const m of manualSources) {
       if (seen.has(normalize(m.name))) continue;
+      if (!ownerAllows(null)) continue;
+
       byStage.get('nurturing')!.push({
         id: `manual:${m.id}`,
         name: m.name,
