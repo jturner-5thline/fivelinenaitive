@@ -204,6 +204,7 @@ export function useReferralSourceMetrics() {
       // Attendees for the remaining meetings.
       const ids = candidates.map((m) => m.id);
       const attendees = new Map<string, string[]>();
+      const internalEmails = new Map<string, Set<string>>();
       for (let i = 0; i < ids.length; i += 200) {
         const { data: parts, error: pErr } = await supabase
           .from('claap_meeting_participants')
@@ -216,8 +217,14 @@ export function useReferralSourceMetrics() {
           const arr = attendees.get(p.meeting_id) || [];
           arr.push(d);
           attendees.set(p.meeting_id, arr);
+          if (INTERNAL_DOMAINS.has(d) && p.email) {
+            const set = internalEmails.get(p.meeting_id) || new Set<string>();
+            set.add(p.email.trim().toLowerCase());
+            internalEmails.set(p.meeting_id, set);
+          }
         }
       }
+
 
       // Client contact domains from Active / In Development pipeline deals.
       const { data: pipelines } = await supabase
