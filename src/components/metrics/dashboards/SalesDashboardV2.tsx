@@ -1575,21 +1575,90 @@ function SourcedViaDrilldownDialog({
     return m;
   }, [partners]);
 
+  // Most deals record their referral source on the deal itself (free-text
+  // `referred_by` and/or a linked CRM contact / company) rather than through
+  // the `referral_sources` table — resolve those names too.
+  const contactIds = React.useMemo(
+    () => Array.from(new Set(deals.map((d) => d.referred_by_contact_id).filter(Boolean))) as string[],
+    [deals],
+  );
+  const crmCompanyIds = React.useMemo(
+    () => Array.from(new Set(deals.map((d) => d.referred_by_crm_company_id).filter(Boolean))) as string[],
+    [deals],
+  );
+
+  const { data: refContacts } = useQuery({
+    queryKey: ['sourced-via-drilldown-contacts', contactIds.sort().join(',')],
+    enabled: open && contactIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('id, first_name, last_name, email, company_name')
+        .in('id', contactIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: refCrmCompanies } = useQuery({
+    queryKey: ['sourced-via-drilldown-crm-companies', crmCompanyIds.sort().join(',')],
+    enabled: open && crmCompanyIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('crm_companies')
+        .select('id, name')
+        .in('id', crmCompanyIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const contactById = React.useMemo(() => {
+    const m = new Map<string, { name: string; company: string | null }>();
+    for (const c of refContacts ?? []) {
+      const name = [c.first_name, c.last_name].filter(Boolean).join(' ').trim() || c.email || '';
+      if (name) m.set(c.id, { name, company: (c as any).company_name ?? null });
+    }
+    return m;
+  }, [refContacts]);
+
+  const crmCompanyById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of refCrmCompanies ?? []) m.set(c.id, c.name);
+    return m;
+  }, [refCrmCompanies]);
+
   const rows = deals
     .slice()
     .sort((a, b) => (a.created_at > b.created_at ? -1 : 1))
     .map((d) => {
       const s = d.referral_source_id ? srcById.get(d.referral_source_id) : undefined;
+      const contact = d.referred_by_contact_id ? contactById.get(d.referred_by_contact_id) : undefined;
+      const crmCompany = d.referred_by_crm_company_id ? crmCompanyById.get(d.referred_by_crm_company_id) : undefined;
+      const referralName =
+        s?.name ||
+        contact?.name ||
+        (d.referred_by || '').trim() ||
+        (d.referral_source || '').trim() ||
+        crmCompany ||
+        '—';
       return {
         id: d.id,
         company: d.company || '—',
         created: d.created_at,
-        referralName: s?.name ?? d.referral_source ?? '—',
+        referralName,
         channel: s?.channel ?? '—',
         type: s?.type ?? s?.source_type ?? '—',
-        partner: s?.promoted_to_partner_id ? partnerById.get(s.promoted_to_partner_id) ?? '—' : '—',
+        partner:
+          (s?.promoted_to_partner_id ? partnerById.get(s.promoted_to_partner_id) : undefined) ??
+          crmCompany ??
+          contact?.company ??
+          '—',
       };
     });
+
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
