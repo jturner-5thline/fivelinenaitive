@@ -30,7 +30,11 @@ interface MeetingRow {
   started_at: string | null;
   matched_contact_id: string | null;
   matched_crm_company_id: string | null;
+  organizer_email?: string | null;
+  /** Internal (5th Line) attendee emails — used for per-user filtering. */
+  internal_emails?: string[];
 }
+
 
 const FUNDING_SOURCE_NAME_SUFFIXES = new Set([
   'capital',
