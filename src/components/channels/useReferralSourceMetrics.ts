@@ -69,7 +69,7 @@ export function useReferralSourceMetrics() {
   //    contact on a deal in the Active or In Development pipelines)
   const { data: meetings = [], isLoading: meetingsLoading } = useQuery({
     queryKey: [
-      'referral_source_meetings_v2',
+      'referral_source_meetings_v3',
       company?.id,
       start?.toISOString() ?? null,
       end?.toISOString() ?? null,
