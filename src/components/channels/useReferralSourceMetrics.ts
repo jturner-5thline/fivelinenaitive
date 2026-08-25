@@ -293,6 +293,51 @@ export function useReferralSourceMetrics() {
     },
   });
 
+  // ---- Manual removals (user "removes" a call from the count) --------------
+  const exclusionsKey = ['referral_meeting_exclusions', company?.id] as const;
+  const { data: excludedMeetingIds = new Set<string>() } = useQuery({
+    queryKey: exclusionsKey,
+    enabled: !!company?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('referral_meeting_exclusions')
+        .select('meeting_id')
+        .eq('company_id', company!.id);
+      if (error) throw error;
+      return new Set<string>((data || []).map((r: any) => r.meeting_id as string));
+    },
+  });
+
+  const removeMeeting = useMutation({
+    mutationFn: async (meetingId: string) => {
+      const { data: auth } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from('referral_meeting_exclusions')
+        .upsert(
+          { company_id: company!.id, meeting_id: meetingId, excluded_by: auth?.user?.id ?? null },
+          { onConflict: 'company_id,meeting_id' },
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: exclusionsKey }),
+    onError: (e: any) => toast.error(e?.message || 'Could not remove that call'),
+  });
+
+  const restoreMeeting = useMutation({
+    mutationFn: async (meetingId: string) => {
+      const { error } = await supabase
+        .from('referral_meeting_exclusions')
+        .delete()
+        .eq('company_id', company!.id)
+        .eq('meeting_id', meetingId);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: exclusionsKey }),
+    onError: (e: any) => toast.error(e?.message || 'Could not restore that call'),
+  });
+
+
+
 
   // ---- New referral sources added in the timeframe -------------------------
   const { data: newSources = [], isLoading: newSourcesLoading } = useQuery({
