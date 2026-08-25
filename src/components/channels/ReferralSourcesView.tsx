@@ -430,6 +430,12 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
               {c} <X className="h-2.5 w-2.5" />
             </Badge>
           ))}
+          {ownerFilter.map(o => (
+            <Badge key={o} variant="secondary" className="text-[10px] gap-1 pl-2 pr-1 py-0.5 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 cursor-pointer" onClick={() => setOwnerFilter(prev => prev.filter(v => v !== o))}>
+              {o === UNASSIGNED_OWNER ? 'Unassigned' : (ownerNameById.get(o) || 'Unknown user')} <X className="h-2.5 w-2.5" />
+            </Badge>
+          ))}
+
         </div>
       )}
 
