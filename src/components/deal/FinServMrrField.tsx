@@ -166,67 +166,77 @@ function ComponentRow({
   const rowTotal = (Number(rateDraft) || 0) * (Number(hoursDraft) || 0);
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_6rem_5rem_minmax(5rem,auto)_2rem] items-center gap-2">
-      <Input
-        value={labelDraft}
-        placeholder="Label (optional)"
-        className="h-7 text-xs"
-        onFocus={() => { labelFocus.current = true; }}
-        onChange={(e) => setLabelDraft(e.target.value)}
-        onBlur={() => {
-          labelFocus.current = false;
-          if (labelDraft !== label) onChangeLabel(labelDraft);
-        }}
-      />
-      <div className="relative">
-        <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
+    <div className="flex w-full min-w-0 flex-col gap-1.5 rounded-md border border-border/60 bg-background/40 p-2">
+      <div className="flex w-full min-w-0 items-center gap-1">
+        <Input
+          value={labelDraft}
+          placeholder="Label (optional)"
+          className="h-7 w-full min-w-0 flex-1 text-xs"
+          onFocus={() => { labelFocus.current = true; }}
+          onChange={(e) => setLabelDraft(e.target.value)}
+          onBlur={() => {
+            labelFocus.current = false;
+            if (labelDraft !== label) onChangeLabel(labelDraft);
+          }}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+          onClick={onDelete}
+          aria-label="Delete row"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      <div className="grid w-full min-w-0 grid-cols-2 gap-1.5">
+        <div className="relative min-w-0">
+          <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
+          <Input
+            inputMode="decimal"
+            value={rateDraft}
+            placeholder="Rate /hr"
+            aria-label="Rate per hour"
+            className="pl-4 pr-1 h-7 w-full min-w-0 text-xs text-right"
+            onFocus={() => { rateFocus.current = true; }}
+            onChange={(e) => {
+              const v = e.target.value.replace(/[$,\s]/g, '');
+              if (v === '' || /^\d+(\.\d{0,2})?$/.test(v)) setRateDraft(v);
+            }}
+            onBlur={() => {
+              rateFocus.current = false;
+              const n = Number(rateDraft) || 0;
+              if (n !== hourlyRate) onChangeRate(n);
+            }}
+          />
+        </div>
         <Input
           inputMode="decimal"
-          value={rateDraft}
-          placeholder="0"
-          className="pl-4 pr-1 h-7 text-xs text-right"
-          onFocus={() => { rateFocus.current = true; }}
+          value={hoursDraft}
+          placeholder="Hours"
+          aria-label="Estimated hours"
+          className="h-7 w-full min-w-0 text-xs text-right"
+          onFocus={() => { hoursFocus.current = true; }}
           onChange={(e) => {
-            const v = e.target.value.replace(/[$,\s]/g, '');
-            if (v === '' || /^\d+(\.\d{0,2})?$/.test(v)) setRateDraft(v);
+            const v = e.target.value.replace(/[,\s]/g, '');
+            if (v === '' || /^\d+(\.\d{0,2})?$/.test(v)) setHoursDraft(v);
           }}
           onBlur={() => {
-            rateFocus.current = false;
-            const n = Number(rateDraft) || 0;
-            if (n !== hourlyRate) onChangeRate(n);
+            hoursFocus.current = false;
+            const n = Number(hoursDraft) || 0;
+            if (n !== estimatedHours) onChangeHours(n);
           }}
         />
       </div>
-      <Input
-        inputMode="decimal"
-        value={hoursDraft}
-        placeholder="0"
-        className="h-7 text-xs text-right"
-        onFocus={() => { hoursFocus.current = true; }}
-        onChange={(e) => {
-          const v = e.target.value.replace(/[,\s]/g, '');
-          if (v === '' || /^\d+(\.\d{0,2})?$/.test(v)) setHoursDraft(v);
-        }}
-        onBlur={() => {
-          hoursFocus.current = false;
-          const n = Number(hoursDraft) || 0;
-          if (n !== estimatedHours) onChangeHours(n);
-        }}
-      />
-      <span className="text-xs font-medium text-right tabular-nums px-1">{fmtUSD(rowTotal)}</span>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-        onClick={onDelete}
-        aria-label="Delete row"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </Button>
+      <div className="flex w-full min-w-0 items-center justify-between gap-2">
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Row total</span>
+        <span className="text-xs font-medium tabular-nums">{fmtUSD(rowTotal)}</span>
+      </div>
     </div>
   );
 }
+
 
 interface FinServMrrFieldProps {
   dealId: string;
