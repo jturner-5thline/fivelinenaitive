@@ -1501,6 +1501,40 @@ export function LenderAnalyticsDialog({
 
   const overlays = (
     <>
+      {/* Calls with funding sources drill-down */}
+      <Sheet open={!!openCalls} onOpenChange={(o) => { if (!o) setOpenCalls(null); }}>
+        <SheetContent side="right" className="w-[560px] sm:max-w-[640px] z-[1600] bg-slate-950 text-slate-100 border-slate-700/60">
+          {openCalls && (() => {
+            const rows = openCalls === 'existing' ? (lenderCalls?.existing ?? []) : (lenderCalls?.fresh ?? []);
+            return (
+              <>
+                <SheetHeader>
+                  <SheetTitle className="text-slate-100">
+                    {openCalls === 'existing' ? 'Calls w/ Existing Lenders' : 'Calls w/ New Lenders'}
+                  </SheetTitle>
+                  <SheetDescription className="text-slate-400">
+                    {rows.length} call{rows.length === 1 ? '' : 's'} · {dateRangeLabel(dateRange)}
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="mt-4 space-y-1 overflow-auto max-h-[calc(100vh-140px)] pr-1">
+                  {rows.length === 0 ? (
+                    <div className="py-8 text-center text-[12.5px] text-slate-500">No calls in this timeframe</div>
+                  ) : rows.map((r) => (
+                    <div key={r.id} className="rounded-md border border-slate-800 bg-slate-900/50 px-3 py-2">
+                      <div className="text-[12.5px] text-slate-100 truncate">{r.title || 'Untitled call'}</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">
+                        {r.lender}
+                        {r.started_at ? ` · ${new Date(r.started_at).toLocaleDateString()}` : ''}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
+
       {/* KPI drill-down sheet — Active Lenders / Deals Sent / Conversion / Flex Active */}
       <Sheet open={!!openKpi} onOpenChange={(o) => { if (!o) setOpenKpi(null); }}>
         <SheetContent side="right" className="w-[640px] sm:max-w-[720px] z-[1600] bg-slate-950 text-slate-100 border-slate-700/60">
