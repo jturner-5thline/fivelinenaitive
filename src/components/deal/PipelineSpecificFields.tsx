@@ -88,7 +88,7 @@ function renderPipelineFieldInput(
     case 'multi-select': {
       const selected: string[] = Array.isArray(value) ? value : [];
       return (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex w-full min-w-0 flex-wrap gap-1.5">
           {(field.options || []).map((opt) => {
             const checked = selected.includes(opt);
             return (
@@ -102,7 +102,7 @@ function renderPipelineFieldInput(
                   onUpdate(field.key as keyof Deal, next);
                 }}
                 className={cn(
-                  'h-7 px-2.5 rounded-full text-xs font-medium border transition-colors',
+                  'min-h-7 max-w-full px-2.5 py-1 rounded-full text-xs font-medium border transition-colors text-left whitespace-normal break-words leading-tight',
                   checked
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'bg-background text-foreground border-input hover:bg-muted',
@@ -115,6 +115,7 @@ function renderPipelineFieldInput(
         </div>
       );
     }
+
     case 'switch':
       return (
         <Switch
