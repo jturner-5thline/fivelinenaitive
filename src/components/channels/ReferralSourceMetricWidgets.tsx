@@ -147,11 +147,27 @@ interface MetricTileProps {
   rows: DrillRow[];
   drillTitle: string;
   isLoading?: boolean;
+  /** Enables per-row "Remove" in the drill-down. */
+  onRemoveRow?: (id: string) => void;
+  removedRows?: DrillRow[];
+  onRestoreRow?: (id: string) => void;
+  isMutating?: boolean;
 }
 
-function MetricTile({ label, value, subtext, rows, drillTitle, isLoading }: MetricTileProps) {
+function MetricTile({
+  label,
+  value,
+  subtext,
+  rows,
+  drillTitle,
+  isLoading,
+  onRemoveRow,
+  removedRows,
+  onRestoreRow,
+  isMutating,
+}: MetricTileProps) {
   const [open, setOpen] = useState(false);
-  const canDrill = rows.length > 0;
+  const canDrill = rows.length > 0 || (removedRows?.length ?? 0) > 0;
   return (
     <>
       <div
@@ -187,7 +203,16 @@ function MetricTile({ label, value, subtext, rows, drillTitle, isLoading }: Metr
           {isLoading ? 'Loading…' : canDrill ? subtext : 'No data in selected timeframe'}
         </p>
       </div>
-      <DrillDialog open={open} onOpenChange={setOpen} title={drillTitle} rows={rows} />
+      <DrillDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={drillTitle}
+        rows={rows}
+        onRemoveRow={onRemoveRow}
+        removedRows={removedRows}
+        onRestoreRow={onRestoreRow}
+        isMutating={isMutating}
+      />
     </>
   );
 }
@@ -197,11 +222,19 @@ function DrillDialog({
   onOpenChange,
   title,
   rows,
+  onRemoveRow,
+  removedRows,
+  onRestoreRow,
+  isMutating,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   title: string;
   rows: DrillRow[];
+  onRemoveRow?: (id: string) => void;
+  removedRows?: DrillRow[];
+  onRestoreRow?: (id: string) => void;
+  isMutating?: boolean;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -216,18 +249,59 @@ function DrillDialog({
             <p className="text-sm text-muted-foreground py-6 text-center">No records.</p>
           ) : (
             rows.map((r) => (
-              <div key={r.id} className="py-2.5 min-w-0">
-                <p className="text-sm font-medium truncate">{r.primary}</p>
-                {r.secondary ? (
-                  <p className="text-xs text-muted-foreground truncate">{r.secondary}</p>
+              <div key={r.id} className="py-2.5 min-w-0 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{r.primary}</p>
+                  {r.secondary ? (
+                    <p className="text-xs text-muted-foreground truncate">{r.secondary}</p>
+                  ) : null}
+                </div>
+                {onRemoveRow ? (
+                  <button
+                    type="button"
+                    disabled={isMutating}
+                    onClick={() => onRemoveRow(r.id)}
+                    className="shrink-0 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:text-destructive hover:border-destructive/50 transition-colors disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
                 ) : null}
               </div>
             ))
           )}
         </div>
+
+        {onRestoreRow && (removedRows?.length ?? 0) > 0 ? (
+          <div className="mt-4 border-t border-border pt-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-2">
+              Removed from count · {removedRows!.length}
+            </p>
+            <div className="flex flex-col divide-y divide-border">
+              {removedRows!.map((r) => (
+                <div key={r.id} className="py-2 min-w-0 flex items-start justify-between gap-3 opacity-70">
+                  <div className="min-w-0">
+                    <p className="text-sm truncate line-through">{r.primary}</p>
+                    {r.secondary ? (
+                      <p className="text-xs text-muted-foreground truncate">{r.secondary}</p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isMutating}
+                    onClick={() => onRestoreRow(r.id)}
+                    className="shrink-0 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                  >
+                    Restore
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </DialogContent>
     </Dialog>
   );
+
 }
 
 type ToggleMode = 'deals' | 'dollars';
