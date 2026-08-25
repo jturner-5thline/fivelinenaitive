@@ -152,7 +152,10 @@ interface MetricTileProps {
   removedRows?: DrillRow[];
   onRestoreRow?: (id: string) => void;
   isMutating?: boolean;
+  /** Optional filter controls rendered on the tile and inside the drill-down. */
+  filterBar?: ReactNode;
 }
+
 
 function MetricTile({
   label,
@@ -165,6 +168,7 @@ function MetricTile({
   removedRows,
   onRestoreRow,
   isMutating,
+  filterBar,
 }: MetricTileProps) {
   const [open, setOpen] = useState(false);
   const canDrill = rows.length > 0 || (removedRows?.length ?? 0) > 0;
@@ -202,6 +206,11 @@ function MetricTile({
         <p className="text-[11px] text-muted-foreground leading-snug">
           {isLoading ? 'Loading…' : canDrill ? subtext : 'No data in selected timeframe'}
         </p>
+        {filterBar ? (
+          <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+            {filterBar}
+          </div>
+        ) : null}
       </div>
       <DrillDialog
         open={open}
@@ -212,6 +221,7 @@ function MetricTile({
         removedRows={removedRows}
         onRestoreRow={onRestoreRow}
         isMutating={isMutating}
+        filterBar={filterBar}
       />
     </>
   );
@@ -226,6 +236,7 @@ function DrillDialog({
   removedRows,
   onRestoreRow,
   isMutating,
+  filterBar,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -235,6 +246,7 @@ function DrillDialog({
   removedRows?: DrillRow[];
   onRestoreRow?: (id: string) => void;
   isMutating?: boolean;
+  filterBar?: ReactNode;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -244,6 +256,7 @@ function DrillDialog({
             {title} · {rows.length} {rows.length === 1 ? 'record' : 'records'}
           </DialogTitle>
         </DialogHeader>
+        {filterBar ? <div className="pb-2">{filterBar}</div> : null}
         <div className="flex flex-col divide-y divide-border">
           {rows.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">No records.</p>
@@ -434,6 +447,9 @@ export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode
     removeMeeting,
     restoreMeeting,
     isUpdatingMeetingExclusions,
+    meetingOwnerOptions,
+    meetingOwnerFilter,
+    setMeetingOwnerFilter,
     newSourceCount,
     newSourceRows,
     sourceLeaderboard,
@@ -455,6 +471,47 @@ export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode
           removedRows={removedMeetingRows}
           onRestoreRow={restoreMeeting}
           isMutating={isUpdatingMeetingExclusions}
+          filterBar={
+            meetingOwnerOptions.length > 1 ? (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setMeetingOwnerFilter([])}
+                  className={`rounded-md border px-2 py-0.5 text-[11px] transition-colors ${
+                    meetingOwnerFilter.length === 0
+                      ? 'border-[hsl(var(--chart-2)/0.6)] text-[#FFFFFF] bg-[hsl(var(--chart-2)/0.15)]'
+                      : 'border-border text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  All users
+                </button>
+                {meetingOwnerOptions.map((o) => {
+                  const active = meetingOwnerFilter.includes(o.email);
+                  return (
+                    <button
+                      key={o.email}
+                      type="button"
+                      title={o.email}
+                      onClick={() =>
+                        setMeetingOwnerFilter(
+                          active
+                            ? meetingOwnerFilter.filter((e) => e !== o.email)
+                            : [...meetingOwnerFilter, o.email],
+                        )
+                      }
+                      className={`rounded-md border px-2 py-0.5 text-[11px] capitalize transition-colors ${
+                        active
+                          ? 'border-[hsl(var(--chart-2)/0.6)] text-[#FFFFFF] bg-[hsl(var(--chart-2)/0.15)]'
+                          : 'border-border text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {o.label} · {o.count}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null
+          }
         />
         <MetricTile
           label="New Referral Sources Added"

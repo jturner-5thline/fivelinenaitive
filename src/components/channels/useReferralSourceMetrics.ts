@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,7 +30,11 @@ interface MeetingRow {
   started_at: string | null;
   matched_contact_id: string | null;
   matched_crm_company_id: string | null;
+  organizer_email?: string | null;
+  /** Internal (5th Line) attendee emails — used for per-user filtering. */
+  internal_emails?: string[];
 }
+
 
 const FUNDING_SOURCE_NAME_SUFFIXES = new Set([
   'capital',
@@ -147,7 +151,7 @@ export function useReferralSourceMetrics() {
   //    contact on a deal in the Active or In Development pipelines)
   const { data: meetings = [], isLoading: meetingsLoading } = useQuery({
     queryKey: [
-      'referral_source_meetings_v6',
+      'referral_source_meetings_v7',
       company?.id,
       start?.toISOString() ?? null,
       end?.toISOString() ?? null,
@@ -156,8 +160,9 @@ export function useReferralSourceMetrics() {
     queryFn: async () => {
       let q = supabase
         .from('claap_meetings')
-        .select('id, title, started_at, matched_contact_id, matched_crm_company_id')
+        .select('id, title, started_at, matched_contact_id, matched_crm_company_id, organizer_email')
         .eq('company_id', company!.id);
+
       if (start) q = q.gte('started_at', start.toISOString());
       if (end) q = q.lte('started_at', end.toISOString());
       const { data, error } = await q;
@@ -199,6 +204,7 @@ export function useReferralSourceMetrics() {
       // Attendees for the remaining meetings.
       const ids = candidates.map((m) => m.id);
       const attendees = new Map<string, string[]>();
+      const internalEmails = new Map<string, Set<string>>();
       for (let i = 0; i < ids.length; i += 200) {
         const { data: parts, error: pErr } = await supabase
           .from('claap_meeting_participants')
@@ -211,8 +217,14 @@ export function useReferralSourceMetrics() {
           const arr = attendees.get(p.meeting_id) || [];
           arr.push(d);
           attendees.set(p.meeting_id, arr);
+          if (INTERNAL_DOMAINS.has(d) && p.email) {
+            const set = internalEmails.get(p.meeting_id) || new Set<string>();
+            set.add(p.email.trim().toLowerCase());
+            internalEmails.set(p.meeting_id, set);
+          }
         }
       }
+
 
       // Client contact domains from Active / In Development pipeline deals.
       const { data: pipelines } = await supabase
@@ -275,22 +287,30 @@ export function useReferralSourceMetrics() {
         if (dom && !INTERNAL_DOMAINS.has(dom)) lenderDomains.add(dom);
       }
 
-      return candidates.filter((m) => {
-        const title = normalizeEntityName(m.title || '');
-        // Funding-source name in the title.
-        if (title && [...lenderNames].some((n) => titleMatchesEntity(title, n))) return false;
-        // Meeting matched directly to a funding-source contact.
-        if (m.matched_contact_id && lenderContactIds.has(m.matched_contact_id)) return false;
-        const doms = attendees.get(m.id) || [];
-        if (doms.length === 0) return true; // unknown attendees — keep
-        // 2) internal-only calls
-        if (doms.every((d) => INTERNAL_DOMAINS.has(d))) return false;
-        // 3) existing client calls
-        if (doms.some((d) => clientDomains.has(d))) return false;
-        // 4) funding-source attendees
-        if (doms.some((d) => lenderDomains.has(d))) return false;
-        return true;
-      });
+      return candidates
+        .filter((m) => {
+          const title = normalizeEntityName(m.title || '');
+          // Funding-source name in the title.
+          if (title && [...lenderNames].some((n) => titleMatchesEntity(title, n))) return false;
+          // Meeting matched directly to a funding-source contact.
+          if (m.matched_contact_id && lenderContactIds.has(m.matched_contact_id)) return false;
+          const doms = attendees.get(m.id) || [];
+          if (doms.length === 0) return true; // unknown attendees — keep
+          // 2) internal-only calls
+          if (doms.every((d) => INTERNAL_DOMAINS.has(d))) return false;
+          // 3) existing client calls
+          if (doms.some((d) => clientDomains.has(d))) return false;
+          // 4) funding-source attendees
+          if (doms.some((d) => lenderDomains.has(d))) return false;
+          return true;
+        })
+        .map((m) => {
+          const set = new Set(internalEmails.get(m.id) || []);
+          const organizer = (m.organizer_email || '').trim().toLowerCase();
+          if (organizer && INTERNAL_DOMAINS.has(domainOf(organizer) || '')) set.add(organizer);
+          return { ...m, internal_emails: Array.from(set) };
+        });
+
 
     },
   });
@@ -435,9 +455,57 @@ export function useReferralSourceMetrics() {
     return [...map.values()].filter((r) => r.deals > 0);
   }, [sources, feeByDeal]);
 
+  // ---- Per-user (internal host/attendee) filtering -------------------------
+  const internalEmailList = useMemo(() => {
+    const set = new Set<string>();
+    meetings.forEach((m) => (m.internal_emails || []).forEach((e) => set.add(e)));
+    return Array.from(set).sort();
+  }, [meetings]);
+
+  const { data: internalProfiles = new Map<string, string>() } = useQuery({
+    queryKey: ['referral_meeting_owner_profiles', internalEmailList.join(',')],
+    enabled: internalEmailList.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('email, full_name, first_name, last_name')
+        .in('email', internalEmailList);
+      if (error) throw error;
+      const map = new Map<string, string>();
+      for (const p of (data || []) as any[]) {
+        const label =
+          p.full_name ||
+          [p.first_name, p.last_name].filter(Boolean).join(' ') ||
+          String(p.email || '');
+        if (p.email) map.set(String(p.email).toLowerCase(), label);
+      }
+      return map;
+    },
+  });
+
+  const meetingOwnerOptions = useMemo(
+    () =>
+      internalEmailList.map((email) => ({
+        email,
+        label: internalProfiles.get(email) || email.split('@')[0].replace(/[._]/g, ' '),
+        count: meetings.filter(
+          (m) => !excludedMeetingIds.has(m.id) && (m.internal_emails || []).includes(email),
+        ).length,
+      })).filter((o) => o.count > 0),
+    [internalEmailList, internalProfiles, meetings, excludedMeetingIds],
+  );
+
+  const [meetingOwnerFilter, setMeetingOwnerFilter] = useState<string[]>([]);
+
   const visibleMeetings = useMemo(
-    () => meetings.filter((m) => !excludedMeetingIds.has(m.id)),
-    [meetings, excludedMeetingIds],
+    () =>
+      meetings.filter(
+        (m) =>
+          !excludedMeetingIds.has(m.id) &&
+          (meetingOwnerFilter.length === 0 ||
+            (m.internal_emails || []).some((e) => meetingOwnerFilter.includes(e))),
+      ),
+    [meetings, excludedMeetingIds, meetingOwnerFilter],
   );
 
   const meetingRows = useMemo<DrillRow[]>(
@@ -447,10 +515,18 @@ export function useReferralSourceMetrics() {
         .map((m) => ({
           id: m.id,
           primary: m.title || 'Untitled meeting',
-          secondary: m.started_at ? new Date(m.started_at).toLocaleDateString() : undefined,
+          secondary: [
+            m.started_at ? new Date(m.started_at).toLocaleDateString() : null,
+            (m.internal_emails || [])
+              .map((e) => internalProfiles.get(e) || e)
+              .join(', ') || null,
+          ]
+            .filter(Boolean)
+            .join(' · ') || undefined,
         })),
-    [visibleMeetings],
+    [visibleMeetings, internalProfiles],
   );
+
 
   const removedMeetingRows = useMemo<DrillRow[]>(
     () =>
@@ -484,6 +560,11 @@ export function useReferralSourceMetrics() {
     removeMeeting: (meetingId: string) => removeMeeting.mutate(meetingId),
     restoreMeeting: (meetingId: string) => restoreMeeting.mutate(meetingId),
     isUpdatingMeetingExclusions: removeMeeting.isPending || restoreMeeting.isPending,
+    /** Internal users (host/attendees) available to filter the meetings count by. */
+    meetingOwnerOptions,
+    meetingOwnerFilter,
+    setMeetingOwnerFilter,
+
     newSourceCount: newSources.length,
     newSourceRows,
     sourceLeaderboard,
