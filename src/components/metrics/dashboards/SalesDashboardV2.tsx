@@ -1630,6 +1630,40 @@ function SourcedViaDrilldownDialog({
     return m;
   }, [refCrmCompanies]);
 
+  // Channel for direct contact/company referrals comes from channel_entries.
+  const { data: channelEntries } = useQuery({
+    queryKey: ['sourced-via-drilldown-channels', contactIds.sort().join(','), crmCompanyIds.sort().join(',')],
+    enabled: open && (contactIds.length > 0 || crmCompanyIds.length > 0),
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const filters: string[] = [];
+      if (contactIds.length) filters.push(`contact_id.in.(${contactIds.join(',')})`);
+      if (crmCompanyIds.length) filters.push(`crm_company_id.in.(${crmCompanyIds.join(',')})`);
+      const { data, error } = await supabase
+        .from('channel_entries')
+        .select('contact_id, crm_company_id, channel_type')
+        .or(filters.join(','));
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const channelByContact = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const e of channelEntries ?? []) {
+      if (e.contact_id && e.channel_type && !m.has(e.contact_id)) m.set(e.contact_id, e.channel_type as string);
+    }
+    return m;
+  }, [channelEntries]);
+
+  const channelByCrmCompany = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const e of channelEntries ?? []) {
+      if (e.crm_company_id && e.channel_type && !m.has(e.crm_company_id)) m.set(e.crm_company_id, e.channel_type as string);
+    }
+    return m;
+  }, [channelEntries]);
+
   const rows = deals
     .slice()
     .sort((a, b) => (a.created_at > b.created_at ? -1 : 1))
@@ -1644,12 +1678,18 @@ function SourcedViaDrilldownDialog({
         (d.referral_source || '').trim() ||
         crmCompany ||
         '—';
+      const channel =
+        s?.channel ||
+        (d.referred_by_contact_id ? channelByContact.get(d.referred_by_contact_id) : undefined) ||
+        (d.referred_by_crm_company_id ? channelByCrmCompany.get(d.referred_by_crm_company_id) : undefined) ||
+        (referralName !== '—' ? 'Referral Partner' : '—');
       return {
         id: d.id,
         company: d.company || '—',
         created: d.created_at,
         referralName,
-        channel: s?.channel ?? '—',
+        channel,
+
         type: s?.type ?? s?.source_type ?? '—',
         partner:
           (s?.promoted_to_partner_id ? partnerById.get(s.promoted_to_partner_id) : undefined) ??
