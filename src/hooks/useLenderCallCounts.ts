@@ -14,6 +14,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { INTERNAL_DOMAINS, domainOf } from '@/lib/internalDomains';
+import { normalizeEntityName, titleMatchesEntity } from '@/lib/entityTitleMatch';
+import { isExcludedDealName } from '@/utils/excludedDeals';
 
 export interface LenderCallRow {
   id: string;
@@ -60,12 +62,35 @@ export function useLenderCallCounts(start: Date | null, end: Date | null, enable
       if (end) q = q.lte('started_at', end.toISOString());
       const { data: meetingRows, error } = await q;
       if (error) throw error;
-      const meetings = (meetingRows || []) as {
+      let meetings = (meetingRows || []) as {
         id: string;
         title: string | null;
         started_at: string | null;
         matched_contact_id: string | null;
       }[];
+      if (meetings.length === 0) return { existing: [], fresh: [] };
+
+      // Calls whose title mentions a deal name are deal calls, not lender
+      // relationship calls — exclude them from both buckets.
+      const { data: dealNameRows } = await supabase
+        .from('deals')
+        .select('company')
+        .eq('company_id', company!.id)
+        .not('company', 'is', null);
+      const dealNames = Array.from(
+        new Set(
+          (dealNameRows || [])
+            .map((d: any) => normalizeEntityName(String(d.company || '')))
+            .filter((n) => n.length >= 4 && !isExcludedDealName(n)),
+        ),
+      );
+      if (dealNames.length > 0) {
+        meetings = meetings.filter((m) => {
+          const t = normalizeEntityName(m.title || '');
+          if (!t) return true;
+          return !dealNames.some((n) => titleMatchesEntity(t, n));
+        });
+      }
       if (meetings.length === 0) return { existing: [], fresh: [] };
 
       // Funding-source lookup tables.
