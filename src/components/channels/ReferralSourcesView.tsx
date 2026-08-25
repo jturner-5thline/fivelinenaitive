@@ -17,6 +17,10 @@ import { ReferralSourceEditDialog } from './ReferralSourceEditDialog';
 import { ReferralEntityQuickView, type QuickViewTarget } from './ReferralEntityQuickView';
 import { Input } from '@/components/ui/input';
 import { useTriStateSort } from '@/hooks/useTriStateSort';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
+
+const UNASSIGNED_OWNER = '__unassigned__';
+
 
 const CHANNEL_OPTIONS = [
   { value: 'Banks', label: 'Banks' },
@@ -215,10 +219,36 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
   };
 
   const [companyFilter, setCompanyFilter] = useState<string[]>([]);
+  const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
+
+  const teamMembers = useTeamMembers();
+  const ownerNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of teamMembers) m.set(t.id, t.display_name);
+    return m;
+  }, [teamMembers]);
+
+  const ownerOptions = useMemo(() => {
+    const ids = new Set<string>();
+    let hasUnassigned = false;
+    for (const r of referralSources) {
+      if (r.ownerUserId) ids.add(r.ownerUserId);
+      else hasUnassigned = true;
+    }
+    const opts = Array.from(ids)
+      .map(id => ({ value: id, label: ownerNameById.get(id) || 'Unknown user' }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    if (hasUnassigned) opts.push({ value: UNASSIGNED_OWNER, label: 'Unassigned' });
+    return opts;
+  }, [referralSources, ownerNameById]);
+
   const filteredSources = useMemo(() => {
     let list = referralSources;
     if (companyFilter.length) {
       list = list.filter(r => r.companyName && companyFilter.includes(r.companyName));
+    }
+    if (ownerFilter.length) {
+      list = list.filter(r => ownerFilter.includes(r.ownerUserId || UNASSIGNED_OWNER));
     }
     if (tierFilter.length > 0) {
       list = list.filter(r => {
@@ -237,7 +267,8 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
       );
     }
     return list;
-  }, [referralSources, companyFilter, tierFilter, tierLookup, search]);
+  }, [referralSources, companyFilter, ownerFilter, tierFilter, tierLookup, search]);
+
 
   const sortedSources = useMemo(() => {
     if (!sortField || !sortDir) return filteredSources;
@@ -268,8 +299,8 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
     });
   }, [filteredSources, sortField, sortDir, tierLookup]);
 
-  const hasActiveFilters = channelFilter.length > 0 || companyFilter.length > 0 || pipelineFilter !== 'all' || tierFilter.length > 0 || search.length > 0;
-  const clearAll = () => { setChannelFilter([]); setCompanyFilter([]); setPipelineFilter('all'); setTierFilter([]); setSearch(''); };
+  const hasActiveFilters = channelFilter.length > 0 || companyFilter.length > 0 || ownerFilter.length > 0 || pipelineFilter !== 'all' || tierFilter.length > 0 || search.length > 0;
+  const clearAll = () => { setChannelFilter([]); setCompanyFilter([]); setOwnerFilter([]); setPipelineFilter('all'); setTierFilter([]); setSearch(''); };
 
   if (isLoading) {
     return (
@@ -341,6 +372,16 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
           />
         )}
 
+        {ownerOptions.length > 0 && (
+          <MultiSelectFilter
+            label="Owners"
+            options={ownerOptions}
+            selected={ownerFilter}
+            onChange={setOwnerFilter}
+          />
+        )}
+
+
         <div className="relative ml-auto">
           <Search className="h-3 w-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -374,7 +415,7 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
       </div>
 
       {/* Active filter chips */}
-      {(channelFilter.length > 0 || companyFilter.length > 0) && (
+      {(channelFilter.length > 0 || companyFilter.length > 0 || ownerFilter.length > 0) && (
         <div className="flex items-center gap-1.5 flex-wrap">
           {channelFilter.map(ct => {
             const label = CHANNEL_OPTIONS.find(o => o.value === ct)?.label || ct;
@@ -389,6 +430,12 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
               {c} <X className="h-2.5 w-2.5" />
             </Badge>
           ))}
+          {ownerFilter.map(o => (
+            <Badge key={o} variant="secondary" className="text-[10px] gap-1 pl-2 pr-1 py-0.5 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 cursor-pointer" onClick={() => setOwnerFilter(prev => prev.filter(v => v !== o))}>
+              {o === UNASSIGNED_OWNER ? 'Unassigned' : (ownerNameById.get(o) || 'Unknown user')} <X className="h-2.5 w-2.5" />
+            </Badge>
+          ))}
+
         </div>
       )}
 
