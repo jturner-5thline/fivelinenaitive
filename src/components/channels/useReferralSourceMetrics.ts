@@ -69,7 +69,7 @@ export function useReferralSourceMetrics() {
   //    contact on a deal in the Active or In Development pipelines)
   const { data: meetings = [], isLoading: meetingsLoading } = useQuery({
     queryKey: [
-      'referral_source_meetings_v2',
+      'referral_source_meetings_v3',
       company?.id,
       start?.toISOString() ?? null,
       end?.toISOString() ?? null,
@@ -87,10 +87,36 @@ export function useReferralSourceMetrics() {
       const all = (data || []) as MeetingRow[];
       if (all.length === 0) return [];
 
-      // 1) Drop sales-titled calls.
+      // 1) Drop sales-titled calls and internal "Deal Sync" style calls.
       const SALES_TITLE = /<>\s*(5th\s*line|5thline|naitive)/i;
-      const candidates = all.filter((m) => !SALES_TITLE.test(m.title || ''));
+      const DEAL_SYNC_TITLE = /deal\s*sync/i;
+      let candidates = all.filter(
+        (m) => !SALES_TITLE.test(m.title || '') && !DEAL_SYNC_TITLE.test(m.title || ''),
+      );
       if (candidates.length === 0) return [];
+
+      // 1b) Drop calls whose title mentions an existing deal name.
+      const { data: dealNameRows } = await supabase
+        .from('deals')
+        .select('company')
+        .eq('company_id', company!.id)
+        .not('company', 'is', null);
+      const dealNames = Array.from(
+        new Set(
+          (dealNameRows || [])
+            .map((d: any) => String(d.company || '').trim().toLowerCase())
+            .filter((n) => n.length >= 4 && !isExcludedDealName(n)),
+        ),
+      );
+      if (dealNames.length > 0) {
+        candidates = candidates.filter((m) => {
+          const t = (m.title || '').toLowerCase();
+          if (!t) return true;
+          return !dealNames.some((n) => t.includes(n));
+        });
+      }
+      if (candidates.length === 0) return [];
+
 
       // Attendees for the remaining meetings.
       const ids = candidates.map((m) => m.id);
