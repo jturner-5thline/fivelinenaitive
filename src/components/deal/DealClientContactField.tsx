@@ -282,6 +282,7 @@ export function DealClientContactField({
           label="Draft email to client contact"
           className="shrink-0"
         />
+        </div>
       </div>
     </div>
   );
