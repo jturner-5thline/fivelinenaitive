@@ -1365,7 +1365,21 @@ function FinServFinancialMetricsDashboardInner() {
           subtitle="Qualification → Negotiation"
           isLoading={pipelineSnapshot.isLoading}
         />
+        <FinServSnapshotCard
+          label="FinServ Clients Signed"
+          value={newMrr.deals.length}
+          subtitle={`Entered "Active Client" · ${periodBadge}`}
+          isLoading={newMrr.isLoading}
+        />
+        <FinServSnapshotCard
+          label="MRR Signed"
+          value={newMrr.total}
+          format="currency"
+          subtitle={`MRR of deals entering "Active Client" · ${periodBadge}`}
+          isLoading={newMrr.isLoading}
+        />
       </div>
+
 
       <Card className="glass-module">
         <CardHeader className="pb-2">
