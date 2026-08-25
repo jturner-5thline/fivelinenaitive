@@ -14,6 +14,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { INTERNAL_DOMAINS, domainOf } from '@/lib/internalDomains';
+import { normalizeEntityName, titleMatchesEntity } from '@/lib/entityTitleMatch';
+import { isExcludedDealName } from '@/utils/excludedDeals';
 
 export interface LenderCallRow {
   id: string;
