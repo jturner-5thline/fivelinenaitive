@@ -388,16 +388,34 @@ export function useReferralSourceMetrics() {
     return [...map.values()].filter((r) => r.deals > 0);
   }, [sources, feeByDeal]);
 
+  const visibleMeetings = useMemo(
+    () => meetings.filter((m) => !excludedMeetingIds.has(m.id)),
+    [meetings, excludedMeetingIds],
+  );
+
   const meetingRows = useMemo<DrillRow[]>(
     () =>
-      [...meetings]
+      [...visibleMeetings]
         .sort((a, b) => (b.started_at || '').localeCompare(a.started_at || ''))
         .map((m) => ({
           id: m.id,
           primary: m.title || 'Untitled meeting',
           secondary: m.started_at ? new Date(m.started_at).toLocaleDateString() : undefined,
         })),
-    [meetings],
+    [visibleMeetings],
+  );
+
+  const removedMeetingRows = useMemo<DrillRow[]>(
+    () =>
+      meetings
+        .filter((m) => excludedMeetingIds.has(m.id))
+        .sort((a, b) => (b.started_at || '').localeCompare(a.started_at || ''))
+        .map((m) => ({
+          id: m.id,
+          primary: m.title || 'Untitled meeting',
+          secondary: m.started_at ? new Date(m.started_at).toLocaleDateString() : undefined,
+        })),
+    [meetings, excludedMeetingIds],
   );
 
   const newSourceRows = useMemo<DrillRow[]>(
@@ -412,8 +430,13 @@ export function useReferralSourceMetrics() {
 
   return {
     isLoading: sourcesLoading || meetingsLoading || newSourcesLoading,
-    meetingCount: meetings.length,
+    meetingCount: visibleMeetings.length,
     meetingRows,
+    /** Calls a user manually removed from the meetings count. */
+    removedMeetingRows,
+    removeMeeting: (meetingId: string) => removeMeeting.mutate(meetingId),
+    restoreMeeting: (meetingId: string) => restoreMeeting.mutate(meetingId),
+    isUpdatingMeetingExclusions: removeMeeting.isPending || restoreMeeting.isPending,
     newSourceCount: newSources.length,
     newSourceRows,
     sourceLeaderboard,
@@ -422,3 +445,4 @@ export function useReferralSourceMetrics() {
     hasFeeData: sourceLeaderboard.some((r) => r.fees > 0),
   };
 }
+
