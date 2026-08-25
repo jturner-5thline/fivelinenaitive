@@ -128,9 +128,10 @@ export function DealClientContactField({
   };
 
   return (
-    <div className="flex flex-col gap-1 min-w-0">
+    <div className="flex w-full min-w-0 flex-col gap-1">
       <span className="text-muted-foreground text-xs font-medium break-words">Client Contacts</span>
-      <div className="min-h-8 w-full min-w-0 rounded-md border border-input bg-background px-2 py-1 flex flex-wrap items-center gap-1.5">
+      <div className="flex min-h-8 w-full min-w-0 flex-col gap-1.5 rounded-md border border-input bg-background px-2 py-1.5">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5">
         {chips.length === 0 && (
           <span className="text-xs text-muted-foreground italic mr-1" data-testid="deal-client-contact-value">
             {EMPTY_CLIENT_CONTACT_LABEL}
@@ -142,8 +143,9 @@ export function DealClientContactField({
               <TooltipTrigger asChild>
                 <Badge
                   variant="secondary"
-                  className="h-6 pl-2 pr-1 gap-1 text-xs font-normal max-w-full"
+                  className="h-6 pl-2 pr-1 gap-1 text-xs font-normal max-w-full min-w-0"
                 >
+
                   {chip.id && chips.length > 1 ? (
                     <button
                       type="button"
