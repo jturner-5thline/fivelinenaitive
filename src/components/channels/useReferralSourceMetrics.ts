@@ -124,6 +124,12 @@ export function useReferralSourceMetrics() {
   const start = dateCtx?.start ?? null;
   const end = dateCtx?.end ?? null;
   const { referralSources, isLoading: sourcesLoading } = useDealReferralSources();
+  // Pipeline stage is a current, all-history classification. It must not be
+  // recalculated from the selected reporting window, otherwise a narrower
+  // range can incorrectly move a tiered source back into Nurturing.
+  const { referralSources: allTimeReferralSources } = useDealReferralSources({
+    ignoreDateRange: true,
+  });
 
   const sources = useMemo(
     () =>
@@ -395,11 +401,11 @@ export function useReferralSourceMetrics() {
   // it is no longer a newly added nurturing source.
   const tieredSourceNames = useMemo(() => {
     const set = new Set<string>();
-    for (const r of referralSources) {
+    for (const r of allTimeReferralSources) {
       if (r.tier !== null && r.tier !== undefined) set.add(normalizeEntityName(r.referredBy || ''));
     }
     return set;
-  }, [referralSources]);
+  }, [allTimeReferralSources]);
 
   const nurturingNewSources = useMemo(
     () =>
