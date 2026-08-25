@@ -287,22 +287,30 @@ export function useReferralSourceMetrics() {
         if (dom && !INTERNAL_DOMAINS.has(dom)) lenderDomains.add(dom);
       }
 
-      return candidates.filter((m) => {
-        const title = normalizeEntityName(m.title || '');
-        // Funding-source name in the title.
-        if (title && [...lenderNames].some((n) => titleMatchesEntity(title, n))) return false;
-        // Meeting matched directly to a funding-source contact.
-        if (m.matched_contact_id && lenderContactIds.has(m.matched_contact_id)) return false;
-        const doms = attendees.get(m.id) || [];
-        if (doms.length === 0) return true; // unknown attendees — keep
-        // 2) internal-only calls
-        if (doms.every((d) => INTERNAL_DOMAINS.has(d))) return false;
-        // 3) existing client calls
-        if (doms.some((d) => clientDomains.has(d))) return false;
-        // 4) funding-source attendees
-        if (doms.some((d) => lenderDomains.has(d))) return false;
-        return true;
-      });
+      return candidates
+        .filter((m) => {
+          const title = normalizeEntityName(m.title || '');
+          // Funding-source name in the title.
+          if (title && [...lenderNames].some((n) => titleMatchesEntity(title, n))) return false;
+          // Meeting matched directly to a funding-source contact.
+          if (m.matched_contact_id && lenderContactIds.has(m.matched_contact_id)) return false;
+          const doms = attendees.get(m.id) || [];
+          if (doms.length === 0) return true; // unknown attendees — keep
+          // 2) internal-only calls
+          if (doms.every((d) => INTERNAL_DOMAINS.has(d))) return false;
+          // 3) existing client calls
+          if (doms.some((d) => clientDomains.has(d))) return false;
+          // 4) funding-source attendees
+          if (doms.some((d) => lenderDomains.has(d))) return false;
+          return true;
+        })
+        .map((m) => {
+          const set = new Set(internalEmails.get(m.id) || []);
+          const organizer = (m.organizer_email || '').trim().toLowerCase();
+          if (organizer && INTERNAL_DOMAINS.has(domainOf(organizer) || '')) set.add(organizer);
+          return { ...m, internal_emails: Array.from(set) };
+        });
+
 
     },
   });
