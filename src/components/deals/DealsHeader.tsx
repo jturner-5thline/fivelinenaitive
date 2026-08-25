@@ -385,12 +385,14 @@ export function DealsHeader() {
       available: canSeeBriefingHeaderItems,
     },
     {
+      // Opens the exact same dashboard pop-up as the Dashboard icon.
       label: 'Today' as const,
-      isOpen: isDashboardOpen && dashboardInitialTab === 'today',
-      open: () => { setDashboardInitialTab('today'); setIsDashboardOpen(true); refetchActionQueue(); },
-      close: () => setIsDashboardOpen(false),
+      isOpen: isBriefingOpen,
+      open: () => { setIsBriefingOpen(true); refetchActionQueue(); },
+      close: () => setIsBriefingOpen(false),
       available: approvalQueueEnabled,
     },
+
   ].filter(o => o.available);
 
   const currentOverlay = overlayRegistry.find(o => o.isOpen) ?? null;
