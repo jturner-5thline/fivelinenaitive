@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { CalendarRange, TrendingUp, Download, Search, Target, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { isExcludedDealName } from '@/utils/excludedDeals';
+import { useLenderCallCounts } from '@/hooks/useLenderCallCounts';
 import type { MasterLender } from '@/hooks/useMasterLenders';
 import {
   useNaitivePipelineAccess,
@@ -323,6 +324,12 @@ export function LenderAnalyticsDialog({
   originClassName,
 }: Props) {
   const [dateRange, setDateRange] = useState<DateRange>('ytd');
+  const [openCalls, setOpenCalls] = useState<'existing' | 'new' | null>(null);
+  const { data: lenderCalls, isLoading: lenderCallsLoading } = useLenderCallCounts(
+    rangeStart(dateRange),
+    rangeEnd(dateRange),
+    open || !!embedded,
+  );
   const [dealLenders, setDealLenders] = useState<DealLenderRow[]>([]);
   const [deals, setDeals] = useState<DealRow[]>([]);
   const [stageConfigs, setStageConfigs] = useState<StageConfigRow[]>([]);
@@ -1065,6 +1072,24 @@ export function LenderAnalyticsDialog({
 
           {!isEmpty && (
             <>
+              {/* Calls with funding sources, split by active status */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <IntelKpi
+                  label="Calls w/ Existing Lenders"
+                  value={lenderCalls?.existing.length ?? 0}
+                  hint={`calendar events with an active funding source · ${dateRangeLabel(dateRange)}`}
+                  loading={lenderCallsLoading}
+                  onClick={() => setOpenCalls('existing')}
+                />
+                <IntelKpi
+                  label="Calls w/ New Lenders"
+                  value={lenderCalls?.fresh.length ?? 0}
+                  hint={`calendar events with a non-active funding source · ${dateRangeLabel(dateRange)}`}
+                  loading={lenderCallsLoading}
+                  onClick={() => setOpenCalls('new')}
+                />
+              </div>
+
               {/* Row 2 — narrow left volume list + right stacked (conversion chart + pass reasons) */}
               <div className="grid grid-cols-1 lg:grid-cols-[minmax(240px,300px)_1fr] gap-3">
                 <IntelPanel title="Deal Volume by Lender">
@@ -1476,6 +1501,40 @@ export function LenderAnalyticsDialog({
 
   const overlays = (
     <>
+      {/* Calls with funding sources drill-down */}
+      <Sheet open={!!openCalls} onOpenChange={(o) => { if (!o) setOpenCalls(null); }}>
+        <SheetContent side="right" className="w-[560px] sm:max-w-[640px] z-[1600] bg-slate-950 text-slate-100 border-slate-700/60">
+          {openCalls && (() => {
+            const rows = openCalls === 'existing' ? (lenderCalls?.existing ?? []) : (lenderCalls?.fresh ?? []);
+            return (
+              <>
+                <SheetHeader>
+                  <SheetTitle className="text-slate-100">
+                    {openCalls === 'existing' ? 'Calls w/ Existing Lenders' : 'Calls w/ New Lenders'}
+                  </SheetTitle>
+                  <SheetDescription className="text-slate-400">
+                    {rows.length} call{rows.length === 1 ? '' : 's'} · {dateRangeLabel(dateRange)}
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="mt-4 space-y-1 overflow-auto max-h-[calc(100vh-140px)] pr-1">
+                  {rows.length === 0 ? (
+                    <div className="py-8 text-center text-[12.5px] text-slate-500">No calls in this timeframe</div>
+                  ) : rows.map((r) => (
+                    <div key={r.id} className="rounded-md border border-slate-800 bg-slate-900/50 px-3 py-2">
+                      <div className="text-[12.5px] text-slate-100 truncate">{r.title || 'Untitled call'}</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">
+                        {r.lender}
+                        {r.started_at ? ` · ${new Date(r.started_at).toLocaleDateString()}` : ''}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
+
       {/* KPI drill-down sheet — Active Lenders / Deals Sent / Conversion / Flex Active */}
       <Sheet open={!!openKpi} onOpenChange={(o) => { if (!o) setOpenKpi(null); }}>
         <SheetContent side="right" className="w-[640px] sm:max-w-[720px] z-[1600] bg-slate-950 text-slate-100 border-slate-700/60">
