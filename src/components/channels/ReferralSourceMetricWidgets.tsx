@@ -152,7 +152,10 @@ interface MetricTileProps {
   removedRows?: DrillRow[];
   onRestoreRow?: (id: string) => void;
   isMutating?: boolean;
+  /** Optional filter controls rendered on the tile and inside the drill-down. */
+  filterBar?: ReactNode;
 }
+
 
 function MetricTile({
   label,
