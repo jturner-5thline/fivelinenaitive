@@ -390,6 +390,28 @@ export function useReferralSourceMetrics() {
     },
   });
 
+  // Only sources that are currently sitting in the pipeline's "Nurturing"
+  // stage count here — once a source's referred deals qualify it for Tier 3/2/1
+  // it is no longer a newly added nurturing source.
+  const tieredSourceNames = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of referralSources) {
+      if (r.tier !== null && r.tier !== undefined) set.add(normalizeEntityName(r.referredBy || ''));
+    }
+    return set;
+  }, [referralSources]);
+
+  const nurturingNewSources = useMemo(
+    () =>
+      newSources.filter((s) => {
+        const name = normalizeEntityName(s.name || s.contact_name || '');
+        return !!name && !tieredSourceNames.has(name);
+      }),
+    [newSources, tieredSourceNames],
+  );
+
+
+
   // ---- Fee revenue per referred deal ---------------------------------------
   const dealIds = useMemo(() => {
     const ids = new Set<string>();
@@ -543,12 +565,12 @@ export function useReferralSourceMetrics() {
 
   const newSourceRows = useMemo<DrillRow[]>(
     () =>
-      newSources.map((s) => ({
+      nurturingNewSources.map((s) => ({
         id: s.id,
         primary: s.name || s.contact_name || 'Untitled source',
         secondary: [s.company, s.channel].filter(Boolean).join(' · ') || undefined,
       })),
-    [newSources],
+    [nurturingNewSources],
   );
 
   return {
@@ -565,7 +587,7 @@ export function useReferralSourceMetrics() {
     meetingOwnerFilter,
     setMeetingOwnerFilter,
 
-    newSourceCount: newSources.length,
+    newSourceCount: nurturingNewSources.length,
     newSourceRows,
     sourceLeaderboard,
     channelLeaderboard,
