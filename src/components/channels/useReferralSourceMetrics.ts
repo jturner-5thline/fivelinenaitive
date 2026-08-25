@@ -151,7 +151,7 @@ export function useReferralSourceMetrics() {
   //    contact on a deal in the Active or In Development pipelines)
   const { data: meetings = [], isLoading: meetingsLoading } = useQuery({
     queryKey: [
-      'referral_source_meetings_v6',
+      'referral_source_meetings_v7',
       company?.id,
       start?.toISOString() ?? null,
       end?.toISOString() ?? null,
@@ -160,8 +160,9 @@ export function useReferralSourceMetrics() {
     queryFn: async () => {
       let q = supabase
         .from('claap_meetings')
-        .select('id, title, started_at, matched_contact_id, matched_crm_company_id')
+        .select('id, title, started_at, matched_contact_id, matched_crm_company_id, organizer_email')
         .eq('company_id', company!.id);
+
       if (start) q = q.gte('started_at', start.toISOString());
       if (end) q = q.lte('started_at', end.toISOString());
       const { data, error } = await q;
