@@ -385,6 +385,25 @@ export function useDealReferralSources(filters?: {
       }
     }
 
+    // Manual overrides (referral_sources rows edited in "Edit Referral Source").
+    // Keyed by both the source name and its saved company so the override
+    // applies however the referrer appears on the deal.
+    const overrideLookup = new Map<string, { channel: string | null; companyName: string | null }>();
+    for (const rs of referralSourceRecords) {
+      const value = { channel: rs.channel || null, companyName: rs.company || null };
+      if (rs.name) {
+        const k = normalize(rs.name);
+        // Tenant-scoped rows win over global ones.
+        if (!overrideLookup.has(k) || rs.company_id) overrideLookup.set(k, value);
+      }
+      if (rs.company) {
+        const k = normalize(rs.company);
+        if (!overrideLookup.has(k)) overrideLookup.set(k, value);
+      }
+    }
+
+
+
     // Contact-name → CRM company lookup, built from the linked contact records.
     const contactCompanyLookup = new Map<string, string>();
     for (const c of linkedContacts) {
