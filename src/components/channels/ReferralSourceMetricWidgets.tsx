@@ -451,6 +451,10 @@ export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode
           rows={meetingRows}
           drillTitle="Meetings with referral sources"
           isLoading={isLoading}
+          onRemoveRow={removeMeeting}
+          removedRows={removedMeetingRows}
+          onRestoreRow={restoreMeeting}
+          isMutating={isUpdatingMeetingExclusions}
         />
         <MetricTile
           label="New Referral Sources Added"
