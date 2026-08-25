@@ -152,7 +152,7 @@ interface MetricTileProps {
   removedRows?: DrillRow[];
   onRestoreRow?: (id: string) => void;
   isMutating?: boolean;
-  /** Optional filter controls rendered on the tile and inside the drill-down. */
+  /** Optional filter controls rendered inside the drill-down only. */
   filterBar?: ReactNode;
 }
 
@@ -206,11 +206,6 @@ function MetricTile({
         <p className="text-[11px] text-muted-foreground leading-snug">
           {isLoading ? 'Loading…' : canDrill ? subtext : 'No data in selected timeframe'}
         </p>
-        {filterBar ? (
-          <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-            {filterBar}
-          </div>
-        ) : null}
       </div>
       <DrillDialog
         open={open}
