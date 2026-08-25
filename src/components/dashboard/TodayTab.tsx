@@ -1,14 +1,12 @@
 import { useMemo, useState } from 'react';
-import { CheckSquare, Inbox, ListChecks, Sunset } from 'lucide-react';
+import { Inbox, ListChecks, Sunset } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 import { EndOfDayTab } from '@/components/dashboard/EndOfDayTab';
-import { TodayTasksPanel } from '@/components/dashboard/TodayTasksPanel';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { useEndOfDayOutstandingCount } from '@/hooks/useEndOfDayOutstandingCount';
-import { useTodayTasks } from '@/hooks/useTodayTasks';
 import { consolidatedAiQueueCount } from '@/lib/consolidatedAiQueueCount';
 
 /**
@@ -50,7 +48,6 @@ export function TodayTab({
   const { data: queueItems = [] } = useAiActionQueue();
   const { data: accessRequests = [] } = useDealAccessRequests();
   const eodCount = useEndOfDayOutstandingCount();
-  const { counts: taskCounts } = useTodayTasks(enabled);
 
   const decisionCount = queueEnabled
     ? consolidatedAiQueueCount(queueItems) + (accessRequests?.length || 0)
@@ -67,18 +64,18 @@ export function TodayTab({
           ? { key: 'decisions' as const, label: 'Decisions', icon: Inbox, count: decisionCount }
           : null,
         { key: 'wrapups' as const, label: 'Wrap-ups', icon: Sunset, count: eodCount },
-        { key: 'tasks' as const, label: "Today's Tasks", icon: CheckSquare, count: taskCounts.total },
+
       ].filter(Boolean) as Array<{
         key: TodaySection;
         label: string;
         icon: typeof Inbox;
         count: number;
       }>,
-    [queueEnabled, decisionCount, eodCount, taskCounts.total],
+    [queueEnabled, decisionCount, eodCount],
   );
 
   const activeSection = segments.some(s => s.key === section) ? section : segments[0]?.key ?? 'wrapups';
-  const totalOutstanding = decisionCount + eodCount + taskCounts.total;
+  const totalOutstanding = decisionCount + eodCount;
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col">
@@ -139,9 +136,6 @@ export function TodayTab({
             targetUserId={targetUserId}
             briefingType={briefingType}
           />
-        </div>
-        <div className={cn('h-full min-h-0 flex-col pt-1', activeSection === 'tasks' ? 'flex' : 'hidden')}>
-          {activeSection === 'tasks' && <TodayTasksPanel />}
         </div>
       </div>
     </div>
