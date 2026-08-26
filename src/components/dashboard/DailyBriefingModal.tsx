@@ -10,6 +10,8 @@ import { AgendaIntel } from './AgendaIntel';
 import { MoffittDealRundown } from './MoffittDealRundown';
 import { MOFFITT_USER_ID } from '@/constants/moffittBriefing';
 import { TodayTab } from './TodayTab';
+import { UnifiedQueueTab } from './UnifiedQueueTab';
+
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
@@ -2005,7 +2007,11 @@ const ALL_TABS = [
   // Approval Queue + End of Day are consolidated into a single "Today"
   // surface (decisions, wrap-ups, and the today slice of tasks).
   { value: 'today', label: 'Today', icon: Sunset },
+  // Single intermingled queue: approval items + end-of-day wrap-ups sharing
+  // the End of Day tile design.
+  { value: 'unified_queue', label: 'Queue', icon: Inbox },
 ] as const;
+
 
 // ── Main modal component ───────────────────────────────────────
 export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', targetUserId, targetAssigneeName, excludeTabs, initialTab, briefingType = 'daily_briefing' }: DailyBriefingModalProps) {
@@ -2064,6 +2070,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
       }).filter(t => {
         if (excludeTabs?.includes(t.value as any)) return false;
         if (t.value === 'today' && !canSeeEndOfDay && !queueEnabled) return false;
+        if (t.value === 'unified_queue' && !canSeeEndOfDay && !queueEnabled) return false;
         if (t.value === 'dashboard' && !isFifthLine) return false;
         if (t.value === 'financial' && !canSeeFinancial) return false;
         // Agenda, Catch Up & News, and Email are now hosted exclusively
@@ -2205,7 +2212,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                 {TABS.map(tab => {
                   const Icon = tab.icon;
                   const badgeCount =
-                    tab.value === 'today'
+                    tab.value === 'today' || tab.value === 'unified_queue'
                       ? eodOutstandingCount + queueBadgeCount
                       : tab.value === 'operational'
                         ? tasksBadgeCount
@@ -2359,7 +2366,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                 </button>
               )}
 
-              {activeTab === 'pipeline' || activeTab === 'today' ? (
+              {activeTab === 'pipeline' || activeTab === 'today' || activeTab === 'unified_queue' ? (
                 // Pipeline and End of Day tabs manage their own master/detail
                 // scrolling (left list + right pane). Wrapping them in the
                 // outer ScrollArea collapses the inner scroll regions, so we
@@ -2401,6 +2408,14 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                           briefingType={briefingType}
                         />
                       )}
+                      {contentReady && activeTab === 'unified_queue' && (
+                        <UnifiedQueueTab
+                          enabled={open}
+                          onNavigate={handleNavigate}
+                          targetUserId={targetUserId}
+                        />
+                      )}
+
                     </div>
                   </AddToDealCalendarProvider>
                 </div>

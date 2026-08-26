@@ -58,6 +58,8 @@ import { ClaapNoteEditor } from '@/components/dashboard/ClaapNoteEditor';
 import { HighlightCalendarMenu } from '@/components/calendar/HighlightCalendarMenu';
 import { ShareNotesDialog } from '@/components/dashboard/ShareNotesDialog';
 import { Share2 } from 'lucide-react';
+import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
+
 import { RefreshCw } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -256,7 +258,10 @@ function InlineComposer({
 interface TileEvent extends CalendarEvent {
   _ageDays: number;
   _isCarry: boolean;
+  /** When set, this tile is an AI approval-queue item rather than a meeting. */
+  _approval?: any;
 }
+
 
 function EventTile({
   ev, active, selected, onClick, onToggleSelect, onResolve, onDismiss,
@@ -301,27 +306,43 @@ function EventTile({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 min-w-0">
-          <CalendarIcon className="h-3.5 w-3.5 text-white/80 shrink-0" />
+          {ev._approval
+            ? <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
+            : <CalendarIcon className="h-3.5 w-3.5 text-white/80 shrink-0" />}
           <span className="text-sm font-medium text-white truncate">
             {ev.summary || '(No title)'}
           </span>
         </div>
         <div className="mt-0.5 flex items-center gap-1.5 text-[10.5px] text-white/65 truncate">
-          <span className="truncate">
-            {ev._isCarry
-              ? `Outstanding since ${startStr}`
-              : startStr}
-          </span>
-          <span className="text-white/40">·</span>
-          <span className="truncate">{fmtTime(ev.start, ev.all_day)}</span>
-          <Badge variant="outline" className="ml-1 h-4 px-1.5 text-[9px] border-white/15 text-white/75 bg-white/[0.04]">
-            {ev._ageDays <= 0 ? 'Today' : ev._ageDays === 1 ? 'Yesterday' : `${ev._ageDays} days ago`}
-          </Badge>
-          <span className="ml-auto flex items-center gap-0.5 text-white/70">
-            <Users className="h-2.5 w-2.5" />{attendeeCount}
-          </span>
+          {ev._approval ? (
+            <>
+              <span className="truncate">{ev._approval.deal_name || 'Unassigned'}</span>
+              <span className="text-white/40">·</span>
+              <span className="truncate">Needs approval</span>
+              <Badge variant="outline" className="ml-1 h-4 px-1.5 text-[9px] border-primary/30 text-primary bg-primary/10">
+                {ev._ageDays <= 0 ? 'Today' : ev._ageDays === 1 ? 'Yesterday' : `${ev._ageDays} days ago`}
+              </Badge>
+            </>
+          ) : (
+            <>
+              <span className="truncate">
+                {ev._isCarry
+                  ? `Outstanding since ${startStr}`
+                  : startStr}
+              </span>
+              <span className="text-white/40">·</span>
+              <span className="truncate">{fmtTime(ev.start, ev.all_day)}</span>
+              <Badge variant="outline" className="ml-1 h-4 px-1.5 text-[9px] border-white/15 text-white/75 bg-white/[0.04]">
+                {ev._ageDays <= 0 ? 'Today' : ev._ageDays === 1 ? 'Yesterday' : `${ev._ageDays} days ago`}
+              </Badge>
+              <span className="ml-auto flex items-center gap-0.5 text-white/70">
+                <Users className="h-2.5 w-2.5" />{attendeeCount}
+              </span>
+            </>
+          )}
         </div>
       </div>
+
 
       {/* Hover action: dismiss (checkmark) */}
       <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -347,13 +368,20 @@ function EventTile({
 // ─── main component ─────────────────────────────────────────
 export function EndOfDayTab({
   enabled,
+  approvalItems,
 }: {
   enabled: boolean;
   onNavigate?: (path: string) => void;
   targetAssigneeName?: string;
   targetUserId?: string;
   briefingType?: string;
+  /**
+   * Optional AI approval-queue items to intermingle with the end-of-day
+   * meeting tiles, rendered with the same tile design.
+   */
+  approvalItems?: any[];
 }) {
+
   const { user } = useAuth();
   const userId = user?.id || 'anon';
   const userFirstName = useMemo(() => {
@@ -518,7 +546,7 @@ export function EndOfDayTab({
   }, [enabled, status?.connected, listEvents, eventsCacheKey]);
 
   // Build outstanding (filter resolved + dismissed + snoozed)
-  const outstanding = useMemo<TileEvent[]>(() => {
+  const outstandingEvents = useMemo<TileEvent[]>(() => {
     const now = new Date();
     const ws = startOfDay(subDays(now, EOD_LOOKBACK_DAYS));
     const we = endOfDay(now);
@@ -591,6 +619,35 @@ export function EndOfDayTab({
     } catch { /* noop */ }
     return result;
   }, [events, isResolved, isDismissed, isSnoozed, readSet, search, filterChips, selectedId]);
+
+  // AI approval-queue items rendered as tiles alongside the meeting items.
+  const approvalTiles = useMemo<TileEvent[]>(() => {
+    const ref = startOfDay(new Date());
+    return (approvalItems || [])
+      .filter(it => !isResolved(`approval:${it.id}`) && !isDismissed(`approval:${it.id}`, null))
+      .map(it => {
+        const created = safeParse(it.created_at) || new Date();
+        const ageDays = differenceInCalendarDays(ref, startOfDay(created));
+        return {
+          id: `approval:${it.id}`,
+          summary: it.title || 'Approval needed',
+          start: created.toISOString(),
+          end: created.toISOString(),
+          all_day: false,
+          attendees: [],
+          _ageDays: ageDays,
+          _isCarry: ageDays > 0,
+          _approval: it,
+        } as unknown as TileEvent;
+      });
+  }, [approvalItems, isResolved, isDismissed]);
+
+  const outstanding = useMemo<TileEvent[]>(
+    () => [...approvalTiles, ...outstandingEvents],
+    [approvalTiles, outstandingEvents],
+  );
+
+
 
   // Attendee contact lookup (batched)
   const allEmails = useMemo(() => {
@@ -1440,7 +1497,12 @@ export function EndOfDayTab({
   // Detail pane
   const detailPane = (
     <div className="panel-pane flex flex-col h-full min-w-0">
-      {selectedEvent ? (
+      {selectedEvent?._approval ? (
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ActionQueuePanel items={[selectedEvent._approval]} />
+        </div>
+      ) : selectedEvent ? (
+
         <EventDetailPane
           key={selectedEvent.id}
           event={selectedEvent}
