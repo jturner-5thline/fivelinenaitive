@@ -2706,7 +2706,30 @@ export function ConsolidatedDebtPipelineDashboard({
       drilldownValueFormatter: formatCurrency,
       drilldownStackedFees: true,
     },
+    {
+      id: 'terms-conversion-rate',
+      title: 'Terms Conversion Rate',
+      icon: Sigma,
+      value: '—',
+      isLoading: false,
+      deals: [],
+      color: 'hsl(var(--chart-3))',
+      drilldownTitle: 'Terms Conversion Rate',
+      drilldownMetricType: 'none' as const,
+    },
+    {
+      id: 'avg-term-sheets-per-deal',
+      title: 'Avg. Term Sheets / Deal',
+      icon: Sigma,
+      value: '—',
+      isLoading: false,
+      deals: [],
+      color: 'hsl(var(--chart-4))',
+      drilldownTitle: 'Avg. Term Sheets / Deal',
+      drilldownMetricType: 'none' as const,
+    },
   ];
+
 
   return (
     <div className="space-y-6">
