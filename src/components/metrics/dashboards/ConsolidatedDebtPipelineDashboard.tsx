@@ -26,6 +26,7 @@ import {
   type StageEntryDeal,
 } from '@/hooks/usePipelineStageMetrics';
 import { useTotalRevenueOpportunity } from '@/hooks/usePipelineStageMetrics';
+import { useTermsConversionRate } from '@/hooks/useTermsConversionRate';
 import { cn } from '@/lib/utils';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
@@ -2116,6 +2117,7 @@ export function ConsolidatedDebtPipelineDashboard({
   );
   const quarterlyFunnel = useQuarterlyTtmFunnel();
   const totalRevenueOpportunity = useTotalRevenueOpportunity();
+  const termsConversionRate = useTermsConversionRate();
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
   // When true, each bucket in the chart shows the trailing-12-month rollup
   // ending at that bucket's period end, instead of the bucket's own period.
@@ -2710,13 +2712,27 @@ export function ConsolidatedDebtPipelineDashboard({
       id: 'terms-conversion-rate',
       title: 'Terms Conversion Rate',
       icon: Sigma,
-      value: '—',
-      isLoading: false,
+      value: termsConversionRate.value,
+      isLoading: termsConversionRate.isLoading,
       deals: [],
       color: 'hsl(var(--chart-3))',
       drilldownTitle: 'Terms Conversion Rate',
       drilldownMetricType: 'none' as const,
+      conversionBreakdown: {
+        formula:
+          '(Funding sources at Terms Issued or later) ÷ (Total funding sources added) on deals that entered ' +
+          `Submitted to Lenders / Lenders in Review in the last 12 months = ${termsConversionRate.numerator} ÷ ` +
+          `${termsConversionRate.denominator} = ${termsConversionRate.value}`,
+        numeratorLabel: 'Funding sources that reached Terms Issued or later',
+        denominatorLabel: 'Total funding sources added (TTM qualifying deals)',
+        numeratorDeals: [],
+        denominatorDeals: [],
+        numeratorCount: termsConversionRate.numerator,
+        denominatorCount: termsConversionRate.denominator,
+        percentText: termsConversionRate.value,
+      },
     },
+
     {
       id: 'avg-term-sheets-per-deal',
       title: 'Avg. Term Sheets / Deal',
