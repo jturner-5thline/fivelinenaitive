@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, KeyboardEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { BarChart3, ChevronRight, Users, FileText } from 'lucide-react';
+import { BarChart3, ChevronRight, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   SidebarMenuItem,
