@@ -19,7 +19,7 @@ import { usePipelineContext } from "@/contexts/PipelineContext";
 const quickActions = [
   { name: "Dashboard", icon: Briefcase, path: "/deals" },
   { name: "Insights", icon: BarChart3, path: "/insights" },
-  { name: "Sales & BD", icon: Users, path: "/sales-bd" },
+  { name: "Sales & BD", icon: Users, path: "/insights?dashboard=sales-bd-page" },
   { name: "Settings", icon: Settings, path: "/settings" },
 ];
 

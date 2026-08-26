@@ -85,6 +85,7 @@ export const DASHBOARD_OPTIONS = [
   { id: "management-snapshot", name: "Weekly Rundown", isFavorite: true, folder: "management-insights" },
   { id: "revenue-customers", name: "Revenue & Customers", isFavorite: false, folder: "financial" },
   { id: "controller-dashboard", name: "Controller Dashboard", isFavorite: false, folder: "financial" },
+  { id: "sales-bd-page", name: "Sales & BD", isFavorite: false, folder: "sales-bd" },
   { id: "sales-dashboard-v2", name: "Sales Dashboard", isFavorite: false, folder: "sales-bd" },
   { id: "finserv-financial-metrics", name: "FinServ Financial Metrics", isFavorite: false, folder: null },
   { id: "consolidated-debt-pipeline", name: "Debt Advisory Metrics", isFavorite: false, folder: "sales-bd" },
