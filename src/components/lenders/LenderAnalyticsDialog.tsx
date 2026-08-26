@@ -12,6 +12,7 @@ import { CalendarRange, TrendingUp, Download, Search, Target, ChevronRight } fro
 import { supabase } from '@/integrations/supabase/client';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import { useLenderCallCounts } from '@/hooks/useLenderCallCounts';
+import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import { useCompany } from '@/hooks/useCompany';
 import {
   useNewQualifiedLenders,
@@ -108,12 +109,12 @@ const STATIC_DATE_LABEL: Record<Exclude<DateRange, `y${number}`>, string> = {
   all: 'All time',
 };
 
-function dateRangeLabel(range: DateRange): string {
+function baseDateRangeLabel(range: DateRange): string {
   if (isYearRange(range)) return range.slice(1);
   return STATIC_DATE_LABEL[range as Exclude<DateRange, `y${number}`>];
 }
 
-function rangeStart(range: DateRange): Date | null {
+function baseRangeStart(range: DateRange): Date | null {
   const now = new Date();
   if (isYearRange(range)) {
     const yr = Number(range.slice(1));
@@ -131,7 +132,7 @@ function rangeStart(range: DateRange): Date | null {
   return null;
 }
 
-function rangeEnd(range: DateRange): Date | null {
+function baseRangeEnd(range: DateRange): Date | null {
   if (isYearRange(range)) {
     const yr = Number(range.slice(1));
     if (Number.isFinite(yr)) return new Date(yr + 1, 0, 1);
@@ -329,6 +330,17 @@ export function LenderAnalyticsDialog({
   originClassName,
 }: Props) {
   const [dateRange, setDateRange] = useState<DateRange>('ytd');
+  // When rendered inside Insights, the global timeframe picker is the single
+  // authority for this dashboard's window (memory: Global Timeframe Authority).
+  const insightsTf = useInsightsTimeframeOptional();
+  const tfStartIso = insightsTf?.timeframe.start ?? null;
+  const tfEndIso = insightsTf?.timeframe.end ?? null;
+  const tfStart = tfStartIso ? new Date(tfStartIso + 'T00:00:00') : null;
+  const tfEnd = tfEndIso ? new Date(tfEndIso + 'T23:59:59.999') : null;
+  const tfLabel = insightsTf?.timeframe.label ?? null;
+  const rangeStart = (r: DateRange) => (insightsTf ? tfStart : baseRangeStart(r));
+  const rangeEnd = (r: DateRange) => (insightsTf ? tfEnd : baseRangeEnd(r));
+  const dateRangeLabel = (r: DateRange) => (tfLabel ?? baseDateRangeLabel(r));
   const [openCalls, setOpenCalls] = useState<'existing' | 'new' | null>(null);
   const { data: lenderCalls, isLoading: lenderCallsLoading } = useLenderCallCounts(
     rangeStart(dateRange),
@@ -473,7 +485,7 @@ export function LenderAnalyticsDialog({
       }
     })();
     return () => { cancelled = true; };
-  }, [open, embedded, dateRange]);
+  }, [open, embedded, dateRange, tfStartIso, tfEndIso]);
 
   // Build stage id -> label map per company (+ global fallback)
   const stageLabelByCompany = useMemo(() => {
@@ -598,7 +610,7 @@ export function LenderAnalyticsDialog({
       });
     }
     return out;
-  }, [dealLenders, dealMap, lenderNameSet, lenderScopeActive, stageLabelByCompany, dateRange, dealSentAt]);
+  }, [dealLenders, dealMap, lenderNameSet, lenderScopeActive, stageLabelByCompany, dateRange, tfStartIso, tfEndIso, dealSentAt]);
 
   // KPI metrics — "Deals Sent" counts unique deals (not deal_lenders rows),
   // so a deal fanned out to many funding sources still counts once. Conversion
@@ -732,7 +744,7 @@ export function LenderAnalyticsDialog({
       else if (t >= prevStart && t < startMs) previous.push(l);
     }
     return { current, previous, delta: current.length - previous.length };
-  }, [lenders, dateRange]);
+  }, [lenders, dateRange, tfStartIso, tfEndIso]);
 
   // Widget 2: Deal Volume & Count by Funding Source
   type FundingAgg = { name: string; volume: number; count: number; rows: Enriched[]; dealIds: Set<string> };
@@ -793,7 +805,7 @@ export function LenderAnalyticsDialog({
       .reduce((s, p) => s + (Number(p.target_count) || 0), 0);
     return quarterlySum;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFifthLine, dateRange, monthlyPlan, quarterlyPlan, currentYear]);
+  }, [isFifthLine, dateRange, tfStartIso, tfEndIso, monthlyPlan, quarterlyPlan, currentYear]);
 
   // Widget 3: Most Common Pass Reasons
   const passReasonsAgg = useMemo(() => {
@@ -904,7 +916,7 @@ export function LenderAnalyticsDialog({
       out.push(s);
     }
     return out.sort((a, b) => b.count - a.count);
-  }, [rows, lenderMeta, dateRange]);
+  }, [rows, lenderMeta, dateRange, tfStartIso, tfEndIso]);
 
   const activeLenderCount = lenderStats.length;
   const flexActiveLenderCount = useMemo(
@@ -936,7 +948,7 @@ export function LenderAnalyticsDialog({
     }
     return dealSet.size;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dealLenders, dealMap, dateRange, stageLabelByCompany, dealSentAt]);
+  }, [dealLenders, dealMap, dateRange, tfStartIso, tfEndIso, stageLabelByCompany, dealSentAt]);
 
   const submittedDelta =
     priorSubmittedCount == null ? null : kpis.submitted - priorSubmittedCount;
@@ -993,6 +1005,7 @@ export function LenderAnalyticsDialog({
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {!insightsTf && (
               <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
                 <SelectTrigger
                   className="h-8 w-[168px] text-[12px] text-slate-200 hover:brightness-110"
@@ -1019,6 +1032,7 @@ export function LenderAnalyticsDialog({
                   ))}
                 </SelectContent>
               </Select>
+              )}
               {isFifthLine && (
                 <Button
                   variant="outline"
