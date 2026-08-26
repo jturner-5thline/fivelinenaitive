@@ -23,6 +23,8 @@ import {
 } from '@/hooks/useFinServFinancialMetrics';
 import { FINSERV_PIPELINE_ID, ACTIVE_CLIENT_STAGE, applyActiveClientOverride } from '@/hooks/useFinServFinancialMetrics';
 import { useFinServNewMrrAdded } from '@/hooks/useFinServNewMrrAdded';
+import { useFinServNrr } from '@/hooks/useFinServNrr';
+
 import {
   useQBStackedFinServRevenue,
   FINSERV_STACKED_CATEGORIES,
@@ -1171,6 +1173,8 @@ function FinServFinancialMetricsDashboardInner() {
   const cashflow = useFinServCashflow(selectedPeriod, range.granularity);
   const stacked = useQBStackedFinServRevenue(selectedQuarter);
   const activeClients = useFinServActiveClients(selectedPeriod, range.granularity);
+  const nrr = useFinServNrr(range.resolved.start, range.resolved.end);
+
 
   // ── FinServ pipeline snapshot: Total Clients / Total MRR / Current Pipeline ──
   const pipelineSnapshot = useQuery({
