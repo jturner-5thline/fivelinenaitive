@@ -24,6 +24,8 @@ import {
 import { FINSERV_PIPELINE_ID, ACTIVE_CLIENT_STAGE, applyActiveClientOverride } from '@/hooks/useFinServFinancialMetrics';
 import { useFinServNewMrrAdded } from '@/hooks/useFinServNewMrrAdded';
 import { useFinServNrr } from '@/hooks/useFinServNrr';
+import { FinServNrrDrillSheet } from './FinServNrrDrillSheet';
+
 
 import {
   useQBStackedFinServRevenue,
@@ -1174,6 +1176,8 @@ function FinServFinancialMetricsDashboardInner() {
   const stacked = useQBStackedFinServRevenue(selectedQuarter);
   const activeClients = useFinServActiveClients(selectedPeriod, range.granularity);
   const nrr = useFinServNrr(range.resolved.start, range.resolved.end);
+  const [nrrDrillOpen, setNrrDrillOpen] = useState(false);
+
 
 
   // ── FinServ pipeline snapshot: Total Clients / Total MRR / Current Pipeline ──
@@ -1395,9 +1399,30 @@ function FinServFinancialMetricsDashboardInner() {
             <div className="mt-1 text-xs text-muted-foreground">
               QBO FinServ · prior-period billed customers ({nrr.priorLabel})
             </div>
+            <button
+              type="button"
+              onClick={() => setNrrDrillOpen(true)}
+              disabled={nrr.customers.length === 0}
+              className="mt-2 text-xs text-white underline-offset-4 hover:underline disabled:opacity-40"
+            >
+              View {nrr.customers.length} customers
+            </button>
           </CardContent>
         </Card>
       </div>
+
+      <FinServNrrDrillSheet
+        open={nrrDrillOpen}
+        onOpenChange={setNrrDrillOpen}
+        customers={nrr.customers}
+        priorTotal={nrr.priorTotal}
+        currentTotal={nrr.currentTotal}
+        nrr={nrr.nrr}
+        priorLabel={nrr.priorLabel}
+        currentLabel={`${range.resolved.start} → ${range.resolved.end}`}
+        isLoading={nrr.isLoading}
+      />
+
 
 
 
