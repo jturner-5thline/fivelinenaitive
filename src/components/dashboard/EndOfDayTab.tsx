@@ -366,13 +366,20 @@ function EventTile({
 // ─── main component ─────────────────────────────────────────
 export function EndOfDayTab({
   enabled,
+  approvalItems,
 }: {
   enabled: boolean;
   onNavigate?: (path: string) => void;
   targetAssigneeName?: string;
   targetUserId?: string;
   briefingType?: string;
+  /**
+   * Optional AI approval-queue items to intermingle with the end-of-day
+   * meeting tiles, rendered with the same tile design.
+   */
+  approvalItems?: any[];
 }) {
+
   const { user } = useAuth();
   const userId = user?.id || 'anon';
   const userFirstName = useMemo(() => {
