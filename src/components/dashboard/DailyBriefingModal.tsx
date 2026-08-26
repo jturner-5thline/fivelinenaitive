@@ -2212,7 +2212,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                 {TABS.map(tab => {
                   const Icon = tab.icon;
                   const badgeCount =
-                    tab.value === 'today'
+                    tab.value === 'today' || tab.value === 'unified_queue'
                       ? eodOutstandingCount + queueBadgeCount
                       : tab.value === 'operational'
                         ? tasksBadgeCount
