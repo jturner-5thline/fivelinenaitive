@@ -544,7 +544,7 @@ export function EndOfDayTab({
   }, [enabled, status?.connected, listEvents, eventsCacheKey]);
 
   // Build outstanding (filter resolved + dismissed + snoozed)
-  const outstanding = useMemo<TileEvent[]>(() => {
+  const outstandingEvents = useMemo<TileEvent[]>(() => {
     const now = new Date();
     const ws = startOfDay(subDays(now, EOD_LOOKBACK_DAYS));
     const we = endOfDay(now);
