@@ -35,7 +35,7 @@ export function InsightsFlyoutMenu({ showSalesBd, showReports }: Props) {
   const items: SubItem[] = [
     { id: 'insights', label: 'Insights', url: '/insights', icon: BarChart3 },
     ...(showSalesBd
-      ? [{ id: 'sales-bd', label: 'Sales & BD', url: '/sales-bd', icon: Users } as SubItem]
+      ? [{ id: 'sales-bd', label: 'Sales & BD', url: '/insights?dashboard=sales-bd-page', icon: Users } as SubItem]
       : []),
     ...(showReports
       ? [{ id: 'reports', label: 'Reports', url: '/reports', icon: FileText } as SubItem]

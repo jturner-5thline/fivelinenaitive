@@ -127,6 +127,7 @@ import {
   ManagementReviewCarousel,
 } from "@/components/metrics/dashboards";
 import { SalesDashboardV2 } from "@/components/metrics/dashboards/SalesDashboardV2";
+import { SalesBdDashboard } from "@/components/metrics/dashboards/SalesBdDashboard";
 import { WeeklyRundownCarousel } from "@/components/metrics/dashboards/WeeklyRundownCarousel";
 import { useQuickBooksMetrics } from "@/hooks/useQuickBooksMetrics";
 import { useHubSpotMetrics } from "@/hooks/useHubSpotMetrics";
@@ -167,7 +168,7 @@ const DEFAULT_FOLDER_GROUPS: { id: string; name: string; dashboardIds: string[] 
   {
     id: 'sales-bd',
     name: 'Sales & BD',
-    dashboardIds: ['sales-dashboard-v2', 'sales-bd-roi', 'consolidated-debt-pipeline', 'lender-intelligence'],
+    dashboardIds: ['sales-bd-page', 'sales-dashboard-v2', 'sales-bd-roi', 'consolidated-debt-pipeline', 'lender-intelligence'],
   },
 ];
 
@@ -2799,6 +2800,7 @@ function MetricsInner() {
                 </div>
               </div>
             )}
+            {effectiveSelectedDashboard === 'sales-bd-page' && <SalesBdDashboard />}
             {effectiveSelectedDashboard === 'sales-dashboard-v2' && <SalesDashboardV2 />}
             {effectiveSelectedDashboard === 'consolidated-debt-pipeline' && (
               <ConsolidatedDebtPipelineDashboard selectedQuarter={dashboardSelectedQuarter} />
