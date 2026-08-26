@@ -40,13 +40,18 @@ export async function ensureReferralSourceForContact(
       .limit(1);
     if (byContact && byContact.length > 0) return;
 
-    // Or by name for this user (the manual-source list is user scoped).
-    const { data: byName } = await supabase
+    // Or by name within the workspace (the manual-source list is shared by the
+    // whole workspace, so dedupe across users, not per-user).
+    const resolvedCompanyId = companyId ?? contact.org_company_id ?? null;
+    let byNameQuery = supabase
       .from('referral_sources')
       .select('id')
-      .eq('user_id', userId)
       .ilike('name', name)
       .limit(1);
+    byNameQuery = resolvedCompanyId
+      ? byNameQuery.eq('company_id', resolvedCompanyId)
+      : byNameQuery.eq('user_id', userId);
+    const { data: byName } = await byNameQuery;
     if (byName && byName.length > 0) return;
 
     await supabase.from('referral_sources').insert({
