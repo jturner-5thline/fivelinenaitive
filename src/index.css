@@ -911,14 +911,9 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.07);
   }
 
-  .popup-shell-surface:has([data-approval-queue-panel]) {
-    background: var(--approval-queue-flat-surface) !important;
-    background-color: var(--approval-queue-flat-surface) !important;
-    background-image: none !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-
+  /* Approval-queue surfaces stay flat (no blur/glow stacking) but must let
+     the shared platform backdrop gradient show through — never paint their
+     own near-black fill over it. */
   .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-panel],
   .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-detail],
   .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-detail] * {
@@ -930,9 +925,10 @@
 
   .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-detail],
   .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-detail] :is(div, section, article) {
-    background-color: var(--approval-queue-flat-surface) !important;
+    background-color: transparent !important;
     background-image: none !important;
   }
+
   .dark .glass-border-soft {
     border-color: hsl(0 0% 100% / 0.06);
   }
