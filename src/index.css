@@ -3500,3 +3500,21 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .sidebar-flyout-separator {
   background-color: rgba(255, 255, 255, 0.08);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Dashboard pop-up — every tab renders on the exact platform background
+   (`--app-backdrop`). Declared unlayered and last so it beats the generic
+   Radix overlay gradient above. Inner tab panels stay transparent so the
+   single backdrop reads continuously across the whole modal.
+   ───────────────────────────────────────────────────────────────────── */
+.dashboard-popup-surface,
+.dashboard-popup-surface[role="dialog"],
+.dashboard-popup-surface.popup-shell-surface {
+  background: var(--app-backdrop) !important;
+  background-color: #01030a !important;
+}
+.dashboard-popup-surface [role="tabpanel"] {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
