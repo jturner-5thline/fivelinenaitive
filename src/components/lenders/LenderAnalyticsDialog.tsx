@@ -1063,16 +1063,13 @@ export function LenderAnalyticsDialog({
               onClick={() => setOpenKpi('conv')}
             />
             <IntelKpi
-              label="Flex Active Lenders"
-              value={flexActiveLenderCount}
-              hint={
-                activeLenderCount > 0
-                  ? `${Math.round((flexActiveLenderCount / activeLenderCount) * 100)}% of total · active in Flex`
-                  : 'active in Flex'
-              }
-              loading={loading}
-              onClick={() => setOpenKpi('flex')}
+              label="New Qualified Lenders"
+              value={newQualifiedCount}
+              hint="added or contact updated → on a deal within 2 weeks"
+              loading={newQualifiedLoading}
+              onClick={() => setOpenQualified(true)}
             />
+
           </div>
 
           {error && (
