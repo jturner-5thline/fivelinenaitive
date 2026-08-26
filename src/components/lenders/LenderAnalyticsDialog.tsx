@@ -12,6 +12,11 @@ import { CalendarRange, TrendingUp, Download, Search, Target, ChevronRight } fro
 import { supabase } from '@/integrations/supabase/client';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import { useLenderCallCounts } from '@/hooks/useLenderCallCounts';
+import { useCompany } from '@/hooks/useCompany';
+import {
+  useNewQualifiedLenders,
+  qualifiedTriggerLabel,
+} from '@/hooks/useNewQualifiedLenders';
 import type { MasterLender } from '@/hooks/useMasterLenders';
 import {
   useNaitivePipelineAccess,
@@ -356,6 +361,20 @@ export function LenderAnalyticsDialog({
     currentYear,
     'quarterly',
   );
+
+  // "New Qualified Lenders" — funding sources added (or whose primary contact
+  // info changed) in the selected timeframe that were then attached to a deal
+  // within 2 weeks of that event.
+  const { company: activeCompany } = useCompany();
+  const {
+    data: newQualifiedRows = [],
+    isLoading: newQualifiedLoading,
+  } = useNewQualifiedLenders(
+    activeCompany?.id ?? null,
+    rangeStart(dateRange),
+    rangeEnd(dateRange),
+  );
+  const newQualifiedCount = newQualifiedRows.length;
 
   useEffect(() => {
     if (!open && !embedded) return;
