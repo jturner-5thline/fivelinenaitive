@@ -84,6 +84,8 @@ const ACTIVITY_KEY_PREFIX = 'eod:activity';
 const COLLAPSED_GROUPS_KEY = 'eod:collapsed-groups';
 const UNDO_WINDOW_MS = 5000;
 const EVENTS_CACHE_KEY_PREFIX = 'eod:events-cache';
+const HIDE_INTERNAL_KEY = 'eod:hide-internal';
+
 
 type FilterChip = 'internal' | 'deals' | 'dismissed';
 
@@ -427,6 +429,11 @@ export function EndOfDayTab({
   // Search + filters
   const [search, setSearch] = useState('');
   const [filterChips, setFilterChips] = useState<Set<FilterChip>>(new Set());
+  // Default: hide purely-internal (@5thline.co only) meetings — external first.
+  const [hideInternal, setHideInternal] = useState<boolean>(() =>
+    readLS<boolean>(HIDE_INTERNAL_KEY, true),
+  );
+
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Tracks items the user resolved/dismissed/snoozed during this session.
@@ -880,8 +887,11 @@ export function EndOfDayTab({
   const filtered = useMemo<TileEvent[]>(() => {
     const q = search.trim().toLowerCase();
     return outstanding.filter(ev => {
-      if (filterChips.has('internal') && !eventIsInternal(ev)) return false;
+      const onlyInternal = filterChips.has('internal');
+      if (onlyInternal && !eventIsInternal(ev)) return false;
+      if (!onlyInternal && hideInternal && eventIsInternal(ev)) return false;
       if (filterChips.has('deals') && !eventMatchesDeal(ev)) return false;
+
 
       if (!q) return true;
       if ((ev.summary || '').toLowerCase().includes(q)) return true;
@@ -895,7 +905,7 @@ export function EndOfDayTab({
       }
       return false;
     });
-  }, [outstanding, search, filterChips, contactsByEmail, eventIsInternal, eventMatchesDeal]);
+  }, [outstanding, search, filterChips, hideInternal, contactsByEmail, eventIsInternal, eventMatchesDeal]);
 
   // Group into buckets
   type Bucket = { key: string; label: string; items: TileEvent[] };
@@ -1171,6 +1181,25 @@ export function EndOfDayTab({
           />
         </div>
         <div className="flex flex-wrap items-center gap-1">
+          <button
+            type="button"
+            aria-pressed={hideInternal}
+            title="Hide meetings where every attendee has a @5thline.co email"
+            onClick={() => {
+              const next = !hideInternal;
+              setHideInternal(next);
+              writeLS(HIDE_INTERNAL_KEY, next);
+            }}
+            className={cn(
+              'h-6 px-2 rounded-full text-[10px] font-medium border transition-colors inline-flex items-center gap-1',
+              hideInternal
+                ? 'bg-primary/15 border-primary/40 text-primary'
+                : 'bg-white/[0.03] border-white/10 text-white/70 hover:text-white',
+            )}
+          >
+            External only
+          </button>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
