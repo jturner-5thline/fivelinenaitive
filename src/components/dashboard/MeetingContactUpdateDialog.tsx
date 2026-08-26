@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, UserPlus, Search, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
+import { AddToNurturingButton } from '@/components/contacts/AddToNurturingButton';
+
 
 interface Attendee { email?: string | null; displayName?: string | null; self?: boolean; responseStatus?: string | null }
 
