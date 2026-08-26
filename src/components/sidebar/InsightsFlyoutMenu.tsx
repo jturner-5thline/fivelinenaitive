@@ -274,6 +274,7 @@ export function InsightsFlyoutMenu({ showSalesBd, showReports }: Props) {
                       key={it.id}
                       ref={(el) => (itemRefs.current[index] = el)}
                       role="menuitem"
+                      data-active={(typeof isCurrent !== 'undefined' ? isCurrent : isActive) ? 'true' : undefined}
                       tabIndex={isFocused || (focusedIndex < 0 && index === 0) ? 0 : -1}
                       onClick={() => handleSubItemClick(it.url)}
                       onKeyDown={(e) => handleSubItemKeyDown(e, index)}

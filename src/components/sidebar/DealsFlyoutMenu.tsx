@@ -338,6 +338,7 @@ export function DealsFlyoutMenu() {
                           key={link.id}
                           ref={(el) => (itemRefs.current[index] = el)}
                           role="menuitem"
+                          data-active={(typeof isCurrent !== 'undefined' ? isCurrent : isActive) ? 'true' : undefined}
                           tabIndex={isFocused || (focusedIndex < 0 && index === 0) ? 0 : -1}
                           onClick={() => handleFifthLineLinkClick(link.to)}
                           onKeyDown={(e) => handleSubItemKeyDown(e, index)}
@@ -376,6 +377,7 @@ export function DealsFlyoutMenu() {
                           key={d.id}
                           ref={(el) => (itemRefs.current[index] = el)}
                           role="menuitem"
+                          data-active={(typeof isCurrent !== 'undefined' ? isCurrent : isActive) ? 'true' : undefined}
                           tabIndex={isFocused || (focusedIndex < 0 && index === 0) ? 0 : -1}
                           onClick={() => handleSubItemClick(d.id)}
                           onKeyDown={(e) => handleSubItemKeyDown(e, index)}

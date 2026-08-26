@@ -315,6 +315,7 @@ export function DashboardFlyoutMenu() {
                     key={w.id}
                     ref={(el) => (itemRefs.current[index] = el)}
                     role="menuitem"
+                    data-active={(typeof isCurrent !== 'undefined' ? isCurrent : isActive) ? 'true' : undefined}
                     tabIndex={isFocused || (focusedIndex < 0 && index === 0) ? 0 : -1}
                     onClick={() => handleSubItemClick(w.id)}
                     onKeyDown={(e) => handleSubItemKeyDown(e, index)}
