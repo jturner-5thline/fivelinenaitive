@@ -1307,7 +1307,7 @@ div.deal-tile.deal-glass,
 .deal-tile[class*="deal-glass"] {
   background: #0f1f3d !important;
   background-color: #0f1f3d !important;
-  background-image: linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%) !important;
+  background-image: none !important;
   border-color: rgba(255, 255, 255, 0.08) !important;
   border-radius: 8px !important;
   backdrop-filter: none !important;
@@ -1320,7 +1320,7 @@ div.deal-tile.deal-glass:hover,
 .deal-tile[class*="deal-glass"]:hover {
   background: #14264a !important;
   background-color: #14264a !important;
-  background-image: linear-gradient(180deg, #14264a 0%, #0e1d3a 100%) !important;
+  background-image: none !important;
   border-color: rgba(34, 211, 238, 0.55) !important;
   box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.18) !important;
 }
@@ -3471,7 +3471,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   border-radius: 10px !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   background-color: #0f1f3d !important;
-  background-image: linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%) !important;
+  background-image: none !important;
   box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.75) !important;
   backdrop-filter: none;
   color: hsl(var(--foreground));
