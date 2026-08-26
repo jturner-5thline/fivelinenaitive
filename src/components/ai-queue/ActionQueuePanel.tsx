@@ -1656,6 +1656,8 @@ function DetailPane({
   const [busy, setBusy] = useState<'a' | 'r' | null>(null);
   const [edits, setEdits] = useState<Record<string, any>>({});
   const [showTaskErrors, setShowTaskErrors] = useState(false);
+  // Task creation is progressive disclosure — collapsed until the reviewer asks for it.
+  const [tasksOpen, setTasksOpen] = useState(false);
   const navigate = useNavigate();
   // Lookup tables to resolve raw UUIDs (stage_id, pipeline_id) into labels.
   const { pipelines } = usePipelineContext();
@@ -1964,6 +1966,7 @@ function DetailPane({
                 onClick={async () => {
                   if (tasksIncomplete) {
                     setShowTaskErrors(true);
+                    setTasksOpen(true);
                     toast.error('Every task row needs a title and an assignee', {
                       description:
                         'Fill in the highlighted fields before creating tasks.',
