@@ -1495,7 +1495,12 @@ export function EndOfDayTab({
   // Detail pane
   const detailPane = (
     <div className="panel-pane flex flex-col h-full min-w-0">
-      {selectedEvent ? (
+      {selectedEvent?._approval ? (
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ActionQueuePanel items={[selectedEvent._approval]} />
+        </div>
+      ) : selectedEvent ? (
+
         <EventDetailPane
           key={selectedEvent.id}
           event={selectedEvent}
