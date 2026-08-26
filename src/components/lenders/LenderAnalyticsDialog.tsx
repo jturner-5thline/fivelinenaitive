@@ -1032,6 +1032,7 @@ export function LenderAnalyticsDialog({
                   ))}
                 </SelectContent>
               </Select>
+              )}
               {isFifthLine && (
                 <Button
                   variant="outline"
