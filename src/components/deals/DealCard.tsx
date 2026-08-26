@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/hover-card';
 import { Separator } from '@/components/ui/separator';
 import { shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
+import { DealTagOverflowRow, DealTag } from './DealTagOverflowRow';
 
 interface DealCardProps {
   deal: Deal;
@@ -138,6 +139,31 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
   };
 
   const dealTypeLabels = getDealTypeLabels();
+
+  const TAG_CLASS = 'text-[11px] font-medium rounded-md px-2 py-0.5 bg-white/[0.03] border-white/10 shrink-0';
+  const rowTags: DealTag[] = [
+    ...(deal.engagementType && ENGAGEMENT_TYPE_CONFIG[deal.engagementType]
+      ? [{
+          key: 'engagement',
+          label: ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label,
+          className: TAG_CLASS,
+          style: { color: 'rgba(222, 234, 250, 0.92)' } as React.CSSProperties,
+        }]
+      : []),
+    ...(deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity]
+      ? [{
+          key: 'exclusivity',
+          label: EXCLUSIVITY_CONFIG[deal.exclusivity].label,
+          className: 'text-[11px] font-medium rounded-md px-2 py-0.5 bg-primary/10 text-primary border-primary/25 shrink-0',
+        }]
+      : []),
+    ...dealTypeLabels.map((label, index) => ({
+      key: `type-${index}`,
+      label,
+      className: TAG_CLASS,
+      style: { color: 'rgba(222, 234, 250, 0.92)' } as React.CSSProperties,
+    })),
+  ];
 
   const getTimeAgoData = (dateString: string) => {
     const date = new Date(dateString);
