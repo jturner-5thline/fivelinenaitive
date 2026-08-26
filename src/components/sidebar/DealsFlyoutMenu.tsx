@@ -18,7 +18,7 @@ import { useRecentDealIds } from '@/hooks/useRecentDeals';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import type { Deal } from '@/types/deal';
 
-const OPEN_DELAY = 120;
+const OPEN_DELAY = 60;
 const CLOSE_DELAY = 180;
 
 /** Maximum number of recently opened deals to surface in the dropdown. */
@@ -306,7 +306,7 @@ export function DealsFlyoutMenu() {
               align="start"
               sideOffset={8}
               className={cn(
-                'w-64 p-1.5 text-popover-foreground glass-module',
+                'w-64 p-1.5 text-popover-foreground sidebar-flyout',
                 'shadow-[0_12px_28px_-12px_rgba(0,0,0,0.65)]',
               )}
               onMouseEnter={() => clearTimers()}
@@ -324,7 +324,7 @@ export function DealsFlyoutMenu() {
               {isFifthLine ? (
                 <div role="menu" aria-label="Deal segments">
                   <div className="flex items-center px-2 pb-1.5 pt-1">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider sidebar-flyout-label">
                       Segments
                     </span>
                   </div>
@@ -344,7 +344,7 @@ export function DealsFlyoutMenu() {
                           onMouseEnter={() => setFocusedIndex(index)}
                           title={link.label}
                           className={cn(
-                            'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-popover-foreground/90 outline-none transition-colors',
+                            'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm outline-none transition-colors sidebar-flyout-item',
                             'hover:bg-accent hover:text-accent-foreground',
                             'focus-visible:bg-accent focus-visible:text-accent-foreground',
                             isCurrent && 'bg-accent text-accent-foreground font-medium',
@@ -360,7 +360,7 @@ export function DealsFlyoutMenu() {
               ) : (
                 <div role="menu" aria-label="Recently opened deals">
                   <div className="flex items-center justify-between px-2 pb-1.5 pt-1">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider sidebar-flyout-label">
                       Recently opened
                     </span>
                     <span className="text-[10px] text-muted-foreground/70 truncate max-w-[110px]" title={activePipeline?.name || ''}>
@@ -385,7 +385,7 @@ export function DealsFlyoutMenu() {
                           onMouseEnter={() => setFocusedIndex(index)}
                           title={label}
                           className={cn(
-                            'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-popover-foreground/90 outline-none transition-colors',
+                            'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm outline-none transition-colors sidebar-flyout-item',
                             'hover:bg-accent hover:text-accent-foreground',
                             'focus-visible:bg-accent focus-visible:text-accent-foreground',
                             isActive && 'bg-accent text-accent-foreground font-medium',
