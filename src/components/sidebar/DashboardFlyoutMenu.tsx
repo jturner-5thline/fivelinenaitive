@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useDashboardCarouselWidgets } from '@/hooks/useDashboardCarouselWidgets';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Popover, PopoverTrigger, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { useCloseOnRouteChange } from '@/hooks/useCloseOnRouteChange';
 
 const OPEN_DELAY = 120;
