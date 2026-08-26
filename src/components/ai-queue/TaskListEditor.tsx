@@ -255,7 +255,7 @@ function AssigneePicker({
           aria-expanded={open}
           aria-invalid={invalid || undefined}
           className={cn(
-            'h-8 px-2.5 text-[12px] w-full min-w-[200px] gap-1.5 font-semibold justify-between',
+            'h-8 px-2.5 text-[12px] w-full gap-1.5 font-semibold justify-between',
             'border-2 shadow-sm transition-all',
             value
               ? 'border-emerald-400/60 bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 text-emerald-100 hover:from-emerald-500/25 hover:to-emerald-500/10 hover:border-emerald-400/80'
