@@ -1378,7 +1378,23 @@ function FinServFinancialMetricsDashboardInner() {
           subtitle={`MRR of deals entering "Active Client" · ${periodBadge}`}
           isLoading={newMrr.isLoading}
         />
+        <Card className="glass-module">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Net Revenue Retention
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-semibold text-foreground tabular-nums">
+              {nrr.isLoading ? '—' : nrr.nrr == null ? 'n/a' : fmtPct(nrr.nrr)}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              QBO FinServ · prior-period billed customers ({nrr.priorLabel})
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
 
 
       <Card className="glass-module">
