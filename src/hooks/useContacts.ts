@@ -312,11 +312,16 @@ export function useUpdateContact() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: (data: any, vars) => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       queryClient.invalidateQueries({ queryKey: ['contact', vars.id] });
       toast.success('Contact updated');
+      ensureReferralSourceForContact(data, user?.id, data?.org_company_id).then(() => {
+        queryClient.invalidateQueries({ queryKey: ['referral-sources'] });
+        queryClient.invalidateQueries({ queryKey: ['deal-referral-sources'] });
+      });
     },
+
     onError: (err: any) => {
       toast.error(err.message || 'Failed to update contact');
     },
