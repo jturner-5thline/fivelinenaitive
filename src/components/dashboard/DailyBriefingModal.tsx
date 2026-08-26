@@ -2007,7 +2007,11 @@ const ALL_TABS = [
   // Approval Queue + End of Day are consolidated into a single "Today"
   // surface (decisions, wrap-ups, and the today slice of tasks).
   { value: 'today', label: 'Today', icon: Sunset },
+  // Single intermingled queue: approval items + end-of-day wrap-ups sharing
+  // the End of Day tile design.
+  { value: 'unified_queue', label: 'Queue', icon: Inbox },
 ] as const;
+
 
 // ── Main modal component ───────────────────────────────────────
 export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', targetUserId, targetAssigneeName, excludeTabs, initialTab, briefingType = 'daily_briefing' }: DailyBriefingModalProps) {
