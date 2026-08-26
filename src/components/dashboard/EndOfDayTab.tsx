@@ -304,27 +304,43 @@ function EventTile({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 min-w-0">
-          <CalendarIcon className="h-3.5 w-3.5 text-white/80 shrink-0" />
+          {ev._approval
+            ? <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
+            : <CalendarIcon className="h-3.5 w-3.5 text-white/80 shrink-0" />}
           <span className="text-sm font-medium text-white truncate">
             {ev.summary || '(No title)'}
           </span>
         </div>
         <div className="mt-0.5 flex items-center gap-1.5 text-[10.5px] text-white/65 truncate">
-          <span className="truncate">
-            {ev._isCarry
-              ? `Outstanding since ${startStr}`
-              : startStr}
-          </span>
-          <span className="text-white/40">·</span>
-          <span className="truncate">{fmtTime(ev.start, ev.all_day)}</span>
-          <Badge variant="outline" className="ml-1 h-4 px-1.5 text-[9px] border-white/15 text-white/75 bg-white/[0.04]">
-            {ev._ageDays <= 0 ? 'Today' : ev._ageDays === 1 ? 'Yesterday' : `${ev._ageDays} days ago`}
-          </Badge>
-          <span className="ml-auto flex items-center gap-0.5 text-white/70">
-            <Users className="h-2.5 w-2.5" />{attendeeCount}
-          </span>
+          {ev._approval ? (
+            <>
+              <span className="truncate">{ev._approval.deal_name || 'Unassigned'}</span>
+              <span className="text-white/40">·</span>
+              <span className="truncate">Needs approval</span>
+              <Badge variant="outline" className="ml-1 h-4 px-1.5 text-[9px] border-primary/30 text-primary bg-primary/10">
+                {ev._ageDays <= 0 ? 'Today' : ev._ageDays === 1 ? 'Yesterday' : `${ev._ageDays} days ago`}
+              </Badge>
+            </>
+          ) : (
+            <>
+              <span className="truncate">
+                {ev._isCarry
+                  ? `Outstanding since ${startStr}`
+                  : startStr}
+              </span>
+              <span className="text-white/40">·</span>
+              <span className="truncate">{fmtTime(ev.start, ev.all_day)}</span>
+              <Badge variant="outline" className="ml-1 h-4 px-1.5 text-[9px] border-white/15 text-white/75 bg-white/[0.04]">
+                {ev._ageDays <= 0 ? 'Today' : ev._ageDays === 1 ? 'Yesterday' : `${ev._ageDays} days ago`}
+              </Badge>
+              <span className="ml-auto flex items-center gap-0.5 text-white/70">
+                <Users className="h-2.5 w-2.5" />{attendeeCount}
+              </span>
+            </>
+          )}
         </div>
       </div>
+
 
       {/* Hover action: dismiss (checkmark) */}
       <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
