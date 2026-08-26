@@ -108,12 +108,12 @@ const STATIC_DATE_LABEL: Record<Exclude<DateRange, `y${number}`>, string> = {
   all: 'All time',
 };
 
-function dateRangeLabel(range: DateRange): string {
+function baseDateRangeLabel(range: DateRange): string {
   if (isYearRange(range)) return range.slice(1);
   return STATIC_DATE_LABEL[range as Exclude<DateRange, `y${number}`>];
 }
 
-function rangeStart(range: DateRange): Date | null {
+function baseRangeStart(range: DateRange): Date | null {
   const now = new Date();
   if (isYearRange(range)) {
     const yr = Number(range.slice(1));
@@ -131,7 +131,7 @@ function rangeStart(range: DateRange): Date | null {
   return null;
 }
 
-function rangeEnd(range: DateRange): Date | null {
+function baseRangeEnd(range: DateRange): Date | null {
   if (isYearRange(range)) {
     const yr = Number(range.slice(1));
     if (Number.isFinite(yr)) return new Date(yr + 1, 0, 1);
@@ -329,6 +329,15 @@ export function LenderAnalyticsDialog({
   originClassName,
 }: Props) {
   const [dateRange, setDateRange] = useState<DateRange>('ytd');
+  // When rendered inside Insights, the global timeframe picker is the single
+  // authority for this dashboard's window (memory: Global Timeframe Authority).
+  const insightsTf = useInsightsTimeframeOptional();
+  const tfStart = insightsTf ? new Date(insightsTf.timeframe.start + 'T00:00:00') : null;
+  const tfEnd = insightsTf ? new Date(insightsTf.timeframe.end + 'T23:59:59.999') : null;
+  const tfLabel = insightsTf?.timeframe.label ?? null;
+  const rangeStart = (r: DateRange) => (insightsTf ? tfStart : baseRangeStart(r));
+  const rangeEnd = (r: DateRange) => (insightsTf ? tfEnd : baseRangeEnd(r));
+  const dateRangeLabel = (r: DateRange) => (tfLabel ?? baseDateRangeLabel(r));
   const [openCalls, setOpenCalls] = useState<'existing' | 'new' | null>(null);
   const { data: lenderCalls, isLoading: lenderCallsLoading } = useLenderCallCounts(
     rangeStart(dateRange),
@@ -473,7 +482,7 @@ export function LenderAnalyticsDialog({
       }
     })();
     return () => { cancelled = true; };
-  }, [open, embedded, dateRange]);
+  }, [open, embedded, dateRange, tfStart, tfEnd]);
 
   // Build stage id -> label map per company (+ global fallback)
   const stageLabelByCompany = useMemo(() => {
@@ -732,7 +741,7 @@ export function LenderAnalyticsDialog({
       else if (t >= prevStart && t < startMs) previous.push(l);
     }
     return { current, previous, delta: current.length - previous.length };
-  }, [lenders, dateRange]);
+  }, [lenders, dateRange, tfStart, tfEnd]);
 
   // Widget 2: Deal Volume & Count by Funding Source
   type FundingAgg = { name: string; volume: number; count: number; rows: Enriched[]; dealIds: Set<string> };
@@ -904,7 +913,7 @@ export function LenderAnalyticsDialog({
       out.push(s);
     }
     return out.sort((a, b) => b.count - a.count);
-  }, [rows, lenderMeta, dateRange]);
+  }, [rows, lenderMeta, dateRange, tfStart, tfEnd]);
 
   const activeLenderCount = lenderStats.length;
   const flexActiveLenderCount = useMemo(
