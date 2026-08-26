@@ -155,23 +155,29 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
                     {(matches || []).map((m: any) => {
                       const exact = (m.email || '').toLowerCase() === active?.email;
                       return (
-                        <button
+                        <div
                           key={m.id}
-                          onClick={() => setEditContact(m)}
-                          className="flex w-full items-center justify-between gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-left hover:bg-white/[0.08]"
+                          className="flex w-full items-center justify-between gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-left"
                         >
-                          <div className="min-w-0">
+                          <button
+                            onClick={() => setEditContact(m)}
+                            className="min-w-0 flex-1 text-left hover:opacity-80"
+                          >
                             <div className="truncate text-sm text-white">
                               {m.full_name || `${m.first_name || ''} ${m.last_name || ''}`.trim() || m.email}
                             </div>
                             <div className="truncate text-xs text-white/55">
                               {[m.email, m.job_title, m.hs_company_name].filter(Boolean).join(' · ')}
                             </div>
+                          </button>
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            {exact && <Badge className="shrink-0 bg-emerald-500/20 text-emerald-200">Email match</Badge>}
+                            <AddToNurturingButton contact={m} />
                           </div>
-                          {exact && <Badge className="shrink-0 bg-emerald-500/20 text-emerald-200">Email match</Badge>}
-                        </button>
+                        </div>
                       );
                     })}
+
                   </div>
                 )}
               </div>
