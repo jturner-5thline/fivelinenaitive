@@ -184,12 +184,15 @@ export function useTermsConversionRate(): TermsConversionRateResult {
         const deal: any = dealById.get(r.deal_id) ?? {};
         const meta = resolveStage(lookup, deal.company_id ?? null, r.stage ?? null);
         const label = meta?.label ?? r.stage ?? '—';
+        const ts = norm(r.tracking_status);
         let qualifies: boolean;
         if (meta && meta.termsIndex >= 0) {
           qualifies = meta.group === 'active'
             && meta.activeIndex >= 0
             && meta.activeIndex >= meta.termsIndex
+            && ts !== 'passed' && ts !== 'excluded'
             && !NEVER_TERMS_LABELS.has(norm(label));
+
         } else {
           qualifies = isLenderTermsOrLater(label, r.tracking_status);
         }
