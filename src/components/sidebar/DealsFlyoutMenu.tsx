@@ -345,9 +345,6 @@ export function DealsFlyoutMenu() {
                           title={link.label}
                           className={cn(
                             'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm outline-none transition-colors sidebar-flyout-item',
-                            'hover:bg-accent hover:text-accent-foreground',
-                            'focus-visible:bg-accent focus-visible:text-accent-foreground',
-                            isCurrent && 'bg-accent text-accent-foreground font-medium',
                           )}
                         >
                           <Icon className="h-3.5 w-3.5 shrink-0 text-popover-foreground/60" />
@@ -386,9 +383,6 @@ export function DealsFlyoutMenu() {
                           title={label}
                           className={cn(
                             'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm outline-none transition-colors sidebar-flyout-item',
-                            'hover:bg-accent hover:text-accent-foreground',
-                            'focus-visible:bg-accent focus-visible:text-accent-foreground',
-                            isActive && 'bg-accent text-accent-foreground font-medium',
                           )}
                         >
                           <Briefcase className="h-3.5 w-3.5 shrink-0 text-popover-foreground/60" />

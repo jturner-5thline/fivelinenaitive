@@ -324,9 +324,6 @@ export function DashboardFlyoutMenu() {
                       // standard dropdown items (DropdownMenuItem / PopoverContent
                       // links): the accent token, not an ad-hoc white wash.
                       'flex w-full items-center rounded-md px-2.5 py-1.5 text-sm outline-none transition-colors sidebar-flyout-item',
-                      'hover:bg-accent hover:text-accent-foreground',
-                      'focus-visible:bg-accent focus-visible:text-accent-foreground',
-                      isActive && 'bg-accent text-accent-foreground font-medium',
                     )}
                   >
                     {w.label}
