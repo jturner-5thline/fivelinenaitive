@@ -58,6 +58,8 @@ import { format, isToday, isThisWeek } from 'date-fns';
 import { Loader2, Copy, Check } from 'lucide-react';
 import { normalizeLinkedInUrl } from '@/lib/linkedin';
 import { toast } from 'sonner';
+import { AddToNurturingButton } from '@/components/contacts/AddToNurturingButton';
+
 
 interface ContactDetailContentProps {
   contactId: string;
