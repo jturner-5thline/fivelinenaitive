@@ -23,6 +23,8 @@ import {
 } from '@/hooks/useFinServFinancialMetrics';
 import { FINSERV_PIPELINE_ID, ACTIVE_CLIENT_STAGE, applyActiveClientOverride } from '@/hooks/useFinServFinancialMetrics';
 import { useFinServNewMrrAdded } from '@/hooks/useFinServNewMrrAdded';
+import { useFinServNrr } from '@/hooks/useFinServNrr';
+
 import {
   useQBStackedFinServRevenue,
   FINSERV_STACKED_CATEGORIES,
@@ -1171,6 +1173,8 @@ function FinServFinancialMetricsDashboardInner() {
   const cashflow = useFinServCashflow(selectedPeriod, range.granularity);
   const stacked = useQBStackedFinServRevenue(selectedQuarter);
   const activeClients = useFinServActiveClients(selectedPeriod, range.granularity);
+  const nrr = useFinServNrr(range.resolved.start, range.resolved.end);
+
 
   // ── FinServ pipeline snapshot: Total Clients / Total MRR / Current Pipeline ──
   const pipelineSnapshot = useQuery({
@@ -1378,7 +1382,23 @@ function FinServFinancialMetricsDashboardInner() {
           subtitle={`MRR of deals entering "Active Client" · ${periodBadge}`}
           isLoading={newMrr.isLoading}
         />
+        <Card className="glass-module">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Net Revenue Retention
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-semibold text-foreground tabular-nums">
+              {nrr.isLoading ? '—' : nrr.nrr == null ? 'n/a' : fmtPct(nrr.nrr)}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              QBO FinServ · prior-period billed customers ({nrr.priorLabel})
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
 
 
       <Card className="glass-module">
