@@ -26,11 +26,18 @@ export function useReferralSources() {
     }
 
     try {
-      const { data, error } = await supabase
+      // Manual referral sources are a WORKSPACE-level list, not a personal one:
+      // whoever adds a contact to Nurturing, every teammate must see it.
+      // Legacy rows without a company are still shown to their author.
+      let query = supabase
         .from('referral_sources')
-        .select('id, name, email, phone, company')
-        .eq('user_id', user.id)
-        .order('name');
+        .select('id, name, email, phone, company');
+
+      query = company?.id
+        ? query.or(`company_id.eq.${company.id},and(company_id.is.null,user_id.eq.${user.id})`)
+        : query.eq('user_id', user.id);
+
+      const { data, error } = await query.order('name');
 
       if (error) throw error;
 
@@ -40,7 +47,7 @@ export function useReferralSources() {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, company?.id]);
 
   useEffect(() => {
     fetchReferralSources();
@@ -95,11 +102,12 @@ export function useReferralSources() {
     if (!user) return;
 
     try {
+      // Workspace-scoped list — RLS already restricts deletes to the caller's
+      // workspace, so don't additionally require personal authorship.
       const { error } = await supabase
         .from('referral_sources')
         .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
+        .eq('id', id);
 
       if (error) throw error;
 
