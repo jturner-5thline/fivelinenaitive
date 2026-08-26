@@ -10,6 +10,8 @@ import { AgendaIntel } from './AgendaIntel';
 import { MoffittDealRundown } from './MoffittDealRundown';
 import { MOFFITT_USER_ID } from '@/constants/moffittBriefing';
 import { TodayTab } from './TodayTab';
+import { UnifiedQueueTab } from './UnifiedQueueTab';
+
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
