@@ -887,8 +887,11 @@ export function EndOfDayTab({
   const filtered = useMemo<TileEvent[]>(() => {
     const q = search.trim().toLowerCase();
     return outstanding.filter(ev => {
-      if (filterChips.has('internal') && !eventIsInternal(ev)) return false;
+      const onlyInternal = filterChips.has('internal');
+      if (onlyInternal && !eventIsInternal(ev)) return false;
+      if (!onlyInternal && hideInternal && eventIsInternal(ev)) return false;
       if (filterChips.has('deals') && !eventMatchesDeal(ev)) return false;
+
 
       if (!q) return true;
       if ((ev.summary || '').toLowerCase().includes(q)) return true;
