@@ -3466,34 +3466,44 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 /* ---- Sidebar flyout submenus (Deals / Insights / Dashboard) ---- */
 .sidebar-flyout {
   border-radius: 10px !important;
-  border: 1px solid rgba(157, 162, 245, 0.22) !important;
-  background-color: #171b2c !important;
-  background-image: linear-gradient(180deg, rgba(157, 162, 245, 0.06), rgba(0, 0, 0, 0)) !important;
-  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(11, 18, 38, 0.6) !important;
-  backdrop-filter: blur(10px);
-  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background-color: #0f1f3d !important;
+  background-image: linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%) !important;
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.75) !important;
+  backdrop-filter: none;
+  color: hsl(var(--foreground));
 }
 
 .sidebar-flyout-label {
-  color: rgba(255, 255, 255, 0.5);
+  color: hsl(var(--muted-foreground));
 }
 
-.sidebar-flyout-item {
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.88);
+.sidebar-flyout-item,
+.sidebar-flyout [role='menuitem'].sidebar-flyout-item {
+  border-radius: 8px !important;
+  border: 1px solid transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  color: hsl(var(--foreground)) !important;
 }
 
 .sidebar-flyout-item:hover,
 .sidebar-flyout-item:focus-visible,
-.sidebar-flyout-item[data-active='true'] {
-  background-color: rgba(157, 162, 245, 0.14);
-  color: #ffffff;
+.sidebar-flyout [role='menuitem'].sidebar-flyout-item:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: transparent !important;
+  color: hsl(var(--foreground)) !important;
 }
 
-.sidebar-flyout-item[data-active='true'] {
-  box-shadow: inset 2px 0 0 0 hsl(var(--primary));
+.sidebar-flyout-item[data-active='true'],
+.sidebar-flyout [role='menuitem'].sidebar-flyout-item[data-active='true'] {
+  background-color: rgba(126, 184, 247, 0.08) !important;
+  border-color: transparent !important;
+  color: hsl(var(--primary)) !important;
+  font-weight: 500;
+  box-shadow: inset 3px 0 0 0 hsl(var(--primary));
 }
 
 .sidebar-flyout-separator {
-  background-color: rgba(157, 162, 245, 0.18);
+  background-color: rgba(255, 255, 255, 0.08);
 }
