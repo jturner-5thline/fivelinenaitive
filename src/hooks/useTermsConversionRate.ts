@@ -160,7 +160,7 @@ export function useTermsConversionRate(): TermsConversionRateResult {
       if (dealIds.length === 0) return empty;
 
       const [dealRes, cfgRes] = await Promise.all([
-        supabase.from('deals').select('id, company, company_id, amount, manager, pipeline_id').in('id', dealIds),
+        supabase.from('deals').select('id, company, company_id, value, manager, pipeline_id').in('id', dealIds),
         supabase.from('lender_stage_configs').select('company_id, stages').limit(500),
       ]);
       if (dealRes.error) throw dealRes.error;
