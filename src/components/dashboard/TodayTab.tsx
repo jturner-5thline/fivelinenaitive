@@ -1,4 +1,3 @@
-import { ListChecks } from 'lucide-react';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 import { EndOfDayTab } from '@/components/dashboard/EndOfDayTab';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
@@ -43,7 +42,6 @@ export function TodayTab({
     ? consolidatedAiQueueCount(queueItems) + (accessRequests?.length || 0)
     : 0;
 
-  const totalOutstanding = decisionCount + eodCount;
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col">
