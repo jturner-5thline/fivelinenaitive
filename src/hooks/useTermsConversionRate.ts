@@ -202,7 +202,7 @@ export function useTermsConversionRate(): TermsConversionRateResult {
       const toRow = (r: any, label: string, deal: any): TermsConversionDealRow => ({
         deal_id: r.deal_id,
         company: `${deal.company ?? 'Unknown deal'} · ${r.name ?? 'Funding source'}`,
-        value: Number(deal.amount) || 0,
+        value: Number(deal.value) || 0,
         manager: deal.manager ?? null,
         current_stage: label,
         entered_at: enteredAt.get(r.deal_id) ?? '',
