@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useDashboardCarouselWidgets } from '@/hooks/useDashboardCarouselWidgets';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Popover, PopoverTrigger, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { useCloseOnRouteChange } from '@/hooks/useCloseOnRouteChange';
 
 const OPEN_DELAY = 120;
@@ -230,7 +230,7 @@ export function DashboardFlyoutMenu() {
         onMouseLeave={scheduleClose}
       >
         {dashboardLink}
-        {showExpanded && (
+        {(
           <Popover
           open={open}
           onOpenChange={(next) => {
@@ -238,30 +238,37 @@ export function DashboardFlyoutMenu() {
             setOpen(next);
           }}
         >
-            <PopoverTrigger asChild>
-              <button
-                ref={triggerRef}
-                type="button"
-                onClick={handleChevronClick}
-                aria-haspopup="menu"
-                aria-expanded={open}
-                aria-label="Open dashboard widgets submenu"
-                className={cn(
-                  'absolute right-1 top-1/2 -translate-y-1/2 z-10',
-                  'flex h-6 w-6 items-center justify-center rounded-sm',
-                  'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
-                )}
-              >
-                <ChevronRight
+            {showExpanded ? (
+              <PopoverTrigger asChild>
+                <button
+                  ref={triggerRef}
+                  type="button"
+                  onClick={handleChevronClick}
+                  aria-haspopup="menu"
+                  aria-expanded={open}
+                  aria-label="Open dashboard widgets submenu"
                   className={cn(
-                    'h-3.5 w-3.5 transition-transform',
-                    open && 'rotate-90',
+                    'absolute right-1 top-1/2 -translate-y-1/2 z-10',
+                    'flex h-6 w-6 items-center justify-center rounded-sm',
+                    'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
                   )}
-                  aria-hidden="true"
-                />
-              </button>
-            </PopoverTrigger>
+                >
+                  <ChevronRight
+                    className={cn(
+                      'h-3.5 w-3.5 transition-transform',
+                      open && 'rotate-90',
+                    )}
+                    aria-hidden="true"
+                  />
+                </button>
+              </PopoverTrigger>
+            ) : (
+              <PopoverAnchor asChild>
+                <span className="pointer-events-none absolute inset-0" aria-hidden="true" />
+              </PopoverAnchor>
+            )}
+
           <PopoverContent
             side="right"
             align="start"
