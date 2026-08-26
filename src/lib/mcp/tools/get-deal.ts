@@ -1,11 +1,11 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-import { supabaseForUser, requireAuth, textResult, errorResult, assertDealAccess } from "../supabase";
+import { supabaseForUser, requireAuth, textResult, errorResult, assertDealAccess, withStageLabels } from "../supabase";
 
 export default defineTool({
   name: "get_deal",
   title: "Get deal",
-  description: "Fetch a single deal by id with its full record, plus recent status notes, tasks, and attached lenders.",
+  description: "Fetch a single deal by id with its full record, plus recent status notes, tasks, and attached lenders. The deal includes stage_label / pipeline_name resolved from the deal's assigned pipeline \u2014 always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
   inputSchema: {
     deal_id: z.string().uuid(),
     include_tasks: z.boolean().default(true),
@@ -39,8 +39,9 @@ export default defineTool({
             .limit(200)
         : Promise.resolve({ data: null, error: null }),
     ]);
+    const [dealWithLabels] = await withStageLabels(sb, [deal as Record<string, unknown> & { stage?: string | null; pipeline_id?: string | null }]);
     return textResult({
-      deal,
+      deal: dealWithLabels,
       tasks: tasksRes.data ?? [],
       lenders: lendersRes.data ?? [],
     });
