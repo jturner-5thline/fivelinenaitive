@@ -38,6 +38,16 @@ export function isLenderTermsOrLater(stage?: string | null, trackingStatus?: str
   return TERMS_OR_LATER_TOKENS.some(t => s.includes(t));
 }
 
+export interface TermsConversionDealRow {
+  deal_id: string;
+  company: string;
+  value: number;
+  manager: string | null;
+  current_stage: string;
+  entered_at: string;
+  pipeline_id: string;
+}
+
 export interface TermsConversionRateResult {
   /** Lenders that reached Terms Issued or later. */
   numerator: number;
@@ -48,8 +58,13 @@ export interface TermsConversionRateResult {
   /** Formatted percentage, or '—'. */
   value: string;
   dealCount: number;
+  /** One row per funding source that reached Terms Issued or later. */
+  numeratorDeals: TermsConversionDealRow[];
+  /** One row per funding source on qualifying deals. */
+  denominatorDeals: TermsConversionDealRow[];
   isLoading: boolean;
 }
+
 
 /**
  * Terms Conversion Rate (TTM).
@@ -69,39 +84,75 @@ export function useTermsConversionRate(): TermsConversionRateResult {
       start.setMonth(start.getMonth() - 12);
       const startIso = start.toISOString();
 
+      const empty = {
+        numerator: 0,
+        denominator: 0,
+        dealCount: 0,
+        numeratorDeals: [] as TermsConversionDealRow[],
+        denominatorDeals: [] as TermsConversionDealRow[],
+      };
+
       const { data: histRows, error: histErr } = await supabase
         .from('deal_stage_history')
-        .select('deal_id')
+        .select('deal_id, changed_at')
         .eq('event_type', 'stage_enter')
         .eq('pipeline_id', ACTIVE_PIPELINE_ID)
         .in('to_stage', expandStageLabels(QUALIFYING_STAGES))
         .gte('changed_at', startIso);
       if (histErr) throw histErr;
 
-      const dealIds = Array.from(new Set((histRows ?? []).map((r: any) => r.deal_id).filter(Boolean)));
-      if (dealIds.length === 0) return { numerator: 0, denominator: 0, dealCount: 0 };
+      const enteredAt = new Map<string, string>();
+      for (const r of (histRows ?? []) as any[]) {
+        if (!r.deal_id) continue;
+        const prev = enteredAt.get(r.deal_id);
+        if (!prev || (r.changed_at && r.changed_at < prev)) enteredAt.set(r.deal_id, r.changed_at);
+      }
+      const dealIds = Array.from(enteredAt.keys());
+      if (dealIds.length === 0) return empty;
 
       // Drop globally-excluded demo/test deals.
       const { data: dealRows, error: dealErr } = await supabase
         .from('deals')
-        .select('id, company')
+        .select('id, company, amount, manager, stage, pipeline_id')
         .in('id', dealIds);
       if (dealErr) throw dealErr;
-      const keptIds = (dealRows ?? [])
-        .filter((d: any) => !isExcludedDealName(d.company))
-        .map((d: any) => d.id);
-      if (keptIds.length === 0) return { numerator: 0, denominator: 0, dealCount: 0 };
+      const kept = (dealRows ?? []).filter((d: any) => !isExcludedDealName(d.company));
+      const keptIds = kept.map((d: any) => d.id);
+      if (keptIds.length === 0) return empty;
+      const dealById = new Map(kept.map((d: any) => [d.id, d]));
 
       const { data: lenderRows, error: lenderErr } = await supabase
         .from('deal_lenders')
-        .select('id, deal_id, stage, tracking_status')
+        .select('id, deal_id, name, stage, tracking_status')
         .in('deal_id', keptIds);
       if (lenderErr) throw lenderErr;
 
       const rows = lenderRows ?? [];
-      const numerator = rows.filter((r: any) => isLenderTermsOrLater(r.stage, r.tracking_status)).length;
+      const toRow = (r: any): TermsConversionDealRow => {
+        const d = dealById.get(r.deal_id) ?? {};
+        return {
+          deal_id: r.deal_id,
+          company: `${d.company ?? 'Unknown deal'} · ${r.name ?? 'Funding source'}`,
+          value: Number(d.amount) || 0,
+          manager: d.manager ?? null,
+          current_stage: r.stage ?? '—',
+          entered_at: enteredAt.get(r.deal_id) ?? '',
+          pipeline_id: d.pipeline_id ?? ACTIVE_PIPELINE_ID,
+        };
+      };
 
-      return { numerator, denominator: rows.length, dealCount: keptIds.length };
+      const denominatorDeals = rows.map(toRow);
+      const numeratorDeals = rows
+        .filter((r: any) => isLenderTermsOrLater(r.stage, r.tracking_status))
+        .map(toRow);
+
+      return {
+        numerator: numeratorDeals.length,
+        denominator: rows.length,
+        dealCount: keptIds.length,
+        numeratorDeals,
+        denominatorDeals,
+      };
     },
     enabled: !!user,
     staleTime: 60_000,
@@ -118,6 +169,8 @@ export function useTermsConversionRate(): TermsConversionRateResult {
       rate,
       value: rate === null ? '—' : `${(rate * 100).toFixed(1)}%`,
       dealCount: data?.dealCount ?? 0,
+      numeratorDeals: data?.numeratorDeals ?? [],
+      denominatorDeals: data?.denominatorDeals ?? [],
       isLoading: loading,
     };
   }, [data, isLoading, isFetching]);
