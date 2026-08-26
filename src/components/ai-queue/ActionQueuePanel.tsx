@@ -881,25 +881,47 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
     >
       {/* Ambient glows removed — detail pane matches Deal Details flat surface. */}
 
-      {/* Header */}
-      <div className="panel-divider-b relative px-4 py-2.5 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <h2 className="text-[18px] leading-none tracking-tight" style={FONT_DISPLAY}>
+      {/* Header — single compact row: title, count, sync state, search, filter */}
+      <div className="panel-divider-b relative px-3 py-2 flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 min-w-0 shrink-0">
+          <h2 className="text-[15px] leading-none tracking-tight" style={FONT_DISPLAY}>
             Approval Queue
           </h2>
-          <span
-            className="ml-1 inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full text-[10px] font-semibold bg-red-500 text-white"
-          >
+          <span className="inline-flex items-center justify-center h-[18px] min-w-[18px] px-1.5 rounded-full text-[10px] font-semibold bg-red-500 text-white">
             {totalCount}
           </span>
           <span
-            className="text-[8px] uppercase text-[#ecedf4]/58"
+            className="hidden lg:inline text-[9px] uppercase text-[#ecedf4]/50"
             style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
           >
             synced just now
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 ml-auto min-w-0 flex-1 max-w-[420px]">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#ecedf4]/40" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search actions, deals…"
+              className="h-7 pl-8 text-[12px] rounded-lg bg-white/[0.04] border border-white/25 hover:border-white/40 focus-visible:border-white/60 text-[#ecedf4] placeholder:text-[#ecedf4]/40 focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+              style={FONT_BODY}
+            />
+          </div>
+          {isAdmin && (
+            <FilterChip
+              label="Me"
+              count={
+                myDealIds
+                  ? items.filter((it) => it.deal_id && myDealIds.has(it.deal_id)).length +
+                    accessRequests.filter((r) => r.deal_id && myDealIds.has(r.deal_id)).length +
+                    flexRequests.filter((r) => r.deal_id && myDealIds.has(r.deal_id)).length
+                  : 0
+              }
+              active={scope === 'me'}
+              onClick={() => setScope(scope === 'me' ? 'all' : 'me')}
+            />
+          )}
         </div>
       </div>
 
@@ -907,38 +929,10 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       {(items.length + accessRequests.length + flexRequests.length) === 0 ? (
         <EmptyState />
       ) : (
-        <div className="relative grid grid-cols-1 md:grid-cols-[392px_1fr] flex-1 min-h-0">
+        <div className="relative grid grid-cols-1 md:grid-cols-[340px_1fr] flex-1 min-h-0">
           {/* LEFT RAIL */}
           <aside className="flex flex-col min-h-0 md:panel-divider-r">
-            <div className="px-3 pt-2 pb-2 space-y-2 shrink-0">
-              {/* Search + Me filter */}
-              <div className="flex items-center gap-1.5">
-                <div className="relative flex-1 min-w-0">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#ecedf4]/40" />
-                  <Input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search actions, deals…"
-                    className="h-8 pl-8 text-[12px] rounded-lg bg-white/[0.04] border border-white/60 hover:border-white/75 focus-visible:border-white/90 text-[#ecedf4] placeholder:text-[#ecedf4]/40 focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
-                    style={FONT_BODY}
-                  />
-                </div>
-                {isAdmin && (
-                  <FilterChip
-                    label="Me"
-                    count={
-                      myDealIds
-                        ? items.filter((it) => it.deal_id && myDealIds.has(it.deal_id)).length +
-                          accessRequests.filter((r) => r.deal_id && myDealIds.has(r.deal_id)).length +
-                          flexRequests.filter((r) => r.deal_id && myDealIds.has(r.deal_id)).length
-                        : 0
-                    }
-                    active={scope === 'me'}
-                    onClick={() => setScope(scope === 'me' ? 'all' : 'me')}
-                  />
-                )}
-              </div>
-            </div>
+
 
             {/* Scrollable row list */}
             <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-2 space-y-2">
@@ -1656,6 +1650,8 @@ function DetailPane({
   const [busy, setBusy] = useState<'a' | 'r' | null>(null);
   const [edits, setEdits] = useState<Record<string, any>>({});
   const [showTaskErrors, setShowTaskErrors] = useState(false);
+  // Task creation is progressive disclosure — collapsed until the reviewer asks for it.
+  const [tasksOpen, setTasksOpen] = useState(false);
   const navigate = useNavigate();
   // Lookup tables to resolve raw UUIDs (stage_id, pipeline_id) into labels.
   const { pipelines } = usePipelineContext();
@@ -1964,6 +1960,7 @@ function DetailPane({
                 onClick={async () => {
                   if (tasksIncomplete) {
                     setShowTaskErrors(true);
+                    setTasksOpen(true);
                     toast.error('Every task row needs a title and an assignee', {
                       description:
                         'Fill in the highlighted fields before creating tasks.',
@@ -2246,35 +2243,47 @@ function DetailPane({
           )}
 
           {isUpdateTasksPrompt && (
-            <div>
-              <p
-                className="text-[16px] font-semibold tracking-tight text-[#f7f8fc] mb-3"
-                style={FONT_BODY}
+            <div className="rounded-lg border border-white/[0.14] bg-white/[0.02]">
+              <button
+                type="button"
+                onClick={() => setTasksOpen((v) => !v)}
+                aria-expanded={tasksOpen}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left"
               >
-                Create task
-              </p>
-              <TaskListEditor
-                dealName={item.deal_name || 'this deal'}
-                forceShowErrors={showTaskErrors}
-                initialTasks={
-                  Array.isArray((newValues as any)?.tasks) && (newValues as any).tasks.length > 0
-                    ? (newValues as any).tasks.map((t: any) => ({
-                        title: String(t?.title ?? ''),
-                        due_date: t?.due_date ?? null,
-                        assigned_to: t?.assigned_to ?? null,
-                      }))
-                    : ([
-                        {
-                          title: '',
-                          due_date: (newValues as any)?.due_date ?? null,
-                          assigned_to: (newValues as any)?.assigned_to ?? null,
-                        },
-                      ] as EditorTask[])
-                }
-                onChange={(tasks) => setEdits((p) => ({ ...p, tasks }))}
-              />
+                <span className="text-[13px] font-semibold text-[#f7f8fc]" style={FONT_BODY}>
+                  Create tasks
+                </span>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 text-[#ecedf4]/60 transition-transform ${tasksOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {tasksOpen && (
+                <div className="px-3 pb-3">
+                  <TaskListEditor
+                    dealName={item.deal_name || 'this deal'}
+                    forceShowErrors={showTaskErrors}
+                    initialTasks={
+                      Array.isArray((newValues as any)?.tasks) && (newValues as any).tasks.length > 0
+                        ? (newValues as any).tasks.map((t: any) => ({
+                            title: String(t?.title ?? ''),
+                            due_date: t?.due_date ?? null,
+                            assigned_to: t?.assigned_to ?? null,
+                          }))
+                        : ([
+                            {
+                              title: '',
+                              due_date: (newValues as any)?.due_date ?? null,
+                              assigned_to: (newValues as any)?.assigned_to ?? null,
+                            },
+                          ] as EditorTask[])
+                    }
+                    onChange={(tasks) => setEdits((p) => ({ ...p, tasks }))}
+                  />
+                </div>
+              )}
             </div>
           )}
+
 
           {/* Status note editor for funding source updates. Persisted into
            *  deal_lenders.notes via the executor's `merged.notes` handling. */}
