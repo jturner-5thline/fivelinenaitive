@@ -26,6 +26,7 @@ import {
   type StageEntryDeal,
 } from '@/hooks/usePipelineStageMetrics';
 import { useTotalRevenueOpportunity } from '@/hooks/usePipelineStageMetrics';
+import { useTermsConversionRate } from '@/hooks/useTermsConversionRate';
 import { cn } from '@/lib/utils';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
@@ -2116,6 +2117,7 @@ export function ConsolidatedDebtPipelineDashboard({
   );
   const quarterlyFunnel = useQuarterlyTtmFunnel();
   const totalRevenueOpportunity = useTotalRevenueOpportunity();
+  const termsConversionRate = useTermsConversionRate();
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
   // When true, each bucket in the chart shows the trailing-12-month rollup
   // ending at that bucket's period end, instead of the bucket's own period.
