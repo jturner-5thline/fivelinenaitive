@@ -58,6 +58,8 @@ import { ClaapNoteEditor } from '@/components/dashboard/ClaapNoteEditor';
 import { HighlightCalendarMenu } from '@/components/calendar/HighlightCalendarMenu';
 import { ShareNotesDialog } from '@/components/dashboard/ShareNotesDialog';
 import { Share2 } from 'lucide-react';
+import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
+
 import { RefreshCw } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
