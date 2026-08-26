@@ -427,6 +427,11 @@ export function EndOfDayTab({
   // Search + filters
   const [search, setSearch] = useState('');
   const [filterChips, setFilterChips] = useState<Set<FilterChip>>(new Set());
+  // Default: hide purely-internal (@5thline.co only) meetings — external first.
+  const [hideInternal, setHideInternal] = useState<boolean>(() =>
+    readLS<boolean>(HIDE_INTERNAL_KEY, true),
+  );
+
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Tracks items the user resolved/dismissed/snoozed during this session.
