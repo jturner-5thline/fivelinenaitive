@@ -82,14 +82,13 @@ function buildStageLookup(configs: Array<{ company_id: string | null; stages: un
 
 function resolveStage(lookup: StageLookup, companyId: string | null, stageId: string | null): StageMeta | null {
   if (!stageId) return null;
+  // Only trust the deal's own workspace config (or the global one). Scanning
+  // every tenant's config causes cross-tenant id collisions (e.g. "passed"
+  // labelled "Review" in another workspace) and mis-classifies funding sources.
   const scoped = companyId ? lookup.get(companyId)?.get(stageId) : undefined;
-  if (scoped) return scoped;
-  for (const [, m] of lookup) {
-    const hit = m.get(stageId);
-    if (hit) return hit;
-  }
-  return null;
+  return scoped ?? lookup.get('')?.get(stageId) ?? null;
 }
+
 
 export interface TermsConversionDealRow {
   deal_id: string;
@@ -185,12 +184,15 @@ export function useTermsConversionRate(): TermsConversionRateResult {
         const deal: any = dealById.get(r.deal_id) ?? {};
         const meta = resolveStage(lookup, deal.company_id ?? null, r.stage ?? null);
         const label = meta?.label ?? r.stage ?? '—';
+        const ts = norm(r.tracking_status);
         let qualifies: boolean;
         if (meta && meta.termsIndex >= 0) {
           qualifies = meta.group === 'active'
             && meta.activeIndex >= 0
             && meta.activeIndex >= meta.termsIndex
+            && ts !== 'passed' && ts !== 'excluded'
             && !NEVER_TERMS_LABELS.has(norm(label));
+
         } else {
           qualifies = isLenderTermsOrLater(label, r.tracking_status);
         }
