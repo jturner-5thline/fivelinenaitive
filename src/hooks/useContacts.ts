@@ -5,6 +5,8 @@ import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 import type { FilterRule, MatchMode } from '@/lib/filterTypes';
 import { applyFiltersToQuery } from '@/lib/filterUtils';
+import { ensureReferralSourceForContact } from '@/lib/ensureReferralSource';
+
 
 export interface Contact {
   id: string;
@@ -268,6 +270,12 @@ export function useCreateContact() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       toast.success('Contact created');
+      // If tagged as a Referral Source, seed the Nurturing column of the
+      // Referral Source Pipeline (Sales & BD).
+      ensureReferralSourceForContact(data, user?.id, company?.id).then(() => {
+        queryClient.invalidateQueries({ queryKey: ['referral-sources'] });
+        queryClient.invalidateQueries({ queryKey: ['deal-referral-sources'] });
+      });
       // Fire-and-forget: kick off AI enrichment scan against recent activity.
       if (data?.id) {
         supabase.functions
@@ -282,6 +290,7 @@ export function useCreateContact() {
           .catch((e) => console.warn('[contact enrichment] failed', e));
       }
     },
+
     onError: (err: any) => {
       toast.error(err.message || 'Failed to create contact');
     },
@@ -303,11 +312,16 @@ export function useUpdateContact() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: (data: any, vars) => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       queryClient.invalidateQueries({ queryKey: ['contact', vars.id] });
       toast.success('Contact updated');
+      ensureReferralSourceForContact(data, user?.id, data?.org_company_id).then(() => {
+        queryClient.invalidateQueries({ queryKey: ['referral-sources'] });
+        queryClient.invalidateQueries({ queryKey: ['deal-referral-sources'] });
+      });
     },
+
     onError: (err: any) => {
       toast.error(err.message || 'Failed to update contact');
     },
