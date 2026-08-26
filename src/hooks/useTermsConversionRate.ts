@@ -38,6 +38,16 @@ export function isLenderTermsOrLater(stage?: string | null, trackingStatus?: str
   return TERMS_OR_LATER_TOKENS.some(t => s.includes(t));
 }
 
+export interface TermsConversionDealRow {
+  deal_id: string;
+  company: string;
+  value: number;
+  manager: string | null;
+  current_stage: string;
+  entered_at: string;
+  pipeline_id: string;
+}
+
 export interface TermsConversionRateResult {
   /** Lenders that reached Terms Issued or later. */
   numerator: number;
@@ -48,8 +58,13 @@ export interface TermsConversionRateResult {
   /** Formatted percentage, or '—'. */
   value: string;
   dealCount: number;
+  /** One row per funding source that reached Terms Issued or later. */
+  numeratorDeals: TermsConversionDealRow[];
+  /** One row per funding source on qualifying deals. */
+  denominatorDeals: TermsConversionDealRow[];
   isLoading: boolean;
 }
+
 
 /**
  * Terms Conversion Rate (TTM).
