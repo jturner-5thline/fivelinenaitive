@@ -2246,35 +2246,47 @@ function DetailPane({
           )}
 
           {isUpdateTasksPrompt && (
-            <div>
-              <p
-                className="text-[16px] font-semibold tracking-tight text-[#f7f8fc] mb-3"
-                style={FONT_BODY}
+            <div className="rounded-lg border border-white/[0.14] bg-white/[0.02]">
+              <button
+                type="button"
+                onClick={() => setTasksOpen((v) => !v)}
+                aria-expanded={tasksOpen}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left"
               >
-                Create task
-              </p>
-              <TaskListEditor
-                dealName={item.deal_name || 'this deal'}
-                forceShowErrors={showTaskErrors}
-                initialTasks={
-                  Array.isArray((newValues as any)?.tasks) && (newValues as any).tasks.length > 0
-                    ? (newValues as any).tasks.map((t: any) => ({
-                        title: String(t?.title ?? ''),
-                        due_date: t?.due_date ?? null,
-                        assigned_to: t?.assigned_to ?? null,
-                      }))
-                    : ([
-                        {
-                          title: '',
-                          due_date: (newValues as any)?.due_date ?? null,
-                          assigned_to: (newValues as any)?.assigned_to ?? null,
-                        },
-                      ] as EditorTask[])
-                }
-                onChange={(tasks) => setEdits((p) => ({ ...p, tasks }))}
-              />
+                <span className="text-[13px] font-semibold text-[#f7f8fc]" style={FONT_BODY}>
+                  Create tasks
+                </span>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 text-[#ecedf4]/60 transition-transform ${tasksOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {tasksOpen && (
+                <div className="px-3 pb-3">
+                  <TaskListEditor
+                    dealName={item.deal_name || 'this deal'}
+                    forceShowErrors={showTaskErrors}
+                    initialTasks={
+                      Array.isArray((newValues as any)?.tasks) && (newValues as any).tasks.length > 0
+                        ? (newValues as any).tasks.map((t: any) => ({
+                            title: String(t?.title ?? ''),
+                            due_date: t?.due_date ?? null,
+                            assigned_to: t?.assigned_to ?? null,
+                          }))
+                        : ([
+                            {
+                              title: '',
+                              due_date: (newValues as any)?.due_date ?? null,
+                              assigned_to: (newValues as any)?.assigned_to ?? null,
+                            },
+                          ] as EditorTask[])
+                    }
+                    onChange={(tasks) => setEdits((p) => ({ ...p, tasks }))}
+                  />
+                </div>
+              )}
             </div>
           )}
+
 
           {/* Status note editor for funding source updates. Persisted into
            *  deal_lenders.notes via the executor's `merged.notes` handling. */}
