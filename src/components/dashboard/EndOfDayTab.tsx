@@ -256,7 +256,10 @@ function InlineComposer({
 interface TileEvent extends CalendarEvent {
   _ageDays: number;
   _isCarry: boolean;
+  /** When set, this tile is an AI approval-queue item rather than a meeting. */
+  _approval?: any;
 }
+
 
 function EventTile({
   ev, active, selected, onClick, onToggleSelect, onResolve, onDismiss,
