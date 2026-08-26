@@ -237,6 +237,8 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
+              <AddToNurturingButton contact={contact} />
+
               {contact.linkedin_url && (
                 <Button
                   variant="outline"
