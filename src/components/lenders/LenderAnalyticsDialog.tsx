@@ -2258,7 +2258,7 @@ function IntelPanel({
     <div className="rounded-lg border overflow-hidden" style={INTEL_CARD_STYLE}>
       <div className="flex items-start justify-between gap-2 px-4 pt-3 pb-2">
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.14em] font-medium text-slate-400 truncate">
+          <div className="text-[10px] uppercase tracking-[0.14em] font-medium text-white truncate">
             {title}
           </div>
           {subtitle && (
