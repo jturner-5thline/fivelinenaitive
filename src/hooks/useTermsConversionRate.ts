@@ -109,6 +109,10 @@ export interface TermsConversionRateResult {
   /** Formatted percentage, or '—'. */
   value: string;
   dealCount: number;
+  /** Average funding sources at Term Sheets or later per cohort deal. */
+  avgTermSheetsPerDeal: number | null;
+  /** Formatted average, or '—'. */
+  avgValue: string;
   numeratorDeals: TermsConversionDealRow[];
   denominatorDeals: TermsConversionDealRow[];
   isLoading: boolean;
@@ -235,12 +239,16 @@ export function useTermsConversionRate(): TermsConversionRateResult {
     const numerator = data?.numerator ?? 0;
     const denominator = data?.denominator ?? 0;
     const rate = denominator > 0 ? numerator / denominator : null;
+    const dealCount = data?.dealCount ?? 0;
+    const avg = dealCount > 0 ? numerator / dealCount : null;
     return {
       numerator,
       denominator,
       rate,
       value: rate === null ? '—' : `${(rate * 100).toFixed(1)}%`,
-      dealCount: data?.dealCount ?? 0,
+      dealCount,
+      avgTermSheetsPerDeal: avg,
+      avgValue: avg === null ? '—' : avg.toFixed(1),
       numeratorDeals: data?.numeratorDeals ?? [],
       denominatorDeals: data?.denominatorDeals ?? [],
       isLoading: loading,
