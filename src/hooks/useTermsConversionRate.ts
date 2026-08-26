@@ -13,29 +13,82 @@ const QUALIFYING_STAGES = ['submitted-to-lenders', 'lenders-in-review'];
 const norm = (s?: string | null) => (s || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
 
 /**
- * Lender stages that mean "Terms Issued or later". Anything matching one of
- * these tokens (or a term-sheet variant) counts in the numerator.
+ * Stage labels that mean "Term Sheets or later" when we cannot resolve the
+ * lender stage against a configured stage order (legacy free-text stages).
  */
 const TERMS_OR_LATER_TOKENS = [
   'terms issued',
   'term sheet',
   'term sheets',
-  'draft terms',
-  'approved',
+  'in diligence',
   'due diligence',
   'diligence',
+  'approved',
   'closing',
+  'closed & funded',
+  'closed and funded',
   'funded',
   'closed won',
 ];
 
+const NEVER_TERMS_LABELS = new Set(['passed', 'not a fit', 'unresponsive', 'declined', 'excluded']);
+
+/** Token-based fallback used when the stage isn't present in a stage config. */
 export function isLenderTermsOrLater(stage?: string | null, trackingStatus?: string | null): boolean {
   const s = norm(stage);
   const ts = norm(trackingStatus);
-  if (!s && !ts) return false;
-  // A lender that passed never reached terms, regardless of stage text.
-  if (ts === 'passed' || s === 'passed' || s === 'not a fit' || s === 'unresponsive') return false;
+  if (!s) return false;
+  if (ts === 'passed' || NEVER_TERMS_LABELS.has(s)) return false;
   return TERMS_OR_LATER_TOKENS.some(t => s.includes(t));
+}
+
+interface StageMeta {
+  label: string;
+  group: string;
+  /** Position within the config's active-stage ladder, -1 when not active. */
+  activeIndex: number;
+  /** Position of the "Term Sheets" stage in that same ladder, -1 when absent. */
+  termsIndex: number;
+}
+
+type StageLookup = Map<string, Map<string, StageMeta>>; // company_id ('' = global) -> stageId -> meta
+
+function buildStageLookup(configs: Array<{ company_id: string | null; stages: unknown }>): StageLookup {
+  const lookup: StageLookup = new Map();
+  for (const cfg of configs) {
+    const stages = Array.isArray(cfg.stages)
+      ? (cfg.stages as Array<{ id?: string; label?: string; group?: string }>)
+      : [];
+    const active = stages.filter(s => (s?.group ?? 'active') === 'active');
+    const termsIndex = active.findIndex(s => {
+      const l = norm(s?.label);
+      return l.includes('term sheet') || l.includes('terms issued');
+    });
+    const key = cfg.company_id ?? '';
+    const target = lookup.get(key) ?? new Map<string, StageMeta>();
+    lookup.set(key, target);
+    for (const s of stages) {
+      if (!s?.id) continue;
+      target.set(s.id, {
+        label: s.label ?? s.id,
+        group: s.group ?? 'active',
+        activeIndex: active.findIndex(a => a.id === s.id),
+        termsIndex,
+      });
+    }
+  }
+  return lookup;
+}
+
+function resolveStage(lookup: StageLookup, companyId: string | null, stageId: string | null): StageMeta | null {
+  if (!stageId) return null;
+  const scoped = companyId ? lookup.get(companyId)?.get(stageId) : undefined;
+  if (scoped) return scoped;
+  for (const [, m] of lookup) {
+    const hit = m.get(stageId);
+    if (hit) return hit;
+  }
+  return null;
 }
 
 export interface TermsConversionDealRow {
@@ -49,30 +102,27 @@ export interface TermsConversionDealRow {
 }
 
 export interface TermsConversionRateResult {
-  /** Lenders that reached Terms Issued or later. */
+  /** Funding sources that reached Term Sheets or later. */
   numerator: number;
   /** Total funding sources added across qualifying deals. */
   denominator: number;
-  /** numerator / denominator, or null when there is no denominator. */
   rate: number | null;
   /** Formatted percentage, or '—'. */
   value: string;
   dealCount: number;
-  /** One row per funding source that reached Terms Issued or later. */
   numeratorDeals: TermsConversionDealRow[];
-  /** One row per funding source on qualifying deals. */
   denominatorDeals: TermsConversionDealRow[];
   isLoading: boolean;
 }
 
-
 /**
  * Terms Conversion Rate (TTM).
  *
- * For every Active Pipeline deal that entered "Submitted to Lenders" or
- * "Lenders in Review" in the trailing 12 months, divide the number of funding
- * sources on those deals that reached "Terms Issued" or later by the total
- * number of funding sources added to those deals.
+ * Cohort = every Active Pipeline deal that entered "Submitted to Lenders" or
+ * "Lenders in Review" in the trailing 12 months. Rate = funding sources on
+ * those deals whose stage is "Term Sheets" or later (resolved against the
+ * workspace's configured lender stage ladder) ÷ ALL funding sources on those
+ * deals.
  */
 export function useTermsConversionRate(): TermsConversionRateResult {
   const { user } = useAuth();
@@ -110,16 +160,18 @@ export function useTermsConversionRate(): TermsConversionRateResult {
       const dealIds = Array.from(enteredAt.keys());
       if (dealIds.length === 0) return empty;
 
-      // Drop globally-excluded demo/test deals.
-      const { data: dealRows, error: dealErr } = await supabase
-        .from('deals')
-        .select('id, company, amount, manager, stage, pipeline_id')
-        .in('id', dealIds);
-      if (dealErr) throw dealErr;
-      const kept = (dealRows ?? []).filter((d: any) => !isExcludedDealName(d.company));
+      const [dealRes, cfgRes] = await Promise.all([
+        supabase.from('deals').select('id, company, company_id, amount, manager, pipeline_id').in('id', dealIds),
+        supabase.from('lender_stage_configs').select('company_id, stages').limit(500),
+      ]);
+      if (dealRes.error) throw dealRes.error;
+      if (cfgRes.error) throw cfgRes.error;
+
+      const kept = (dealRes.data ?? []).filter((d: any) => !isExcludedDealName(d.company));
       const keptIds = kept.map((d: any) => d.id);
       if (keptIds.length === 0) return empty;
       const dealById = new Map(kept.map((d: any) => [d.id, d]));
+      const lookup = buildStageLookup((cfgRes.data ?? []) as any[]);
 
       const { data: lenderRows, error: lenderErr } = await supabase
         .from('deal_lenders')
@@ -128,27 +180,45 @@ export function useTermsConversionRate(): TermsConversionRateResult {
       if (lenderErr) throw lenderErr;
 
       const rows = lenderRows ?? [];
-      const toRow = (r: any): TermsConversionDealRow => {
-        const d = dealById.get(r.deal_id) ?? {};
-        return {
-          deal_id: r.deal_id,
-          company: `${d.company ?? 'Unknown deal'} · ${r.name ?? 'Funding source'}`,
-          value: Number(d.amount) || 0,
-          manager: d.manager ?? null,
-          current_stage: r.stage ?? '—',
-          entered_at: enteredAt.get(r.deal_id) ?? '',
-          pipeline_id: d.pipeline_id ?? ACTIVE_PIPELINE_ID,
-        };
+
+      const classify = (r: any) => {
+        const deal: any = dealById.get(r.deal_id) ?? {};
+        const meta = resolveStage(lookup, deal.company_id ?? null, r.stage ?? null);
+        const label = meta?.label ?? r.stage ?? '—';
+        let qualifies: boolean;
+        if (meta && meta.termsIndex >= 0) {
+          qualifies = meta.group === 'active'
+            && meta.activeIndex >= 0
+            && meta.activeIndex >= meta.termsIndex
+            && !NEVER_TERMS_LABELS.has(norm(label));
+        } else {
+          qualifies = isLenderTermsOrLater(label, r.tracking_status);
+        }
+        return { label, qualifies, deal };
       };
 
-      const denominatorDeals = rows.map(toRow);
-      const numeratorDeals = rows
-        .filter((r: any) => isLenderTermsOrLater(r.stage, r.tracking_status))
-        .map(toRow);
+      const toRow = (r: any, label: string, deal: any): TermsConversionDealRow => ({
+        deal_id: r.deal_id,
+        company: `${deal.company ?? 'Unknown deal'} · ${r.name ?? 'Funding source'}`,
+        value: Number(deal.amount) || 0,
+        manager: deal.manager ?? null,
+        current_stage: label,
+        entered_at: enteredAt.get(r.deal_id) ?? '',
+        pipeline_id: deal.pipeline_id ?? ACTIVE_PIPELINE_ID,
+      });
+
+      const denominatorDeals: TermsConversionDealRow[] = [];
+      const numeratorDeals: TermsConversionDealRow[] = [];
+      for (const r of rows as any[]) {
+        const { label, qualifies, deal } = classify(r);
+        const row = toRow(r, label, deal);
+        denominatorDeals.push(row);
+        if (qualifies) numeratorDeals.push(row);
+      }
 
       return {
         numerator: numeratorDeals.length,
-        denominator: rows.length,
+        denominator: denominatorDeals.length,
         dealCount: keptIds.length,
         numeratorDeals,
         denominatorDeals,
