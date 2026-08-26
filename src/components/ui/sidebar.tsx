@@ -91,10 +91,12 @@ const SidebarProvider = React.forwardRef<
     [setOpenProp, open],
   );
 
-  // Helper to toggle the sidebar.
+  // Helper to toggle the sidebar. On desktop the sidebar is permanently
+  // icon-collapsed (labels surface as hover tooltips), so toggling is a no-op.
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open);
-  }, [isMobile, setOpen, setOpenMobile]);
+    if (isMobile) setOpenMobile((open) => !open);
+  }, [isMobile, setOpenMobile]);
+
 
   // Adds a keyboard shortcut to toggle the sidebar.
   React.useEffect(() => {
@@ -156,35 +158,15 @@ const Sidebar = React.forwardRef<
   }
 >(({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, children, ...props }, ref) => {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebarStatic();
-  const { isHovering, setIsHovering } = React.useContext(SidebarHoverContext);
-  const rafRef = React.useRef<number | null>(null);
-  const stateRef = React.useRef(state);
-  stateRef.current = state;
 
-  const scheduleHover = React.useCallback(
-    (next: boolean) => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-      rafRef.current = requestAnimationFrame(() => {
-        rafRef.current = null;
-        if (next && stateRef.current !== "collapsed") return;
-        setIsHovering(next);
-      });
-    },
-    [setIsHovering],
-  );
+  // Hover no longer expands the sidebar — item labels are surfaced as
+  // per-icon tooltips instead.
+  const handleMouseEnter = React.useCallback(() => {}, []);
+  const handleMouseLeave = React.useCallback(() => {}, []);
 
-  const handleMouseEnter = React.useCallback(() => scheduleHover(true), [scheduleHover]);
-  const handleMouseLeave = React.useCallback(() => scheduleHover(false), [scheduleHover]);
+  const isHovering = false;
+  const effectiveState = state;
 
-  React.useEffect(
-    () => () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    },
-    [],
-  );
-
-  // Determine effective state - expanded if hovering over collapsed sidebar
-  const effectiveState = state === "collapsed" && isHovering ? "expanded" : state;
 
   if (collapsible === "none") {
     return (
