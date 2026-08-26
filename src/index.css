@@ -3478,20 +3478,28 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   color: hsl(var(--muted-foreground));
 }
 
-.sidebar-flyout-item {
-  border-radius: 8px;
-  color: hsl(var(--foreground));
+.sidebar-flyout-item,
+.sidebar-flyout [role='menuitem'].sidebar-flyout-item {
+  border-radius: 8px !important;
+  border: 1px solid transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  color: hsl(var(--foreground)) !important;
 }
 
 .sidebar-flyout-item:hover,
-.sidebar-flyout-item:focus-visible {
-  background-color: rgba(255, 255, 255, 0.04);
-  color: hsl(var(--foreground));
+.sidebar-flyout-item:focus-visible,
+.sidebar-flyout [role='menuitem'].sidebar-flyout-item:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: transparent !important;
+  color: hsl(var(--foreground)) !important;
 }
 
-.sidebar-flyout-item[data-active='true'] {
-  background-color: rgba(126, 184, 247, 0.08);
-  color: hsl(var(--primary));
+.sidebar-flyout-item[data-active='true'],
+.sidebar-flyout [role='menuitem'].sidebar-flyout-item[data-active='true'] {
+  background-color: rgba(126, 184, 247, 0.08) !important;
+  border-color: transparent !important;
+  color: hsl(var(--primary)) !important;
   font-weight: 500;
   box-shadow: inset 3px 0 0 0 hsl(var(--primary));
 }
