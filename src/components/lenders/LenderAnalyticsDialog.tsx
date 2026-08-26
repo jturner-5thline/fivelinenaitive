@@ -2112,8 +2112,8 @@ function KpiCard({
     : 'text-slate-500';
   const Inner = (
     <>
-      <div className="text-[11px] uppercase tracking-wider text-slate-400">{label}</div>
-      <div className="text-[22px] font-semibold tabular-nums text-slate-100 mt-0.5">
+      <div className="text-[11px] uppercase tracking-wider text-white">{label}</div>
+      <div className="text-[22px] font-semibold tabular-nums text-white mt-0.5">
         {loading ? <span className="inline-block h-5 w-16 bg-slate-700/40 rounded animate-pulse" /> : value}
       </div>
       {hint && <div className={cn('text-[11px] mt-0.5', hintColor)}>{hint}</div>}
@@ -2142,7 +2142,7 @@ function SegmentChart({ title, data }: { title: string; data: Array<{ name: stri
   const chartData = data.map(d => ({ ...d, convPct: +(d.conv * 100).toFixed(1) }));
   return (
     <div className="rounded-lg border p-3 flex flex-col" style={PANEL_STYLE}>
-      <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-2">{title}</div>
+      <div className="text-[11px] uppercase tracking-wider text-white mb-2">{title}</div>
       <div className="h-[240px]">
         {chartData.length === 0 ? (
           <div className="h-full flex items-center justify-center text-[12px] text-slate-500">No data</div>
@@ -2258,7 +2258,7 @@ function IntelPanel({
     <div className="rounded-lg border overflow-hidden" style={INTEL_CARD_STYLE}>
       <div className="flex items-start justify-between gap-2 px-4 pt-3 pb-2">
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.14em] font-medium text-slate-400 truncate">
+          <div className="text-[10px] uppercase tracking-[0.14em] font-medium text-white truncate">
             {title}
           </div>
           {subtitle && (
