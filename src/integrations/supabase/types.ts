@@ -29983,6 +29983,20 @@ export type Database = {
           total_volume: number
         }[]
       }
+      get_new_qualified_lenders: {
+        Args: { p_end?: string; p_start?: string; p_tenant_id: string }
+        Returns: {
+          deal_added_at: string
+          deal_company: string
+          deal_id: string
+          delta_seconds: number
+          lender_id: string
+          lender_name: string
+          relationship_owners: string
+          trigger_at: string
+          trigger_kind: string
+        }[]
+      }
       get_or_create_synthesized_note: {
         Args: { p_meeting_id: string }
         Returns: {

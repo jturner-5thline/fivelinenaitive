@@ -12,6 +12,11 @@ import { CalendarRange, TrendingUp, Download, Search, Target, ChevronRight } fro
 import { supabase } from '@/integrations/supabase/client';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import { useLenderCallCounts } from '@/hooks/useLenderCallCounts';
+import { useCompany } from '@/hooks/useCompany';
+import {
+  useNewQualifiedLenders,
+  qualifiedTriggerLabel,
+} from '@/hooks/useNewQualifiedLenders';
 import type { MasterLender } from '@/hooks/useMasterLenders';
 import {
   useNaitivePipelineAccess,
@@ -357,6 +362,20 @@ export function LenderAnalyticsDialog({
     'quarterly',
   );
 
+  // "New Qualified Lenders" — funding sources added (or whose primary contact
+  // info changed) in the selected timeframe that were then attached to a deal
+  // within 2 weeks of that event.
+  const { company: activeCompany } = useCompany();
+  const {
+    data: newQualifiedRows = [],
+    isLoading: newQualifiedLoading,
+  } = useNewQualifiedLenders(
+    activeCompany?.id ?? null,
+    rangeStart(dateRange),
+    rangeEnd(dateRange),
+  );
+  const newQualifiedCount = newQualifiedRows.length;
+
   useEffect(() => {
     if (!open && !embedded) return;
     let cancelled = false;
@@ -660,6 +679,7 @@ export function LenderAnalyticsDialog({
   // KPI drill-down (top 4 widgets)
   type KpiDrill = 'active' | 'sent' | 'conv' | 'flex' | null;
   const [openKpi, setOpenKpi] = useState<KpiDrill>(null);
+  const [openQualified, setOpenQualified] = useState(false);
   const [kpiDrillSearch, setKpiDrillSearch] = useState('');
   useEffect(() => { if (!openKpi) setKpiDrillSearch(''); }, [openKpi]);
 
@@ -1044,16 +1064,13 @@ export function LenderAnalyticsDialog({
               onClick={() => setOpenKpi('conv')}
             />
             <IntelKpi
-              label="Flex Active Lenders"
-              value={flexActiveLenderCount}
-              hint={
-                activeLenderCount > 0
-                  ? `${Math.round((flexActiveLenderCount / activeLenderCount) * 100)}% of total · active in Flex`
-                  : 'active in Flex'
-              }
-              loading={loading}
-              onClick={() => setOpenKpi('flex')}
+              label="New Qualified Lenders"
+              value={newQualifiedCount}
+              hint="added or contact updated → on a deal within 2 weeks"
+              loading={newQualifiedLoading}
+              onClick={() => setOpenQualified(true)}
             />
+
           </div>
 
           {error && (
@@ -1534,6 +1551,56 @@ export function LenderAnalyticsDialog({
           })()}
         </SheetContent>
       </Sheet>
+
+      {/* New Qualified Lenders drill-down */}
+      <Sheet open={openQualified} onOpenChange={setOpenQualified}>
+        <SheetContent side="right" className="w-[640px] sm:max-w-[760px] z-[1600] bg-slate-950 text-slate-100 border-slate-700/60">
+          <SheetHeader>
+            <SheetTitle className="text-slate-100">New Qualified Lenders</SheetTitle>
+            <SheetDescription className="text-slate-400">
+              {newQualifiedCount} qualified · {dateRangeLabel(dateRange)} — added to the
+              funding source database or primary contact info changed, then attached to a
+              deal within 2 weeks.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 max-h-[calc(100vh-160px)] overflow-auto rounded-lg border border-slate-700/60">
+            <table className="w-full text-[12px]">
+              <thead className="sticky top-0 bg-slate-900/95 text-slate-400">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium">Funding source</th>
+                  <th className="px-3 py-2 text-left font-medium">Qualifying event</th>
+                  <th className="px-3 py-2 text-left font-medium">Deal</th>
+                  <th className="px-3 py-2 text-right font-medium">Days to deal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {newQualifiedLoading && (
+                  <tr><td colSpan={4} className="px-3 py-6 text-center text-slate-400">Loading…</td></tr>
+                )}
+                {!newQualifiedLoading && newQualifiedRows.length === 0 && (
+                  <tr><td colSpan={4} className="px-3 py-6 text-center text-slate-400">No newly qualified funding sources in this timeframe.</td></tr>
+                )}
+                {newQualifiedRows.map((r) => (
+                  <tr key={r.lender_id} className="border-t border-slate-800/80">
+                    <td className="px-3 py-2 text-slate-100">{r.lender_name || '—'}</td>
+                    <td className="px-3 py-2 text-slate-300">
+                      {qualifiedTriggerLabel(r.trigger_kind)}
+                      <span className="ml-1 text-slate-500">
+                        {r.trigger_at ? new Date(r.trigger_at).toLocaleDateString() : ''}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-slate-300">{r.deal_company || '—'}</td>
+                    <td className="px-3 py-2 text-right text-slate-300">
+                      {r.delta_seconds != null ? Math.max(0, Math.round(r.delta_seconds / 86400)) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SheetContent>
+      </Sheet>
+
 
       {/* KPI drill-down sheet — Active Lenders / Deals Sent / Conversion / Flex Active */}
       <Sheet open={!!openKpi} onOpenChange={(o) => { if (!o) setOpenKpi(null); }}>
