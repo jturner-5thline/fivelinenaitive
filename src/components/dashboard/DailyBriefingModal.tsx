@@ -2359,7 +2359,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                 </button>
               )}
 
-              {activeTab === 'pipeline' || activeTab === 'today' ? (
+              {activeTab === 'pipeline' || activeTab === 'today' || activeTab === 'unified_queue' ? (
                 // Pipeline and End of Day tabs manage their own master/detail
                 // scrolling (left list + right pane). Wrapping them in the
                 // outer ScrollArea collapses the inner scroll regions, so we
