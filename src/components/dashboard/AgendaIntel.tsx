@@ -57,6 +57,8 @@ import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { QuickCreateTaskDialog } from '@/components/tasks/QuickCreateTaskDialog';
 import { EmailComposerCard, type ComposerRecipients, type ComposerSendOptions } from '@/components/deal/email/EmailComposerCard';
+import { EmailTemplatePicker } from '@/components/email/EmailTemplatePicker';
+
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { MyRundownPanel } from './MyRundownPanel';
 import { useMyTasks } from '@/hooks/useTasks';
@@ -1673,6 +1675,8 @@ function FollowUpEmailDialog({
   const [body, setBody] = useState('');
   const [attachments, setAttachments] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
+  const [step, setStep] = useState<'template' | 'compose'>('template');
+  const [templateTitle, setTemplateTitle] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && defaults) {
@@ -1681,8 +1685,11 @@ function FollowUpEmailDialog({
       setBody('');
       setAttachments([]);
       setFiles([]);
+      setStep('template');
+      setTemplateTitle(null);
     }
   }, [open, defaults]);
+
 
   const handleSend = useCallback(async (_o: ComposerSendOptions) => {
     if (recipients.to.length === 0) { toast.error('Add at least one recipient'); return; }
@@ -1714,30 +1721,55 @@ function FollowUpEmailDialog({
       >
         <DialogHeader className="px-5 pt-5 pb-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
           <DialogTitle className="text-[15px] font-semibold tracking-tight text-white">
-            Send follow-up
+            {step === 'template' ? 'Choose an email template' : 'Send follow-up'}
           </DialogTitle>
+          {step === 'compose' && templateTitle && (
+            <p className="text-[11px] text-white/50">
+              Using template: {templateTitle} ·{' '}
+              <button type="button" className="underline hover:text-white" onClick={() => setStep('template')}>
+                change
+              </button>
+            </p>
+          )}
         </DialogHeader>
         <div className="p-3">
-          <EmailComposerCard
-            replyToName={defaults?.label || ''}
-            hideReplyAnchor
-            recipients={recipients}
-            onRecipientsChange={setRecipients}
-            subject={subject}
-            onSubjectChange={setSubject}
-            body={body}
-            onBodyChange={setBody}
-            attachments={attachments}
-            onAttachmentsChange={setAttachments}
-            onFilesChange={setFiles}
-            onSend={handleSend}
-            onDiscard={() => { onClose(); toast.info('Draft discarded'); }}
-            signature={signature}
-            variant="inline"
-            showSubject
-            className="rounded-lg border border-white/10 shadow-none mx-0 my-0"
-          />
+          {step === 'template' ? (
+            <EmailTemplatePicker
+              tokens={{
+                meeting_title: defaults?.subject?.replace(/^Re:\s*/i, '') || '',
+                recipient_name: defaults?.label || '',
+              }}
+              onPick={(t) => {
+                if (t.subject) setSubject(t.subject);
+                setBody(t.bodyHtml || '');
+                setTemplateTitle(t.title);
+                setStep('compose');
+              }}
+              onSkip={() => { setTemplateTitle(null); setStep('compose'); }}
+            />
+          ) : (
+            <EmailComposerCard
+              replyToName={defaults?.label || ''}
+              hideReplyAnchor
+              recipients={recipients}
+              onRecipientsChange={setRecipients}
+              subject={subject}
+              onSubjectChange={setSubject}
+              body={body}
+              onBodyChange={setBody}
+              attachments={attachments}
+              onAttachmentsChange={setAttachments}
+              onFilesChange={setFiles}
+              onSend={handleSend}
+              onDiscard={() => { onClose(); toast.info('Draft discarded'); }}
+              signature={signature}
+              variant="inline"
+              showSubject
+              className="rounded-lg border border-white/10 shadow-none mx-0 my-0"
+            />
+          )}
         </div>
+
       </DialogContent>
     </Dialog>
   );

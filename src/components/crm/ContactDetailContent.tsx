@@ -58,6 +58,8 @@ import { format, isToday, isThisWeek } from 'date-fns';
 import { Loader2, Copy, Check } from 'lucide-react';
 import { normalizeLinkedInUrl } from '@/lib/linkedin';
 import { toast } from 'sonner';
+import { AddToNurturingButton } from '@/components/contacts/AddToNurturingButton';
+
 
 interface ContactDetailContentProps {
   contactId: string;
@@ -237,6 +239,8 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
+              <AddToNurturingButton contact={contact} />
+
               {contact.linkedin_url && (
                 <Button
                   variant="outline"
