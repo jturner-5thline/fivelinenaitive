@@ -1395,9 +1395,30 @@ function FinServFinancialMetricsDashboardInner() {
             <div className="mt-1 text-xs text-muted-foreground">
               QBO FinServ · prior-period billed customers ({nrr.priorLabel})
             </div>
+            <button
+              type="button"
+              onClick={() => setNrrDrillOpen(true)}
+              disabled={nrr.customers.length === 0}
+              className="mt-2 text-xs text-white underline-offset-4 hover:underline disabled:opacity-40"
+            >
+              View {nrr.customers.length} customers
+            </button>
           </CardContent>
         </Card>
       </div>
+
+      <FinServNrrDrillSheet
+        open={nrrDrillOpen}
+        onOpenChange={setNrrDrillOpen}
+        customers={nrr.customers}
+        priorTotal={nrr.priorTotal}
+        currentTotal={nrr.currentTotal}
+        nrr={nrr.nrr}
+        priorLabel={nrr.priorLabel}
+        currentLabel={`${range.resolved.start} → ${range.resolved.end}`}
+        isLoading={nrr.isLoading}
+      />
+
 
 
 
