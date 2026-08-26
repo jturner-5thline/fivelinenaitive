@@ -5,6 +5,8 @@ import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 import type { FilterRule, MatchMode } from '@/lib/filterTypes';
 import { applyFiltersToQuery } from '@/lib/filterUtils';
+import { ensureReferralSourceForContact } from '@/lib/ensureReferralSource';
+
 
 export interface Contact {
   id: string;
