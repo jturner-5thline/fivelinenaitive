@@ -106,19 +106,12 @@ export function TaskListEditor({
     setRows((prev) => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== i)));
 
   return (
-    <div className="rounded border border-white/10 bg-background/40 p-2.5 space-y-2">
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-        Create tasks on {dealName}
-      </p>
-
+    <div className="space-y-2">
       <div className="space-y-2">
         {rows.map((row, i) => {
           const dueDate = toDate(row.due_date);
           const titleMissing = row.title.trim().length === 0;
           const assigneeMissing = !row.assigned_to;
-          // Reveal errors once the field has been touched, or once the user
-          // has engaged the row via any other field (so a partially filled
-          // row surfaces what's still needed).
           const rowEngaged =
             !!row.title || !!row.due_date || !!row.assigned_to ||
             row.titleTouched || row.assigneeTouched;
@@ -128,43 +121,19 @@ export function TaskListEditor({
             assigneeMissing &&
             (forceShowErrors || row.assigneeTouched || rowEngaged);
           return (
-            <div
-              key={i}
-              className="rounded border border-white/10 bg-background/40 p-2 space-y-1.5"
-            >
-              <div className="flex items-start gap-1.5">
-                <div className="flex-1 space-y-1">
-                  <Input
-                    value={row.title}
-                    onChange={(e) => update(i, { title: e.target.value })}
-                    onBlur={() => update(i, { titleTouched: true })}
-                    placeholder={`Task ${i + 1} title…`}
-                    aria-invalid={showTitleError || undefined}
-                    className={cn(
-                      'h-8 text-[12px] px-2 w-full',
-                      showTitleError && 'border-red-400/70 focus-visible:ring-red-400/40',
-                    )}
-                  />
-                  {showTitleError && (
-                    <p className="text-[10px] text-red-400 leading-tight">
-                      Title is required
-                    </p>
+            <div key={i} className="space-y-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Input
+                  value={row.title}
+                  onChange={(e) => update(i, { title: e.target.value })}
+                  onBlur={() => update(i, { titleTouched: true })}
+                  placeholder={`Task ${i + 1} title…`}
+                  aria-invalid={showTitleError || undefined}
+                  className={cn(
+                    'h-8 text-[12px] px-2 flex-1 min-w-[160px]',
+                    showTitleError && 'border-red-400/70 focus-visible:ring-red-400/40',
                   )}
-                </div>
-                {rows.length > 1 && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0 text-muted-foreground hover:text-red-400"
-                    onClick={() => removeRow(i)}
-                    aria-label="Remove task"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
-              <div className="flex flex-wrap items-start gap-1.5">
+                />
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -172,12 +141,12 @@ export function TaskListEditor({
                       size="sm"
                       variant="outline"
                       className={cn(
-                        'h-7 px-2 text-[11px] gap-1',
+                        'h-8 px-2 text-[11px] gap-1 shrink-0',
                         dueDate && 'border-primary/50 text-primary',
                       )}
                     >
                       <CalendarIcon className="h-3 w-3" />
-                      {dueDate ? format(dueDate, 'MMM d, yyyy') : 'Due date'}
+                      {dueDate ? format(dueDate, 'MMM d') : 'Due'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 z-[2100]" align="start">
@@ -191,7 +160,7 @@ export function TaskListEditor({
                     />
                   </PopoverContent>
                 </Popover>
-                <div className="flex-1 min-w-[200px] space-y-1">
+                <div className="w-[190px] shrink-0">
                   <AssigneePicker
                     value={row.assigned_to}
                     options={memberOptions}
@@ -205,34 +174,44 @@ export function TaskListEditor({
                       if (!open) update(i, { assigneeTouched: true });
                     }}
                   />
-                  {showAssigneeError && (
-                    <p className="text-[10px] text-red-400 leading-tight">
-                      Assignee is required
-                    </p>
-                  )}
                 </div>
+                {rows.length > 1 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-red-400"
+                    onClick={() => removeRow(i)}
+                    aria-label="Remove task"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
+              {(showTitleError || showAssigneeError) && (
+                <p className="text-[10px] text-red-400 leading-tight">
+                  {[showTitleError && 'Title', showAssigneeError && 'Assignee']
+                    .filter(Boolean)
+                    .join(' and ')}{' '}
+                  required
+                </p>
+              )}
             </div>
           );
         })}
       </div>
 
-      <Button
+      <button
         type="button"
-        size="sm"
-        variant="outline"
-        className="h-7 px-2 text-[11px] gap-1 w-full"
+        className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
         onClick={addRow}
       >
         <Plus className="h-3 w-3" /> Add another task
-      </Button>
-
-      <p className="text-[10px] text-muted-foreground italic">
-        Every task needs a title and an assignee before you can create it.
-      </p>
+      </button>
     </div>
   );
 }
+
 
 interface AssigneePickerProps {
   value: string | null;
