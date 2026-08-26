@@ -892,16 +892,10 @@
      one identical fill, border, blur and elevation treatment. Mirrors
      the Deal pop-up exactly. Do not override locally. */
   .popup-shell-surface {
-    --approval-queue-flat-surface: #020208;
-    background:
-      radial-gradient(
-          circle at 115% 118%,
-          rgba(10, 110, 220, 0.45) 0%,
-          rgba(8, 78, 165, 0.24) 21%,
-          rgba(4, 40, 92, 0.09) 41%,
-          rgba(0, 0, 0, 0) 62%
-        ),
-      linear-gradient(135deg, #01030a 0%, #01050f 43%, #020a1c 69%, #03163a 89%, #05285a 100%) !important;
+    --approval-queue-flat-surface: transparent;
+    /* Exactly the platform app background */
+    background: var(--app-backdrop) !important;
+
     backdrop-filter: blur(18px) saturate(135%);
     -webkit-backdrop-filter: blur(18px) saturate(135%);
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
@@ -911,14 +905,9 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.07);
   }
 
-  .popup-shell-surface:has([data-approval-queue-panel]) {
-    background: var(--approval-queue-flat-surface) !important;
-    background-color: var(--approval-queue-flat-surface) !important;
-    background-image: none !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-
+  /* Approval-queue surfaces stay flat (no blur/glow stacking) but must let
+     the shared platform backdrop gradient show through — never paint their
+     own near-black fill over it. */
   .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-panel],
   .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-detail],
   .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-detail] * {
@@ -930,9 +919,10 @@
 
   .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-detail],
   .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-detail] :is(div, section, article) {
-    background-color: var(--approval-queue-flat-surface) !important;
+    background-color: transparent !important;
     background-image: none !important;
   }
+
   .dark .glass-border-soft {
     border-color: hsl(0 0% 100% / 0.06);
   }
@@ -3509,4 +3499,22 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 
 .sidebar-flyout-separator {
   background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Dashboard pop-up — every tab renders on the exact platform background
+   (`--app-backdrop`). Declared unlayered and last so it beats the generic
+   Radix overlay gradient above. Inner tab panels stay transparent so the
+   single backdrop reads continuously across the whole modal.
+   ───────────────────────────────────────────────────────────────────── */
+.dashboard-popup-surface,
+.dashboard-popup-surface[role="dialog"],
+.dashboard-popup-surface.popup-shell-surface {
+  background: var(--app-backdrop) !important;
+  background-color: #01030a !important;
+}
+.dashboard-popup-surface [role="tabpanel"] {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
 }
