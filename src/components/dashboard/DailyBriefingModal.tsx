@@ -2401,6 +2401,14 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                           briefingType={briefingType}
                         />
                       )}
+                      {contentReady && activeTab === 'unified_queue' && (
+                        <UnifiedQueueTab
+                          enabled={open}
+                          onNavigate={handleNavigate}
+                          targetUserId={targetUserId}
+                        />
+                      )}
+
                     </div>
                   </AddToDealCalendarProvider>
                 </div>
