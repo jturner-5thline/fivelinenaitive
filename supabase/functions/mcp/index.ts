@@ -96,15 +96,51 @@ async function assertDealAccess(sb, ctx, deal_id, toolName) {
   });
   return null;
 }
+async function loadPipelineStageMaps(sb, pipelineIds) {
+  const ids = Array.from(new Set(pipelineIds.filter(Boolean)));
+  const byPipeline = /* @__PURE__ */ new Map();
+  if (ids.length === 0) return byPipeline;
+  const { data } = await sb.from("deal_pipelines").select("id, name, stages").in("id", ids);
+  for (const row of data ?? []) {
+    const labels = /* @__PURE__ */ new Map();
+    const stages = Array.isArray(row.stages) ? row.stages : [];
+    for (const s of stages) if (s?.id) labels.set(s.id, s.label ?? s.id);
+    byPipeline.set(row.id, { name: row.name ?? null, labels });
+  }
+  return byPipeline;
+}
+async function withStageLabels(sb, rows) {
+  const maps = await loadPipelineStageMaps(sb, rows.map((r) => r.pipeline_id));
+  return rows.map((r) => {
+    const pipeline = r.pipeline_id ? maps.get(r.pipeline_id) : void 0;
+    return {
+      ...r,
+      stage_label: r.stage ? pipeline?.labels.get(r.stage) ?? r.stage : null,
+      pipeline_name: pipeline?.name ?? null
+    };
+  });
+}
+async function resolveStageInput(sb, pipelineId, input) {
+  if (!pipelineId) return input;
+  const maps = await loadPipelineStageMaps(sb, [pipelineId]);
+  const pipeline = maps.get(pipelineId);
+  if (!pipeline) return input;
+  if (pipeline.labels.has(input)) return input;
+  const wanted = input.trim().toLowerCase();
+  for (const [id, label] of pipeline.labels) {
+    if ((label ?? "").trim().toLowerCase() === wanted) return id;
+  }
+  return input;
+}
 
 // src/lib/mcp/tools/list-deals.ts
 var list_deals_default = defineTool({
   name: "list_deals",
   title: "List deals",
-  description: "List the naitive deals the signed-in user can see, returning full row records (not just a count). Optionally filter by stage, pipeline_id, a text query against the company/deal name, or a created_at/closing_date window (use created_from/created_to for questions like 'deals created in August'). Returns id, company, stage, value, closing_date, created_at, pipeline_id, deal_owner, manager, status, updated_at.",
+  description: "List the naitive deals the signed-in user can see, returning full row records (not just a count). Optionally filter by stage, pipeline_id, a text query against the company/deal name, or a created_at/closing_date window (use created_from/created_to for questions like 'deals created in August'). Returns id, company, stage (the raw pipeline-scoped stage id), stage_label (the human stage name from the deal's assigned pipeline \u2014 ALWAYS report this to users, never the raw id, because stage ids are overloaded across pipelines, e.g. 'agreement-pending' is labelled 'Deal Had to be Benched' in the In Development pipeline), pipeline_name, value, closing_date, created_at, pipeline_id, deal_owner, manager, status, updated_at.",
   inputSchema: {
     query: z.string().trim().min(1).max(200).optional().describe("Substring search across the company / deal name."),
-    stage: z.string().trim().min(1).max(100).optional().describe("Exact stage id (e.g. 'nda-needs-list', 'on-deck')."),
+    stage: z.string().trim().min(1).max(100).optional().describe("Stage id (e.g. 'nda-needs-list') or the stage's display label; requires pipeline_id when passing a label."),
     pipeline_id: z.string().uuid().optional(),
     created_from: z.string().trim().max(40).optional().describe("ISO date/timestamp lower bound on created_at (inclusive)."),
     created_to: z.string().trim().max(40).optional().describe("ISO date/timestamp upper bound on created_at (exclusive)."),
@@ -120,7 +156,8 @@ var list_deals_default = defineTool({
     let q = sb.from("deals").select(
       "id, company, stage, status, value, closing_date, created_at, pipeline_id, deal_owner, manager, updated_at"
     ).order("updated_at", { ascending: false }).limit(limit);
-    if (stage) q = q.eq("stage", stage);
+    const stageFilter = stage ? await resolveStageInput(sb, pipeline_id, stage) : void 0;
+    if (stageFilter) q = q.eq("stage", stageFilter);
     if (pipeline_id) q = q.eq("pipeline_id", pipeline_id);
     if (query) q = q.ilike("company", `%${query}%`);
     if (created_from) q = q.gte("created_at", created_from);
@@ -129,7 +166,7 @@ var list_deals_default = defineTool({
     if (closing_to) q = q.lt("closing_date", closing_to);
     const { data, error } = await q;
     if (error) return errorResult(error.message);
-    const rows = data ?? [];
+    const rows = await withStageLabels(sb, data ?? []);
     return textResult(rows, { count: rows.length, deals: rows });
   }
 });
@@ -140,7 +177,7 @@ import { z as z2 } from "npm:zod@^3.23.0";
 var get_deal_default = defineTool2({
   name: "get_deal",
   title: "Get deal",
-  description: "Fetch a single deal by id with its full record, plus recent status notes, tasks, and attached lenders.",
+  description: "Fetch a single deal by id with its full record, plus recent status notes, tasks, and attached lenders. The deal includes stage_label / pipeline_name resolved from the deal's assigned pipeline \u2014 always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
   inputSchema: {
     deal_id: z2.string().uuid(),
     include_tasks: z2.boolean().default(true),
@@ -160,8 +197,9 @@ var get_deal_default = defineTool2({
       include_tasks ? sb.from("tasks").select("id, title, status, due_date, priority, assigned_to, created_at").eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(50) : Promise.resolve({ data: null, error: null }),
       include_lenders ? sb.from("deal_lenders").select("id, lender_id, status, stage, updated_at").eq("deal_id", deal_id).order("updated_at", { ascending: false }).limit(200) : Promise.resolve({ data: null, error: null })
     ]);
+    const [dealWithLabels] = await withStageLabels(sb, [deal]);
     return textResult({
-      deal,
+      deal: dealWithLabels,
       tasks: tasksRes.data ?? [],
       lenders: lendersRes.data ?? []
     });
@@ -177,7 +215,7 @@ var update_deal_default = defineTool3({
   description: "Update a deal's stage and/or high-level fields (value, closing_date, deal_owner, manager, narrative, is_flagged, flag_notes). Only fields you pass are changed. Returns the updated deal row.",
   inputSchema: {
     deal_id: z3.string().uuid(),
-    stage: z3.string().trim().min(1).max(100).optional(),
+    stage: z3.string().trim().min(1).max(100).optional().describe("Stage id or the stage display label from the deal's pipeline; labels are resolved to the correct id."),
     value: z3.number().nonnegative().optional(),
     closing_date: z3.string().nullable().optional().describe("ISO date, or null to clear."),
     deal_owner: z3.string().trim().max(200).optional(),
@@ -195,10 +233,15 @@ var update_deal_default = defineTool3({
     for (const [k, v] of Object.entries(rest)) if (v !== void 0) patch[k] = v;
     if (Object.keys(patch).length === 0) return errorResult("No fields to update.");
     const sb = supabaseForUser(ctx);
+    if (typeof patch.stage === "string") {
+      const { data: current } = await sb.from("deals").select("pipeline_id").eq("id", deal_id).maybeSingle();
+      patch.stage = await resolveStageInput(sb, current?.pipeline_id, patch.stage);
+    }
     const { data, error } = await sb.from("deals").update(patch).eq("id", deal_id).select().maybeSingle();
     if (error) return errorResult(error.message);
     if (!data) return errorResult("Deal not found or you do not have permission to update it.");
-    return textResult(data, { deal_id });
+    const [updated] = await withStageLabels(sb, [data]);
+    return textResult(updated, { deal_id });
   }
 });
 

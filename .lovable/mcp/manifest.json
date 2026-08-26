@@ -19,7 +19,7 @@
       {
         "name": "list_deals",
         "title": "List deals",
-        "description": "List the naitive deals the signed-in user can see, returning full row records (not just a count). Optionally filter by stage, pipeline_id, a text query against the company/deal name, or a created_at/closing_date window (use created_from/created_to for questions like 'deals created in August'). Returns id, company, stage, value, closing_date, created_at, pipeline_id, deal_owner, manager, status, updated_at.",
+        "description": "List the naitive deals the signed-in user can see, returning full row records (not just a count). Optionally filter by stage, pipeline_id, a text query against the company/deal name, or a created_at/closing_date window (use created_from/created_to for questions like 'deals created in August'). Returns id, company, stage (the raw pipeline-scoped stage id), stage_label (the human stage name from the deal's assigned pipeline — ALWAYS report this to users, never the raw id, because stage ids are overloaded across pipelines, e.g. 'agreement-pending' is labelled 'Deal Had to be Benched' in the In Development pipeline), pipeline_name, value, closing_date, created_at, pipeline_id, deal_owner, manager, status, updated_at.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -38,7 +38,7 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 100,
-              "description": "Exact stage id (e.g. 'nda-needs-list', 'on-deck')."
+              "description": "Stage id (e.g. 'nda-needs-list') or the stage's display label; requires pipeline_id when passing a label."
             },
             "pipeline_id": {
               "type": "string",
@@ -79,7 +79,7 @@
       {
         "name": "get_deal",
         "title": "Get deal",
-        "description": "Fetch a single deal by id with its full record, plus recent status notes, tasks, and attached lenders.",
+        "description": "Fetch a single deal by id with its full record, plus recent status notes, tasks, and attached lenders. The deal includes stage_label / pipeline_name resolved from the deal's assigned pipeline — always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -129,7 +129,8 @@
             "stage": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 100
+              "maxLength": 100,
+              "description": "Stage id or the stage display label from the deal's pipeline; labels are resolved to the correct id."
             },
             "value": {
               "type": "number",
