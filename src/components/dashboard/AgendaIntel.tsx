@@ -1719,30 +1719,55 @@ function FollowUpEmailDialog({
       >
         <DialogHeader className="px-5 pt-5 pb-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
           <DialogTitle className="text-[15px] font-semibold tracking-tight text-white">
-            Send follow-up
+            {step === 'template' ? 'Choose an email template' : 'Send follow-up'}
           </DialogTitle>
+          {step === 'compose' && templateTitle && (
+            <p className="text-[11px] text-white/50">
+              Using template: {templateTitle} ·{' '}
+              <button type="button" className="underline hover:text-white" onClick={() => setStep('template')}>
+                change
+              </button>
+            </p>
+          )}
         </DialogHeader>
         <div className="p-3">
-          <EmailComposerCard
-            replyToName={defaults?.label || ''}
-            hideReplyAnchor
-            recipients={recipients}
-            onRecipientsChange={setRecipients}
-            subject={subject}
-            onSubjectChange={setSubject}
-            body={body}
-            onBodyChange={setBody}
-            attachments={attachments}
-            onAttachmentsChange={setAttachments}
-            onFilesChange={setFiles}
-            onSend={handleSend}
-            onDiscard={() => { onClose(); toast.info('Draft discarded'); }}
-            signature={signature}
-            variant="inline"
-            showSubject
-            className="rounded-lg border border-white/10 shadow-none mx-0 my-0"
-          />
+          {step === 'template' ? (
+            <EmailTemplatePicker
+              tokens={{
+                meeting_title: defaults?.subject?.replace(/^Re:\s*/i, '') || '',
+                recipient_name: defaults?.label || '',
+              }}
+              onPick={(t) => {
+                if (t.subject) setSubject(t.subject);
+                setBody(t.bodyHtml || '');
+                setTemplateTitle(t.title);
+                setStep('compose');
+              }}
+              onSkip={() => { setTemplateTitle(null); setStep('compose'); }}
+            />
+          ) : (
+            <EmailComposerCard
+              replyToName={defaults?.label || ''}
+              hideReplyAnchor
+              recipients={recipients}
+              onRecipientsChange={setRecipients}
+              subject={subject}
+              onSubjectChange={setSubject}
+              body={body}
+              onBodyChange={setBody}
+              attachments={attachments}
+              onAttachmentsChange={setAttachments}
+              onFilesChange={setFiles}
+              onSend={handleSend}
+              onDiscard={() => { onClose(); toast.info('Draft discarded'); }}
+              signature={signature}
+              variant="inline"
+              showSubject
+              className="rounded-lg border border-white/10 shadow-none mx-0 my-0"
+            />
+          )}
         </div>
+
       </DialogContent>
     </Dialog>
   );
