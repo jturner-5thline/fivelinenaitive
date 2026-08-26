@@ -36,7 +36,6 @@ const PREFETCHERS: Record<string, Prefetcher> = {
   reports: () => import("@/pages/Reports"),
   contacts: () => import("@/pages/Contacts"),
   crmCompanies: () => import("@/pages/CrmCompanies"),
-  salesBd: () => import("@/pages/SalesBD"),
   settings: () => import("@/pages/Settings"),
   workflows: () => import("@/pages/Workflows"),
   emailIntelligence: () => import("@/pages/EmailIntelligencePage"),

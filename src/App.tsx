@@ -153,7 +153,6 @@ const Analytics = lazy(lazyRetry(() => import("./pages/Analytics")));
 const Reports = lazy(lazyRetry(() => import("./pages/Reports")));
 const WidgetEditorPage = lazy(lazyRetry(() => import("./pages/WidgetEditorPage")));
 const Insights = lazy(lazyRetry(() => import("./pages/Insights")));
-const SalesBD = lazy(lazyRetry(() => import("./pages/SalesBD")));
 const HR = lazy(lazyRetry(() => import("./pages/HR")));
 const Operations = lazy(lazyRetry(() => import("./pages/Operations")));
 const DebugRecognition = lazy(lazyRetry(() => import("./pages/DebugRecognition")));
@@ -430,7 +429,7 @@ const App = () => (
                             <Route path="/analytics" element={<Navigate to="/deals?dashboard=analytics" replace />} />
                             <Route path="/reports" element={<Reports />} />
                             <Route path="/widget-editor" element={<WidgetEditorPage />} />
-                            <Route path="/sales-bd" element={<SalesBD />} />
+                            <Route path="/sales-bd" element={<Navigate to="/insights?dashboard=sales-bd-page" replace />} />
                             <Route path="/contacts" element={<Contacts />} />
                             <Route path="/contacts/:id" element={<ContactDetail />} />
                             <Route path="/admin/contact-company-sync" element={<ContactCompanySync />} />
