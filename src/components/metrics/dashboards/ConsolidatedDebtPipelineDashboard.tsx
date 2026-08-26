@@ -2737,12 +2737,25 @@ export function ConsolidatedDebtPipelineDashboard({
       id: 'avg-term-sheets-per-deal',
       title: 'Avg. Term Sheets / Deal',
       icon: Sigma,
-      value: '—',
-      isLoading: false,
+      value: termsConversionRate.avgValue,
+      isLoading: termsConversionRate.isLoading,
       deals: [],
       color: 'hsl(var(--chart-4))',
       drilldownTitle: 'Avg. Term Sheets / Deal',
       drilldownMetricType: 'none' as const,
+      conversionBreakdown: {
+        formula:
+          '(Funding sources at Terms Issued or later) ÷ (Deals that entered Submitted to Lenders / Lenders in ' +
+          `Review in the last 12 months) = ${termsConversionRate.numerator} ÷ ${termsConversionRate.dealCount} = ` +
+          `${termsConversionRate.avgValue}`,
+        numeratorLabel: 'Funding sources that reached Terms Issued or later',
+        denominatorLabel: 'TTM qualifying deals',
+        numeratorDeals: termsConversionRate.numeratorDeals,
+        denominatorDeals: [],
+        numeratorCount: termsConversionRate.numerator,
+        denominatorCount: termsConversionRate.dealCount,
+        percentText: termsConversionRate.avgValue,
+      },
     },
   ];
 
