@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, KeyboardEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { BarChart3, ChevronRight, Users, FileText } from 'lucide-react';
+import { BarChart3, ChevronRight, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   SidebarMenuItem,
@@ -34,13 +34,11 @@ export function InsightsFlyoutMenu({ showSalesBd, showReports }: Props) {
 
   const items: SubItem[] = [
     { id: 'insights', label: 'Insights', url: '/insights', icon: BarChart3 },
-    ...(showSalesBd
-      ? [{ id: 'sales-bd', label: 'Sales & BD', url: '/insights?dashboard=sales-bd-page', icon: Users } as SubItem]
-      : []),
     ...(showReports
       ? [{ id: 'reports', label: 'Reports', url: '/reports', icon: FileText } as SubItem]
       : []),
   ];
+
 
   const [open, setOpen] = useState(false);
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
