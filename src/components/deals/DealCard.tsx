@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/hover-card';
 import { Separator } from '@/components/ui/separator';
 import { shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
+import { DealTagOverflowRow, DealTag } from './DealTagOverflowRow';
 
 interface DealCardProps {
   deal: Deal;
@@ -138,6 +139,31 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
   };
 
   const dealTypeLabels = getDealTypeLabels();
+
+  const TAG_CLASS = 'text-[11px] font-medium rounded-md px-2 py-0.5 bg-white/[0.03] border-white/10 shrink-0';
+  const rowTags: DealTag[] = [
+    ...(deal.engagementType && ENGAGEMENT_TYPE_CONFIG[deal.engagementType]
+      ? [{
+          key: 'engagement',
+          label: ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label,
+          className: TAG_CLASS,
+          style: { color: 'rgba(222, 234, 250, 0.92)' } as React.CSSProperties,
+        }]
+      : []),
+    ...(deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity]
+      ? [{
+          key: 'exclusivity',
+          label: EXCLUSIVITY_CONFIG[deal.exclusivity].label,
+          className: 'text-[11px] font-medium rounded-md px-2 py-0.5 bg-primary/10 text-primary border-primary/25 shrink-0',
+        }]
+      : []),
+    ...dealTypeLabels.map((label, index) => ({
+      key: `type-${index}`,
+      label,
+      className: TAG_CLASS,
+      style: { color: 'rgba(222, 234, 250, 0.92)' } as React.CSSProperties,
+    })),
+  ];
 
   const getTimeAgoData = (dateString: string) => {
     const date = new Date(dateString);
@@ -408,10 +434,10 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
             </div>
           </div>
 
-          {/* ── ROW 2: amount | type/engagement tags ── */}
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 min-w-0">
+          {/* ── ROW 2: amount | type/engagement tags (single line, +N more) ── */}
+          <div className="flex flex-nowrap items-center justify-between gap-x-3 min-w-0">
             <span
-              className="flex items-baseline gap-1 text-[28px] font-bold leading-none tracking-tight tabular-nums whitespace-nowrap"
+              className="flex items-baseline gap-1 text-[28px] font-bold leading-none tracking-tight tabular-nums whitespace-nowrap shrink-0"
               style={{ color: '#f8fbff' }}
               title={formatUSDFromDollars(deal.dealClass === 'finserv' ? (deal.mrr ?? 0) : deal.value)}
             >
@@ -422,25 +448,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                 </span>
               )}
             </span>
-            {!compact && (deal.engagementType || deal.exclusivity || dealTypeLabels.length > 0) && (
-              <div className="flex items-center justify-end gap-1.5 flex-wrap min-w-0">
-                {deal.engagementType && ENGAGEMENT_TYPE_CONFIG[deal.engagementType] && (
-                  <Badge variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-white/[0.03] border-white/10" style={{ color: 'rgba(222, 234, 250, 0.92)' }}>
-                    {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
-                  </Badge>
-                )}
-                {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
-                  <Badge variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-primary/10 text-primary border-primary/25">
-                    {EXCLUSIVITY_CONFIG[deal.exclusivity].label}
-                  </Badge>
-                )}
-                {dealTypeLabels.map((label, index) => (
-                  <Badge key={index} variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-white/[0.03] border-white/10" style={{ color: 'rgba(222, 234, 250, 0.92)' }}>
-                    {label}
-                  </Badge>
-                ))}
-              </div>
-            )}
+            {!compact && <DealTagOverflowRow tags={rowTags} />}
           </div>
 
           {/* ── ROW 3: Status pill + Stage pill (inline pills row) ── */}
