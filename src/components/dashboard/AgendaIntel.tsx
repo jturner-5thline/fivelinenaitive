@@ -57,6 +57,8 @@ import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { QuickCreateTaskDialog } from '@/components/tasks/QuickCreateTaskDialog';
 import { EmailComposerCard, type ComposerRecipients, type ComposerSendOptions } from '@/components/deal/email/EmailComposerCard';
+import { EmailTemplatePicker } from '@/components/email/EmailTemplatePicker';
+
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { MyRundownPanel } from './MyRundownPanel';
 import { useMyTasks } from '@/hooks/useTasks';
