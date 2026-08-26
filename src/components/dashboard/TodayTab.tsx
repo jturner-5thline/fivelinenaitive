@@ -57,12 +57,13 @@ export function TodayTab({
       </div>
 
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
-        <div className="flex min-w-0 flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-3">
           {queueEnabled && decisionCount > 0 && (
-            <div className="min-w-0">
+            <div className="min-w-0 h-[clamp(360px,46vh,520px)] overflow-hidden rounded-xl">
               <ActionQueuePanel items={queueItems} onClose={() => onClose?.()} />
             </div>
           )}
+
           <div className="min-w-0">
             <EndOfDayTab
               enabled={enabled}
