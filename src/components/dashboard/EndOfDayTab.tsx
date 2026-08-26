@@ -618,6 +618,35 @@ export function EndOfDayTab({
     return result;
   }, [events, isResolved, isDismissed, isSnoozed, readSet, search, filterChips, selectedId]);
 
+  // AI approval-queue items rendered as tiles alongside the meeting items.
+  const approvalTiles = useMemo<TileEvent[]>(() => {
+    const ref = startOfDay(new Date());
+    return (approvalItems || [])
+      .filter(it => !isResolved(`approval:${it.id}`) && !isDismissed(`approval:${it.id}`, null))
+      .map(it => {
+        const created = safeParse(it.created_at) || new Date();
+        const ageDays = differenceInCalendarDays(ref, startOfDay(created));
+        return {
+          id: `approval:${it.id}`,
+          summary: it.title || 'Approval needed',
+          start: created.toISOString(),
+          end: created.toISOString(),
+          all_day: false,
+          attendees: [],
+          _ageDays: ageDays,
+          _isCarry: ageDays > 0,
+          _approval: it,
+        } as unknown as TileEvent;
+      });
+  }, [approvalItems, isResolved, isDismissed]);
+
+  const outstanding = useMemo<TileEvent[]>(
+    () => [...approvalTiles, ...outstandingEvents],
+    [approvalTiles, outstandingEvents],
+  );
+
+
+
   // Attendee contact lookup (batched)
   const allEmails = useMemo(() => {
     const s = new Set<string>();
