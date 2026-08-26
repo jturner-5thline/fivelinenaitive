@@ -129,7 +129,8 @@
             "stage": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 100
+              "maxLength": 100,
+              "description": "Stage id or the stage display label from the deal's pipeline; labels are resolved to the correct id."
             },
             "value": {
               "type": "number",
