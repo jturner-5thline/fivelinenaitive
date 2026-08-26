@@ -208,7 +208,7 @@ export function InsightsFlyoutMenu({ showSalesBd, showReports }: Props) {
         onMouseLeave={scheduleClose}
       >
         {insightsLink}
-        {showExpanded && (
+        {(
           <Popover
             open={open}
             onOpenChange={(next) => {
@@ -216,27 +216,34 @@ export function InsightsFlyoutMenu({ showSalesBd, showReports }: Props) {
               setOpen(next);
             }}
           >
-            <PopoverTrigger asChild>
-              <button
-                ref={triggerRef}
-                type="button"
-                onClick={handleChevronClick}
-                aria-haspopup="menu"
-                aria-expanded={open}
-                aria-label="Open insights submenu"
-                className={cn(
-                  'absolute right-1 top-1/2 -translate-y-1/2 z-10',
-                  'flex h-6 w-6 items-center justify-center rounded-sm',
-                  'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
-                )}
-              >
-                <ChevronRight
-                  className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-90')}
-                  aria-hidden="true"
-                />
-              </button>
-            </PopoverTrigger>
+            {showExpanded ? (
+              <PopoverTrigger asChild>
+                <button
+                  ref={triggerRef}
+                  type="button"
+                  onClick={handleChevronClick}
+                  aria-haspopup="menu"
+                  aria-expanded={open}
+                  aria-label="Open insights submenu"
+                  className={cn(
+                    'absolute right-1 top-1/2 -translate-y-1/2 z-10',
+                    'flex h-6 w-6 items-center justify-center rounded-sm',
+                    'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+                  )}
+                >
+                  <ChevronRight
+                    className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-90')}
+                    aria-hidden="true"
+                  />
+                </button>
+              </PopoverTrigger>
+            ) : (
+              <PopoverAnchor asChild>
+                <span className="pointer-events-none absolute inset-0" aria-hidden="true" />
+              </PopoverAnchor>
+            )}
+
             <PopoverContent
               side="right"
               align="start"
