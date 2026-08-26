@@ -905,7 +905,7 @@ export function EndOfDayTab({
       }
       return false;
     });
-  }, [outstanding, search, filterChips, contactsByEmail, eventIsInternal, eventMatchesDeal]);
+  }, [outstanding, search, filterChips, hideInternal, contactsByEmail, eventIsInternal, eventMatchesDeal]);
 
   // Group into buckets
   type Bucket = { key: string; label: string; items: TileEvent[] };
