@@ -82,14 +82,13 @@ function buildStageLookup(configs: Array<{ company_id: string | null; stages: un
 
 function resolveStage(lookup: StageLookup, companyId: string | null, stageId: string | null): StageMeta | null {
   if (!stageId) return null;
+  // Only trust the deal's own workspace config (or the global one). Scanning
+  // every tenant's config causes cross-tenant id collisions (e.g. "passed"
+  // labelled "Review" in another workspace) and mis-classifies funding sources.
   const scoped = companyId ? lookup.get(companyId)?.get(stageId) : undefined;
-  if (scoped) return scoped;
-  for (const [, m] of lookup) {
-    const hit = m.get(stageId);
-    if (hit) return hit;
-  }
-  return null;
+  return scoped ?? lookup.get('')?.get(stageId) ?? null;
 }
+
 
 export interface TermsConversionDealRow {
   deal_id: string;
