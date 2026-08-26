@@ -1673,6 +1673,8 @@ function FollowUpEmailDialog({
   const [body, setBody] = useState('');
   const [attachments, setAttachments] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
+  const [step, setStep] = useState<'template' | 'compose'>('template');
+  const [templateTitle, setTemplateTitle] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && defaults) {
@@ -1681,8 +1683,11 @@ function FollowUpEmailDialog({
       setBody('');
       setAttachments([]);
       setFiles([]);
+      setStep('template');
+      setTemplateTitle(null);
     }
   }, [open, defaults]);
+
 
   const handleSend = useCallback(async (_o: ComposerSendOptions) => {
     if (recipients.to.length === 0) { toast.error('Add at least one recipient'); return; }
