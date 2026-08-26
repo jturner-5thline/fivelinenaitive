@@ -84,6 +84,8 @@ const ACTIVITY_KEY_PREFIX = 'eod:activity';
 const COLLAPSED_GROUPS_KEY = 'eod:collapsed-groups';
 const UNDO_WINDOW_MS = 5000;
 const EVENTS_CACHE_KEY_PREFIX = 'eod:events-cache';
+const HIDE_INTERNAL_KEY = 'eod:hide-internal';
+
 
 type FilterChip = 'internal' | 'deals' | 'dismissed';
 
