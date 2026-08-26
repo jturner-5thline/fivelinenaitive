@@ -2070,6 +2070,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
       }).filter(t => {
         if (excludeTabs?.includes(t.value as any)) return false;
         if (t.value === 'today' && !canSeeEndOfDay && !queueEnabled) return false;
+        if (t.value === 'unified_queue' && !canSeeEndOfDay && !queueEnabled) return false;
         if (t.value === 'dashboard' && !isFifthLine) return false;
         if (t.value === 'financial' && !canSeeFinancial) return false;
         // Agenda, Catch Up & News, and Email are now hosted exclusively
