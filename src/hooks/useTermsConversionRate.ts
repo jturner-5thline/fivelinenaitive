@@ -213,10 +213,19 @@ export function useTermsConversionRate(): TermsConversionRateResult {
         pipeline_id: deal.pipeline_id ?? ACTIVE_PIPELINE_ID,
       });
 
+      /** On Deck / Excluded funding sources are out of scope entirely. */
+      const isOutOfScope = (label: string, r: any) => {
+        const ts = norm(r.tracking_status);
+        if (ts === 'excluded' || ts === 'on deck') return true;
+        const l = norm(label);
+        return l === 'on deck' || l === 'excluded';
+      };
+
       const denominatorDeals: TermsConversionDealRow[] = [];
       const numeratorDeals: TermsConversionDealRow[] = [];
       for (const r of rows as any[]) {
         const { label, qualifies, deal } = classify(r);
+        if (isOutOfScope(label, r)) continue;
         const row = toRow(r, label, deal);
         denominatorDeals.push(row);
         if (qualifies) numeratorDeals.push(row);
