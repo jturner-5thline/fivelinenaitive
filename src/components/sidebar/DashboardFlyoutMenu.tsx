@@ -13,7 +13,7 @@ import { useDashboardCarouselWidgets } from '@/hooks/useDashboardCarouselWidgets
 import { Popover, PopoverTrigger, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { useCloseOnRouteChange } from '@/hooks/useCloseOnRouteChange';
 
-const OPEN_DELAY = 120;
+const OPEN_DELAY = 60;
 const CLOSE_DELAY = 180;
 
 /**
@@ -279,7 +279,7 @@ export function DashboardFlyoutMenu() {
               // used by Insights cards, Weekly Rundown modules, and other
               // polished panels — so the flyout reads as part of the same
               // design system rather than a one-off popover.
-              'w-56 p-1.5 text-popover-foreground glass-module',
+              'w-56 p-1.5 text-popover-foreground sidebar-flyout',
               'shadow-[0_12px_28px_-12px_rgba(0,0,0,0.65)]',
             )}
             onMouseEnter={() => clearTimers()}
@@ -304,7 +304,7 @@ export function DashboardFlyoutMenu() {
             }}
           >
             <div role="menu" aria-label="Dashboard widgets">
-              <div className="px-2 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+              <div className="px-2 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider sidebar-flyout-label">
                 Quick widgets
               </div>
               {widgets.map((w, index) => {
@@ -315,6 +315,7 @@ export function DashboardFlyoutMenu() {
                     key={w.id}
                     ref={(el) => (itemRefs.current[index] = el)}
                     role="menuitem"
+                    data-active={isActive ? 'true' : undefined}
                     tabIndex={isFocused || (focusedIndex < 0 && index === 0) ? 0 : -1}
                     onClick={() => handleSubItemClick(w.id)}
                     onKeyDown={(e) => handleSubItemKeyDown(e, index)}
@@ -323,10 +324,7 @@ export function DashboardFlyoutMenu() {
                       // Mirror the hover/active language used by the platform's
                       // standard dropdown items (DropdownMenuItem / PopoverContent
                       // links): the accent token, not an ad-hoc white wash.
-                      'flex w-full items-center rounded-md px-2.5 py-1.5 text-sm text-popover-foreground/90 outline-none transition-colors',
-                      'hover:bg-accent hover:text-accent-foreground',
-                      'focus-visible:bg-accent focus-visible:text-accent-foreground',
-                      isActive && 'bg-accent text-accent-foreground font-medium',
+                      'flex w-full items-center rounded-md px-2.5 py-1.5 text-sm outline-none transition-colors sidebar-flyout-item',
                     )}
                   >
                     {w.label}

@@ -12,7 +12,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Popover, PopoverTrigger, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { useCloseOnRouteChange } from '@/hooks/useCloseOnRouteChange';
 
-const OPEN_DELAY = 120;
+const OPEN_DELAY = 60;
 const CLOSE_DELAY = 180;
 
 type SubItem = { id: string; label: string; url: string; icon: typeof BarChart3 };
@@ -249,7 +249,7 @@ export function InsightsFlyoutMenu({ showSalesBd, showReports }: Props) {
               align="start"
               sideOffset={8}
               className={cn(
-                'w-56 p-1.5 text-popover-foreground glass-module',
+                'w-56 p-1.5 text-popover-foreground sidebar-flyout',
                 'shadow-[0_12px_28px_-12px_rgba(0,0,0,0.65)]',
               )}
               onMouseEnter={() => clearTimers()}
@@ -274,15 +274,13 @@ export function InsightsFlyoutMenu({ showSalesBd, showReports }: Props) {
                       key={it.id}
                       ref={(el) => (itemRefs.current[index] = el)}
                       role="menuitem"
+                      data-active={isActive ? 'true' : undefined}
                       tabIndex={isFocused || (focusedIndex < 0 && index === 0) ? 0 : -1}
                       onClick={() => handleSubItemClick(it.url)}
                       onKeyDown={(e) => handleSubItemKeyDown(e, index)}
                       onMouseEnter={() => setFocusedIndex(index)}
                       className={cn(
-                        'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-popover-foreground/90 outline-none transition-colors',
-                        'hover:bg-accent hover:text-accent-foreground',
-                        'focus-visible:bg-accent focus-visible:text-accent-foreground',
-                        isActive && 'bg-accent text-accent-foreground font-medium',
+                        'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm outline-none transition-colors sidebar-flyout-item',
                       )}
                     >
                       <Icon className="h-4 w-4" />
