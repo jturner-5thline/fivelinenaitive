@@ -1321,8 +1321,10 @@ div.deal-tile.deal-glass:hover,
   background: #14264a !important;
   background-color: #14264a !important;
   background-image: linear-gradient(180deg, #14264a 0%, #0e1d3a 100%) !important;
-  border-color: rgba(255, 255, 255, 0.14) !important;
+  border-color: rgba(34, 211, 238, 0.55) !important;
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.18) !important;
 }
+
 
 .deal-tile.deal-glass::before,
 .deal-glass.deal-tile::before {
