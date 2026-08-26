@@ -679,6 +679,7 @@ export function LenderAnalyticsDialog({
   // KPI drill-down (top 4 widgets)
   type KpiDrill = 'active' | 'sent' | 'conv' | 'flex' | null;
   const [openKpi, setOpenKpi] = useState<KpiDrill>(null);
+  const [openQualified, setOpenQualified] = useState(false);
   const [kpiDrillSearch, setKpiDrillSearch] = useState('');
   useEffect(() => { if (!openKpi) setKpiDrillSearch(''); }, [openKpi]);
 
