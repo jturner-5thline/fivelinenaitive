@@ -1174,6 +1174,8 @@ function FinServFinancialMetricsDashboardInner() {
   const stacked = useQBStackedFinServRevenue(selectedQuarter);
   const activeClients = useFinServActiveClients(selectedPeriod, range.granularity);
   const nrr = useFinServNrr(range.resolved.start, range.resolved.end);
+  const [nrrDrillOpen, setNrrDrillOpen] = useState(false);
+
 
 
   // ── FinServ pipeline snapshot: Total Clients / Total MRR / Current Pipeline ──
