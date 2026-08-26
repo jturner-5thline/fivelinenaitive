@@ -91,10 +91,12 @@ const SidebarProvider = React.forwardRef<
     [setOpenProp, open],
   );
 
-  // Helper to toggle the sidebar.
+  // Helper to toggle the sidebar. On desktop the sidebar is permanently
+  // icon-collapsed (labels surface as hover tooltips), so toggling is a no-op.
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open);
-  }, [isMobile, setOpen, setOpenMobile]);
+    if (isMobile) setOpenMobile((open) => !open);
+  }, [isMobile, setOpenMobile]);
+
 
   // Adds a keyboard shortcut to toggle the sidebar.
   React.useEffect(() => {
