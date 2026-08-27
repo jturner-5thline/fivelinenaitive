@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateContact, useUpdateContact, CONTACT_STATUSES, DEFAULT_CONTACT_STATUS } from '@/hooks/useContacts';
+import { TemplateEmailDialog } from '@/components/email/TemplateEmailDialog';
 import { CompanyComboBox } from '@/components/contacts/CompanyComboBox';
 import { ContactTypeMultiSelect } from '@/components/contacts/ContactTypeMultiSelect';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -50,6 +51,12 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
   const { data: taggingRules = [] } = useContactTaggingRules({ activeOnly: true });
   const { user } = useAuth();
   const { config: fieldConfig, isDisabled: isFieldDisabled } = useContactFieldConfig();
+  // After a contact is created we offer a templated welcome email. `onCreated`
+  // (which usually navigates away) is deferred until that flow is done.
+  const [emailFlow, setEmailFlow] = useState<
+    { defaults: { to: string[]; label: string }; created: any } | null
+  >(null);
+
   const [form, setForm] = useState({
     first_name: '',
     last_name: '',
@@ -174,7 +181,16 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
     };
     const onSaved = (created: any) => {
       onClose();
-      onCreated?.({ ...payload, ...(created || {}) });
+      const record = { ...payload, ...(created || {}) };
+      if (!isEdit && email) {
+        // Close the create modal, then run the template → compose email flow.
+        setEmailFlow({
+          defaults: { to: [email], label: `${firstName} ${lastName}`.trim() },
+          created: record,
+        });
+      } else {
+        onCreated?.(record);
+      }
       setForm({
         first_name: '', last_name: '', email: '', phone_work: '', phone_mobile: '',
         job_title: '', department: '', lifecycle_stage: 'lead', status: DEFAULT_CONTACT_STATUS,
@@ -183,6 +199,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
       });
       domainAutoFilledRef.current = true;
     };
+
     if (isEdit) {
       updateContact.mutate({ id: contactId as string, ...(payload as any) }, { onSuccess: onSaved });
     } else {
@@ -191,7 +208,19 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
   };
 
   return (
+    <>
+    <TemplateEmailDialog
+      open={!!emailFlow}
+      defaults={emailFlow?.defaults ?? null}
+      title="Send welcome email"
+      onClose={() => {
+        const record = emailFlow?.created;
+        setEmailFlow(null);
+        if (record) onCreated?.(record);
+      }}
+    />
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+
       <DialogContent className={cn('sm:max-w-[550px] max-h-[85vh] overflow-y-auto', contentClassName)} overlayClassName={overlayClassName}>
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Update Contact' : 'Create Contact'}</DialogTitle>
@@ -399,5 +428,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   );
+
 }
