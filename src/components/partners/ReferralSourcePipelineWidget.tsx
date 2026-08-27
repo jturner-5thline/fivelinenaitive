@@ -118,19 +118,17 @@ export function ReferralSourcePipelineWidget() {
   }, [teamMembers]);
 
   const ownerOptions = useMemo(() => {
-    const ids = new Set<string>();
-    let hasUnassigned = false;
-    for (const r of referralSources) {
-      if (r.ownerUserId) ids.add(r.ownerUserId);
-      else hasUnassigned = true;
-    }
-    if (manualSources.length > 0) hasUnassigned = true;
+    // Full workspace roster — filtering by a teammate shouldn't depend on who
+    // happens to own a source inside the current timeframe.
+    const ids = new Set<string>(teamMembers.map(t => t.id));
+    for (const r of referralSources) if (r.ownerUserId) ids.add(r.ownerUserId);
     const opts = Array.from(ids)
       .map(id => ({ value: id, label: ownerNameById.get(id) || 'Unknown user' }))
       .sort((a, b) => a.label.localeCompare(b.label));
-    if (hasUnassigned) opts.push({ value: UNASSIGNED_OWNER, label: 'Unassigned' });
+    opts.push({ value: UNASSIGNED_OWNER, label: 'Unassigned' });
     return opts;
-  }, [referralSources, manualSources, ownerNameById]);
+
+  }, [referralSources, ownerNameById, teamMembers]);
 
   const columns = useMemo(() => {
     const byStage = new Map<StageKey, PipelineCard[]>(STAGES.map(s => [s.key, [] as PipelineCard[]]));

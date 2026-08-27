@@ -12,7 +12,7 @@ export const CHANNEL_TYPE_OPTIONS: { value: ChannelTypeValue; label: string; col
   { value: 'M&A and Investment Bankers', label: 'M&A / IB', color: '#8b5cf6' },
   { value: 'Service Providers', label: 'Service Providers', color: '#f59e0b' },
   { value: 'Investors', label: 'Investors', color: '#10b981' },
-  { value: 'Advisors', label: 'Advisors', color: '#ec4899' },
+  { value: 'Advisors', label: 'Debt Advisor', color: '#ec4899' },
   { value: 'Lenders' as ChannelTypeValue, label: 'Lenders', color: '#14b8a6' },
   { value: 'Other', label: 'Other', color: '#64748b' },
 ];
