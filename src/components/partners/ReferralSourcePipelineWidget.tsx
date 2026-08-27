@@ -128,7 +128,7 @@ export function ReferralSourcePipelineWidget() {
     opts.push({ value: UNASSIGNED_OWNER, label: 'Unassigned' });
     return opts;
 
-  }, [referralSources, manualSources, ownerNameById]);
+  }, [referralSources, ownerNameById, teamMembers]);
 
   const columns = useMemo(() => {
     const byStage = new Map<StageKey, PipelineCard[]>(STAGES.map(s => [s.key, [] as PipelineCard[]]));
