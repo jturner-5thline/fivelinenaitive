@@ -427,5 +427,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   );
+
 }
