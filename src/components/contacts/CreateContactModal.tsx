@@ -180,7 +180,16 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
     };
     const onSaved = (created: any) => {
       onClose();
-      onCreated?.({ ...payload, ...(created || {}) });
+      const record = { ...payload, ...(created || {}) };
+      if (!isEdit && email) {
+        // Close the create modal, then run the template → compose email flow.
+        setEmailFlow({
+          defaults: { to: [email], label: `${firstName} ${lastName}`.trim() },
+          created: record,
+        });
+      } else {
+        onCreated?.(record);
+      }
       setForm({
         first_name: '', last_name: '', email: '', phone_work: '', phone_mobile: '',
         job_title: '', department: '', lifecycle_stage: 'lead', status: DEFAULT_CONTACT_STATUS,
@@ -189,6 +198,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
       });
       domainAutoFilledRef.current = true;
     };
+
     if (isEdit) {
       updateContact.mutate({ id: contactId as string, ...(payload as any) }, { onSuccess: onSaved });
     } else {
