@@ -34,7 +34,7 @@ export function ContactLookupDialog({ name, email, onClose }: Props) {
         const { data, error } = await supabase
           .from('contacts')
           .select('id')
-          .eq('company_id', company!.id)
+          .eq('org_company_id', company!.id)
           .ilike('email', escape(email.trim()))
           .limit(1);
         if (error) throw error;
@@ -45,7 +45,7 @@ export function ContactLookupDialog({ name, email, onClose }: Props) {
       const exact = await supabase
         .from('contacts')
         .select('id')
-        .eq('company_id', company!.id)
+        .eq('org_company_id', company!.id)
         .ilike('full_name', escape(trimmed))
         .limit(1);
       if (exact.error) throw exact.error;
@@ -54,7 +54,7 @@ export function ContactLookupDialog({ name, email, onClose }: Props) {
       const fuzzy = await supabase
         .from('contacts')
         .select('id')
-        .eq('company_id', company!.id)
+        .eq('org_company_id', company!.id)
         .ilike('full_name', `%${escape(trimmed)}%`)
         .limit(1);
       if (fuzzy.error) throw fuzzy.error;
