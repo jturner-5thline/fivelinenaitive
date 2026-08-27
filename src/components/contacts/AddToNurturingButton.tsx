@@ -12,6 +12,7 @@ import {
   ensureReferralSourceForContact,
 } from '@/lib/ensureReferralSource';
 import { splitContactTypes } from '@/components/contacts/ContactTypeMultiSelect';
+import { TemplateEmailDialog } from '@/components/email/TemplateEmailDialog';
 
 interface AddToNurturingButtonProps {
   contact: any;
@@ -32,6 +33,7 @@ export function AddToNurturingButton({ contact }: AddToNurturingButtonProps) {
   const { company } = useCompany();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
 
   const name = contactDisplayName(contact);
 
@@ -86,6 +88,7 @@ export function AddToNurturingButton({ contact }: AddToNurturingButtonProps) {
       queryClient.invalidateQueries({ queryKey: ['deal-referral-sources'] });
       queryClient.invalidateQueries({ queryKey: ['referral-source-for-contact', contact.id] });
       toast.success('Added to Nurturing and tagged as a Referral Source');
+      if (contact?.email) setEmailOpen(true);
     } catch (e: any) {
       toast.error(e?.message || 'Failed to add to Nurturing');
     } finally {
@@ -94,6 +97,7 @@ export function AddToNurturingButton({ contact }: AddToNurturingButtonProps) {
   };
 
   return (
+    <>
     <Button variant="outline" size="sm" onClick={handleAdd} disabled={saving}>
       {saving ? (
         <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
@@ -102,5 +106,13 @@ export function AddToNurturingButton({ contact }: AddToNurturingButtonProps) {
       )}
       Add to Nurturing
     </Button>
+    <TemplateEmailDialog
+      open={emailOpen}
+      onClose={() => setEmailOpen(false)}
+      defaults={contact?.email ? { to: [contact.email], label: name } : null}
+      tokens={{ recipient_name: name, first_name: contact?.first_name || '' }}
+      title={`Email ${name || 'contact'}`}
+    />
+    </>
   );
 }
