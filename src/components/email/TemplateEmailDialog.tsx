@@ -71,7 +71,7 @@ export function TemplateEmailDialog({ open, onClose, defaults, tokens = {}, titl
         className="w-[min(96vw,1040px)] max-w-[min(96vw,1040px)] max-h-[85vh] p-0 border flex flex-col overflow-hidden"
         style={{ backgroundColor: '#12151b', borderColor: 'rgba(255,255,255,0.06)' }}
       >
-        <DialogHeader className="px-5 pt-5 pb-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+        <DialogHeader className="px-5 pt-5 pb-3 border-b shrink-0" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
           <DialogTitle className="text-[15px] font-semibold tracking-tight text-white">
             {step === 'template' ? 'Choose an email template' : title}
           </DialogTitle>
@@ -84,7 +84,8 @@ export function TemplateEmailDialog({ open, onClose, defaults, tokens = {}, titl
             </p>
           )}
         </DialogHeader>
-        <div className="p-3">
+        <div className="p-3 flex-1 min-h-0 overflow-y-auto">
+
           {step === 'template' ? (
             <EmailTemplatePicker
               tokens={{ recipient_name: defaults?.label || '', ...tokens }}
