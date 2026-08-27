@@ -68,7 +68,7 @@ export function TemplateEmailDialog({ open, onClose, defaults, tokens = {}, titl
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent
-        className="sm:max-w-[640px] p-0 border"
+        className="w-[min(96vw,1040px)] max-w-[min(96vw,1040px)] max-h-[85vh] p-0 border flex flex-col overflow-hidden"
         style={{ backgroundColor: '#12151b', borderColor: 'rgba(255,255,255,0.06)' }}
       >
         <DialogHeader className="px-5 pt-5 pb-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
