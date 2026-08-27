@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateContact, useUpdateContact, CONTACT_STATUSES, DEFAULT_CONTACT_STATUS } from '@/hooks/useContacts';
+import { TemplateEmailDialog } from '@/components/email/TemplateEmailDialog';
 import { CompanyComboBox } from '@/components/contacts/CompanyComboBox';
 import { ContactTypeMultiSelect } from '@/components/contacts/ContactTypeMultiSelect';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
