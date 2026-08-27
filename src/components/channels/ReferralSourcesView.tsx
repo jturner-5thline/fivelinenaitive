@@ -229,18 +229,17 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
   }, [teamMembers]);
 
   const ownerOptions = useMemo(() => {
-    const ids = new Set<string>();
-    let hasUnassigned = false;
-    for (const r of referralSources) {
-      if (r.ownerUserId) ids.add(r.ownerUserId);
-      else hasUnassigned = true;
-    }
+    // Options come from the full workspace roster (not just the owners visible
+    // in the current timeframe), so filtering by a teammate is always possible.
+    const ids = new Set<string>(teamMembers.map(t => t.id));
+    for (const r of referralSources) if (r.ownerUserId) ids.add(r.ownerUserId);
     const opts = Array.from(ids)
       .map(id => ({ value: id, label: ownerNameById.get(id) || 'Unknown user' }))
       .sort((a, b) => a.label.localeCompare(b.label));
-    if (hasUnassigned) opts.push({ value: UNASSIGNED_OWNER, label: 'Unassigned' });
+    opts.push({ value: UNASSIGNED_OWNER, label: 'Unassigned' });
     return opts;
-  }, [referralSources, ownerNameById]);
+  }, [referralSources, ownerNameById, teamMembers]);
+
 
   const filteredSources = useMemo(() => {
     let list = referralSources;
