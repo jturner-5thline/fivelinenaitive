@@ -2329,12 +2329,6 @@ function EventDetailPane({
               eventStartISO={event.start}
               linkedDealId={linkedDealId ?? null}
             />
-            <MeetingAddToDealCalendarAction
-              eventId={event.id}
-              eventTitle={eventTitle}
-              eventStartISO={event.start}
-              linkedDealId={linkedDealId ?? null}
-            />
             <MeetingDealInlineAction
               eventId={event.id}
               eventTitle={eventTitle}
