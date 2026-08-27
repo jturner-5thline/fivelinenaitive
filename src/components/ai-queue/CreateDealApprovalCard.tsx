@@ -108,16 +108,23 @@ export function CreateDealApprovalCard({ item }: Props) {
   const [drafting, setDrafting] = useState(false);
   const autoDrafted = useRef(false);
 
-  async function draftFromClaap(manual = false) {
+  async function draftFromClaap(manual = false, candidate?: ClaapMatchCandidate | null) {
     if (drafting) return;
     setDrafting(true);
     try {
+      const picked = candidate ?? manualMatch;
       const { data, error } = await supabase.functions.invoke('draft-deal-from-claap', {
         body: {
           queue_id: item.id,
-          claap_meeting_id: source.claap_meeting_id || fallbackMeeting?.id || null,
+          claap_meeting_id:
+            (picked?.kind === 'meeting' ? picked.id : null) ||
+            source.claap_meeting_id ||
+            fallbackMeeting?.id ||
+            null,
+          claap_recording_id: picked?.kind === 'recording' ? picked.id : source.claap_recording_id || null,
         },
       });
+
       if (error) throw error;
       if ((data as any)?.ok) {
         qc.invalidateQueries({ queryKey: ['ai-action-queue'] });
