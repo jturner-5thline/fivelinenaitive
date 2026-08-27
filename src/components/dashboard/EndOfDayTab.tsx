@@ -51,7 +51,6 @@ import { MeetingDealInlineAction } from '@/components/dashboard/MeetingDealInlin
 import { MeetingFollowupInlineAction } from '@/components/dashboard/MeetingFollowupInlineAction';
 import { MeetingScheduleInlineAction } from '@/components/dashboard/MeetingScheduleInlineAction';
 import { MeetingCreateFollowUpAction } from '@/components/dashboard/MeetingCreateFollowUpAction';
-import { MeetingAddToDealCalendarAction } from '@/components/dashboard/MeetingAddToDealCalendarAction';
 import { FindATimeDialog } from '@/components/scheduling/FindATimeDialog';
 import { SuggestedTasksSection } from '@/components/dashboard/SuggestedTasksSection';
 import { ClaapNoteEditor } from '@/components/dashboard/ClaapNoteEditor';
@@ -2324,12 +2323,6 @@ function EventDetailPane({
               }}
             />
             <MeetingCreateFollowUpAction
-              eventId={event.id}
-              eventTitle={eventTitle}
-              eventStartISO={event.start}
-              linkedDealId={linkedDealId ?? null}
-            />
-            <MeetingAddToDealCalendarAction
               eventId={event.id}
               eventTitle={eventTitle}
               eventStartISO={event.start}
