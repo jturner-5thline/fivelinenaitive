@@ -16,14 +16,23 @@ interface CompanyComboBoxProps {
 
 export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps) {
   const navigate = useNavigate();
-  const { data: companiesResult } = useCrmCompanies({ pageSize: 1000 });
-  const companies = companiesResult?.data ?? [];
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => clearTimeout(t);
+  }, [search]);
+  // Server-side search so companies beyond the first page are still findable.
+  const { data: companiesResult } = useCrmCompanies({ pageSize: 50, search: debouncedSearch || undefined });
+  const companies = companiesResult?.data ?? [];
+  const { data: domainPoolResult } = useCrmCompanies({ pageSize: 1000 });
+  const domainPool = domainPoolResult?.data ?? [];
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [domainSuggested, setDomainSuggested] = useState(false);
   const [justCreated, setJustCreated] = useState<{ id: string; name: string; domain?: string | null } | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
 
   const selectedCompany =
     companies.find(c => c.id === value) ||
