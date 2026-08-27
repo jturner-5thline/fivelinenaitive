@@ -68,10 +68,36 @@ export function CreateDealApprovalCard({ item }: Props) {
       return data ?? null;
     },
   });
-  const matchedClaapTitle: string | null = source.claap_meeting_id
-    ? (source.claap_meeting_title || null)
-    : (fallbackMeeting?.title ?? null);
-  const hasClaapMatch = !!source.claap_meeting_id || !!fallbackMeeting;
+  // Manual link (user picked a recording by hand) wins over auto-resolution.
+  const [manualMatch, setManualMatch] = useState<ClaapMatchCandidate | null>(null);
+  const matchedClaapTitle: string | null = manualMatch
+    ? manualMatch.title
+    : source.claap_meeting_id
+      ? (source.claap_meeting_title || null)
+      : (fallbackMeeting?.title ?? null);
+  const hasClaapMatch = !!manualMatch || !!source.claap_meeting_id || !!fallbackMeeting;
+
+  async function linkClaapCandidate(candidate: ClaapMatchCandidate) {
+    const nextSource = {
+      ...source,
+      claap_meeting_title: candidate.title,
+      ...(candidate.kind === 'meeting'
+        ? { claap_meeting_id: candidate.id }
+        : { claap_recording_id: candidate.id }),
+      claap_linked_manually: true,
+    };
+    const { error } = await supabase
+      .from('ai_action_queue')
+      .update({ source: nextSource as never })
+      .eq('id', item.id);
+    if (error) throw error;
+    setManualMatch(candidate);
+    qc.invalidateQueries({ queryKey: ['ai-action-queue'] });
+    toast.success(`Linked “${candidate.title}”`);
+    autoDrafted.current = true;
+    await draftFromClaap(true, candidate);
+  }
+
 
   // The narrative (and other AI-drafted fields) are only filled by the
   // detector when a Claap recording existed at sweep time. When the
