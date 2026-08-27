@@ -21,8 +21,13 @@ interface Props {
 export function DashboardPlansGear({ dashboardKey, className }: Props) {
   const [open, setOpen] = useState(false);
   const { canEditMasterPlan } = useCanEditMasterPlan();
-  if (!canEditMasterPlan) return null;
+  // Gear retired (2026-08): the Insights header "Master Plan" button is the
+  // single entry point to the plan editor. Kept as a no-op so dashboards that
+  // still mount it don't need touching.
+  return null;
+  // eslint-disable-next-line no-unreachable
   return (
+
     <>
       <TooltipProvider>
         <Tooltip>
