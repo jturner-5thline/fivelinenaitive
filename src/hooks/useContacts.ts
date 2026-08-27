@@ -300,6 +300,7 @@ export function useCreateContact() {
 export function useUpdateContact() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { company } = useCompany();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Contact> & { id: string }) => {
@@ -316,9 +317,13 @@ export function useUpdateContact() {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       queryClient.invalidateQueries({ queryKey: ['contact', vars.id] });
       toast.success('Contact updated');
-      ensureReferralSourceForContact(data, user?.id, data?.org_company_id).then(() => {
+      // Tagging a contact "Referral Source" seeds them into the Nurturing
+      // column of the Referral Source Pipeline (Sales & BD).
+      ensureReferralSourceForContact(data, user?.id, company?.id ?? data?.org_company_id).then((result) => {
         queryClient.invalidateQueries({ queryKey: ['referral-sources'] });
         queryClient.invalidateQueries({ queryKey: ['deal-referral-sources'] });
+        queryClient.invalidateQueries({ queryKey: ['referral-source-for-contact', vars.id] });
+        if (result === 'created') toast.success('Added to Nurturing in the Referral Source Pipeline');
       });
     },
 
