@@ -7,6 +7,7 @@ import { Loader2, UserPlus, Search, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { AddToNurturingButton } from '@/components/contacts/AddToNurturingButton';
+import { useCompany } from '@/hooks/useCompany';
 
 
 interface Attendee { email?: string | null; displayName?: string | null; self?: boolean; responseStatus?: string | null }
@@ -37,6 +38,7 @@ function splitName(display?: string | null, email?: string | null): { first: str
 }
 
 export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, organizerEmail, eventTitle, claapSummary }: Props) {
+  const { company } = useCompany();
   const claapNote = useMemo(() => {
     const body = (claapSummary || '').trim();
     if (!body) return '';
@@ -79,17 +81,33 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
   const active = candidates[Math.min(activeIdx, Math.max(candidates.length - 1, 0))];
 
   const { data: matches, isLoading } = useQuery({
-    queryKey: ['meeting-contact-match', active?.email, active?.first, active?.last],
-    enabled: open && !!active,
+    queryKey: ['meeting-contact-match', company?.id, active?.email, active?.first, active?.last],
+    enabled: open && !!active && !!company?.id,
     queryFn: async () => {
+      if (!active || !company?.id) return [];
+
+      // Email is authoritative. Query it separately so punctuation in an email
+      // cannot be misinterpreted by PostgREST's comma-delimited `.or()` syntax.
+      if (active.email) {
+        const { data: emailMatches, error: emailError } = await supabase
+          .from('contacts')
+          .select('*')
+          .eq('org_company_id', company.id)
+          .ilike('email', active.email.trim())
+          .limit(10);
+        if (emailError) throw emailError;
+        if (emailMatches?.length) return emailMatches;
+      }
+
       const filters: string[] = [];
-      if (active.email) filters.push(`email.ilike.${active.email}`);
       if (active.first) filters.push(`first_name.ilike.%${active.first}%`);
       if (active.last) filters.push(`last_name.ilike.%${active.last}%`);
       if (active.name) filters.push(`full_name.ilike.%${active.name}%`);
+      if (filters.length === 0) return [];
       const { data, error } = await supabase
         .from('contacts')
         .select('*')
+        .eq('org_company_id', company.id)
         .or(filters.join(','))
         .limit(10);
       if (error) throw error;
