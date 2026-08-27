@@ -2506,7 +2506,64 @@ function MetricsInner() {
                 {selectedDashboard !== 'management-review' && <MasterPlanButton />}
                 <SyncStatusBar />
               </div>
+              {/* Folder quick-access row: one button per dashboard folder,
+                  each opening a dropdown of that folder's dashboards. */}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {[
+                  ...DEFAULT_FOLDER_GROUPS.map((g) => ({ id: g.id, name: g.name, dashboardIds: g.dashboardIds })),
+                  ...folders.map((f) => ({ id: f.id, name: f.name, dashboardIds: f.dashboardIds })),
+                ].map((group) => {
+                  const groupDashboards = group.dashboardIds
+                    .map((id) => visibleDashboardOptions.find((d) => d.id === id))
+                    .filter(Boolean) as typeof DASHBOARD_OPTIONS;
+                  if (groupDashboards.length === 0) return null;
+                  const containsActive = groupDashboards.some((d) => d.id === selectedDashboard);
+                  return (
+                    <DropdownMenu key={group.id}>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            'h-8 gap-1.5 rounded-lg border-white/[0.08] bg-white/[0.03] text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/[0.06]',
+                            containsActive && 'border-primary/40 bg-primary/10 text-foreground',
+                          )}
+                        >
+                          <Folder className="h-3.5 w-3.5" />
+                          {group.name}
+                          <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="start"
+                        sideOffset={6}
+                        className="w-64 p-1.5 rounded-xl border border-white/[0.06] bg-[rgba(14,18,28,0.92)] backdrop-blur-xl shadow-[0_24px_48px_-24px_rgba(0,0,0,0.7)] z-50"
+                      >
+                        {groupDashboards.map((dashboard) => (
+                          <DropdownMenuItem
+                            key={dashboard.id}
+                            className={cn(
+                              'flex items-center gap-2 py-1.5 px-2 rounded-md transition-colors focus:bg-white/[0.05] hover:bg-white/[0.04]',
+                              selectedDashboard === dashboard.id && 'bg-primary/10 text-foreground',
+                            )}
+                            onClick={() => selectDashboard(dashboard.id)}
+                          >
+                            <span
+                              className={cn(
+                                'h-1.5 w-1.5 rounded-full shrink-0',
+                                selectedDashboard === dashboard.id ? 'bg-primary' : 'bg-muted-foreground/30',
+                              )}
+                            />
+                            <span className="text-sm truncate">{dashboard.name}</span>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  );
+                })}
+              </div>
             </div>
+
             <div className="flex items-center gap-2">
               {effectiveSelectedDashboard === 'consolidated-debt-pipeline' && (
                 <DebtAdvisoryComparisonToggle />
