@@ -163,7 +163,7 @@ const DEFAULT_FOLDER_GROUPS: { id: string; name: string; dashboardIds: string[] 
   {
     id: 'financial',
     name: 'Financial',
-    dashboardIds: ['revenue-customers', 'controller-dashboard'],
+    dashboardIds: ['revenue-customers', 'controller-dashboard', 'finserv-financial-metrics'],
   },
   {
     id: 'sales-bd',
