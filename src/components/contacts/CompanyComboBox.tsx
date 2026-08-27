@@ -36,7 +36,9 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
 
   const selectedCompany =
     companies.find(c => c.id === value) ||
+    domainPool.find(c => c.id === value) ||
     (justCreated && justCreated.id === value ? justCreated : undefined);
+
 
   // Domain auto-matching from email
   useEffect(() => {
