@@ -16,18 +16,29 @@ interface CompanyComboBoxProps {
 
 export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps) {
   const navigate = useNavigate();
-  const { data: companiesResult } = useCrmCompanies({ pageSize: 1000 });
-  const companies = companiesResult?.data ?? [];
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => clearTimeout(t);
+  }, [search]);
+  // Server-side search so companies beyond the first page are still findable.
+  const { data: companiesResult } = useCrmCompanies({ pageSize: 50, search: debouncedSearch || undefined });
+  const companies = companiesResult?.data ?? [];
+  const { data: domainPoolResult } = useCrmCompanies({ pageSize: 1000 });
+  const domainPool = domainPoolResult?.data ?? [];
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [domainSuggested, setDomainSuggested] = useState(false);
   const [justCreated, setJustCreated] = useState<{ id: string; name: string; domain?: string | null } | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
+
   const selectedCompany =
     companies.find(c => c.id === value) ||
+    domainPool.find(c => c.id === value) ||
     (justCreated && justCreated.id === value ? justCreated : undefined);
+
 
   // Domain auto-matching from email
   useEffect(() => {
@@ -43,7 +54,7 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
     if (freeProviders.includes(domain)) return;
 
     const timer = setTimeout(() => {
-    const match = companies.find(c => {
+    const match = domainPool.find(c => {
       const cDomain = c.domain?.toLowerCase()?.replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/$/, '');
       const additionalDomains = (c.additional_domains || []).map((d: string) => d.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/$/, ''));
       return cDomain === domain || additionalDomains.includes(domain);
@@ -77,7 +88,7 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
     }
     }, 700);
     return () => clearTimeout(timer);
-  }, [email, companies, value, domainSuggested, onChange]);
+  }, [email, domainPool, value, domainSuggested, onChange]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -90,11 +101,11 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const filtered = search.trim()
-    ? companies.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
-    : companies.slice(0, 20);
+  // Results come back already filtered by the server when searching.
+  const filtered = search.trim() ? companies : companies.slice(0, 20);
 
   const exactMatch = search.trim() && companies.some(c => c.name.toLowerCase() === search.toLowerCase().trim());
+
 
   const handleCreateNew = () => {
     if (!search.trim()) return;
