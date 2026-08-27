@@ -54,7 +54,7 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
     if (freeProviders.includes(domain)) return;
 
     const timer = setTimeout(() => {
-    const match = companies.find(c => {
+    const match = domainPool.find(c => {
       const cDomain = c.domain?.toLowerCase()?.replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/$/, '');
       const additionalDomains = (c.additional_domains || []).map((d: string) => d.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/$/, ''));
       return cDomain === domain || additionalDomains.includes(domain);
