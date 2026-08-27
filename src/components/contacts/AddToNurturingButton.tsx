@@ -67,6 +67,9 @@ export function AddToNurturingButton({ contact, onEmailFlowChange }: AddToNurtur
       return;
     }
     setSaving(true);
+    // Hide any owning popup right away so the template picker is the only
+    // dialog the user sees once the add completes.
+    if (contact?.email) onEmailFlowChange?.(true);
     try {
       let next = contact;
       if (!hasReferralSourceTag(contact.contact_type)) {
@@ -90,9 +93,10 @@ export function AddToNurturingButton({ contact, onEmailFlowChange }: AddToNurtur
       queryClient.invalidateQueries({ queryKey: ['deal-referral-sources'] });
       queryClient.invalidateQueries({ queryKey: ['referral-source-for-contact', contact.id] });
       toast.success('Added to Nurturing and tagged as a Referral Source');
-      if (contact?.email) { setEmailOpen(true); onEmailFlowChange?.(true); }
+      if (contact?.email) setEmailOpen(true);
     } catch (e: any) {
       toast.error(e?.message || 'Failed to add to Nurturing');
+      onEmailFlowChange?.(false);
     } finally {
       setSaving(false);
     }
