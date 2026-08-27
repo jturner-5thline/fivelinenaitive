@@ -375,20 +375,27 @@ export function useDealReferralSources(filters?: {
     for (const deal of deals) {
       const contact = deal.referred_by_contact_id ? contactById.get(deal.referred_by_contact_id) : undefined;
       const directCompany = deal.referred_by_crm_company_id ? companyById.get(deal.referred_by_crm_company_id) : undefined;
-      if (!contact && !directCompany) continue;
+      if (!contact && !directCompany && !deal.referred_by_contact_id) continue;
 
-      const key = contact ? `contact:${contact.id}` : `company:${directCompany!.id}`;
-      const raw = (contact?.full_name?.trim() || directCompany?.name?.trim() || deal.referred_by);
+      // A deal linked to a contact ALWAYS groups by that contact — even if the
+      // contact record itself couldn't be loaded. Otherwise the person would be
+      // silently rolled up under their firm.
+      const contactKeyId = contact?.id ?? deal.referred_by_contact_id ?? null;
+      const key = contactKeyId ? `contact:${contactKeyId}` : `company:${directCompany!.id}`;
+      const raw = contactKeyId
+        ? (contact?.full_name?.trim() || deal.referred_by || directCompany?.name?.trim() || 'Unknown contact')
+        : (directCompany?.name?.trim() || deal.referred_by);
       if (!grouped.has(key)) {
         grouped.set(key, {
           raw,
-          contactId: contact?.id ?? null,
+          contactId: contactKeyId,
           crmCompanyId: contact?.crm_company_id ?? directCompany?.id ?? null,
           deals: [],
         });
       }
       grouped.get(key)!.deals.push(deal);
     }
+
 
     // Channel enrichment lookup
     const channelLookup = new Map<string, { channelType: string; companyName: string | null }>();
