@@ -88,7 +88,7 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
     }
     }, 700);
     return () => clearTimeout(timer);
-  }, [email, companies, value, domainSuggested, onChange]);
+  }, [email, domainPool, value, domainSuggested, onChange]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -101,11 +101,11 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const filtered = search.trim()
-    ? companies.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
-    : companies.slice(0, 20);
+  // Results come back already filtered by the server when searching.
+  const filtered = search.trim() ? companies : companies.slice(0, 20);
 
   const exactMatch = search.trim() && companies.some(c => c.name.toLowerCase() === search.toLowerCase().trim());
+
 
   const handleCreateNew = () => {
     if (!search.trim()) return;
