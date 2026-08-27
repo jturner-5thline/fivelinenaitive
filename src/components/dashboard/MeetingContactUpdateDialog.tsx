@@ -104,7 +104,9 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      {/* Hide this dialog while the contact form / email flow is on screen */}
+      <Dialog open={open && !createOpen && !editContact} onOpenChange={onOpenChange}>
+
         <DialogContent
           className="max-w-lg z-[1420] border-white/10 bg-[#171B2C] text-white"
           overlayClassName="z-[1410]"
