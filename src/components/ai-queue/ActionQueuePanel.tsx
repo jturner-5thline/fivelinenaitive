@@ -929,9 +929,10 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       {(items.length + accessRequests.length + flexRequests.length) === 0 ? (
         <EmptyState />
       ) : (
-        <div className="relative grid grid-cols-1 md:grid-cols-[340px_1fr] flex-1 min-h-0">
-          {/* LEFT RAIL */}
-          <aside className="flex flex-col min-h-0 md:panel-divider-r">
+        <div className="relative grid grid-cols-1 flex-1 min-h-0">
+          {/* LEFT RAIL (removed) */}
+          <aside className="hidden">
+
 
 
             {/* Scrollable row list */}
