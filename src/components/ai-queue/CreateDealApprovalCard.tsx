@@ -18,6 +18,8 @@ import type { QueuedAiAction } from '@/hooks/useAiActionQueue';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
+import { LinkClaapRecordingPopover, type ClaapMatchCandidate } from './LinkClaapRecordingPopover';
+
 
 function findNdaStageId(stages: Array<{ id: string; label: string }>): string {
   const match = stages.find((s) => {
@@ -68,10 +70,36 @@ export function CreateDealApprovalCard({ item }: Props) {
       return data ?? null;
     },
   });
-  const matchedClaapTitle: string | null = source.claap_meeting_id
-    ? (source.claap_meeting_title || null)
-    : (fallbackMeeting?.title ?? null);
-  const hasClaapMatch = !!source.claap_meeting_id || !!fallbackMeeting;
+  // Manual link (user picked a recording by hand) wins over auto-resolution.
+  const [manualMatch, setManualMatch] = useState<ClaapMatchCandidate | null>(null);
+  const matchedClaapTitle: string | null = manualMatch
+    ? manualMatch.title
+    : source.claap_meeting_id
+      ? (source.claap_meeting_title || null)
+      : (fallbackMeeting?.title ?? null);
+  const hasClaapMatch = !!manualMatch || !!source.claap_meeting_id || !!fallbackMeeting;
+
+  async function linkClaapCandidate(candidate: ClaapMatchCandidate) {
+    const nextSource = {
+      ...source,
+      claap_meeting_title: candidate.title,
+      ...(candidate.kind === 'meeting'
+        ? { claap_meeting_id: candidate.id }
+        : { claap_recording_id: candidate.id }),
+      claap_linked_manually: true,
+    };
+    const { error } = await supabase
+      .from('ai_action_queue')
+      .update({ source: nextSource as never })
+      .eq('id', item.id);
+    if (error) throw error;
+    setManualMatch(candidate);
+    qc.invalidateQueries({ queryKey: ['ai-action-queue'] });
+    toast.success(`Linked “${candidate.title}”`);
+    autoDrafted.current = true;
+    await draftFromClaap(true, candidate);
+  }
+
 
   // The narrative (and other AI-drafted fields) are only filled by the
   // detector when a Claap recording existed at sweep time. When the
@@ -80,16 +108,23 @@ export function CreateDealApprovalCard({ item }: Props) {
   const [drafting, setDrafting] = useState(false);
   const autoDrafted = useRef(false);
 
-  async function draftFromClaap(manual = false) {
+  async function draftFromClaap(manual = false, candidate?: ClaapMatchCandidate | null) {
     if (drafting) return;
     setDrafting(true);
     try {
+      const picked = candidate ?? manualMatch;
       const { data, error } = await supabase.functions.invoke('draft-deal-from-claap', {
         body: {
           queue_id: item.id,
-          claap_meeting_id: source.claap_meeting_id || fallbackMeeting?.id || null,
+          claap_meeting_id:
+            (picked?.kind === 'meeting' ? picked.id : null) ||
+            source.claap_meeting_id ||
+            fallbackMeeting?.id ||
+            null,
+          claap_recording_id: picked?.kind === 'recording' ? picked.id : source.claap_recording_id || null,
         },
       });
+
       if (error) throw error;
       if ((data as any)?.ok) {
         qc.invalidateQueries({ queryKey: ['ai-action-queue'] });
@@ -277,7 +312,13 @@ export function CreateDealApprovalCard({ item }: Props) {
         </p>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        <LinkClaapRecordingPopover
+          defaultQuery={source.company_name || source.event_title || ''}
+          label={hasClaapMatch ? 'Change Claap recording' : 'Link Claap recording'}
+          onLink={linkClaapCandidate}
+        />
+
         <Button
           variant="gradient"
           onClick={() => setOpen(true)}
