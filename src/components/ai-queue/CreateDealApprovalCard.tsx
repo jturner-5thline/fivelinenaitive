@@ -312,7 +312,13 @@ export function CreateDealApprovalCard({ item }: Props) {
         </p>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        <LinkClaapRecordingPopover
+          defaultQuery={source.company_name || source.event_title || ''}
+          label={hasClaapMatch ? 'Change Claap recording' : 'Link Claap recording'}
+          onLink={linkClaapCandidate}
+        />
+
         <Button
           variant="gradient"
           onClick={() => setOpen(true)}
