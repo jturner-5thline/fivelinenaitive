@@ -50,6 +50,12 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
   const { data: taggingRules = [] } = useContactTaggingRules({ activeOnly: true });
   const { user } = useAuth();
   const { config: fieldConfig, isDisabled: isFieldDisabled } = useContactFieldConfig();
+  // After a contact is created we offer a templated welcome email. `onCreated`
+  // (which usually navigates away) is deferred until that flow is done.
+  const [emailFlow, setEmailFlow] = useState<
+    { defaults: { to: string[]; label: string }; created: any } | null
+  >(null);
+
   const [form, setForm] = useState({
     first_name: '',
     last_name: '',
