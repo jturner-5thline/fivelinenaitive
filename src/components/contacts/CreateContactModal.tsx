@@ -207,7 +207,19 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
   };
 
   return (
+    <>
+    <TemplateEmailDialog
+      open={!!emailFlow}
+      defaults={emailFlow?.defaults ?? null}
+      title="Send welcome email"
+      onClose={() => {
+        const record = emailFlow?.created;
+        setEmailFlow(null);
+        if (record) onCreated?.(record);
+      }}
+    />
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+
       <DialogContent className={cn('sm:max-w-[550px] max-h-[85vh] overflow-y-auto', contentClassName)} overlayClassName={overlayClassName}>
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Update Contact' : 'Create Contact'}</DialogTitle>
