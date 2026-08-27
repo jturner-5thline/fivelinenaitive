@@ -35,6 +35,8 @@ interface CreateContactModalProps {
   overlayClassName?: string;
   /** Called with the created/updated contact row after a successful save. */
   onCreated?: (contact: any) => void;
+  /** Called immediately after persistence, before any post-create email flow. */
+  onSaveSuccess?: (contact: any) => void;
 }
 
 const FORM_KEYS = [
@@ -43,7 +45,7 @@ const FORM_KEYS = [
   'crm_company_id','contact_type','owner_user_id','city','state','country','timezone','source_system',
 ] as const;
 
-export function CreateContactModal({ open, onClose, defaultCompanyId, initialValues, contactId, contentClassName, overlayClassName, onCreated }: CreateContactModalProps) {
+export function CreateContactModal({ open, onClose, defaultCompanyId, initialValues, contactId, contentClassName, overlayClassName, onCreated, onSaveSuccess }: CreateContactModalProps) {
   const createContact = useCreateContact();
   const updateContact = useUpdateContact();
   const isEdit = !!contactId;
@@ -180,8 +182,9 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
       owner_user_id: form.owner_user_id || user?.id || null,
     };
     const onSaved = (created: any) => {
-      onClose();
       const record = { ...payload, ...(created || {}) };
+      onSaveSuccess?.(record);
+      onClose();
       if (!isEdit && email) {
         // Close the create modal, then run the template → compose email flow.
         setEmailFlow({
