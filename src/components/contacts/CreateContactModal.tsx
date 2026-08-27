@@ -209,17 +209,9 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
 
   return (
     <>
-    <TemplateEmailDialog
-      open={!!emailFlow}
-      defaults={emailFlow?.defaults ?? null}
-      title="Send welcome email"
-      onClose={() => {
-        const record = emailFlow?.created;
-        setEmailFlow(null);
-        if (record) onCreated?.(record);
-      }}
-    />
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    {/* Contact form hides itself while the templated email flow is on screen */}
+    <Dialog open={open && !emailFlow} onOpenChange={(o) => !o && !emailFlow && onClose()}>
+
 
       <DialogContent className={cn('sm:max-w-[550px] max-h-[85vh] overflow-y-auto', contentClassName)} overlayClassName={overlayClassName}>
         <DialogHeader>
