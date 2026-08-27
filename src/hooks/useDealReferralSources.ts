@@ -283,24 +283,34 @@ export function useDealReferralSources(filters?: {
     // Keep the projection versioned: this query originally omitted
     // owner_user_id, so an existing React Query cache could keep every source
     // looking unassigned after the owner filter shipped.
-    queryKey: ['deal_referral_linked_contacts', 'with-owner-v1', company?.id, linkedContactIds],
+    queryKey: ['deal_referral_linked_contacts', 'with-owner-v2', company?.id, linkedContactIds],
     enabled: !!company?.id && linkedContactIds.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('id, full_name, owner_user_id, crm_company_id, crm_company:crm_companies!contacts_crm_company_id_fkey(name)')
-        .in('id', linkedContactIds);
-      if (error) throw error;
-      return (data || []) as Array<{
+      type Row = {
         id: string;
         full_name: string | null;
         owner_user_id: string | null;
         crm_company_id: string | null;
         crm_company: { name: string | null } | null;
-      }>;
-
+      };
+      // Chunked: a single `.in()` with hundreds of UUIDs produces a very long
+      // request URL, which can be rejected outright — that failure made every
+      // referral source fall back to its firm name (e.g. "Wells Fargo"
+      // instead of "Katya Nabokova") and show as owner-unassigned.
+      const CHUNK = 100;
+      const out: Row[] = [];
+      for (let i = 0; i < linkedContactIds.length; i += CHUNK) {
+        const { data, error } = await supabase
+          .from('contacts')
+          .select('id, full_name, owner_user_id, crm_company_id, crm_company:crm_companies!contacts_crm_company_id_fkey(name)')
+          .in('id', linkedContactIds.slice(i, i + CHUNK));
+        if (error) throw error;
+        out.push(...((data || []) as Row[]));
+      }
+      return out;
     },
   });
+
 
   const { data: linkedCompanies = [] } = useQuery({
     queryKey: ['deal_referral_linked_companies', company?.id, linkedCompanyIds],
