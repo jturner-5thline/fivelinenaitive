@@ -24,13 +24,13 @@ export async function ensureReferralSourceForContact(
   contact: any,
   userId: string | null | undefined,
   companyId?: string | null
-): Promise<void> {
+): Promise<'created' | 'exists' | 'skipped'> {
   try {
-    if (!contact || !userId) return;
-    if (!hasReferralSourceTag(contact.contact_type)) return;
+    if (!contact || !userId) return 'skipped';
+    if (!hasReferralSourceTag(contact.contact_type)) return 'skipped';
 
     const name = displayName(contact);
-    if (!name) return;
+    if (!name) return 'skipped';
 
     // Already tracked by contact id?
     const { data: byContact } = await supabase
@@ -38,7 +38,7 @@ export async function ensureReferralSourceForContact(
       .select('id')
       .eq('contact_id', contact.id)
       .limit(1);
-    if (byContact && byContact.length > 0) return;
+    if (byContact && byContact.length > 0) return 'exists';
 
     // Or by name within the workspace (the manual-source list is shared by the
     // whole workspace, so dedupe across users, not per-user).
@@ -52,9 +52,9 @@ export async function ensureReferralSourceForContact(
       ? byNameQuery.eq('company_id', resolvedCompanyId)
       : byNameQuery.eq('user_id', userId);
     const { data: byName } = await byNameQuery;
-    if (byName && byName.length > 0) return;
+    if (byName && byName.length > 0) return 'exists';
 
-    await supabase.from('referral_sources').insert({
+    const { error: insertError } = await supabase.from('referral_sources').insert({
       name,
       email: contact.email ?? null,
       phone: contact.phone_mobile ?? contact.phone_work ?? null,
@@ -64,7 +64,10 @@ export async function ensureReferralSourceForContact(
       user_id: userId,
       company_id: companyId ?? contact.org_company_id ?? null,
     } as any);
+    if (insertError) throw insertError;
+    return 'created';
   } catch (e) {
     console.warn('[referral source auto-add] failed', e);
+    return 'skipped';
   }
 }
