@@ -16,6 +16,8 @@ import { TemplateEmailDialog } from '@/components/email/TemplateEmailDialog';
 
 interface AddToNurturingButtonProps {
   contact: any;
+  /** Notifies the parent when the follow-up email dialog opens/closes. */
+  onEmailFlowChange?: (open: boolean) => void;
 }
 
 function contactDisplayName(contact: any): string {
