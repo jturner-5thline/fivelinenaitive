@@ -420,7 +420,19 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <TemplateEmailDialog
+      open={!!emailFlow}
+      defaults={emailFlow?.defaults ?? null}
+      title="Send welcome email"
+      onClose={() => {
+        const record = emailFlow?.created;
+        setEmailFlow(null);
+        onClose();
+        if (record) onCreated?.(record);
+      }}
+    />
     </>
+
   );
 
 }
