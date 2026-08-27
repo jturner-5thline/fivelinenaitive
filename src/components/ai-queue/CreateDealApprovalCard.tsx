@@ -18,6 +18,8 @@ import type { QueuedAiAction } from '@/hooks/useAiActionQueue';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
+import { LinkClaapRecordingPopover, type ClaapMatchCandidate } from './LinkClaapRecordingPopover';
+
 
 function findNdaStageId(stages: Array<{ id: string; label: string }>): string {
   const match = stages.find((s) => {
