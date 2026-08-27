@@ -215,6 +215,7 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         initialValues={active ? { first_name: active.first, last_name: active.last, email: active.email, description: withClaapNote(null) } : undefined}
+        onSaveSuccess={() => onOpenChange(false)}
         onCreated={() => { setCreateOpen(false); onOpenChange(false); }}
       />
     </>
