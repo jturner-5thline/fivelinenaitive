@@ -54,6 +54,7 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
   };
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [nurtureEmailOpen, setNurtureEmailOpen] = useState(false);
   const [editContact, setEditContact] = useState<any | null>(null);
 
   const candidates = useMemo(() => {
@@ -123,7 +124,7 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
   return (
     <>
       {/* Hide this dialog while the contact form / email flow is on screen */}
-      <Dialog open={open && !createOpen && !editContact} onOpenChange={onOpenChange}>
+      <Dialog open={open && !createOpen && !editContact && !nurtureEmailOpen} onOpenChange={onOpenChange}>
 
         <DialogContent
           className="max-w-lg z-[1420] border-white/10 bg-[#171B2C] text-white"
@@ -194,7 +195,10 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
                           </button>
                           <div className="flex shrink-0 items-center gap-1.5">
                             {exact && <Badge className="shrink-0 bg-emerald-500/20 text-emerald-200">Email match</Badge>}
-                            <AddToNurturingButton contact={m} />
+                            <AddToNurturingButton
+                              contact={m}
+                              onEmailFlowChange={(o) => { setNurtureEmailOpen(o); if (!o) onOpenChange(false); }}
+                            />
                           </div>
                         </div>
                       );

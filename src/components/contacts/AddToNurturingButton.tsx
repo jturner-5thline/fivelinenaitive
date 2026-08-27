@@ -16,6 +16,8 @@ import { TemplateEmailDialog } from '@/components/email/TemplateEmailDialog';
 
 interface AddToNurturingButtonProps {
   contact: any;
+  /** Notifies the parent when the follow-up email dialog opens/closes. */
+  onEmailFlowChange?: (open: boolean) => void;
 }
 
 function contactDisplayName(contact: any): string {
@@ -28,7 +30,7 @@ function contactDisplayName(contact: any): string {
  * referral source. Tags the contact "Referral Source" and seeds them into the
  * Nurturing column of the Referral Source Pipeline (Sales & BD).
  */
-export function AddToNurturingButton({ contact }: AddToNurturingButtonProps) {
+export function AddToNurturingButton({ contact, onEmailFlowChange }: AddToNurturingButtonProps) {
   const { user } = useAuth();
   const { company } = useCompany();
   const queryClient = useQueryClient();
@@ -88,7 +90,7 @@ export function AddToNurturingButton({ contact }: AddToNurturingButtonProps) {
       queryClient.invalidateQueries({ queryKey: ['deal-referral-sources'] });
       queryClient.invalidateQueries({ queryKey: ['referral-source-for-contact', contact.id] });
       toast.success('Added to Nurturing and tagged as a Referral Source');
-      if (contact?.email) setEmailOpen(true);
+      if (contact?.email) { setEmailOpen(true); onEmailFlowChange?.(true); }
     } catch (e: any) {
       toast.error(e?.message || 'Failed to add to Nurturing');
     } finally {
@@ -108,7 +110,7 @@ export function AddToNurturingButton({ contact }: AddToNurturingButtonProps) {
     </Button>
     <TemplateEmailDialog
       open={emailOpen}
-      onClose={() => setEmailOpen(false)}
+      onClose={() => { setEmailOpen(false); onEmailFlowChange?.(false); }}
       defaults={contact?.email ? { to: [contact.email], label: name } : null}
       tokens={{ recipient_name: name, first_name: contact?.first_name || '' }}
       title={`Email ${name || 'contact'}`}
