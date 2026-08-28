@@ -73,7 +73,7 @@ export function LatestUpdatesDropdown() {
   // Group updates by deal, newest deal activity first.
   const dealGroups = (() => {
     const map = new Map<string, { dealId: string; dealName: string; items: typeof filteredActivities }>();
-    filteredActivities.forEach((a) => {
+    unreadActivities.forEach((a) => {
       const key = a.deal_id || 'unknown';
       if (!map.has(key)) {
         map.set(key, { dealId: a.deal_id, dealName: a.deal_name || 'Unknown deal', items: [] });
@@ -174,10 +174,10 @@ export function LatestUpdatesDropdown() {
             <Clock className="h-8 w-8 mx-auto mb-2 opacity-50 animate-pulse" />
             <p>Loading updates...</p>
           </div>
-        ) : filteredActivities.length === 0 ? (
+        ) : unreadActivities.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
             <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="font-medium">No recent updates</p>
+            <p className="font-medium">You're all caught up</p>
             <p className="text-xs mt-1">Activity will appear here</p>
           </div>
         ) : (
