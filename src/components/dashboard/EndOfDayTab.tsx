@@ -976,6 +976,17 @@ export function EndOfDayTab({
   // Group into buckets
   type Bucket = { key: string; label: string; items: TileEvent[] };
   const buckets = useMemo<Bucket[]>(() => {
+    if (groupMode === 'type') {
+      const approvals: TileEvent[] = [];
+      const meetings: TileEvent[] = [];
+      for (const ev of filtered) {
+        if ((ev as any)._approval) approvals.push(ev); else meetings.push(ev);
+      }
+      return [
+        { key: 'type-approvals', label: 'Approval Queue', items: approvals },
+        { key: 'type-meetings', label: 'End of Day / Meetings', items: meetings },
+      ].filter(b => b.items.length > 0);
+    }
     const today: TileEvent[] = [];
     const yesterday: TileEvent[] = [];
     const week: TileEvent[] = [];
@@ -996,7 +1007,7 @@ export function EndOfDayTab({
       { key: 'month', label: '8–30 Days', items: month },
       { key: 'quarter', label: '31–90 Days', items: quarter },
     ].filter(b => b.items.length > 0);
-  }, [filtered]);
+  }, [filtered, groupMode]);
 
   // Flatten for keyboard nav (skipping collapsed groups)
   const flatList = useMemo(() => {
