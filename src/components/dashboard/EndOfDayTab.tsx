@@ -1258,24 +1258,6 @@ export function EndOfDayTab({
           />
         </div>
         <div className="flex flex-wrap items-center gap-1">
-          <button
-            type="button"
-            aria-pressed={hideInternal}
-            title="Hide meetings where every attendee has a @5thline.co email"
-            onClick={() => {
-              const next = !hideInternal;
-              setHideInternal(next);
-              writeLS(HIDE_INTERNAL_KEY, next);
-            }}
-            className={cn(
-              'h-6 px-2 rounded-full text-[10px] font-medium border transition-colors inline-flex items-center gap-1',
-              hideInternal
-                ? 'bg-primary/15 border-primary/40 text-primary'
-                : 'bg-white/[0.03] border-white/10 text-white/70 hover:text-white',
-            )}
-          >
-            External only
-          </button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -1294,6 +1276,18 @@ export function EndOfDayTab({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-48">
               <DropdownMenuLabel className="text-[10px]">Filter by</DropdownMenuLabel>
+              <DropdownMenuCheckboxItem
+                checked={hideInternal}
+                onSelect={(e) => e.preventDefault()}
+                onCheckedChange={() => {
+                  const next = !hideInternal;
+                  setHideInternal(next);
+                  writeLS(HIDE_INTERNAL_KEY, next);
+                }}
+                className="text-xs"
+              >
+                External only
+              </DropdownMenuCheckboxItem>
               {(['internal', 'deals', 'dismissed'] as FilterChip[]).map(chip => {
                 const label = chip === 'internal' ? 'Internal' : chip === 'deals' ? 'Deals' : 'Dismissed';
                 return (
