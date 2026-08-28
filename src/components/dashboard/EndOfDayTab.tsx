@@ -1276,6 +1276,18 @@ export function EndOfDayTab({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-48">
               <DropdownMenuLabel className="text-[10px]">Filter by</DropdownMenuLabel>
+              <DropdownMenuCheckboxItem
+                checked={hideInternal}
+                onSelect={(e) => e.preventDefault()}
+                onCheckedChange={() => {
+                  const next = !hideInternal;
+                  setHideInternal(next);
+                  writeLS(HIDE_INTERNAL_KEY, next);
+                }}
+                className="text-xs"
+              >
+                External only
+              </DropdownMenuCheckboxItem>
               {(['internal', 'deals', 'dismissed'] as FilterChip[]).map(chip => {
                 const label = chip === 'internal' ? 'Internal' : chip === 'deals' ? 'Deals' : 'Dismissed';
                 return (
