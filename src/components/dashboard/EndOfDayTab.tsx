@@ -548,7 +548,9 @@ export function EndOfDayTab({
   const outstandingEvents = useMemo<TileEvent[]>(() => {
     const now = new Date();
     const ws = startOfDay(subDays(now, EOD_LOOKBACK_DAYS));
-    const we = endOfDay(now);
+    // Only surface meetings that have already started — an event later today
+    // shouldn't appear in the queue until its start time passes.
+    const we = now;
     const ref = startOfDay(now);
     const normalizedEvents = (events || []).map(ev => {
       const start = safeParse(ev.start);
