@@ -2091,7 +2091,6 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
   const [activeTab, setActiveTab] = useState<string>(resolveInitialTab());
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
   const [, startTabTransition] = useTransition();
-  const [operationalView, setOperationalView] = useState<'operations' | 'mytasks'>('mytasks');
 
   // Render tab bodies immediately on open — the shell + sidebar + header
   // and the active tab's first paint must all happen on the same frame
