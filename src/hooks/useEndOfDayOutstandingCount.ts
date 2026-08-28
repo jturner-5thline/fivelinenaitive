@@ -98,7 +98,8 @@ export function useEndOfDayOutstandingCount(): number {
     if (!eligible || !userId) return 0;
     void tick;
     const ws = startOfDay(subDays(new Date(), EOD_LOOKBACK_DAYS));
-    const we = endOfDay(new Date());
+    // Exclude meetings that haven't started yet.
+    const we = new Date();
     const snoozeMap = userId
       ? readLS<Record<string, string>>(`${SNOOZE_KEY_PREFIX}:${userId}`, {})
       : {};
