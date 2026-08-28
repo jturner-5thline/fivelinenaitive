@@ -15,6 +15,7 @@ import { useAllActivities } from '@/hooks/useAllActivities';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLenderLabelResolver } from '@/hooks/useLenderLabelResolver';
 
 const LAST_READ_KEY = 'latest-updates-last-read-at';
 const READ_TYPE = 'latest_updates_cutoff';
