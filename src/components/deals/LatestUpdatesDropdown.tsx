@@ -63,12 +63,28 @@ export function LatestUpdatesDropdown() {
   const filteredActivities = activities.filter(a => 
     lenderUpdateTypes.includes(a.activity_type) || 
     a.description.toLowerCase().includes('milestone changed')
-  ).slice(0, 15);
+  ).slice(0, 50);
 
   const unreadActivities = filteredActivities.filter(a =>
     !lastReadAt || new Date(a.created_at) > new Date(lastReadAt)
   );
   const unreadCount = unreadActivities.length;
+
+  // Group updates by deal, newest deal activity first.
+  const dealGroups = (() => {
+    const map = new Map<string, { dealId: string; dealName: string; items: typeof filteredActivities }>();
+    filteredActivities.forEach((a) => {
+      const key = a.deal_id || 'unknown';
+      if (!map.has(key)) {
+        map.set(key, { dealId: a.deal_id, dealName: a.deal_name || 'Unknown deal', items: [] });
+      }
+      map.get(key)!.items.push(a);
+    });
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(b.items[0].created_at).getTime() - new Date(a.items[0].created_at).getTime(),
+    );
+  })();
+
 
   const handleMarkAllAsRead = useCallback(async () => {
     const now = new Date().toISOString();
