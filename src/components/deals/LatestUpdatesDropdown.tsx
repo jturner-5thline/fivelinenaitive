@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Clock, UserPlus, Trash2, ArrowRight, CheckCircle, CheckCheck } from 'lucide-react';
+import { Clock, UserPlus, Trash2, ArrowRight, CheckCircle, CheckCheck, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
