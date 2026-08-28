@@ -1288,11 +1288,11 @@ export function EndOfDayTab({
                     : 'bg-white/[0.03] border-white/10 text-white/70 hover:text-white',
                 )}
               >
-                Filters{filterChips.size > 0 ? ` (${filterChips.size})` : ''}
+                Actions{filterChips.size > 0 ? ` (${filterChips.size})` : ''}
                 <ChevronDown className="h-3 w-3" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-40">
+            <DropdownMenuContent align="start" className="w-48">
               <DropdownMenuLabel className="text-[10px]">Filter by</DropdownMenuLabel>
               {(['internal', 'deals', 'dismissed'] as FilterChip[]).map(chip => {
                 const label = chip === 'internal' ? 'Internal' : chip === 'deals' ? 'Deals' : 'Dismissed';
@@ -1313,16 +1313,30 @@ export function EndOfDayTab({
                 );
               })}
               {filterChips.size > 0 && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-xs justify-center"
-                    onSelect={() => setFilterChips(new Set())}
-                  >
-                    Clear filters
-                  </DropdownMenuItem>
-                </>
+                <DropdownMenuItem
+                  className="text-xs justify-center"
+                  onSelect={() => setFilterChips(new Set())}
+                >
+                  Clear filters
+                </DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px]">Group by</DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={groupMode}
+                onValueChange={(v) => {
+                  const next = v as GroupMode;
+                  setGroupMode(next);
+                  writeLS(GROUP_MODE_KEY, next);
+                }}
+              >
+                <DropdownMenuRadioItem value="day" className="text-xs" onSelect={(e) => e.preventDefault()}>
+                  Day (Yesterday, 2–7, 8–30)
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="type" className="text-xs" onSelect={(e) => e.preventDefault()}>
+                  Type (Approval / Meeting)
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
           <div className="ml-auto flex items-center gap-2">
