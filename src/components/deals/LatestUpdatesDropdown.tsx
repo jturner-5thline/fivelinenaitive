@@ -130,26 +130,25 @@ export function LatestUpdatesDropdown() {
             <Clock className="h-4 w-4 text-primary" />
             Latest Updates
             {unreadCount > 0 && (
-              <Badge variant="outline" className="ml-auto text-xs">
+              <Badge variant="outline" className="text-xs">
                 {unreadCount} new
               </Badge>
+            )}
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto mr-6 h-6 px-2 text-[11px] font-medium text-muted-foreground hover:text-teal-400 gap-1"
+                onClick={handleMarkAllAsRead}
+              >
+                <CheckCheck className="h-3 w-3" />
+                Mark all as read
+              </Button>
             )}
           </DialogTitle>
         </DialogHeader>
 
-        {unreadCount > 0 && (
-          <div className="px-4 py-2 border-b border-border/40">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-center text-xs text-muted-foreground hover:text-teal-400 gap-1.5"
-              onClick={handleMarkAllAsRead}
-            >
-              <CheckCheck className="h-3.5 w-3.5" />
-              Mark all as read
-            </Button>
-          </div>
-        )}
+
 
         {isLoading ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
