@@ -19,6 +19,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { LinkClaapRecordingPopover, type ClaapMatchCandidate } from './LinkClaapRecordingPopover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 
 
 function findNdaStageId(stages: Array<{ id: string; label: string }>): string {
