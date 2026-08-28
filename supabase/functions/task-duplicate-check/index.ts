@@ -183,7 +183,7 @@ Deno.serve(async (req) => {
       .eq("company_id", candidate.company_id)
       .neq("id", candidate.id)
       .is("archived_at", null)
-      .not("status", "in", "(complete,completed)")
+      .not("status", "in", "(complete,completed,done)")
       .or(linkFilters.join(","))
       .order("updated_at", { ascending: false })
       .limit(20);
