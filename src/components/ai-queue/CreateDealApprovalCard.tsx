@@ -246,17 +246,22 @@ export function CreateDealApprovalCard({ item }: Props) {
   return (
     <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
       <div className="rounded-md border border-white/[0.14] bg-white/[0.03] p-3">
-        <div className="group">
-          <div className="flex items-center gap-2 text-[13px] text-[#ecedf4]">
-            <Sparkles className="h-3.5 w-3.5 text-[#5ecdf5]" />
-            <span className="font-medium cursor-default">{item.title}</span>
-          </div>
-          {item.description ? (
-            <p className="mt-0 max-h-0 overflow-hidden opacity-0 text-xs text-[#ecedf4]/65 leading-relaxed transition-all duration-200 group-hover:mt-1.5 group-hover:max-h-40 group-hover:opacity-100">
-              {item.description}
-            </p>
-          ) : null}
-        </div>
+        <TooltipProvider delayDuration={150}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-2 text-[13px] text-[#ecedf4] w-fit">
+                <Sparkles className="h-3.5 w-3.5 text-[#5ecdf5]" />
+                <span className="font-medium cursor-default">{item.title}</span>
+              </div>
+            </TooltipTrigger>
+            {item.description ? (
+              <TooltipContent side="bottom" align="start" className="max-w-sm text-xs leading-relaxed">
+                {item.description}
+              </TooltipContent>
+            ) : null}
+          </Tooltip>
+        </TooltipProvider>
+
 
         <div className="mt-2.5 flex flex-wrap gap-3 text-[11px] text-[#ecedf4]/55">
           {source.event_title ? (
