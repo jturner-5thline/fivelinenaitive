@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuCheckboxItem, DropdownMenuSeparator,
+  DropdownMenuRadioGroup, DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
 import {
   Popover, PopoverContent, PopoverTrigger,
@@ -86,7 +87,9 @@ const COLLAPSED_GROUPS_KEY = 'eod:collapsed-groups';
 const UNDO_WINDOW_MS = 5000;
 const EVENTS_CACHE_KEY_PREFIX = 'eod:events-cache';
 const HIDE_INTERNAL_KEY = 'eod:hide-internal';
+const GROUP_MODE_KEY = 'eod:group-mode';
 
+type GroupMode = 'day' | 'type';
 
 type FilterChip = 'internal' | 'deals' | 'dismissed';
 
@@ -460,6 +463,11 @@ export function EndOfDayTab({
   const [hideInternal, setHideInternal] = useState<boolean>(() =>
     readLS<boolean>(HIDE_INTERNAL_KEY, true),
   );
+  const [groupMode, setGroupMode] = useState<GroupMode>(() =>
+    readLS<GroupMode>(GROUP_MODE_KEY, 'day'),
+  );
+
+
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -968,6 +976,17 @@ export function EndOfDayTab({
   // Group into buckets
   type Bucket = { key: string; label: string; items: TileEvent[] };
   const buckets = useMemo<Bucket[]>(() => {
+    if (groupMode === 'type') {
+      const approvals: TileEvent[] = [];
+      const meetings: TileEvent[] = [];
+      for (const ev of filtered) {
+        if ((ev as any)._approval) approvals.push(ev); else meetings.push(ev);
+      }
+      return [
+        { key: 'type-approvals', label: 'Approval Queue', items: approvals },
+        { key: 'type-meetings', label: 'End of Day / Meetings', items: meetings },
+      ].filter(b => b.items.length > 0);
+    }
     const today: TileEvent[] = [];
     const yesterday: TileEvent[] = [];
     const week: TileEvent[] = [];
@@ -988,7 +1007,7 @@ export function EndOfDayTab({
       { key: 'month', label: '8–30 Days', items: month },
       { key: 'quarter', label: '31–90 Days', items: quarter },
     ].filter(b => b.items.length > 0);
-  }, [filtered]);
+  }, [filtered, groupMode]);
 
   // Flatten for keyboard nav (skipping collapsed groups)
   const flatList = useMemo(() => {
@@ -1269,11 +1288,11 @@ export function EndOfDayTab({
                     : 'bg-white/[0.03] border-white/10 text-white/70 hover:text-white',
                 )}
               >
-                Filters{filterChips.size > 0 ? ` (${filterChips.size})` : ''}
+                Actions{filterChips.size > 0 ? ` (${filterChips.size})` : ''}
                 <ChevronDown className="h-3 w-3" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-40">
+            <DropdownMenuContent align="start" className="w-48">
               <DropdownMenuLabel className="text-[10px]">Filter by</DropdownMenuLabel>
               {(['internal', 'deals', 'dismissed'] as FilterChip[]).map(chip => {
                 const label = chip === 'internal' ? 'Internal' : chip === 'deals' ? 'Deals' : 'Dismissed';
@@ -1294,16 +1313,30 @@ export function EndOfDayTab({
                 );
               })}
               {filterChips.size > 0 && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-xs justify-center"
-                    onSelect={() => setFilterChips(new Set())}
-                  >
-                    Clear filters
-                  </DropdownMenuItem>
-                </>
+                <DropdownMenuItem
+                  className="text-xs justify-center"
+                  onSelect={() => setFilterChips(new Set())}
+                >
+                  Clear filters
+                </DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px]">Group by</DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={groupMode}
+                onValueChange={(v) => {
+                  const next = v as GroupMode;
+                  setGroupMode(next);
+                  writeLS(GROUP_MODE_KEY, next);
+                }}
+              >
+                <DropdownMenuRadioItem value="day" className="text-xs" onSelect={(e) => e.preventDefault()}>
+                  Day (Yesterday, 2–7, 8–30)
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="type" className="text-xs" onSelect={(e) => e.preventDefault()}>
+                  Type (Approval / Meeting)
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
           <div className="ml-auto flex items-center gap-2">
