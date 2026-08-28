@@ -266,7 +266,7 @@ export function CreateDealApprovalCard({ item }: Props) {
           </TooltipProvider>
 
           <Button variant="gradient" size="sm" className="shrink-0" onClick={() => setOpen(true)}>
-            Review &amp; Create Deal
+            Create Deal
           </Button>
         </div>
 
@@ -309,7 +309,7 @@ export function CreateDealApprovalCard({ item }: Props) {
       </div>
 
       <p className="text-[11px] text-[#ecedf4]/50">
-        Review the drafted fields. Click <span className="text-[#ecedf4]/80">Review &amp; Create Deal</span> to open the standard Create Deal form pre-filled from the call — you can edit any field before finalizing.
+        Review the drafted fields. Click <span className="text-[#ecedf4]/80">Create Deal</span> to open the standard Create Deal form pre-filled from the call — you can edit any field before finalizing.
       </p>
 
       <div className="rounded-md border border-white/[0.14] bg-white/[0.03] p-3 space-y-2">
