@@ -338,12 +338,8 @@ export function CreateDealApprovalCard({ item }: Props) {
           onLink={linkClaapCandidate}
         />
 
-        <Button
-          variant="gradient"
-          onClick={() => setOpen(true)}
-        >
-          Review &amp; Create Deal
-        </Button>
+
+
         {hasClaapMatch ? (
           <Button variant="outline" disabled={drafting} onClick={() => void draftFromClaap(true)}>
             {drafting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
