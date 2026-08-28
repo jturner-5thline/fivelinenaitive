@@ -2091,7 +2091,6 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
   const [activeTab, setActiveTab] = useState<string>(resolveInitialTab());
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
   const [, startTabTransition] = useTransition();
-  const [operationalView, setOperationalView] = useState<'operations' | 'mytasks'>('mytasks');
 
   // Render tab bodies immediately on open — the shell + sidebar + header
   // and the active tab's first paint must all happen on the same frame
@@ -2477,66 +2476,19 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                   )}
                   {contentReady && activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
                   {contentReady && activeTab === 'operational' && (
-                    canSeeOperationalFull ? (
-                      <div className="flex flex-col h-full min-h-0">
-                        <div className="flex items-center gap-1 p-1 mb-3 rounded-lg bg-white/[0.03] glass-border-softer self-start">
-                          <button
-                            type="button"
-                            onClick={() => setOperationalView('mytasks')}
-                            className={cn(
-                              'px-3 py-1.5 rounded-md text-xs font-medium transition-all',
-                              operationalView === 'mytasks'
-                                ? 'bg-white/[0.08] text-foreground shadow-sm'
-                                : 'text-muted-foreground hover:text-foreground',
-                            )}
-                          >
-                            My Tasks
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setOperationalView('operations')}
-                            className={cn(
-                              'px-3 py-1.5 rounded-md text-xs font-medium transition-all',
-                              operationalView === 'operations'
-                                ? 'bg-white/[0.08] text-foreground shadow-sm'
-                                : 'text-muted-foreground hover:text-foreground',
-                            )}
-                          >
-                            Operations
-                          </button>
+                    <Suspense
+                      fallback={
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Skeleton className="h-6 w-40" />
                         </div>
-                        <div className="flex-1 min-h-0">
-                          {operationalView === 'operations' ? (
-                            <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />
-                          ) : (
-                            <Suspense
-                              fallback={
-                                <div className="flex h-full w-full items-center justify-center">
-                                  <Skeleton className="h-6 w-40" />
-                                </div>
-                              }
-                            >
-                              <div className="h-full w-full overflow-hidden">
-                                <LazyTasksPage overlayMode />
-                              </div>
-                            </Suspense>
-                          )}
-                        </div>
+                      }
+                    >
+                      <div className="h-full w-full overflow-hidden">
+                        <LazyTasksPage overlayMode />
                       </div>
-                    ) : (
-                      <Suspense
-                        fallback={
-                          <div className="flex h-full w-full items-center justify-center">
-                            <Skeleton className="h-6 w-40" />
-                          </div>
-                        }
-                      >
-                        <div className="h-full w-full overflow-hidden">
-                          <LazyTasksPage overlayMode />
-                        </div>
-                      </Suspense>
-                    )
+                    </Suspense>
                   )}
+
                   </div>
                 </AddToDealCalendarProvider>
               </ScrollArea>
