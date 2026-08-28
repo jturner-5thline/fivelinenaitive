@@ -29,7 +29,7 @@ async function sendTaskAssignedEmail(params: {
 }) {
   try {
     const taskUrl = `https://fivelinenaitive.lovable.app/tasks?taskId=${params.taskId}&view=mine`;
-    await supabase.functions.invoke('send-transactional-email', {
+    await supabase.functions.invoke('send-app-email', {
       body: {
         templateName: 'task-assigned',
         recipientEmail: params.assigneeEmail,

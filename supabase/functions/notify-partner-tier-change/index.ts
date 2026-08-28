@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
 
   const emailResults = await Promise.allSettled(
     RECIPIENT_EMAILS.map((email) =>
-      admin.functions.invoke('send-transactional-email', {
+      admin.functions.invoke('send-app-email', {
         body: {
           templateName: 'partner-tier-changed',
           recipientEmail: email,

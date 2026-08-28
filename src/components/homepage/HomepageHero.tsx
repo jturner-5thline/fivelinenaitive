@@ -37,7 +37,7 @@ export const HomepageHero = () => {
     window.open(hubspotUrl, "_blank", "noopener,noreferrer");
     try {
       const submittedAt = new Date().toISOString();
-      const { error } = await supabase.functions.invoke("send-transactional-email", {
+      const { error } = await supabase.functions.invoke("send-app-email", {
         body: {
           templateName: "demo-request",
           recipientEmail: "ppina@5thline.co",

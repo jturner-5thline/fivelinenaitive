@@ -1,7 +1,5 @@
-import * as React from 'npm:react@18.3.1'
-import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { template as dailyBriefingTemplate } from '../_shared/transactional-email-templates/daily-briefing-ready.tsx'
+import { sendTemplateEmail } from '../_shared/transactional-email-templates/send-email.ts'
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,15 +8,6 @@ const corsHeaders = {
 };
 
 const TARGET_EMAIL = "jturner@5thline.co";
-const SITE_NAME = "naitive";
-const SENDER_DOMAIN = "notify.noreply.naitive.co";
-const FROM_DOMAIN = "noreply.naitive.co";
-
-function generateToken(): string {
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -53,120 +42,61 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const templateData = { name: "James", date: dateString };
-    const messageId = crypto.randomUUID();
     const idempotencyKey = `daily-briefing-${now.toISOString().slice(0, 10)}`;
 
-    // Check suppression
-    const { data: suppressed } = await supabase
-      .from('suppressed_emails')
-      .select('id')
-      .eq('email', TARGET_EMAIL.toLowerCase())
-      .maybeSingle();
-
-    if (suppressed) {
-      console.log('Daily briefing email suppressed for', TARGET_EMAIL);
-      return new Response(
-        JSON.stringify({ success: false, reason: 'email_suppressed' }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Get or create unsubscribe token
-    let unsubscribeToken: string;
-    const { data: existingToken } = await supabase
-      .from('email_unsubscribe_tokens')
-      .select('token, used_at')
-      .eq('email', TARGET_EMAIL.toLowerCase())
-      .maybeSingle();
-
-    if (existingToken && !existingToken.used_at) {
-      unsubscribeToken = existingToken.token;
-    } else if (!existingToken) {
-      unsubscribeToken = generateToken();
-      await supabase
-        .from('email_unsubscribe_tokens')
-        .upsert(
-          { token: unsubscribeToken, email: TARGET_EMAIL.toLowerCase() },
-          { onConflict: 'email', ignoreDuplicates: true }
-        );
-      const { data: storedToken } = await supabase
-        .from('email_unsubscribe_tokens')
-        .select('token')
-        .eq('email', TARGET_EMAIL.toLowerCase())
-        .maybeSingle();
-      unsubscribeToken = storedToken?.token || unsubscribeToken;
-    } else {
-      console.log('Unsubscribe token already used for', TARGET_EMAIL);
-      return new Response(
-        JSON.stringify({ success: false, reason: 'email_suppressed' }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Render the template
-    const html = await renderAsync(
-      React.createElement(dailyBriefingTemplate.component, templateData)
-    );
-    const plainText = await renderAsync(
-      React.createElement(dailyBriefingTemplate.component, templateData),
-      { plainText: true }
-    );
-
-    const resolvedSubject = typeof dailyBriefingTemplate.subject === 'function'
-      ? dailyBriefingTemplate.subject(templateData)
-      : dailyBriefingTemplate.subject;
-
-    // Log pending
-    await supabase.from('email_send_log').insert({
-      message_id: messageId,
-      template_name: 'daily-briefing-ready',
-      recipient_email: TARGET_EMAIL,
-      status: 'pending',
-    });
-
-    // Enqueue
-    const { error: enqueueError } = await supabase.rpc('enqueue_email', {
-      queue_name: 'transactional_emails',
-      payload: {
-        message_id: messageId,
-        to: TARGET_EMAIL,
-        from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
-        sender_domain: SENDER_DOMAIN,
-        subject: resolvedSubject,
-        html,
-        text: plainText,
-        purpose: 'transactional',
-        label: 'daily-briefing-ready',
-        idempotency_key: idempotencyKey,
-        unsubscribe_token: unsubscribeToken,
-        queued_at: new Date().toISOString(),
-      },
-    });
-
-    if (enqueueError) {
-      console.error('Failed to enqueue daily briefing email:', enqueueError);
-      await supabase.from('email_send_log').insert({
-        message_id: messageId,
+    const logSend = async (
+      status: 'sent' | 'suppressed' | 'failed',
+      errorMessage?: string,
+    ) => {
+      const { error } = await supabase.from('email_send_log').insert({
+        message_id: null,
         template_name: 'daily-briefing-ready',
         recipient_email: TARGET_EMAIL,
-        status: 'failed',
-        error_message: 'Failed to enqueue email',
+        status,
+        error_message: errorMessage ?? null,
       });
+      if (error) {
+        console.error('Failed to write email_send_log', {
+          code: error.code,
+          message: error.message,
+        });
+      }
+    };
+
+    try {
+      const result = await sendTemplateEmail('daily-briefing-ready', TARGET_EMAIL, {
+        templateData,
+        idempotencyKey,
+      });
+
+      if (!result.sent) {
+        await logSend('suppressed');
+        console.log('Daily briefing email suppressed for', TARGET_EMAIL);
+        return new Response(
+          JSON.stringify({ success: false, reason: 'email_suppressed' }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      await logSend('sent');
+      console.log(`[daily-briefing] Sent notification to ${TARGET_EMAIL}`);
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to enqueue email' }),
+        JSON.stringify({ success: true, date: dateString, sent: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await logSend('failed', message.slice(0, 1000));
+      console.error('Failed to send daily briefing email:', message);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Failed to send email' }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    console.log(`[daily-briefing] Enqueued notification to ${TARGET_EMAIL}`);
-    return new Response(
-      JSON.stringify({ success: true, date: dateString, queued: true }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
   } catch (err) {
     console.error("Error in send-daily-briefing:", err);
     return new Response(
-      JSON.stringify({ error: err.message }),
+      JSON.stringify({ error: (err as Error).message }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

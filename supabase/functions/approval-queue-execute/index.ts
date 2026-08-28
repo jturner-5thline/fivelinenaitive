@@ -78,7 +78,7 @@ async function notifyTaskAssignees(
         if (prof?.email) {
           try {
             const taskUrl = `https://fivelinenaitive.lovable.app/tasks?taskId=${t.id}&view=mine`;
-            await admin.functions.invoke('send-transactional-email', {
+            await admin.functions.invoke('send-app-email', {
               body: {
                 templateName: 'task-assigned',
                 recipientEmail: prof.email,

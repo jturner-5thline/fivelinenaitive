@@ -246,7 +246,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
     const stamp = Date.now();
     const results = await Promise.all(
       REVIEW_RECIPIENTS.map((recipient) =>
-        supabase.functions.invoke('send-transactional-email', {
+        supabase.functions.invoke('send-app-email', {
           body: {
             templateName: 'insights-report-ready',
             recipientEmail: recipient,

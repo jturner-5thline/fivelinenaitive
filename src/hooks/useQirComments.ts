@@ -233,9 +233,9 @@ export function useQirComments(reportKey: string) {
     for (const m of mentionedMembers) {
       if (!m.user_id || m.user_id === user.id) continue;
       // In-app: rely on notification_instances if admin can insert; otherwise skip silently.
-      // Email via send-transactional-email
+      // Email via send-app-email
       if (m.email) {
-        supabase.functions.invoke('send-transactional-email', {
+        supabase.functions.invoke('send-app-email', {
           body: {
             templateName: 'qir-mention',
             recipientEmail: m.email,
