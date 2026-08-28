@@ -69,6 +69,8 @@ export function useTaskDuplicateCandidates(taskId: string | null | undefined) {
     return () => { supabase.removeChannel(channel); };
   }, [taskId, qc]);
 
+  const DONE = new Set(['complete', 'completed', 'done']);
+
   // Hydrate compared task summaries (titles, etc.) for display
   const comparedIds = Array.from(new Set(rows.flatMap(r => [
     ...(r.compared_task_ids || []),
@@ -146,5 +148,14 @@ export function useTaskDuplicateCandidates(taskId: string | null | undefined) {
     onError: (e: any) => toast.error(e?.message || 'Failed to consolidate'),
   });
 
-  return { rows, comparedMap, isLoading, runCheck, decide, consolidate };
+  // Exclude candidates whose peer tasks are all completed — completed tasks are never duplicates.
+  const visibleRows = rows.filter(r => {
+    const peerIds = (r.compared_task_ids || []).filter(id => id !== taskId);
+    if (peerIds.length === 0) return true;
+    const hydrated = peerIds.map(id => comparedMap[id]).filter(Boolean) as CompareTaskRef[];
+    if (hydrated.length === 0) return true;
+    return hydrated.some(t => !DONE.has(String(t.status || '').toLowerCase()));
+  });
+
+  return { rows: visibleRows, comparedMap, isLoading, runCheck, decide, consolidate };
 }
