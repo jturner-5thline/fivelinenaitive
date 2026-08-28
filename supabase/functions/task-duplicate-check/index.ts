@@ -154,6 +154,18 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Completed tasks are never duplicate candidates — clear any stale pending rows.
+    const completedStatuses = ["complete", "completed", "done"];
+    if (completedStatuses.includes(String(candidate.status || "").toLowerCase())) {
+      await admin.from("task_duplicate_candidates")
+        .update({ status: "dismissed", review_action: "auto_completed", reviewed_at: new Date().toISOString() })
+        .eq("candidate_task_id", candidate.id)
+        .eq("status", "pending");
+      return new Response(JSON.stringify({ result: "skipped", reason: "task_completed" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // 2) Pull candidate tasks: same company, sharing at least one linked entity, open, not the same task.
     const linkFilters: string[] = [];
     if (candidate.deal_id) linkFilters.push(`deal_id.eq.${candidate.deal_id}`);
