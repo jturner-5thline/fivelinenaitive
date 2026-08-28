@@ -30,6 +30,8 @@ export function LatestUpdatesDropdown() {
     localStorage.getItem(LAST_READ_KEY)
   );
   const { activities, isLoading } = useAllActivities({ limit: 50 });
+  const { formatLenderActivity } = useLenderLabelResolver();
+  const [expandedDeals, setExpandedDeals] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!user) return;
