@@ -1225,7 +1225,7 @@ export function EndOfDayTab({
       'panel-pane',
     )}>
       {/* Toolbar */}
-      <div className="px-3 pt-3 pb-2 border-b border-white/[0.06] space-y-2">
+      <div className="px-3 pt-0 pb-2 border-b border-white/[0.06] space-y-2">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
