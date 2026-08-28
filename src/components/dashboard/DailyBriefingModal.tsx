@@ -2069,7 +2069,9 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
         return t;
       }).filter(t => {
         if (excludeTabs?.includes(t.value as any)) return false;
-        if (t.value === 'today' && !canSeeEndOfDay && !queueEnabled) return false;
+        // "Today" tab retired — its content lives in the unified Queue tab.
+        if (t.value === 'today') return false;
+
         if (t.value === 'unified_queue' && !canSeeEndOfDay && !queueEnabled) return false;
         if (t.value === 'dashboard' && !isFifthLine) return false;
         if (t.value === 'financial' && !canSeeFinancial) return false;
