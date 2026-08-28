@@ -183,29 +183,71 @@ export function LatestUpdatesDropdown() {
         ) : (
           <ScrollArea className="h-[60vh] max-h-[520px]">
             <div className="px-3 pt-3 pb-3 space-y-2">
-              {filteredActivities.map((activity) => {
-                const unread = isUnread(activity.created_at);
+              {dealGroups.map((group) => {
+                const groupUnread = group.items.filter((a) => isUnread(a.created_at)).length;
+                const expanded = !!expandedDeals[group.dealId];
                 return (
-                  <Link
-                    key={activity.id}
-                    to={`/deal/${activity.deal_id}`}
-                    onClick={() => setOpen(false)}
-                    className={`group flex items-start gap-3 py-3 px-3.5 cursor-pointer rounded-2xl border transition-all duration-200 bg-card/60 backdrop-blur-md border-border/40 shadow-sm hover:bg-card/80 hover:border-teal-400/30 hover:shadow-md ${unread ? 'border-teal-400/25 bg-card/75' : ''}`}
+                  <div
+                    key={group.dealId}
+                    className={`rounded-2xl border bg-card/60 backdrop-blur-md border-border/40 shadow-sm overflow-hidden ${groupUnread ? 'border-teal-400/25 bg-card/75' : ''}`}
                   >
-                    {unread && (
-                      <div className="mt-2 h-2 w-2 rounded-full bg-teal-400 shadow-[0_0_8px_hsl(var(--primary)/0.6)] shrink-0" />
-                    )}
-                    <div className="mt-0.5">{getIcon(activity.activity_type, activity.description)}</div>
-                    <div className="flex-1 min-w-0 text-left">
-                      {activity.deal_name && (
-                        <p className={`text-[13px] truncate text-foreground ${unread ? 'font-semibold' : 'font-medium'}`}>{activity.deal_name}</p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedDeals((prev) => ({ ...prev, [group.dealId]: !prev[group.dealId] }))
+                      }
+                      className="w-full flex items-center gap-2.5 py-3 px-3.5 text-left hover:bg-card/80 transition-colors"
+                    >
+                      <ChevronRight
+                        className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? 'rotate-90' : ''}`}
+                      />
+                      <span className="flex-1 min-w-0 truncate text-[13px] font-semibold text-foreground">
+                        {group.dealName}
+                      </span>
+                      {groupUnread > 0 && (
+                        <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-teal-400/40 text-teal-300">
+                          {groupUnread} new
+                        </Badge>
                       )}
-                      <span className={`block text-[13px] leading-snug text-muted-foreground mt-0.5 ${unread ? 'text-foreground/90' : ''}`}>{activity.description}</span>
-                      <p className="text-[11px] text-muted-foreground/70 mt-1.5 tracking-wide">
-                        {format(new Date(activity.created_at), 'MMM d, h:mm a')}
-                      </p>
-                    </div>
-                  </Link>
+                      <span className="text-[11px] text-muted-foreground/70 shrink-0">
+                        {group.items.length}
+                      </span>
+                    </button>
+
+                    {expanded && (
+                      <div className="px-2 pb-2 space-y-1.5">
+                        {group.items.map((activity) => {
+                          const unread = isUnread(activity.created_at);
+                          const description = formatLenderActivity({
+                            activityType: activity.activity_type,
+                            description: activity.description,
+                            metadata: activity.metadata,
+                          });
+                          return (
+                            <Link
+                              key={activity.id}
+                              to={`/deal/${activity.deal_id}`}
+                              onClick={() => setOpen(false)}
+                              className="group flex items-start gap-3 py-2.5 px-3 cursor-pointer rounded-xl border border-border/30 bg-card/40 hover:bg-card/70 hover:border-teal-400/30 transition-all duration-200"
+                            >
+                              {unread && (
+                                <div className="mt-2 h-2 w-2 rounded-full bg-teal-400 shadow-[0_0_8px_hsl(var(--primary)/0.6)] shrink-0" />
+                              )}
+                              <div className="mt-0.5">{getIcon(activity.activity_type, activity.description)}</div>
+                              <div className="flex-1 min-w-0 text-left">
+                                <span className={`block text-[13px] leading-snug text-muted-foreground ${unread ? 'text-foreground/90' : ''}`}>
+                                  {description}
+                                </span>
+                                <p className="text-[11px] text-muted-foreground/70 mt-1.5 tracking-wide">
+                                  {format(new Date(activity.created_at), 'MMM d, h:mm a')}
+                                </p>
+                              </div>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
