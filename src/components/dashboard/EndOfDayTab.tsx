@@ -1375,9 +1375,6 @@ export function EndOfDayTab({
                 Mark all as read ({unreadVisibleIds.length})
               </button>
             )}
-            <div className="text-[10px] text-muted-foreground/70">
-              {filtered.length} of {outstanding.length}
-            </div>
           </div>
         </div>
       </div>
