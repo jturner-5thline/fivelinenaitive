@@ -302,7 +302,7 @@ export function CreateDealApprovalCard({ item }: Props) {
       <div className="rounded-md border border-white/[0.14] bg-white/[0.03] divide-y divide-white/[0.08]">
         {rows.map((r) => (
           <div key={r.label} className="grid grid-cols-[140px_1fr] gap-3 px-3 py-2 text-xs">
-            <div className="text-[#ecedf4]/55 uppercase tracking-wide text-[10px] pt-0.5">{r.label}</div>
+            <div className="text-[#ffffff] uppercase tracking-wide text-[10px] pt-0.5">{r.label}</div>
             <div className="text-[#ecedf4]/90 whitespace-pre-wrap break-words">{r.value}</div>
           </div>
         ))}
