@@ -161,12 +161,12 @@ export function EmailQuickActionsToolbar({
 
   return (
     <div className="space-y-2">
-      {/* 2-column quick-action grid. Cohesive cards — subtle elevated
+      {/* Single-column stacked quick-action list. Cohesive cards — subtle elevated
           surface, 1px hairline border, accent-colored icon at 70%, label
           at 90% foreground. Single AIAssistActionButton component drives
           every cell so spacing, height, radius, and states stay uniform. */}
       <div
-        className="grid grid-cols-2 gap-2"
+        className="grid grid-cols-1 gap-1.5"
         role="toolbar"
         aria-label="Email quick actions"
       >

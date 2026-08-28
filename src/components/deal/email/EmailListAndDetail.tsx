@@ -3014,7 +3014,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           className="relative grid h-full min-w-0 w-full max-w-full overflow-hidden bg-transparent transition-[grid-template-columns] duration-200 ease-out"
         style={{
           gridTemplateColumns: renderAiAssistColumn && !stackAiAssist
-            ? 'minmax(360px,1fr) minmax(280px,min(360px,30vw))'
+            ? 'minmax(360px,1fr) minmax(216px,min(268px,24vw))'
             : 'minmax(0,1fr)',
           gridTemplateRows: renderAiAssistColumn && stackAiAssist ? 'minmax(0,1fr) auto' : undefined,
         }}
