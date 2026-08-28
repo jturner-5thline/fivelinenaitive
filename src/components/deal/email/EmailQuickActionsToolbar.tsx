@@ -436,9 +436,9 @@ const AIAssistActionButton = forwardRef<HTMLButtonElement, AIAssistActionButtonP
       {...props}
       className={cn(
         // Layout — equal-height 2-col grid cell, icon + label left-aligned
-        'group inline-flex w-full items-center gap-2 h-10 px-3 py-2 rounded-lg text-left',
+        'group inline-flex w-full items-center gap-1.5 h-9 px-2.5 py-1.5 rounded-lg text-left',
         // Typography
-        'text-sm font-medium leading-none',
+        'text-[11px] font-medium leading-none',
         // Default surface — subtle elevation over the inbox surface
         'border border-white/10 bg-white/[0.03]',
         'text-foreground/90 transition-colors duration-150',
