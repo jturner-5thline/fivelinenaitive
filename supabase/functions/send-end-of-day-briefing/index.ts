@@ -1,7 +1,5 @@
-import * as React from 'npm:react@18.3.1'
-import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { template as eodTemplate } from '../_shared/transactional-email-templates/end-of-day-briefing-ready.tsx'
+import { sendTemplateEmail } from '../_shared/transactional-email-templates/send-email.ts'
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,22 +7,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 }
 
-const SITE_NAME = "naitive"
-const SENDER_DOMAIN = "notify.noreply.naitive.co"
-const FROM_DOMAIN = "noreply.naitive.co"
-
 const ELIGIBLE_EMAILS = [
   'jturner@5thline.co',
   'nheikali@5thline.co',
   'ppina@5thline.co',
   'ffustinoni@5thline.co',
 ]
-
-function generateToken(): string {
-  const bytes = new Uint8Array(32)
-  crypto.getRandomValues(bytes)
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
-}
 
 // Returns { dateStr (YYYY-MM-DD), hour (0-23), weekday (0=Sun..6=Sat) } for the given timezone.
 function localParts(now: Date, tz: string) {
@@ -105,17 +93,6 @@ Deno.serve(async (req) => {
         continue
       }
 
-      // Suppression check.
-      const { data: suppressed } = await supabase
-        .from('suppressed_emails')
-        .select('id')
-        .eq('email', email)
-        .maybeSingle()
-      if (suppressed) {
-        results.push({ email, outcome: 'skip', reason: 'suppressed' })
-        continue
-      }
-
       // Reserve the slot first to prevent double-send across overlapping cron runs.
       const nowIso = new Date().toISOString()
       const { error: reserveErr } = await supabase
@@ -127,36 +104,6 @@ Deno.serve(async (req) => {
         continue
       }
 
-      // Unsubscribe token.
-      let unsubscribeToken = ''
-      const { data: existingToken } = await supabase
-        .from('email_unsubscribe_tokens')
-        .select('token, used_at')
-        .eq('email', email)
-        .maybeSingle()
-      if (existingToken?.used_at) {
-        results.push({ email, outcome: 'skip', reason: 'unsubscribed' })
-        continue
-      }
-      if (existingToken?.token) {
-        unsubscribeToken = existingToken.token
-      } else {
-        unsubscribeToken = generateToken()
-        await supabase
-          .from('email_unsubscribe_tokens')
-          .upsert(
-            { token: unsubscribeToken, email },
-            { onConflict: 'email', ignoreDuplicates: true },
-          )
-        const { data: stored } = await supabase
-          .from('email_unsubscribe_tokens')
-          .select('token')
-          .eq('email', email)
-          .maybeSingle()
-        unsubscribeToken = stored?.token || unsubscribeToken
-      }
-
-      // Render + enqueue.
       const dateLabel = new Intl.DateTimeFormat('en-US', {
         timeZone: tz, weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
       }).format(now)
@@ -165,59 +112,45 @@ Deno.serve(async (req) => {
         (p.full_name ? String(p.full_name).split(' ')[0] : null) ||
         null
       const templateData = { name: firstName ?? undefined, date: dateLabel }
-
-      const html = await renderAsync(
-        React.createElement(eodTemplate.component, templateData),
-      )
-      const plainText = await renderAsync(
-        React.createElement(eodTemplate.component, templateData),
-        { plainText: true },
-      )
-      const subject = typeof eodTemplate.subject === 'function'
-        ? eodTemplate.subject(templateData)
-        : eodTemplate.subject
-
-      const messageId = crypto.randomUUID()
       const idempotencyKey = `eod-briefing-${email}-${dateStr}`
 
-      await supabase.from('email_send_log').insert({
-        message_id: messageId,
-        template_name: 'end-of-day-briefing-ready',
-        recipient_email: email,
-        status: 'pending',
-      })
-
-      const { error: enqueueError } = await supabase.rpc('enqueue_email', {
-        queue_name: 'transactional_emails',
-        payload: {
-          message_id: messageId,
-          to: email,
-          from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
-          sender_domain: SENDER_DOMAIN,
-          subject,
-          html,
-          text: plainText,
-          purpose: 'transactional',
-          label: 'end-of-day-briefing-ready',
-          idempotency_key: idempotencyKey,
-          unsubscribe_token: unsubscribeToken,
-          queued_at: new Date().toISOString(),
-        },
-      })
-
-      if (enqueueError) {
-        await supabase.from('email_send_log').insert({
-          message_id: messageId,
+      const logSend = async (
+        status: 'sent' | 'suppressed' | 'failed',
+        errorMessage?: string,
+      ) => {
+        const { error } = await supabase.from('email_send_log').insert({
+          message_id: null,
           template_name: 'end-of-day-briefing-ready',
           recipient_email: email,
-          status: 'failed',
-          error_message: 'Failed to enqueue email',
+          status,
+          error_message: errorMessage ?? null,
         })
-        results.push({ email, outcome: 'error', reason: 'enqueue_failed' })
-        continue
+        if (error) {
+          console.error('Failed to write email_send_log', {
+            code: error.code,
+            message: error.message,
+          })
+        }
       }
 
-      results.push({ email, outcome: 'queued' })
+      try {
+        const result = await sendTemplateEmail('end-of-day-briefing-ready', email, {
+          templateData,
+          idempotencyKey,
+        })
+        if (!result.sent) {
+          await logSend('suppressed')
+          results.push({ email, outcome: 'skip', reason: 'suppressed' })
+          continue
+        }
+        await logSend('sent')
+        results.push({ email, outcome: 'sent' })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        await logSend('failed', message.slice(0, 1000))
+        console.error('Failed to send end-of-day briefing', { error: message })
+        results.push({ email, outcome: 'error', reason: 'send_failed' })
+      }
     }
 
     return new Response(JSON.stringify({ success: true, results }), {

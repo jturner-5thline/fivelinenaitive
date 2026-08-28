@@ -59,7 +59,7 @@ export const ContactUsDialog = ({ children }: ContactUsDialogProps) => {
     setIsSubmitting(true);
     try {
       const submittedAt = new Date().toISOString();
-      const { error } = await supabase.functions.invoke("send-transactional-email", {
+      const { error } = await supabase.functions.invoke("send-app-email", {
         body: {
           templateName: "contact-us-request",
           recipientEmail: "support@naitive.co",

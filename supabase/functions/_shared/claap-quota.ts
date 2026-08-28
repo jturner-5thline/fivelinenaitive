@@ -152,7 +152,7 @@ async function maybeSendQuotaAlert(kind: "threshold" | "rate_limited"): Promise<
       .select("usage_date");
     if (!claimed || claimed.length === 0) return;
 
-    await db.functions.invoke("send-transactional-email", {
+    await db.functions.invoke("send-app-email", {
       body: {
         templateName: "claap-quota-alert",
         recipientEmail: ALERT_RECIPIENT,

@@ -288,7 +288,7 @@ const handler = async (req: Request): Promise<Response> => {
         let sendErr: string | null = null;
         console.log("[create-demo-access] attempting demo-invite send", email);
         try {
-          const { data: txData, error: txErr } = await admin.functions.invoke("send-transactional-email", {
+          const { data: txData, error: txErr } = await admin.functions.invoke("send-app-email", {
             headers: { Authorization: authHeader },
             body: {
               templateName: "demo-invite",

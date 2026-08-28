@@ -93,7 +93,7 @@ serve(async (req) => {
           for (const p of profiles ?? []) {
             if (!p.email) continue;
             try {
-              await admin.functions.invoke("send-transactional-email", {
+              await admin.functions.invoke("send-app-email", {
                 body: {
                   templateName: "demo-trial-warning",
                   recipientEmail: p.email,

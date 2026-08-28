@@ -110,7 +110,7 @@ serve(async (req: Request): Promise<Response> => {
       const loginUrl = `${PLATFORM_URL}/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(demoPassword)}&demo=1&redirect=${encodeURIComponent("/deals")}`;
 
       try {
-        const { error: txErr } = await admin.functions.invoke("send-transactional-email", {
+        const { error: txErr } = await admin.functions.invoke("send-app-email", {
           headers: { Authorization: authHeader },
           body: {
             templateName: "demo-invite",

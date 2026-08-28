@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
         const dueLabel = new Date(dueDate + "T00:00:00").toLocaleDateString("en-US", {
           month: "long", day: "numeric", year: "numeric",
         });
-        const { error: emailErr } = await admin.functions.invoke("send-transactional-email", {
+        const { error: emailErr } = await admin.functions.invoke("send-app-email", {
           body: {
             templateName: "task-assigned",
             recipientEmail: ownerEmail,
@@ -379,7 +379,7 @@ async function scanNylasForInternalUsers(
             const dueLabel = new Date(dueDate + "T00:00:00").toLocaleDateString("en-US", {
               month: "long", day: "numeric", year: "numeric",
             });
-            const { error: emailErr } = await admin.functions.invoke("send-transactional-email", {
+            const { error: emailErr } = await admin.functions.invoke("send-app-email", {
               body: {
                 templateName: "task-assigned",
                 recipientEmail: ownerEmail,
