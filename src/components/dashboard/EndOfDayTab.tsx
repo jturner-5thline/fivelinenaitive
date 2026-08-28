@@ -1554,7 +1554,7 @@ export function EndOfDayTab({
     <TooltipProvider delayDuration={200}>
       <div
         ref={containerRef}
-        className="panel-shell !border-0 flex h-full min-h-0 gap-2 p-1.5"
+        className="panel-shell !border-0 flex h-full min-h-0 gap-2 px-0 pt-0 pb-1.5"
       >
         {isNarrow ? (
           <div className="flex-1 min-w-0">
