@@ -463,6 +463,11 @@ export function EndOfDayTab({
   const [hideInternal, setHideInternal] = useState<boolean>(() =>
     readLS<boolean>(HIDE_INTERNAL_KEY, true),
   );
+  const [groupMode, setGroupMode] = useState<GroupMode>(() =>
+    readLS<GroupMode>(GROUP_MODE_KEY, 'day'),
+  );
+
+
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
