@@ -384,7 +384,7 @@ export default function LenderDatabaseConfig() {
       }
     }
     setIndustries(merged.length > 0 ? merged : defaultIndustries);
-    setLoanTypes(savedLoanTypes ? JSON.parse(savedLoanTypes) : defaultLoanTypes);
+    setLoanTypes(sanitizeLoanTypes(savedLoanTypes ? JSON.parse(savedLoanTypes) : defaultLoanTypes));
     setGeographies(savedGeographies ? JSON.parse(savedGeographies) : defaultGeographies);
     setTileDisplaySettings(savedTileSettings ? JSON.parse(savedTileSettings) : DEFAULT_TILE_DISPLAY_SETTINGS);
   }, []);
