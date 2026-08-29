@@ -29,7 +29,6 @@ export const INDUSTRY_OPTIONS = [
   'Metals & Mining',
   'Mining & Commodities',
   'Oil & Gas',
-  'Oil and Gas',
   'Real Estate',
   'SaaS',
   'Tech-Enabled Hardware',
