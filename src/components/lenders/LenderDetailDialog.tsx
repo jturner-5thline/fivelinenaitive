@@ -352,6 +352,8 @@ function EditableDealTile({
   formatCurrency: (value: number) => string;
   variant?: 'active' | 'sent';
 }) {
+  const { resolveStage } = useLenderLabelResolver();
+  const stageLabel = resolveStage(deal.stage);
   const [isEditing, setIsEditing] = useState(false);
   const [editStage, setEditStage] = useState(deal.stage);
   const [editNotes, setEditNotes] = useState(deal.notes);
