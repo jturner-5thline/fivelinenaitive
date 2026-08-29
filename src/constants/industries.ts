@@ -221,7 +221,7 @@ export const INDUSTRY_OPTIONS = [
   'Other Equipment',
   'Other Financial Services',
   'Other Forestry',
-  'Other Hardware',
+  
   'Other Healthcare',
   'Other Healthcare Services',
   'Other Healthcare Technology Systems',
