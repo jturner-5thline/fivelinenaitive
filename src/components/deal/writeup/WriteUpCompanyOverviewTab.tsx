@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 
-import { INDUSTRY_OPTIONS } from '@/constants/industries';
+import { getIndustryOptions, useIndustryOptionsList } from '@/lib/industryOptions';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -230,7 +230,7 @@ export function WriteUpCompanyOverviewTab({ dealId, data, updateField, onChange,
 
 
   // Fixed industry options
-  const industryOptions = INDUSTRY_OPTIONS as unknown as string[];
+  const industryOptions = useIndustryOptionsList();
 
   // Get display labels for selected deal types (which are stored as IDs)
   const getSelectedDealTypeLabels = () => {

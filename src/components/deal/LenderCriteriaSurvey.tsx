@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { INDUSTRY_OPTIONS } from '@/constants/industries';
+import { getIndustryOptions, useIndustryOptionsList } from '@/lib/industryOptions';
 import { Check, Flame, Building2, ArrowRight, RotateCcw, Loader2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -86,7 +86,7 @@ export function LenderCriteriaSurvey({ dealId, initialCriteria, onComplete, onSk
   const [answers, setAnswers] = useState<Record<string, string | boolean>>({});
 
   // Fixed industry options
-  const industryOptions = INDUSTRY_OPTIONS as unknown as string[];
+  const industryOptions = useIndustryOptionsList();
 
   // Initialize answers from saved criteria when loaded
   useEffect(() => {

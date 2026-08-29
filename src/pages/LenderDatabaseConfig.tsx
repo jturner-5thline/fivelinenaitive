@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
+import { getRemovedIndustries, addRemovedIndustry, unremoveIndustry, notifyIndustryOptionsChanged, INDUSTRIES_REMOVED_STORAGE_KEY } from '@/lib/industryOptions';
 import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
@@ -394,20 +395,26 @@ export default function LenderDatabaseConfig() {
     const savedTileSettings = localStorage.getItem(TILE_DISPLAY_STORAGE_KEY);
 
     setLenderTypes(sanitizeLenderTypes(savedLenderTypes ? JSON.parse(savedLenderTypes) : defaultLenderTypes));
-    // Always use the canonical INDUSTRY_OPTIONS list as default; migrate old saved data
+    // Always use the canonical INDUSTRY_OPTIONS list as default; migrate old saved data.
+    // Anything the user explicitly removed stays removed permanently.
     const RETIRED_INDUSTRIES = new Set(['business services', 'oil and gas', 'technology & software', 'hardware', 'other hardware', 'media & telecommunication']);
+    const removed = getRemovedIndustries();
+    const isDropped = (v: string) => {
+      const k = (v || '').trim().toLowerCase();
+      return !k || RETIRED_INDUSTRIES.has(k) || removed.has(k);
+    };
     const parsedIndustries: ConfigItem[] = (savedIndustries ? JSON.parse(savedIndustries) : []).filter(
-      (i: ConfigItem) => !RETIRED_INDUSTRIES.has((i.value || '').trim().toLowerCase()),
+      (i: ConfigItem) => !isDropped(i.value),
     );
-    const savedValues = new Set(parsedIndustries.map((i: ConfigItem) => i.value));
+    const savedValues = new Set(parsedIndustries.map((i: ConfigItem) => (i.value || '').trim().toLowerCase()));
     const merged = [...parsedIndustries];
     let nextId = parsedIndustries.length + 1;
     for (const opt of INDUSTRY_OPTIONS) {
-      if (!savedValues.has(opt)) {
+      if (!savedValues.has(opt.trim().toLowerCase()) && !isDropped(opt)) {
         merged.push({ id: String(nextId++), value: opt, isDefault: true });
       }
     }
-    setIndustries(merged.length > 0 ? merged : defaultIndustries);
+    setIndustries(merged);
     setLoanTypes(sanitizeLoanTypes(savedLoanTypes ? JSON.parse(savedLoanTypes) : defaultLoanTypes));
     setGeographies(savedGeographies ? JSON.parse(savedGeographies) : defaultGeographies);
     setTileDisplaySettings(savedTileSettings ? JSON.parse(savedTileSettings) : DEFAULT_TILE_DISPLAY_SETTINGS);
@@ -419,6 +426,7 @@ export default function LenderDatabaseConfig() {
     try {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}lender-types`, JSON.stringify(sanitizeLenderTypes(lenderTypes)));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}industries`, JSON.stringify(industries));
+      notifyIndustryOptionsChanged();
       localStorage.setItem(`${STORAGE_KEY_PREFIX}loan-types`, JSON.stringify(sanitizeLoanTypes(loanTypes)));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}geographies`, JSON.stringify(geographies));
       localStorage.setItem(TILE_DISPLAY_STORAGE_KEY, JSON.stringify(tileDisplaySettings));
@@ -441,6 +449,7 @@ export default function LenderDatabaseConfig() {
     
     localStorage.removeItem(`${STORAGE_KEY_PREFIX}lender-types`);
     localStorage.removeItem(`${STORAGE_KEY_PREFIX}industries`);
+    localStorage.removeItem(INDUSTRIES_REMOVED_STORAGE_KEY);
     localStorage.removeItem(`${STORAGE_KEY_PREFIX}loan-types`);
     localStorage.removeItem(`${STORAGE_KEY_PREFIX}geographies`);
     localStorage.removeItem(TILE_DISPLAY_STORAGE_KEY);
@@ -474,7 +483,32 @@ export default function LenderDatabaseConfig() {
   });
 
   const lenderTypesHelpers = createHelpers(lenderTypes, setLenderTypes);
-  const industriesHelpers = createHelpers(industries, setIndustries);
+  const baseIndustriesHelpers = createHelpers(industries, setIndustries);
+  // Industry removals are permanent: record them so canonical defaults are never
+  // re-merged back into the list on the next load.
+  const industriesHelpers = {
+    add: (value: string) => {
+      unremoveIndustry(value);
+      baseIndustriesHelpers.add(value);
+    },
+    update: (id: string, value: string) => {
+      const previous = industries.find(i => i.id === id)?.value;
+      if (previous && previous.trim().toLowerCase() !== value.trim().toLowerCase()) {
+        addRemovedIndustry(previous);
+      }
+      unremoveIndustry(value);
+      baseIndustriesHelpers.update(id, value);
+    },
+    remove: (id: string) => {
+      const target = industries.find(i => i.id === id);
+      if (target?.value) addRemovedIndustry(target.value);
+      const next = industries.filter(i => i.id !== id);
+      setIndustries(next);
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}industries`, JSON.stringify(next));
+      notifyIndustryOptionsChanged();
+      toast({ title: 'Removed', description: 'Industry removed permanently.' });
+    },
+  };
   const loanTypesHelpers = createHelpers(loanTypes, setLoanTypes);
   const geographiesHelpers = createHelpers(geographies, setGeographies);
 

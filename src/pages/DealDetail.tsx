@@ -31,7 +31,7 @@ import {
   type DealOriginLocationState,
   type DealOriginReturnState,
 } from '@/lib/dealOriginContext';
-import { INDUSTRY_OPTIONS } from '@/constants/industries';
+import { getIndustryOptions, useIndustryOptionsList } from '@/lib/industryOptions';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, rectSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
@@ -4467,7 +4467,7 @@ export default function DealDetail() {
                                     <Select value={deal.businessModel || ''} onValueChange={(value) => updateDeal('businessModel', value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select industry..." /></SelectTrigger>
                                       <SelectContent>
-                                        {INDUSTRY_OPTIONS.map((industry) => (
+                                        {getIndustryOptions().map((industry) => (
                                           <SelectItem key={industry} value={industry}>{industry}</SelectItem>
                                         ))}
                                       </SelectContent>

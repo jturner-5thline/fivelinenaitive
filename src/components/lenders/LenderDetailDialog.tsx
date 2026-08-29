@@ -41,7 +41,7 @@ import { LenderSectionReorderDialog } from './LenderSectionReorderDialog';
 import { AddLenderContactDialog } from './AddLenderContactDialog';
 import { LenderContactsList } from './LenderContactsList';
 import { cn } from '@/lib/utils';
-import { INDUSTRY_OPTIONS } from '@/constants/industries';
+import { getIndustryOptions, useIndustryOptionsList } from '@/lib/industryOptions';
 import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
 import { GEO_OPTIONS } from '@/constants/geoOptions';
@@ -1274,8 +1274,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           </div>
                           <div className="space-y-0.5 max-h-[300px] overflow-y-auto overscroll-contain pr-1" onWheel={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()}>
                             {(industrySearchEdit
-                              ? INDUSTRY_OPTIONS.filter(o => o.toLowerCase().includes(industrySearchEdit.toLowerCase()))
-                              : INDUSTRY_OPTIONS
+                              ? getIndustryOptions().filter(o => o.toLowerCase().includes(industrySearchEdit.toLowerCase()))
+                              : getIndustryOptions()
                             ).map((industry) => {
                               const current = editForm.industries ? editForm.industries.split(',').map(t => t.trim()).filter(Boolean) : [];
                               const isSelected = current.includes(industry);
