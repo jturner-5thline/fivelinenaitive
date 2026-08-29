@@ -100,7 +100,6 @@ const defaultLoanTypes: ConfigItem[] = [
   { id: '3', value: 'ABL', isDefault: true },
   { id: '4', value: 'Mezzanine', isDefault: true },
   { id: '5', value: 'Unitranche', isDefault: true },
-  { id: '6', value: 'Venture Debt', isDefault: true },
   { id: '7', value: 'Revenue-Based Financing', isDefault: true },
   { id: '8', value: 'Equipment Financing', isDefault: true },
   { id: '9', value: 'Factoring', isDefault: true },
