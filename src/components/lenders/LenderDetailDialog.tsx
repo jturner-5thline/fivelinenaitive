@@ -713,7 +713,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
             lenderId: dealLender.id,
             notes: dealLender.notes || '',
           });
-        } else if (dealLender.trackingStatus === 'active') {
+        } else {
           active.push({
             dealId: deal.id,
             dealName: deal.name,
