@@ -4,6 +4,8 @@ export const LOAN_TYPE_OPTIONS = [
   'AR Inventory',
   'Bridge Financing',
   'CAPEX',
+  'Convertible Note',
+  'Delayed Draw',
   'Equipment Financing',
   'Factoring',
   'Full ABL',
