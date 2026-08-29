@@ -96,7 +96,6 @@ const defaultIndustries: ConfigItem[] = INDUSTRY_OPTIONS.map((value, idx) => ({
 
 const defaultLoanTypes: ConfigItem[] = [
   { id: '1', value: 'Term Loan', isDefault: true },
-  { id: '2', value: 'Revolving Credit', isDefault: true },
   { id: '3', value: 'ABL', isDefault: true },
   { id: '7', value: 'Revenue-Based Financing', isDefault: true },
   { id: '8', value: 'Equipment Financing', isDefault: true },
