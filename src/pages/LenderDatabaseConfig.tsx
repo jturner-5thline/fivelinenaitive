@@ -395,7 +395,7 @@ export default function LenderDatabaseConfig() {
     try {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}lender-types`, JSON.stringify(lenderTypes));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}industries`, JSON.stringify(industries));
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}loan-types`, JSON.stringify(loanTypes));
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}loan-types`, JSON.stringify(sanitizeLoanTypes(loanTypes)));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}geographies`, JSON.stringify(geographies));
       localStorage.setItem(TILE_DISPLAY_STORAGE_KEY, JSON.stringify(tileDisplaySettings));
       
