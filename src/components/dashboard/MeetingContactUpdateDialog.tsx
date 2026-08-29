@@ -7,6 +7,8 @@ import { Loader2, UserPlus, Search, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { AddToNurturingButton } from '@/components/contacts/AddToNurturingButton';
+import { TemplateEmailDialog } from '@/components/email/TemplateEmailDialog';
+
 import { useCompany } from '@/hooks/useCompany';
 
 
@@ -55,6 +57,8 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
 
   const [createOpen, setCreateOpen] = useState(false);
   const [nurtureEmailOpen, setNurtureEmailOpen] = useState(false);
+  const [nurtureEmail, setNurtureEmail] = useState<{ to: string; label: string; firstName: string } | null>(null);
+
   const [editContact, setEditContact] = useState<any | null>(null);
 
   const candidates = useMemo(() => {
@@ -198,7 +202,9 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
                             <AddToNurturingButton
                               contact={m}
                               onEmailFlowChange={(o) => { setNurtureEmailOpen(o); if (!o) onOpenChange(false); }}
+                              onRequestEmail={(info) => setNurtureEmail(info)}
                             />
+
                           </div>
                         </div>
                       );
@@ -240,6 +246,16 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
         onSaveSuccess={() => onOpenChange(false)}
         onCreated={() => { setCreateOpen(false); onOpenChange(false); }}
       />
+
+      {/* Follow-up email lives outside the (now closed) dialog so it stays mounted */}
+      <TemplateEmailDialog
+        open={!!nurtureEmail}
+        onClose={() => { setNurtureEmail(null); setNurtureEmailOpen(false); onOpenChange(false); }}
+        defaults={nurtureEmail ? { to: [nurtureEmail.to], label: nurtureEmail.label } : null}
+        tokens={{ recipient_name: nurtureEmail?.label || '', first_name: nurtureEmail?.firstName || '' }}
+        title={`Email ${nurtureEmail?.label || 'contact'}`}
+      />
     </>
+
   );
 }

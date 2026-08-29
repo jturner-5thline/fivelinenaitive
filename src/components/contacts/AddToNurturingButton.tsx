@@ -18,7 +18,13 @@ interface AddToNurturingButtonProps {
   contact: any;
   /** Notifies the parent when the follow-up email dialog opens/closes. */
   onEmailFlowChange?: (open: boolean) => void;
+  /**
+   * When provided, the parent owns the follow-up email dialog. Required when
+   * this button lives inside a dialog that unmounts while the email flow runs.
+   */
+  onRequestEmail?: (info: { to: string; label: string; firstName: string }) => void;
 }
+
 
 function contactDisplayName(contact: any): string {
   const name = [contact?.first_name, contact?.last_name].filter(Boolean).join(' ').trim();
@@ -30,7 +36,7 @@ function contactDisplayName(contact: any): string {
  * referral source. Tags the contact "Referral Source" and seeds them into the
  * Nurturing column of the Referral Source Pipeline (Sales & BD).
  */
-export function AddToNurturingButton({ contact, onEmailFlowChange }: AddToNurturingButtonProps) {
+export function AddToNurturingButton({ contact, onEmailFlowChange, onRequestEmail }: AddToNurturingButtonProps) {
   const { user } = useAuth();
   const { company } = useCompany();
   const queryClient = useQueryClient();
@@ -93,7 +99,14 @@ export function AddToNurturingButton({ contact, onEmailFlowChange }: AddToNurtur
       queryClient.invalidateQueries({ queryKey: ['deal-referral-sources'] });
       queryClient.invalidateQueries({ queryKey: ['referral-source-for-contact', contact.id] });
       toast.success('Added to Nurturing and tagged as a Referral Source');
-      if (contact?.email) setEmailOpen(true);
+      if (contact?.email) {
+        if (onRequestEmail) {
+          onRequestEmail({ to: contact.email, label: name, firstName: contact?.first_name || '' });
+        } else {
+          setEmailOpen(true);
+        }
+      }
+
     } catch (e: any) {
       toast.error(e?.message || 'Failed to add to Nurturing');
       onEmailFlowChange?.(false);
