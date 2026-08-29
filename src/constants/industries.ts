@@ -276,7 +276,6 @@ export const INDUSTRY_OPTIONS = [
   'Services (Non-Financial)',
   'Social Content',
   'Social/Platform Software',
-  'Software',
   'Software Development Applications',
   'Special Purpose Acquisition Company (SPAC)',
   'Specialized Finance',
