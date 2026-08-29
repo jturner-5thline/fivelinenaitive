@@ -78,15 +78,31 @@ const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
 // Default values for each category
 const defaultLenderTypes: ConfigItem[] = [
   { id: '1', value: 'Bank', isDefault: true },
-  { id: '2', value: 'Non-Bank', isDefault: true },
   { id: '3', value: 'Family Office', isDefault: true },
   { id: '4', value: 'Private Credit', isDefault: true },
-  { id: '5', value: 'Venture Debt', isDefault: true },
   { id: '6', value: 'Revenue-Based', isDefault: true },
   { id: '7', value: 'Asset-Based', isDefault: true },
   { id: '8', value: 'SBA', isDefault: true },
   { id: '9', value: 'Buyer', isDefault: true },
 ];
+
+// Funding source types folded into "Private Credit".
+const RETIRED_LENDER_TYPES = new Set(['non-bank', 'venture debt']);
+
+function sanitizeLenderTypes(items: ConfigItem[]): ConfigItem[] {
+  const seen = new Set<string>();
+  const result: ConfigItem[] = [];
+  for (const item of items) {
+    const value = (item.value || '').trim();
+    if (!value) continue;
+    const key = value.toLowerCase();
+    if (RETIRED_LENDER_TYPES.has(key)) continue;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push({ ...item, value });
+  }
+  return result;
+}
 
 const defaultIndustries: ConfigItem[] = INDUSTRY_OPTIONS.map((value, idx) => ({
   id: String(idx + 1),
