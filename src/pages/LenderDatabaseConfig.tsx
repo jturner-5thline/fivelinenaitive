@@ -395,7 +395,7 @@ export default function LenderDatabaseConfig() {
 
     setLenderTypes(sanitizeLenderTypes(savedLenderTypes ? JSON.parse(savedLenderTypes) : defaultLenderTypes));
     // Always use the canonical INDUSTRY_OPTIONS list as default; migrate old saved data
-    const RETIRED_INDUSTRIES = new Set(['business services', 'oil and gas', 'technology & software']);
+    const RETIRED_INDUSTRIES = new Set(['business services', 'oil and gas', 'technology & software', 'hardware', 'other hardware']);
     const parsedIndustries: ConfigItem[] = (savedIndustries ? JSON.parse(savedIndustries) : []).filter(
       (i: ConfigItem) => !RETIRED_INDUSTRIES.has((i.value || '').trim().toLowerCase()),
     );
