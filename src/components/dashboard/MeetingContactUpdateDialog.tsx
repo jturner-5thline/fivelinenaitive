@@ -55,6 +55,8 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
 
   const [createOpen, setCreateOpen] = useState(false);
   const [nurtureEmailOpen, setNurtureEmailOpen] = useState(false);
+  const [nurtureEmail, setNurtureEmail] = useState<{ to: string; label: string; firstName: string } | null>(null);
+
   const [editContact, setEditContact] = useState<any | null>(null);
 
   const candidates = useMemo(() => {
