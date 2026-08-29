@@ -244,6 +244,16 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
         onSaveSuccess={() => onOpenChange(false)}
         onCreated={() => { setCreateOpen(false); onOpenChange(false); }}
       />
+
+      {/* Follow-up email lives outside the (now closed) dialog so it stays mounted */}
+      <TemplateEmailDialog
+        open={!!nurtureEmail}
+        onClose={() => { setNurtureEmail(null); setNurtureEmailOpen(false); onOpenChange(false); }}
+        defaults={nurtureEmail ? { to: [nurtureEmail.to], label: nurtureEmail.label } : null}
+        tokens={{ recipient_name: nurtureEmail?.label || '', first_name: nurtureEmail?.firstName || '' }}
+        title={`Email ${nurtureEmail?.label || 'contact'}`}
+      />
     </>
+
   );
 }
