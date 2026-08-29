@@ -123,6 +123,9 @@ const RETIRED_LOAN_TYPES = new Set([
   'mezzanine',
   'unitranche',
   'revolving credit',
+  'growth capital',
+  'senior debt',
+  'delayed draw',
 ]);
 
 // Saved (localStorage) lists can carry retired or duplicate entries.
