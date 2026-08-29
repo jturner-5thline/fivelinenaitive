@@ -170,12 +170,14 @@ function SimpleFilters({
   }, [lenders]);
 
   const cashBurnOptions = useMemo(() => {
-    // Normalize any legacy "OK" variants to "Yes" and drop them as options
+    // Normalize legacy "OK" / "Case by case" variants to "Yes"
     const normalize = (v: string) => {
       const t = v.trim();
       if (/^ok\b/i.test(t)) return 'Yes';
+      if (/case\s*[-\s]?by\s*[-\s]?case/i.test(t)) return 'Yes';
       return t;
     };
+
     return Array.from(
       new Set(
         lenders
