@@ -31,7 +31,7 @@ import {
   type DealOriginLocationState,
   type DealOriginReturnState,
 } from '@/lib/dealOriginContext';
-import { INDUSTRY_OPTIONS } from '@/constants/industries';
+import { getIndustryOptions, useIndustryOptionsList } from '@/lib/industryOptions';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, rectSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
