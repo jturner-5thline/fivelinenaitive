@@ -18,7 +18,13 @@ interface AddToNurturingButtonProps {
   contact: any;
   /** Notifies the parent when the follow-up email dialog opens/closes. */
   onEmailFlowChange?: (open: boolean) => void;
+  /**
+   * When provided, the parent owns the follow-up email dialog. Required when
+   * this button lives inside a dialog that unmounts while the email flow runs.
+   */
+  onRequestEmail?: (info: { to: string; label: string; firstName: string }) => void;
 }
+
 
 function contactDisplayName(contact: any): string {
   const name = [contact?.first_name, contact?.last_name].filter(Boolean).join(' ').trim();
