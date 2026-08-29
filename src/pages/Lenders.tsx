@@ -99,6 +99,8 @@ import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
 import { GEO_OPTIONS } from '@/constants/geoOptions';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
+import { usePipelineContext } from '@/contexts/PipelineContext';
+import { isActiveLenderDeal } from '@/lib/lenderActiveDeals';
 
 const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
 
@@ -287,6 +289,7 @@ export default function Lenders() {
   const navigate = useNavigate();
   const { deals, addLenderToDeal } = useDealsContext();
   const { getStageConfigForDeal } = usePipelineStageConfig();
+  const { pipelines } = usePipelineContext();
   const { getLenderSummary, setManualFlag, refetch: refetchAttachmentSummaries } = useLenderAttachmentsSummary();
   const { user } = useAuth();
   const { company, members: companyMembers } = useCompany();
@@ -466,35 +469,19 @@ export default function Lenders() {
   const activeDealCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     const normalizedCounts: Record<string, number> = {};
-    
-    // Lender-level statuses that are not "active"
-    const inactiveStatuses = ['passed', 'on-deck', 'on-hold', 'excluded', 'declined'];
-    // Deal-level statuses that end the engagement
-    const closedDealStates = new Set(['closed-won', 'closed-lost', 'archived', 'on-hold']);
-    // Stage IDs are overloaded across pipelines (e.g. 'closed-won' means something
-    // else in "In Development"), so resolve the stage's real label per pipeline.
-    const isClosedLabel = (label: string) =>
-      /^closed\s*[-/ ]?\s*(won|lost)$/i.test(label.trim()) || /\bclosed\s+(won|lost)\b/i.test(label);
-    
+
+    const pipelineNameById = new Map(pipelines.map(p => [p.id, String(p.name ?? '').toLowerCase().trim()]));
+    const resolveStageLabel = (stageId: string, pipelineId: string | null) =>
+      getStageConfigForDeal(stageId, pipelineId).label;
+
     deals.forEach(deal => {
-      const dealStatus = String((deal as any).status ?? '').toLowerCase().trim();
-      if (closedDealStates.has(dealStatus)) return;
-
-      const stageId = String((deal as any).stage ?? '');
-      const stageLabel = getStageConfigForDeal(stageId, (deal as any).pipelineId ?? null).label;
-      if (isClosedLabel(stageLabel)) return;
-
       deal.lenders?.forEach(lender => {
-        const tracking = String(lender.trackingStatus ?? '').toLowerCase().trim();
-        const isExcluded = Boolean((lender as any).excludedAt);
-        // Only count if lender is actively being worked
-        if (!isExcluded && !inactiveStatuses.includes(tracking)) {
-          const normalizedName = lender.name.toLowerCase().trim();
-          normalizedCounts[normalizedName] = (normalizedCounts[normalizedName] || 0) + 1;
-        }
+        if (!isActiveLenderDeal(deal as any, lender as any, pipelineNameById, resolveStageLabel)) return;
+        const normalizedName = lender.name.toLowerCase().trim();
+        normalizedCounts[normalizedName] = (normalizedCounts[normalizedName] || 0) + 1;
       });
     });
-    
+
     // Map master lender names to their counts using normalized matching
     masterLenders.forEach(ml => {
       const normalizedMasterName = ml.name.toLowerCase().trim();
@@ -502,9 +489,10 @@ export default function Lenders() {
         counts[ml.name] = normalizedCounts[normalizedMasterName];
       }
     });
-    
+
     return counts;
-  }, [deals, masterLenders, getStageConfigForDeal]);
+  }, [deals, masterLenders, getStageConfigForDeal, pipelines]);
+
 
   // Detect potential duplicate funding sources within the current tenant's
   // master lender list. The detector is O(n^2) over bucketed names — at 6k+
