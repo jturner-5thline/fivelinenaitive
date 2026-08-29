@@ -4,7 +4,6 @@ export const LOAN_TYPE_OPTIONS = [
   'Bridge Financing',
   'CAPEX',
   'Convertible Note',
-  'Equipment Financing',
   'Factoring',
   'Inventory',
   'MCA',

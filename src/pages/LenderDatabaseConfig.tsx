@@ -129,6 +129,7 @@ const RETIRED_LOAN_TYPES = new Set([
   'revolver',
   'full abl',
   'ar inventory',
+  'equipment financing',
 ]);
 
 // Saved (localStorage) lists can carry retired or duplicate entries.
