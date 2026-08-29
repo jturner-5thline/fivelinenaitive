@@ -103,6 +103,31 @@ const defaultLoanTypes: ConfigItem[] = [
   { id: '10', value: 'SBA Loan', isDefault: true },
 ];
 
+// Loan types that have been retired and folded into other options.
+const RETIRED_LOAN_TYPES = new Set([
+  'venture debt',
+  'mezzanine',
+  'unitranche',
+  'revolving credit',
+]);
+
+// Saved (localStorage) lists can carry retired or duplicate entries.
+// Normalize them so each loan type appears exactly once.
+function sanitizeLoanTypes(items: ConfigItem[]): ConfigItem[] {
+  const seen = new Set<string>();
+  const result: ConfigItem[] = [];
+  for (const item of items) {
+    const value = (item.value || '').trim();
+    if (!value) continue;
+    const key = value.toLowerCase();
+    if (RETIRED_LOAN_TYPES.has(key)) continue;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push({ ...item, value });
+  }
+  return result;
+}
+
 const defaultGeographies: ConfigItem[] = [
   { id: '1', value: 'United States', isDefault: true },
   { id: '2', value: 'Canada', isDefault: true },
