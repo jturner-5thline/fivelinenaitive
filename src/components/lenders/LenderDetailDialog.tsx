@@ -49,6 +49,7 @@ import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
 import { GEO_OPTIONS } from '@/constants/geoOptions';
 import { useLenderAuditLog } from '@/hooks/useLenderAuditLog';
 import { useDealStages } from '@/contexts/DealStagesContext';
+import { useLenderLabelResolver } from '@/hooks/useLenderLabelResolver';
 import { format } from 'date-fns';
 import { formatLenderCurrency, formatCurrencyInput } from '@/utils/formatLenderCurrency';
 import { toast } from 'sonner';
