@@ -36,7 +36,7 @@ function contactDisplayName(contact: any): string {
  * referral source. Tags the contact "Referral Source" and seeds them into the
  * Nurturing column of the Referral Source Pipeline (Sales & BD).
  */
-export function AddToNurturingButton({ contact, onEmailFlowChange }: AddToNurturingButtonProps) {
+export function AddToNurturingButton({ contact, onEmailFlowChange, onRequestEmail }: AddToNurturingButtonProps) {
   const { user } = useAuth();
   const { company } = useCompany();
   const queryClient = useQueryClient();
