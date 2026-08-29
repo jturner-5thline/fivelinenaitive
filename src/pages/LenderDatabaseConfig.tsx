@@ -78,15 +78,31 @@ const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
 // Default values for each category
 const defaultLenderTypes: ConfigItem[] = [
   { id: '1', value: 'Bank', isDefault: true },
-  { id: '2', value: 'Non-Bank', isDefault: true },
   { id: '3', value: 'Family Office', isDefault: true },
   { id: '4', value: 'Private Credit', isDefault: true },
-  { id: '5', value: 'Venture Debt', isDefault: true },
   { id: '6', value: 'Revenue-Based', isDefault: true },
   { id: '7', value: 'Asset-Based', isDefault: true },
   { id: '8', value: 'SBA', isDefault: true },
   { id: '9', value: 'Buyer', isDefault: true },
 ];
+
+// Funding source types folded into "Private Credit".
+const RETIRED_LENDER_TYPES = new Set(['non-bank', 'venture debt']);
+
+function sanitizeLenderTypes(items: ConfigItem[]): ConfigItem[] {
+  const seen = new Set<string>();
+  const result: ConfigItem[] = [];
+  for (const item of items) {
+    const value = (item.value || '').trim();
+    if (!value) continue;
+    const key = value.toLowerCase();
+    if (RETIRED_LENDER_TYPES.has(key)) continue;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push({ ...item, value });
+  }
+  return result;
+}
 
 const defaultIndustries: ConfigItem[] = INDUSTRY_OPTIONS.map((value, idx) => ({
   id: String(idx + 1),
@@ -372,7 +388,7 @@ export default function LenderDatabaseConfig() {
     const savedGeographies = localStorage.getItem(`${STORAGE_KEY_PREFIX}geographies`);
     const savedTileSettings = localStorage.getItem(TILE_DISPLAY_STORAGE_KEY);
 
-    setLenderTypes(savedLenderTypes ? JSON.parse(savedLenderTypes) : defaultLenderTypes);
+    setLenderTypes(sanitizeLenderTypes(savedLenderTypes ? JSON.parse(savedLenderTypes) : defaultLenderTypes));
     // Always use the canonical INDUSTRY_OPTIONS list as default; migrate old saved data
     const parsedIndustries: ConfigItem[] = savedIndustries ? JSON.parse(savedIndustries) : [];
     const savedValues = new Set(parsedIndustries.map((i: ConfigItem) => i.value));
@@ -393,7 +409,7 @@ export default function LenderDatabaseConfig() {
   const handleSaveAll = () => {
     setIsSaving(true);
     try {
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}lender-types`, JSON.stringify(lenderTypes));
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}lender-types`, JSON.stringify(sanitizeLenderTypes(lenderTypes)));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}industries`, JSON.stringify(industries));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}loan-types`, JSON.stringify(sanitizeLoanTypes(loanTypes)));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}geographies`, JSON.stringify(geographies));
@@ -561,7 +577,7 @@ export default function LenderDatabaseConfig() {
               <TabsContent value="lender-types">
                 <ConfigSection
                   title="Funding Source Types"
-                  description="Configure the types of lenders available in your database (e.g., Bank, Non-Bank, Family Office)"
+                  description="Configure the types of lenders available in your database (e.g., Bank, Private Credit, Family Office)"
                   icon={Building2}
                   items={lenderTypes}
                   onAdd={lenderTypesHelpers.add}

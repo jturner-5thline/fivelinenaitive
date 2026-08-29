@@ -100,7 +100,6 @@ const LENDER_TYPE_OPTIONS = [
   'Mezzanine',
   'Real Estate',
   'SBA',
-  'Venture Debt',
 ];
 
 interface LenderInfo {
