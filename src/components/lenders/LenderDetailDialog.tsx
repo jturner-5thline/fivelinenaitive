@@ -440,7 +440,7 @@ function EditableDealTile({
       </div>
       <p className="font-medium text-sm truncate mb-1 pr-6">{deal.company}</p>
       <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
-      <Badge variant="outline" className="text-[10px] mt-1 font-normal">{deal.stage}</Badge>
+      <Badge variant="outline" className="text-[10px] mt-1 font-normal">{stageLabel}</Badge>
       {deal.notes && (
         <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{deal.notes}</p>
       )}
