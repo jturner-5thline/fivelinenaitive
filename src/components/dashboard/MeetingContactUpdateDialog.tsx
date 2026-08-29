@@ -7,6 +7,8 @@ import { Loader2, UserPlus, Search, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { AddToNurturingButton } from '@/components/contacts/AddToNurturingButton';
+import { TemplateEmailDialog } from '@/components/email/TemplateEmailDialog';
+
 import { useCompany } from '@/hooks/useCompany';
 
 
