@@ -34,7 +34,6 @@ export const INDUSTRY_OPTIONS = [
   'Tech-Enabled Hardware',
   'Tech-Enabled Services',
   'Technology',
-  'Technology & Software',
   'Transportation & Logistics',
   'Utilities',
 ] as const;
