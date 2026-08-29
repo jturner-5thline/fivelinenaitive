@@ -31,6 +31,7 @@ function normalizeSponsorship(v: string) {
 function normalizeCashBurn(v: string) {
   const t = v.trim();
   if (/^ok\b/i.test(t)) return 'Yes';
+  if (/case\s*[-\s]?by\s*[-\s]?case/i.test(t)) return 'Yes';
   return t;
 }
 
