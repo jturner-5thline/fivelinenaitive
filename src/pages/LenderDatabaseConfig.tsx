@@ -381,6 +381,8 @@ export default function LenderDatabaseConfig() {
     deleteLender: deleteMasterLender 
   } = useMasterLenders();
   
+  const queryClient = useQueryClient();
+
   // State for each configuration category
   const [lenderTypes, setLenderTypes] = useState<ConfigItem[]>([]);
   const [industries, setIndustries] = useState<ConfigItem[]>([]);
