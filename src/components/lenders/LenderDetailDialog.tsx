@@ -452,7 +452,8 @@ function EditableDealTile({
 export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelete, onSave, initialEditMode = false }: LenderDetailDialogProps) {
   const { deals, updateLender: updateDealLender } = useDealsContext();
   const { pipelines } = usePipelineContext();
-  const { stages } = useDealStages();
+  const { stageOptions: lenderStageOptions } = useLenderLabelResolver();
+  const stages = lenderStageOptions;
   const criteriaOptions = useLenderCriteriaOptions();
   const { user } = useAuth();
   const navigate = useNavigate();
