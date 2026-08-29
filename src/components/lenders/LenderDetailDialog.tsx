@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
+import { isActiveLenderDeal, normalizeLenderStatus } from '@/lib/lenderActiveDeals';
 import { useLenderAttachments, LenderAttachment, LENDER_ATTACHMENT_CATEGORIES, LenderAttachmentCategory } from '@/hooks/useLenderAttachments';
 import { useLenderContacts } from '@/hooks/useLenderContacts';
 import { useAuth } from '@/contexts/AuthContext';
