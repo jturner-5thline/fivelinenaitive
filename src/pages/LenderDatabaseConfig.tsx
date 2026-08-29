@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
+import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { 
