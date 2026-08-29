@@ -198,7 +198,9 @@ export function MeetingContactUpdateDialog({ open, onOpenChange, attendees, orga
                             <AddToNurturingButton
                               contact={m}
                               onEmailFlowChange={(o) => { setNurtureEmailOpen(o); if (!o) onOpenChange(false); }}
+                              onRequestEmail={(info) => setNurtureEmail(info)}
                             />
+
                           </div>
                         </div>
                       );
