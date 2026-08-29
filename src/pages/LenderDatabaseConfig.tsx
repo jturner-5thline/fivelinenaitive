@@ -394,20 +394,26 @@ export default function LenderDatabaseConfig() {
     const savedTileSettings = localStorage.getItem(TILE_DISPLAY_STORAGE_KEY);
 
     setLenderTypes(sanitizeLenderTypes(savedLenderTypes ? JSON.parse(savedLenderTypes) : defaultLenderTypes));
-    // Always use the canonical INDUSTRY_OPTIONS list as default; migrate old saved data
+    // Always use the canonical INDUSTRY_OPTIONS list as default; migrate old saved data.
+    // Anything the user explicitly removed stays removed permanently.
     const RETIRED_INDUSTRIES = new Set(['business services', 'oil and gas', 'technology & software', 'hardware', 'other hardware', 'media & telecommunication']);
+    const removed = getRemovedIndustries();
+    const isDropped = (v: string) => {
+      const k = (v || '').trim().toLowerCase();
+      return !k || RETIRED_INDUSTRIES.has(k) || removed.has(k);
+    };
     const parsedIndustries: ConfigItem[] = (savedIndustries ? JSON.parse(savedIndustries) : []).filter(
-      (i: ConfigItem) => !RETIRED_INDUSTRIES.has((i.value || '').trim().toLowerCase()),
+      (i: ConfigItem) => !isDropped(i.value),
     );
-    const savedValues = new Set(parsedIndustries.map((i: ConfigItem) => i.value));
+    const savedValues = new Set(parsedIndustries.map((i: ConfigItem) => (i.value || '').trim().toLowerCase()));
     const merged = [...parsedIndustries];
     let nextId = parsedIndustries.length + 1;
     for (const opt of INDUSTRY_OPTIONS) {
-      if (!savedValues.has(opt)) {
+      if (!savedValues.has(opt.trim().toLowerCase()) && !isDropped(opt)) {
         merged.push({ id: String(nextId++), value: opt, isDefault: true });
       }
     }
-    setIndustries(merged.length > 0 ? merged : defaultIndustries);
+    setIndustries(merged);
     setLoanTypes(sanitizeLoanTypes(savedLoanTypes ? JSON.parse(savedLoanTypes) : defaultLoanTypes));
     setGeographies(savedGeographies ? JSON.parse(savedGeographies) : defaultGeographies);
     setTileDisplaySettings(savedTileSettings ? JSON.parse(savedTileSettings) : DEFAULT_TILE_DISPLAY_SETTINGS);
