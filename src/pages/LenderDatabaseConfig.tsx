@@ -426,6 +426,7 @@ export default function LenderDatabaseConfig() {
     try {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}lender-types`, JSON.stringify(sanitizeLenderTypes(lenderTypes)));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}industries`, JSON.stringify(industries));
+      notifyIndustryOptionsChanged();
       localStorage.setItem(`${STORAGE_KEY_PREFIX}loan-types`, JSON.stringify(sanitizeLoanTypes(loanTypes)));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}geographies`, JSON.stringify(geographies));
       localStorage.setItem(TILE_DISPLAY_STORAGE_KEY, JSON.stringify(tileDisplaySettings));
@@ -448,6 +449,7 @@ export default function LenderDatabaseConfig() {
     
     localStorage.removeItem(`${STORAGE_KEY_PREFIX}lender-types`);
     localStorage.removeItem(`${STORAGE_KEY_PREFIX}industries`);
+    localStorage.removeItem(INDUSTRIES_REMOVED_STORAGE_KEY);
     localStorage.removeItem(`${STORAGE_KEY_PREFIX}loan-types`);
     localStorage.removeItem(`${STORAGE_KEY_PREFIX}geographies`);
     localStorage.removeItem(TILE_DISPLAY_STORAGE_KEY);
@@ -481,7 +483,32 @@ export default function LenderDatabaseConfig() {
   });
 
   const lenderTypesHelpers = createHelpers(lenderTypes, setLenderTypes);
-  const industriesHelpers = createHelpers(industries, setIndustries);
+  const baseIndustriesHelpers = createHelpers(industries, setIndustries);
+  // Industry removals are permanent: record them so canonical defaults are never
+  // re-merged back into the list on the next load.
+  const industriesHelpers = {
+    add: (value: string) => {
+      unremoveIndustry(value);
+      baseIndustriesHelpers.add(value);
+    },
+    update: (id: string, value: string) => {
+      const previous = industries.find(i => i.id === id)?.value;
+      if (previous && previous.trim().toLowerCase() !== value.trim().toLowerCase()) {
+        addRemovedIndustry(previous);
+      }
+      unremoveIndustry(value);
+      baseIndustriesHelpers.update(id, value);
+    },
+    remove: (id: string) => {
+      const target = industries.find(i => i.id === id);
+      if (target?.value) addRemovedIndustry(target.value);
+      const next = industries.filter(i => i.id !== id);
+      setIndustries(next);
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}industries`, JSON.stringify(next));
+      notifyIndustryOptionsChanged();
+      toast({ title: 'Removed', description: 'Industry removed permanently.' });
+    },
+  };
   const loanTypesHelpers = createHelpers(loanTypes, setLoanTypes);
   const geographiesHelpers = createHelpers(geographies, setGeographies);
 
