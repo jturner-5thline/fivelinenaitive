@@ -32,6 +32,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useLenderAttachments, LenderAttachment, LENDER_ATTACHMENT_CATEGORIES, LenderAttachmentCategory } from '@/hooks/useLenderAttachments';
 import { useLenderContacts } from '@/hooks/useLenderContacts';
 import { useAuth } from '@/contexts/AuthContext';
@@ -446,6 +447,7 @@ function EditableDealTile({
 
 export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelete, onSave, initialEditMode = false }: LenderDetailDialogProps) {
   const { deals, updateLender: updateDealLender } = useDealsContext();
+  const { pipelines } = usePipelineContext();
   const { stages } = useDealStages();
   const criteriaOptions = useLenderCriteriaOptions();
   const { user } = useAuth();
@@ -762,7 +764,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
 
 
     return { active, sent, passReasons };
-  }, [lender, deals]);
+  }, [lender, deals, pipelines]);
 
   const { formatCurrencyValue } = usePreferences();
 
