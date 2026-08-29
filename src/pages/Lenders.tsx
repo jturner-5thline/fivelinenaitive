@@ -2481,7 +2481,7 @@ export default function Lenders() {
                   <MultiSelectChips
                     value={form.industries}
                     onChange={(next) => setForm({ ...form, industries: next })}
-                    options={INDUSTRY_OPTIONS}
+                    options={getIndustryOptions()}
                     placeholder="Select industries"
                     searchPlaceholder="Search industries..."
                   />

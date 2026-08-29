@@ -230,7 +230,7 @@ export function WriteUpCompanyOverviewTab({ dealId, data, updateField, onChange,
 
 
   // Fixed industry options
-  const industryOptions = INDUSTRY_OPTIONS as unknown as string[];
+  const industryOptions = useIndustryOptionsList();
 
   // Get display labels for selected deal types (which are stored as IDs)
   const getSelectedDealTypeLabels = () => {

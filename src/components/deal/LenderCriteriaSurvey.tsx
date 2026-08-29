@@ -86,7 +86,7 @@ export function LenderCriteriaSurvey({ dealId, initialCriteria, onComplete, onSk
   const [answers, setAnswers] = useState<Record<string, string | boolean>>({});
 
   // Fixed industry options
-  const industryOptions = INDUSTRY_OPTIONS as unknown as string[];
+  const industryOptions = useIndustryOptionsList();
 
   // Initialize answers from saved criteria when loaded
   useEffect(() => {

@@ -4467,7 +4467,7 @@ export default function DealDetail() {
                                     <Select value={deal.businessModel || ''} onValueChange={(value) => updateDeal('businessModel', value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select industry..." /></SelectTrigger>
                                       <SelectContent>
-                                        {INDUSTRY_OPTIONS.map((industry) => (
+                                        {getIndustryOptions().map((industry) => (
                                           <SelectItem key={industry} value={industry}>{industry}</SelectItem>
                                         ))}
                                       </SelectContent>
