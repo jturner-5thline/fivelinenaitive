@@ -3,7 +3,6 @@ export const INDUSTRY_OPTIONS = [
   'Agnostic',
   'Agriculture',
   'B2B Services',
-  'Business Services',
   'Cannabis',
   'Clean Tech',
   'Commercial and Industrial',
