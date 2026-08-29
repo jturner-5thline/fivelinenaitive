@@ -48,7 +48,7 @@ import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
 import { GEO_OPTIONS } from '@/constants/geoOptions';
 import { useLenderAuditLog } from '@/hooks/useLenderAuditLog';
-import { useDealStages } from '@/contexts/DealStagesContext';
+import { useLenderLabelResolver } from '@/hooks/useLenderLabelResolver';
 import { format } from 'date-fns';
 import { formatLenderCurrency, formatCurrencyInput } from '@/utils/formatLenderCurrency';
 import { toast } from 'sonner';
@@ -352,6 +352,8 @@ function EditableDealTile({
   formatCurrency: (value: number) => string;
   variant?: 'active' | 'sent';
 }) {
+  const { resolveStage } = useLenderLabelResolver();
+  const stageLabel = resolveStage(deal.stage);
   const [isEditing, setIsEditing] = useState(false);
   const [editStage, setEditStage] = useState(deal.stage);
   const [editNotes, setEditNotes] = useState(deal.notes);
@@ -437,7 +439,7 @@ function EditableDealTile({
       </div>
       <p className="font-medium text-sm truncate mb-1 pr-6">{deal.company}</p>
       <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
-      <Badge variant="outline" className="text-[10px] mt-1 font-normal">{deal.stage}</Badge>
+      <Badge variant="outline" className="text-[10px] mt-1 font-normal">{stageLabel}</Badge>
       {deal.notes && (
         <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{deal.notes}</p>
       )}
@@ -449,7 +451,8 @@ function EditableDealTile({
 export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelete, onSave, initialEditMode = false }: LenderDetailDialogProps) {
   const { deals, updateLender: updateDealLender } = useDealsContext();
   const { pipelines } = usePipelineContext();
-  const { stages } = useDealStages();
+  const { stageOptions: lenderStageOptions } = useLenderLabelResolver();
+  const stages = lenderStageOptions;
   const criteriaOptions = useLenderCriteriaOptions();
   const { user } = useAuth();
   const navigate = useNavigate();
