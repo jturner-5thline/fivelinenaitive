@@ -99,6 +99,8 @@ import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
 import { GEO_OPTIONS } from '@/constants/geoOptions';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
+import { usePipelineContext } from '@/contexts/PipelineContext';
+import { isActiveLenderDeal } from '@/lib/lenderActiveDeals';
 
 const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
 
@@ -287,6 +289,7 @@ export default function Lenders() {
   const navigate = useNavigate();
   const { deals, addLenderToDeal } = useDealsContext();
   const { getStageConfigForDeal } = usePipelineStageConfig();
+  const { pipelines } = usePipelineContext();
   const { getLenderSummary, setManualFlag, refetch: refetchAttachmentSummaries } = useLenderAttachmentsSummary();
   const { user } = useAuth();
   const { company, members: companyMembers } = useCompany();
