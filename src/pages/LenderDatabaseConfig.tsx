@@ -41,6 +41,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { DuplicateLendersDialog } from '@/components/lenders/DuplicateLendersDialog';
 import { useMasterLenders } from '@/hooks/useMasterLenders';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ConfigItem {
   id: string;
@@ -379,6 +381,8 @@ export default function LenderDatabaseConfig() {
     deleteLender: deleteMasterLender 
   } = useMasterLenders();
   
+  const queryClient = useQueryClient();
+
   // State for each configuration category
   const [lenderTypes, setLenderTypes] = useState<ConfigItem[]>([]);
   const [industries, setIndustries] = useState<ConfigItem[]>([]);
@@ -484,6 +488,40 @@ export default function LenderDatabaseConfig() {
 
   const lenderTypesHelpers = createHelpers(lenderTypes, setLenderTypes);
   const baseIndustriesHelpers = createHelpers(industries, setIndustries);
+
+  /** Remove a retired industry tag from every funding source that carries it. */
+  const stripIndustryFromFundingSources = async (value: string) => {
+    const target = value.trim().toLowerCase();
+    if (!target) return;
+    try {
+      const { data, error } = await supabase
+        .from('master_lenders')
+        .select('id, industries')
+        .contains('industries', [value]);
+      if (error) throw error;
+      const rows = (data || []) as Array<{ id: string; industries: string[] | null }>;
+      if (rows.length === 0) return;
+      for (const row of rows) {
+        const next = (row.industries || []).filter(i => (i || '').trim().toLowerCase() !== target);
+        const { error: updateError } = await supabase
+          .from('master_lenders')
+          .update({ industries: next })
+          .eq('id', row.id);
+        if (updateError) throw updateError;
+      }
+      queryClient.invalidateQueries({ queryKey: ['master-lenders'] });
+      toast({
+        title: 'Funding sources updated',
+        description: `Removed "${value}" from ${rows.length} funding source${rows.length === 1 ? '' : 's'}.`,
+      });
+    } catch (e: any) {
+      toast({
+        title: 'Could not update funding sources',
+        description: e?.message || `Failed to remove "${value}" from funding sources.`,
+        variant: 'destructive',
+      });
+    }
+  };
   // Industry removals are permanent: record them so canonical defaults are never
   // re-merged back into the list on the next load.
   const industriesHelpers = {
@@ -501,7 +539,10 @@ export default function LenderDatabaseConfig() {
     },
     remove: (id: string) => {
       const target = industries.find(i => i.id === id);
-      if (target?.value) addRemovedIndustry(target.value);
+      if (target?.value) {
+        addRemovedIndustry(target.value);
+        void stripIndustryFromFundingSources(target.value);
+      }
       const next = industries.filter(i => i.id !== id);
       setIndustries(next);
       localStorage.setItem(`${STORAGE_KEY_PREFIX}industries`, JSON.stringify(next));
