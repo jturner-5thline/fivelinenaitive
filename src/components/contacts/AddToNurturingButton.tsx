@@ -99,7 +99,14 @@ export function AddToNurturingButton({ contact, onEmailFlowChange, onRequestEmai
       queryClient.invalidateQueries({ queryKey: ['deal-referral-sources'] });
       queryClient.invalidateQueries({ queryKey: ['referral-source-for-contact', contact.id] });
       toast.success('Added to Nurturing and tagged as a Referral Source');
-      if (contact?.email) setEmailOpen(true);
+      if (contact?.email) {
+        if (onRequestEmail) {
+          onRequestEmail({ to: contact.email, label: name, firstName: contact?.first_name || '' });
+        } else {
+          setEmailOpen(true);
+        }
+      }
+
     } catch (e: any) {
       toast.error(e?.message || 'Failed to add to Nurturing');
       onEmailFlowChange?.(false);
