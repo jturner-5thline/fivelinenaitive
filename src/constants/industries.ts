@@ -177,7 +177,6 @@ export const INDUSTRY_OPTIONS = [
   'Materials and Resources',
   'Med Tech',
   'Media',
-  'Media & Telecommunication',
   'Media and Information Services (B2B)',
   'Medical Records Systems',
   'Medical Supplies',
