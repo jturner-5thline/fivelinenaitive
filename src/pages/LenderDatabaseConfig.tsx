@@ -99,7 +99,6 @@ const defaultLoanTypes: ConfigItem[] = [
   { id: '2', value: 'Revolving Credit', isDefault: true },
   { id: '3', value: 'ABL', isDefault: true },
   { id: '7', value: 'Revenue-Based Financing', isDefault: true },
-  { id: '7', value: 'Revenue-Based Financing', isDefault: true },
   { id: '8', value: 'Equipment Financing', isDefault: true },
   { id: '9', value: 'Factoring', isDefault: true },
   { id: '10', value: 'SBA Loan', isDefault: true },
