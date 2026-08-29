@@ -681,12 +681,25 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     const isInactiveLender = (dl: { trackingStatus?: string | null; stage?: string | null }) =>
       INACTIVE.has(normalizeStatus(dl.trackingStatus)) || INACTIVE.has(normalizeStatus(dl.stage));
 
+    // Deal-level disqualifiers: On Hold, Archived, or "In Development" pipeline.
+    const pipelineNameById = new Map(pipelines.map(p => [p.id, normalizeStatus(p.name)]));
+    const isInactiveDeal = (deal: typeof deals[number]) => {
+      const status = normalizeStatus(deal.status);
+      const stage = normalizeStatus(deal.stage);
+      if (status === 'on hold' || status === 'archived') return true;
+      if (stage === 'on hold' || stage === 'archived') return true;
+      const pName = normalizeStatus((deal as { pipelineName?: string | null }).pipelineName)
+        || (deal.pipelineId ? pipelineNameById.get(deal.pipelineId) : '') || '';
+      return pName === 'in development';
+    };
+
     deals.forEach(deal => {
       const dealLender = deal.lenders?.find(l => l.name === lender.name);
       if (dealLender) {
-        const inactive = isInactiveLender(dealLender);
+        const inactive = isInactiveLender(dealLender) || isInactiveDeal(deal);
         const passed = normalizeStatus(dealLender.trackingStatus) === 'passed'
           || normalizeStatus(dealLender.stage) === 'passed';
+
 
         if (inactive) {
           if (passed && dealLender.passReason) {
