@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
+import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -110,14 +111,11 @@ const defaultIndustries: ConfigItem[] = INDUSTRY_OPTIONS.map((value, idx) => ({
   isDefault: true,
 }));
 
-const defaultLoanTypes: ConfigItem[] = [
-  { id: '1', value: 'Term Loan', isDefault: true },
-  { id: '3', value: 'ABL', isDefault: true },
-  { id: '7', value: 'Revenue-Based Financing', isDefault: true },
-  { id: '8', value: 'Equipment Financing', isDefault: true },
-  { id: '9', value: 'Factoring', isDefault: true },
-  { id: '10', value: 'SBA Loan', isDefault: true },
-];
+const defaultLoanTypes: ConfigItem[] = LOAN_TYPE_OPTIONS.map((value, idx) => ({
+  id: String(idx + 1),
+  value,
+  isDefault: true,
+}));
 
 // Loan types that have been retired and folded into other options.
 const RETIRED_LOAN_TYPES = new Set([
