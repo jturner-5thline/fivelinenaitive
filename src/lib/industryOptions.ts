@@ -14,6 +14,17 @@ export const INDUSTRY_OPTIONS_EVENT = 'industry-options-changed';
 
 const norm = (v: string) => v.trim().toLowerCase();
 
+/** Industry values retired platform-wide (folded into canonical tags). */
+export const RETIRED_INDUSTRIES = new Set([
+  'business services',
+  'oil and gas',
+  'technology & software',
+  'hardware',
+  'other hardware',
+  'media & telecommunication',
+  'software',
+]);
+
 export function getRemovedIndustries(): Set<string> {
   try {
     const raw = localStorage.getItem(INDUSTRIES_REMOVED_STORAGE_KEY);
