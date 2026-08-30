@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
-import { getRemovedIndustries, addRemovedIndustry, unremoveIndustry, notifyIndustryOptionsChanged, INDUSTRIES_REMOVED_STORAGE_KEY } from '@/lib/industryOptions';
+import { getRemovedIndustries, addRemovedIndustry, unremoveIndustry, notifyIndustryOptionsChanged, INDUSTRIES_REMOVED_STORAGE_KEY, RETIRED_INDUSTRIES } from '@/lib/industryOptions';
 import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
@@ -401,7 +401,6 @@ export default function LenderDatabaseConfig() {
     setLenderTypes(sanitizeLenderTypes(savedLenderTypes ? JSON.parse(savedLenderTypes) : defaultLenderTypes));
     // Always use the canonical INDUSTRY_OPTIONS list as default; migrate old saved data.
     // Anything the user explicitly removed stays removed permanently.
-    const RETIRED_INDUSTRIES = new Set(['business services', 'oil and gas', 'technology & software', 'hardware', 'other hardware', 'media & telecommunication', 'software']);
     const removed = getRemovedIndustries();
     const isDropped = (v: string) => {
       const k = (v || '').trim().toLowerCase();

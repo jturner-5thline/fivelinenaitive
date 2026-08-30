@@ -129,7 +129,6 @@ export const INDUSTRY_OPTIONS = [
   'Gold Mining',
   'Government',
   'Government Services',
-  'hardware',
   'Healthcare',
   'Healthcare Devices and Supplies',
   'Healthcare IT',
