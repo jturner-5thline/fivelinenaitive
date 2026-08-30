@@ -84,7 +84,7 @@ export function getIndustryOptions(): string[] {
   const seen = new Set<string>();
   return base.filter(v => {
     const k = norm(v);
-    if (!k || removed.has(k) || seen.has(k)) return false;
+    if (!k || removed.has(k) || RETIRED_INDUSTRIES.has(k) || seen.has(k)) return false;
     seen.add(k);
     return true;
   });
