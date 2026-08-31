@@ -1672,14 +1672,16 @@ export function EndOfDayTab({
           onClose={() => setFollowUpOpen(false)}
           teamMembers={teamMembers}
           currentUserId={user?.id || ''}
-          initialTitle={prefill.title}
-          initialDealId={prefill.dealId}
-          // Meeting flow: the deal field is governed by the explicit
-          // meeting→deal link only. Suppress the dialog's title-based
-          // fuzzy auto-apply so it can never overwrite the explicit
-          // link (or fall back to a random deal when nothing is linked).
-          lockInitialDeal
-          initialDueDate={new Date()}
+           initialTitle={prefill.title}
+           initialDealId={prefill.dealId || selectedLinkedDealId || null}
+           initialContactId={selectedContactId}
+           initialLenderId={selectedLenderId}
+           // Meeting flow: the deal field is governed by the explicit
+           // meeting→deal link only. Suppress the dialog's title-based
+           // fuzzy auto-apply so it can never overwrite the explicit
+           // link (or fall back to a random deal when nothing is linked).
+           lockInitialDeal
+           initialDueDate={new Date()}
           onCreate={async (input) => {
             await createTask.mutateAsync({
               title: input.title, priority: input.priority,
