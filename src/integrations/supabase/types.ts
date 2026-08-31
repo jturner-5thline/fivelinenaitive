@@ -29822,15 +29822,6 @@ export type Database = {
         Args: { p_meeting_id: string }
         Returns: Json
       }
-      delete_email: {
-        Args: { message_id: number; queue_name: string }
-        Returns: boolean
-      }
-      email_queue_dispatch: { Args: never; Returns: undefined }
-      enqueue_email: {
-        Args: { payload: Json; queue_name: string }
-        Returns: number
-      }
       ensure_user_workspace: {
         Args: {
           _company_name?: string
@@ -30260,27 +30251,10 @@ export type Database = {
         Args: { _keep_id: string; _merge_ids: string[] }
         Returns: undefined
       }
-      move_to_dlq: {
-        Args: {
-          dlq_name: string
-          message_id: number
-          payload: Json
-          source_queue: string
-        }
-        Returns: number
-      }
       normalize_email_domain: { Args: { em: string }; Returns: string }
       normalize_stage: { Args: { stage_text: string }; Returns: string }
       normalize_stage_label: { Args: { t: string }; Returns: string }
       normalize_website_domain: { Args: { url: string }; Returns: string }
-      read_email_batch: {
-        Args: { batch_size: number; queue_name: string; vt: number }
-        Returns: {
-          message: Json
-          msg_id: number
-          read_ct: number
-        }[]
-      }
       realtime_topic_allowed: { Args: { _topic: string }; Returns: boolean }
       record_partner_tier: {
         Args: {
