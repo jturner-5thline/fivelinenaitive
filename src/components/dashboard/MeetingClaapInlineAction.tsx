@@ -576,14 +576,9 @@ export function MeetingClaapInlineAction(props: Props) {
   );
 
   // Opens contact and funding-source reconciliation dialogs above the current popup.
-  const fundingSourceInitialQuery = [
-    eventTitle,
-    organizerEmail,
-    ...attendees.map((attendee) => attendee.email || attendee.displayName || ''),
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .slice(0, 160);
+  // Prefill only the likely funding-source name (e.g. "Libertas"), not the whole event title.
+  const fundingSourceInitialQuery = extractFundingSourceName(eventTitle, organizerEmail, attendees);
+
 
   const updateContactCell = (
     <>
