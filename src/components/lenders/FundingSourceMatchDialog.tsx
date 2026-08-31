@@ -79,34 +79,52 @@ function rankFundingSource(row: FundingSourceRow, query: string): RankedFundingS
 
 export function FundingSourceMatchDialog({ open, onOpenChange, initialQuery = '' }: Props) {
   const [search, setSearch] = useState(initialQuery);
+  const [debounced, setDebounced] = useState(initialQuery);
 
   useEffect(() => {
-    if (open) setSearch(initialQuery);
+    if (open) {
+      setSearch(initialQuery);
+      setDebounced(initialQuery);
+    }
   }, [initialQuery, open]);
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(search), 250);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const query = cleanSearch(debounced);
+
   const { data: sources = [], isLoading, isError } = useQuery({
-    queryKey: ['funding-source-match-directory'],
-    enabled: open,
-    staleTime: 5 * 60_000,
+    queryKey: ['funding-source-match-search', query],
+    enabled: open && query.length >= 2,
+    staleTime: 60_000,
     queryFn: async () => {
+      const terms = Array.from(new Set([query, ...query.split(/\s+/)])).filter((t) => t.length >= 2).slice(0, 6);
+      const filters = terms.flatMap((t) => [
+        `name.ilike.%${t}%`,
+        `email.ilike.%${t}%`,
+        `website.ilike.%${t}%`,
+        `contact_name.ilike.%${t}%`,
+      ]);
       const { data, error } = await supabase
         .from('master_lenders')
         .select('id, name, email, website, contact_name, contact_title, lender_type, tier')
-        .limit(5000);
+        .or(filters.join(','))
+        .limit(400);
       if (error) throw error;
       return (data || []) as FundingSourceRow[];
     },
   });
 
   const ranked = useMemo(() => {
-    const query = cleanSearch(search);
     if (!query) return [];
     return sources
       .map((source) => rankFundingSource(source, query))
-      .filter((source) => source.score >= 0.35)
+      .filter((source) => source.score >= 0.3)
       .sort((a, b) => b.score - a.score || (a.name || '').localeCompare(b.name || ''))
       .slice(0, 50);
-  }, [search, sources]);
+  }, [query, sources]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
