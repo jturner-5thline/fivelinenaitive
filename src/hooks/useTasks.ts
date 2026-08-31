@@ -381,7 +381,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
   }));
 
   const createTask = useMutation({
-    mutationFn: async (task: { title: string; description?: string; assigned_to?: string; priority?: string; due_date?: string; status?: string; project_id?: string; section_id?: string; deal_id?: string; contact_id?: string; crm_company_id?: string; recurrence_rule?: string | null; recurrence_end_date?: string | null; source?: DealFollowUpSource | null }) => {
+    mutationFn: async (task: { title: string; description?: string; assigned_to?: string; priority?: string; due_date?: string; status?: string; project_id?: string; section_id?: string; deal_id?: string; contact_id?: string; lender_id?: string; crm_company_id?: string; recurrence_rule?: string | null; recurrence_end_date?: string | null; source?: DealFollowUpSource | null }) => {
       if (!user) throw new Error('Not authenticated');
       // Get company_id
       const { data: membership } = await supabase
@@ -412,6 +412,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
           section_id: task.section_id || null,
           deal_id: derived.deal_id || null,
           contact_id: derived.contact_id || null,
+          lender_id: task.lender_id || null,
           crm_company_id: derived.crm_company_id || null,
           company_id: membership?.company_id || null,
           recurrence_rule: task.recurrence_rule ?? null,
