@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Video, Check, Pencil, X, ExternalLink, RefreshCw, Sparkles } from 'lucide-react';
 import { LinkedCallActionsDialog } from '@/components/claap/LinkedCallActionsDialog';
 import { MeetingContactUpdateDialog } from '@/components/dashboard/MeetingContactUpdateDialog';
+import { FundingSourceMatchDialog } from '@/components/lenders/FundingSourceMatchDialog';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
