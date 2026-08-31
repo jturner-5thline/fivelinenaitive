@@ -1299,12 +1299,11 @@
 .deal-glass.deal-tile,
 div.deal-tile.deal-glass,
 .deal-tile[class*="deal-glass"] {
-  background: #16294c !important;
-  background-color: #16294c !important;
+  background: #0f1f3d !important;
+  background-color: #0f1f3d !important;
   background-image: none !important;
-  border-color: rgba(255, 255, 255, 0.14) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   border-radius: 8px !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   color: #ffffff !important;
@@ -1313,11 +1312,11 @@ div.deal-tile.deal-glass,
 .deal-glass.deal-tile:hover,
 div.deal-tile.deal-glass:hover,
 .deal-tile[class*="deal-glass"]:hover {
-  background: #1c3358 !important;
-  background-color: #1c3358 !important;
+  background: #14264a !important;
+  background-color: #14264a !important;
   background-image: none !important;
   border-color: rgba(34, 211, 238, 0.55) !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(34, 211, 238, 0.18) !important;
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.18) !important;
 }
 
 
