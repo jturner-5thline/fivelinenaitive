@@ -10,10 +10,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { diceCoefficient } from '@/utils/stringSimilarity';
 import { toast } from 'sonner';
 
+interface MeetingAttendee {
+  email?: string | null;
+  displayName?: string | null;
+  self?: boolean;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialQuery?: string;
+  organizerEmail?: string | null;
+  attendees?: MeetingAttendee[];
 }
 
 interface FundingSourceRow {
