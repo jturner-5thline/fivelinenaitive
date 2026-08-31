@@ -94,6 +94,7 @@ type GroupMode = 'day' | 'type';
 type FilterChip = 'internal' | 'deals' | 'dismissed';
 
 interface ContactInfo {
+  id?: string | null;
   fullName: string | null;
   jobTitle: string | null;
   companyName: string | null;
