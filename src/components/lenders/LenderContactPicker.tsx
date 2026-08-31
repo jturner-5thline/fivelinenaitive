@@ -232,7 +232,7 @@ export function LenderContactPicker({ value, onChange }: Props) {
   };
 
   // Selected contact summary (read-only)
-  if (value.contact_id && !creating) {
+  if ((value.contact_id || value.name.trim() || value.email.trim()) && !creating) {
     return (
       <div className="space-y-1.5 rounded-md border border-border/60 bg-muted/30 p-2.5">
         <div className="flex items-start justify-between gap-2">

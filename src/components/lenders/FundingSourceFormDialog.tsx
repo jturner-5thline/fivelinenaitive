@@ -316,13 +316,12 @@ export function FundingSourceFormDialog({
 
             <div className="space-y-2">
               <Label htmlFor="new-funding-source-type">Funding Source Type</Label>
-              <Select value={form.lenderType || 'none'} onValueChange={(value) => updateForm('lenderType', value === 'none' ? '' : value)}>
-                <SelectTrigger id="new-funding-source-type"><SelectValue placeholder="Select type" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {LENDER_TYPE_OPTIONS.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Input
+                id="new-funding-source-type"
+                value={form.lenderType}
+                onChange={(event) => updateForm('lenderType', event.target.value)}
+                placeholder="e.g., Bank, Credit Fund"
+              />
             </div>
 
             <Separator />
