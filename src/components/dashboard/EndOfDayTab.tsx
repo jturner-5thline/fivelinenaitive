@@ -1064,6 +1064,55 @@ export function EndOfDayTab({
     },
   });
 
+  // Primary external attendee resolved to a CRM contact — used to attach the
+  // meeting follow-up task to a real person instead of a bare title.
+  const selectedContactId = useMemo(() => {
+    if (!selectedEvent) return null;
+    for (const a of selectedEvent.attendees || []) {
+      if (a.self) continue;
+      const email = (a.email || '').trim().toLowerCase();
+      const hit = email ? contactsByEmail[email] : null;
+      if (hit?.id) return hit.id;
+    }
+    return null;
+  }, [selectedEvent, contactsByEmail]);
+
+  // Funding source on the linked deal that the meeting is about. Resolved by
+  // matching the lender name against the meeting title, then against the
+  // external attendees' email domains. No fallback — an ambiguous meeting
+  // leaves the task unlinked rather than guessing.
+  const { data: selectedLenderId = null } = useQuery<string | null>({
+    queryKey: ['eod-meeting-lender', selectedLinkedDealId, selectedEvent?.id],
+    enabled: !!selectedLinkedDealId && !!selectedEvent,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const { data } = await (supabase.from('deal_lenders') as any)
+        .select('id, lender_name, contact_email')
+        .eq('deal_id', selectedLinkedDealId);
+      const rows = (data || []) as { id: string; lender_name?: string | null; contact_email?: string | null }[];
+      if (!rows.length) return null;
+      const title = (selectedEvent?.summary || '').toLowerCase();
+      const byName = rows.find(r => {
+        const n = (r.lender_name || '').trim().toLowerCase();
+        return n.length > 2 && title.includes(n);
+      });
+      if (byName) return byName.id;
+      const domains = new Set(
+        (selectedEvent?.attendees || [])
+          .filter(a => !a.self)
+          .map(a => (a.email || '').split('@')[1]?.trim().toLowerCase())
+          .filter(Boolean) as string[],
+      );
+      const byDomain = rows.find(r => {
+        const d = (r.contact_email || '').split('@')[1]?.trim().toLowerCase();
+        return !!d && domains.has(d);
+      });
+      return byDomain?.id ?? null;
+    },
+  });
+
+
+
   // One-time baseline (subtask #4): on the first time a user lands in EOD
   // after this feature ships, mark every currently-outstanding item as
   // read so they "start fresh" instead of seeing months of blue dots.
