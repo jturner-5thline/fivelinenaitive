@@ -110,6 +110,7 @@ function QueueCard({
 
 export function CrmUpdateQueueButton({ variant = 'outline' as const }) {
   const [open, setOpen] = useState(false);
+  const [confirmAllOpen, setConfirmAllOpen] = useState(false);
   const { data: count = 0 } = usePendingSuggestionsCount();
   const { data: queue = [], isLoading } = useCrmUpdateQueue();
   const action = useFieldSuggestionAction();
@@ -123,6 +124,14 @@ export function CrmUpdateQueueButton({ variant = 'outline' as const }) {
         : {}),
     });
   };
+
+  const handleConfirmAll = () => {
+    action.mutate(
+      { action: 'bulk_accept', suggestion_ids: queue.map((s) => s.id) },
+      { onSettled: () => setConfirmAllOpen(false) },
+    );
+  };
+
 
   // Group by contact
   const grouped = queue.reduce<Record<string, QueueSuggestion[]>>((acc, s) => {
