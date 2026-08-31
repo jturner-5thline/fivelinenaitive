@@ -98,9 +98,9 @@
 
     /* App backdrop — deep navy with a soft blue diagonal band (dark top-left, blue lower-right) */
     --app-backdrop:
-      radial-gradient(120% 100% at 88% 78%, rgba(16, 66, 122, 0.55) 0%, rgba(11, 45, 88, 0.28) 45%, rgba(4, 12, 28, 0) 78%),
-      radial-gradient(90% 80% at 5% 0%, rgba(2, 8, 20, 0.85) 0%, rgba(2, 8, 20, 0) 65%),
-      linear-gradient(118deg, #030a18 0%, #06152c 30%, #0a2a52 62%, #0c3663 82%, #0d3a6b 100%);
+      radial-gradient(120% 100% at 88% 78%, rgba(11, 46, 88, 0.42) 0%, rgba(8, 32, 62, 0.20) 45%, rgba(4, 12, 28, 0) 78%),
+      radial-gradient(90% 80% at 5% 0%, rgba(2, 8, 20, 0.88) 0%, rgba(2, 8, 20, 0) 65%),
+      linear-gradient(118deg, #030a18 0%, #05122448 30%, #071d3a 62%, #08264a 82%, #092a52 100%);
 
 
 
