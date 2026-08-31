@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, Globe2, Loader2, Mail, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { diceCoefficient } from '@/utils/stringSimilarity';
+import { toast } from 'sonner';
 
 interface Props {
   open: boolean;
@@ -21,8 +23,37 @@ interface FundingSourceRow {
   website: string | null;
   contact_name: string | null;
   contact_title: string | null;
+  contact_phone: string | null;
+  phone: string | null;
   lender_type: string | null;
   tier: string | null;
+  min_deal: number | null;
+  max_deal: number | null;
+  geo: string | null;
+  industries: string[] | null;
+  loan_types: string[] | null;
+  company_requirements: string | null;
+  deal_structure_notes: string | null;
+  min_revenue: number | null;
+  ebitda_min: number | null;
+  relationship_owners: string | null;
+  linkedin_url: string | null;
+  address: string | null;
+  b2b_b2c: string | null;
+  sponsorship: string | null;
+  cash_burn: string | null;
+  sub_debt: string | null;
+  refinancing: string | null;
+  industries_to_avoid: string[] | null;
+  nda: string | null;
+  referral_lender: string | null;
+  referral_fee_offered: string | null;
+  referral_agreement: string | null;
+  about_notes: string | null;
+  funding_source_notes: string | null;
+  lender_one_pager_url: string | null;
+  upfront_checklist: string | null;
+  post_term_sheet_checklist: string | null;
 }
 
 interface RankedFundingSource extends FundingSourceRow {
@@ -77,14 +108,71 @@ function rankFundingSource(row: FundingSourceRow, query: string): RankedFundingS
   };
 }
 
+const splitValues = (value: string) => value.split(',').map((part) => part.trim()).filter(Boolean);
+const numberOrNull = (value: string) => value.trim() ? Number(value) : null;
+
+function toLenderDetail(source: FundingSourceRow) {
+  return {
+    id: source.id,
+    name: source.name || 'Unnamed funding source',
+    contact: {
+      name: source.contact_name || '',
+      title: source.contact_title || '',
+      email: source.email || '',
+      phone: source.contact_phone || '',
+    },
+    preferences: [...(source.loan_types || []), ...(source.industries || []), source.geo].filter(Boolean) as string[],
+    website: source.website || undefined,
+    description: source.company_requirements || undefined,
+    lenderType: source.lender_type || undefined,
+    minDeal: source.min_deal,
+    maxDeal: source.max_deal,
+    geo: source.geo,
+    industries: source.industries,
+    loanTypes: source.loan_types,
+    minRevenue: source.min_revenue,
+    ebitdaMin: source.ebitda_min,
+    companyRequirements: source.company_requirements,
+    upfrontChecklist: source.upfront_checklist,
+    postTermSheetChecklist: source.post_term_sheet_checklist,
+    b2bB2c: source.b2b_b2c,
+    lenderNotes: source.deal_structure_notes,
+    tier: source.tier,
+    relationshipOwners: source.relationship_owners,
+    websiteUrl: source.website,
+    linkedinUrl: source.linkedin_url,
+    address: source.address,
+    phoneMain: source.phone,
+    sponsorship: source.sponsorship,
+    cashBurn: source.cash_burn,
+    subDebt: source.sub_debt,
+    refinancing: source.refinancing,
+    industriesToAvoid: source.industries_to_avoid,
+    nda: source.nda,
+    referralLender: source.referral_lender,
+    referralFeeOffered: source.referral_fee_offered,
+    referralAgreement: source.referral_agreement,
+    aboutNotes: source.about_notes,
+    fundingSourceNotes: source.funding_source_notes,
+    lenderOnePagerUrl: source.lender_one_pager_url,
+  };
+}
+
 export function FundingSourceMatchDialog({ open, onOpenChange, initialQuery = '' }: Props) {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState(initialQuery);
   const [debounced, setDebounced] = useState(initialQuery);
+  const [selectedSource, setSelectedSource] = useState<FundingSourceRow | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
       setSearch(initialQuery);
       setDebounced(initialQuery);
+    } else {
+      setSelectedSource(null);
+      setDetailOpen(false);
     }
   }, [initialQuery, open]);
 
@@ -109,7 +197,7 @@ export function FundingSourceMatchDialog({ open, onOpenChange, initialQuery = ''
       ]);
       const { data, error } = await supabase
         .from('master_lenders')
-        .select('id, name, email, website, contact_name, contact_title, lender_type, tier')
+        .select('*')
         .or(filters.join(','))
         .limit(400);
       if (error) throw error;
@@ -126,83 +214,166 @@ export function FundingSourceMatchDialog({ open, onOpenChange, initialQuery = ''
       .slice(0, 50);
   }, [query, sources]);
 
+  const handleSave = async (sourceId: string, data: LenderEditData) => {
+    setSaving(true);
+    const updates = {
+      name: data.name.trim(),
+      contact_name: data.contactName.trim() || null,
+      contact_phone: data.contactPhone.trim() || null,
+      contact_title: data.contactTitle?.trim() || null,
+      email: data.email.trim() || null,
+      lender_type: data.lenderType.trim() || null,
+      min_deal: numberOrNull(data.minDeal),
+      max_deal: numberOrNull(data.maxDeal),
+      geo: data.geo.trim() || null,
+      industries: splitValues(data.industries),
+      loan_types: splitValues(data.loanTypes),
+      company_requirements: data.companyRequirements.trim() || null,
+      deal_structure_notes: data.lenderNotes.trim() || null,
+      min_revenue: numberOrNull(data.minRevenue),
+      ebitda_min: numberOrNull(data.ebitdaMin),
+      tier: data.tier.trim() ? `T${data.tier.trim().replace(/^T/i, '')}` : null,
+      relationship_owners: data.relationshipOwners.trim() || null,
+      website: data.websiteUrl?.trim() || null,
+      linkedin_url: data.linkedinUrl?.trim() || null,
+      address: data.address?.trim() || null,
+      phone: data.phoneMain?.trim() || null,
+      b2b_b2c: data.b2bB2c?.trim() || null,
+      sponsorship: data.sponsorship?.trim() || null,
+      cash_burn: data.cashBurn?.trim() || null,
+      sub_debt: data.subDebt?.trim() || null,
+      refinancing: data.refinancing?.trim() || null,
+      industries_to_avoid: splitValues(data.industriesToAvoid || ''),
+      nda: data.nda?.trim() || null,
+      referral_lender: data.referralLender?.trim() || null,
+      referral_fee_offered: data.referralFeeOffered?.trim() || null,
+      referral_agreement: data.referralAgreement?.trim() || null,
+      about_notes: data.aboutNotes?.trim() || null,
+      funding_source_notes: data.fundingSourceNotes?.trim() || null,
+      lender_one_pager_url: data.lenderOnePagerUrl?.trim() || null,
+      upfront_checklist: data.upfrontChecklist?.trim() || null,
+      post_term_sheet_checklist: data.postTermSheetChecklist?.trim() || null,
+    };
+
+    try {
+      const { error } = await supabase.from('master_lenders').update(updates).eq('id', sourceId);
+      if (error) throw error;
+      setSelectedSource((current) => current ? { ...current, ...updates } : current);
+      await queryClient.invalidateQueries({ queryKey: ['funding-source-match-search'] });
+      toast.success(`${updates.name} updated`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update funding source';
+      toast.error(message);
+      throw error;
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="z-[1600] flex max-h-[78vh] max-w-2xl flex-col border-white/10 bg-[#171B2C] text-white"
-        overlayClassName="z-[1590]"
-      >
-        <DialogHeader>
-          <DialogTitle className="text-white">Update Funding Source</DialogTitle>
-          <DialogDescription className="text-white/60">
-            Search the funding source directory for likely matches by name, email, URL, or domain.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          className="z-[1600] flex max-h-[78vh] max-w-2xl flex-col border-white/10 bg-[#171B2C] text-white"
+          overlayClassName="z-[1590]"
+        >
+          <DialogHeader>
+            <DialogTitle className="text-white">Update Funding Source</DialogTitle>
+            <DialogDescription className="text-white/60">
+              Search the funding source directory for likely matches by name, email, URL, or domain.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
-          <Input
-            autoFocus
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search name, email, URL, or domain…"
-            className="h-10 border-white/10 bg-white/[0.04] pl-9 text-white placeholder:text-white/40"
-            maxLength={160}
-          />
-          {search && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Clear funding source search"
-              className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-white/50 hover:bg-white/[0.08] hover:text-white"
-              onClick={() => setSearch('')}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
+            <Input
+              autoFocus
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search name, email, URL, or domain…"
+              className="h-10 border-white/10 bg-white/[0.04] pl-9 text-white placeholder:text-white/40"
+              maxLength={160}
+            />
+            {search && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Clear funding source search"
+                className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-white/50 hover:bg-white/[0.08] hover:text-white"
+                onClick={() => setSearch('')}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-          {isLoading ? (
-            <div className="flex items-center justify-center gap-2 py-12 text-sm text-white/60">
-              <Loader2 className="h-4 w-4 animate-spin" /> Searching funding sources…
-            </div>
-          ) : isError ? (
-            <p className="py-10 text-center text-sm text-white/60">Funding sources could not be loaded.</p>
-          ) : !cleanSearch(search) ? (
-            <p className="py-10 text-center text-sm text-white/60">Enter a name, email, URL, or domain to search.</p>
-          ) : ranked.length === 0 ? (
-            <p className="py-10 text-center text-sm text-white/60">No likely funding source matches found.</p>
-          ) : (
-            <div className="space-y-2 py-2">
-              {ranked.map((source) => (
-                <div key={source.id} className="rounded-md border border-white/10 bg-white/[0.04] p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 shrink-0 text-primary" />
-                        <span className="truncate text-sm font-medium text-white">{source.name || 'Unnamed funding source'}</span>
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            {isLoading ? (
+              <div className="flex items-center justify-center gap-2 py-12 text-sm text-white/60">
+                <Loader2 className="h-4 w-4 animate-spin" /> Searching funding sources…
+              </div>
+            ) : isError ? (
+              <p className="py-10 text-center text-sm text-white/60">Funding sources could not be loaded.</p>
+            ) : !cleanSearch(search) ? (
+              <p className="py-10 text-center text-sm text-white/60">Enter a name, email, URL, or domain to search.</p>
+            ) : ranked.length === 0 ? (
+              <p className="py-10 text-center text-sm text-white/60">No likely funding source matches found.</p>
+            ) : (
+              <div className="space-y-2 py-2">
+                {ranked.map((source) => (
+                  <Button
+                    key={source.id}
+                    type="button"
+                    variant="ghost"
+                    aria-label={`Open ${source.name || 'unnamed funding source'}`}
+                    className="h-auto w-full justify-start whitespace-normal rounded-md border border-white/10 bg-white/[0.04] p-3 text-left text-white hover:bg-white/[0.09]"
+                    onClick={() => {
+                      setSelectedSource(source);
+                      setDetailOpen(true);
+                    }}
+                  >
+                    <div className="w-full min-w-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 shrink-0 text-primary" />
+                            <span className="truncate text-sm font-medium">{source.name || 'Unnamed funding source'}</span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/55">
+                            {source.email && <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{source.email}</span>}
+                            {source.website && <span className="inline-flex items-center gap-1"><Globe2 className="h-3 w-3" />{source.website}</span>}
+                          </div>
+                        </div>
+                        <Badge className="shrink-0 bg-primary/20 text-primary-foreground">{Math.round(source.score * 100)}% match</Badge>
                       </div>
-                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/55">
-                        {source.email && <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{source.email}</span>}
-                        {source.website && <span className="inline-flex items-center gap-1"><Globe2 className="h-3 w-3" />{source.website}</span>}
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        {source.reasons.map((reason) => <Badge key={reason} variant="outline" className="border-white/15 text-[11px] text-white/65">{reason}</Badge>)}
+                        {source.contact_name && <span className="text-[11px] text-white/45">Contact: {source.contact_name}{source.contact_title ? ` · ${source.contact_title}` : ''}</span>}
+                        {source.lender_type && <span className="text-[11px] text-white/45">{source.lender_type}</span>}
+                        {source.tier && <span className="text-[11px] text-white/45">Tier {source.tier}</span>}
                       </div>
                     </div>
-                    <Badge className="shrink-0 bg-primary/20 text-primary-foreground">{Math.round(source.score * 100)}% match</Badge>
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    {source.reasons.map((reason) => <Badge key={reason} variant="outline" className="border-white/15 text-[11px] text-white/65">{reason}</Badge>)}
-                    {source.contact_name && <span className="text-[11px] text-white/45">Contact: {source.contact_name}{source.contact_title ? ` · ${source.contact_title}` : ''}</span>}
-                    {source.lender_type && <span className="text-[11px] text-white/45">{source.lender_type}</span>}
-                    {source.tier && <span className="text-[11px] text-white/45">Tier {source.tier}</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <LenderDetailDialog
+        lender={selectedSource ? toLenderDetail(selectedSource) : null}
+        open={detailOpen}
+        onOpenChange={(nextOpen) => {
+          setDetailOpen(nextOpen);
+          if (!nextOpen) setSelectedSource(null);
+        }}
+        onSave={handleSave}
+        initialEditMode={false}
+        nested
+      />
+      {saving && <span className="sr-only" role="status">Saving funding source</span>}
+    </>
   );
 }
