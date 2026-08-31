@@ -3,13 +3,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, Globe2, Loader2, Mail, Plus, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
+import { FundingSourceFormDialog } from '@/components/lenders/FundingSourceFormDialog';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useCompany } from '@/hooks/useCompany';
 import { diceCoefficient } from '@/utils/stringSimilarity';
 import { toast } from 'sonner';
 
