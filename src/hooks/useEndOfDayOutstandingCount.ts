@@ -128,6 +128,7 @@ export function useEndOfDayOutstandingCount(): number {
     const readIds = new Set(
       userId ? readLS<string[]>(`${READ_KEY_PREFIX}:${userId}`, []) : [],
     );
+    const hideInternal = readLS<boolean>(HIDE_INTERNAL_KEY, true);
     const now = Date.now();
     let count = 0;
     for (const ev of events) {
@@ -135,6 +136,7 @@ export function useEndOfDayOutstandingCount(): number {
       if (!start || start < ws || start > we) continue;
       const otherCount = (ev.attendees || []).filter((a: any) => !a.self).length;
       if (otherCount === 0) continue;
+      if (hideInternal && eventIsInternal(ev)) continue;
       if (isResolved(ev.id)) continue;
       if (isDismissed(ev.id, start)) continue;
       const snoozedIso = snoozeMap[ev.id];
