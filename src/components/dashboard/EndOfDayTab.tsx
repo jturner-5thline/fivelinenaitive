@@ -1043,7 +1043,7 @@ export function EndOfDayTab({
   // when the user switches the linked deal in-place. This is the SINGLE
   // source of truth for prefilling the New Task deal field — no fuzzy
   // matching on title/transcript and no "first active deal" fallback.
-  const { data: selectedLinkedDealId } = useQuery<string | null>({
+  const { data: selectedLinkedDealId, isLoading: isSelectedDealLinkLoading } = useQuery<string | null>({
     queryKey: ['meeting-deal-link', selectedId, company?.id],
     enabled: !!company?.id && !!selectedId,
     staleTime: 0,
@@ -1081,7 +1081,7 @@ export function EndOfDayTab({
   // matching the lender name against the meeting title, then against the
   // external attendees' email domains. No fallback — an ambiguous meeting
   // leaves the task unlinked rather than guessing.
-  const { data: selectedLenderId = null } = useQuery<string | null>({
+  const { data: selectedLenderId = null, isLoading: isSelectedLenderLoading } = useQuery<string | null>({
     queryKey: ['eod-meeting-lender', selectedLinkedDealId, selectedEvent?.id],
     enabled: !!selectedLinkedDealId && !!selectedEvent,
     staleTime: 60 * 1000,
@@ -1256,6 +1256,7 @@ export function EndOfDayTab({
 
   // QuickCreateTask state
   const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [pendingFollowUpEventId, setPendingFollowUpEventId] = useState<string | null>(null);
   const [prefill, setPrefill] = useState<{
     title: string;
     dealId: string | null;
@@ -1263,6 +1264,25 @@ export function EndOfDayTab({
     lenderId: string | null;
     eventId?: string;
   }>({ title: '', dealId: null, contactId: null, lenderId: null });
+
+  // Wait for canonical meeting associations before opening the composer so
+  // the first click is fully prefilled instead of using stale selection state.
+  useEffect(() => {
+    if (!pendingFollowUpEventId || selectedEvent?.id !== pendingFollowUpEventId) return;
+    if (isSelectedDealLinkLoading || isSelectedLenderLoading) return;
+    setPrefill({
+      title: `Follow Up: ${selectedEvent.summary || '(No title)'}`,
+      dealId: selectedLinkedDealId ?? null,
+      contactId: selectedContactId,
+      lenderId: selectedLenderId,
+      eventId: selectedEvent.id,
+    });
+    setFollowUpOpen(true);
+    setPendingFollowUpEventId(null);
+  }, [
+    pendingFollowUpEventId, selectedEvent, selectedLinkedDealId, selectedContactId,
+    selectedLenderId, isSelectedDealLinkLoading, isSelectedLenderLoading,
+  ]);
 
   const clearAllFilters = useCallback(() => {
     setFilterChips(new Set());
@@ -1547,19 +1567,10 @@ export function EndOfDayTab({
                         isUnread={!readSet.has(ev.id) && selectedId !== ev.id}
                         onClick={() => {
                           setSelectedId(ev.id);
-                          // Clicking a meeting turns it into real deal work:
-                          // open the follow-up task composer prefilled with
-                          // the meeting, its linked deal, contact and lender.
-                          if (!ev._approval) {
-                            setPrefill({
-                              title: `Follow Up: ${ev.summary || '(No title)'}`,
-                              dealId: selectedId === ev.id ? selectedLinkedDealId ?? null : null,
-                              contactId: selectedId === ev.id ? selectedContactId : null,
-                              lenderId: selectedId === ev.id ? selectedLenderId : null,
-                              eventId: ev.id,
-                            });
-                            setFollowUpOpen(true);
-                          }
+
+                          // Open the composer after canonical associations finish loading.
+
+                          if (!ev._approval) setPendingFollowUpEventId(ev.id);
                         }}
                         onToggleSelect={(e) => {
                           setBulkSelected(prev => {
