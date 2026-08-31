@@ -449,7 +449,7 @@ function EditableDealTile({
   );
 }
 
-export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelete, onSave, initialEditMode = false }: LenderDetailDialogProps) {
+export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelete, onSave, initialEditMode = false, nested = false }: LenderDetailDialogProps) {
   const { deals, updateLender: updateDealLender } = useDealsContext();
   const { pipelines } = usePipelineContext();
   const { stageOptions: lenderStageOptions } = useLenderLabelResolver();
