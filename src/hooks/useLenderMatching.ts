@@ -150,31 +150,32 @@ export function calculateLenderMatch(
   }
 
   // ── Deal Size (30 pts) ──
-  const capitalValue = parseCapitalAsk(criteria.capitalAsk) || criteria.dealValue;
+  const capitalValue = criteria.capitalAskAmount ?? parseCapitalAsk(criteria.capitalAsk) ?? criteria.dealValue;
   if (capitalValue) {
-    const min = lender.min_deal;
-    const max = lender.max_deal;
-    const belowMin = min !== null && min !== undefined && capitalValue < min;
-    const aboveMax = max !== null && max !== undefined && capitalValue > max;
+    const min = lender.sweet_spot_min ?? lender.min_deal;
+    const max = lender.sweet_spot_max ?? lender.max_deal;
+    const belowMin = min != null && capitalValue < min;
+    const aboveMax = max != null && capitalValue > max;
 
-    if (!belowMin && !aboveMax && (min || max)) {
+    if (!belowMin && !aboveMax && (min != null || max != null)) {
       const range: string[] = [];
-      if (min) range.push(`$${(min / 1000000).toFixed(1)}M`);
-      if (max) range.push(`$${(max / 1000000).toFixed(1)}M`);
+      if (min != null) range.push(`$${(min / 1000000).toFixed(1)}M`);
+      if (max != null) range.push(`$${(max / 1000000).toFixed(1)}M`);
       reasons.push(`Deal size fits${range.length ? `: ${range.join(' - ')}` : ''}`);
       score += W.DEAL_SIZE;
     } else if (belowMin || aboveMax) {
-      // Within 20% of boundary = partial credit
-      const boundary = belowMin ? min! : max!;
-      const pctOff = Math.abs(capitalValue - boundary) / boundary;
-      if (pctOff <= 0.2) {
-        reasons.push(`Deal size near ${belowMin ? 'minimum' : 'maximum'}`);
-        score += Math.round(W.DEAL_SIZE * 0.5);
-      } else {
-        warnings.push(belowMin
-          ? `Below min ($${(min! / 1000000).toFixed(1)}M)`
-          : `Above max ($${(max! / 1000000).toFixed(1)}M)`);
-        score -= 15;
+      const boundary = belowMin ? min : max;
+      if (boundary != null) {
+        const pctOff = Math.abs(capitalValue - boundary) / Math.max(1, boundary);
+        if (pctOff <= 0.2) {
+          reasons.push(`Deal size near ${belowMin ? 'minimum' : 'maximum'}`);
+          score += Math.round(W.DEAL_SIZE * 0.5);
+        } else {
+          warnings.push(belowMin
+            ? `Below min ($${(boundary / 1000000).toFixed(1)}M)`
+            : `Above max ($${(boundary / 1000000).toFixed(1)}M)`);
+          score -= 15;
+        }
       }
     }
   }
