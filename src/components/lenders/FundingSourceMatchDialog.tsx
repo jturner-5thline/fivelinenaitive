@@ -3,13 +3,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, Globe2, Loader2, Mail, Plus, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
+import { FundingSourceFormDialog } from '@/components/lenders/FundingSourceFormDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCompany } from '@/hooks/useCompany';
 import { diceCoefficient } from '@/utils/stringSimilarity';
 import { toast } from 'sonner';
 
@@ -178,18 +177,9 @@ export function FundingSourceMatchDialog({
 }: Props) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { company } = useCompany();
   const [search, setSearch] = useState(initialQuery);
   const [debounced, setDebounced] = useState(initialQuery);
   const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState({
-    name: initialQuery,
-    contactName: '',
-    email: '',
-    contactPhone: '',
-    website: '',
-  });
-  const [creating, setCreating] = useState(false);
 
   const inviteContact = useMemo(() => {
     const internalDomains = ['naitive.co', '5thline.co'];
@@ -262,54 +252,7 @@ export function FundingSourceMatchDialog({
       .slice(0, 50);
   }, [query, sources]);
 
-  const openCreate = () => {
-    setCreateForm({
-      name: search.trim() || initialQuery.trim(),
-      contactName: inviteContact?.name || '',
-      email: inviteContact?.email || '',
-      contactPhone: '',
-      website: inviteContact?.website || '',
-    });
-    setCreateOpen(true);
-  };
-
-  const updateCreateField = (field: keyof typeof createForm, value: string) => {
-    setCreateForm((current) => ({ ...current, [field]: value }));
-  };
-
-  const handleCreate = async () => {
-    const name = createForm.name.trim();
-    if (!name || !user) return;
-    setCreating(true);
-    try {
-      const { data, error } = await supabase
-        .from('master_lenders')
-        .insert({
-          user_id: user.id,
-          company_id: company?.id || null,
-          name,
-          email: createForm.email.trim() || null,
-          contact_name: createForm.contactName.trim() || null,
-          contact_phone: createForm.contactPhone.trim() || null,
-          website: createForm.website.trim() || null,
-        })
-        .select('*')
-        .single();
-      if (error) throw error;
-      const created = data as FundingSourceRow;
-      await queryClient.invalidateQueries({ queryKey: ['funding-source-match-search'] });
-      setSearch(name);
-      setCreateOpen(false);
-      setSelectedSource(created);
-      setDetailOpen(true);
-      toast.success(`${name} added as a funding source`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to create funding source';
-      toast.error(message);
-    } finally {
-      setCreating(false);
-    }
-  };
+  const openCreate = () => setCreateOpen(true);
 
   const handleSave = async (sourceId: string, data: LenderEditData) => {
     setSaving(true);
@@ -474,47 +417,17 @@ export function FundingSourceMatchDialog({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="z-[1700] max-w-lg border-white/10 bg-[#171B2C] text-white" overlayClassName="z-[1690] bg-slate-900/50">
-          <DialogHeader>
-            <DialogTitle className="text-white">Create new funding source</DialogTitle>
-            <DialogDescription className="text-white/60">
-              Add this funding source to the directory using details from the calendar invite.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid gap-1.5">
-              <Label htmlFor="new-funding-source-name" className="text-white/80">Funding source name *</Label>
-              <Input id="new-funding-source-name" value={createForm.name} maxLength={200} onChange={(event) => updateCreateField('name', event.target.value)} className="border-white/10 bg-white/[0.04] text-white" autoFocus />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="new-funding-source-contact" className="text-white/80">Contact name</Label>
-              <Input id="new-funding-source-contact" value={createForm.contactName} maxLength={200} onChange={(event) => updateCreateField('contactName', event.target.value)} className="border-white/10 bg-white/[0.04] text-white" />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-1.5">
-                <Label htmlFor="new-funding-source-email" className="text-white/80">Email</Label>
-                <Input id="new-funding-source-email" type="email" value={createForm.email} maxLength={255} onChange={(event) => updateCreateField('email', event.target.value)} className="border-white/10 bg-white/[0.04] text-white" />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="new-funding-source-phone" className="text-white/80">Phone</Label>
-                <Input id="new-funding-source-phone" type="tel" value={createForm.contactPhone} maxLength={50} onChange={(event) => updateCreateField('contactPhone', event.target.value)} className="border-white/10 bg-white/[0.04] text-white" />
-              </div>
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="new-funding-source-website" className="text-white/80">Website or domain</Label>
-              <Input id="new-funding-source-website" value={createForm.website} maxLength={500} onChange={(event) => updateCreateField('website', event.target.value)} className="border-white/10 bg-white/[0.04] text-white" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button type="button" onClick={handleCreate} disabled={!createForm.name.trim() || creating}>
-              {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create funding source
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <FundingSourceFormDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        initialName={search.trim() || initialQuery.trim()}
+        initialContact={inviteContact}
+        onCreated={(created) => {
+          setSearch(created.name || search);
+          setSelectedSource(created as unknown as FundingSourceRow);
+          setDetailOpen(true);
+        }}
+      />
 
       <LenderDetailDialog
         lender={selectedSource ? toLenderDetail(selectedSource) : null}
