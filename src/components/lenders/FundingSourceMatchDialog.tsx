@@ -405,6 +405,21 @@ export function FundingSourceMatchDialog({
             )}
           </div>
 
+          <div className="mb-2 flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+            <p className="text-xs text-white/50">Can’t find the right source?</p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 shrink-0 border-primary/40 bg-primary/10 text-white hover:bg-primary/20"
+              onClick={openCreate}
+              disabled={!user}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Create new funding source
+            </Button>
+          </div>
+
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
             {isLoading ? (
               <div className="flex items-center justify-center gap-2 py-12 text-sm text-white/60">
