@@ -55,14 +55,44 @@ async function processSuggestion(
 
   if (action === "accept") {
     const column = FIELD_TO_COLUMN[suggestion.field_name];
-    if (!column) {
+    let updatePayload: Record<string, unknown> | null = null;
+
+    if (column) {
+      updatePayload = { [column]: suggestion.suggested_value };
+    } else if (suggestion.field_name === "company_name") {
+      // Contacts have no company_name column — resolve the name to a CRM company link.
+      const { data: contactRow } = await supabase
+        .from("contacts")
+        .select("org_company_id")
+        .eq("id", suggestion.contact_id)
+        .maybeSingle();
+
+      const name = String(suggestion.suggested_value || "").trim();
+      let crmQuery = supabase
+        .from("crm_companies")
+        .select("id")
+        .ilike("name", name)
+        .limit(1);
+      if (contactRow?.org_company_id) {
+        crmQuery = crmQuery.eq("org_company_id", contactRow.org_company_id);
+      }
+      const { data: crmCompany } = await crmQuery.maybeSingle();
+
+      if (!crmCompany?.id) {
+        return {
+          error: `No CRM company matches "${name}". Create or link the company first.`,
+          status: 400,
+        };
+      }
+      updatePayload = { crm_company_id: crmCompany.id };
+    } else {
       return { error: `Unknown field: ${suggestion.field_name}`, status: 400 };
     }
 
     // Update contact field
     const { error: updateErr } = await supabase
       .from("contacts")
-      .update({ [column]: suggestion.suggested_value })
+      .update(updatePayload)
       .eq("id", suggestion.contact_id);
 
     if (updateErr) {
