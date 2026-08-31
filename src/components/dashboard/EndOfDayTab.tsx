@@ -1553,7 +1553,9 @@ export function EndOfDayTab({
                           if (!ev._approval) {
                             setPrefill({
                               title: `Follow Up: ${ev.summary || '(No title)'}`,
-                              dealId: null,
+                              dealId: selectedId === ev.id ? selectedLinkedDealId ?? null : null,
+                              contactId: selectedId === ev.id ? selectedContactId : null,
+                              lenderId: selectedId === ev.id ? selectedLenderId : null,
                               eventId: ev.id,
                             });
                             setFollowUpOpen(true);
@@ -1627,6 +1629,8 @@ export function EndOfDayTab({
               // Explicit meeting→deal link is the SINGLE source of truth.
               // If nothing is linked, leave empty — never guess.
               dealId: selectedLinkedDealId ?? null,
+              contactId: selectedContactId,
+              lenderId: selectedLenderId,
               eventId: selectedEvent.id,
             });
             setFollowUpOpen(true);
