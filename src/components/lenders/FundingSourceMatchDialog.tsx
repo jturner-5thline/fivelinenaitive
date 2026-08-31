@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
 import { FundingSourceFormDialog } from '@/components/lenders/FundingSourceFormDialog';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { diceCoefficient } from '@/utils/stringSimilarity';
 import { toast } from 'sonner';
 
