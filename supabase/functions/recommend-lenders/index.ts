@@ -250,6 +250,10 @@ function scoreSize(deal: any, lender: any): { score: number; reason: string } {
   const minRev = toNum(lender.min_revenue);
   const ebitda = toNum(deal.ebitda);
   const minEbitda = toNum(lender.ebitda_min);
+  const sweetMin = toNum(lender.sweet_spot_min);
+  const sweetMax = toNum(lender.sweet_spot_max);
+  const grossMargin = toNum(deal.grossMarginPct);
+  const minGrossMargin = toNum(lender.min_gross_margin_pct);
 
   let sub = 50;
   let reason = "size unknown";
@@ -259,7 +263,13 @@ function scoreSize(deal: any, lender: any): { score: number; reason: string } {
     else if (min && v < min) sub = 35, reason = `deal slightly below min $${(min/1e6).toFixed(1)}M`;
     else if (max && v > max * 2) sub = 5, reason = `deal $${(v/1e6).toFixed(1)}M far above max $${(max/1e6).toFixed(1)}M`;
     else if (max && v > max) sub = 40, reason = `deal slightly above max $${(max/1e6).toFixed(1)}M`;
-    else sub = 100, reason = `inside ${min?`$${(min/1e6).toFixed(0)}M`:"–"}-${max?`$${(max/1e6).toFixed(0)}M`:"–"} band`;
+    else {
+      const inSweetSpot = (sweetMin == null || v >= sweetMin) && (sweetMax == null || v <= sweetMax);
+      sub = inSweetSpot ? 100 : 85;
+      reason = inSweetSpot && (sweetMin != null || sweetMax != null)
+        ? `inside sweet spot ${sweetMin?`$${(sweetMin/1e6).toFixed(0)}M`:"–"}-${sweetMax?`$${(sweetMax/1e6).toFixed(0)}M`:"–"}`
+        : `inside ${min?`$${(min/1e6).toFixed(0)}M`:"–"}-${max?`$${(max/1e6).toFixed(0)}M`:"–"} band`;
+    }
   } else if (v && !min && !max) {
     sub = 60; reason = "no published size band";
   }
@@ -269,6 +279,8 @@ function scoreSize(deal: any, lender: any): { score: number; reason: string } {
   else if (rev != null && minRev != null && rev < minRev) sub = Math.min(sub, 55);
 
   if (ebitda != null && minEbitda != null && ebitda < minEbitda) sub = Math.min(sub, 30);
+
+  if (grossMargin != null && minGrossMargin != null && grossMargin < minGrossMargin) sub = Math.min(sub, 35);
 
   return { score: sub, reason };
 }
@@ -312,6 +324,10 @@ function scoreIndustry(deal: any, lender: any): { score: number; reason: string;
 function scoreGeography(deal: any, lender: any): { score: number; reason: string; hardOut: boolean } {
   const dealGeo = lc(deal.location);
   const lenderGeo = lc(lender.geo);
+  const excludedGeo = arr(lender.geographies_excluded).map(lc).filter(Boolean);
+  if (dealGeo && excludedGeo.some((g) => dealGeo.includes(g) || g.includes(dealGeo))) {
+    return { score: 0, reason: `deal geography on lender's excluded list`, hardOut: true };
+  }
   if (!dealGeo || !lenderGeo) return { score: 70, reason: "geo unspecified", hardOut: false };
   if (lenderGeo.includes("global") || lenderGeo.includes("north america") || lenderGeo.includes("us/canada") || lenderGeo.includes("usa") || lenderGeo.includes("united states")) {
     // Generous national scope; US-based deals get full credit
@@ -687,7 +703,7 @@ serve(async (req) => {
     const { data: writeup } = await supabase
       .from("deal_writeups")
       .select(
-        "deal_type, capital_ask, industry, location, this_year_revenue, last_year_revenue, financial_years, description, company_highlights, team, key_items, customer_base, sponsorship, billing_model, profitability, gross_margins, b2b_b2c, revenue_type, collateral_available, use_of_funds, existing_debt_items, cash_burn_ok, year_founded, headcount, total_equity_raised, financial_comments, narrative_summary, narrative_embedding, narrative_source_hash",
+        "deal_type, capital_ask, capital_ask_amount, ttm_revenue, ttm_ebitda, gross_margin_pct, industry_normalized, industry, location, this_year_revenue, last_year_revenue, financial_years, description, company_highlights, team, key_items, customer_base, sponsorship, billing_model, profitability, gross_margins, b2b_b2c, revenue_type, collateral_available, use_of_funds, existing_debt_items, cash_burn_ok, year_founded, headcount, total_equity_raised, financial_comments, narrative_summary, narrative_embedding, narrative_source_hash",
       )
       .eq("deal_id", dealId)
       .maybeSingle();
@@ -705,7 +721,7 @@ serve(async (req) => {
       : dealTypesFromDeal.length ? dealTypesFromDeal : (writeup?.deal_type ? splitList(writeup.deal_type) : []);
     const overriddenValue = typeof criteriaOverride?.dealValue === "number" && criteriaOverride.dealValue > 0
       ? criteriaOverride.dealValue
-      : toNum(deal.value) ?? toNum(writeup?.capital_ask) ?? null;
+      : toNum(deal.value) ?? toNum((writeup as any)?.capital_ask_amount) ?? toNum(writeup?.capital_ask) ?? null;
 
     const sufficiency = checkSufficiency(
       { value: overriddenValue, dealTypes: overriddenDealTypes },
@@ -732,12 +748,12 @@ serve(async (req) => {
     const { data: masterLenders } = await supabase
       .from("master_lenders")
       .select(
-        "id, name, lender_type, loan_types, sub_debt, cash_burn, sponsorship, min_revenue, ebitda_min, min_deal, max_deal, industries, industries_to_avoid, b2b_b2c, refinancing, geo, tier, active, deal_structure_notes, company_requirements, tags, updated_at",
+        "id, name, lender_type, loan_types, sub_debt, cash_burn, sponsorship, sponsor_requirement, appetite_status, min_revenue, ebitda_min, min_gross_margin_pct, max_leverage, min_deal, max_deal, sweet_spot_min, sweet_spot_max, industries, industries_to_avoid, b2b_b2c, refinancing, geo, geographies, geographies_excluded, tier, active, deal_structure_notes, company_requirements, tags, updated_at",
       )
       .limit(2000);
 
     const activeLenders = (masterLenders ?? []).filter(
-      (l: any) => l.active !== false && !excludeSet.has(lc(l.name)),
+      (l: any) => l.active !== false && lc(l.appetite_status) !== "paused" && !excludeSet.has(lc(l.name)),
     );
 
     // Recent activity in last 90 days across all deals
@@ -867,8 +883,8 @@ serve(async (req) => {
     const writeUpKeyItems = Array.isArray(writeup?.key_items) ? writeup!.key_items : [];
     const writeUpHighlights = Array.isArray(writeup?.company_highlights) ? writeup!.company_highlights : [];
     const writeUpTeam = Array.isArray(writeup?.team) ? writeup!.team : [];
-    const revenue = toNum(writeup?.this_year_revenue) ?? toNum(writeup?.last_year_revenue) ?? toNum(deal.mrr) ?? null;
-    const ebitda = toNum((writeup as any)?.ebitda) ?? null;
+    const revenue = toNum((writeup as any)?.ttm_revenue) ?? toNum(writeup?.this_year_revenue) ?? toNum(writeup?.last_year_revenue) ?? toNum(deal.mrr) ?? null;
+    const ebitda = toNum((writeup as any)?.ttm_ebitda) ?? toNum((writeup as any)?.ebitda) ?? null;
 
     const dealNarrative = [
       deal.narrative, writeup?.description,
@@ -933,7 +949,7 @@ serve(async (req) => {
       name: deal.company ?? null,
       value: overriddenValue,
       dealTypes: sufficiency.dealTypes,
-      industry: overrideIndustry || writeup?.industry || deal.business_model || null,
+      industry: overrideIndustry || (writeup as any)?.industry_normalized || writeup?.industry || deal.business_model || null,
       subIndustry: deal.opportunity_type || null,
       businessModel: deal.business_model || writeup?.billing_model || null,
       location: overrideGeo || writeup?.location || null,
@@ -947,6 +963,7 @@ serve(async (req) => {
       ebitda,
       profitability: writeup?.profitability || null,
       grossMargins: writeup?.gross_margins || null,
+      grossMarginPct: toNum((writeup as any)?.gross_margin_pct),
       collateral: writeup?.collateral_available || null,
       cashBurnOk: writeup?.cash_burn_ok ?? null,
       useOfFunds: writeup?.use_of_funds || null,
@@ -1053,6 +1070,7 @@ serve(async (req) => {
         { name: "Product type",   passed: !(type.score <= 10 && arr(lender.loan_types).length > 0), reason: type.score <= 10 ? type.reason : undefined },
         { name: "Facility size",  passed: size.score > 5, reason: size.score <= 5 ? size.reason : undefined },
         { name: "Industry avoid list", passed: !industry.hardOut, reason: industry.hardOut ? industry.reason : undefined },
+        { name: "Geography exclusion", passed: !geography.hardOut, reason: geography.hardOut ? geography.reason : undefined },
         { name: "AI exclusion",   passed: !matchedExclusion, reason: matchedExclusion ? `narrative contains "${matchedExclusion.pattern}"` : undefined },
         { name: "Flagged in notes", passed: !hasFlag, reason: hasFlag ? "flagged in lender notes" : undefined },
         { name: "Negative-evidence threshold", passed: !evidence.hardOut, reason: evidence.hardOut ? evidence.reason : undefined },
