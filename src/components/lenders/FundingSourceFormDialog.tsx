@@ -47,8 +47,11 @@ interface FundingSourceForm {
   loanTypes: string;
   minDeal: string;
   maxDeal: string;
+  sweetSpotMin: string;
+  sweetSpotMax: string;
   industries: string;
   geo: string;
+  excludedGeographies: string;
   description: string;
   tier: string;
   relationshipOwners: string;
@@ -58,6 +61,10 @@ interface FundingSourceForm {
   address: string;
   minRevenue: string;
   ebitdaMin: string;
+  minGrossMarginPct: string;
+  maxLeverage: string;
+  sponsorRequirement: string;
+  appetiteStatus: string;
   companyRequirements: string;
 }
 
