@@ -1567,10 +1567,6 @@ export function EndOfDayTab({
                         isUnread={!readSet.has(ev.id) && selectedId !== ev.id}
                         onClick={() => {
                           setSelectedId(ev.id);
-
-                          // Open the composer after canonical associations finish loading.
-
-                          if (!ev._approval) setPendingFollowUpEventId(ev.id);
                         }}
                         onToggleSelect={(e) => {
                           setBulkSelected(prev => {
