@@ -98,7 +98,9 @@
 
     /* App backdrop — diagonal navy → blue wash (top-left dark, bottom-right blue) */
     --app-backdrop:
-      linear-gradient(125deg, #061024 0%, #08182f 30%, #0a2247 55%, #0e3a70 80%, #114a8c 100%);
+      radial-gradient(130% 120% at 100% 100%, rgba(20, 96, 180, 0.55) 0%, rgba(13, 62, 124, 0.30) 35%, rgba(6, 20, 45, 0) 70%),
+      linear-gradient(122deg, #050d1e 0%, #071630 32%, #0a2a55 58%, #0f4079 80%, #14549c 100%);
+
 
 
     /* Email / Outlook tokens */
