@@ -12245,6 +12245,7 @@ export type Database = {
           b2b_b2c: string | null
           billing_model: string | null
           capital_ask: string | null
+          capital_ask_amount: number | null
           cash_burn_ok: boolean | null
           collateral_available: string | null
           company_highlights: Json | null
@@ -12264,10 +12265,14 @@ export type Database = {
           financial_comments: Json | null
           financial_data_as_of: string | null
           financial_years: Json | null
+          geo_country: string | null
+          geo_state: string | null
+          gross_margin_pct: number | null
           gross_margins: string | null
           headcount: string | null
           id: string
           industry: string | null
+          industry_normalized: string | null
           key_items: Json | null
           last_year_revenue: string | null
           linkedin_url: string | null
@@ -12284,6 +12289,8 @@ export type Database = {
           team: Json | null
           this_year_revenue: string | null
           total_equity_raised: string | null
+          ttm_ebitda: number | null
+          ttm_revenue: number | null
           updated_at: string
           use_of_funds: string | null
           user_edited_fields: Json | null
@@ -12296,6 +12303,7 @@ export type Database = {
           b2b_b2c?: string | null
           billing_model?: string | null
           capital_ask?: string | null
+          capital_ask_amount?: number | null
           cash_burn_ok?: boolean | null
           collateral_available?: string | null
           company_highlights?: Json | null
@@ -12315,10 +12323,14 @@ export type Database = {
           financial_comments?: Json | null
           financial_data_as_of?: string | null
           financial_years?: Json | null
+          geo_country?: string | null
+          geo_state?: string | null
+          gross_margin_pct?: number | null
           gross_margins?: string | null
           headcount?: string | null
           id?: string
           industry?: string | null
+          industry_normalized?: string | null
           key_items?: Json | null
           last_year_revenue?: string | null
           linkedin_url?: string | null
@@ -12335,6 +12347,8 @@ export type Database = {
           team?: Json | null
           this_year_revenue?: string | null
           total_equity_raised?: string | null
+          ttm_ebitda?: number | null
+          ttm_revenue?: number | null
           updated_at?: string
           use_of_funds?: string | null
           user_edited_fields?: Json | null
@@ -12347,6 +12361,7 @@ export type Database = {
           b2b_b2c?: string | null
           billing_model?: string | null
           capital_ask?: string | null
+          capital_ask_amount?: number | null
           cash_burn_ok?: boolean | null
           collateral_available?: string | null
           company_highlights?: Json | null
@@ -12366,10 +12381,14 @@ export type Database = {
           financial_comments?: Json | null
           financial_data_as_of?: string | null
           financial_years?: Json | null
+          geo_country?: string | null
+          geo_state?: string | null
+          gross_margin_pct?: number | null
           gross_margins?: string | null
           headcount?: string | null
           id?: string
           industry?: string | null
+          industry_normalized?: string | null
           key_items?: Json | null
           last_year_revenue?: string | null
           linkedin_url?: string | null
@@ -12386,6 +12405,8 @@ export type Database = {
           team?: Json | null
           this_year_revenue?: string | null
           total_equity_raised?: string | null
+          ttm_ebitda?: number | null
+          ttm_revenue?: number | null
           updated_at?: string
           use_of_funds?: string | null
           user_edited_fields?: Json | null
@@ -18609,6 +18630,7 @@ export type Database = {
           about_notes: string | null
           active: boolean | null
           address: string | null
+          appetite_status: string | null
           b2b_b2c: string | null
           cash_burn: string | null
           company_id: string | null
@@ -18617,6 +18639,8 @@ export type Database = {
           contact_phone: string | null
           contact_title: string | null
           created_at: string
+          criteria_confidence: string | null
+          criteria_reviewed_at: string | null
           crm_company_id: string | null
           deal_structure_notes: string | null
           ebitda_min: number | null
@@ -18626,6 +18650,8 @@ export type Database = {
           flex_lender_id: string | null
           funding_source_notes: string | null
           geo: string | null
+          geographies: string[] | null
+          geographies_excluded: string[] | null
           gift_address: string | null
           id: string
           industries: string[] | null
@@ -18636,7 +18662,9 @@ export type Database = {
           linkedin_url: string | null
           loan_types: string[] | null
           max_deal: number | null
+          max_leverage: number | null
           min_deal: number | null
+          min_gross_margin_pct: number | null
           min_revenue: number | null
           name: string
           nda: string | null
@@ -18648,8 +18676,11 @@ export type Database = {
           referral_lender: string | null
           refinancing: string | null
           relationship_owners: string | null
+          sponsor_requirement: string | null
           sponsorship: string | null
           sub_debt: string | null
+          sweet_spot_max: number | null
+          sweet_spot_min: number | null
           sync_source: string | null
           tags: string[]
           tier: string | null
@@ -18662,6 +18693,7 @@ export type Database = {
           about_notes?: string | null
           active?: boolean | null
           address?: string | null
+          appetite_status?: string | null
           b2b_b2c?: string | null
           cash_burn?: string | null
           company_id?: string | null
@@ -18670,6 +18702,8 @@ export type Database = {
           contact_phone?: string | null
           contact_title?: string | null
           created_at?: string
+          criteria_confidence?: string | null
+          criteria_reviewed_at?: string | null
           crm_company_id?: string | null
           deal_structure_notes?: string | null
           ebitda_min?: number | null
@@ -18679,6 +18713,8 @@ export type Database = {
           flex_lender_id?: string | null
           funding_source_notes?: string | null
           geo?: string | null
+          geographies?: string[] | null
+          geographies_excluded?: string[] | null
           gift_address?: string | null
           id?: string
           industries?: string[] | null
@@ -18689,7 +18725,9 @@ export type Database = {
           linkedin_url?: string | null
           loan_types?: string[] | null
           max_deal?: number | null
+          max_leverage?: number | null
           min_deal?: number | null
+          min_gross_margin_pct?: number | null
           min_revenue?: number | null
           name: string
           nda?: string | null
@@ -18701,8 +18739,11 @@ export type Database = {
           referral_lender?: string | null
           refinancing?: string | null
           relationship_owners?: string | null
+          sponsor_requirement?: string | null
           sponsorship?: string | null
           sub_debt?: string | null
+          sweet_spot_max?: number | null
+          sweet_spot_min?: number | null
           sync_source?: string | null
           tags?: string[]
           tier?: string | null
@@ -18715,6 +18756,7 @@ export type Database = {
           about_notes?: string | null
           active?: boolean | null
           address?: string | null
+          appetite_status?: string | null
           b2b_b2c?: string | null
           cash_burn?: string | null
           company_id?: string | null
@@ -18723,6 +18765,8 @@ export type Database = {
           contact_phone?: string | null
           contact_title?: string | null
           created_at?: string
+          criteria_confidence?: string | null
+          criteria_reviewed_at?: string | null
           crm_company_id?: string | null
           deal_structure_notes?: string | null
           ebitda_min?: number | null
@@ -18732,6 +18776,8 @@ export type Database = {
           flex_lender_id?: string | null
           funding_source_notes?: string | null
           geo?: string | null
+          geographies?: string[] | null
+          geographies_excluded?: string[] | null
           gift_address?: string | null
           id?: string
           industries?: string[] | null
@@ -18742,7 +18788,9 @@ export type Database = {
           linkedin_url?: string | null
           loan_types?: string[] | null
           max_deal?: number | null
+          max_leverage?: number | null
           min_deal?: number | null
+          min_gross_margin_pct?: number | null
           min_revenue?: number | null
           name?: string
           nda?: string | null
@@ -18754,8 +18802,11 @@ export type Database = {
           referral_lender?: string | null
           refinancing?: string | null
           relationship_owners?: string | null
+          sponsor_requirement?: string | null
           sponsorship?: string | null
           sub_debt?: string | null
+          sweet_spot_max?: number | null
+          sweet_spot_min?: number | null
           sync_source?: string | null
           tags?: string[]
           tier?: string | null
@@ -30255,6 +30306,7 @@ export type Database = {
       normalize_stage: { Args: { stage_text: string }; Returns: string }
       normalize_stage_label: { Args: { t: string }; Returns: string }
       normalize_website_domain: { Args: { url: string }; Returns: string }
+      parse_money_text: { Args: { t: string }; Returns: number }
       realtime_topic_allowed: { Args: { _topic: string }; Returns: boolean }
       record_partner_tier: {
         Args: {
