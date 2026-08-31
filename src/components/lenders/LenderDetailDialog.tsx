@@ -197,6 +197,7 @@ interface LenderDetailDialogProps {
   onDelete?: (lenderName: string) => void;
   onSave?: (lenderId: string, data: LenderEditData) => Promise<void>;
   initialEditMode?: boolean;
+  nested?: boolean;
 }
 
 function buildEditForm(lender: LenderInfo): LenderEditData {
