@@ -51,7 +51,21 @@ export interface LenderMatch {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function normalizeString(str: string): string {
-  return str.toLowerCase().replace(/-/g, ' ').trim();
+  return str.toLowerCase().replace(/[-_]/g, ' ').trim();
+}
+
+function matchesGeography(dealGeo: string | undefined, lender: MasterLender): boolean {
+  if (!dealGeo) return false;
+  const normalizedDeal = normalizeString(dealGeo);
+  const lenderGeographies = [...(lender.geographies || []), lender.geo || '']
+    .map(normalizeString)
+    .filter(Boolean);
+  const excludedGeographies = (lender.geographies_excluded || []).map(normalizeString);
+  if (excludedGeographies.some((geo) => geo === normalizedDeal || geo.includes(normalizedDeal) || normalizedDeal.includes(geo))) {
+    return false;
+  }
+  const broad = ['us', 'usa', 'united states', 'global', 'nationwide', 'north america'];
+  return lenderGeographies.some((geo) => broad.some((value) => geo.includes(value)) || geo.includes(normalizedDeal) || normalizedDeal.includes(geo));
 }
 
 function matchesIndustry(dealIndustry: string | undefined, lenderIndustries: string[] | null): boolean {
