@@ -101,6 +101,7 @@ export function MeetingClaapInlineAction(props: Props) {
   const [rankPending, setRankPending] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
+  const [fundingSourceDialogOpen, setFundingSourceDialogOpen] = useState(false);
 
   // Client-side gate: once we auto-attempt a search for this event and it
   // completes (whether or not a match was found and whether or not the DB
