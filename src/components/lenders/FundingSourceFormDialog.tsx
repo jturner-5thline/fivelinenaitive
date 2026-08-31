@@ -30,18 +30,6 @@ import { getIndustryOptions } from '@/lib/industryOptions';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-const LENDER_TYPE_OPTIONS = [
-  'Alternative',
-  'Asset-Based Lender',
-  'Bank',
-  'Distressed / Specialty',
-  'Equipment Financing',
-  'Equity',
-  'Mezzanine',
-  'Real Estate',
-  'SBA',
-] as const;
-
 interface FundingSourceContact {
   contact_id: string | null;
   name: string;
