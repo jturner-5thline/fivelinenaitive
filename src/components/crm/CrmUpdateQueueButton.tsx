@@ -1,9 +1,19 @@
 import { useState } from 'react';
-import { Sparkles, Check, X, Clock, ArrowRight, Loader2, Inbox } from 'lucide-react';
+import { Sparkles, Check, X, Clock, ArrowRight, Loader2, Inbox, CheckCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import {
@@ -14,6 +24,7 @@ import {
   type QueueSuggestion,
 } from '@/hooks/useFieldSuggestions';
 import { Link } from 'react-router-dom';
+
 
 function confidenceBadge(c: number) {
   if (c >= 0.85) return 'bg-green-500/10 text-green-600 border-green-500/30';
