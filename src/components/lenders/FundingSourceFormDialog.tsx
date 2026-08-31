@@ -97,8 +97,11 @@ const emptyForm = (): FundingSourceForm => ({
   loanTypes: '',
   minDeal: '',
   maxDeal: '',
+  sweetSpotMin: '',
+  sweetSpotMax: '',
   industries: '',
   geo: '',
+  excludedGeographies: '',
   description: '',
   tier: '',
   relationshipOwners: '',
@@ -108,6 +111,10 @@ const emptyForm = (): FundingSourceForm => ({
   address: '',
   minRevenue: '',
   ebitdaMin: '',
+  minGrossMarginPct: '',
+  maxLeverage: '',
+  sponsorRequirement: '',
+  appetiteStatus: 'active',
   companyRequirements: '',
 });
 
