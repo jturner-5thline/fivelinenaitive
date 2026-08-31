@@ -136,12 +136,13 @@ export function calculateLenderMatch(
   let score = 0;
 
   // ── Industry (25 pts) — check avoid first as hard disqualify ──
-  if (criteria.industry) {
-    if (isIndustriesAvoided(criteria.industry, lender.industries_to_avoid)) {
+  const dealIndustry = criteria.industryNormalized || criteria.industry;
+  if (dealIndustry) {
+    if (isIndustriesAvoided(dealIndustry, lender.industries_to_avoid)) {
       return null; // Hard disqualify
     }
-    if (matchesIndustry(criteria.industry, lender.industries)) {
-      reasons.push(`${criteria.industry} industry`);
+    if (matchesIndustry(dealIndustry, lender.industries)) {
+      reasons.push(`${criteria.industry || dealIndustry} industry`);
       score += W.INDUSTRY;
     } else if (lender.industries?.some(i => normalizeString(i) === 'agnostic')) {
       reasons.push('Industry agnostic');
@@ -201,23 +202,30 @@ export function calculateLenderMatch(
     }
   }
 
-  // ── Revenue / EBITDA (10 pts) ──
-  if (criteria.revenue && criteria.revenue > 0) {
-    const meetsMinRevenue = !lender.min_revenue || criteria.revenue >= lender.min_revenue;
-    const meetsEbitda = !criteria.ebitda || !lender.ebitda_min || criteria.ebitda >= lender.ebitda_min;
-    if (meetsMinRevenue && meetsEbitda) {
-      reasons.push('Revenue/EBITDA fit');
+  // ── Revenue / EBITDA / gross margin (10 pts) ──
+  const revenue = criteria.ttmRevenue ?? criteria.revenue;
+  const ebitda = criteria.ttmEbitda ?? criteria.ebitda;
+  const hasFinancials = (revenue != null && revenue > 0) || (ebitda != null && ebitda > 0) || (criteria.grossMarginPct != null);
+  if (hasFinancials) {
+    const meetsMinRevenue = revenue == null || !lender.min_revenue || revenue >= lender.min_revenue;
+    const meetsEbitda = ebitda == null || !lender.ebitda_min || ebitda >= lender.ebitda_min;
+    const meetsGrossMargin = criteria.grossMarginPct == null || lender.min_gross_margin_pct == null || criteria.grossMarginPct >= lender.min_gross_margin_pct;
+    if (meetsMinRevenue && meetsEbitda && meetsGrossMargin) {
+      reasons.push('Revenue/EBITDA/margin fit');
       score += W.REVENUE;
-    } else if (!meetsMinRevenue) {
-      warnings.push(`Below min revenue ($${((lender.min_revenue || 0) / 1000000).toFixed(1)}M)`);
+    } else {
+      if (!meetsMinRevenue) warnings.push(`Below min revenue ($${((lender.min_revenue || 0) / 1000000).toFixed(1)}M)`);
+      if (!meetsEbitda) warnings.push(`Below min EBITDA ($${((lender.ebitda_min || 0) / 1000000).toFixed(1)}M)`);
+      if (!meetsGrossMargin) warnings.push(`Below min gross margin (${lender.min_gross_margin_pct}%)`);
     }
   }
 
   // ── Sponsorship (5 pts) ──
-  if (criteria.sponsorship && lender.sponsorship) {
+  const lenderSponsorship = lender.sponsor_requirement || lender.sponsorship;
+  if (criteria.sponsorship && lenderSponsorship) {
     const nd = normalizeString(criteria.sponsorship);
-    const nl = normalizeString(lender.sponsorship);
-    const lenderBoth = nl.includes('both') || nl.includes('either') || nl.includes('agnostic');
+    const nl = normalizeString(lenderSponsorship);
+    const lenderBoth = nl.includes('both') || nl.includes('either') || nl.includes('agnostic') || nl.includes('no preference');
     const dealSponsored = nd.includes('sponsor') && !nd.includes('non');
     const dealNon = nd.includes('non');
     const lenderSponsored = nl.includes('sponsor') && !nl.includes('non');
@@ -246,12 +254,12 @@ export function calculateLenderMatch(
   }
 
   // ── Geography (5 pts) ──
-  if (criteria.geo && lender.geo) {
-    const nd = normalizeString(criteria.geo);
-    const nl = normalizeString(lender.geo);
-    if (nl.includes('us') || nl.includes('united states') || nl.includes('global') || nl.includes('nationwide') || nl.includes(nd) || nd.includes(nl)) {
+  if (criteria.geo) {
+    if (matchesGeography(criteria.geo, lender)) {
       reasons.push('Geographic coverage');
       score += W.GEO;
+    } else if (lender.geographies_excluded?.length) {
+      warnings.push('Geography excluded');
     }
   }
 
