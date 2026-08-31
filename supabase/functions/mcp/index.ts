@@ -174,10 +174,17 @@ var list_deals_default = defineTool({
 // src/lib/mcp/tools/get-deal.ts
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z2 } from "npm:zod@^3.23.0";
+function contactName(contact) {
+  const composed = [contact.first_name, contact.last_name].filter(Boolean).join(" ").trim();
+  if (composed) return composed;
+  const fullName = contact.full_name?.trim();
+  if (fullName && fullName.toLowerCase() !== contact.email?.toLowerCase()) return fullName;
+  return contact.email ?? "Unnamed contact";
+}
 var get_deal_default = defineTool2({
   name: "get_deal",
   title: "Get deal",
-  description: "Fetch a single deal by id with its full record, plus recent status notes, tasks, and attached lenders. The deal includes stage_label / pipeline_name resolved from the deal's assigned pipeline \u2014 always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
+  description: "Fetch a single deal by id with its full record, linked client contacts, recent status notes, tasks, and attached lenders. Client contacts include name, email, job title, and is_primary. The deal includes stage_label / pipeline_name resolved from the deal's assigned pipeline \u2014 always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
   inputSchema: {
     deal_id: z2.string().uuid(),
     include_tasks: z2.boolean().default(true),
@@ -193,13 +200,35 @@ var get_deal_default = defineTool2({
     const { data: deal, error } = await sb.from("deals").select("*").eq("id", deal_id).maybeSingle();
     if (error) return errorResult(error.message);
     if (!deal) return errorResult("Deal not found or you do not have access.");
-    const [tasksRes, lendersRes] = await Promise.all([
+    const [tasksRes, lendersRes, contactLinksRes] = await Promise.all([
       include_tasks ? sb.from("tasks").select("id, title, status, due_date, priority, assigned_to, created_at").eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(50) : Promise.resolve({ data: null, error: null }),
-      include_lenders ? sb.from("deal_lenders").select("id, lender_id, status, stage, updated_at").eq("deal_id", deal_id).order("updated_at", { ascending: false }).limit(200) : Promise.resolve({ data: null, error: null })
+      include_lenders ? sb.from("deal_lenders").select("id, lender_id, status, stage, updated_at").eq("deal_id", deal_id).order("updated_at", { ascending: false }).limit(200) : Promise.resolve({ data: null, error: null }),
+      sb.from("contact_deals").select("contact_id, role, created_at").eq("deal_id", deal_id).order("created_at", { ascending: true })
     ]);
+    if (contactLinksRes.error) return errorResult(contactLinksRes.error.message);
+    const contactLinks = contactLinksRes.data ?? [];
+    const contactIds = contactLinks.map((link) => link.contact_id).filter(Boolean);
+    let clientContacts = [];
+    if (contactIds.length > 0) {
+      const { data: contacts, error: contactsError } = await sb.from("contacts").select("id, first_name, last_name, full_name, email, job_title").in("id", contactIds);
+      if (contactsError) return errorResult(contactsError.message);
+      const contactsById = new Map((contacts ?? []).map((contact) => [contact.id, contact]));
+      clientContacts = contactLinks.map((link) => {
+        const contact = contactsById.get(link.contact_id);
+        if (!contact) return null;
+        return {
+          id: contact.id,
+          name: contactName(contact),
+          email: contact.email ?? null,
+          job_title: contact.job_title ?? null,
+          is_primary: (link.role ?? "").toLowerCase() === "primary"
+        };
+      }).filter((contact) => contact !== null).sort((a, b) => Number(b.is_primary) - Number(a.is_primary));
+    }
     const [dealWithLabels] = await withStageLabels(sb, [deal]);
     return textResult({
       deal: dealWithLabels,
+      client_contacts: clientContacts,
       tasks: tasksRes.data ?? [],
       lenders: lendersRes.data ?? []
     });
