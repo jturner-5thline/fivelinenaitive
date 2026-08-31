@@ -285,7 +285,7 @@ export function calculateLenderMatch(
   }
 
   // ── Bonus for active / contact info ──
-  if (lender.active === true) score += 2;
+  if (lender.active === true && lender.appetite_status !== 'paused') score += 2;
   if (lender.email && lender.contact_name) score += 1;
 
   // ── Learning patterns ──
@@ -364,7 +364,7 @@ export function useLenderMatching(
 
     const excludeSet = new Set(excludeNames.map(n => n.toLowerCase().trim()));
     const filtered = masterLenders
-      .filter(l => l.active !== false)
+      .filter(l => l.active !== false && l.appetite_status !== 'paused')
       .filter(l => excludeSet.size === 0 || !excludeSet.has(l.name.toLowerCase().trim()));
 
     const scored: LenderMatch[] = [];
