@@ -204,7 +204,7 @@ export function FundingSourceFormDialog({
       address: form.address.trim() || null,
       min_revenue: form.minRevenue ? parseFloat(form.minRevenue) : null,
       ebitda_min: form.ebitdaMin ? parseFloat(form.ebitdaMin) : null,
-      company_requirements: commaList(form.companyRequirements),
+      company_requirements: form.companyRequirements.trim() || null,
       ...(linkedCrmCompany ? { crm_company_id: linkedCrmCompany.id } : {}),
     };
 
