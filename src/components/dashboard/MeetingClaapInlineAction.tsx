@@ -661,6 +661,8 @@ export function MeetingClaapInlineAction(props: Props) {
         open={fundingSourceDialogOpen}
         onOpenChange={setFundingSourceDialogOpen}
         initialQuery={fundingSourceInitialQuery}
+        organizerEmail={organizerEmail}
+        attendees={attendees}
       />
     </>
   );
