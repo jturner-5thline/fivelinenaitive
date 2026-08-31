@@ -79,7 +79,7 @@
       {
         "name": "get_deal",
         "title": "Get deal",
-        "description": "Fetch a single deal by id with its full record, plus recent status notes, tasks, and attached lenders. The deal includes stage_label / pipeline_name resolved from the deal's assigned pipeline — always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
+        "description": "Fetch a single deal by id with its full record, linked client contacts, recent status notes, tasks, and attached lenders. Client contacts include name, email, job title, and is_primary. The deal includes stage_label / pipeline_name resolved from the deal's assigned pipeline — always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
