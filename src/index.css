@@ -96,10 +96,12 @@
     --gradient-accent: linear-gradient(135deg, hsl(229 35% 50%), hsl(216 37% 60%));
     --gradient-hero: linear-gradient(180deg, hsl(210 20% 99%) 0%, hsl(210 30% 96%) 100%);
 
-    /* App backdrop — diagonal navy → blue wash (top-left dark, bottom-right blue) */
+    /* App backdrop — deep navy with a soft blue diagonal band (dark top-left, blue lower-right) */
     --app-backdrop:
-      radial-gradient(130% 120% at 100% 100%, rgba(20, 96, 180, 0.55) 0%, rgba(13, 62, 124, 0.30) 35%, rgba(6, 20, 45, 0) 70%),
-      linear-gradient(122deg, #050d1e 0%, #071630 32%, #0a2a55 58%, #0f4079 80%, #14549c 100%);
+      radial-gradient(120% 100% at 88% 78%, rgba(16, 66, 122, 0.55) 0%, rgba(11, 45, 88, 0.28) 45%, rgba(4, 12, 28, 0) 78%),
+      radial-gradient(90% 80% at 5% 0%, rgba(2, 8, 20, 0.85) 0%, rgba(2, 8, 20, 0) 65%),
+      linear-gradient(118deg, #030a18 0%, #06152c 30%, #0a2a52 62%, #0c3montage 62%, #0d3county 100%);
+
 
 
 
