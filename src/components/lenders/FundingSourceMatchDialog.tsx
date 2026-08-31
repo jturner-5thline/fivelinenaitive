@@ -177,6 +177,8 @@ export function FundingSourceMatchDialog({
   attendees = [],
 }: Props) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { company } = useCompany();
   const [search, setSearch] = useState(initialQuery);
   const [debounced, setDebounced] = useState(initialQuery);
   const [createOpen, setCreateOpen] = useState(false);
@@ -188,6 +190,26 @@ export function FundingSourceMatchDialog({
     website: '',
   });
   const [creating, setCreating] = useState(false);
+
+  const inviteContact = useMemo(() => {
+    const internalDomains = ['naitive.co', '5thline.co'];
+    const candidates = [
+      ...attendees,
+      ...(organizerEmail ? [{ email: organizerEmail, displayName: null }] : []),
+    ];
+    const contact = candidates.find((candidate) => {
+      const email = candidate.email?.trim().toLowerCase() || '';
+      const domain = email.split('@')[1] || '';
+      return !!email && !candidate.self && !internalDomains.some((internal) => domain === internal || domain.endsWith(`.${internal}`));
+    });
+    if (!contact?.email) return null;
+    const email = contact.email.trim().toLowerCase();
+    return {
+      name: contact.displayName?.trim() || '',
+      email,
+      website: email.split('@')[1] || '',
+    };
+  }, [attendees, organizerEmail]);
   const [selectedSource, setSelectedSource] = useState<FundingSourceRow | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [saving, setSaving] = useState(false);
