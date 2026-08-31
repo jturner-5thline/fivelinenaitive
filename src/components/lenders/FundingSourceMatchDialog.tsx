@@ -39,6 +39,12 @@ interface FundingSourceRow {
   tier: string | null;
   min_deal: number | null;
   max_deal: number | null;
+  sweet_spot_min: number | null;
+  sweet_spot_max: number | null;
+  min_gross_margin_pct: number | null;
+  max_leverage: number | null;
+  sponsor_requirement: string | null;
+  appetite_status: string | null;
   geo: string | null;
   industries: string[] | null;
   loan_types: string[] | null;
