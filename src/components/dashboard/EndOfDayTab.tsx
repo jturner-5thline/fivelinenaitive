@@ -676,15 +676,16 @@ export function EndOfDayTab({
     queryFn: async (): Promise<Record<string, ContactInfo>> => {
       const { data, error } = await supabase
         .from('contacts')
-        .select('email, full_name, first_name, last_name, job_title, primary_company_id, crm_companies:crm_company_id(name)')
+        .select('id, email, full_name, first_name, last_name, job_title, primary_company_id, crm_companies:crm_company_id(name)')
         .in('email', allEmails);
       if (error) return {};
       const map: Record<string, ContactInfo> = {};
       (data || []).forEach((c) => {
-        const row = c as { email?: string; full_name?: string; first_name?: string; last_name?: string; job_title?: string; crm_companies?: { name?: string } | null };
+        const row = c as { id?: string; email?: string; full_name?: string; first_name?: string; last_name?: string; job_title?: string; crm_companies?: { name?: string } | null };
         const key = (row.email || '').trim().toLowerCase();
         if (!key) return;
         map[key] = {
+          id: row.id ?? null,
           fullName: row.full_name || [row.first_name, row.last_name].filter(Boolean).join(' ') || null,
           jobTitle: row.job_title || null,
           companyName: row.crm_companies?.name || null,
