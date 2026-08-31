@@ -94,6 +94,7 @@ type GroupMode = 'day' | 'type';
 type FilterChip = 'internal' | 'deals' | 'dismissed';
 
 interface ContactInfo {
+  id?: string | null;
   fullName: string | null;
   jobTitle: string | null;
   companyName: string | null;
@@ -675,15 +676,16 @@ export function EndOfDayTab({
     queryFn: async (): Promise<Record<string, ContactInfo>> => {
       const { data, error } = await supabase
         .from('contacts')
-        .select('email, full_name, first_name, last_name, job_title, primary_company_id, crm_companies:crm_company_id(name)')
+        .select('id, email, full_name, first_name, last_name, job_title, primary_company_id, crm_companies:crm_company_id(name)')
         .in('email', allEmails);
       if (error) return {};
       const map: Record<string, ContactInfo> = {};
       (data || []).forEach((c) => {
-        const row = c as { email?: string; full_name?: string; first_name?: string; last_name?: string; job_title?: string; crm_companies?: { name?: string } | null };
+        const row = c as { id?: string; email?: string; full_name?: string; first_name?: string; last_name?: string; job_title?: string; crm_companies?: { name?: string } | null };
         const key = (row.email || '').trim().toLowerCase();
         if (!key) return;
         map[key] = {
+          id: row.id ?? null,
           fullName: row.full_name || [row.first_name, row.last_name].filter(Boolean).join(' ') || null,
           jobTitle: row.job_title || null,
           companyName: row.crm_companies?.name || null,
@@ -1061,6 +1063,55 @@ export function EndOfDayTab({
       }
     },
   });
+
+  // Primary external attendee resolved to a CRM contact — used to attach the
+  // meeting follow-up task to a real person instead of a bare title.
+  const selectedContactId = useMemo(() => {
+    if (!selectedEvent) return null;
+    for (const a of selectedEvent.attendees || []) {
+      if (a.self) continue;
+      const email = (a.email || '').trim().toLowerCase();
+      const hit = email ? contactsByEmail[email] : null;
+      if (hit?.id) return hit.id;
+    }
+    return null;
+  }, [selectedEvent, contactsByEmail]);
+
+  // Funding source on the linked deal that the meeting is about. Resolved by
+  // matching the lender name against the meeting title, then against the
+  // external attendees' email domains. No fallback — an ambiguous meeting
+  // leaves the task unlinked rather than guessing.
+  const { data: selectedLenderId = null } = useQuery<string | null>({
+    queryKey: ['eod-meeting-lender', selectedLinkedDealId, selectedEvent?.id],
+    enabled: !!selectedLinkedDealId && !!selectedEvent,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const { data } = await (supabase.from('deal_lenders') as any)
+        .select('id, lender_name, contact_email')
+        .eq('deal_id', selectedLinkedDealId);
+      const rows = (data || []) as { id: string; lender_name?: string | null; contact_email?: string | null }[];
+      if (!rows.length) return null;
+      const title = (selectedEvent?.summary || '').toLowerCase();
+      const byName = rows.find(r => {
+        const n = (r.lender_name || '').trim().toLowerCase();
+        return n.length > 2 && title.includes(n);
+      });
+      if (byName) return byName.id;
+      const domains = new Set(
+        (selectedEvent?.attendees || [])
+          .filter(a => !a.self)
+          .map(a => (a.email || '').split('@')[1]?.trim().toLowerCase())
+          .filter(Boolean) as string[],
+      );
+      const byDomain = rows.find(r => {
+        const d = (r.contact_email || '').split('@')[1]?.trim().toLowerCase();
+        return !!d && domains.has(d);
+      });
+      return byDomain?.id ?? null;
+    },
+  });
+
+
 
   // One-time baseline (subtask #4): on the first time a user lands in EOD
   // after this feature ships, mark every currently-outstanding item as
@@ -1488,7 +1539,20 @@ export function EndOfDayTab({
                         active={selectedId === ev.id}
                         selected={bulkSelected.has(ev.id)}
                         isUnread={!readSet.has(ev.id) && selectedId !== ev.id}
-                        onClick={() => setSelectedId(ev.id)}
+                        onClick={() => {
+                          setSelectedId(ev.id);
+                          // Clicking a meeting turns it into real deal work:
+                          // open the follow-up task composer prefilled with
+                          // the meeting, its linked deal, contact and lender.
+                          if (!ev._approval) {
+                            setPrefill({
+                              title: `Follow Up: ${ev.summary || '(No title)'}`,
+                              dealId: null,
+                              eventId: ev.id,
+                            });
+                            setFollowUpOpen(true);
+                          }
+                        }}
                         onToggleSelect={(e) => {
                           setBulkSelected(prev => {
                             const next = new Set(prev);
@@ -1608,23 +1672,27 @@ export function EndOfDayTab({
           onClose={() => setFollowUpOpen(false)}
           teamMembers={teamMembers}
           currentUserId={user?.id || ''}
-          initialTitle={prefill.title}
-          initialDealId={prefill.dealId}
-          // Meeting flow: the deal field is governed by the explicit
-          // meeting→deal link only. Suppress the dialog's title-based
-          // fuzzy auto-apply so it can never overwrite the explicit
-          // link (or fall back to a random deal when nothing is linked).
-          lockInitialDeal
-          initialDueDate={new Date()}
+           initialTitle={prefill.title}
+           initialDealId={prefill.dealId || selectedLinkedDealId || null}
+           initialContactId={selectedContactId}
+           initialLenderId={selectedLenderId}
+           // Meeting flow: the deal field is governed by the explicit
+           // meeting→deal link only. Suppress the dialog's title-based
+           // fuzzy auto-apply so it can never overwrite the explicit
+           // link (or fall back to a random deal when nothing is linked).
+           lockInitialDeal
+           initialDueDate={new Date()}
           onCreate={async (input) => {
             await createTask.mutateAsync({
               title: input.title, priority: input.priority,
               due_date: input.due_date || undefined, status: input.status,
               assigned_to: input.assigned_to,
-              recurrence_rule: input.recurrence_rule,
-              recurrence_end_date: input.recurrence_end_date,
-              deal_id: input.deal_id || undefined,
-              source: input.deal_id && prefill.eventId
+               recurrence_rule: input.recurrence_rule,
+               recurrence_end_date: input.recurrence_end_date,
+               deal_id: input.deal_id || undefined,
+               contact_id: input.contact_id || undefined,
+               lender_id: input.lender_id || undefined,
+               source: input.deal_id && prefill.eventId
                 ? {
                     module: 'rundown_item',
                     recordId: prefill.eventId,

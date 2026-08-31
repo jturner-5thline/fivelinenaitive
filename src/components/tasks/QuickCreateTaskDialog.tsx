@@ -29,6 +29,9 @@ export interface QuickTaskInput {
   recurrence_end_date: string | null;
   /** Optional deal association — surfaces task under deal's Tasks tab. */
   deal_id: string | null;
+  /** Optional contact and funding-source associations for meeting follow-ups. */
+  contact_id: string | null;
+  lender_id: string | null;
 }
 
 interface Props {
@@ -40,6 +43,8 @@ interface Props {
   /** Optional pre-fill values applied each time the dialog opens. */
   initialTitle?: string;
   initialDealId?: string | null;
+  initialContactId?: string | null;
+  initialLenderId?: string | null;
   initialDueDate?: Date | null;
   /**
    * When true, the dialog treats `initialDealId` as the authoritative
@@ -100,6 +105,8 @@ export function QuickCreateTaskDialog({
   currentUserId,
   initialTitle,
   initialDealId,
+  initialContactId,
+  initialLenderId,
   initialDueDate,
   lockInitialDeal = false,
 }: Props) {
@@ -309,6 +316,8 @@ export function QuickCreateTaskDialog({
         recurrence_rule: recurrence,
         recurrence_end_date: resolvedEndDate,
         deal_id: dealId,
+        contact_id: initialContactId ?? null,
+        lender_id: initialLenderId ?? null,
       });
       try {
         window.localStorage.setItem(LAST_ASSIGNEE_KEY, assignedTo);
