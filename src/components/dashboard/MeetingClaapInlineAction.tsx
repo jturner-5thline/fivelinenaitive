@@ -52,38 +52,50 @@ function deriveSearchHint(title: string | null | undefined): string | null {
 }
 
 // Prefill for the funding-source search: just the counterparty/company name
-// (e.g. "Libertas"), never the full calendar event title.
+// (e.g. "Libertas" from "Libertas - 5th Line Introduction"), never the full
+// calendar event title and never our own side ("5th Line" / nAItive).
 const INTERNAL_DOMAINS = ['naitive.co', 'gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com', 'yahoo.com', 'icloud.com'];
 const TITLE_GENERIC = new Set([
   ...HINT_STOPWORDS,
-  'naitive','capital','discussion','chat','connect','catch','up','touch','base','call1','deal','deals',
-  'introduction','kickoff','kick','off','pipeline','discuss','re','fwd','invite','conference',
+  'naitive','nAItive','capital','discussion','chat','connect','catch','up','touch','base','deal','deals',
+  'introduction','intro','kickoff','kick','off','pipeline','discuss','re','fwd','invite','conference','5thline',
 ]);
+function isInternalText(text: string): boolean {
+  const s = text.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return s.includes('5thline') || s.includes('fifthline') || s.includes('naitive');
+}
 function extractFundingSourceName(
   title: string | null | undefined,
   organizerEmail?: string | null,
   attendees: Attendee[] = [],
 ): string {
-  // 1) Prefer an external attendee's email domain (usually the funding source).
+  // 1) Prefer the non-internal part of the calendar title.
+  if (title) {
+    const segments = String(title)
+      .split(/[<>|/\\\-–—:,]+/)
+      .map(s => s.trim())
+      .filter(Boolean)
+      .filter(s => !isInternalText(s));
+    for (const seg of segments) {
+      const words = seg
+        .split(/\s+/)
+        .map(t => t.replace(/[^A-Za-z0-9&']/g, ''))
+        .filter(t => t.length >= 2 && !TITLE_GENERIC.has(t.toLowerCase()) && !isInternalText(t));
+      if (words.length) return words.slice(0, 3).join(' ');
+    }
+  }
+  // 2) Fall back to an external attendee's email domain.
   const emails = [organizerEmail, ...attendees.map(a => a.email)].filter(Boolean) as string[];
   for (const email of emails) {
     const domain = email.split('@')[1]?.toLowerCase();
     if (!domain) continue;
-    if (INTERNAL_DOMAINS.some(d => domain === d || domain.endsWith(`.${d}`))) continue;
+    if (INTERNAL_DOMAINS.some(d => domain === d || domain.endsWith(`.${d}`)) || isInternalText(domain)) continue;
     const label = domain.split('.')[0];
     if (label && label.length >= 3) return label;
   }
-  // 2) Fall back to the most distinctive token in the title.
-  if (!title) return '';
-  const segments = String(title).split(/[<>|/\\\-–—:]+/).map(s => s.trim()).filter(Boolean);
-  const candidates = segments
-    .flatMap(seg => seg.split(/\s+/))
-    .map(t => t.replace(/[^A-Za-z0-9&']/g, ''))
-    .filter(t => t.length >= 3 && !TITLE_GENERIC.has(t.toLowerCase()));
-  if (candidates.length === 0) return '';
-  candidates.sort((a, b) => b.length - a.length);
-  return candidates[0];
+  return '';
 }
+
 
 
 function getClaapSearchWindow(start?: string | null, end?: string | null): { from?: string; to?: string } {
