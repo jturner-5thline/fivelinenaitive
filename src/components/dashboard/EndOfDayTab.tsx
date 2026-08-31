@@ -1683,9 +1683,9 @@ export function EndOfDayTab({
           teamMembers={teamMembers}
           currentUserId={user?.id || ''}
           initialTitle={prefill.title}
-          initialDealId={prefill.dealId || selectedLinkedDealId || null}
-          initialContactId={selectedContactId}
-          initialLenderId={selectedLenderId}
+          initialDealId={prefill.dealId}
+          initialContactId={prefill.contactId}
+          initialLenderId={prefill.lenderId}
           // Meeting flow: the deal field is governed by the explicit
           // meeting→deal link only. Suppress the dialog's title-based
           // fuzzy auto-apply so it can never overwrite the explicit
