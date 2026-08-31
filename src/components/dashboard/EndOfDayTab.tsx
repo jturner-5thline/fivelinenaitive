@@ -1687,10 +1687,12 @@ export function EndOfDayTab({
               title: input.title, priority: input.priority,
               due_date: input.due_date || undefined, status: input.status,
               assigned_to: input.assigned_to,
-              recurrence_rule: input.recurrence_rule,
-              recurrence_end_date: input.recurrence_end_date,
-              deal_id: input.deal_id || undefined,
-              source: input.deal_id && prefill.eventId
+               recurrence_rule: input.recurrence_rule,
+               recurrence_end_date: input.recurrence_end_date,
+               deal_id: input.deal_id || undefined,
+               contact_id: input.contact_id || undefined,
+               lender_id: input.lender_id || undefined,
+               source: input.deal_id && prefill.eventId
                 ? {
                     module: 'rundown_item',
                     recordId: prefill.eventId,
