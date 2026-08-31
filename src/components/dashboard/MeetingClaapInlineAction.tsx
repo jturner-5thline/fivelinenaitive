@@ -575,18 +575,38 @@ export function MeetingClaapInlineAction(props: Props) {
     </Button>
   );
 
-  // Opens the attendee → contact reconciliation dialog above the current popup.
+  // Opens contact and funding-source reconciliation dialogs above the current popup.
+  const fundingSourceInitialQuery = [
+    eventTitle,
+    organizerEmail,
+    ...attendees.map((attendee) => attendee.email || attendee.displayName || ''),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .slice(0, 160);
+
   const updateContactCell = (
     <>
-      <Button
-        size="sm"
-        variant="outline"
-        className="h-8 w-full min-w-0 justify-start gap-1.5 px-2 text-xs text-white border-white/15 bg-white/[0.04] hover:bg-white/[0.08]"
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setContactDialogOpen(true); }}
-      >
-        <Pencil className="h-3.5 w-3.5 text-primary shrink-0" />
-        <span className="truncate">Update Contact</span>
-      </Button>
+      <div className="flex w-full min-w-0 flex-col gap-1">
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 w-full min-w-0 justify-start gap-1.5 border-white/15 bg-white/[0.04] px-2 text-xs text-white hover:bg-white/[0.08]"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setContactDialogOpen(true); }}
+        >
+          <Pencil className="h-3.5 w-3.5 shrink-0 text-primary" />
+          <span className="truncate">Update Contact</span>
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 w-full min-w-0 justify-start gap-1.5 border-white/15 bg-white/[0.04] px-2 text-xs text-white hover:bg-white/[0.08]"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setFundingSourceDialogOpen(true); }}
+        >
+          <Building2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+          <span className="truncate">Update Funding Source</span>
+        </Button>
+      </div>
       <MeetingContactUpdateDialog
         open={contactDialogOpen}
         onOpenChange={setContactDialogOpen}
@@ -594,6 +614,11 @@ export function MeetingClaapInlineAction(props: Props) {
         organizerEmail={organizerEmail}
         eventTitle={eventTitle}
         claapSummary={canonical.summary}
+      />
+      <FundingSourceMatchDialog
+        open={fundingSourceDialogOpen}
+        onOpenChange={setFundingSourceDialogOpen}
+        initialQuery={fundingSourceInitialQuery}
       />
     </>
   );
