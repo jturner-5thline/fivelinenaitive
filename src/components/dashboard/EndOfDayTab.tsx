@@ -1256,7 +1256,13 @@ export function EndOfDayTab({
 
   // QuickCreateTask state
   const [followUpOpen, setFollowUpOpen] = useState(false);
-  const [prefill, setPrefill] = useState<{ title: string; dealId: string | null; eventId?: string }>({ title: '', dealId: null });
+  const [prefill, setPrefill] = useState<{
+    title: string;
+    dealId: string | null;
+    contactId: string | null;
+    lenderId: string | null;
+    eventId?: string;
+  }>({ title: '', dealId: null, contactId: null, lenderId: null });
 
   const clearAllFilters = useCallback(() => {
     setFilterChips(new Set());
