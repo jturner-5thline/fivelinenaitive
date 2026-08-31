@@ -262,6 +262,55 @@ export function FundingSourceMatchDialog({
       .slice(0, 50);
   }, [query, sources]);
 
+  const openCreate = () => {
+    setCreateForm({
+      name: search.trim() || initialQuery.trim(),
+      contactName: inviteContact?.name || '',
+      email: inviteContact?.email || '',
+      contactPhone: '',
+      website: inviteContact?.website || '',
+    });
+    setCreateOpen(true);
+  };
+
+  const updateCreateField = (field: keyof typeof createForm, value: string) => {
+    setCreateForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleCreate = async () => {
+    const name = createForm.name.trim();
+    if (!name || !user) return;
+    setCreating(true);
+    try {
+      const { data, error } = await supabase
+        .from('master_lenders')
+        .insert({
+          user_id: user.id,
+          company_id: company?.id || null,
+          name,
+          email: createForm.email.trim() || null,
+          contact_name: createForm.contactName.trim() || null,
+          contact_phone: createForm.contactPhone.trim() || null,
+          website: createForm.website.trim() || null,
+        })
+        .select('*')
+        .single();
+      if (error) throw error;
+      const created = data as FundingSourceRow;
+      await queryClient.invalidateQueries({ queryKey: ['funding-source-match-search'] });
+      setSearch(name);
+      setCreateOpen(false);
+      setSelectedSource(created);
+      setDetailOpen(true);
+      toast.success(`${name} added as a funding source`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create funding source';
+      toast.error(message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const handleSave = async (sourceId: string, data: LenderEditData) => {
     setSaving(true);
     const updates = {
