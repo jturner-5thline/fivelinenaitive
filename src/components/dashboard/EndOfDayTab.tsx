@@ -1539,7 +1539,20 @@ export function EndOfDayTab({
                         active={selectedId === ev.id}
                         selected={bulkSelected.has(ev.id)}
                         isUnread={!readSet.has(ev.id) && selectedId !== ev.id}
-                        onClick={() => setSelectedId(ev.id)}
+                        onClick={() => {
+                          setSelectedId(ev.id);
+                          // Clicking a meeting turns it into real deal work:
+                          // open the follow-up task composer prefilled with
+                          // the meeting, its linked deal, contact and lender.
+                          if (!ev._approval) {
+                            setPrefill({
+                              title: `Follow Up: ${ev.summary || '(No title)'}`,
+                              dealId: null,
+                              eventId: ev.id,
+                            });
+                            setFollowUpOpen(true);
+                          }
+                        }}
                         onToggleSelect={(e) => {
                           setBulkSelected(prev => {
                             const next = new Set(prev);
