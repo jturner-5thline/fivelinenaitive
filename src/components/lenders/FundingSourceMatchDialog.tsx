@@ -166,10 +166,25 @@ function toLenderDetail(source: FundingSourceRow) {
   };
 }
 
-export function FundingSourceMatchDialog({ open, onOpenChange, initialQuery = '' }: Props) {
+export function FundingSourceMatchDialog({
+  open,
+  onOpenChange,
+  initialQuery = '',
+  organizerEmail,
+  attendees = [],
+}: Props) {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState(initialQuery);
   const [debounced, setDebounced] = useState(initialQuery);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: initialQuery,
+    contactName: '',
+    email: '',
+    contactPhone: '',
+    website: '',
+  });
+  const [creating, setCreating] = useState(false);
   const [selectedSource, setSelectedSource] = useState<FundingSourceRow | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [saving, setSaving] = useState(false);
