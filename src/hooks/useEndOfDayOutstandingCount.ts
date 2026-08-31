@@ -17,6 +17,28 @@ const EOD_FETCH_MAX_RESULTS = 2000;
 const EVENTS_CACHE_KEY_PREFIX = 'eod:events-cache';
 const SNOOZE_KEY_PREFIX = 'eod:snoozed';
 const READ_KEY_PREFIX = 'eod:read';
+// Mirrors EndOfDayTab's "hide internal meetings" preference so the badge and
+// the visible list always agree.
+const HIDE_INTERNAL_KEY = 'eod:hide-internal';
+
+function emailDomain(email: string | null | undefined): string {
+  if (!email) return '';
+  const idx = email.lastIndexOf('@');
+  return idx >= 0 ? email.slice(idx + 1).toLowerCase() : '';
+}
+
+/** Every email-bearing party (attendees + organizer) is @5thline.co. */
+function eventIsInternal(ev: any): boolean {
+  const emails: string[] = [];
+  for (const a of ev.attendees || []) {
+    const e = (a?.email || '').trim();
+    if (e) emails.push(e);
+  }
+  const orgEmail = (ev.organizer?.email || '').trim();
+  if (orgEmail) emails.push(orgEmail);
+  if (emails.length === 0) return false;
+  return emails.every(e => emailDomain(e) === '5thline.co');
+}
 
 const END_OF_DAY_ALLOWLIST = new Set([
   'jmoffitt@5thline.co',
