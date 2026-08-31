@@ -474,6 +474,48 @@ export function FundingSourceMatchDialog({
         </DialogContent>
       </Dialog>
 
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="z-[1700] max-w-lg border-white/10 bg-[#171B2C] text-white" overlayClassName="z-[1690] bg-slate-900/50">
+          <DialogHeader>
+            <DialogTitle className="text-white">Create new funding source</DialogTitle>
+            <DialogDescription className="text-white/60">
+              Add this funding source to the directory using details from the calendar invite.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-1.5">
+              <Label htmlFor="new-funding-source-name" className="text-white/80">Funding source name *</Label>
+              <Input id="new-funding-source-name" value={createForm.name} maxLength={200} onChange={(event) => updateCreateField('name', event.target.value)} className="border-white/10 bg-white/[0.04] text-white" autoFocus />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="new-funding-source-contact" className="text-white/80">Contact name</Label>
+              <Input id="new-funding-source-contact" value={createForm.contactName} maxLength={200} onChange={(event) => updateCreateField('contactName', event.target.value)} className="border-white/10 bg-white/[0.04] text-white" />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="new-funding-source-email" className="text-white/80">Email</Label>
+                <Input id="new-funding-source-email" type="email" value={createForm.email} maxLength={255} onChange={(event) => updateCreateField('email', event.target.value)} className="border-white/10 bg-white/[0.04] text-white" />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="new-funding-source-phone" className="text-white/80">Phone</Label>
+                <Input id="new-funding-source-phone" type="tel" value={createForm.contactPhone} maxLength={50} onChange={(event) => updateCreateField('contactPhone', event.target.value)} className="border-white/10 bg-white/[0.04] text-white" />
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="new-funding-source-website" className="text-white/80">Website or domain</Label>
+              <Input id="new-funding-source-website" value={createForm.website} maxLength={500} onChange={(event) => updateCreateField('website', event.target.value)} className="border-white/10 bg-white/[0.04] text-white" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button type="button" onClick={handleCreate} disabled={!createForm.name.trim() || creating}>
+              {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create funding source
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <LenderDetailDialog
         lender={selectedSource ? toLenderDetail(selectedSource) : null}
         open={detailOpen}
