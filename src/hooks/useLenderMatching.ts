@@ -7,15 +7,20 @@ import { LenderPassPattern } from './useLenderDisqualifications';
 
 export interface DealCriteria {
   industry?: string;
+  industryNormalized?: string;
   dealValue?: number;
   dealTypes?: string[];
   capitalAsk?: string;
+  capitalAskAmount?: number;
   geo?: string;
   cashBurnOk?: boolean;
   b2bB2c?: string;
   companyRequirements?: string;
   revenue?: number;
   ebitda?: number;
+  ttmRevenue?: number;
+  ttmEbitda?: number;
+  grossMarginPct?: number;
   sponsorship?: string;
   // Enriched fields for semantic matching
   companyDescription?: string;
