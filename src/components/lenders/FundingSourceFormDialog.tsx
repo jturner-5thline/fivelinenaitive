@@ -47,8 +47,11 @@ interface FundingSourceForm {
   loanTypes: string;
   minDeal: string;
   maxDeal: string;
+  sweetSpotMin: string;
+  sweetSpotMax: string;
   industries: string;
   geo: string;
+  excludedGeographies: string;
   description: string;
   tier: string;
   relationshipOwners: string;
@@ -58,6 +61,10 @@ interface FundingSourceForm {
   address: string;
   minRevenue: string;
   ebitdaMin: string;
+  minGrossMarginPct: string;
+  maxLeverage: string;
+  sponsorRequirement: string;
+  appetiteStatus: string;
   companyRequirements: string;
 }
 
@@ -90,8 +97,11 @@ const emptyForm = (): FundingSourceForm => ({
   loanTypes: '',
   minDeal: '',
   maxDeal: '',
+  sweetSpotMin: '',
+  sweetSpotMax: '',
   industries: '',
   geo: '',
+  excludedGeographies: '',
   description: '',
   tier: '',
   relationshipOwners: '',
@@ -101,6 +111,10 @@ const emptyForm = (): FundingSourceForm => ({
   address: '',
   minRevenue: '',
   ebitdaMin: '',
+  minGrossMarginPct: '',
+  maxLeverage: '',
+  sponsorRequirement: '',
+  appetiteStatus: 'active',
   companyRequirements: '',
 });
 
@@ -181,8 +195,12 @@ export function FundingSourceFormDialog({
       loan_types: commaList(form.loanTypes),
       min_deal: form.minDeal ? parseFloat(form.minDeal) : null,
       max_deal: form.maxDeal ? parseFloat(form.maxDeal) : null,
+      sweet_spot_min: form.sweetSpotMin ? parseFloat(form.sweetSpotMin) : null,
+      sweet_spot_max: form.sweetSpotMax ? parseFloat(form.sweetSpotMax) : null,
       industries: commaList(form.industries),
       geo: form.geo.trim() || null,
+      geographies: commaList(form.geo),
+      geographies_excluded: commaList(form.excludedGeographies),
       deal_structure_notes: form.description.trim() || null,
       tier: form.tier ? `T${form.tier}` : null,
       relationship_owners: form.relationshipOwners.trim() || null,
@@ -192,6 +210,10 @@ export function FundingSourceFormDialog({
       address: form.address.trim() || null,
       min_revenue: form.minRevenue ? parseFloat(form.minRevenue) : null,
       ebitda_min: form.ebitdaMin ? parseFloat(form.ebitdaMin) : null,
+      min_gross_margin_pct: form.minGrossMarginPct ? parseFloat(form.minGrossMarginPct) : null,
+      max_leverage: form.maxLeverage ? parseFloat(form.maxLeverage) : null,
+      sponsor_requirement: form.sponsorRequirement.trim() || null,
+      appetite_status: form.appetiteStatus || 'active',
       company_requirements: form.companyRequirements.trim() || null,
       ...(linkedCrmCompany ? { crm_company_id: linkedCrmCompany.id } : {}),
     };
@@ -380,6 +402,14 @@ export function FundingSourceFormDialog({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label htmlFor="new-funding-source-min-revenue" className="text-xs text-muted-foreground">Min Revenue ($)</Label><Input id="new-funding-source-min-revenue" inputMode="numeric" value={formatCurrencyInput(form.minRevenue)} onChange={(event) => updateForm('minRevenue', event.target.value.replace(/[^0-9]/g, ''))} placeholder="e.g., $5,000,000" /></div>
                 <div className="space-y-2"><Label htmlFor="new-funding-source-ebitda" className="text-xs text-muted-foreground">Min EBITDA ($)</Label><Input id="new-funding-source-ebitda" inputMode="numeric" value={formatCurrencyInput(form.ebitdaMin)} onChange={(event) => updateForm('ebitdaMin', event.target.value.replace(/[^0-9]/g, ''))} placeholder="e.g., $1,000,000" /></div>
+                <div className="space-y-2"><Label htmlFor="new-funding-source-sweet-spot-min" className="text-xs text-muted-foreground">Sweet Spot Min ($)</Label><Input id="new-funding-source-sweet-spot-min" inputMode="numeric" value={formatCurrencyInput(form.sweetSpotMin)} onChange={(event) => updateForm('sweetSpotMin', event.target.value.replace(/[^0-9]/g, ''))} placeholder="Optional" /></div>
+                <div className="space-y-2"><Label htmlFor="new-funding-source-sweet-spot-max" className="text-xs text-muted-foreground">Sweet Spot Max ($)</Label><Input id="new-funding-source-sweet-spot-max" inputMode="numeric" value={formatCurrencyInput(form.sweetSpotMax)} onChange={(event) => updateForm('sweetSpotMax', event.target.value.replace(/[^0-9]/g, ''))} placeholder="Optional" /></div>
+                <div className="space-y-2"><Label htmlFor="new-funding-source-min-margin" className="text-xs text-muted-foreground">Min Gross Margin (%)</Label><Input id="new-funding-source-min-margin" inputMode="decimal" value={form.minGrossMarginPct} onChange={(event) => updateForm('minGrossMarginPct', event.target.value.replace(/[^0-9.]/g, ''))} placeholder="e.g., 35" /></div>
+                <div className="space-y-2"><Label htmlFor="new-funding-source-max-leverage" className="text-xs text-muted-foreground">Max Leverage (x)</Label><Input id="new-funding-source-max-leverage" inputMode="decimal" value={form.maxLeverage} onChange={(event) => updateForm('maxLeverage', event.target.value.replace(/[^0-9.]/g, ''))} placeholder="e.g., 4.5" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><Label htmlFor="new-funding-source-sponsor" className="text-xs text-muted-foreground">Sponsor Requirement</Label><Input id="new-funding-source-sponsor" value={form.sponsorRequirement} onChange={(event) => updateForm('sponsorRequirement', event.target.value)} placeholder="Sponsor, non-sponsor, either" /></div>
+                <div className="space-y-2"><Label htmlFor="new-funding-source-excluded-geo" className="text-xs text-muted-foreground">Excluded Geographies</Label><Input id="new-funding-source-excluded-geo" value={form.excludedGeographies} onChange={(event) => updateForm('excludedGeographies', event.target.value)} placeholder="Comma-separated" /></div>
               </div>
               <div className="space-y-2"><Label className="text-xs text-muted-foreground">Company Requirements</Label><MultiSelectChips value={form.companyRequirements} onChange={(next) => updateForm('companyRequirements', next)} options={COMPANY_REQUIREMENT_OPTIONS} placeholder="Select requirements" searchPlaceholder="Search requirements..." /></div>
             </div>

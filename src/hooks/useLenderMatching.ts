@@ -7,15 +7,20 @@ import { LenderPassPattern } from './useLenderDisqualifications';
 
 export interface DealCriteria {
   industry?: string;
+  industryNormalized?: string;
   dealValue?: number;
   dealTypes?: string[];
   capitalAsk?: string;
+  capitalAskAmount?: number;
   geo?: string;
   cashBurnOk?: boolean;
   b2bB2c?: string;
   companyRequirements?: string;
   revenue?: number;
   ebitda?: number;
+  ttmRevenue?: number;
+  ttmEbitda?: number;
+  grossMarginPct?: number;
   sponsorship?: string;
   // Enriched fields for semantic matching
   companyDescription?: string;
@@ -46,7 +51,21 @@ export interface LenderMatch {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function normalizeString(str: string): string {
-  return str.toLowerCase().replace(/-/g, ' ').trim();
+  return str.toLowerCase().replace(/[-_]/g, ' ').trim();
+}
+
+function matchesGeography(dealGeo: string | undefined, lender: MasterLender): boolean {
+  if (!dealGeo) return false;
+  const normalizedDeal = normalizeString(dealGeo);
+  const lenderGeographies = [...(lender.geographies || []), lender.geo || '']
+    .map(normalizeString)
+    .filter(Boolean);
+  const excludedGeographies = (lender.geographies_excluded || []).map(normalizeString);
+  if (excludedGeographies.some((geo) => geo === normalizedDeal || geo.includes(normalizedDeal) || normalizedDeal.includes(geo))) {
+    return false;
+  }
+  const broad = ['us', 'usa', 'united states', 'global', 'nationwide', 'north america'];
+  return lenderGeographies.some((geo) => broad.some((value) => geo.includes(value)) || geo.includes(normalizedDeal) || normalizedDeal.includes(geo));
 }
 
 function matchesIndustry(dealIndustry: string | undefined, lenderIndustries: string[] | null): boolean {
@@ -117,12 +136,13 @@ export function calculateLenderMatch(
   let score = 0;
 
   // ── Industry (25 pts) — check avoid first as hard disqualify ──
-  if (criteria.industry) {
-    if (isIndustriesAvoided(criteria.industry, lender.industries_to_avoid)) {
+  const dealIndustry = criteria.industryNormalized || criteria.industry;
+  if (dealIndustry) {
+    if (isIndustriesAvoided(dealIndustry, lender.industries_to_avoid)) {
       return null; // Hard disqualify
     }
-    if (matchesIndustry(criteria.industry, lender.industries)) {
-      reasons.push(`${criteria.industry} industry`);
+    if (matchesIndustry(dealIndustry, lender.industries)) {
+      reasons.push(`${criteria.industry || dealIndustry} industry`);
       score += W.INDUSTRY;
     } else if (lender.industries?.some(i => normalizeString(i) === 'agnostic')) {
       reasons.push('Industry agnostic');
@@ -131,31 +151,32 @@ export function calculateLenderMatch(
   }
 
   // ── Deal Size (30 pts) ──
-  const capitalValue = parseCapitalAsk(criteria.capitalAsk) || criteria.dealValue;
+  const capitalValue = criteria.capitalAskAmount ?? parseCapitalAsk(criteria.capitalAsk) ?? criteria.dealValue;
   if (capitalValue) {
-    const min = lender.min_deal;
-    const max = lender.max_deal;
-    const belowMin = min !== null && min !== undefined && capitalValue < min;
-    const aboveMax = max !== null && max !== undefined && capitalValue > max;
+    const min = lender.sweet_spot_min ?? lender.min_deal;
+    const max = lender.sweet_spot_max ?? lender.max_deal;
+    const belowMin = min != null && capitalValue < min;
+    const aboveMax = max != null && capitalValue > max;
 
-    if (!belowMin && !aboveMax && (min || max)) {
+    if (!belowMin && !aboveMax && (min != null || max != null)) {
       const range: string[] = [];
-      if (min) range.push(`$${(min / 1000000).toFixed(1)}M`);
-      if (max) range.push(`$${(max / 1000000).toFixed(1)}M`);
+      if (min != null) range.push(`$${(min / 1000000).toFixed(1)}M`);
+      if (max != null) range.push(`$${(max / 1000000).toFixed(1)}M`);
       reasons.push(`Deal size fits${range.length ? `: ${range.join(' - ')}` : ''}`);
       score += W.DEAL_SIZE;
     } else if (belowMin || aboveMax) {
-      // Within 20% of boundary = partial credit
-      const boundary = belowMin ? min! : max!;
-      const pctOff = Math.abs(capitalValue - boundary) / boundary;
-      if (pctOff <= 0.2) {
-        reasons.push(`Deal size near ${belowMin ? 'minimum' : 'maximum'}`);
-        score += Math.round(W.DEAL_SIZE * 0.5);
-      } else {
-        warnings.push(belowMin
-          ? `Below min ($${(min! / 1000000).toFixed(1)}M)`
-          : `Above max ($${(max! / 1000000).toFixed(1)}M)`);
-        score -= 15;
+      const boundary = belowMin ? min : max;
+      if (boundary != null) {
+        const pctOff = Math.abs(capitalValue - boundary) / Math.max(1, boundary);
+        if (pctOff <= 0.2) {
+          reasons.push(`Deal size near ${belowMin ? 'minimum' : 'maximum'}`);
+          score += Math.round(W.DEAL_SIZE * 0.5);
+        } else {
+          warnings.push(belowMin
+            ? `Below min ($${(boundary / 1000000).toFixed(1)}M)`
+            : `Above max ($${(boundary / 1000000).toFixed(1)}M)`);
+          score -= 15;
+        }
       }
     }
   }
@@ -181,23 +202,30 @@ export function calculateLenderMatch(
     }
   }
 
-  // ── Revenue / EBITDA (10 pts) ──
-  if (criteria.revenue && criteria.revenue > 0) {
-    const meetsMinRevenue = !lender.min_revenue || criteria.revenue >= lender.min_revenue;
-    const meetsEbitda = !criteria.ebitda || !lender.ebitda_min || criteria.ebitda >= lender.ebitda_min;
-    if (meetsMinRevenue && meetsEbitda) {
-      reasons.push('Revenue/EBITDA fit');
+  // ── Revenue / EBITDA / gross margin (10 pts) ──
+  const revenue = criteria.ttmRevenue ?? criteria.revenue;
+  const ebitda = criteria.ttmEbitda ?? criteria.ebitda;
+  const hasFinancials = (revenue != null && revenue > 0) || (ebitda != null && ebitda > 0) || (criteria.grossMarginPct != null);
+  if (hasFinancials) {
+    const meetsMinRevenue = revenue == null || !lender.min_revenue || revenue >= lender.min_revenue;
+    const meetsEbitda = ebitda == null || !lender.ebitda_min || ebitda >= lender.ebitda_min;
+    const meetsGrossMargin = criteria.grossMarginPct == null || lender.min_gross_margin_pct == null || criteria.grossMarginPct >= lender.min_gross_margin_pct;
+    if (meetsMinRevenue && meetsEbitda && meetsGrossMargin) {
+      reasons.push('Revenue/EBITDA/margin fit');
       score += W.REVENUE;
-    } else if (!meetsMinRevenue) {
-      warnings.push(`Below min revenue ($${((lender.min_revenue || 0) / 1000000).toFixed(1)}M)`);
+    } else {
+      if (!meetsMinRevenue) warnings.push(`Below min revenue ($${((lender.min_revenue || 0) / 1000000).toFixed(1)}M)`);
+      if (!meetsEbitda) warnings.push(`Below min EBITDA ($${((lender.ebitda_min || 0) / 1000000).toFixed(1)}M)`);
+      if (!meetsGrossMargin) warnings.push(`Below min gross margin (${lender.min_gross_margin_pct}%)`);
     }
   }
 
   // ── Sponsorship (5 pts) ──
-  if (criteria.sponsorship && lender.sponsorship) {
+  const lenderSponsorship = lender.sponsor_requirement || lender.sponsorship;
+  if (criteria.sponsorship && lenderSponsorship) {
     const nd = normalizeString(criteria.sponsorship);
-    const nl = normalizeString(lender.sponsorship);
-    const lenderBoth = nl.includes('both') || nl.includes('either') || nl.includes('agnostic');
+    const nl = normalizeString(lenderSponsorship);
+    const lenderBoth = nl.includes('both') || nl.includes('either') || nl.includes('agnostic') || nl.includes('no preference');
     const dealSponsored = nd.includes('sponsor') && !nd.includes('non');
     const dealNon = nd.includes('non');
     const lenderSponsored = nl.includes('sponsor') && !nl.includes('non');
@@ -226,12 +254,12 @@ export function calculateLenderMatch(
   }
 
   // ── Geography (5 pts) ──
-  if (criteria.geo && lender.geo) {
-    const nd = normalizeString(criteria.geo);
-    const nl = normalizeString(lender.geo);
-    if (nl.includes('us') || nl.includes('united states') || nl.includes('global') || nl.includes('nationwide') || nl.includes(nd) || nd.includes(nl)) {
+  if (criteria.geo) {
+    if (matchesGeography(criteria.geo, lender)) {
       reasons.push('Geographic coverage');
       score += W.GEO;
+    } else if (lender.geographies_excluded?.length) {
+      warnings.push('Geography excluded');
     }
   }
 
@@ -257,7 +285,7 @@ export function calculateLenderMatch(
   }
 
   // ── Bonus for active / contact info ──
-  if (lender.active === true) score += 2;
+  if (lender.active === true && lender.appetite_status !== 'paused') score += 2;
   if (lender.email && lender.contact_name) score += 1;
 
   // ── Learning patterns ──
@@ -336,7 +364,7 @@ export function useLenderMatching(
 
     const excludeSet = new Set(excludeNames.map(n => n.toLowerCase().trim()));
     const filtered = masterLenders
-      .filter(l => l.active !== false)
+      .filter(l => l.active !== false && l.appetite_status !== 'paused')
       .filter(l => excludeSet.size === 0 || !excludeSet.has(l.name.toLowerCase().trim()));
 
     const scored: LenderMatch[] = [];

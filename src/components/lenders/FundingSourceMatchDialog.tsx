@@ -39,6 +39,12 @@ interface FundingSourceRow {
   tier: string | null;
   min_deal: number | null;
   max_deal: number | null;
+  sweet_spot_min: number | null;
+  sweet_spot_max: number | null;
+  min_gross_margin_pct: number | null;
+  max_leverage: number | null;
+  sponsor_requirement: string | null;
+  appetite_status: string | null;
   geo: string | null;
   industries: string[] | null;
   loan_types: string[] | null;
@@ -135,9 +141,15 @@ function toLenderDetail(source: FundingSourceRow) {
     website: source.website || undefined,
     description: source.company_requirements || undefined,
     lenderType: source.lender_type || undefined,
-    minDeal: source.min_deal,
-    maxDeal: source.max_deal,
-    geo: source.geo,
+     minDeal: source.min_deal,
+     maxDeal: source.max_deal,
+     sweetSpotMin: source.sweet_spot_min,
+     sweetSpotMax: source.sweet_spot_max,
+     minGrossMarginPct: source.min_gross_margin_pct,
+     maxLeverage: source.max_leverage,
+     sponsorRequirement: source.sponsor_requirement,
+     appetiteStatus: source.appetite_status,
+     geo: source.geo,
     industries: source.industries,
     loanTypes: source.loan_types,
     minRevenue: source.min_revenue,
@@ -263,9 +275,15 @@ export function FundingSourceMatchDialog({
       contact_title: data.contactTitle?.trim() || null,
       email: data.email.trim() || null,
       lender_type: data.lenderType.trim() || null,
-      min_deal: numberOrNull(data.minDeal),
-      max_deal: numberOrNull(data.maxDeal),
-      geo: data.geo.trim() || null,
+       min_deal: numberOrNull(data.minDeal),
+       max_deal: numberOrNull(data.maxDeal),
+       sweet_spot_min: numberOrNull(data.sweetSpotMin),
+       sweet_spot_max: numberOrNull(data.sweetSpotMax),
+       min_gross_margin_pct: numberOrNull(data.minGrossMarginPct),
+       max_leverage: numberOrNull(data.maxLeverage),
+       sponsor_requirement: data.sponsorRequirement?.trim() || null,
+       appetite_status: data.appetiteStatus || 'active',
+       geo: data.geo.trim() || null,
       industries: splitValues(data.industries),
       loan_types: splitValues(data.loanTypes),
       company_requirements: data.companyRequirements.trim() || null,

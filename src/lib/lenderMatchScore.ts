@@ -86,13 +86,16 @@ function scoreCheckSize(criteria: DealCriteria, lender: MasterLender): MatchComp
   const ask = parseAmount(criteria.capitalAsk) ?? criteria.dealValue ?? null;
   const min = lender.min_deal ?? null;
   const max = lender.max_deal ?? null;
+  const sweetMin = lender.sweet_spot_min ?? null;
+  const sweetMax = lender.sweet_spot_max ?? null;
   if (ask == null || (min == null && max == null)) {
     return { key: 'checkSize', label: 'Check size', weight: w, earned: 0, available: false, detail: 'n/a — missing deal amount or lender range' };
   }
   const lo = min ?? 0;
   const hi = max ?? Number.MAX_SAFE_INTEGER;
   if (ask >= lo && ask <= hi) {
-    return { key: 'checkSize', label: 'Check size', weight: w, earned: w, available: true, detail: 'Within lender range' };
+    const inSweetSpot = (sweetMin == null || ask >= sweetMin) && (sweetMax == null || ask <= sweetMax);
+    return { key: 'checkSize', label: 'Check size', weight: w, earned: inSweetSpot ? w : Math.round(w * 0.8), available: true, detail: inSweetSpot ? 'Within lender sweet spot' : 'Within lender range, outside sweet spot' };
   }
   // Soft credit if within 25% of boundary
   const boundary = ask < lo ? lo : hi;
@@ -108,10 +111,11 @@ function scoreVertical(criteria: DealCriteria, lender: MasterLender): MatchCompo
   const w = MATCH_WEIGHTS.vertical;
   const industry = criteria.industry?.trim();
   const inds = lender.industries || [];
+  const normalizedIndustry = criteria.industryNormalized?.trim();
   if (!industry || inds.length === 0) {
     return { key: 'vertical', label: 'Vertical', weight: w, earned: 0, available: false, detail: 'n/a' };
   }
-  const n = norm(industry);
+  const n = norm(normalizedIndustry || industry);
   if (inds.some(i => norm(i) === 'agnostic')) {
     return { key: 'vertical', label: 'Vertical', weight: w, earned: Math.round(w * 0.7), available: true, detail: 'Lender is industry-agnostic' };
   }
@@ -126,13 +130,18 @@ function scoreGeography(criteria: DealCriteria, lender: MasterLender): MatchComp
   const w = MATCH_WEIGHTS.geography;
   const dGeo = criteria.geo?.trim();
   const lGeo = lender.geo?.trim();
+  const excluded = (lender.geographies_excluded || []).map(norm);
+  if (dGeo && excluded.some((geo) => geo === norm(dGeo) || geo.includes(norm(dGeo)) || norm(dGeo).includes(geo))) {
+    return { key: 'geography', label: 'Geography', weight: w, earned: 0, available: true, detail: `Lender excludes ${dGeo}` };
+  }
   if (!dGeo || !lGeo) {
     return { key: 'geography', label: 'Geography', weight: w, earned: 0, available: false, detail: 'n/a' };
   }
   const nd = norm(dGeo);
   const nl = norm(lGeo);
+  const lenderGeographies = [...(lender.geographies || []), lGeo].filter(Boolean).map(norm);
   const broad = ['us', 'usa', 'united states', 'global', 'nationwide', 'north america'];
-  if (broad.some(b => nl.includes(b)) || nl.includes(nd) || nd.includes(nl)) {
+  if (lenderGeographies.some((geo) => broad.some(b => geo.includes(b)) || geo.includes(nd) || nd.includes(geo))) {
     return { key: 'geography', label: 'Geography', weight: w, earned: w, available: true, detail: `Lender covers ${dGeo}` };
   }
   return { key: 'geography', label: 'Geography', weight: w, earned: 0, available: true, detail: `Lender focused on ${lGeo}` };
@@ -187,9 +196,12 @@ const cache = new Map<string, DeterministicMatchResult>();
 
 function criteriaSignature(c: DealCriteria): string {
   return JSON.stringify({
-    i: c.industry || '',
+    i: c.industryNormalized || c.industry || '',
     v: c.dealValue ?? null,
-    a: c.capitalAsk || '',
+    a: c.capitalAskAmount ?? c.capitalAsk ?? '',
+    r: c.ttmRevenue ?? c.revenue ?? null,
+    e: c.ttmEbitda ?? c.ebitda ?? null,
+    m: c.grossMarginPct ?? null,
     t: (c.dealTypes || []).map(norm).sort(),
     g: c.geo || '',
   });
