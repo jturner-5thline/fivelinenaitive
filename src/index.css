@@ -96,10 +96,10 @@
     --gradient-accent: linear-gradient(135deg, hsl(229 35% 50%), hsl(216 37% 60%));
     --gradient-hero: linear-gradient(180deg, hsl(210 20% 99%) 0%, hsl(210 30% 96%) 100%);
 
-    /* App backdrop — corner-anchored blue glow (bottom-right) */
+    /* App backdrop — diagonal navy → blue wash (top-left dark, bottom-right blue) */
     --app-backdrop:
-      radial-gradient(120% 110% at 100% 100%, rgba(10, 110, 220, 0.45) 0%, rgba(8, 78, 165, 0.24) 21%, rgba(4, 40, 92, 0.09) 41%, rgba(2, 6, 18, 0) 62%),
-      linear-gradient(145deg, #01030a 0%, #01050f 43%, #020a1c 69%, #03163a 89%, #05285a 100%);
+      linear-gradient(125deg, #061024 0%, #08182f 30%, #0a2247 55%, #0e3a70 80%, #114a8c 100%);
+
 
     /* Email / Outlook tokens */
     --outlook-blue: 207 90% 42%;
