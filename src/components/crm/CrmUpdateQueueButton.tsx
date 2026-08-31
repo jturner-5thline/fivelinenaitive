@@ -164,7 +164,40 @@ export function CrmUpdateQueueButton({ variant = 'outline' as const }) {
           <p className="text-xs text-muted-foreground">
             AI-suggested updates from email signatures, meetings, and deal activity. Review and confirm before applying — nothing is auto-applied.
           </p>
+          {queue.length > 0 && (
+            <div className="pt-2">
+              <Button
+                size="sm"
+                className="h-7 text-xs gap-1 bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => setConfirmAllOpen(true)}
+                disabled={action.isPending}
+              >
+                {action.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCheck className="h-3 w-3" />}
+                Confirm all ({queue.length})
+              </Button>
+            </div>
+          )}
         </SheetHeader>
+        <AlertDialog open={confirmAllOpen} onOpenChange={setConfirmAllOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm all CRM updates?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This applies {queue.length} suggested update{queue.length === 1 ? '' : 's'} to your contacts. This can't be undone automatically.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={action.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => { e.preventDefault(); handleConfirmAll(); }}
+                disabled={action.isPending}
+              >
+                {action.isPending ? 'Confirming…' : 'Confirm all'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-3">
             {isLoading ? (
