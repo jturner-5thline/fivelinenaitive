@@ -371,6 +371,7 @@ export function FundingSourceMatchDialog({ open, onOpenChange, initialQuery = ''
         }}
         onSave={handleSave}
         initialEditMode={false}
+        nested
       />
       {saving && <span className="sr-only" role="status">Saving funding source</span>}
     </>
