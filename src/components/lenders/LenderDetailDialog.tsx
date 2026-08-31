@@ -119,6 +119,12 @@ interface LenderInfo {
   lenderType?: string;
   minDeal?: number | null;
   maxDeal?: number | null;
+  sweetSpotMin?: number | null;
+  sweetSpotMax?: number | null;
+  minGrossMarginPct?: number | null;
+  maxLeverage?: number | null;
+  sponsorRequirement?: string | null;
+  appetiteStatus?: string | null;
   geo?: string | null;
   industries?: string[] | null;
   loanTypes?: string[] | null;
@@ -157,6 +163,12 @@ export interface LenderEditData {
   lenderType: string;
   minDeal: string;
   maxDeal: string;
+  sweetSpotMin: string;
+  sweetSpotMax: string;
+  minGrossMarginPct: string;
+  maxLeverage: string;
+  sponsorRequirement: string;
+  appetiteStatus: string;
   geo: string;
   industries: string;
   loanTypes: string;
@@ -207,9 +219,15 @@ function buildEditForm(lender: LenderInfo): LenderEditData {
     contactPhone: lender.contact.phone || '',
     email: lender.contact.email || '',
     lenderType: lender.lenderType || '',
-    minDeal: lender.minDeal?.toString() || '',
-    maxDeal: lender.maxDeal?.toString() || '',
-    geo: lender.geo || '',
+     minDeal: lender.minDeal?.toString() || '',
+     maxDeal: lender.maxDeal?.toString() || '',
+     sweetSpotMin: lender.sweetSpotMin?.toString() || '',
+     sweetSpotMax: lender.sweetSpotMax?.toString() || '',
+     minGrossMarginPct: lender.minGrossMarginPct?.toString() || '',
+     maxLeverage: lender.maxLeverage?.toString() || '',
+     sponsorRequirement: lender.sponsorRequirement || '',
+     appetiteStatus: lender.appetiteStatus || 'active',
+     geo: lender.geo || '',
     industries: lender.industries?.join(', ') || '',
     loanTypes: lender.loanTypes?.join(', ') || '',
     description: lender.description || '',
@@ -474,9 +492,15 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     contactPhone: '',
     email: '',
     lenderType: '',
-    minDeal: '',
-    maxDeal: '',
-    geo: '',
+     minDeal: '',
+     maxDeal: '',
+     sweetSpotMin: '',
+     sweetSpotMax: '',
+     minGrossMarginPct: '',
+     maxLeverage: '',
+     sponsorRequirement: '',
+     appetiteStatus: 'active',
+     geo: '',
     industries: '',
     loanTypes: '',
     description: '',
@@ -565,9 +589,15 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
       checkField('name', 'Name', lender.name || '');
       checkField('tier', 'Tier', lender.tier?.replace(/^T/, '') || '');
       checkField('lenderType', 'Funding Source Type', lender.lenderType || '');
-      checkField('minDeal', 'Min Deal Size', lender.minDeal?.toString() || '');
-      checkField('maxDeal', 'Max Deal Size', lender.maxDeal?.toString() || '');
-      checkField('geo', 'Geography', lender.geo || '');
+       checkField('minDeal', 'Min Deal Size', lender.minDeal?.toString() || '');
+       checkField('maxDeal', 'Max Deal Size', lender.maxDeal?.toString() || '');
+       checkField('sweetSpotMin', 'Sweet Spot Min', lender.sweetSpotMin?.toString() || '');
+       checkField('sweetSpotMax', 'Sweet Spot Max', lender.sweetSpotMax?.toString() || '');
+       checkField('minGrossMarginPct', 'Min Gross Margin', lender.minGrossMarginPct?.toString() || '');
+       checkField('maxLeverage', 'Max Leverage', lender.maxLeverage?.toString() || '');
+       checkField('sponsorRequirement', 'Sponsor Requirement', lender.sponsorRequirement || '');
+       checkField('appetiteStatus', 'Appetite Status', lender.appetiteStatus || 'active');
+       checkField('geo', 'Geography', lender.geo || '');
       checkField('industries', 'Industries', lender.industries?.join(', ') || '');
       checkField('loanTypes', 'Loan Types', lender.loanTypes?.join(', ') || '');
       checkField('description', 'Description', lender.description || '');
