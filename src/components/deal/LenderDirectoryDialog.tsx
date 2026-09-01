@@ -55,6 +55,8 @@ interface LenderDirectoryDialogProps {
   onRemoveLender: (lenderId: string, reason?: string) => void;
   dealLenders: { id: string; name: string }[];
   aiSearchSlot?: React.ReactNode;
+  matchingCriteria?: DealCriteria;
+  matchingEnabled?: boolean;
 }
 
 export function LenderDirectoryDialog(props: LenderDirectoryDialogProps) {
