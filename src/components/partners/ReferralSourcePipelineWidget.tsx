@@ -101,14 +101,45 @@ const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
 export function ReferralSourcePipelineWidget() {
   const { referralSources } = useDealReferralSources();
-  const { referralSources: manualSources, addReferralSource, deleteReferralSource } = useReferralSources();
+  const { referralSources: manualSources, addReferralSource, deleteReferralSource, refreshReferralSources } = useReferralSources();
   const { data: rules } = usePartnerRules();
   const tiers = rules?.tiers || DEFAULT_PARTNER_RULES.tiers;
+  const { user } = useAuth();
+  const { company } = useCompany();
 
   const [addOpen, setAddOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [contactResults, setContactResults] = useState<ContactHit[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<ContactHit | null>(null);
   const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
+
+  // Live contact lookup so sources added here map to real CRM contacts.
+  useEffect(() => {
+    const q = newName.trim();
+    if (!addOpen || selectedContact || q.length < 2) {
+      setContactResults([]);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    const t = setTimeout(async () => {
+      const like = `%${q.replace(/[%_,()]/g, ' ')}%`;
+      let query = supabase
+        .from('contacts')
+        .select('id, first_name, last_name, full_name, email, contact_type, org_company_id, phone_mobile, phone_work, job_title')
+        .or(`full_name.ilike.${like},first_name.ilike.${like},last_name.ilike.${like},email.ilike.${like}`)
+        .limit(8);
+      if (company?.id) query = query.eq('org_company_id', company.id);
+      const { data } = await query;
+      if (cancelled) return;
+      setContactResults((data as any[]) || []);
+      setSearching(false);
+    }, 200);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [newName, addOpen, selectedContact, company?.id]);
+
 
   const teamMembers = useTeamMembers();
   const ownerNameById = useMemo(() => {
