@@ -351,8 +351,8 @@ function scoreStructure(deal: any, lender: any): { score: number; reason: string
   const reasons: string[] = [];
 
   // Sponsorship
-  if (lender.sponsorship && deal.sponsorship) {
-    const ls = lc(lender.sponsorship), ds = lc(deal.sponsorship);
+  if ((lender.sponsor_requirement || lender.sponsorship) && deal.sponsorship) {
+    const ls = lc(lender.sponsor_requirement || lender.sponsorship), ds = lc(deal.sponsorship);
     const lenderNeedsSponsor = ls.includes("required") || ls.includes("sponsor-backed only") || ls.includes("yes only");
     const dealHasSponsor = /sponsor|pe[- ]backed|institutional/.test(ds) && !/no sponsor|non[- ]sponsor/.test(ds);
     if (lenderNeedsSponsor && !dealHasSponsor) { total += 5; reasons.push("requires sponsor"); }
@@ -495,15 +495,15 @@ function buildExplanation(args: {
   });
 
   // Sponsorship
-  if (lender.sponsorship || dealCtx.sponsorship) {
-    const ls = lc(lender.sponsorship ?? '');
+  if (lender.sponsor_requirement || lender.sponsorship || dealCtx.sponsorship) {
+    const ls = lc(lender.sponsor_requirement ?? lender.sponsorship ?? '');
     const ds = lc(dealCtx.sponsorship ?? '');
     const lenderNeedsSponsor = /required|sponsor-backed only|yes only/.test(ls);
     const dealHasSponsor = /sponsor|pe[- ]backed|institutional/.test(ds) && !/no sponsor|non[- ]sponsor/.test(ds);
     const verdict: FieldRow['verdict'] = lenderNeedsSponsor
       ? (dealHasSponsor ? 'match' : 'mismatch')
       : (ls && ds ? 'match' : 'unknown');
-    rows.push({ label: 'Sponsorship', deal: dealCtx.sponsorship ?? '—', lender: lender.sponsorship ?? '—', verdict });
+    rows.push({ label: 'Sponsorship', deal: dealCtx.sponsorship ?? '—', lender: lender.sponsor_requirement ?? lender.sponsorship ?? '—', verdict });
   }
 
   // Cash burn
