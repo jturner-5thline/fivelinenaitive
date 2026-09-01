@@ -84,16 +84,16 @@ function scoreFinancingType(criteria: DealCriteria, lender: MasterLender): Match
 
 function scoreCheckSize(criteria: DealCriteria, lender: MasterLender): MatchComponent {
   const w = MATCH_WEIGHTS.checkSize;
-  const ask = parseAmount(criteria.capitalAsk) ?? criteria.dealValue ?? null;
-  const min = lender.min_deal ?? null;
-  const max = lender.max_deal ?? null;
+  const ask = parseAmount(criteria.capitalAsk) ?? criteria.capitalAskAmount ?? criteria.dealValue ?? null;
+  const rangeMin = lender.min_deal ?? null;
+  const rangeMax = lender.max_deal ?? null;
   const sweetMin = lender.sweet_spot_min ?? null;
   const sweetMax = lender.sweet_spot_max ?? null;
-  if (ask == null || (min == null && max == null)) {
+  if (ask == null || (rangeMin == null && rangeMax == null && sweetMin == null && sweetMax == null)) {
     return { key: 'checkSize', label: 'Check size', weight: w, earned: 0, available: false, detail: 'n/a — missing deal amount or lender range' };
   }
-  const lo = min ?? 0;
-  const hi = max ?? Number.MAX_SAFE_INTEGER;
+  const lo = rangeMin ?? 0;
+  const hi = rangeMax ?? Number.MAX_SAFE_INTEGER;
   if (ask >= lo && ask <= hi) {
     const inSweetSpot = (sweetMin == null || ask >= sweetMin) && (sweetMax == null || ask <= sweetMax);
     return { key: 'checkSize', label: 'Check size', weight: w, earned: inSweetSpot ? w : Math.round(w * 0.8), available: true, detail: inSweetSpot ? 'Within lender sweet spot' : 'Within lender range, outside sweet spot' };
