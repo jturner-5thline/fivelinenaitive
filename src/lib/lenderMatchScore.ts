@@ -243,6 +243,7 @@ export function computeMatchScore(lender: MasterLender, criteria: DealCriteria):
   components.push(scoreCheckSize(criteria, lender));
   components.push(scoreVertical(criteria, lender));
   components.push(scoreGeography(criteria, lender));
+  components.push(scoreFinancialFit(criteria, lender));
   components.push(scoreRecency(lender));
   const excl = scoreExclusion(criteria, lender);
   components.push(excl.component);
