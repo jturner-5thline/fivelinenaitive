@@ -202,7 +202,7 @@ export function calculateLenderMatch(
     }
   }
 
-  // ── Revenue / EBITDA / gross margin (10 pts) ──
+  // ── Revenue / EBITDA / gross margin / leverage (10 pts) ──
   const revenue = criteria.ttmRevenue ?? criteria.revenue;
   const ebitda = criteria.ttmEbitda ?? criteria.ebitda;
   const hasFinancials = (revenue != null && revenue > 0) || (ebitda != null && ebitda > 0) || (criteria.grossMarginPct != null);
