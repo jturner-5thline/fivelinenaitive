@@ -1,4 +1,26 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
+import { ensureReferralSourceForContact, hasReferralSourceTag, REFERRAL_SOURCE_TAG } from '@/lib/ensureReferralSource';
+import { splitContactTypes } from '@/components/contacts/ContactTypeMultiSelect';
+
+interface ContactHit {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  full_name: string | null;
+  email: string | null;
+  contact_type: string | null;
+  org_company_id: string | null;
+  phone_mobile?: string | null;
+  phone_work?: string | null;
+  job_title?: string | null;
+}
+
+const contactLabel = (c: ContactHit) =>
+  (c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email || 'Unnamed contact').trim();
+
 import { Plus, Info, Trash2, Building2 } from 'lucide-react';
 import { liquidGlassCard, LIQUID_GLASS_SERIES } from '@/components/metrics/liquidGlass';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
