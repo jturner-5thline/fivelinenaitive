@@ -187,6 +187,9 @@ export function ReferralSourcePipelineWidget() {
   const columns = useMemo(() => {
     const byStage = new Map<StageKey, PipelineCard[]>(STAGES.map(s => [s.key, [] as PipelineCard[]]));
     const seen = new Set<string>();
+    const q = normalize(search);
+    const matchesSearch = (name: string, comp: string | null) =>
+      !q || normalize(name).includes(q) || (!!comp && normalize(comp).includes(q));
     const ownerAllows = (ownerId: string | null) =>
       ownerFilter.length === 0 || ownerFilter.includes(ownerId || UNASSIGNED_OWNER);
 
