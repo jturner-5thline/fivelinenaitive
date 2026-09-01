@@ -363,30 +363,70 @@ export function ReferralSourcePipelineWidget() {
         {total} referral source{total === 1 ? '' : 's'} in selected period
       </p>
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) resetAdd(); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add referral source</DialogTitle>
             <DialogDescription>
-              New sources start in Nurturing and move to Tier 3, 2 or 1 automatically as their referred deals meet the rules.
+              Search your contacts and pick a real person — they'll be tagged as a Referral Source and start in Nurturing.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="referral-source-name" className="text-xs">Name</Label>
+            <Label htmlFor="referral-source-name" className="text-xs">Contact</Label>
             <Input
               id="referral-source-name"
               value={newName}
-              onChange={e => setNewName(e.target.value)}
-              placeholder="e.g. Jane Doe @ Comerica Bank"
-              onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
+              onChange={e => { setNewName(e.target.value); setSelectedContact(null); }}
+              placeholder="Search contacts by name or email…"
+              autoComplete="off"
             />
+            {selectedContact ? (
+              <div className="flex items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs">
+                <div className="min-w-0">
+                  <p className="truncate text-foreground">{contactLabel(selectedContact)}</p>
+                  {selectedContact.email && (
+                    <p className="truncate text-[10px] text-muted-foreground">{selectedContact.email}</p>
+                  )}
+                </div>
+                <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => { setSelectedContact(null); setNewName(''); }}>
+                  Change
+                </Button>
+              </div>
+            ) : newName.trim().length >= 2 ? (
+              <div className="max-h-52 overflow-y-auto rounded-md border border-white/[0.08] divide-y divide-white/[0.05]">
+                {searching && contactResults.length === 0 && (
+                  <p className="px-2.5 py-2 text-[11px] text-muted-foreground">Searching contacts…</p>
+                )}
+                {!searching && contactResults.length === 0 && (
+                  <p className="px-2.5 py-2 text-[11px] text-muted-foreground">
+                    No matching contacts. You can still add "{newName.trim()}" as a manual source.
+                  </p>
+                )}
+                {contactResults.map(c => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className="w-full text-left px-2.5 py-1.5 hover:bg-accent/40"
+                    onClick={() => { setSelectedContact(c); setNewName(contactLabel(c)); }}
+                  >
+                    <p className="text-xs text-foreground truncate">{contactLabel(c)}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {[c.job_title, c.email].filter(Boolean).join(' · ') || 'No email on file'}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setAddOpen(false)}>Cancel</Button>
-            <Button onClick={handleAdd} disabled={!newName.trim() || saving}>Add source</Button>
+            <Button onClick={handleAdd} disabled={(!newName.trim() && !selectedContact) || saving}>
+              {selectedContact ? 'Add contact as source' : 'Add manual source'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }
