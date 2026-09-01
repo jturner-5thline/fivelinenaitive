@@ -197,6 +197,7 @@ export function ReferralSourcePipelineWidget() {
       const key: StageKey = r.tier === null ? 'nurturing' : r.tier;
       seen.add(normalize(r.referredBy));
       if (!ownerAllows(r.ownerUserId ?? null)) continue;
+      if (!matchesSearch(r.referredBy, r.companyName)) continue;
 
       byStage.get(key)!.push({
         id: `deal:${r.contactId || r.crmCompanyId || r.referredBy}`,
@@ -212,6 +213,7 @@ export function ReferralSourcePipelineWidget() {
     for (const m of manualSources) {
       if (seen.has(normalize(m.name))) continue;
       if (!ownerAllows(null)) continue;
+      if (!matchesSearch(m.name, m.company || null)) continue;
 
       byStage.get('nurturing')!.push({
         id: `manual:${m.id}`,
@@ -234,7 +236,7 @@ export function ReferralSourcePipelineWidget() {
         color: LIQUID_GLASS_SERIES[i % LIQUID_GLASS_SERIES.length],
       };
     });
-  }, [referralSources, manualSources, ownerFilter]);
+  }, [referralSources, manualSources, ownerFilter, search]);
 
   const total = columns.reduce((sum, c) => sum + c.count, 0);
 
