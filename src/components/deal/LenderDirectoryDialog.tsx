@@ -20,7 +20,8 @@ import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderD
 import { toast } from 'sonner';
 import { MultiSelectFilter } from '@/components/deals/MultiSelectFilter';
 import { Badge } from '@/components/ui/badge';
-import { DealCriteria, LenderMatch, useLenderMatching } from '@/hooks/useLenderMatching';
+import { DealCriteria, useLenderMatching } from '@/hooks/useLenderMatching';
+import { useAiRecommendedLenders } from '@/hooks/useAiRecommendedLenders';
 import {
   Select,
   SelectContent,
@@ -55,6 +56,7 @@ interface LenderDirectoryDialogProps {
   onRemoveLender: (lenderId: string, reason?: string) => void;
   dealLenders: { id: string; name: string }[];
   aiSearchSlot?: React.ReactNode;
+  dealId?: string;
   matchingCriteria?: DealCriteria;
   matchingEnabled?: boolean;
 }
@@ -79,6 +81,7 @@ export function LenderDirectoryDialog(props: LenderDirectoryDialogProps) {
 
 const COLUMNS = [
   { key: 'name', label: 'Name', width: 180, sortable: true },
+  { key: 'fit', label: 'Deal Fit', width: 220, sortable: false },
   { key: 'status', label: 'Status', width: 90, sortable: true },
   { key: 'active', label: 'Active', width: 70, sortable: true },
   { key: 'tier', label: 'Tier', width: 60, sortable: true },
@@ -107,7 +110,7 @@ const COLUMNS = [
 
 type ColumnKey = typeof COLUMNS[number]['key'];
 
-const TOTAL_WIDTH = COLUMNS.reduce((sum, col) => sum + col.width, 0) + 84; // +84 for row number + quick-add
+
 
 function formatCellValue(lender: MasterLender, key: string): string {
   if (key === 'status' || key === 'action') return '';
@@ -153,8 +156,15 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   onRemoveLender,
   dealLenders,
   aiSearchSlot,
+  dealId,
+  matchingCriteria = {},
+  matchingEnabled = false,
 }: LenderDirectoryDialogProps) {
   const [search, setSearch] = useState('');
+  const [viewMode, setViewMode] = useState<'directory' | 'matches'>('directory');
+  const { data: recommendationData, loading: recommendationsLoading, error: recommendationsError, refresh: refreshRecommendations } =
+    useAiRecommendedLenders(dealId, matchingEnabled);
+
   // Push search to the server via ilike so we're not limited to the
   // rows that happen to have streamed into the client-side cache yet.
   // A short min-length keeps single-letter queries out of the paged
@@ -170,6 +180,21 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   const [groupByTier, setGroupByTier] = useState(true);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+  const { matches: localMatches } = useLenderMatching(masterLenders, matchingCriteria, {
+    minScore: 0,
+    maxResults: 5000,
+    excludeNames: [],
+    enableLearning: false,
+  });
+  const localMatchById = useMemo(() => new Map(localMatches.map(match => [match.lender.id, match])), [localMatches]);
+  const visibleColumns = useMemo(
+    () => matchingEnabled ? COLUMNS : COLUMNS.filter(column => column.key !== 'fit'),
+    [matchingEnabled],
+  );
+  const totalWidth = useMemo(
+    () => visibleColumns.reduce((sum, column) => sum + column.width, 0) + 84,
+    [visibleColumns],
+  );
 
   // Multi-select state
   const [selectedLenders, setSelectedLenders] = useState<Set<string>>(new Set());
@@ -342,7 +367,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   }, [masterLenders, search, selectedTypes, tierFilter]);
 
   const sorted = useMemo(() => {
-    const items = filtered.map(l => ({ ...l, isOnDeal: existingSet.has(l.name.toLowerCase()) }));
+    const items = filtered.map(l => ({ ...l, isOnDeal: existingSet.has(l.name.toLowerCase()), match: localMatchById.get(l.id) }));
     const tierOrder: Record<string, number> = { 'T1': 0, 'T2': 1, 'T3': 2 };
 
     if (!sortColumn || !sortDirection) {
@@ -375,7 +400,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
       return sortDirection === 'desc' ? -cmp : cmp;
     });
     return items;
-  }, [filtered, existingSet, sortColumn, sortDirection, groupByTier]);
+  }, [filtered, existingSet, localMatchById, sortColumn, sortDirection, groupByTier]);
 
   // Build flat list with tier separator rows when grouping
   type RowItem = { type: 'lender'; lender: typeof sorted[number] } | { type: 'tier-header'; tier: string; count: number };
@@ -455,8 +480,19 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
         <DialogDescription className="sr-only">Browse and manage lenders for this deal</DialogDescription>
       </DialogHeader>
 
-      {/* ── Unified filter rail ── */}
+      {/* ── View switcher + unified filter rail ── */}
       <div className="px-6 py-3 border-y border-white/5 bg-muted/20 shrink-0">
+        {matchingEnabled && (
+          <div className="flex items-center gap-1 mb-3 border-b border-white/5 pb-2">
+            <Button variant={viewMode === 'directory' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setViewMode('directory')}>
+              <BookOpen className="h-3.5 w-3.5" /> Directory
+            </Button>
+            <Button variant={viewMode === 'matches' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setViewMode('matches')}>
+              <Sparkles className="h-3.5 w-3.5 text-primary" /> Best matches
+              {recommendationData?.recommendations.length ? <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{recommendationData.recommendations.length}</Badge> : null}
+            </Button>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[240px] max-w-[320px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
@@ -539,21 +575,64 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
       </div>
 
       <div className="flex-1 overflow-hidden">
-        {loading ? (
+        {viewMode === 'matches' ? (
+          <div className="h-full overflow-auto px-6 py-5">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Best matches for this deal</h3>
+                <p className="mt-1 text-xs text-muted-foreground">Ranked by deal fit, eligibility, historical outcomes, and calibrated matching weights.</p>
+              </div>
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 shrink-0" onClick={() => refreshRecommendations()} disabled={recommendationsLoading}>
+                <ArrowUpDown className={cn('h-3.5 w-3.5', recommendationsLoading && 'animate-pulse')} /> Refresh
+              </Button>
+            </div>
+            {recommendationsLoading ? (
+              <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">Loading ranked matches...</div>
+            ) : recommendationsError ? (
+              <div className="flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive"><AlertTriangle className="h-4 w-4 shrink-0" />{recommendationsError}</div>
+            ) : (recommendationData?.recommendations.length || 0) === 0 ? (
+              <div className="rounded-md border border-white/10 bg-muted/20 px-5 py-10 text-center">
+                <AlertTriangle className="mx-auto mb-2 h-5 w-5 text-warning" />
+                <p className="text-sm font-medium text-foreground">No ranked matches found</p>
+                <p className="mt-1 text-xs text-muted-foreground">Add or refine deal criteria, then refresh the match list.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {recommendationData?.recommendations.filter(rec => {
+                  const query = search.trim().toLowerCase();
+                  return !query || rec.lenderName.toLowerCase().includes(query) || rec.rationale.toLowerCase().includes(query);
+                }).map(rec => (
+                  <div key={rec.lenderId || rec.lenderName} className="flex items-center gap-4 border-b border-white/5 px-3 py-3 hover:bg-muted/20">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-sm font-semibold text-primary">{Math.round(rec.matchScore)}%</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2"><span className="truncate text-sm font-medium text-foreground">{rec.lenderName}</span>{rec.tier ? <Badge variant="outline" className="text-[10px]">{rec.tier}</Badge> : null}</div>
+                      <p className="mt-1 truncate text-xs text-muted-foreground">{rec.fitSummary || rec.rationale || rec.positiveFitSignals?.[0] || 'Strongest available fit based on current criteria.'}</p>
+                      {rec.negativeFitSignals?.length ? <p className="mt-1 flex items-center gap-1 truncate text-[11px] text-warning"><AlertTriangle className="h-3 w-3 shrink-0" />{rec.negativeFitSignals[0]}</p> : null}
+                    </div>
+                    <Button variant="outline" size="sm" className="h-8 shrink-0 gap-1.5" onClick={() => onAddLender(rec.lenderName)}><Plus className="h-3.5 w-3.5" /> Add</Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {recommendationData?.sufficiency && !recommendationData.sufficiency.ok ? (
+              <div className="mt-5 flex items-start gap-2 border-t border-white/5 pt-4 text-xs text-muted-foreground"><span className="mt-0.5 text-primary">i</span><span>Matching confidence improves with: {recommendationData.sufficiency.missing.join(', ')}.</span></div>
+            ) : null}
+          </div>
+        ) : loading ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">Loading directory...</div>
         ) : sorted.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">No funding sources found matching your filters.</div>
         ) : (
           <div className="h-full overflow-hidden bg-background">
             <ScrollArea className="w-full h-full">
-              <div style={{ minWidth: TOTAL_WIDTH }}>
+              <div style={{ minWidth: totalWidth }}>
                 {/* Header Row - identical style to LenderSpreadsheetView */}
                 <div className="flex sticky top-0 z-10 bg-background/95 backdrop-blur-md border-b border-white/5">
                   {/* Row number header */}
                   <div className="flex-shrink-0 w-[84px] px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/60 bg-background/95 sticky left-0 z-20">
                     #
                   </div>
-                  {COLUMNS.map((col) => (
+                  {visibleColumns.map((col) => (
                     <div
                       key={col.key}
                       className={cn(
@@ -581,7 +660,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                       return (
                         <div
                           className="flex items-center gap-2.5 px-4 py-2 bg-muted/30 border-y border-white/5 sticky z-[5]"
-                          style={{ minWidth: TOTAL_WIDTH }}
+                          style={{ minWidth: totalWidth }}
                         >
                           <span className={cn(
                             "inline-flex items-center justify-center min-w-[28px] h-[18px] px-1.5 rounded text-[10px] font-bold tracking-wider",
@@ -643,7 +722,20 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                             </>
                           )}
                         </div>
-                        {COLUMNS.map((col) => {
+                        {visibleColumns.map((col) => {
+                          // Deal fit column
+                          if (col.key === 'fit') {
+                            const match = lender.match;
+                            return (
+                              <div key={col.key} className="flex-shrink-0 px-2 py-2" style={{ width: col.width }}>
+                                {match ? (
+                                  <div className="min-w-0"><div className="flex items-center gap-1.5"><span className="text-xs font-semibold tabular-nums text-primary">{Math.round(match.matchPercent)}%</span><CheckCircle2 className="h-3 w-3 text-primary" /></div><span className="block truncate text-[10px] text-muted-foreground" title={match.matchReasons.join(', ')}>{match.matchReasons[0] || 'Eligible match'}</span></div>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-warning"><AlertTriangle className="h-3 w-3" />Review criteria</span>
+                                )}
+                              </div>
+                            );
+                          }
                           // Status column
                           if (col.key === 'status') {
                             return (
