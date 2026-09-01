@@ -286,6 +286,28 @@ export function ReferralSourcePipelineWidget() {
           </p>
         </div>
         <div className="flex items-center gap-1.5">
+          <div className="relative w-44">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search sources"
+              aria-label="Search referral sources"
+              className="h-7 pl-7 pr-7 text-[11px]"
+            />
+            {search && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Clear source search"
+                onClick={() => setSearch('')}
+                className="absolute right-0.5 top-1/2 h-6 w-6 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
           <OwnerMultiSelect options={ownerOptions} selected={ownerFilter} onChange={setOwnerFilter} />
           <Popover>
 
