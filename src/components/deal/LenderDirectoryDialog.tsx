@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { BookOpen, Plus, Check, X, Search, ArrowUp, ArrowDown, ArrowUpDown, Building2, Layers } from 'lucide-react';
+import { AlertTriangle, BookOpen, Plus, Check, CheckCircle2, X, Search, ArrowUp, ArrowDown, ArrowUpDown, Building2, Layers, Sparkles } from 'lucide-react';
 import { useMasterLenders, MasterLender, MasterLenderInsert } from '@/hooks/useMasterLenders';
 import { Virtuoso } from 'react-virtuoso';
 import { cn } from '@/lib/utils';
@@ -20,6 +20,7 @@ import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderD
 import { toast } from 'sonner';
 import { MultiSelectFilter } from '@/components/deals/MultiSelectFilter';
 import { Badge } from '@/components/ui/badge';
+import { DealCriteria, LenderMatch, useLenderMatching } from '@/hooks/useLenderMatching';
 import {
   Select,
   SelectContent,
