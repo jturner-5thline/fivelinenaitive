@@ -237,8 +237,24 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
     editorProps: { attributes: { class: 'prose prose-sm max-w-none p-3 focus:outline-none min-h-[60px]' } },
   });
 
+  // Radix occasionally leaves the body scroll-locked when a dialog with
+  // heavy content (editors) unmounts. Restore scrolling defensively on close.
+  useEffect(() => {
+    if (open) return;
+    const t = window.setTimeout(() => {
+      const b = document.body;
+      if (!document.querySelector('[data-state="open"][role="dialog"]')) {
+        b.style.removeProperty('pointer-events');
+        b.style.removeProperty('overflow');
+        b.removeAttribute('data-scroll-locked');
+      }
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
+
     setSubject(defaultSubject(pipelineName));
     introEditor?.commands.setContent(defaultIntroHtml(pipelineName), { emitUpdate: false });
     outroEditor?.commands.setContent(DEFAULT_OUTRO_HTML, { emitUpdate: false });
