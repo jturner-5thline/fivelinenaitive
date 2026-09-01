@@ -21,7 +21,7 @@ interface ContactHit {
 const contactLabel = (c: ContactHit) =>
   (c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email || 'Unnamed contact').trim();
 
-import { Plus, Info, Trash2, Building2 } from 'lucide-react';
+import { Plus, Info, Trash2, Building2, Search, X } from 'lucide-react';
 import { liquidGlassCard, LIQUID_GLASS_SERIES } from '@/components/metrics/liquidGlass';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 import { useReferralSources } from '@/hooks/useReferralSources';
@@ -136,6 +136,7 @@ export function ReferralSourcePipelineWidget() {
   const [searching, setSearching] = useState(false);
   const [selectedContact, setSelectedContact] = useState<ContactHit | null>(null);
   const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
+  const [search, setSearch] = useState('');
 
   // Live contact lookup so sources added here map to real CRM contacts.
   useEffect(() => {
@@ -186,6 +187,9 @@ export function ReferralSourcePipelineWidget() {
   const columns = useMemo(() => {
     const byStage = new Map<StageKey, PipelineCard[]>(STAGES.map(s => [s.key, [] as PipelineCard[]]));
     const seen = new Set<string>();
+    const q = normalize(search);
+    const matchesSearch = (name: string, comp: string | null) =>
+      !q || normalize(name).includes(q) || (!!comp && normalize(comp).includes(q));
     const ownerAllows = (ownerId: string | null) =>
       ownerFilter.length === 0 || ownerFilter.includes(ownerId || UNASSIGNED_OWNER);
 
@@ -193,6 +197,7 @@ export function ReferralSourcePipelineWidget() {
       const key: StageKey = r.tier === null ? 'nurturing' : r.tier;
       seen.add(normalize(r.referredBy));
       if (!ownerAllows(r.ownerUserId ?? null)) continue;
+      if (!matchesSearch(r.referredBy, r.companyName)) continue;
 
       byStage.get(key)!.push({
         id: `deal:${r.contactId || r.crmCompanyId || r.referredBy}`,
@@ -208,6 +213,7 @@ export function ReferralSourcePipelineWidget() {
     for (const m of manualSources) {
       if (seen.has(normalize(m.name))) continue;
       if (!ownerAllows(null)) continue;
+      if (!matchesSearch(m.name, m.company || null)) continue;
 
       byStage.get('nurturing')!.push({
         id: `manual:${m.id}`,
@@ -230,7 +236,7 @@ export function ReferralSourcePipelineWidget() {
         color: LIQUID_GLASS_SERIES[i % LIQUID_GLASS_SERIES.length],
       };
     });
-  }, [referralSources, manualSources, ownerFilter]);
+  }, [referralSources, manualSources, ownerFilter, search]);
 
   const total = columns.reduce((sum, c) => sum + c.count, 0);
 
@@ -280,6 +286,28 @@ export function ReferralSourcePipelineWidget() {
           </p>
         </div>
         <div className="flex items-center gap-1.5">
+          <div className="relative w-44">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search sources"
+              aria-label="Search referral sources"
+              className="h-7 pl-7 pr-7 text-[11px]"
+            />
+            {search && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Clear source search"
+                onClick={() => setSearch('')}
+                className="absolute right-0.5 top-1/2 h-6 w-6 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
           <OwnerMultiSelect options={ownerOptions} selected={ownerFilter} onChange={setOwnerFilter} />
           <Popover>
 

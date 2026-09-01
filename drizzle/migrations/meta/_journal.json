@@ -36,6 +36,13 @@
       "when": 1788222902973,
       "tag": "0004_fix_lender_outcome_reporter",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788281933854,
+      "tag": "0005_tighten_oauth_token_reads_and_view_security",
+      "breakpoints": true
     }
   ]
 }
