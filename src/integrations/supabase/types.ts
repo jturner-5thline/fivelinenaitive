@@ -17877,6 +17877,51 @@ export type Database = {
         }
         Relationships: []
       }
+      lender_match_weight_calibrations: {
+        Row: {
+          activated_at: string | null
+          base_weights: Json
+          company_id: string | null
+          component_stats: Json
+          computed_at: string
+          created_by: string | null
+          failure_samples: number
+          id: string
+          is_active: boolean
+          lookback_days: number
+          success_samples: number
+          weights: Json
+        }
+        Insert: {
+          activated_at?: string | null
+          base_weights: Json
+          company_id?: string | null
+          component_stats?: Json
+          computed_at?: string
+          created_by?: string | null
+          failure_samples?: number
+          id?: string
+          is_active?: boolean
+          lookback_days?: number
+          success_samples?: number
+          weights: Json
+        }
+        Update: {
+          activated_at?: string | null
+          base_weights?: Json
+          company_id?: string | null
+          component_stats?: Json
+          computed_at?: string
+          created_by?: string | null
+          failure_samples?: number
+          id?: string
+          is_active?: boolean
+          lookback_days?: number
+          success_samples?: number
+          weights?: Json
+        }
+        Relationships: []
+      }
       lender_notes: {
         Row: {
           author_user_id: string
@@ -29268,6 +29313,10 @@ export type Database = {
         Args: { _stage: string; _substage: string; _tracking: string }
         Returns: string
       }
+      activate_lender_match_calibration: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
       admin_add_company_member: {
         Args: {
           _company_id: string
@@ -29867,6 +29916,14 @@ export type Database = {
           p_owner_user_id: string
           p_source_company_id: string
           p_target_company_id: string
+        }
+        Returns: Json
+      }
+      compute_lender_match_calibration: {
+        Args: {
+          p_base_weights: Json
+          p_lookback_days?: number
+          p_persist?: boolean
         }
         Returns: Json
       }

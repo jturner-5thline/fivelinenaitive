@@ -60,7 +60,7 @@ import {
   PanelLeftOpen, PanelLeftClose,
   Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight, Brain, Wallet, FileText,
   BarChart3, Plus, Activity, Newspaper, Image as ImageIcon, ChevronRight, Eye,
-  UsersRound, ShieldHalf, Megaphone as MegaphoneIcon, Server, Gauge, KeyRound, Search
+  UsersRound, ShieldHalf, Megaphone as MegaphoneIcon, Server, Gauge, KeyRound, Search, Target
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAdminRole } from "@/hooks/useAdminRole";
@@ -100,6 +100,7 @@ import { AccessRequestsPanel } from "@/components/admin/AccessRequestsPanel";
 import { PeopleDirectoryPanel } from "@/components/admin/PeopleDirectoryPanel";
 import { CompaniesDirectoryPanel } from "@/components/admin/CompaniesDirectoryPanel";
 import { AgentAccessPanel } from "@/components/admin/AgentAccessPanel";
+import { LenderMatchCalibrationPanel } from "@/components/admin/LenderMatchCalibrationPanel";
 
 // ─── New IA ───────────────────────────────────────────────────────
 // Phase 5: collapsed top-level nav from 5 → 3 tabs:
@@ -181,8 +182,9 @@ const SECTIONS: SectionDef[] = [
       { id: "api-usage", label: "API Usage", icon: BarChart3, group: "AI", description: "LLM API calls, input/output tokens and cost drivers by provider and action." },
       { id: "ai-training", label: "AI Training", icon: Brain, group: "AI", description: "Prompts, model config and AI performance." },
       { id: "ux-analytics", label: "UX Analytics", icon: BarChart3, group: "Insights", description: "Funnel and friction analytics." },
-      { id: "performance", label: "Performance", icon: Gauge, group: "Insights", description: "Live client perf diagnostics: realtime channels, intervals, long tasks, memory." },
-    ],
+       { id: "performance", label: "Performance", icon: Gauge, group: "Insights", description: "Live client perf diagnostics: realtime channels, intervals, long tasks, memory." },
+       { id: "matching", label: "Matching Calibration", icon: Target, group: "AI", description: "Outcome-driven weight calibration for funding source matching." },
+      ],
   },
 ];
 
@@ -706,6 +708,8 @@ const Admin = () => {
         return <UsageAnalyticsPanel />;
       case "pilot-kpis":
         return <PilotKpiOverview />;
+      case "matching":
+        return <LenderMatchCalibrationPanel />;
       default:
         return null;
     }

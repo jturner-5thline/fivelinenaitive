@@ -2,6 +2,29 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
+const BASE_MATCH_WEIGHTS = {
+  type: 0.20, size: 0.16, industry: 0.16, geography: 0.07,
+  structure: 0.12, recency: 0.07, evidence: 0.10, semantic: 0.12,
+};
+
+async function loadMatchWeights(supabase: ReturnType<typeof createClient>) {
+  const { data } = await supabase
+    .from("lender_match_weight_calibrations")
+    .select("id, weights")
+    .eq("is_active", true)
+    .is("company_id", null)
+    .maybeSingle();
+  const weights = data?.weights && typeof data.weights === "object" && !Array.isArray(data.weights)
+    ? data.weights as Record<string, unknown>
+    : {};
+  const normalized = { ...BASE_MATCH_WEIGHTS };
+  for (const key of Object.keys(BASE_MATCH_WEIGHTS) as (keyof typeof BASE_MATCH_WEIGHTS)[]) {
+    const value = Number(weights[key]);
+    if (Number.isFinite(value) && value >= 0) normalized[key] = value > 1 ? value / 100 : value;
+  }
+  return { weights: normalized, version: data?.id ?? "base" };
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -981,10 +1004,8 @@ serve(async (req) => {
     };
 
     // ── Deterministic scoring + hard filters ─────────────────────────────────
-    const WEIGHTS = {
-      type: 0.20, size: 0.16, industry: 0.16,
-      geography: 0.07, structure: 0.12, recency: 0.07, evidence: 0.10, semantic: 0.12,
-    };
+    // Calibrated weights are opt-in and loaded from the latest active snapshot.
+    const { weights: WEIGHTS, version: weightsVersion } = await loadMatchWeights(supabase);
     const STRUCTURED_KEYS = ["type", "size", "industry", "geography", "structure"] as const;
     const UNSTRUCTURED_KEYS = ["evidence", "semantic", "recency"] as const;
 

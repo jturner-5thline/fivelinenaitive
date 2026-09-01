@@ -16,6 +16,29 @@ export const MATCH_WEIGHTS = {
 
 export type MatchComponentKey = keyof typeof MATCH_WEIGHTS;
 
+export type MatchWeights = Record<MatchComponentKey, number>;
+
+// Active weights start at the hand-set baseline and can be replaced by a
+// calibration computed from real recommendation outcomes (Phase 3).
+let ACTIVE_WEIGHTS: MatchWeights = { ...MATCH_WEIGHTS };
+let WEIGHTS_VERSION = 'base';
+
+export function getActiveMatchWeights(): MatchWeights {
+  return { ...ACTIVE_WEIGHTS };
+}
+
+export function setActiveMatchWeights(weights: Partial<MatchWeights> | null, version = 'base') {
+  ACTIVE_WEIGHTS = { ...MATCH_WEIGHTS };
+  if (weights) {
+    for (const key of Object.keys(MATCH_WEIGHTS) as MatchComponentKey[]) {
+      const v = weights[key];
+      if (typeof v === 'number' && isFinite(v) && v >= 0) ACTIVE_WEIGHTS[key] = v;
+    }
+  }
+  WEIGHTS_VERSION = version;
+  cache.clear();
+}
+
 export interface LenderOutcomeStats {
   master_lender_id: string | null;
   engagements: number | null;
@@ -72,7 +95,7 @@ function parseAmount(raw: string | number | undefined | null): number | null {
 // ─── Components ─────────────────────────────────────────────────────────────
 
 function scoreFinancingType(criteria: DealCriteria, lender: MasterLender): MatchComponent {
-  const w = MATCH_WEIGHTS.financingType;
+  const w = ACTIVE_WEIGHTS.financingType;
   const deal = (criteria.dealTypes || []).map(norm).filter(Boolean);
   const lender_lt = (lender.loan_types || []).map(norm).filter(Boolean);
   if (deal.length === 0 || lender_lt.length === 0) {
@@ -94,7 +117,7 @@ function scoreFinancingType(criteria: DealCriteria, lender: MasterLender): Match
 }
 
 function scoreCheckSize(criteria: DealCriteria, lender: MasterLender): MatchComponent {
-  const w = MATCH_WEIGHTS.checkSize;
+  const w = ACTIVE_WEIGHTS.checkSize;
   const ask = parseAmount(criteria.capitalAsk) ?? criteria.capitalAskAmount ?? criteria.dealValue ?? null;
   const rangeMin = lender.min_deal ?? null;
   const rangeMax = lender.max_deal ?? null;
@@ -120,7 +143,7 @@ function scoreCheckSize(criteria: DealCriteria, lender: MasterLender): MatchComp
 }
 
 function scoreVertical(criteria: DealCriteria, lender: MasterLender): MatchComponent {
-  const w = MATCH_WEIGHTS.vertical;
+  const w = ACTIVE_WEIGHTS.vertical;
   const industry = criteria.industry?.trim();
   const inds = lender.industries || [];
   const normalizedIndustry = criteria.industryNormalized?.trim();
@@ -139,7 +162,7 @@ function scoreVertical(criteria: DealCriteria, lender: MasterLender): MatchCompo
 }
 
 function scoreGeography(criteria: DealCriteria, lender: MasterLender): MatchComponent {
-  const w = MATCH_WEIGHTS.geography;
+  const w = ACTIVE_WEIGHTS.geography;
   const dGeo = criteria.geo?.trim();
   const lGeo = lender.geo?.trim();
   const excluded = (lender.geographies_excluded || []).map(norm);
@@ -160,7 +183,7 @@ function scoreGeography(criteria: DealCriteria, lender: MasterLender): MatchComp
 }
 
 function scoreFinancialFit(criteria: DealCriteria, lender: MasterLender): MatchComponent {
-  const w = MATCH_WEIGHTS.financialFit;
+  const w = ACTIVE_WEIGHTS.financialFit;
   const revenue = criteria.ttmRevenue ?? criteria.revenue ?? null;
   const ebitda = criteria.ttmEbitda ?? criteria.ebitda ?? null;
   const margin = criteria.grossMarginPct ?? null;
@@ -185,7 +208,7 @@ function scoreFinancialFit(criteria: DealCriteria, lender: MasterLender): MatchC
 }
 
 function scoreTrackRecord(stats: LenderOutcomeStats | undefined): MatchComponent {
-  const w = MATCH_WEIGHTS.trackRecord;
+  const w = ACTIVE_WEIGHTS.trackRecord;
   if (!stats || !stats.engagements) {
     return { key: 'trackRecord', label: 'Track record', weight: w, earned: 0, available: false, detail: 'n/a — no historical outcomes' };
   }
@@ -205,7 +228,7 @@ function scoreTrackRecord(stats: LenderOutcomeStats | undefined): MatchComponent
 }
 
 function scoreRecency(lender: MasterLender): MatchComponent {
-  const w = MATCH_WEIGHTS.recency;
+  const w = ACTIVE_WEIGHTS.recency;
   const raw = lender.last_synced_from_flex || lender.external_last_modified || lender.updated_at;
   if (!raw) {
     return { key: 'recency', label: 'Activity recency', weight: w, earned: 0, available: false, detail: 'n/a' };
@@ -225,7 +248,7 @@ function scoreRecency(lender: MasterLender): MatchComponent {
 }
 
 function scoreExclusion(criteria: DealCriteria, lender: MasterLender): { component: MatchComponent; hardExcluded: boolean } {
-  const w = MATCH_WEIGHTS.exclusion;
+  const w = ACTIVE_WEIGHTS.exclusion;
   const avoid = lender.industries_to_avoid || [];
   const industry = criteria.industry?.trim();
   if (industry && avoid.length > 0) {
@@ -270,7 +293,7 @@ export function computeMatchScore(
   criteria: DealCriteria,
   outcomeStats?: LenderOutcomeStats,
 ): DeterministicMatchResult {
-  const key = `${lender.id}::${criteriaSignature(criteria)}::${JSON.stringify(outcomeStats ?? null)}`;
+  const key = `${WEIGHTS_VERSION}::${lender.id}::${criteriaSignature(criteria)}::${JSON.stringify(outcomeStats ?? null)}`;
   const hit = cache.get(key);
   if (hit) return hit;
 

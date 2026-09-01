@@ -15,6 +15,20 @@
       "when": 1788221297077,
       "tag": "0001_lender_outcome_stats",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788222249227,
+      "tag": "0002_lender_match_weight_calibration",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788222607502,
+      "tag": "0003_fix_lender_calibration_component_aggregation",
+      "breakpoints": true
     }
   ]
 }
