@@ -2797,7 +2797,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [class*="bg-card"],
 .deal-detail-surface [class*="bg-muted/"],
 .deal-detail-surface .deal-glass {
-  background-color: #0f1f3d !important;
+  background-color: #020611 !important;
   background-image: none !important;
   border-width: var(--deal-module-border) !important;
   border-style: solid !important;
@@ -2837,7 +2837,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [class*="bg-card"]:hover,
 .deal-detail-surface .deal-glass:hover {
   border-color: var(--deal-module-border-color-hover) !important;
-  background-color: #14264a !important;
+  background-color: #04091c !important;
   background-image: none !important;
   transform: translateY(-2px);
   box-shadow:
@@ -2868,7 +2868,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 /* Nested modules step one level brighter so hierarchy stays readable. */
 .deal-detail-surface .bg-card .bg-card,
 .deal-detail-surface [class*="bg-card"] [class*="bg-muted/"] {
-  background-color: #16294f !important;
+  background-color: #0a1122 !important;
   background-image: none !important;
   border-color: rgba(190, 220, 255, 0.18) !important;
   border-radius: var(--deal-module-radius) !important;
