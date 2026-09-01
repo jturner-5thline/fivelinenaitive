@@ -148,6 +148,31 @@ function scoreGeography(criteria: DealCriteria, lender: MasterLender): MatchComp
   return { key: 'geography', label: 'Geography', weight: w, earned: 0, available: true, detail: `Lender focused on ${lGeo}` };
 }
 
+function scoreFinancialFit(criteria: DealCriteria, lender: MasterLender): MatchComponent {
+  const w = MATCH_WEIGHTS.financialFit;
+  const revenue = criteria.ttmRevenue ?? criteria.revenue ?? null;
+  const ebitda = criteria.ttmEbitda ?? criteria.ebitda ?? null;
+  const margin = criteria.grossMarginPct ?? null;
+  const hasDealFinancials = revenue != null || ebitda != null || margin != null;
+  const hasLenderCriteria = lender.min_revenue != null || lender.ebitda_min != null || lender.min_gross_margin_pct != null;
+
+  if (!hasDealFinancials || !hasLenderCriteria) {
+    return { key: 'financialFit', label: 'Financial fit', weight: w, earned: 0, available: false, detail: 'n/a — missing financial criteria' };
+  }
+
+  const checks = [
+    revenue == null || lender.min_revenue == null || revenue >= lender.min_revenue,
+    ebitda == null || lender.ebitda_min == null || ebitda >= lender.ebitda_min,
+    margin == null || lender.min_gross_margin_pct == null || margin >= lender.min_gross_margin_pct,
+  ];
+  const passed = checks.filter(Boolean).length;
+  const earned = Math.round(w * (passed / checks.length));
+  return {
+    key: 'financialFit', label: 'Financial fit', weight: w, earned, available: true,
+    detail: `${passed} of ${checks.length} financial thresholds met`,
+  };
+}
+
 function scoreRecency(lender: MasterLender): MatchComponent {
   const w = MATCH_WEIGHTS.recency;
   const raw = lender.last_synced_from_flex || lender.external_last_modified || lender.updated_at;
