@@ -1,4 +1,26 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
+import { ensureReferralSourceForContact, hasReferralSourceTag, REFERRAL_SOURCE_TAG } from '@/lib/ensureReferralSource';
+import { splitContactTypes } from '@/components/contacts/ContactTypeMultiSelect';
+
+interface ContactHit {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  full_name: string | null;
+  email: string | null;
+  contact_type: string | null;
+  org_company_id: string | null;
+  phone_mobile?: string | null;
+  phone_work?: string | null;
+  job_title?: string | null;
+}
+
+const contactLabel = (c: ContactHit) =>
+  (c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email || 'Unnamed contact').trim();
+
 import { Plus, Info, Trash2, Building2 } from 'lucide-react';
 import { liquidGlassCard, LIQUID_GLASS_SERIES } from '@/components/metrics/liquidGlass';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
@@ -101,14 +123,45 @@ const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
 export function ReferralSourcePipelineWidget() {
   const { referralSources } = useDealReferralSources();
-  const { referralSources: manualSources, addReferralSource, deleteReferralSource } = useReferralSources();
+  const { referralSources: manualSources, addReferralSource, deleteReferralSource, refreshReferralSources } = useReferralSources();
   const { data: rules } = usePartnerRules();
   const tiers = rules?.tiers || DEFAULT_PARTNER_RULES.tiers;
+  const { user } = useAuth();
+  const { company } = useCompany();
 
   const [addOpen, setAddOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [contactResults, setContactResults] = useState<ContactHit[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<ContactHit | null>(null);
   const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
+
+  // Live contact lookup so sources added here map to real CRM contacts.
+  useEffect(() => {
+    const q = newName.trim();
+    if (!addOpen || selectedContact || q.length < 2) {
+      setContactResults([]);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    const t = setTimeout(async () => {
+      const like = `%${q.replace(/[%_,()]/g, ' ')}%`;
+      let query = supabase
+        .from('contacts')
+        .select('id, first_name, last_name, full_name, email, contact_type, org_company_id, phone_mobile, phone_work, job_title')
+        .or(`full_name.ilike.${like},first_name.ilike.${like},last_name.ilike.${like},email.ilike.${like}`)
+        .limit(8);
+      if (company?.id) query = query.eq('org_company_id', company.id);
+      const { data } = await query;
+      if (cancelled) return;
+      setContactResults((data as any[]) || []);
+      setSearching(false);
+    }, 200);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [newName, addOpen, selectedContact, company?.id]);
+
 
   const teamMembers = useTeamMembers();
   const ownerNameById = useMemo(() => {
@@ -181,14 +234,41 @@ export function ReferralSourcePipelineWidget() {
 
   const total = columns.reduce((sum, c) => sum + c.count, 0);
 
-  const handleAdd = async () => {
-    if (!newName.trim()) return;
-    setSaving(true);
-    await addReferralSource(newName.trim());
-    setSaving(false);
+  const resetAdd = () => {
     setNewName('');
-    setAddOpen(false);
+    setSelectedContact(null);
+    setContactResults([]);
   };
+
+  const handleAdd = async () => {
+    if (!newName.trim() && !selectedContact) return;
+    setSaving(true);
+    try {
+      if (selectedContact) {
+        // Tag the CRM contact and seed the linked referral source.
+        let contact: any = selectedContact;
+        if (!hasReferralSourceTag(selectedContact.contact_type)) {
+          const types = splitContactTypes(selectedContact.contact_type);
+          const { data } = await supabase
+            .from('contacts')
+            .update({ contact_type: [...types, REFERRAL_SOURCE_TAG].join(' ; ') } as any)
+            .eq('id', selectedContact.id)
+            .select()
+            .single();
+          contact = data ?? { ...selectedContact, contact_type: REFERRAL_SOURCE_TAG };
+        }
+        await ensureReferralSourceForContact(contact, user?.id, company?.id ?? contact?.org_company_id);
+        await refreshReferralSources();
+      } else {
+        await addReferralSource(newName.trim());
+      }
+    } finally {
+      setSaving(false);
+      resetAdd();
+      setAddOpen(false);
+    }
+  };
+
 
   return (
     <div className={`${liquidGlassCard} p-4 space-y-4`}>
@@ -283,30 +363,70 @@ export function ReferralSourcePipelineWidget() {
         {total} referral source{total === 1 ? '' : 's'} in selected period
       </p>
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) resetAdd(); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add referral source</DialogTitle>
             <DialogDescription>
-              New sources start in Nurturing and move to Tier 3, 2 or 1 automatically as their referred deals meet the rules.
+              Search your contacts and pick a real person — they'll be tagged as a Referral Source and start in Nurturing.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="referral-source-name" className="text-xs">Name</Label>
+            <Label htmlFor="referral-source-name" className="text-xs">Contact</Label>
             <Input
               id="referral-source-name"
               value={newName}
-              onChange={e => setNewName(e.target.value)}
-              placeholder="e.g. Jane Doe @ Comerica Bank"
-              onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
+              onChange={e => { setNewName(e.target.value); setSelectedContact(null); }}
+              placeholder="Search contacts by name or email…"
+              autoComplete="off"
             />
+            {selectedContact ? (
+              <div className="flex items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs">
+                <div className="min-w-0">
+                  <p className="truncate text-foreground">{contactLabel(selectedContact)}</p>
+                  {selectedContact.email && (
+                    <p className="truncate text-[10px] text-muted-foreground">{selectedContact.email}</p>
+                  )}
+                </div>
+                <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => { setSelectedContact(null); setNewName(''); }}>
+                  Change
+                </Button>
+              </div>
+            ) : newName.trim().length >= 2 ? (
+              <div className="max-h-52 overflow-y-auto rounded-md border border-white/[0.08] divide-y divide-white/[0.05]">
+                {searching && contactResults.length === 0 && (
+                  <p className="px-2.5 py-2 text-[11px] text-muted-foreground">Searching contacts…</p>
+                )}
+                {!searching && contactResults.length === 0 && (
+                  <p className="px-2.5 py-2 text-[11px] text-muted-foreground">
+                    No matching contacts. You can still add "{newName.trim()}" as a manual source.
+                  </p>
+                )}
+                {contactResults.map(c => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className="w-full text-left px-2.5 py-1.5 hover:bg-accent/40"
+                    onClick={() => { setSelectedContact(c); setNewName(contactLabel(c)); }}
+                  >
+                    <p className="text-xs text-foreground truncate">{contactLabel(c)}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {[c.job_title, c.email].filter(Boolean).join(' · ') || 'No email on file'}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setAddOpen(false)}>Cancel</Button>
-            <Button onClick={handleAdd} disabled={!newName.trim() || saving}>Add source</Button>
+            <Button onClick={handleAdd} disabled={(!newName.trim() && !selectedContact) || saving}>
+              {selectedContact ? 'Add contact as source' : 'Add manual source'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }
