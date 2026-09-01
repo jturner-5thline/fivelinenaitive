@@ -29125,6 +29125,25 @@ export type Database = {
           },
         ]
       }
+      lender_outcome_stats: {
+        Row: {
+          engagements: number | null
+          funded_count: number | null
+          last_activity_at: string | null
+          master_lender_id: string | null
+          passed_count: number | null
+          terms_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_lenders_master_lender_id_fkey"
+            columns: ["master_lender_id"]
+            isOneToOne: false
+            referencedRelation: "master_lenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles_public: {
         Row: {
           avatar_url: string | null

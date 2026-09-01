@@ -216,11 +216,15 @@ export function AddLenderSlideOver({
   aiCriteriaOverride,
 }: Props) {
   const { lenders: masterLenders, loading } = useMasterLenders({ eagerAll: true });
-  const { matches } = useLenderMatching(masterLenders, criteria, {
+  const { matches, outcomeStats } = useLenderMatching(masterLenders, criteria, {
     minScore: 0,
     maxResults: 1000,
     excludeNames: existingLenderNames,
   });
+  const outcomeStatsByLenderId = useMemo(
+    () => new Map(outcomeStats.filter((stats) => stats.master_lender_id).map((stats) => [stats.master_lender_id as string, stats])),
+    [outcomeStats],
+  );
 
   const matchByName = useMemo(() => {
     const m = new Map<string, number>();
@@ -324,7 +328,7 @@ export function AddLenderSlideOver({
       .map((l) => {
         const key = l.name.toLowerCase();
         const ai = aiByName.get(key);
-        const det = computeMatchScore(l, criteria);
+        const det = computeMatchScore(l, criteria, outcomeStatsByLenderId.get(l.id));
         const ruleScore = matchByName.get(key) ?? 0;
         // Prefer deterministic score; let AI score win only if materially higher.
         const base = Math.max(det.score, ruleScore);
@@ -332,7 +336,7 @@ export function AddLenderSlideOver({
         return { lender: l, score, ai, deterministic: det };
       })
       .sort((a, b) => b.score - a.score);
-  }, [masterLenders, existingSet, statusFilter, dealTypeFilters, sizeFilters, search, matchByName, aiOnly, aiByName, criteria]);
+  }, [masterLenders, existingSet, statusFilter, dealTypeFilters, sizeFilters, search, matchByName, aiOnly, aiByName, criteria, outcomeStatsByLenderId]);
 
   const toggleSelect = (name: string) => {
     setSelected((prev) => {
