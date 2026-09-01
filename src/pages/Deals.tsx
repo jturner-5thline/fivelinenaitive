@@ -944,10 +944,21 @@ export default function Dashboard() {
                   );
                 return (
               <>
+              {(() => {
+                // Only the pipeline (kanban) board and the inline split view
+                // need to be a bounded, internally-scrolling container. For
+                // grid / list / timeline the content must flow naturally so
+                // the page's own <main> scroll container handles scrolling —
+                // clamping it here made tall deal lists unscrollable.
+                const boardScrolls = viewMode === 'pipeline' || showInlineDetail;
+                return (
               <div
                 ref={boardScrollContainerRef}
                 className={cn(
-                  'opacity-0 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain',
+                  'opacity-0 flex flex-col',
+                  boardScrolls
+                    ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain'
+                    : 'flex-none',
                   showInlineDetail && 'relative',
                 )}
                 style={{
@@ -955,6 +966,7 @@ export default function Dashboard() {
                  }}
 
               >
+
               {showInlineDetail && selectedDeal ? (
                 /*
                  * Unified workspace container: list + detail share one
