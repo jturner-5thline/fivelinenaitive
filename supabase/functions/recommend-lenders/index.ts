@@ -1476,6 +1476,7 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
               simulated: !!(narrativeAppend || notesAppend),
               outcomesLoaded: outcomeRows?.length ?? 0,
               matchRulesLoaded: matchRules?.length ?? 0,
+              weightsVersion,
             },
           })
           .select("id")
