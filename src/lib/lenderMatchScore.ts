@@ -3,11 +3,12 @@ import type { DealCriteria } from '@/hooks/useLenderMatching';
 
 // Component weights (sum = 100). Tune freely.
 export const MATCH_WEIGHTS = {
-  financingType: 30,
+  financingType: 25,
   checkSize: 25,
   vertical: 15,
   geography: 10,
-  recency: 10,
+  financialFit: 10,
+  recency: 5,
   exclusion: 10,
 } as const;
 
