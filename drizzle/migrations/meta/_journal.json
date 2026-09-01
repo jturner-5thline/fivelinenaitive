@@ -29,6 +29,13 @@
       "when": 1788222607502,
       "tag": "0003_fix_lender_calibration_component_aggregation",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788222902973,
+      "tag": "0004_fix_lender_outcome_reporter",
+      "breakpoints": true
     }
   ]
 }
