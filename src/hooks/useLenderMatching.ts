@@ -1,8 +1,9 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MasterLender } from './useMasterLenders';
 import { supabase } from '@/integrations/supabase/client';
 import { LenderPassPattern } from './useLenderDisqualifications';
 import type { LenderOutcomeStats } from '@/lib/lenderMatchScore';
+import { useLenderMatchCalibration } from '@/hooks/useLenderMatchCalibration';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -374,6 +375,7 @@ export function useLenderMatching(
   } = {}
 ) {
   const { minScore = 30, maxResults = 100, excludeNames = [], enableLearning = true } = options;
+  useLenderMatchCalibration(enableLearning);
   const [learningPatterns, setLearningPatterns] = useState<LenderPassPattern[]>([]);
   const [outcomeStats, setOutcomeStats] = useState<LenderOutcomeStats[]>([]);
 
