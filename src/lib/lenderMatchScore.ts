@@ -228,6 +228,7 @@ function criteriaSignature(c: DealCriteria): string {
     r: c.ttmRevenue ?? c.revenue ?? null,
     e: c.ttmEbitda ?? c.ebitda ?? null,
     m: c.grossMarginPct ?? null,
+    s: c.sponsorship || '',
     t: (c.dealTypes || []).map(norm).sort(),
     g: c.geo || '',
   });
