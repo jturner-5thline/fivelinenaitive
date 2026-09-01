@@ -1118,7 +1118,10 @@ export default function Dashboard() {
               )}
               </div>
               </div>
+                );
+              })()}
               {showOverlayDetail && (
+
                 <NaitiveDealOverlay
                   deal={selectedDeal}
                   orderedDeals={deals}
