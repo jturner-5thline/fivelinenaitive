@@ -909,6 +909,11 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.07);
   }
 
+  /* Keep the deal-details canvas distinct without changing its widgets. */
+  .popup-shell-surface.deal-popup-shell {
+    background: #0f1f3d !important;
+  }
+
   /* Approval-queue surfaces stay flat (no blur/glow stacking) but must let
      the shared platform backdrop gradient show through — never paint their
      own near-black fill over it. */
