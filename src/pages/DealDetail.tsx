@@ -4867,12 +4867,23 @@ export default function DealDetail() {
                          </div>
                          <div className="shrink-0">
                           <Suspense fallback={null}>
-                          <LenderDirectoryDialog
-                        existingLenderNames={existingLenderNames}
-                        onAddLender={addLender}
-                        onRemoveLender={removeLenderFromDeal}
-                        dealLenders={(deal.lenders || []).map(l => ({ id: l.id, name: l.name }))}
-                        aiSearchSlot={
+                           <LenderDirectoryDialog
+                         existingLenderNames={existingLenderNames}
+                         onAddLender={addLender}
+                         onRemoveLender={removeLenderFromDeal}
+                         dealId={id}
+                         matchingEnabled={hasLenderMatchingAccess && hasNaitivePipelineAccess}
+                         matchingCriteria={{
+                           industry: savedMatchingCriteria.industry || dealWriteUpData.industries?.join(', ') || undefined,
+                           dealValue: deal.value || undefined,
+                           capitalAsk: dealWriteUpData.capitalAsk || undefined,
+                           dealTypes: deal.dealTypes || dealWriteUpData.dealTypes || undefined,
+                           geo: dealWriteUpData.location || undefined,
+                           cashBurnOk: savedMatchingCriteria.cashBurnOk,
+                           sponsorship: savedMatchingCriteria.sponsorship,
+                         }}
+                         dealLenders={(deal.lenders || []).map(l => ({ id: l.id, name: l.name }))}
+                         aiSearchSlot={
                           hasLenderMatchingAccess && hasNaitivePipelineAccess ? (
                             <LenderSuggestionsPanel
                               dealId={id}
