@@ -234,14 +234,41 @@ export function ReferralSourcePipelineWidget() {
 
   const total = columns.reduce((sum, c) => sum + c.count, 0);
 
-  const handleAdd = async () => {
-    if (!newName.trim()) return;
-    setSaving(true);
-    await addReferralSource(newName.trim());
-    setSaving(false);
+  const resetAdd = () => {
     setNewName('');
-    setAddOpen(false);
+    setSelectedContact(null);
+    setContactResults([]);
   };
+
+  const handleAdd = async () => {
+    if (!newName.trim() && !selectedContact) return;
+    setSaving(true);
+    try {
+      if (selectedContact) {
+        // Tag the CRM contact and seed the linked referral source.
+        let contact: any = selectedContact;
+        if (!hasReferralSourceTag(selectedContact.contact_type)) {
+          const types = splitContactTypes(selectedContact.contact_type);
+          const { data } = await supabase
+            .from('contacts')
+            .update({ contact_type: [...types, REFERRAL_SOURCE_TAG].join(' ; ') } as any)
+            .eq('id', selectedContact.id)
+            .select()
+            .single();
+          contact = data ?? { ...selectedContact, contact_type: REFERRAL_SOURCE_TAG };
+        }
+        await ensureReferralSourceForContact(contact, user?.id, company?.id ?? contact?.org_company_id);
+        await refreshReferralSources();
+      } else {
+        await addReferralSource(newName.trim());
+      }
+    } finally {
+      setSaving(false);
+      resetAdd();
+      setAddOpen(false);
+    }
+  };
+
 
   return (
     <div className={`${liquidGlassCard} p-4 space-y-4`}>
