@@ -1,18 +1,29 @@
 import type { MasterLender } from '@/hooks/useMasterLenders';
 import type { DealCriteria } from '@/hooks/useLenderMatching';
 
-// Component weights (sum = 100). Tune freely.
+// Component weights (sum = 100). Track record is intentionally meaningful,
+// but never dominates the current deal criteria.
 export const MATCH_WEIGHTS = {
-  financingType: 25,
-  checkSize: 25,
-  vertical: 15,
-  geography: 10,
+  financingType: 22,
+  checkSize: 22,
+  vertical: 14,
+  geography: 9,
   financialFit: 10,
+  trackRecord: 10,
   recency: 5,
-  exclusion: 10,
+  exclusion: 8,
 } as const;
 
 export type MatchComponentKey = keyof typeof MATCH_WEIGHTS;
+
+export interface LenderOutcomeStats {
+  master_lender_id: string | null;
+  engagements: number | null;
+  terms_count: number | null;
+  funded_count: number | null;
+  passed_count: number | null;
+  last_activity_at: string | null;
+}
 
 export interface MatchComponent {
   key: MatchComponentKey;
@@ -26,7 +37,7 @@ export interface MatchComponent {
 export interface DeterministicMatchResult {
   score: number;         // 0–100 normalized over available components
   components: MatchComponent[];
-  hardExcluded: boolean; // lender excludes this deal's industry/type
+  hardExcluded: boolean; // lender fails a non-negotiable eligibility gate
 }
 
 const DEAL_TYPE_SYNONYMS: Record<string, string[]> = {
@@ -173,6 +184,26 @@ function scoreFinancialFit(criteria: DealCriteria, lender: MasterLender): MatchC
   };
 }
 
+function scoreTrackRecord(stats: LenderOutcomeStats | undefined): MatchComponent {
+  const w = MATCH_WEIGHTS.trackRecord;
+  if (!stats || !stats.engagements) {
+    return { key: 'trackRecord', label: 'Track record', weight: w, earned: 0, available: false, detail: 'n/a — no historical outcomes' };
+  }
+  const engagements = Math.max(0, stats.engagements ?? 0);
+  const terms = Math.max(0, stats.terms_count ?? 0);
+  const funded = Math.max(0, stats.funded_count ?? 0);
+  const passed = Math.max(0, stats.passed_count ?? 0);
+  const positive = Math.min(engagements, terms + funded);
+  const successRate = positive / engagements;
+  const confidence = Math.min(1, engagements / 5);
+  const earned = Math.round(w * (0.35 * confidence + 0.65 * successRate));
+  const rate = Math.round(successRate * 100);
+  return {
+    key: 'trackRecord', label: 'Track record', weight: w, earned, available: true,
+    detail: `${funded} funded · ${terms} terms · ${passed} passed (${rate}% positive)`,
+  };
+}
+
 function scoreRecency(lender: MasterLender): MatchComponent {
   const w = MATCH_WEIGHTS.recency;
   const raw = lender.last_synced_from_flex || lender.external_last_modified || lender.updated_at;
@@ -234,8 +265,12 @@ function criteriaSignature(c: DealCriteria): string {
   });
 }
 
-export function computeMatchScore(lender: MasterLender, criteria: DealCriteria): DeterministicMatchResult {
-  const key = `${lender.id}::${criteriaSignature(criteria)}`;
+export function computeMatchScore(
+  lender: MasterLender,
+  criteria: DealCriteria,
+  outcomeStats?: LenderOutcomeStats,
+): DeterministicMatchResult {
+  const key = `${lender.id}::${criteriaSignature(criteria)}::${JSON.stringify(outcomeStats ?? null)}`;
   const hit = cache.get(key);
   if (hit) return hit;
 
@@ -245,18 +280,40 @@ export function computeMatchScore(lender: MasterLender, criteria: DealCriteria):
   components.push(scoreVertical(criteria, lender));
   components.push(scoreGeography(criteria, lender));
   components.push(scoreFinancialFit(criteria, lender));
+  components.push(scoreTrackRecord(outcomeStats));
   components.push(scoreRecency(lender));
   const excl = scoreExclusion(criteria, lender);
-  components.push(excl.component);
+
+  // Hard gates mirror the server recommender: inactive/paused lenders, product
+  // mismatch, materially out-of-band size, excluded geography, and refinancing
+  // conflicts should not rank as viable matches.
+  const type = components.find(c => c.key === 'financingType');
+  const size = components.find(c => c.key === 'checkSize');
+  const geography = components.find(c => c.key === 'geography');
+  const dealTypes = (criteria.dealTypes || []).map(norm);
+  const lenderTypes = (lender.loan_types || []).map(norm);
+  const productMismatch = dealTypes.length > 0 && lenderTypes.length > 0 && type?.earned === 0;
+  const ask = parseAmount(criteria.capitalAsk) ?? criteria.capitalAskAmount ?? criteria.dealValue ?? null;
+  const min = lender.min_deal ?? null;
+  const max = lender.max_deal ?? null;
+  const sizeOutside = ask != null && ((min != null && ask < min * 0.5) || (max != null && ask > max * 2));
+  const refinanceConflict = criteria.dealTypes?.some(t => norm(t).includes('refinanc')) &&
+    !!lender.refinancing && /don't like|dont like|do not like/i.test(lender.refinancing);
+  const hardExcluded = lender.active === false || lender.appetite_status === 'paused' || productMismatch ||
+    sizeOutside || !!excl.hardExcluded || (geography?.detail.includes('excludes') ?? false) || refinanceConflict;
+  const exclusionComponent = hardExcluded && !excl.hardExcluded
+    ? { ...excl.component, earned: 0, detail: productMismatch ? 'Product type is not supported' : sizeOutside ? 'Deal is materially outside size range' : refinanceConflict ? 'Lender does not like refinancing' : excl.component.detail }
+    : excl.component;
+  components[components.length - 1] = exclusionComponent;
 
   // Normalize over available components — graceful degradation when data missing.
   const availableWeight = components.filter(c => c.available).reduce((s, c) => s + c.weight, 0);
   const earned = components.reduce((s, c) => s + c.earned, 0);
   let score = availableWeight > 0 ? Math.round((earned / availableWeight) * 100) : 0;
-  if (excl.hardExcluded) score = 0;
+  if (hardExcluded) score = 0;
   score = Math.max(0, Math.min(100, score));
 
-  const result: DeterministicMatchResult = { score, components, hardExcluded: excl.hardExcluded };
+  const result: DeterministicMatchResult = { score, components, hardExcluded };
   cache.set(key, result);
   return result;
 }

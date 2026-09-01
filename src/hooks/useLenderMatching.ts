@@ -2,6 +2,7 @@ import { useMemo, useEffect, useState } from 'react';
 import { MasterLender } from './useMasterLenders';
 import { supabase } from '@/integrations/supabase/client';
 import { LenderPassPattern } from './useLenderDisqualifications';
+import type { LenderOutcomeStats } from '@/lib/lenderMatchScore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -99,15 +100,16 @@ function parseCapitalAsk(capitalAsk: string | undefined): number | null {
 // ─── Weights (total = 100) ────────────────────────────────────────────────────
 
 const W = {
-  DEAL_SIZE: 30,
-  INDUSTRY: 25,
-  LOAN_TYPE: 15,
-  REVENUE: 10,
-  SPONSORSHIP: 5,
-  CASH_BURN: 5,
-  GEO: 5,
+  DEAL_SIZE: 27,
+  INDUSTRY: 22,
+  LOAN_TYPE: 14,
+  REVENUE: 9,
+  SPONSORSHIP: 4,
+  CASH_BURN: 4,
+  GEO: 4,
   B2B_B2C: 3,
-  REFINANCING: 2,
+  REFINANCING: 3,
+  TRACK_RECORD: 10,
 } as const;
 
 const MAX_RULE_SCORE = 100;
@@ -128,12 +130,36 @@ function getTier(combined: number): MatchTier {
 export function calculateLenderMatch(
   lender: MasterLender,
   criteria: DealCriteria,
-  learningPatterns?: LenderPassPattern[]
+  learningPatterns?: LenderPassPattern[],
+  outcomeStats?: LenderOutcomeStats,
 ): Omit<LenderMatch, 'semanticBonus' | 'combinedScore' | 'matchPercent' | 'tier' | 'semanticReason' | 'semanticLoading'> | null {
   const reasons: string[] = [];
   const warnings: string[] = [];
   const learningWarnings: LenderPassPattern[] = [];
   let score = 0;
+
+  const dealTypes = (criteria.dealTypes || []).map(normalizeString);
+  const lenderTypes = (lender.loan_types || []).map(normalizeString);
+  const hasProductMismatch = dealTypes.length > 0 && lenderTypes.length > 0 && !dealTypes.some((dealType) =>
+    lenderTypes.some((lenderType) => lenderType.includes(dealType) || dealType.includes(lenderType)),
+  );
+  const capitalValue = criteria.capitalAskAmount ?? parseCapitalAsk(criteria.capitalAsk) ?? criteria.dealValue;
+  const belowMaterialMin = capitalValue != null && lender.min_deal != null && capitalValue < lender.min_deal * 0.5;
+  const aboveMaterialMax = capitalValue != null && lender.max_deal != null && capitalValue > lender.max_deal * 2;
+  const hasExcludedGeography = !!criteria.geo && (lender.geographies_excluded || []).some((geo) => {
+    const dealGeo = normalizeString(criteria.geo || '');
+    const excluded = normalizeString(geo);
+    return excluded === dealGeo || excluded.includes(dealGeo) || dealGeo.includes(excluded);
+  });
+  const refinancingConflict = criteria.dealTypes?.some((type) => normalizeString(type).includes('refinanc')) &&
+    !!lender.refinancing && /don't like|dont like|do not like/i.test(lender.refinancing);
+
+  // Non-negotiable gates are applied before ranking so an ineligible source
+  // cannot appear as a high-scoring recommendation.
+  if (lender.active === false || lender.appetite_status === 'paused' || hasProductMismatch ||
+      belowMaterialMin || aboveMaterialMax || hasExcludedGeography || refinancingConflict) {
+    return null;
+  }
 
   // ── Industry (25 pts) — check avoid first as hard disqualify ──
   const dealIndustry = criteria.industryNormalized || criteria.industry;
@@ -150,8 +176,7 @@ export function calculateLenderMatch(
     }
   }
 
-  // ── Deal Size (30 pts) ──
-  const capitalValue = criteria.capitalAskAmount ?? parseCapitalAsk(criteria.capitalAsk) ?? criteria.dealValue;
+  // ── Deal Size (27 pts) ──
   if (capitalValue) {
     const min = lender.sweet_spot_min ?? lender.min_deal;
     const max = lender.sweet_spot_max ?? lender.max_deal;
@@ -314,6 +339,16 @@ export function calculateLenderMatch(
     }
   }
 
+  // ── Historical track record (10 pts) ──
+  if (outcomeStats?.engagements) {
+    const engagements = Math.max(0, outcomeStats.engagements);
+    const positive = Math.min(engagements, Math.max(0, outcomeStats.terms_count ?? 0) + Math.max(0, outcomeStats.funded_count ?? 0));
+    const confidence = Math.min(1, engagements / 5);
+    const successRate = positive / engagements;
+    score += Math.round(W.TRACK_RECORD * (0.35 * confidence + 0.65 * successRate));
+    reasons.push(`Track record: ${outcomeStats.funded_count ?? 0} funded, ${outcomeStats.terms_count ?? 0} terms`);
+  }
+
   // Clamp rule score to 0-100 range for tier calculation
   const clampedScore = Math.max(0, Math.min(MAX_RULE_SCORE, score));
 
@@ -340,23 +375,33 @@ export function useLenderMatching(
 ) {
   const { minScore = 30, maxResults = 100, excludeNames = [], enableLearning = true } = options;
   const [learningPatterns, setLearningPatterns] = useState<LenderPassPattern[]>([]);
+  const [outcomeStats, setOutcomeStats] = useState<LenderOutcomeStats[]>([]);
 
   useEffect(() => {
-    if (!enableLearning) return;
-    const fetchPatterns = async () => {
+    if (!enableLearning) {
+      setLearningPatterns([]);
+      setOutcomeStats([]);
+      return;
+    }
+    const fetchLearningData = async () => {
       try {
-        const { data, error } = await supabase
-          .from('lender_pass_patterns')
-          .select('*')
-          .gte('confidence_score', 0.4)
-          .order('confidence_score', { ascending: false });
-        if (error) throw error;
-        setLearningPatterns((data || []) as LenderPassPattern[]);
+        const [{ data: patterns, error: patternsError }, { data: stats, error: statsError }] = await Promise.all([
+          supabase
+            .from('lender_pass_patterns')
+            .select('*')
+            .gte('confidence_score', 0.4)
+            .order('confidence_score', { ascending: false }),
+          supabase.from('lender_outcome_stats').select('*'),
+        ]);
+        if (patternsError) throw patternsError;
+        if (statsError) throw statsError;
+        setLearningPatterns((patterns || []) as LenderPassPattern[]);
+        setOutcomeStats((stats || []) as LenderOutcomeStats[]);
       } catch (e) {
-        console.error('Error fetching learning patterns:', e);
+        console.error('Error fetching lender learning data:', e);
       }
     };
-    fetchPatterns();
+    void fetchLearningData();
   }, [enableLearning]);
 
   const matches = useMemo(() => {
@@ -367,9 +412,17 @@ export function useLenderMatching(
       .filter(l => l.active !== false && l.appetite_status !== 'paused')
       .filter(l => excludeSet.size === 0 || !excludeSet.has(l.name.toLowerCase().trim()));
 
+    const statsByLenderId = new Map(
+      outcomeStats.filter((stats) => stats.master_lender_id).map((stats) => [stats.master_lender_id as string, stats]),
+    );
     const scored: LenderMatch[] = [];
     for (const lender of filtered) {
-      const result = calculateLenderMatch(lender, criteria, enableLearning ? learningPatterns : undefined);
+      const result = calculateLenderMatch(
+        lender,
+        criteria,
+        enableLearning ? learningPatterns : undefined,
+        statsByLenderId.get(lender.id),
+      );
       if (!result) continue; // Hard disqualified
 
       const combinedScore = result.score; // Semantic bonus added later
@@ -390,13 +443,14 @@ export function useLenderMatching(
 
     scored.sort((a, b) => b.combinedScore - a.combinedScore);
     return scored.slice(0, maxResults);
-  }, [masterLenders, criteria, minScore, maxResults, excludeNames, enableLearning, learningPatterns]);
+  }, [masterLenders, criteria, minScore, maxResults, excludeNames, enableLearning, learningPatterns, outcomeStats]);
 
   return {
     matches,
     hasMatches: matches.length > 0,
     topMatch: matches[0] || null,
-    learningEnabled: enableLearning && learningPatterns.length > 0,
+    learningEnabled: enableLearning && (learningPatterns.length > 0 || outcomeStats.length > 0),
+    outcomeStats,
     MAX_COMBINED,
   };
 }
