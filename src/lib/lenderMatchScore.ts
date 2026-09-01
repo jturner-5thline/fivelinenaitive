@@ -3,11 +3,12 @@ import type { DealCriteria } from '@/hooks/useLenderMatching';
 
 // Component weights (sum = 100). Tune freely.
 export const MATCH_WEIGHTS = {
-  financingType: 30,
+  financingType: 25,
   checkSize: 25,
   vertical: 15,
   geography: 10,
-  recency: 10,
+  financialFit: 10,
+  recency: 5,
   exclusion: 10,
 } as const;
 
@@ -83,16 +84,16 @@ function scoreFinancingType(criteria: DealCriteria, lender: MasterLender): Match
 
 function scoreCheckSize(criteria: DealCriteria, lender: MasterLender): MatchComponent {
   const w = MATCH_WEIGHTS.checkSize;
-  const ask = parseAmount(criteria.capitalAsk) ?? criteria.dealValue ?? null;
-  const min = lender.min_deal ?? null;
-  const max = lender.max_deal ?? null;
+  const ask = parseAmount(criteria.capitalAsk) ?? criteria.capitalAskAmount ?? criteria.dealValue ?? null;
+  const rangeMin = lender.min_deal ?? null;
+  const rangeMax = lender.max_deal ?? null;
   const sweetMin = lender.sweet_spot_min ?? null;
   const sweetMax = lender.sweet_spot_max ?? null;
-  if (ask == null || (min == null && max == null)) {
+  if (ask == null || (rangeMin == null && rangeMax == null && sweetMin == null && sweetMax == null)) {
     return { key: 'checkSize', label: 'Check size', weight: w, earned: 0, available: false, detail: 'n/a — missing deal amount or lender range' };
   }
-  const lo = min ?? 0;
-  const hi = max ?? Number.MAX_SAFE_INTEGER;
+  const lo = rangeMin ?? 0;
+  const hi = rangeMax ?? Number.MAX_SAFE_INTEGER;
   if (ask >= lo && ask <= hi) {
     const inSweetSpot = (sweetMin == null || ask >= sweetMin) && (sweetMax == null || ask <= sweetMax);
     return { key: 'checkSize', label: 'Check size', weight: w, earned: inSweetSpot ? w : Math.round(w * 0.8), available: true, detail: inSweetSpot ? 'Within lender sweet spot' : 'Within lender range, outside sweet spot' };
@@ -145,6 +146,31 @@ function scoreGeography(criteria: DealCriteria, lender: MasterLender): MatchComp
     return { key: 'geography', label: 'Geography', weight: w, earned: w, available: true, detail: `Lender covers ${dGeo}` };
   }
   return { key: 'geography', label: 'Geography', weight: w, earned: 0, available: true, detail: `Lender focused on ${lGeo}` };
+}
+
+function scoreFinancialFit(criteria: DealCriteria, lender: MasterLender): MatchComponent {
+  const w = MATCH_WEIGHTS.financialFit;
+  const revenue = criteria.ttmRevenue ?? criteria.revenue ?? null;
+  const ebitda = criteria.ttmEbitda ?? criteria.ebitda ?? null;
+  const margin = criteria.grossMarginPct ?? null;
+  const hasDealFinancials = revenue != null || ebitda != null || margin != null;
+  const hasLenderCriteria = lender.min_revenue != null || lender.ebitda_min != null || lender.min_gross_margin_pct != null;
+
+  if (!hasDealFinancials || !hasLenderCriteria) {
+    return { key: 'financialFit', label: 'Financial fit', weight: w, earned: 0, available: false, detail: 'n/a — missing financial criteria' };
+  }
+
+  const checks = [
+    revenue == null || lender.min_revenue == null || revenue >= lender.min_revenue,
+    ebitda == null || lender.ebitda_min == null || ebitda >= lender.ebitda_min,
+    margin == null || lender.min_gross_margin_pct == null || margin >= lender.min_gross_margin_pct,
+  ];
+  const passed = checks.filter(Boolean).length;
+  const earned = Math.round(w * (passed / checks.length));
+  return {
+    key: 'financialFit', label: 'Financial fit', weight: w, earned, available: true,
+    detail: `${passed} of ${checks.length} financial thresholds met`,
+  };
 }
 
 function scoreRecency(lender: MasterLender): MatchComponent {
@@ -202,6 +228,7 @@ function criteriaSignature(c: DealCriteria): string {
     r: c.ttmRevenue ?? c.revenue ?? null,
     e: c.ttmEbitda ?? c.ebitda ?? null,
     m: c.grossMarginPct ?? null,
+    s: c.sponsorship || '',
     t: (c.dealTypes || []).map(norm).sort(),
     g: c.geo || '',
   });
@@ -217,6 +244,7 @@ export function computeMatchScore(lender: MasterLender, criteria: DealCriteria):
   components.push(scoreCheckSize(criteria, lender));
   components.push(scoreVertical(criteria, lender));
   components.push(scoreGeography(criteria, lender));
+  components.push(scoreFinancialFit(criteria, lender));
   components.push(scoreRecency(lender));
   const excl = scoreExclusion(criteria, lender);
   components.push(excl.component);

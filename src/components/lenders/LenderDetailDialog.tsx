@@ -1210,6 +1210,39 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                   <div className="grid gap-4">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Sweet Spot Min</Label>
+                        <Input inputMode="numeric" value={formatCurrencyInput(editForm.sweetSpotMin)} onChange={(e) => setEditForm({ ...editForm, sweetSpotMin: e.target.value.replace(/[^0-9]/g, '') })} placeholder="e.g., $2,000,000" className="text-sm" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Sweet Spot Max</Label>
+                        <Input inputMode="numeric" value={formatCurrencyInput(editForm.sweetSpotMax)} onChange={(e) => setEditForm({ ...editForm, sweetSpotMax: e.target.value.replace(/[^0-9]/g, '') })} placeholder="e.g., $10,000,000" className="text-sm" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Min Gross Margin (%)</Label>
+                        <Input inputMode="decimal" value={editForm.minGrossMarginPct} onChange={(e) => setEditForm({ ...editForm, minGrossMarginPct: e.target.value.replace(/[^0-9.]/g, '') })} placeholder="e.g., 35" className="text-sm" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Max Leverage (x)</Label>
+                        <Input inputMode="decimal" value={editForm.maxLeverage} onChange={(e) => setEditForm({ ...editForm, maxLeverage: e.target.value.replace(/[^0-9.]/g, '') })} placeholder="e.g., 4.5" className="text-sm" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Sponsor Requirement</Label>
+                        <Input value={editForm.sponsorRequirement} onChange={(e) => setEditForm({ ...editForm, sponsorRequirement: e.target.value })} placeholder="Sponsor, non-sponsor, either" className="text-sm" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Appetite Status</Label>
+                        <Select value={editForm.appetiteStatus || 'active'} onValueChange={(value) => setEditForm({ ...editForm, appetiteStatus: value })}>
+                          <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="paused">Paused</SelectItem>
+                            <SelectItem value="unknown">Unknown</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Min Deal Size</Label>
                         <Input
                           type="text"

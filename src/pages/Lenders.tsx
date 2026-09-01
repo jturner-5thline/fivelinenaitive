@@ -133,10 +133,16 @@ interface LenderInfo {
   preferences: string[];
   website?: string;
   description?: string;
-  lenderType?: string;
-  minDeal?: number | null;
-  maxDeal?: number | null;
-  geo?: string | null;
+   lenderType?: string;
+   minDeal?: number | null;
+   maxDeal?: number | null;
+   sweetSpotMin?: number | null;
+   sweetSpotMax?: number | null;
+   minGrossMarginPct?: number | null;
+   maxLeverage?: number | null;
+   sponsorRequirement?: string | null;
+   appetiteStatus?: string | null;
+   geo?: string | null;
   industries?: string[] | null;
   loanTypes?: string[] | null;
   minRevenue?: number | null;
@@ -246,6 +252,12 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
     lenderType: lender.lender_type || undefined,
     minDeal: lender.min_deal,
     maxDeal: lender.max_deal,
+    sweetSpotMin: lender.sweet_spot_min,
+    sweetSpotMax: lender.sweet_spot_max,
+    minGrossMarginPct: lender.min_gross_margin_pct,
+    maxLeverage: lender.max_leverage,
+    sponsorRequirement: lender.sponsor_requirement,
+    appetiteStatus: lender.appetite_status,
     geo: lender.geo,
     industries: lender.industries,
     loanTypes: lender.loan_types,
@@ -274,6 +286,7 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
     aboutNotes: lender.about_notes,
     fundingSourceNotes: lender.funding_source_notes,
     lenderOnePagerUrl: lender.lender_one_pager_url,
+
   };
 }
 
