@@ -192,7 +192,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
     [matchingEnabled],
   );
   const totalWidth = useMemo(
-    () => visibleColumns.reduce((sum, column) => sum + Number(column.width), 0) + 84,
+    () => visibleColumns.map(column => Number(column.width)).reduce((sum, width) => sum + width, 0) + 84,
     [visibleColumns],
   );
 
