@@ -12,4 +12,6 @@
 
 ## Calendar ingestion
 
-- [x] Verified Scott Williams' Nylas grant + ran claap-backfill (120 days). Root cause: his calls are not recorded in Claap, which is the sole source for `claap_meetings` — calendar reconnection does not affect this metric.
+- [x] Calendar is authoritative for referral meetings, with optional Claap recording/transcript enrichment.
+- [x] Restrict referral calendar ingestion to the requested team-owner allowlist.
+- [x] Exclude meetings with funding-source or client attendee domains, including all linked client contacts and company URLs.

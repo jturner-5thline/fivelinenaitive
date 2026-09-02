@@ -45,7 +45,11 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 function domainOf(email?: string | null): string | null {
   const value = String(email || "").trim().toLowerCase();
   const at = value.lastIndexOf("@");
-  return at > 0 ? value.slice(at + 1) : null;
+  return at > 0 ? value.slice(at + 1).replace(/^www\./, "") : null;
+}
+
+function normalizeOwnerName(value?: string | null): string {
+  return String(value || "").trim().toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
 }
 
 function normalizeTitle(value?: string | null): string {

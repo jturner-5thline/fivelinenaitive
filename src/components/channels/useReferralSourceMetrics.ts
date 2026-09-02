@@ -170,14 +170,13 @@ export function useReferralSourceMetrics() {
           .replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0].split('?')[0];
         if (normalized && normalized.includes('.') && !INTERNAL_DOMAINS.has(normalized)) clientDomains.add(normalized);
       };
-      const { data: pipelines } = await supabase
-        .from('deal_pipelines').select('id, name').eq('company_id', company!.id);
-      const pipelineIds = (pipelines || [])
-        .filter((p: any) => /^(active|in development)/i.test(String(p.name || '')))
-        .map((p: any) => p.id as string);
-      if (pipelineIds.length > 0) {
-        const { data: clientDeals } = await supabase.from('deals')
-          .select('id, contact_email, company_url, crm_company_id').in('pipeline_id', pipelineIds);
+      // Client identity is sourced from every deal in this workspace, not just
+      // the currently active pipelines, so older clients are excluded as well.
+      const { data: clientDeals } = await supabase.from('deals')
+        .select('id, contact_email, company_url, crm_company_id')
+        .eq('company_id', company!.id)
+        .limit(5000);
+      {
         const dealRows = (clientDeals || []) as any[];
         for (const deal of dealRows) {
           addEmailDomain(deal.contact_email);
