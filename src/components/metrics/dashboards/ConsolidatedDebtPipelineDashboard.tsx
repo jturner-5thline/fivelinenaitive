@@ -2730,10 +2730,11 @@ export function ConsolidatedDebtPipelineDashboard({
       conversionBreakdown: {
         formula:
           '(Funding sources at Terms Issued or later) ÷ (Total funding sources added) on deals that entered ' +
-          `Submitted to Lenders / Lenders in Review in the last 12 months = ${termsConversionRate.numerator} ÷ ` +
+          `Submitted to Lenders / Lenders in Review in ${termsConversionRate.periodLabel} = ${termsConversionRate.numerator} ÷ ` +
           `${termsConversionRate.denominator} = ${termsConversionRate.value}`,
         numeratorLabel: 'Funding sources that reached Terms Issued or later',
-        denominatorLabel: 'Total funding sources added (TTM qualifying deals)',
+        denominatorLabel: `Total funding sources added (${termsConversionRate.periodLabel} qualifying deals)`,
+
         numeratorDeals: termsConversionRate.numeratorDeals,
         denominatorDeals: termsConversionRate.denominatorDeals,
         numeratorCount: termsConversionRate.numerator,
