@@ -203,9 +203,13 @@ export function useReferralSourceMetrics() {
           addWebsiteDomain(deal.company_url);
         }
         const dealIds = dealRows.map((deal) => deal.id).filter(Boolean);
-        const crmCompanyIds = new Set<string>(dealRows.map((deal) => deal.crm_company_id).filter(Boolean));
-        const linkedContactIds = new Set<string>();
-        const associationCompanyIds = new Set<string>();
+        const crmCompanyIds = new Set<string>([
+          ...dealRows.map((deal) => deal.crm_company_id).filter(Boolean),
+          ...candidates.map((meeting) => meeting.matched_crm_company_id).filter(Boolean),
+        ]);
+        const linkedContactIds = new Set<string>(
+          candidates.map((meeting) => meeting.matched_contact_id).filter(Boolean),
+        );
         const addContactDetails = (contact: any) => {
           addEmailDomain(contact.email);
           for (const email of contact.additional_emails || []) addEmailDomain(email);
@@ -213,9 +217,9 @@ export function useReferralSourceMetrics() {
           if (contact.crm_company_id) crmCompanyIds.add(contact.crm_company_id);
         };
 
-        // Start with every contact directly linked to any deal, then follow the
-        // explicit contact-company association graph so an affiliated colleague
-        // also identifies the client even when they are not on contact_deals.
+        // Start with deal-linked contacts plus any contact identified by Claap.
+        // Their crm_company_id is the authoritative affiliation key, and then
+        // every contact at that CRM company is included below.
         for (let offset = 0; offset < dealIds.length; offset += 500) {
           const { data: links } = await supabase
             .from('contact_deals').select('contact_id').in('deal_id', dealIds.slice(offset, offset + 500));
@@ -224,28 +228,8 @@ export function useReferralSourceMetrics() {
         const linkedIds = Array.from(linkedContactIds);
         for (let offset = 0; offset < linkedIds.length; offset += 500) {
           const slice = linkedIds.slice(offset, offset + 500);
-          const [{ data: contacts }, { data: associations }] = await Promise.all([
-            supabase.from('contacts').select('email, additional_emails, website_url, crm_company_id').in('id', slice),
-            supabase.from('contact_company_associations').select('company_id').in('contact_id', slice),
-          ]);
-          for (const contact of (contacts || []) as any[]) addContactDetails(contact);
-          for (const association of (associations || []) as any[]) {
-            if (association.company_id) associationCompanyIds.add(association.company_id);
-          }
-        }
-        const associatedContactIds = new Set<string>();
-        const associationCompanies = Array.from(associationCompanyIds);
-        for (let offset = 0; offset < associationCompanies.length; offset += 500) {
-          const { data: associations } = await supabase
-            .from('contact_company_associations').select('contact_id').in('company_id', associationCompanies.slice(offset, offset + 500));
-          for (const association of (associations || []) as any[]) {
-            if (association.contact_id) associatedContactIds.add(association.contact_id);
-          }
-        }
-        const affiliatedIds = Array.from(associatedContactIds).filter((id) => !linkedContactIds.has(id));
-        for (let offset = 0; offset < affiliatedIds.length; offset += 500) {
           const { data: contacts } = await supabase
-            .from('contacts').select('email, additional_emails, website_url, crm_company_id').in('id', affiliatedIds.slice(offset, offset + 500));
+            .from('contacts').select('email, additional_emails, website_url, crm_company_id').in('id', slice);
           for (const contact of (contacts || []) as any[]) addContactDetails(contact);
         }
 
