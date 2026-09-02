@@ -5,6 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+const INTERNAL_DOMAINS = new Set(["5thline.co", "naitive.co", "5l.co"]);
 const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
 const NYLAS_API_URI = "https://api.us.nylas.com";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -247,7 +248,7 @@ serve(async (req: Request) => {
           source_key: key,
           attendees: [...event.attendees],
           owner_emails: event.owner_email ? [event.owner_email] : [],
-          internal_emails: event.owner_email && domainOf(event.owner_email) ? [event.owner_email.toLowerCase()] : [],
+          internal_emails: event.owner_email && INTERNAL_DOMAINS.has(domainOf(event.owner_email) || "") ? [event.owner_email.toLowerCase()] : [],
         });
       } else {
         const emails = new Set(current.attendees.map((person: any) => String(person.email || "").toLowerCase()));
