@@ -6,7 +6,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 import { isExcludedDealName } from '@/utils/excludedDeals';
-import { normalizeEntityName, titleMatchesEntity } from '@/lib/entityTitleMatch';
+import { normalizeEntityName, titleMatchesEntity, entityNameVariants } from '@/lib/entityTitleMatch';
 import { channelLabel } from './channelOptions';
 import { INTERNAL_DOMAINS, domainOf } from '@/lib/internalDomains';
 
