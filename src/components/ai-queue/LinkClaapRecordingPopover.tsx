@@ -8,7 +8,7 @@
  * consumer (draft-deal-from-claap, the card header) sees the match.
  */
 import { useMemo, useState } from 'react';
-import { Video, Search, Loader2, Link2 } from 'lucide-react';
+import { Video, Search, Loader2, Link2, Cloud } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -16,11 +16,17 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
+import { useClaapRecordings } from '@/hooks/useClaapRecordings';
 import { toast } from 'sonner';
 
 export interface ClaapMatchCandidate {
   key: string;
-  kind: 'meeting' | 'recording';
+  /**
+   * `meeting` / `recording` are rows in the local mirror (uuid ids).
+   * `remote` is a recording that only exists in the Claap API right now —
+   * the consumer must materialize it into the mirror before drafting.
+   */
+  kind: 'meeting' | 'recording' | 'remote';
   id: string;
   title: string;
   when: string | null;
@@ -33,6 +39,7 @@ interface Props {
   label?: string;
   onLink: (candidate: ClaapMatchCandidate) => Promise<void> | void;
 }
+
 
 function fmt(when: string | null): string {
   if (!when) return '';
