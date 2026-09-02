@@ -244,7 +244,18 @@ serve(async (req: Request) => {
       admin.from("gmail_tokens").select("user_id, grant_id").in("user_id", userIds),
     ]);
     const profileById = new Map<string, any>((profiles || []).map((profile: any) => [profile.user_id, profile]));
-    const grantRows = (grants || []).filter((row: any) => row.grant_id && row.grant_id !== "demo-seed");
+    const grantRows = (grants || []).filter((row: any) => {
+      if (!row.grant_id || row.grant_id === "demo-seed") return false;
+      const profile = profileById.get(row.user_id) || {};
+      const emails = [profile.email, row.email_address]
+        .map((value) => String(value || "").trim().toLowerCase())
+        .filter(Boolean);
+      const names = [profile.display_name, profile.full_name]
+        .map((value) => String(value || "").trim().toLowerCase())
+        .filter(Boolean);
+      return emails.some((email) => ALLOWED_OWNER_EMAILS.has(email))
+        || names.some((name) => ALLOWED_OWNER_NAMES.has(name));
+    });
     const uniqueGrants = Array.from(new Map(grantRows.map((row: any) => [row.grant_id, row])).values());
     const startUnix = Math.floor(start.getTime() / 1000);
     const endUnix = Math.floor(end.getTime() / 1000);
