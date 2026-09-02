@@ -15,3 +15,5 @@
 - [x] Calendar is authoritative for referral meetings, with optional Claap recording/transcript enrichment.
 - [x] Restrict referral calendar ingestion to the requested team-owner allowlist.
 - [x] Exclude meetings with funding-source or client attendee domains, including all linked client contacts and company URLs.
+
+- [x] Exclude calendar events with no attendees and titles "Block"/"Blocked" from referral meeting counts
