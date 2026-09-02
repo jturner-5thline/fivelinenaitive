@@ -8,8 +8,8 @@ const corsHeaders = {
 const INTERNAL_DOMAINS = new Set(["5thline.co", "naitive.co", "5l.co"]);
 const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
 const NYLAS_API_URI = "https://api.us.nylas.com";
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,

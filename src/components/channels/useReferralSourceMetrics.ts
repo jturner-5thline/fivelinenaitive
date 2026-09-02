@@ -105,11 +105,8 @@ export function useReferralSourceMetrics() {
   );
 
   // ---- Meetings with existing referral sources -----------------------------
-  // Definition: every call on the calendar in the timeframe EXCEPT
-  //  • sales calls (titled "[COMPANY] <> 5th Line / naitive")
-  //  • internal calls (all attendees on an internal domain)
-  //  • existing client calls (an attendee shares the email domain of a client
-  //    contact on a deal in the Active or In Development pipelines)
+  // Calendar is authoritative; a matching Claap recording is attached when
+  // available so the meeting remains visible even when it was not recorded.
   const { data: meetings = [], isLoading: meetingsLoading } = useQuery<MeetingRow[]>({
     queryKey: [
       'referral_source_meetings_calendar_v1',
