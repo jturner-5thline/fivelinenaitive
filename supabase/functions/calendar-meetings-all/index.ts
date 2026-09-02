@@ -241,7 +241,7 @@ serve(async (req: Request) => {
     const userIds = Array.from(new Set((members || []).map((row: any) => row.user_id).filter(Boolean)));
     const [{ data: profiles }, { data: grants }] = await Promise.all([
       admin.from("profiles").select("user_id, email, display_name, full_name").in("user_id", userIds),
-      admin.from("gmail_tokens").select("user_id, grant_id").in("user_id", userIds),
+      admin.from("gmail_tokens").select("user_id, grant_id, email_address").in("user_id", userIds),
     ]);
     const profileById = new Map<string, any>((profiles || []).map((profile: any) => [profile.user_id, profile]));
     const grantRows = (grants || []).filter((row: any) => {
@@ -263,8 +263,8 @@ serve(async (req: Request) => {
       const profile = profileById.get(grant.user_id) || {};
       const user = {
         id: grant.user_id,
-        email: profile.email || null,
-        name: profile.display_name || profile.full_name || null,
+        email: profile.email || grant.email_address || null,
+        name: profile.display_name || profile.full_name || grant.email_address || null,
       };
       try { return await fetchGrantEvents(grant.grant_id, user, startUnix, endUnix); }
       catch (error) {
