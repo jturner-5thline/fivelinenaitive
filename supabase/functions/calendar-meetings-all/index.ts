@@ -292,7 +292,7 @@ serve(async (req: Request) => {
     const events = await Promise.all(Array.from(merged.values()).map(async (event) => {
       const claap = matchClaap(event, byTitle);
       return {
-        id: await stableUuid(`${companyId}|${event.source_key}`),
+        id: claap?.id || await stableUuid(`${companyId}|${event.source_key}`),
         calendar_event_id: event.source_id,
         title: event.title,
         start: event.start,
