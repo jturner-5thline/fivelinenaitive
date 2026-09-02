@@ -248,7 +248,14 @@ serve(async (req: Request) => {
           source_key: key,
           attendees: [...event.attendees],
           owner_emails: event.owner_email ? [event.owner_email] : [],
-          internal_emails: event.owner_email && INTERNAL_DOMAINS.has(domainOf(event.owner_email) || "") ? [event.owner_email.toLowerCase()] : [],
+          internal_emails: [
+            ...event.attendees
+              .map((person: any) => String(person.email || "").trim().toLowerCase())
+              .filter((email: string) => INTERNAL_DOMAINS.has(domainOf(email) || "")),
+            ...(event.owner_email && INTERNAL_DOMAINS.has(domainOf(event.owner_email) || "")
+              ? [event.owner_email.toLowerCase()]
+              : []),
+          ],
         });
       } else {
         const emails = new Set(current.attendees.map((person: any) => String(person.email || "").toLowerCase()));
