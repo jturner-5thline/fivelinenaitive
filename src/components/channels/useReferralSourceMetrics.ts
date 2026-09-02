@@ -143,15 +143,26 @@ export function useReferralSourceMetrics() {
         })) as MeetingRow[];
       if (candidates.length === 0) return [];
 
-      const { data: dealNameRows } = await supabase
-        .from('deals')
-        .select('company')
-        .eq('company_id', company!.id)
-        .not('company', 'is', null);
+      // Page through every deal: PostgREST caps a single request at 1000 rows,
+      // which used to silently drop client names like "Microvi" and "ODK Media".
+      const dealNameRows: { company: string | null }[] = [];
+      for (let page = 0; page < 20; page += 1) {
+        const from = page * 1000;
+        const { data: chunk } = await supabase
+          .from('deals')
+          .select('company')
+          .eq('company_id', company!.id)
+          .not('company', 'is', null)
+          .range(from, from + 999);
+        if (!chunk || chunk.length === 0) break;
+        dealNameRows.push(...(chunk as any[]));
+        if (chunk.length < 1000) break;
+      }
       const dealNames = Array.from(new Set((dealNameRows || [])
         .filter((d: any) => !isExcludedDealName(String(d.company || '')))
         .flatMap((d: any) => entityNameVariants(String(d.company || '')))
-        .filter((n) => n.length >= 4 && !isExcludedDealName(n))));
+        .filter((n) => n.length >= 3 && !isExcludedDealName(n))));
+
       if (dealNames.length > 0) {
         candidates = candidates.filter((m) => {
           const title = normalizeEntityName(m.title || '');
