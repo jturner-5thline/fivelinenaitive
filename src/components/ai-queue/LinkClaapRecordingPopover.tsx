@@ -54,6 +54,7 @@ export function LinkClaapRecordingPopover({ defaultQuery = '', label = 'Link Cla
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(defaultQuery);
   const [linking, setLinking] = useState<string | null>(null);
+  const { fetchRecordings } = useClaapRecordings();
 
   const term = search.trim();
 
@@ -73,9 +74,14 @@ export function LinkClaapRecordingPopover({ defaultQuery = '', label = 'Link Cla
         .select('id, title, started_at, recording_url')
         .order('started_at', { ascending: false, nullsFirst: false })
         .limit(20);
-      const [m, r] = await Promise.all([
+      // Also ask the Claap API directly: recordings owned by teammates (or
+      // recorded after the last mirror sync) have no local row yet, so a
+      // mirror-only search silently hides them.
+      const liveQ = fetchRecordings(term || undefined, { live: true, limit: 30 }).catch(() => []);
+      const [m, r, live] = await Promise.all([
         term ? meetingsQ.ilike('title', like) : meetingsQ,
         term ? recsQ.ilike('title', like) : recsQ,
+        liveQ,
       ]);
       const out: ClaapMatchCandidate[] = [];
       const seen = new Set<string>();
@@ -94,6 +100,7 @@ export function LinkClaapRecordingPopover({ defaultQuery = '', label = 'Link Cla
       for (const row of r.data ?? []) {
         const title = (row.title as string) || 'Untitled recording';
         if (seen.has(title.toLowerCase())) continue;
+        seen.add(title.toLowerCase());
         out.push({
           key: `recording-${row.id}`,
           kind: 'recording',
@@ -103,9 +110,23 @@ export function LinkClaapRecordingPopover({ defaultQuery = '', label = 'Link Cla
           url: (row.recording_url as string) ?? null,
         });
       }
-      return out.slice(0, 30);
+      for (const rec of live as Array<any>) {
+        const title = (rec?.title as string) || 'Untitled recording';
+        if (!rec?.id || seen.has(title.toLowerCase())) continue;
+        seen.add(title.toLowerCase());
+        out.push({
+          key: `remote-${rec.id}`,
+          kind: 'remote',
+          id: String(rec.id),
+          title,
+          when: (rec?.meeting?.startingAt as string) || (rec?.createdAt as string) || null,
+          url: (rec?.url as string) ?? null,
+        });
+      }
+      return out.slice(0, 40);
     },
   });
+
 
   const empty = useMemo(() => !isFetching && candidates.length === 0, [isFetching, candidates.length]);
 
