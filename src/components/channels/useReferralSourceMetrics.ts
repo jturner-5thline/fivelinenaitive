@@ -6,7 +6,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 import { isExcludedDealName } from '@/utils/excludedDeals';
-import { normalizeEntityName, titleMatchesEntity } from '@/lib/entityTitleMatch';
+import { normalizeEntityName, titleMatchesEntity, entityNameVariants } from '@/lib/entityTitleMatch';
 import { channelLabel } from './channelOptions';
 import { INTERNAL_DOMAINS, domainOf } from '@/lib/internalDomains';
 
@@ -149,7 +149,8 @@ export function useReferralSourceMetrics() {
         .eq('company_id', company!.id)
         .not('company', 'is', null);
       const dealNames = Array.from(new Set((dealNameRows || [])
-        .map((d: any) => normalizeEntityName(String(d.company || '')))
+        .filter((d: any) => !isExcludedDealName(String(d.company || '')))
+        .flatMap((d: any) => entityNameVariants(String(d.company || '')))
         .filter((n) => n.length >= 4 && !isExcludedDealName(n))));
       if (dealNames.length > 0) {
         candidates = candidates.filter((m) => {
@@ -200,8 +201,26 @@ export function useReferralSourceMetrics() {
         const crmCompanyIds = Array.from(new Set(dealRows.map((deal) => deal.crm_company_id).filter(Boolean)));
         if (crmCompanyIds.length > 0) {
           const { data: crmCompanies } = await supabase
-            .from('crm_companies').select('website_url').in('id', crmCompanyIds);
-          for (const crmCompany of (crmCompanies || []) as any[]) addWebsiteDomain(crmCompany.website_url);
+            .from('crm_companies')
+            .select('website_url, domain, domain_normalized, additional_domains, main_contact_email')
+            .in('id', crmCompanyIds);
+          for (const crmCompany of (crmCompanies || []) as any[]) {
+            addWebsiteDomain(crmCompany.website_url);
+            addWebsiteDomain(crmCompany.domain);
+            addWebsiteDomain(crmCompany.domain_normalized);
+            for (const extra of crmCompany.additional_domains || []) addWebsiteDomain(extra);
+            addEmailDomain(crmCompany.main_contact_email);
+          }
+          // Contacts attached to a client company count as client contacts too.
+          const { data: companyContacts } = await supabase
+            .from('contacts')
+            .select('email, additional_emails, website_url')
+            .in('crm_company_id', crmCompanyIds);
+          for (const contact of (companyContacts || []) as any[]) {
+            addEmailDomain(contact.email);
+            for (const email of contact.additional_emails || []) addEmailDomain(email);
+            addWebsiteDomain(contact.website_url);
+          }
         }
       }
 

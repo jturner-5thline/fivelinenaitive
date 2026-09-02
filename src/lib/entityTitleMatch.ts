@@ -53,3 +53,19 @@ export function titleMatchesEntity(title: string, entityName: string) {
     titleTokens.some((titleToken) => isNearToken(entityToken, titleToken)),
   );
 }
+
+/**
+ * Deal/company names are often stored as "Client-Project" or "Client / Project".
+ * Calendar invites usually mention only the client part ("Hero Fund-5th Line Sync"),
+ * so match on the full name AND the leading segment before the first delimiter.
+ */
+export function entityNameVariants(rawName: string): string[] {
+  const raw = String(rawName || '').trim();
+  if (!raw) return [];
+  const variants = new Set<string>();
+  const full = normalizeEntityName(raw);
+  if (full.replace(/\s/g, '').length >= 4) variants.add(full);
+  const lead = normalizeEntityName(raw.split(/[-–—/|:,]/)[0] || '');
+  if (lead && lead !== full && lead.replace(/\s/g, '').length >= 6) variants.add(lead);
+  return Array.from(variants);
+}

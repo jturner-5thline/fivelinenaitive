@@ -389,10 +389,17 @@ serve(async (req: Request) => {
       .eq("company_id", companyId)
       .limit(5000);
     const dealIds: string[] = [];
+    const crmCompanyIds: string[] = [];
     for (const deal of (dealRows || []) as any[]) {
       dealIds.push(deal.id);
-      const normalizedName = normalizeTitle(deal.company);
-      if (normalizedName && normalizedName.replace(/\s/g, "").length >= 4) dealNameTitles.push(normalizedName);
+      if (deal.crm_company_id) crmCompanyIds.push(deal.crm_company_id);
+      // Deal names are often "Client-Project"; invites usually mention only the
+      // client part, so index the full name and the leading segment.
+      const raw = String(deal.company || "");
+      const full = normalizeTitle(raw);
+      if (full.replace(/\s/g, "").length >= 4) dealNameTitles.push(full);
+      const lead = normalizeTitle(raw.split(/[-–—/|:,]/)[0] || "");
+      if (lead && lead !== full && lead.replace(/\s/g, "").length >= 6) dealNameTitles.push(lead);
       addClientDomainFromUrl(deal.company_url);
       addClientEmail(deal.contact_email);
     }
@@ -404,8 +411,34 @@ serve(async (req: Request) => {
       const contactIds = Array.from(new Set((links || []).map((row: any) => row.contact_id).filter(Boolean)));
       for (let i = 0; i < contactIds.length; i += 500) {
         const { data: contactRows } = await admin
-          .from("contacts").select("email").in("id", contactIds.slice(i, i + 500));
-        for (const row of (contactRows || []) as any[]) addClientEmail(row.email);
+          .from("contacts").select("email, additional_emails, website_url").in("id", contactIds.slice(i, i + 500));
+        for (const row of (contactRows || []) as any[]) {
+          addClientEmail(row.email);
+          for (const extra of row.additional_emails || []) addClientEmail(extra);
+          addClientDomainFromUrl(row.website_url);
+        }
+      }
+    }
+    const uniqueCrmIds = Array.from(new Set(crmCompanyIds));
+    for (let i = 0; i < uniqueCrmIds.length; i += 500) {
+      const slice = uniqueCrmIds.slice(i, i + 500);
+      const { data: companyRows } = await admin
+        .from("crm_companies")
+        .select("website_url, domain, domain_normalized, additional_domains, main_contact_email")
+        .in("id", slice);
+      for (const row of (companyRows || []) as any[]) {
+        addClientDomainFromUrl(row.website_url);
+        addClientDomainFromUrl(row.domain);
+        addClientDomainFromUrl(row.domain_normalized);
+        for (const extra of row.additional_domains || []) addClientDomainFromUrl(extra);
+        addClientEmail(row.main_contact_email);
+      }
+      const { data: companyContacts } = await admin
+        .from("contacts").select("email, additional_emails, website_url").in("crm_company_id", slice);
+      for (const row of (companyContacts || []) as any[]) {
+        addClientEmail(row.email);
+        for (const extra of row.additional_emails || []) addClientEmail(extra);
+        addClientDomainFromUrl(row.website_url);
       }
     }
     const titleMatchesDeal = (title?: string | null) => {
