@@ -10,9 +10,6 @@ const INTERNAL_DOMAINS = new Set(["5thline.co", "naitive.co", "5l.co"]);
 // Match both email aliases and display names because older grants do not always
 // have a corresponding profile email.
 const ALLOWED_OWNER_EMAILS = new Set([
-  "cminaldi@5thline.co",
-  "chandler.minaldi@5thline.co",
-  "chandler@5thline.co",
   "ffustinoni@5thline.co",
   "jmoffitt@5thline.co",
   "jturner@5thline.co",
@@ -23,7 +20,6 @@ const ALLOWED_OWNER_EMAILS = new Set([
   "klawless@naitive.co",
 ]);
 const ALLOWED_OWNER_NAMES = new Set([
-  "chandler minaldi",
   "flor fustinoni",
   "john moffitt",
   "james turner",
@@ -32,6 +28,29 @@ const ALLOWED_OWNER_NAMES = new Set([
   "scott williams",
   "klawless",
 ]);
+// Explicitly excluded calendar owners (local-part of email or display name)
+const BLOCKED_OWNER_LOCALPARTS = new Set([
+  "abranch",
+  "aschiff",
+  "cminaldi",
+  "crichardson",
+  "jraskin",
+  "jrivera",
+  "sbhangale",
+  "kandil",
+  "mckenzie.clark",
+  "mclark",
+]);
+const BLOCKED_OWNER_NAMES = new Set([
+  "chandler minaldi",
+  "mckenzie clark",
+]);
+const localPartOf = (email?: string | null) => {
+  const value = String(email || "").trim().toLowerCase();
+  const at = value.lastIndexOf("@");
+  return at > 0 ? value.slice(0, at) : value;
+};
+
 const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
 const NYLAS_API_URI = "https://api.us.nylas.com";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
@@ -263,8 +282,11 @@ serve(async (req: Request) => {
       const names = [profile.display_name, profile.full_name]
         .map((value) => normalizeOwnerName(value))
         .filter(Boolean);
+      if (emails.some((email) => BLOCKED_OWNER_LOCALPARTS.has(localPartOf(email)))) return false;
+      if (names.some((name) => BLOCKED_OWNER_NAMES.has(name))) return false;
       return emails.some((email) => ALLOWED_OWNER_EMAILS.has(email))
         || names.some((name) => ALLOWED_OWNER_NAMES.has(name));
+
     });
     const uniqueGrants = Array.from(new Map(grantRows.map((row: any) => [row.grant_id, row])).values());
     const startUnix = Math.floor(start.getTime() / 1000);
