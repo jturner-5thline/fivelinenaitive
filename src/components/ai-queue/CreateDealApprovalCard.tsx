@@ -17,6 +17,7 @@ import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import type { QueuedAiAction } from '@/hooks/useAiActionQueue';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePipelineContext } from '@/contexts/PipelineContext';
+import { useCompany } from '@/hooks/useCompany';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { LinkClaapRecordingPopover, type ClaapMatchCandidate } from './LinkClaapRecordingPopover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -41,6 +42,7 @@ export function CreateDealApprovalCard({ item }: Props) {
   const [open, setOpen] = useState(false);
   const qc = useQueryClient();
   const { activePipeline } = usePipelineContext();
+  const { company } = useCompany();
   const { stages: globalStages } = useDealStages();
   const stageList = (activePipeline?.stages?.length ? activePipeline.stages : globalStages) as Array<{ id: string; label: string }>;
   const defaultNdaStageId = findNdaStageId(stageList);
