@@ -405,10 +405,18 @@ serve(async (req: Request) => {
       "health", "digital", "studio", "studios", "project", "projects", "sync", "review",
     ]);
     const dealIds: string[] = [];
-    const crmCompanyIds: string[] = [];
+    const crmCompanyIds = new Set<string>();
+    const linkedContactIds = new Set<string>();
+    const associationCompanyIds = new Set<string>();
+    const addContactDetails = (row: any) => {
+      addClientEmail(row.email);
+      for (const extra of row.additional_emails || []) addClientEmail(extra);
+      addClientDomainFromUrl(row.website_url);
+      if (row.crm_company_id) crmCompanyIds.add(row.crm_company_id);
+    };
     for (const deal of dealRows) {
       dealIds.push(deal.id);
-      if (deal.crm_company_id) crmCompanyIds.push(deal.crm_company_id);
+      if (deal.crm_company_id) crmCompanyIds.add(deal.crm_company_id);
       // Deal names are often "Client-Project"; invites usually mention only the
       // client part, so index the full name, the leading segment, and the
       // distinctive first word ("Microvi", "ODK").
@@ -423,23 +431,43 @@ serve(async (req: Request) => {
       addClientEmail(deal.contact_email);
     }
 
-    if (dealIds.length) {
+    // Resolve all deal contacts in pages, then follow their explicit company
+    // associations. This catches an affiliated attendee who is not itself in
+    // contact_deals but belongs to the same client company.
+    for (let i = 0; i < dealIds.length; i += 500) {
       const { data: links } = await admin
-        .from("contact_deals")
-        .select("contact_id")
-        .in("deal_id", dealIds.slice(0, 2000));
-      const contactIds = Array.from(new Set((links || []).map((row: any) => row.contact_id).filter(Boolean)));
-      for (let i = 0; i < contactIds.length; i += 500) {
-        const { data: contactRows } = await admin
-          .from("contacts").select("email, additional_emails, website_url").in("id", contactIds.slice(i, i + 500));
-        for (const row of (contactRows || []) as any[]) {
-          addClientEmail(row.email);
-          for (const extra of row.additional_emails || []) addClientEmail(extra);
-          addClientDomainFromUrl(row.website_url);
-        }
+        .from("contact_deals").select("contact_id").in("deal_id", dealIds.slice(i, i + 500));
+      for (const link of (links || []) as any[]) if (link.contact_id) linkedContactIds.add(link.contact_id);
+    }
+    const linkedIds = Array.from(linkedContactIds);
+    for (let i = 0; i < linkedIds.length; i += 500) {
+      const slice = linkedIds.slice(i, i + 500);
+      const [{ data: contactRows }, { data: associations }] = await Promise.all([
+        admin.from("contacts").select("email, additional_emails, website_url, crm_company_id").in("id", slice),
+        admin.from("contact_company_associations").select("company_id").in("contact_id", slice),
+      ]);
+      for (const row of (contactRows || []) as any[]) addContactDetails(row);
+      for (const association of (associations || []) as any[]) {
+        if (association.company_id) associationCompanyIds.add(association.company_id);
       }
     }
-    const uniqueCrmIds = Array.from(new Set(crmCompanyIds));
+    const associatedContactIds = new Set<string>();
+    const associationCompanies = Array.from(associationCompanyIds);
+    for (let i = 0; i < associationCompanies.length; i += 500) {
+      const { data: associations } = await admin
+        .from("contact_company_associations").select("contact_id").in("company_id", associationCompanies.slice(i, i + 500));
+      for (const association of (associations || []) as any[]) {
+        if (association.contact_id) associatedContactIds.add(association.contact_id);
+      }
+    }
+    const affiliatedIds = Array.from(associatedContactIds).filter((id) => !linkedContactIds.has(id));
+    for (let i = 0; i < affiliatedIds.length; i += 500) {
+      const { data: contactRows } = await admin
+        .from("contacts").select("email, additional_emails, website_url, crm_company_id").in("id", affiliatedIds.slice(i, i + 500));
+      for (const row of (contactRows || []) as any[]) addContactDetails(row);
+    }
+
+    const uniqueCrmIds = Array.from(crmCompanyIds);
     for (let i = 0; i < uniqueCrmIds.length; i += 500) {
       const slice = uniqueCrmIds.slice(i, i + 500);
       const { data: companyRows } = await admin
