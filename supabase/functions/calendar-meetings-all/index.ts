@@ -6,6 +6,32 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 const INTERNAL_DOMAINS = new Set(["5thline.co", "naitive.co", "5l.co"]);
+// Only these team calendars are authoritative for the referral-source metric.
+// Match both email aliases and display names because older grants do not always
+// have a corresponding profile email.
+const ALLOWED_OWNER_EMAILS = new Set([
+  "cminaldi@5thline.co",
+  "chandler.minaldi@5thline.co",
+  "chandler@5thline.co",
+  "ffustinoni@5thline.co",
+  "jmoffitt@5thline.co",
+  "jturner@5thline.co",
+  "nheikali@5thline.co",
+  "ppina@5thline.co",
+  "swilliams@5thline.co",
+  "klawless@5thline.co",
+  "klawless@naitive.co",
+]);
+const ALLOWED_OWNER_NAMES = new Set([
+  "chandler minaldi",
+  "flor fustinoni",
+  "john moffitt",
+  "james turner",
+  "niki heikali",
+  "paz pina",
+  "scott williams",
+  "klawless",
+]);
 const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
 const NYLAS_API_URI = "https://api.us.nylas.com";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
@@ -19,7 +45,11 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 function domainOf(email?: string | null): string | null {
   const value = String(email || "").trim().toLowerCase();
   const at = value.lastIndexOf("@");
-  return at > 0 ? value.slice(at + 1) : null;
+  return at > 0 ? value.slice(at + 1).replace(/^www\./, "") : null;
+}
+
+function normalizeOwnerName(value?: string | null): string {
+  return String(value || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 function normalizeTitle(value?: string | null): string {
@@ -215,10 +245,21 @@ serve(async (req: Request) => {
     const userIds = Array.from(new Set((members || []).map((row: any) => row.user_id).filter(Boolean)));
     const [{ data: profiles }, { data: grants }] = await Promise.all([
       admin.from("profiles").select("user_id, email, display_name, full_name").in("user_id", userIds),
-      admin.from("gmail_tokens").select("user_id, grant_id").in("user_id", userIds),
+      admin.from("gmail_tokens").select("user_id, grant_id, email_address").in("user_id", userIds),
     ]);
     const profileById = new Map<string, any>((profiles || []).map((profile: any) => [profile.user_id, profile]));
-    const grantRows = (grants || []).filter((row: any) => row.grant_id && row.grant_id !== "demo-seed");
+    const grantRows = (grants || []).filter((row: any) => {
+      if (!row.grant_id || row.grant_id === "demo-seed") return false;
+      const profile = profileById.get(row.user_id) || {};
+      const emails = [profile.email, row.email_address]
+        .map((value) => String(value || "").trim().toLowerCase())
+        .filter(Boolean);
+      const names = [profile.display_name, profile.full_name]
+        .map((value) => normalizeOwnerName(value))
+        .filter(Boolean);
+      return emails.some((email) => ALLOWED_OWNER_EMAILS.has(email))
+        || names.some((name) => ALLOWED_OWNER_NAMES.has(name));
+    });
     const uniqueGrants = Array.from(new Map(grantRows.map((row: any) => [row.grant_id, row])).values());
     const startUnix = Math.floor(start.getTime() / 1000);
     const endUnix = Math.floor(end.getTime() / 1000);
@@ -226,8 +267,8 @@ serve(async (req: Request) => {
       const profile = profileById.get(grant.user_id) || {};
       const user = {
         id: grant.user_id,
-        email: profile.email || null,
-        name: profile.display_name || profile.full_name || null,
+        email: profile.email || grant.email_address || null,
+        name: profile.display_name || profile.full_name || grant.email_address || null,
       };
       try { return await fetchGrantEvents(grant.grant_id, user, startUnix, endUnix); }
       catch (error) {

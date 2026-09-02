@@ -7,6 +7,7 @@
 export const INTERNAL_DOMAINS = new Set<string>([
   '5thline.co',
   'naitive.co',
+  '5l.co',
 ]);
 
 export function domainOf(email?: string | null): string {
