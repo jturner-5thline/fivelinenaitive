@@ -149,7 +149,8 @@ export function useReferralSourceMetrics() {
         .eq('company_id', company!.id)
         .not('company', 'is', null);
       const dealNames = Array.from(new Set((dealNameRows || [])
-        .map((d: any) => normalizeEntityName(String(d.company || '')))
+        .filter((d: any) => !isExcludedDealName(String(d.company || '')))
+        .flatMap((d: any) => entityNameVariants(String(d.company || '')))
         .filter((n) => n.length >= 4 && !isExcludedDealName(n))));
       if (dealNames.length > 0) {
         candidates = candidates.filter((m) => {
