@@ -110,7 +110,7 @@ export function useReferralSourceMetrics() {
   // available so the meeting remains visible even when it was not recorded.
   const { data: meetings = [], isLoading: meetingsLoading } = useQuery<MeetingRow[]>({
     queryKey: [
-      'referral_source_meetings_calendar_v3',
+      'referral_source_meetings_calendar_v4',
       company?.id,
       start?.toISOString() ?? null,
       end?.toISOString() ?? null,
@@ -143,15 +143,26 @@ export function useReferralSourceMetrics() {
         })) as MeetingRow[];
       if (candidates.length === 0) return [];
 
-      const { data: dealNameRows } = await supabase
-        .from('deals')
-        .select('company')
-        .eq('company_id', company!.id)
-        .not('company', 'is', null);
+      // Page through every deal: PostgREST caps a single request at 1000 rows,
+      // which used to silently drop client names like "Microvi" and "ODK Media".
+      const dealNameRows: { company: string | null }[] = [];
+      for (let page = 0; page < 20; page += 1) {
+        const from = page * 1000;
+        const { data: chunk } = await supabase
+          .from('deals')
+          .select('company')
+          .eq('company_id', company!.id)
+          .not('company', 'is', null)
+          .range(from, from + 999);
+        if (!chunk || chunk.length === 0) break;
+        dealNameRows.push(...(chunk as any[]));
+        if (chunk.length < 1000) break;
+      }
       const dealNames = Array.from(new Set((dealNameRows || [])
         .filter((d: any) => !isExcludedDealName(String(d.company || '')))
         .flatMap((d: any) => entityNameVariants(String(d.company || '')))
-        .filter((n) => n.length >= 4 && !isExcludedDealName(n))));
+        .filter((n) => n.length >= 3 && !isExcludedDealName(n))));
+
       if (dealNames.length > 0) {
         candidates = candidates.filter((m) => {
           const title = normalizeEntityName(m.title || '');
@@ -173,12 +184,20 @@ export function useReferralSourceMetrics() {
       };
       // Client identity is sourced from every deal in this workspace, not just
       // the currently active pipelines, so older clients are excluded as well.
-      const { data: clientDeals } = await supabase.from('deals')
-        .select('id, contact_email, company_url, crm_company_id')
-        .eq('company_id', company!.id)
-        .limit(5000);
+      const clientDeals: any[] = [];
+      for (let page = 0; page < 20; page += 1) {
+        const from = page * 1000;
+        const { data: chunk } = await supabase.from('deals')
+          .select('id, contact_email, company_url, crm_company_id')
+          .eq('company_id', company!.id)
+          .range(from, from + 999);
+        if (!chunk || chunk.length === 0) break;
+        clientDeals.push(...(chunk as any[]));
+        if (chunk.length < 1000) break;
+      }
       {
         const dealRows = (clientDeals || []) as any[];
+
         for (const deal of dealRows) {
           addEmailDomain(deal.contact_email);
           addWebsiteDomain(deal.company_url);

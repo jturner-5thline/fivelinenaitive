@@ -383,26 +383,46 @@ serve(async (req: Request) => {
       if (INTERNAL_DOMAINS.has(host) || GENERIC_DOMAINS.has(host)) return;
       clientDomains.add(host);
     };
-    const { data: dealRows } = await admin
-      .from("deals")
-      .select("id, company, company_url, contact_email, crm_company_id")
-      .eq("company_id", companyId)
-      .limit(5000);
+    // PostgREST caps one request at 1000 rows, so page through every deal.
+    const dealRows: any[] = [];
+    for (let page = 0; page < 20; page += 1) {
+      const from = page * 1000;
+      const { data: chunk } = await admin
+        .from("deals")
+        .select("id, company, company_url, contact_email, crm_company_id")
+        .eq("company_id", companyId)
+        .range(from, from + 999);
+      if (!chunk || chunk.length === 0) break;
+      dealRows.push(...(chunk as any[]));
+      if (chunk.length < 1000) break;
+    }
+    const GENERIC_NAME_TOKENS = new Set([
+      "the", "and", "group", "capital", "fund", "funds", "funding", "partners", "partner",
+      "holdings", "holding", "company", "co", "corp", "corporation", "inc", "llc", "lp", "llp",
+      "ltd", "limited", "media", "ventures", "venture", "management", "advisors", "advisory",
+      "solutions", "services", "systems", "technologies", "technology", "labs", "global",
+      "international", "industries", "enterprises", "brands", "financial", "finance", "bank",
+      "health", "digital", "studio", "studios", "project", "projects", "sync", "review",
+    ]);
     const dealIds: string[] = [];
     const crmCompanyIds: string[] = [];
-    for (const deal of (dealRows || []) as any[]) {
+    for (const deal of dealRows) {
       dealIds.push(deal.id);
       if (deal.crm_company_id) crmCompanyIds.push(deal.crm_company_id);
       // Deal names are often "Client-Project"; invites usually mention only the
-      // client part, so index the full name and the leading segment.
+      // client part, so index the full name, the leading segment, and the
+      // distinctive first word ("Microvi", "ODK").
       const raw = String(deal.company || "");
       const full = normalizeTitle(raw);
       if (full.replace(/\s/g, "").length >= 4) dealNameTitles.push(full);
       const lead = normalizeTitle(raw.split(/[-–—/|:,]/)[0] || "");
       if (lead && lead !== full && lead.replace(/\s/g, "").length >= 6) dealNameTitles.push(lead);
+      const leadToken = (lead || full).split(" ").filter(Boolean)[0] || "";
+      if (leadToken.length >= 3 && !GENERIC_NAME_TOKENS.has(leadToken)) dealNameTitles.push(leadToken);
       addClientDomainFromUrl(deal.company_url);
       addClientEmail(deal.contact_email);
     }
+
     if (dealIds.length) {
       const { data: links } = await admin
         .from("contact_deals")
