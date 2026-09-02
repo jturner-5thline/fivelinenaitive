@@ -2117,7 +2117,16 @@ export function ConsolidatedDebtPipelineDashboard({
   );
   const quarterlyFunnel = useQuarterlyTtmFunnel();
   const totalRevenueOpportunity = useTotalRevenueOpportunity();
-  const termsConversionRate = useTermsConversionRate();
+  const termsConversionRate = useTermsConversionRate(
+    selectedQuarter?.startDate && selectedQuarter?.endDate
+      ? {
+          startDate: selectedQuarter.startDate,
+          endDate: selectedQuarter.endDate,
+          label: selectedQuarter.label,
+        }
+      : null,
+  );
+
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
   // When true, each bucket in the chart shows the trailing-12-month rollup
   // ending at that bucket's period end, instead of the bucket's own period.
@@ -2721,10 +2730,11 @@ export function ConsolidatedDebtPipelineDashboard({
       conversionBreakdown: {
         formula:
           '(Funding sources at Terms Issued or later) ÷ (Total funding sources added) on deals that entered ' +
-          `Submitted to Lenders / Lenders in Review in the last 12 months = ${termsConversionRate.numerator} ÷ ` +
+          `Submitted to Lenders / Lenders in Review in ${termsConversionRate.periodLabel} = ${termsConversionRate.numerator} ÷ ` +
           `${termsConversionRate.denominator} = ${termsConversionRate.value}`,
         numeratorLabel: 'Funding sources that reached Terms Issued or later',
-        denominatorLabel: 'Total funding sources added (TTM qualifying deals)',
+        denominatorLabel: `Total funding sources added (${termsConversionRate.periodLabel} qualifying deals)`,
+
         numeratorDeals: termsConversionRate.numeratorDeals,
         denominatorDeals: termsConversionRate.denominatorDeals,
         numeratorCount: termsConversionRate.numerator,
