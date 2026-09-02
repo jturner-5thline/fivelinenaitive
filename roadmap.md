@@ -12,4 +12,4 @@
 
 ## Calendar ingestion
 
-- [ ] Reauthorize / verify Scott Williams' calendar connection and backfill missing meetings
+- [x] Verified Scott Williams' Nylas grant + ran claap-backfill (120 days). Root cause: his calls are not recorded in Claap, which is the sole source for `claap_meetings` — calendar reconnection does not affect this metric.
