@@ -160,6 +160,16 @@ export function useReferralSourceMetrics() {
       if (candidates.length === 0) return [];
 
       const clientDomains = new Set<string>();
+      const addEmailDomain = (value: unknown) => {
+        const domain = domainOf(typeof value === 'string' ? value : null);
+        if (domain && !INTERNAL_DOMAINS.has(domain)) clientDomains.add(domain);
+      };
+      const addWebsiteDomain = (value: unknown) => {
+        if (typeof value !== 'string' || !value.trim()) return;
+        const normalized = value.trim().toLowerCase()
+          .replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0].split('?')[0];
+        if (normalized && normalized.includes('.') && !INTERNAL_DOMAINS.has(normalized)) clientDomains.add(normalized);
+      };
       const { data: pipelines } = await supabase
         .from('deal_pipelines').select('id, name').eq('company_id', company!.id);
       const pipelineIds = (pipelines || [])
@@ -167,10 +177,32 @@ export function useReferralSourceMetrics() {
         .map((p: any) => p.id as string);
       if (pipelineIds.length > 0) {
         const { data: clientDeals } = await supabase.from('deals')
-          .select('contact_email').in('pipeline_id', pipelineIds).not('contact_email', 'is', null);
-        for (const deal of (clientDeals || []) as { contact_email: string | null }[]) {
-          const domain = domainOf(deal.contact_email);
-          if (domain && !INTERNAL_DOMAINS.has(domain)) clientDomains.add(domain);
+          .select('id, contact_email, company_url, crm_company_id').in('pipeline_id', pipelineIds);
+        const dealRows = (clientDeals || []) as any[];
+        for (const deal of dealRows) {
+          addEmailDomain(deal.contact_email);
+          addWebsiteDomain(deal.company_url);
+        }
+        const dealIds = dealRows.map((deal) => deal.id).filter(Boolean);
+        if (dealIds.length > 0) {
+          const { data: links } = await supabase
+            .from('contact_deals').select('deal_id, contact_id').in('deal_id', dealIds);
+          const contactIds = Array.from(new Set((links || []).map((link: any) => link.contact_id).filter(Boolean)));
+          if (contactIds.length > 0) {
+            const { data: contacts } = await supabase
+              .from('contacts').select('email, additional_emails, website_url, crm_company_id, primary_company_id').in('id', contactIds);
+            for (const contact of (contacts || []) as any[]) {
+              addEmailDomain(contact.email);
+              for (const email of contact.additional_emails || []) addEmailDomain(email);
+              addWebsiteDomain(contact.website_url);
+            }
+          }
+        }
+        const crmCompanyIds = Array.from(new Set(dealRows.map((deal) => deal.crm_company_id).filter(Boolean)));
+        if (crmCompanyIds.length > 0) {
+          const { data: crmCompanies } = await supabase
+            .from('crm_companies').select('website_url').in('id', crmCompanyIds);
+          for (const crmCompany of (crmCompanies || []) as any[]) addWebsiteDomain(crmCompany.website_url);
         }
       }
 
