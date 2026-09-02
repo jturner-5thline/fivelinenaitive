@@ -264,7 +264,11 @@ serve(async (req: Request) => {
           if (email && !emails.has(email)) { current.attendees.push(person); emails.add(email); }
         }
         if (event.owner_email && !current.owner_emails.includes(event.owner_email)) current.owner_emails.push(event.owner_email);
-        if (event.owner_email && domainOf(event.owner_email) && !current.internal_emails.includes(event.owner_email.toLowerCase())) current.internal_emails.push(event.owner_email.toLowerCase());
+        if (event.owner_email && INTERNAL_DOMAINS.has(domainOf(event.owner_email) || "") && !current.internal_emails.includes(event.owner_email.toLowerCase())) current.internal_emails.push(event.owner_email.toLowerCase());
+        for (const person of event.attendees) {
+          const email = String(person.email || "").trim().toLowerCase();
+          if (email && INTERNAL_DOMAINS.has(domainOf(email) || "") && !current.internal_emails.includes(email)) current.internal_emails.push(email);
+        }
       }
     }
 
