@@ -9,3 +9,7 @@
 - [x] Phase 1 — structured matching criteria (sweet spot, geographies, financial thresholds) + backfill
 - [x] Phase 2 — historical track record scoring, hard eligibility gates, visible match explanations
 - [x] Phase 3 — outcome feedback loop tuning (weight calibration from recommendation outcomes)
+
+## Calendar ingestion
+
+- [ ] Reauthorize / verify Scott Williams' calendar connection and backfill missing meetings
