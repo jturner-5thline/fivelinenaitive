@@ -308,6 +308,7 @@ serve(async (req: Request) => {
         claap_meeting_id: claap?.id || null,
         claap_title: claap?.title || null,
         recording_url: claap?.recording_url || null,
+        transcript: claap?.transcript || null,
         transcript_available: !!claap?.transcript,
         matched_contact_id: claap?.matched_contact_id || null,
         matched_crm_company_id: claap?.matched_crm_company_id || null,
