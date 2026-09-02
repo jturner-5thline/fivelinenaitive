@@ -54,10 +54,21 @@ export function titleMatchesEntity(title: string, entityName: string) {
   );
 }
 
+/** Generic corporate words that must never stand alone as a match key. */
+const GENERIC_NAME_TOKENS = new Set([
+  'the', 'and', 'group', 'capital', 'fund', 'funds', 'funding', 'partners', 'partner',
+  'holdings', 'holding', 'company', 'co', 'corp', 'corporation', 'inc', 'llc', 'lp', 'llp',
+  'ltd', 'limited', 'media', 'ventures', 'venture', 'management', 'advisors', 'advisory',
+  'solutions', 'services', 'systems', 'technologies', 'technology', 'labs', 'global',
+  'international', 'industries', 'enterprises', 'brands', 'financial', 'finance', 'bank',
+  'health', 'digital', 'studio', 'studios', 'project', 'projects', 'sync', 'review',
+]);
+
 /**
  * Deal/company names are often stored as "Client-Project" or "Client / Project".
  * Calendar invites usually mention only the client part ("Hero Fund-5th Line Sync"),
- * so match on the full name AND the leading segment before the first delimiter.
+ * so match on the full name, the leading segment before the first delimiter, and
+ * the distinctive leading word ("Microvi", "ODK") when it is not a generic term.
  */
 export function entityNameVariants(rawName: string): string[] {
   const raw = String(rawName || '').trim();
@@ -67,5 +78,8 @@ export function entityNameVariants(rawName: string): string[] {
   if (full.replace(/\s/g, '').length >= 4) variants.add(full);
   const lead = normalizeEntityName(raw.split(/[-–—/|:,]/)[0] || '');
   if (lead && lead !== full && lead.replace(/\s/g, '').length >= 6) variants.add(lead);
+  const leadToken = (lead || full).split(' ').filter(Boolean)[0] || '';
+  if (leadToken.length >= 3 && !GENERIC_NAME_TOKENS.has(leadToken)) variants.add(leadToken);
   return Array.from(variants);
 }
+
