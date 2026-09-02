@@ -368,7 +368,13 @@ serve(async (req: Request) => {
         && (event.owner_emails || []).every((email: string) => isBlockedPerson(email))) return false;
       const internal = (event.internal_emails || []) as string[];
       if (internal.length > 0 && internal.every((email) => isBlockedPerson(email))) return false;
+      // Drop internal-only meetings (every attendee is on an internal domain).
+      const domains = (event.attendees || [])
+        .map((person: any) => domainOf(person?.email))
+        .filter(Boolean) as string[];
+      if (domains.length > 0 && domains.every((domain) => INTERNAL_DOMAINS.has(domain))) return false;
       return true;
+
     });
     const events = await Promise.all(mergedEvents.map(async (event) => {
       const claap = matchClaap(event, byTitle);

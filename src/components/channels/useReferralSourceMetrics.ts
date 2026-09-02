@@ -415,11 +415,21 @@ export function useReferralSourceMetrics() {
   }, [sources, feeByDeal]);
 
   // ---- Per-user (internal host/attendee) filtering -------------------------
+  // Calendars explicitly excluded from referral meeting metrics — they must not
+  // appear as filter options either.
+  const EXCLUDED_OWNER_LOCALPARTS = new Set([
+    'abranch', 'aschiff', 'cminaldi', 'crichardson', 'jraskin', 'jrivera',
+    'sbhangale', 'kandil', 'mckenzie.clark', 'mclark',
+  ]);
   const internalEmailList = useMemo(() => {
     const set = new Set<string>();
-    meetings.forEach((m) => (m.internal_emails || []).forEach((e) => set.add(e)));
+    meetings.forEach((m) => (m.internal_emails || []).forEach((e) => {
+      const local = String(e || '').toLowerCase().split('@')[0];
+      if (!EXCLUDED_OWNER_LOCALPARTS.has(local)) set.add(e);
+    }));
     return Array.from(set).sort();
   }, [meetings]);
+
 
   const { data: internalProfiles = new Map<string, string>() } = useQuery({
     queryKey: ['referral_meeting_owner_profiles', internalEmailList.join(',')],
