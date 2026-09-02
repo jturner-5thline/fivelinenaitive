@@ -8,7 +8,7 @@
  * consumer (draft-deal-from-claap, the card header) sees the match.
  */
 import { useMemo, useState } from 'react';
-import { Video, Search, Loader2, Link2 } from 'lucide-react';
+import { Video, Search, Loader2, Link2, Cloud } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -16,11 +16,17 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
+import { useClaapRecordings } from '@/hooks/useClaapRecordings';
 import { toast } from 'sonner';
 
 export interface ClaapMatchCandidate {
   key: string;
-  kind: 'meeting' | 'recording';
+  /**
+   * `meeting` / `recording` are rows in the local mirror (uuid ids).
+   * `remote` is a recording that only exists in the Claap API right now —
+   * the consumer must materialize it into the mirror before drafting.
+   */
+  kind: 'meeting' | 'recording' | 'remote';
   id: string;
   title: string;
   when: string | null;
@@ -33,6 +39,7 @@ interface Props {
   label?: string;
   onLink: (candidate: ClaapMatchCandidate) => Promise<void> | void;
 }
+
 
 function fmt(when: string | null): string {
   if (!when) return '';
@@ -47,6 +54,7 @@ export function LinkClaapRecordingPopover({ defaultQuery = '', label = 'Link Cla
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(defaultQuery);
   const [linking, setLinking] = useState<string | null>(null);
+  const { fetchRecordings } = useClaapRecordings();
 
   const term = search.trim();
 
@@ -66,9 +74,14 @@ export function LinkClaapRecordingPopover({ defaultQuery = '', label = 'Link Cla
         .select('id, title, started_at, recording_url')
         .order('started_at', { ascending: false, nullsFirst: false })
         .limit(20);
-      const [m, r] = await Promise.all([
+      // Also ask the Claap API directly: recordings owned by teammates (or
+      // recorded after the last mirror sync) have no local row yet, so a
+      // mirror-only search silently hides them.
+      const liveQ = fetchRecordings(term || undefined, { live: true, limit: 30 }).catch(() => []);
+      const [m, r, live] = await Promise.all([
         term ? meetingsQ.ilike('title', like) : meetingsQ,
         term ? recsQ.ilike('title', like) : recsQ,
+        liveQ,
       ]);
       const out: ClaapMatchCandidate[] = [];
       const seen = new Set<string>();
@@ -87,6 +100,7 @@ export function LinkClaapRecordingPopover({ defaultQuery = '', label = 'Link Cla
       for (const row of r.data ?? []) {
         const title = (row.title as string) || 'Untitled recording';
         if (seen.has(title.toLowerCase())) continue;
+        seen.add(title.toLowerCase());
         out.push({
           key: `recording-${row.id}`,
           kind: 'recording',
@@ -96,9 +110,23 @@ export function LinkClaapRecordingPopover({ defaultQuery = '', label = 'Link Cla
           url: (row.recording_url as string) ?? null,
         });
       }
-      return out.slice(0, 30);
+      for (const rec of live as Array<any>) {
+        const title = (rec?.title as string) || 'Untitled recording';
+        if (!rec?.id || seen.has(title.toLowerCase())) continue;
+        seen.add(title.toLowerCase());
+        out.push({
+          key: `remote-${rec.id}`,
+          kind: 'remote',
+          id: String(rec.id),
+          title,
+          when: (rec?.meeting?.startingAt as string) || (rec?.createdAt as string) || null,
+          url: (rec?.url as string) ?? null,
+        });
+      }
+      return out.slice(0, 40);
     },
   });
+
 
   const empty = useMemo(() => !isFetching && candidates.length === 0, [isFetching, candidates.length]);
 
@@ -153,8 +181,11 @@ export function LinkClaapRecordingPopover({ defaultQuery = '', label = 'Link Cla
                     <span className="flex items-center gap-1.5 truncate text-xs font-medium text-foreground">
                       {linking === c.key ? (
                         <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                      ) : c.kind === 'remote' ? (
+                        <Cloud className="h-3 w-3 shrink-0 text-muted-foreground" />
                       ) : (
                         <Video className="h-3 w-3 shrink-0 text-muted-foreground" />
+
                       )}
                       <span className="truncate">{c.title}</span>
                     </span>

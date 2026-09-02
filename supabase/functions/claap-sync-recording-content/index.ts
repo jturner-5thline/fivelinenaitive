@@ -144,7 +144,44 @@ Deno.serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     updated = data?.[0] || null;
+
+    // Still nothing: the recording exists in Claap but was never mirrored
+    // (e.g. recorded by a teammate after the last sync). Materialize it so
+    // manual linking / drafting can resolve a canonical row.
+    if (!updated) {
+      const orgCompanyId = (body.org_company_id as string | undefined) || null;
+      if (orgCompanyId) {
+        const raw = (normalized.raw ?? {}) as any;
+        const { data: inserted, error: insErr } = await supabase
+          .from("claap_recordings")
+          .upsert({
+            org_company_id: orgCompanyId,
+            external_id: externalId,
+            title: normalized.title,
+            started_at: raw?.meeting?.startingAt || raw?.createdAt || null,
+            ended_at: raw?.meeting?.endingAt || null,
+            organizer_email: raw?.recorder?.email || null,
+            participants: raw?.meeting?.participants || [],
+            source_payload: {
+              url: normalized.url,
+              thumbnailUrl: raw?.thumbnailUrl ?? null,
+              durationSeconds: raw?.durationSeconds ?? null,
+            },
+            status: "linked",
+            ...update,
+          }, { onConflict: "org_company_id,external_id" })
+          .select()
+          .maybeSingle();
+        if (insErr) {
+          return new Response(JSON.stringify({ ok: false, error: insErr.message }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        updated = inserted;
+        if (updated?.id) await markHydrated(updated.id);
+      }
+    }
   }
+
 
   return new Response(JSON.stringify({
     ok: true,
