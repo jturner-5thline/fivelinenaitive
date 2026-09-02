@@ -110,169 +110,110 @@ export function useReferralSourceMetrics() {
   //  • internal calls (all attendees on an internal domain)
   //  • existing client calls (an attendee shares the email domain of a client
   //    contact on a deal in the Active or In Development pipelines)
-  const { data: meetings = [], isLoading: meetingsLoading } = useQuery({
+  const { data: meetings = [], isLoading: meetingsLoading } = useQuery<MeetingRow[]>({
     queryKey: [
-      'referral_source_meetings_v7',
+      'referral_source_meetings_calendar_v1',
       company?.id,
       start?.toISOString() ?? null,
       end?.toISOString() ?? null,
     ],
-    enabled: !!company?.id,
+    enabled: !!company?.id && !!start && !!end,
     queryFn: async () => {
-      let q = supabase
-        .from('claap_meetings')
-        .select('id, title, started_at, matched_contact_id, matched_crm_company_id, organizer_email')
-        .eq('company_id', company!.id);
-
-      if (start) q = q.gte('started_at', start.toISOString());
-      if (end) q = q.lte('started_at', end.toISOString());
-      const { data, error } = await q;
+      const { data, error } = await supabase.functions.invoke('calendar-meetings-all', {
+        body: {
+          company_id: company!.id,
+          time_min: start!.toISOString(),
+          time_max: end!.toISOString(),
+        },
+      });
       if (error) throw error;
-      const all = (data || []) as MeetingRow[];
+      const all = (data?.events || []) as any[];
       if (all.length === 0) return [];
 
-      // 1) Drop sales-titled calls and internal "Deal Sync" style calls.
       const SALES_TITLE = /<>\s*(5th\s*line|5thline|naitive)/i;
       const DEAL_SYNC_TITLE = /deal\s*sync/i;
-      let candidates = all.filter(
-        (m) => !SALES_TITLE.test(m.title || '') && !DEAL_SYNC_TITLE.test(m.title || ''),
-      );
+      let candidates = all
+        .filter((event) => !SALES_TITLE.test(event.title || '') && !DEAL_SYNC_TITLE.test(event.title || ''))
+        .map((event) => ({
+          ...event,
+          id: String(event.id),
+          started_at: event.start || null,
+          matched_contact_id: event.matched_contact_id || null,
+          matched_crm_company_id: event.matched_crm_company_id || null,
+          organizer_email: event.organizer_email || null,
+          internal_emails: Array.isArray(event.internal_emails) ? event.internal_emails : [],
+        })) as MeetingRow[];
       if (candidates.length === 0) return [];
 
-      // 1b) Drop calls whose title mentions an existing deal name.
       const { data: dealNameRows } = await supabase
         .from('deals')
         .select('company')
         .eq('company_id', company!.id)
         .not('company', 'is', null);
-      const dealNames = Array.from(
-        new Set(
-          (dealNameRows || [])
-            .map((d: any) => normalizeEntityName(String(d.company || '')))
-            .filter((n) => n.length >= 4 && !isExcludedDealName(n)),
-        ),
-      );
+      const dealNames = Array.from(new Set((dealNameRows || [])
+        .map((d: any) => normalizeEntityName(String(d.company || '')))
+        .filter((n) => n.length >= 4 && !isExcludedDealName(n))));
       if (dealNames.length > 0) {
         candidates = candidates.filter((m) => {
-          const t = normalizeEntityName(m.title || '');
-          if (!t) return true;
-          return !dealNames.some((n) => titleMatchesEntity(t, n));
+          const title = normalizeEntityName(m.title || '');
+          return !title || !dealNames.some((name) => titleMatchesEntity(title, name));
         });
       }
       if (candidates.length === 0) return [];
 
-
-      // Attendees for the remaining meetings.
-      const ids = candidates.map((m) => m.id);
-      const attendees = new Map<string, string[]>();
-      const internalEmails = new Map<string, Set<string>>();
-      for (let i = 0; i < ids.length; i += 200) {
-        const { data: parts, error: pErr } = await supabase
-          .from('claap_meeting_participants')
-          .select('meeting_id, email')
-          .in('meeting_id', ids.slice(i, i + 200));
-        if (pErr) throw pErr;
-        for (const p of (parts || []) as { meeting_id: string; email: string | null }[]) {
-          const d = domainOf(p.email);
-          if (!d) continue;
-          const arr = attendees.get(p.meeting_id) || [];
-          arr.push(d);
-          attendees.set(p.meeting_id, arr);
-          if (INTERNAL_DOMAINS.has(d) && p.email) {
-            const set = internalEmails.get(p.meeting_id) || new Set<string>();
-            set.add(p.email.trim().toLowerCase());
-            internalEmails.set(p.meeting_id, set);
-          }
-        }
-      }
-
-
-      // Client contact domains from Active / In Development pipeline deals.
+      const clientDomains = new Set<string>();
       const { data: pipelines } = await supabase
-        .from('deal_pipelines')
-        .select('id, name')
-        .eq('company_id', company!.id);
+        .from('deal_pipelines').select('id, name').eq('company_id', company!.id);
       const pipelineIds = (pipelines || [])
         .filter((p: any) => /^(active|in development)/i.test(String(p.name || '')))
         .map((p: any) => p.id as string);
-      const clientDomains = new Set<string>();
       if (pipelineIds.length > 0) {
-        const { data: clientDeals } = await supabase
-          .from('deals')
-          .select('contact_email')
-          .in('pipeline_id', pipelineIds)
-          .not('contact_email', 'is', null);
-        for (const d of (clientDeals || []) as { contact_email: string | null }[]) {
-          const dom = domainOf(d.contact_email);
-          if (dom && !INTERNAL_DOMAINS.has(dom)) clientDomains.add(dom);
+        const { data: clientDeals } = await supabase.from('deals')
+          .select('contact_email').in('pipeline_id', pipelineIds).not('contact_email', 'is', null);
+        for (const deal of (clientDeals || []) as { contact_email: string | null }[]) {
+          const domain = domainOf(deal.contact_email);
+          if (domain && !INTERNAL_DOMAINS.has(domain)) clientDomains.add(domain);
         }
       }
 
-      // 4) Funding sources (lenders): exclude by attendee domain, matched contact,
-      //    or a funding-source name appearing in the call title.
       const lenderDomains = new Set<string>();
       const lenderNames = new Set<string>();
       const lenderContactIds = new Set<string>();
-      const { data: lenders } = await supabase
-        .from('master_lenders')
-        .select('id, name, email, website');
-      for (const l of (lenders || []) as any[]) {
-        for (const raw of [l.email, l.website]) {
-          const dom = domainOf(
-            typeof raw === 'string' && raw.includes('@')
-              ? raw
-              : `x@${String(raw || '').replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0]}`,
-          );
-          if (dom && !INTERNAL_DOMAINS.has(dom)) lenderDomains.add(dom);
+      const { data: lenders } = await supabase.from('master_lenders').select('id, name, email, website');
+      for (const lender of (lenders || []) as any[]) {
+        for (const raw of [lender.email, lender.website]) {
+          const domain = domainOf(typeof raw === 'string' && raw.includes('@')
+            ? raw
+            : `x@${String(raw || '').replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0]}`);
+          if (domain && !INTERNAL_DOMAINS.has(domain)) lenderDomains.add(domain);
         }
-        for (const alias of fundingSourceTitleAliases(String(l.name || ''))) {
-          lenderNames.add(alias);
-        }
+        for (const alias of fundingSourceTitleAliases(String(lender.name || ''))) lenderNames.add(alias);
       }
-      const { data: lenderPeople } = await supabase
-        .from('lender_contacts')
-        .select('email, contact_id');
-      for (const c of (lenderPeople || []) as any[]) {
-        const dom = domainOf(c.email);
-        if (dom && !INTERNAL_DOMAINS.has(dom)) lenderDomains.add(dom);
-        if (c.contact_id) lenderContactIds.add(c.contact_id as string);
+      const { data: lenderPeople } = await supabase.from('lender_contacts').select('email, contact_id');
+      for (const person of (lenderPeople || []) as any[]) {
+        const domain = domainOf(person.email);
+        if (domain && !INTERNAL_DOMAINS.has(domain)) lenderDomains.add(domain);
+        if (person.contact_id) lenderContactIds.add(person.contact_id);
       }
-      const { data: lenderContactRows } = await supabase
-        .from('contacts')
-        .select('id, email')
-        .eq('company_id', company!.id)
-        .ilike('contact_type', '%lender%');
-      for (const c of (lenderContactRows || []) as any[]) {
-        lenderContactIds.add(c.id as string);
-        const dom = domainOf(c.email);
-        if (dom && !INTERNAL_DOMAINS.has(dom)) lenderDomains.add(dom);
+      const { data: lenderContacts } = await supabase.from('contacts')
+        .select('id, email').eq('company_id', company!.id).ilike('contact_type', '%lender%');
+      for (const contact of (lenderContacts || []) as any[]) {
+        lenderContactIds.add(contact.id);
+        const domain = domainOf(contact.email);
+        if (domain && !INTERNAL_DOMAINS.has(domain)) lenderDomains.add(domain);
       }
 
-      return candidates
-        .filter((m) => {
-          const title = normalizeEntityName(m.title || '');
-          // Funding-source name in the title.
-          if (title && [...lenderNames].some((n) => titleMatchesEntity(title, n))) return false;
-          // Meeting matched directly to a funding-source contact.
-          if (m.matched_contact_id && lenderContactIds.has(m.matched_contact_id)) return false;
-          const doms = attendees.get(m.id) || [];
-          if (doms.length === 0) return true; // unknown attendees — keep
-          // 2) internal-only calls
-          if (doms.every((d) => INTERNAL_DOMAINS.has(d))) return false;
-          // 3) existing client calls
-          if (doms.some((d) => clientDomains.has(d))) return false;
-          // 4) funding-source attendees
-          if (doms.some((d) => lenderDomains.has(d))) return false;
-          return true;
-        })
-        .map((m) => {
-          const set = new Set(internalEmails.get(m.id) || []);
-          const organizer = (m.organizer_email || '').trim().toLowerCase();
-          if (organizer && INTERNAL_DOMAINS.has(domainOf(organizer) || '')) set.add(organizer);
-          return { ...m, internal_emails: Array.from(set) };
-        });
-
-
+      return candidates.filter((meeting) => {
+        const title = normalizeEntityName(meeting.title || '');
+        if (title && [...lenderNames].some((name) => titleMatchesEntity(title, name))) return false;
+        if (meeting.matched_contact_id && lenderContactIds.has(meeting.matched_contact_id)) return false;
+        const domains = ((meeting as any).attendee_domains || []) as string[];
+        if (domains.length === 0) return true;
+        if (domains.every((domain) => INTERNAL_DOMAINS.has(domain))) return false;
+        if (domains.some((domain) => clientDomains.has(domain))) return false;
+        if (domains.some((domain) => lenderDomains.has(domain))) return false;
+        return true;
+      });
     },
   });
 
