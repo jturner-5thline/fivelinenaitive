@@ -35,6 +35,7 @@ interface MeetingRow {
   /** Internal (5th Line) attendee emails — used for per-user filtering. */
   internal_emails?: string[];
   recording_url?: string | null;
+  transcript?: string | null;
   transcript_available?: boolean;
   claap_meeting_id?: string | null;
 }
