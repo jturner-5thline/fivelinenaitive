@@ -54,7 +54,10 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
   const currentYear = now.getFullYear();
 
   // Years to expose for Month/Quarter (current + 1 prior).
-  const years = useMemo(() => [currentYear, currentYear - 1], [currentYear]);
+  const years = useMemo(
+    () => Array.from(new Set([currentYear, currentYear - 1, currentYear - 2, 2024])).sort((a, b) => b - a),
+    [currentYear],
+  );
 
   // Year tab state for the Month grid and Quarter row.
   const initialYear = useMemo(() => {
