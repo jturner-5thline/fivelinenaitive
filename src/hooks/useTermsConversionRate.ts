@@ -280,7 +280,9 @@ export function useTermsConversionRate(period?: TermsConversionPeriod | null): T
       avgValue: avg === null ? '—' : avg.toFixed(1),
       numeratorDeals: data?.numeratorDeals ?? [],
       denominatorDeals: data?.denominatorDeals ?? [],
+      periodLabel,
       isLoading: loading,
     };
-  }, [data, isLoading, isFetching]);
+  }, [data, isLoading, isFetching, periodLabel]);
+
 }
