@@ -184,12 +184,20 @@ export function useReferralSourceMetrics() {
       };
       // Client identity is sourced from every deal in this workspace, not just
       // the currently active pipelines, so older clients are excluded as well.
-      const { data: clientDeals } = await supabase.from('deals')
-        .select('id, contact_email, company_url, crm_company_id')
-        .eq('company_id', company!.id)
-        .limit(5000);
+      const clientDeals: any[] = [];
+      for (let page = 0; page < 20; page += 1) {
+        const from = page * 1000;
+        const { data: chunk } = await supabase.from('deals')
+          .select('id, contact_email, company_url, crm_company_id')
+          .eq('company_id', company!.id)
+          .range(from, from + 999);
+        if (!chunk || chunk.length === 0) break;
+        clientDeals.push(...(chunk as any[]));
+        if (chunk.length < 1000) break;
+      }
       {
         const dealRows = (clientDeals || []) as any[];
+
         for (const deal of dealRows) {
           addEmailDomain(deal.contact_email);
           addWebsiteDomain(deal.company_url);
