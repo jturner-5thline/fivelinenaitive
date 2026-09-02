@@ -181,8 +181,11 @@ export function LinkClaapRecordingPopover({ defaultQuery = '', label = 'Link Cla
                     <span className="flex items-center gap-1.5 truncate text-xs font-medium text-foreground">
                       {linking === c.key ? (
                         <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                      ) : c.kind === 'remote' ? (
+                        <Cloud className="h-3 w-3 shrink-0 text-muted-foreground" />
                       ) : (
                         <Video className="h-3 w-3 shrink-0 text-muted-foreground" />
+
                       )}
                       <span className="truncate">{c.title}</span>
                     </span>
