@@ -6,6 +6,32 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 const INTERNAL_DOMAINS = new Set(["5thline.co", "naitive.co", "5l.co"]);
+// Only these team calendars are authoritative for the referral-source metric.
+// Match both email aliases and display names because older grants do not always
+// have a corresponding profile email.
+const ALLOWED_OWNER_EMAILS = new Set([
+  "cminaldi@5thline.co",
+  "chandler.minaldi@5thline.co",
+  "chandler@5thline.co",
+  "ffustinoni@5thline.co",
+  "jmoffitt@5thline.co",
+  "jturner@5thline.co",
+  "nheikali@5thline.co",
+  "ppina@5thline.co",
+  "swilliams@5thline.co",
+  "klawless@5thline.co",
+  "klawless@naitive.co",
+]);
+const ALLOWED_OWNER_NAMES = new Set([
+  "chandler minaldi",
+  "flor fustinoni",
+  "john moffitt",
+  "james turner",
+  "niki heikali",
+  "paz pina",
+  "scott williams",
+  "klawless",
+]);
 const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
 const NYLAS_API_URI = "https://api.us.nylas.com";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
