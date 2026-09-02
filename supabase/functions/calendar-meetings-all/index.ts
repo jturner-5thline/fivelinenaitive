@@ -358,8 +358,21 @@ serve(async (req: Request) => {
       byTitle.set(key, rows);
     }
 
-    const events = await Promise.all(Array.from(merged.values()).map(async (event) => {
+    const isBlockedPerson = (email?: string | null) =>
+      BLOCKED_OWNER_LOCALPARTS.has(localPartOf(email));
+    const mergedEvents = Array.from(merged.values()).filter((event: any) => {
+      // Drop anything organized by an excluded calendar owner, and anything whose
+      // only internal participants are excluded people.
+      if (isBlockedPerson(event.organizer_email)) return false;
+      if ((event.owner_emails || []).length > 0
+        && (event.owner_emails || []).every((email: string) => isBlockedPerson(email))) return false;
+      const internal = (event.internal_emails || []) as string[];
+      if (internal.length > 0 && internal.every((email) => isBlockedPerson(email))) return false;
+      return true;
+    });
+    const events = await Promise.all(mergedEvents.map(async (event) => {
       const claap = matchClaap(event, byTitle);
+
       return {
         id: claap?.id || await stableUuid(`${companyId}|${event.source_key}`),
         calendar_event_id: event.source_id,
