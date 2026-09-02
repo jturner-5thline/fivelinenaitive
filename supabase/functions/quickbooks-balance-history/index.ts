@@ -98,31 +98,46 @@ serve(async (req) => {
     // Fetch balance sheet as-of each supplied date. QBO's BalanceSheet is
     // point-in-time — pass the same date as start_date and end_date so the
     // report resolves to a true "as of <date>" snapshot.
-    const results: Array<{ asOf: string; report: any | null; error?: string }> = [];
-    for (const asOf of asOfDates) {
+    const dates: string[] = asOfDates.slice(0, 36);
+    const results: Array<{ asOf: string; report: any | null; error?: string }> = new Array(dates.length);
+
+    const fetchOne = async (asOf: string, index: number) => {
+      const params = new URLSearchParams({
+        start_date: asOf,
+        end_date: asOf,
+        accounting_method: accounting_method || "Accrual",
+      });
+      const url = `${QB_API_BASE}/${realmId}/reports/BalanceSheet?${params.toString()}`;
       try {
-        const params = new URLSearchParams({
-          start_date: asOf,
-          end_date: asOf,
-          accounting_method: accounting_method || "Accrual",
-        });
-        const url = `${QB_API_BASE}/${realmId}/reports/BalanceSheet?${params.toString()}`;
         const res = await fetch(url, {
           headers: { "Authorization": `Bearer ${accessToken}`, "Accept": "application/json" },
+          signal: AbortSignal.timeout(20_000),
         });
         if (!res.ok) {
           const errText = await res.text();
           console.error(`[qbo-balance-history] BS ${asOf} failed:`, errText);
-          results.push({ asOf, report: null, error: `HTTP ${res.status}` });
-          continue;
+          results[index] = { asOf, report: null, error: `HTTP ${res.status}` };
+          return;
         }
-        const report = await res.json();
-        results.push({ asOf, report });
+        results[index] = { asOf, report: await res.json() };
       } catch (e) {
         console.error(`[qbo-balance-history] BS ${asOf} exception:`, e);
-        results.push({ asOf, report: null, error: String(e) });
+        results[index] = { asOf, report: null, error: String(e) };
       }
-    }
+    };
+
+    // Bounded concurrency — QBO rate-limits ~500 req/min per realm, but 6 in
+    // flight keeps us well inside the 150s edge idle timeout for 36 months.
+    const CONCURRENCY = 6;
+    let cursor = 0;
+    await Promise.all(
+      Array.from({ length: Math.min(CONCURRENCY, dates.length) }, async () => {
+        while (cursor < dates.length) {
+          const i = cursor++;
+          await fetchOne(dates[i], i);
+        }
+      }),
+    );
 
     return new Response(JSON.stringify({ results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
