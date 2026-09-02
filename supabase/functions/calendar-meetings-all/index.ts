@@ -405,10 +405,20 @@ serve(async (req: Request) => {
       "health", "digital", "studio", "studios", "project", "projects", "sync", "review",
     ]);
     const dealIds: string[] = [];
-    const crmCompanyIds: string[] = [];
+    const crmCompanyIds = new Set<string>(
+      claapRows.map((row) => row.matched_crm_company_id).filter(Boolean),
+    );
+    const linkedContactIds = new Set<string>();
+    for (const row of claapRows) if (row.matched_contact_id) linkedContactIds.add(row.matched_contact_id);
+    const addContactDetails = (row: any) => {
+      addClientEmail(row.email);
+      for (const extra of row.additional_emails || []) addClientEmail(extra);
+      addClientDomainFromUrl(row.website_url);
+      if (row.crm_company_id) crmCompanyIds.add(row.crm_company_id);
+    };
     for (const deal of dealRows) {
       dealIds.push(deal.id);
-      if (deal.crm_company_id) crmCompanyIds.push(deal.crm_company_id);
+      if (deal.crm_company_id) crmCompanyIds.add(deal.crm_company_id);
       // Deal names are often "Client-Project"; invites usually mention only the
       // client part, so index the full name, the leading segment, and the
       // distinctive first word ("Microvi", "ODK").
@@ -423,23 +433,22 @@ serve(async (req: Request) => {
       addClientEmail(deal.contact_email);
     }
 
-    if (dealIds.length) {
+    // Resolve deal-linked and Claap-matched contacts. Their crm_company_id is
+    // the authoritative affiliation key; all contacts at that CRM company are
+    // included below, catching affiliated attendees who are not deal-linked.
+    for (let i = 0; i < dealIds.length; i += 500) {
       const { data: links } = await admin
-        .from("contact_deals")
-        .select("contact_id")
-        .in("deal_id", dealIds.slice(0, 2000));
-      const contactIds = Array.from(new Set((links || []).map((row: any) => row.contact_id).filter(Boolean)));
-      for (let i = 0; i < contactIds.length; i += 500) {
-        const { data: contactRows } = await admin
-          .from("contacts").select("email, additional_emails, website_url").in("id", contactIds.slice(i, i + 500));
-        for (const row of (contactRows || []) as any[]) {
-          addClientEmail(row.email);
-          for (const extra of row.additional_emails || []) addClientEmail(extra);
-          addClientDomainFromUrl(row.website_url);
-        }
-      }
+        .from("contact_deals").select("contact_id").in("deal_id", dealIds.slice(i, i + 500));
+      for (const link of (links || []) as any[]) if (link.contact_id) linkedContactIds.add(link.contact_id);
     }
-    const uniqueCrmIds = Array.from(new Set(crmCompanyIds));
+    const linkedIds = Array.from(linkedContactIds);
+    for (let i = 0; i < linkedIds.length; i += 500) {
+      const { data: contactRows } = await admin
+        .from("contacts").select("email, additional_emails, website_url, crm_company_id").in("id", linkedIds.slice(i, i + 500));
+      for (const row of (contactRows || []) as any[]) addContactDetails(row);
+    }
+
+    const uniqueCrmIds = Array.from(crmCompanyIds);
     for (let i = 0; i < uniqueCrmIds.length; i += 500) {
       const slice = uniqueCrmIds.slice(i, i + 500);
       const { data: companyRows } = await admin

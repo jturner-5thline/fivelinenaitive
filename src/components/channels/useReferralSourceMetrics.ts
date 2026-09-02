@@ -110,7 +110,7 @@ export function useReferralSourceMetrics() {
   // available so the meeting remains visible even when it was not recorded.
   const { data: meetings = [], isLoading: meetingsLoading } = useQuery<MeetingRow[]>({
     queryKey: [
-      'referral_source_meetings_calendar_v4',
+      'referral_source_meetings_calendar_v5',
       company?.id,
       start?.toISOString() ?? null,
       end?.toISOString() ?? null,
@@ -203,26 +203,43 @@ export function useReferralSourceMetrics() {
           addWebsiteDomain(deal.company_url);
         }
         const dealIds = dealRows.map((deal) => deal.id).filter(Boolean);
-        if (dealIds.length > 0) {
+        const crmCompanyIds = new Set<string>([
+          ...dealRows.map((deal) => deal.crm_company_id).filter(Boolean),
+          ...candidates.map((meeting) => meeting.matched_crm_company_id).filter(Boolean),
+        ]);
+        const linkedContactIds = new Set<string>(
+          candidates.map((meeting) => meeting.matched_contact_id).filter(Boolean),
+        );
+        const addContactDetails = (contact: any) => {
+          addEmailDomain(contact.email);
+          for (const email of contact.additional_emails || []) addEmailDomain(email);
+          addWebsiteDomain(contact.website_url);
+          if (contact.crm_company_id) crmCompanyIds.add(contact.crm_company_id);
+        };
+
+        // Start with deal-linked contacts plus any contact identified by Claap.
+        // Their crm_company_id is the authoritative affiliation key, and then
+        // every contact at that CRM company is included below.
+        for (let offset = 0; offset < dealIds.length; offset += 500) {
           const { data: links } = await supabase
-            .from('contact_deals').select('deal_id, contact_id').in('deal_id', dealIds);
-          const contactIds = Array.from(new Set((links || []).map((link: any) => link.contact_id).filter(Boolean)));
-          if (contactIds.length > 0) {
-            const { data: contacts } = await supabase
-              .from('contacts').select('email, additional_emails, website_url, crm_company_id, primary_company_id').in('id', contactIds);
-            for (const contact of (contacts || []) as any[]) {
-              addEmailDomain(contact.email);
-              for (const email of contact.additional_emails || []) addEmailDomain(email);
-              addWebsiteDomain(contact.website_url);
-            }
-          }
+            .from('contact_deals').select('contact_id').in('deal_id', dealIds.slice(offset, offset + 500));
+          for (const link of (links || []) as any[]) if (link.contact_id) linkedContactIds.add(link.contact_id);
         }
-        const crmCompanyIds = Array.from(new Set(dealRows.map((deal) => deal.crm_company_id).filter(Boolean)));
-        if (crmCompanyIds.length > 0) {
+        const linkedIds = Array.from(linkedContactIds);
+        for (let offset = 0; offset < linkedIds.length; offset += 500) {
+          const slice = linkedIds.slice(offset, offset + 500);
+          const { data: contacts } = await supabase
+            .from('contacts').select('email, additional_emails, website_url, crm_company_id').in('id', slice);
+          for (const contact of (contacts || []) as any[]) addContactDetails(contact);
+        }
+
+        const uniqueCrmCompanyIds = Array.from(crmCompanyIds);
+        for (let offset = 0; offset < uniqueCrmCompanyIds.length; offset += 500) {
+          const slice = uniqueCrmCompanyIds.slice(offset, offset + 500);
           const { data: crmCompanies } = await supabase
             .from('crm_companies')
             .select('website_url, domain, domain_normalized, additional_domains, main_contact_email')
-            .in('id', crmCompanyIds);
+            .in('id', slice);
           for (const crmCompany of (crmCompanies || []) as any[]) {
             addWebsiteDomain(crmCompany.website_url);
             addWebsiteDomain(crmCompany.domain);
@@ -230,11 +247,10 @@ export function useReferralSourceMetrics() {
             for (const extra of crmCompany.additional_domains || []) addWebsiteDomain(extra);
             addEmailDomain(crmCompany.main_contact_email);
           }
-          // Contacts attached to a client company count as client contacts too.
+          // Include every contact at each client CRM company, not only the
+          // contact that happened to be linked to the deal.
           const { data: companyContacts } = await supabase
-            .from('contacts')
-            .select('email, additional_emails, website_url')
-            .in('crm_company_id', crmCompanyIds);
+            .from('contacts').select('email, additional_emails, website_url').in('crm_company_id', slice);
           for (const contact of (companyContacts || []) as any[]) {
             addEmailDomain(contact.email);
             for (const email of contact.additional_emails || []) addEmailDomain(email);
