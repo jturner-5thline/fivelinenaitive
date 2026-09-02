@@ -282,8 +282,11 @@ serve(async (req: Request) => {
       const names = [profile.display_name, profile.full_name]
         .map((value) => normalizeOwnerName(value))
         .filter(Boolean);
+      if (emails.some((email) => BLOCKED_OWNER_LOCALPARTS.has(localPartOf(email)))) return false;
+      if (names.some((name) => BLOCKED_OWNER_NAMES.has(name))) return false;
       return emails.some((email) => ALLOWED_OWNER_EMAILS.has(email))
         || names.some((name) => ALLOWED_OWNER_NAMES.has(name));
+
     });
     const uniqueGrants = Array.from(new Map(grantRows.map((row: any) => [row.grant_id, row])).values());
     const startUnix = Math.floor(start.getTime() / 1000);
