@@ -41,11 +41,14 @@ function isNearToken(left: string, right: string) {
 /** True when a normalized title mentions the normalized entity name. */
 export function titleMatchesEntity(title: string, entityName: string) {
   if (!title || !entityName) return false;
-  if (title.includes(entityName)) return true;
 
   const titleTokens = title.split(' ').filter(Boolean);
   const entityTokens = entityName.split(' ').filter(Boolean);
   if (entityTokens.length === 0) return false;
+  // Single-word keys must match a whole word so "ODK" never hits "Brodkin".
+  if (entityTokens.length === 1) return titleTokens.includes(entityTokens[0]);
+  if (title.includes(entityName)) return true;
+
 
   // Match independently of word order and tolerate a one-character typo in
   // meaningful words (for example, "Bar Back Project" vs "Back Bar Project").
