@@ -233,16 +233,22 @@ export function useReferralSourceMetrics() {
       }
 
       return candidates.filter((meeting) => {
+        const rawTitle = String(meeting.title || '').trim().toLowerCase();
+        if (rawTitle === 'block' || rawTitle === 'blocked') return false;
         const title = normalizeEntityName(meeting.title || '');
         if (title && [...lenderNames].some((name) => titleMatchesEntity(title, name))) return false;
         if (meeting.matched_contact_id && lenderContactIds.has(meeting.matched_contact_id)) return false;
         const domains = ((meeting as any).attendee_domains || []) as string[];
+        const attendeeCount = Array.isArray((meeting as any).attendees) ? (meeting as any).attendees.length : 0;
+        // Exclude events with no attendees (personal holds/blocks)
+        if (attendeeCount === 0 && domains.length === 0) return false;
         if (domains.length === 0) return true;
         if (domains.every((domain) => INTERNAL_DOMAINS.has(domain))) return false;
         if (domains.some((domain) => clientDomains.has(domain))) return false;
         if (domains.some((domain) => lenderDomains.has(domain))) return false;
         return true;
       });
+
     },
   });
 
