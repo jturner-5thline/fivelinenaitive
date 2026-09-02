@@ -82,12 +82,31 @@ export function CreateDealApprovalCard({ item }: Props) {
   const hasClaapMatch = !!manualMatch || !!source.claap_meeting_id || !!fallbackMeeting;
 
   async function linkClaapCandidate(candidate: ClaapMatchCandidate) {
+    let resolved = candidate;
+    if (candidate.kind === 'remote') {
+      // The pick only exists in Claap right now — mirror it locally first so
+      // downstream drafting can resolve a canonical recording row.
+      const { data, error: syncErr } = await supabase.functions.invoke('claap-sync-recording-content', {
+        body: {
+          external_id: candidate.id,
+          priority: 'high',
+          force: true,
+          org_company_id: company?.id ?? null,
+        },
+      });
+      const mirroredId = (data as any)?.recording_id as string | undefined;
+      if (syncErr || !mirroredId) {
+        throw new Error((data as any)?.error || syncErr?.message || 'Could not sync that Claap recording');
+      }
+      resolved = { ...candidate, kind: 'recording', id: mirroredId };
+    }
+
     const nextSource = {
       ...source,
-      claap_meeting_title: candidate.title,
-      ...(candidate.kind === 'meeting'
-        ? { claap_meeting_id: candidate.id }
-        : { claap_recording_id: candidate.id }),
+      claap_meeting_title: resolved.title,
+      ...(resolved.kind === 'meeting'
+        ? { claap_meeting_id: resolved.id }
+        : { claap_recording_id: resolved.id }),
       claap_linked_manually: true,
     };
     const { error } = await supabase
@@ -95,12 +114,13 @@ export function CreateDealApprovalCard({ item }: Props) {
       .update({ source: nextSource as never })
       .eq('id', item.id);
     if (error) throw error;
-    setManualMatch(candidate);
+    setManualMatch(resolved);
     qc.invalidateQueries({ queryKey: ['ai-action-queue'] });
-    toast.success(`Linked “${candidate.title}”`);
+    toast.success(`Linked “${resolved.title}”`);
     autoDrafted.current = true;
-    await draftFromClaap(true, candidate);
+    await draftFromClaap(true, resolved);
   }
+
 
 
   // The narrative (and other AI-drafted fields) are only filled by the
