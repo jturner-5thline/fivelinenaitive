@@ -358,6 +358,78 @@ serve(async (req: Request) => {
       byTitle.set(key, rows);
     }
 
+    // ---- Client exclusions: deals in any pipeline (name in title, or client contact email/domain) ----
+    const GENERIC_DOMAINS = new Set([
+      "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "aol.com", "icloud.com",
+      "me.com", "msn.com", "live.com", "proton.me", "protonmail.com", "comcast.net",
+    ]);
+    const clientDomains = new Set<string>();
+    const clientEmails = new Set<string>();
+    const dealNameTitles: string[] = [];
+    const addClientEmail = (value?: string | null) => {
+      const email = String(value || "").trim().toLowerCase();
+      if (!email.includes("@")) return;
+      const domain = domainOf(email);
+      if (!domain) return;
+      if (INTERNAL_DOMAINS.has(domain)) return;
+      clientEmails.add(email);
+      if (!GENERIC_DOMAINS.has(domain)) clientDomains.add(domain);
+    };
+    const addClientDomainFromUrl = (value?: string | null) => {
+      const raw = String(value || "").trim().toLowerCase();
+      if (!raw) return;
+      const host = raw.replace(/^https?:\/\//, "").replace(/^www\./, "").split(/[/?#]/)[0];
+      if (!host || !host.includes(".")) return;
+      if (INTERNAL_DOMAINS.has(host) || GENERIC_DOMAINS.has(host)) return;
+      clientDomains.add(host);
+    };
+    const { data: dealRows } = await admin
+      .from("deals")
+      .select("id, company, company_url, contact_email, crm_company_id")
+      .eq("company_id", companyId)
+      .limit(5000);
+    const dealIds: string[] = [];
+    for (const deal of (dealRows || []) as any[]) {
+      dealIds.push(deal.id);
+      const normalizedName = normalizeTitle(deal.company);
+      if (normalizedName && normalizedName.replace(/\s/g, "").length >= 4) dealNameTitles.push(normalizedName);
+      addClientDomainFromUrl(deal.company_url);
+      addClientEmail(deal.contact_email);
+    }
+    if (dealIds.length) {
+      const { data: links } = await admin
+        .from("contact_deals")
+        .select("contact_id")
+        .in("deal_id", dealIds.slice(0, 2000));
+      const contactIds = Array.from(new Set((links || []).map((row: any) => row.contact_id).filter(Boolean)));
+      for (let i = 0; i < contactIds.length; i += 500) {
+        const { data: contactRows } = await admin
+          .from("contacts").select("email").in("id", contactIds.slice(i, i + 500));
+        for (const row of (contactRows || []) as any[]) addClientEmail(row.email);
+      }
+    }
+    const titleMatchesDeal = (title?: string | null) => {
+      const normalized = normalizeTitle(title);
+      if (!normalized) return false;
+      const padded = ` ${normalized} `;
+      return dealNameTitles.some((name) => padded.includes(` ${name} `));
+    };
+    const isClientEvent = (event: any) => {
+      if (titleMatchesDeal(event.title)) return true;
+      const people = [
+        ...(event.attendees || []).map((person: any) => person?.email),
+        event.organizer_email,
+      ];
+      for (const value of people) {
+        const email = String(value || "").trim().toLowerCase();
+        if (!email) continue;
+        if (clientEmails.has(email)) return true;
+        const domain = domainOf(email);
+        if (domain && clientDomains.has(domain)) return true;
+      }
+      return false;
+    };
+
     const isBlockedPerson = (email?: string | null) =>
       BLOCKED_OWNER_LOCALPARTS.has(localPartOf(email));
     const mergedEvents = Array.from(merged.values()).filter((event: any) => {
@@ -373,9 +445,12 @@ serve(async (req: Request) => {
         .map((person: any) => domainOf(person?.email))
         .filter(Boolean) as string[];
       if (domains.length > 0 && domains.every((domain) => INTERNAL_DOMAINS.has(domain))) return false;
+      // Drop client calls (deal name in the title, or a client contact/domain attending).
+      if (isClientEvent(event)) return false;
       return true;
 
     });
+
     const events = await Promise.all(mergedEvents.map(async (event) => {
       const claap = matchClaap(event, byTitle);
 
