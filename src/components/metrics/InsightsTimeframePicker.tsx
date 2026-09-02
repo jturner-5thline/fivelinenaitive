@@ -84,63 +84,34 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
     setOpen(false);
   };
 
-  // Two-click range model: clicking the first chip sets the anchor (single
-  // selection); clicking a second chip in the same view forms the contiguous
-  // range min..max (always sequential because the in-between months/quarters
-  // are implicitly included). Clicking the existing single confirms & closes.
-  const selectMonth = (year: number, month1: number) => {
-    const token = `${year}-${pad(month1)}`;
+  // Range model: the first chip sets the anchor; every later chip extends the
+  // contiguous range to include it (so you can select 3, 4, or more periods).
+  // Clicking an endpoint of an existing range trims back to the other endpoint.
+  // The popover stays open so ranges can be built up freely.
+  const extendSelection = (view: 'month' | 'quarter', token: string) => {
+    const make = (p: string, pe?: string) =>
+      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod(view, p, pe));
     const current = reportingPeriod;
-    if (!current || current.view !== 'month') {
-      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('month', token));
-      return; // keep open for a possible second click
-    }
-    // Already have a month selection — collapse, extend, or confirm.
-    if (!current.periodEnd) {
-      if (current.period === token) { setOpen(false); return; }
-      setReportingPeriod(
-        reportingPeriodHelpers.computeReportingPeriod('month', current.period, token),
-      );
-      setOpen(false);
-      return;
-    }
-    // Range exists: clicking an endpoint removes it (collapse to the other endpoint).
-    if (token === current.periodEnd) {
-      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('month', current.period));
-      return;
-    }
-    if (token === current.period) {
-      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('month', current.periodEnd));
-      return;
-    }
-    // Any other chip starts a fresh single selection.
-    setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('month', token));
+    if (!current || current.view !== view) { make(token); return; }
+    const start = current.period;
+    const end = current.periodEnd ?? current.period;
+    // Clicking an endpoint trims it off (collapse to the other endpoint).
+    if (current.periodEnd && token === end) { make(start); return; }
+    if (current.periodEnd && token === start) { make(end); return; }
+    // Clicking the only selected period confirms & closes.
+    if (!current.periodEnd && token === start) { setOpen(false); return; }
+    // Otherwise grow the range to cover the clicked period.
+    const min = token < start ? token : start;
+    const max = token > end ? token : end;
+    make(min, max);
+  };
+
+  const selectMonth = (year: number, month1: number) => {
+    extendSelection('month', `${year}-${pad(month1)}`);
   };
 
   const selectQuarter = (year: number, q: number) => {
-    const token = `${year}-Q${q}`;
-    const current = reportingPeriod;
-    if (!current || current.view !== 'quarter') {
-      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('quarter', token));
-      return;
-    }
-    if (!current.periodEnd) {
-      if (current.period === token) { setOpen(false); return; }
-      setReportingPeriod(
-        reportingPeriodHelpers.computeReportingPeriod('quarter', current.period, token),
-      );
-      setOpen(false);
-      return;
-    }
-    if (token === current.periodEnd) {
-      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('quarter', current.period));
-      return;
-    }
-    if (token === current.period) {
-      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('quarter', current.periodEnd));
-      return;
-    }
-    setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('quarter', token));
+    extendSelection('quarter', `${year}-Q${q}`);
   };
 
   // Disable future months/quarters.
@@ -215,11 +186,29 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 Quarter
               </div>
-              <YearTabs
-                years={years}
-                value={quarterYear}
-                onChange={setQuarterYear}
-              />
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const lastQ = quarterYear === currentYear ? Math.floor(now.getMonth() / 3) + 1 : 4;
+                    setReportingPeriod(
+                      reportingPeriodHelpers.computeReportingPeriod(
+                        'quarter',
+                        `${quarterYear}-Q1`,
+                        `${quarterYear}-Q${lastQ}`,
+                      ),
+                    );
+                  }}
+                  className="h-5 px-2 rounded border border-border bg-background text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                >
+                  Full year
+                </button>
+                <YearTabs
+                  years={years}
+                  value={quarterYear}
+                  onChange={setQuarterYear}
+                />
+              </div>
             </div>
             <div className="grid grid-cols-4 gap-1">
               {[1, 2, 3, 4].map((q) => {
