@@ -110,7 +110,7 @@ export function useReferralSourceMetrics() {
   // available so the meeting remains visible even when it was not recorded.
   const { data: meetings = [], isLoading: meetingsLoading } = useQuery<MeetingRow[]>({
     queryKey: [
-      'referral_source_meetings_calendar_v2',
+      'referral_source_meetings_calendar_v3',
       company?.id,
       start?.toISOString() ?? null,
       end?.toISOString() ?? null,
