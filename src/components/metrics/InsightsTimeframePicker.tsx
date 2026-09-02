@@ -186,11 +186,29 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 Quarter
               </div>
-              <YearTabs
-                years={years}
-                value={quarterYear}
-                onChange={setQuarterYear}
-              />
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const lastQ = quarterYear === currentYear ? Math.floor(now.getMonth() / 3) + 1 : 4;
+                    setReportingPeriod(
+                      reportingPeriodHelpers.computeReportingPeriod(
+                        'quarter',
+                        `${quarterYear}-Q1`,
+                        `${quarterYear}-Q${lastQ}`,
+                      ),
+                    );
+                  }}
+                  className="h-5 px-2 rounded border border-border bg-background text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                >
+                  Full year
+                </button>
+                <YearTabs
+                  years={years}
+                  value={quarterYear}
+                  onChange={setQuarterYear}
+                />
+              </div>
             </div>
             <div className="grid grid-cols-4 gap-1">
               {[1, 2, 3, 4].map((q) => {
