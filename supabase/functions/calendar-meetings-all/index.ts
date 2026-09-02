@@ -49,7 +49,7 @@ function domainOf(email?: string | null): string | null {
 }
 
 function normalizeOwnerName(value?: string | null): string {
-  return String(value || "").trim().toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
+  return String(value || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 function normalizeTitle(value?: string | null): string {
@@ -255,7 +255,7 @@ serve(async (req: Request) => {
         .map((value) => String(value || "").trim().toLowerCase())
         .filter(Boolean);
       const names = [profile.display_name, profile.full_name]
-        .map((value) => String(value || "").trim().toLowerCase())
+        .map((value) => normalizeOwnerName(value))
         .filter(Boolean);
       return emails.some((email) => ALLOWED_OWNER_EMAILS.has(email))
         || names.some((name) => ALLOWED_OWNER_NAMES.has(name));
