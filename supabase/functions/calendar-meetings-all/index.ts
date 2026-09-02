@@ -135,6 +135,9 @@ async function fetchGrantEvents(
       const rows = Array.isArray(payload?.data) ? payload.data : [];
       for (const event of rows) {
         if (!event?.id || event.status === "cancelled") continue;
+        const rawTitle = String(event.title || "").trim().toLowerCase();
+        // Exclude personal hold/block events
+        if (rawTitle === "block" || rawTitle === "blocked") continue;
         const times = eventTimes(event);
         const attendees = (event.participants || event.attendees || [])
           .map((person: any) => ({
@@ -143,7 +146,10 @@ async function fetchGrantEvents(
             response_status: person?.status || null,
           }))
           .filter((person: any) => person.email || person.display_name);
+        // Exclude solo/no-attendee events (holds, focus time, personal blocks)
+        if (attendees.length === 0) continue;
         results.push({
+
           source_id: String(event.id),
           ical_uid: event.ical_uid || event.master_event_id || null,
           calendar_id: String(calendar.id),
