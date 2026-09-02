@@ -115,28 +115,45 @@ export interface TermsConversionRateResult {
   avgValue: string;
   numeratorDeals: TermsConversionDealRow[];
   denominatorDeals: TermsConversionDealRow[];
+  /** Human-readable label of the period the cohort was built from. */
+  periodLabel: string;
   isLoading: boolean;
 }
 
+export interface TermsConversionPeriod {
+  /** YYYY-MM-DD */
+  startDate: string;
+  /** YYYY-MM-DD (inclusive) */
+  endDate: string;
+  label?: string;
+}
+
 /**
- * Terms Conversion Rate (TTM).
+ * Terms Conversion Rate.
  *
  * Cohort = every Active Pipeline deal that entered "Submitted to Lenders" or
- * "Lenders in Review" in the trailing 12 months. Rate = funding sources on
- * those deals whose stage is "Term Sheets" or later (resolved against the
- * workspace's configured lender stage ladder) ÷ ALL funding sources on those
- * deals.
+ * "Lenders in Review" within the selected period (defaults to the trailing 12
+ * months). Rate = funding sources on those deals whose stage is "Term Sheets"
+ * or later ÷ ALL funding sources on those deals.
  */
-export function useTermsConversionRate(): TermsConversionRateResult {
+export function useTermsConversionRate(period?: TermsConversionPeriod | null): TermsConversionRateResult {
   const { user } = useAuth();
 
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['terms-conversion-rate-ttm', ACTIVE_PIPELINE_ID],
-    queryFn: async () => {
-      const start = new Date();
-      start.setMonth(start.getMonth() - 12);
-      const startIso = start.toISOString();
+  const startIso = useMemo(() => {
+    if (period?.startDate) return new Date(period.startDate + 'T00:00:00').toISOString();
+    const d = new Date();
+    d.setMonth(d.getMonth() - 12);
+    return d.toISOString();
+  }, [period?.startDate]);
+  const endIso = useMemo(
+    () => (period?.endDate ? new Date(period.endDate + 'T23:59:59').toISOString() : null),
+    [period?.endDate],
+  );
+  const periodLabel = period?.label ?? (period?.startDate ? `${period.startDate} – ${period.endDate}` : 'last 12 months');
 
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['terms-conversion-rate', ACTIVE_PIPELINE_ID, startIso, endIso],
+    queryFn: async () => {
       const empty = {
         numerator: 0,
         denominator: 0,
@@ -145,14 +162,17 @@ export function useTermsConversionRate(): TermsConversionRateResult {
         denominatorDeals: [] as TermsConversionDealRow[],
       };
 
-      const { data: histRows, error: histErr } = await supabase
+      let histQuery = supabase
         .from('deal_stage_history')
         .select('deal_id, changed_at')
         .eq('event_type', 'stage_enter')
         .eq('pipeline_id', ACTIVE_PIPELINE_ID)
         .in('to_stage', expandStageLabels(QUALIFYING_STAGES))
         .gte('changed_at', startIso);
+      if (endIso) histQuery = histQuery.lte('changed_at', endIso);
+      const { data: histRows, error: histErr } = await histQuery;
       if (histErr) throw histErr;
+
 
       const enteredAt = new Map<string, string>();
       for (const r of (histRows ?? []) as any[]) {
