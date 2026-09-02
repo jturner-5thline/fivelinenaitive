@@ -112,9 +112,6 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
 
   const selectQuarter = (year: number, q: number) => {
     extendSelection('quarter', `${year}-Q${q}`);
-      return;
-    }
-    setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('quarter', token));
   };
 
   // Disable future months/quarters.
