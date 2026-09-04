@@ -57,6 +57,13 @@
       "when": 1788535219448,
       "tag": "0007_add_master_lender_contact_geography",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788536060029,
+      "tag": "0008_add_deals_user_edited_fields",
+      "breakpoints": true
     }
   ]
 }
