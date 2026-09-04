@@ -298,6 +298,17 @@ function formatCurrency(value: number | null | undefined): string {
   return `$${value}`;
 }
 
+/**
+ * Interprets the free-text "NDA" field on a funding source.
+ * Returns true (NDA in place), false (explicitly none) or null (unset).
+ */
+function ndaFieldState(value?: string | null): boolean | null {
+  const s = (value || '').trim().toLowerCase();
+  if (!s) return null;
+  if (['no', 'n', 'false', 'none', 'not signed', 'no nda'].includes(s)) return false;
+  return true;
+}
+
 export default function Lenders() {
   const navigate = useNavigate();
   const { deals, addLenderToDeal } = useDealsContext();
@@ -885,6 +896,27 @@ export default function Lenders() {
   const openLenderDetailStable = useCallback((lender: MasterLender) => {
     openLenderDetail(lender);
   }, []);
+
+  // --- NDA checkbox <-> "NDA" field on the funding source record -------------
+  // The list/grid checkbox and the edit pop-up's NDA selector must always agree,
+  // so the checkbox reads from the record's NDA field (when set) and writing the
+  // checkbox writes Yes/No back onto that same field.
+  const summaryForLender = useCallback((lender: MasterLender) => {
+    const base = getLenderSummary(lender.name);
+    const field = ndaFieldState((lender as any).nda);
+    return field === null ? base : { ...base, hasNda: field };
+  }, [getLenderSummary]);
+
+  const handleToggleDocFlagStable = useCallback((lenderName: string, field: 'nda' | 'marketing', value: boolean) => {
+    setManualFlag(lenderName, field, value);
+    if (field !== 'nda') return;
+    const match = masterLenders.find(l => l.name === lenderName);
+    if (!match) return;
+    updateMasterLender(match.id, { nda: value ? "Yes" : "No" }).catch((e: any) => {
+      console.error('Failed to sync NDA field', e);
+    });
+  }, [setManualFlag, masterLenders, updateMasterLender]);
+
 
   // Selection handlers
   const toggleLenderSelection = useCallback((lenderId: string) => {
@@ -2025,7 +2057,7 @@ export default function Lenders() {
                                     duplicateCount={duplicateIndex.byLenderId[lender.id]?.count || 0}
                                     duplicateSiblings={duplicateSiblingsByLenderId[lender.id]}
                                     onOpenSiblingDetail={openLenderSiblingDetailStable}
-                                    summary={getLenderSummary(lender.name)}
+                                    summary={summaryForLender(lender)}
                                     isQuickUploading={isQuickUploading}
                                     quickUploadLenderName={quickUploadTarget?.lenderName || null}
                                     isSelected={selectedLenderIds.has(lender.id)}
@@ -2034,7 +2066,7 @@ export default function Lenders() {
                                     onEdit={openEditDialogStable}
                                     onDelete={handleDeleteStable}
                                     onQuickUpload={handleQuickUploadStable}
-                                    onToggleDocFlag={setManualFlag}
+                                    onToggleDocFlag={handleToggleDocFlagStable}
                                   />
                                 </div>
                               ))}
@@ -2066,7 +2098,7 @@ export default function Lenders() {
                             duplicateCount={duplicateIndex.byLenderId[lender.id]?.count || 0}
                             duplicateSiblings={duplicateSiblingsByLenderId[lender.id]}
                             onOpenSiblingDetail={openLenderSiblingDetailStable}
-                            summary={getLenderSummary(lender.name)}
+                            summary={summaryForLender(lender)}
                             isQuickUploading={isQuickUploading}
                             quickUploadLenderName={quickUploadTarget?.lenderName || null}
                             isSelected={selectedLenderIds.has(lender.id)}
@@ -2075,7 +2107,7 @@ export default function Lenders() {
                             onEdit={openEditDialogStable}
                             onDelete={handleDeleteStable}
                             onQuickUpload={handleQuickUploadStable}
-                                    onToggleDocFlag={setManualFlag}
+                                    onToggleDocFlag={handleToggleDocFlagStable}
                           />
                         </div>
                       );
@@ -2103,7 +2135,7 @@ export default function Lenders() {
                           duplicateSiblings={duplicateSiblingsByLenderId[lender.id]}
                           onOpenSiblingDetail={openLenderSiblingDetailStable}
                           tileDisplaySettings={tileDisplaySettings}
-                          summary={getLenderSummary(lender.name)}
+                          summary={summaryForLender(lender)}
                           isQuickUploading={isQuickUploading}
                           quickUploadLenderName={quickUploadTarget?.lenderName || null}
                           isSelected={selectedLenderIds.has(lender.id)}
@@ -2112,7 +2144,7 @@ export default function Lenders() {
                           onEdit={openEditDialogStable}
                           onDelete={handleDeleteStable}
                           onQuickUpload={handleQuickUploadStable}
-                                    onToggleDocFlag={setManualFlag}
+                                    onToggleDocFlag={handleToggleDocFlagStable}
                         />
                       );
                     }}
