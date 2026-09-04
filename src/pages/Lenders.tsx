@@ -298,6 +298,17 @@ function formatCurrency(value: number | null | undefined): string {
   return `$${value}`;
 }
 
+/**
+ * Interprets the free-text "NDA" field on a funding source.
+ * Returns true (NDA in place), false (explicitly none) or null (unset).
+ */
+function ndaFieldState(value?: string | null): boolean | null {
+  const s = (value || '').trim().toLowerCase();
+  if (!s) return null;
+  if (['no', 'n', 'false', 'none', 'not signed', 'no nda'].includes(s)) return false;
+  return true;
+}
+
 export default function Lenders() {
   const navigate = useNavigate();
   const { deals, addLenderToDeal } = useDealsContext();
