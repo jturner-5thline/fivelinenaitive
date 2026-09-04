@@ -60,6 +60,7 @@ import { Loader2, Copy, Check } from 'lucide-react';
 import { normalizeLinkedInUrl } from '@/lib/linkedin';
 import { toast } from 'sonner';
 import { AddToNurturingButton } from '@/components/contacts/AddToNurturingButton';
+import { US_STATE_OPTIONS } from '@/constants/usStates';
 
 
 interface ContactDetailContentProps {
@@ -399,7 +400,14 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                           <EditableField label="City" type="text" value={(contact as any).city} onSave={(v) => handleQuickUpdate('city', v)} />
                         )}
                         {!isFieldDisabled('state') && (
-                          <EditableField label="State" type="text" value={(contact as any).state ?? (contact as any).state_region} onSave={(v) => handleQuickUpdate('state', v)} />
+                          <EditableField
+                            label="State"
+                            type="select"
+                            placeholder="Select state"
+                            value={(contact as any).state ?? (contact as any).state_region}
+                            onSave={(v) => handleQuickUpdate('state', v)}
+                            options={US_STATE_OPTIONS.map((s) => ({ value: s, label: s }))}
+                          />
                         )}
                       </div>
                     )}
