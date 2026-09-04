@@ -6288,6 +6288,7 @@ export type Database = {
           company_id: string | null
           contact_score: number | null
           contact_type: string | null
+          country: string | null
           created_at: string
           created_by: string | null
           crm_company_id: string | null
@@ -6301,6 +6302,7 @@ export type Database = {
           first_name: string | null
           fit_score: number | null
           full_name: string | null
+          geography: string | null
           hs_additional_emails_raw: string | null
           hs_address: string | null
           hs_annualrevenue: string | null
@@ -6757,6 +6759,7 @@ export type Database = {
           seniority: string | null
           sms_opt_in: boolean | null
           source_system: string | null
+          state: string | null
           state_region: string | null
           status: string | null
           synced_with_hubspot: boolean | null
@@ -6781,6 +6784,7 @@ export type Database = {
           company_id?: string | null
           contact_score?: number | null
           contact_type?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           crm_company_id?: string | null
@@ -6794,6 +6798,7 @@ export type Database = {
           first_name?: string | null
           fit_score?: number | null
           full_name?: string | null
+          geography?: string | null
           hs_additional_emails_raw?: string | null
           hs_address?: string | null
           hs_annualrevenue?: string | null
@@ -7254,6 +7259,7 @@ export type Database = {
           seniority?: string | null
           sms_opt_in?: boolean | null
           source_system?: string | null
+          state?: string | null
           state_region?: string | null
           status?: string | null
           synced_with_hubspot?: boolean | null
@@ -7278,6 +7284,7 @@ export type Database = {
           company_id?: string | null
           contact_score?: number | null
           contact_type?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           crm_company_id?: string | null
@@ -7291,6 +7298,7 @@ export type Database = {
           first_name?: string | null
           fit_score?: number | null
           full_name?: string | null
+          geography?: string | null
           hs_additional_emails_raw?: string | null
           hs_address?: string | null
           hs_annualrevenue?: string | null
@@ -7751,6 +7759,7 @@ export type Database = {
           seniority?: string | null
           sms_opt_in?: boolean | null
           source_system?: string | null
+          state?: string | null
           state_region?: string | null
           status?: string | null
           synced_with_hubspot?: boolean | null
