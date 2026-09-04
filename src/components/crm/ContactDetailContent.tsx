@@ -60,6 +60,7 @@ import { Loader2, Copy, Check } from 'lucide-react';
 import { normalizeLinkedInUrl } from '@/lib/linkedin';
 import { toast } from 'sonner';
 import { AddToNurturingButton } from '@/components/contacts/AddToNurturingButton';
+import { US_STATE_OPTIONS } from '@/constants/usStates';
 
 
 interface ContactDetailContentProps {
