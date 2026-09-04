@@ -203,13 +203,14 @@ export function useReferralSourceMetrics() {
           addWebsiteDomain(deal.company_url);
         }
         const dealIds = dealRows.map((deal) => deal.id).filter(Boolean);
-        const crmCompanyIds = new Set<string>([
-          ...dealRows.map((deal) => deal.crm_company_id).filter(Boolean),
-          ...candidates.map((meeting) => meeting.matched_crm_company_id).filter(Boolean),
-        ]);
-        const linkedContactIds = new Set<string>(
-          candidates.map((meeting) => meeting.matched_contact_id).filter(Boolean),
+        // Only deal-linked companies/contacts count as clients. Companies and
+        // contacts matched to the meetings themselves are often the referral
+        // source, so seeding them here would make referral calls exclude
+        // themselves.
+        const crmCompanyIds = new Set<string>(
+          dealRows.map((deal) => deal.crm_company_id).filter(Boolean),
         );
+        const linkedContactIds = new Set<string>();
         const addContactDetails = (contact: any) => {
           addEmailDomain(contact.email);
           for (const email of contact.additional_emails || []) addEmailDomain(email);

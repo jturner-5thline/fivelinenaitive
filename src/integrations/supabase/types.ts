@@ -12531,6 +12531,7 @@ export type Database = {
           terms_signed_at: string | null
           total_fee: number | null
           updated_at: string
+          user_edited_fields: Json | null
           user_id: string
           value: number
           why_not_moving_forward: string[] | null
@@ -12625,6 +12626,7 @@ export type Database = {
           terms_signed_at?: string | null
           total_fee?: number | null
           updated_at?: string
+          user_edited_fields?: Json | null
           user_id: string
           value?: number
           why_not_moving_forward?: string[] | null
@@ -12719,6 +12721,7 @@ export type Database = {
           terms_signed_at?: string | null
           total_fee?: number | null
           updated_at?: string
+          user_edited_fields?: Json | null
           user_id?: string
           value?: number
           why_not_moving_forward?: string[] | null

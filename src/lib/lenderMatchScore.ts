@@ -327,7 +327,7 @@ export function computeMatchScore(
   const exclusionComponent = hardExcluded && !excl.hardExcluded
     ? { ...excl.component, earned: 0, detail: productMismatch ? 'Product type is not supported' : sizeOutside ? 'Deal is materially outside size range' : refinanceConflict ? 'Lender does not like refinancing' : excl.component.detail }
     : excl.component;
-  components[components.length - 1] = exclusionComponent;
+  components.push(exclusionComponent);
 
   // Normalize over available components — graceful degradation when data missing.
   const availableWeight = components.filter(c => c.available).reduce((s, c) => s + c.weight, 0);
