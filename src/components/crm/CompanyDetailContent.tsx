@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { DynamicFieldRenderer } from '@/components/crm/DynamicFieldRenderer';
 import { EditableField } from '@/components/crm/EditableField';
+import { COUNTRY_OPTIONS } from '@/lib/countries';
 import { useIndustryOptions } from '@/hooks/useIndustryOptions';
 import { ManageIndustryOptionsDialog } from '@/components/crm/ManageIndustryOptionsDialog';
 import { Button } from '@/components/ui/button';
@@ -468,7 +469,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                 <EditableField label="City" type="text" value={(company as any).hq_city} onSave={(v) => handleQuickUpdate('hq_city', v)} />
               )}
               {!snapshotFields.isDisabled('hq_country') && (
-                <EditableField label="Country" type="text" value={(company as any).hq_country} onSave={(v) => handleQuickUpdate('hq_country', v)} />
+                <EditableField label="Country" type="select" options={COUNTRY_OPTIONS} value={(company as any).hq_country} placeholder="Select country" onSave={(v) => handleQuickUpdate('hq_country', v)} />
               )}
               {!snapshotFields.isDisabled('domain') && (
                 <EditableField label="Website" type="text" value={(company as any).domain} onSave={(v) => handleQuickUpdate('domain', v)} />
@@ -584,7 +585,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                     <EditableKV label="City" value={company.hq_city} onSave={(v) => handleQuickUpdate('hq_city', v)} />
                   )}
                   {!snapshotFields.isDisabled('hq_country') && (
-                    <EditableKV label="Country" value={company.hq_country} onSave={(v) => handleQuickUpdate('hq_country', v)} />
+                    <EditableKV label="Country" type="select" options={COUNTRY_OPTIONS} placeholder="Select country" value={company.hq_country} onSave={(v) => handleQuickUpdate('hq_country', v)} />
                   )}
                   {!snapshotFields.isDisabled('domain') && (
                     <EditableKV label="Website" value={company.domain} link onSave={(v) => handleQuickUpdate('domain', v)} />
