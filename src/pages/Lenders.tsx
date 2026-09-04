@@ -2057,7 +2057,7 @@ export default function Lenders() {
                                     duplicateCount={duplicateIndex.byLenderId[lender.id]?.count || 0}
                                     duplicateSiblings={duplicateSiblingsByLenderId[lender.id]}
                                     onOpenSiblingDetail={openLenderSiblingDetailStable}
-                                    summary={getLenderSummary(lender.name)}
+                                    summary={summaryForLender(lender)}
                                     isQuickUploading={isQuickUploading}
                                     quickUploadLenderName={quickUploadTarget?.lenderName || null}
                                     isSelected={selectedLenderIds.has(lender.id)}
@@ -2066,7 +2066,7 @@ export default function Lenders() {
                                     onEdit={openEditDialogStable}
                                     onDelete={handleDeleteStable}
                                     onQuickUpload={handleQuickUploadStable}
-                                    onToggleDocFlag={setManualFlag}
+                                    onToggleDocFlag={handleToggleDocFlagStable}
                                   />
                                 </div>
                               ))}
@@ -2098,7 +2098,7 @@ export default function Lenders() {
                             duplicateCount={duplicateIndex.byLenderId[lender.id]?.count || 0}
                             duplicateSiblings={duplicateSiblingsByLenderId[lender.id]}
                             onOpenSiblingDetail={openLenderSiblingDetailStable}
-                            summary={getLenderSummary(lender.name)}
+                            summary={summaryForLender(lender)}
                             isQuickUploading={isQuickUploading}
                             quickUploadLenderName={quickUploadTarget?.lenderName || null}
                             isSelected={selectedLenderIds.has(lender.id)}
@@ -2107,7 +2107,7 @@ export default function Lenders() {
                             onEdit={openEditDialogStable}
                             onDelete={handleDeleteStable}
                             onQuickUpload={handleQuickUploadStable}
-                                    onToggleDocFlag={setManualFlag}
+                                    onToggleDocFlag={handleToggleDocFlagStable}
                           />
                         </div>
                       );
@@ -2135,7 +2135,7 @@ export default function Lenders() {
                           duplicateSiblings={duplicateSiblingsByLenderId[lender.id]}
                           onOpenSiblingDetail={openLenderSiblingDetailStable}
                           tileDisplaySettings={tileDisplaySettings}
-                          summary={getLenderSummary(lender.name)}
+                          summary={summaryForLender(lender)}
                           isQuickUploading={isQuickUploading}
                           quickUploadLenderName={quickUploadTarget?.lenderName || null}
                           isSelected={selectedLenderIds.has(lender.id)}
@@ -2144,7 +2144,7 @@ export default function Lenders() {
                           onEdit={openEditDialogStable}
                           onDelete={handleDeleteStable}
                           onQuickUpload={handleQuickUploadStable}
-                                    onToggleDocFlag={setManualFlag}
+                                    onToggleDocFlag={handleToggleDocFlagStable}
                         />
                       );
                     }}
