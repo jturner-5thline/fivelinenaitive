@@ -405,11 +405,11 @@ serve(async (req: Request) => {
       "health", "digital", "studio", "studios", "project", "projects", "sync", "review",
     ]);
     const dealIds: string[] = [];
-    const crmCompanyIds = new Set<string>(
-      claapRows.map((row) => row.matched_crm_company_id).filter(Boolean),
-    );
+    // Client identity comes from deals only. Companies/contacts matched to the
+    // meetings themselves are frequently the referral source, so seeding them
+    // here would make genuine referral calls exclude themselves.
+    const crmCompanyIds = new Set<string>();
     const linkedContactIds = new Set<string>();
-    for (const row of claapRows) if (row.matched_contact_id) linkedContactIds.add(row.matched_contact_id);
     const addContactDetails = (row: any) => {
       addClientEmail(row.email);
       for (const extra of row.additional_emails || []) addClientEmail(extra);
