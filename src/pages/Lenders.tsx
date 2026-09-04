@@ -912,7 +912,7 @@ export default function Lenders() {
     if (field !== 'nda') return;
     const match = masterLenders.find(l => l.name === lenderName);
     if (!match) return;
-    updateMasterLender(match.id, { name: match.name, nda: value ? 'Yes' : 'No' } as any).catch((e: any) => {
+    updateMasterLender(match.id, { nda: value ? "Yes" : "No" }).catch((e: any) => {
       console.error('Failed to sync NDA field', e);
     });
   }, [setManualFlag, masterLenders, updateMasterLender]);
