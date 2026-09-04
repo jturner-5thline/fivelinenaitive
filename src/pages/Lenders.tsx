@@ -886,6 +886,27 @@ export default function Lenders() {
     openLenderDetail(lender);
   }, []);
 
+  // --- NDA checkbox <-> "NDA" field on the funding source record -------------
+  // The list/grid checkbox and the edit pop-up's NDA selector must always agree,
+  // so the checkbox reads from the record's NDA field (when set) and writing the
+  // checkbox writes Yes/No back onto that same field.
+  const summaryForLender = useCallback((lender: MasterLender) => {
+    const base = getLenderSummary(lender.name);
+    const field = ndaFieldState((lender as any).nda);
+    return field === null ? base : { ...base, hasNda: field };
+  }, [getLenderSummary]);
+
+  const handleToggleDocFlagStable = useCallback((lenderName: string, field: 'nda' | 'marketing', value: boolean) => {
+    setManualFlag(lenderName, field, value);
+    if (field !== 'nda') return;
+    const match = masterLenders.find(l => l.name === lenderName);
+    if (!match) return;
+    updateMasterLender(match.id, { name: match.name, nda: value ? 'Yes' : 'No' } as any).catch((e: any) => {
+      console.error('Failed to sync NDA field', e);
+    });
+  }, [setManualFlag, masterLenders, updateMasterLender]);
+
+
   // Selection handlers
   const toggleLenderSelection = useCallback((lenderId: string) => {
     setSelectedLenderIds(prev => {
