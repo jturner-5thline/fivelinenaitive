@@ -1,0 +1,1 @@
+ALTER TABLE public.master_lenders ADD COLUMN IF NOT EXISTS contact_geography TEXT;

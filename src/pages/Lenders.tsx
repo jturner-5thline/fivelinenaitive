@@ -129,6 +129,7 @@ interface LenderInfo {
     title: string;
     email: string;
     phone: string;
+    geography?: string | null;
   };
   preferences: string[];
   website?: string;
@@ -239,6 +240,7 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
       title: lender.contact_title || '',
       email: lender.email || '',
       phone: lender.contact_phone || '',
+      geography: (lender as any).contact_geography || '',
     },
     // "preferences" is only used for the "Additional Preferences" section in
     // the detail dialog. We intentionally exclude industries / loan_types /
@@ -1357,6 +1359,7 @@ export default function Lenders() {
       address: data.address?.trim() || null,
       phone: data.phoneMain?.trim() || null,
       contact_title: data.contactTitle?.trim() || null,
+      contact_geography: data.contactGeography?.trim() || null,
       b2b_b2c: data.b2bB2c?.trim() || null,
       sponsorship: data.sponsorship?.trim() || null,
       cash_burn: data.cashBurn?.trim() || null,
