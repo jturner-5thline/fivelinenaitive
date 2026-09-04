@@ -32,6 +32,7 @@ import { ContactTypeMultiSelect } from '@/components/contacts/ContactTypeMultiSe
 import { LastContactChip } from '@/components/contacts/LastContactChip';
 import { EditableField } from '@/components/crm/EditableField';
 import { COUNTRY_OPTIONS } from '@/lib/countries';
+import { GEO_OPTIONS } from '@/constants/geoOptions';
 import { supabase } from '@/integrations/supabase/client';
 import {
   useContactCrmCompany, useLinkContactToCompany, useUnlinkContactFromCompany,
@@ -398,7 +399,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                           <EditableField label="City" type="text" value={(contact as any).city} onSave={(v) => handleQuickUpdate('city', v)} />
                         )}
                         {!isFieldDisabled('state') && (
-                          <EditableField label="State" type="text" value={(contact as any).state} onSave={(v) => handleQuickUpdate('state', v)} />
+                          <EditableField label="State" type="text" value={(contact as any).state ?? (contact as any).state_region} onSave={(v) => handleQuickUpdate('state', v)} />
                         )}
                       </div>
                     )}
@@ -407,12 +408,22 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                         <EditableField
                           label="Country"
                           type="select"
-                          value={(contact as any).country}
+                          value={(contact as any).country ?? (contact as any).hs_country}
                           onSave={(v) => handleQuickUpdate('country', v)}
                           options={COUNTRY_OPTIONS}
                         />
                       </div>
                     )}
+                    <div className="mt-2">
+                      <EditableField
+                        label="Geography"
+                        type="select"
+                        value={(contact as any).geography}
+                        placeholder="Select geography"
+                        onSave={(v) => handleQuickUpdate('geography', v)}
+                        options={GEO_OPTIONS.map((g) => ({ value: g, label: g }))}
+                      />
+                    </div>
                   </div>
                 )}
 
