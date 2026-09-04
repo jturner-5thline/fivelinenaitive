@@ -112,6 +112,7 @@ interface LenderInfo {
     title: string;
     email: string;
     phone: string;
+    geography?: string | null;
   };
   preferences: string[];
   website?: string;
@@ -159,6 +160,7 @@ export interface LenderEditData {
   name: string;
   contactName: string;
   contactPhone: string;
+  contactGeography?: string;
   email: string;
   lenderType: string;
   minDeal: string;
@@ -217,6 +219,7 @@ function buildEditForm(lender: LenderInfo): LenderEditData {
     name: lender.name || '',
     contactName: lender.contact.name || '',
     contactPhone: lender.contact.phone || '',
+    contactGeography: lender.contact.geography || '',
     email: lender.contact.email || '',
     lenderType: lender.lenderType || '',
      minDeal: lender.minDeal?.toString() || '',
@@ -490,6 +493,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     name: '',
     contactName: '',
     contactPhone: '',
+    contactGeography: '',
     email: '',
     lenderType: '',
      minDeal: '',
@@ -1131,6 +1135,23 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         placeholder="(555) 123-4567"
                         className="text-sm"
                       />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Geography</Label>
+                      <Select
+                        value={editForm.contactGeography || '__none'}
+                        onValueChange={(v) => setEditForm({ ...editForm, contactGeography: v === '__none' ? '' : v })}
+                      >
+                        <SelectTrigger className="text-sm h-9">
+                          <SelectValue placeholder="Select geography" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          <SelectItem value="__none">Not set</SelectItem>
+                          {GEO_OPTIONS.map((g) => (
+                            <SelectItem key={g} value={g}>{g}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Relationship Owner(s)</Label>
