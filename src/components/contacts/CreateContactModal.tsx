@@ -17,6 +17,7 @@ import { applyTaggingRules } from '@/lib/contactTaggingRules';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { COUNTRY_OPTIONS } from '@/lib/countries';
+import { GEO_OPTIONS } from '@/constants/geoOptions';
 import { normalizeLinkedInUrl } from '@/lib/linkedin';
 import { normalizeDomain } from '@/lib/extractEmailDomain';
 import { useContactFieldConfig } from '@/hooks/useContactFieldConfig';
@@ -79,6 +80,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
     city: '',
     state: '',
     country: '',
+    geography: '',
     timezone: '',
     source_system: '',
     custom_fields: {} as Record<string, any>,
@@ -173,6 +175,8 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
       city: form.city.trim() || null,
       state_region: form.state.trim() || null,
       hs_country: form.country || null,
+      country: form.country || null,
+      geography: form.geography || null,
       timezone: form.timezone.trim() || null,
       source_system: form.source_system.trim() || null,
       department: form.department.trim() || null,
@@ -198,7 +202,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
         first_name: '', last_name: '', email: '', phone_work: '', phone_mobile: '',
         job_title: '', department: '', lifecycle_stage: 'lead', status: DEFAULT_CONTACT_STATUS,
         lead_source: '', linkedin_url: '', website_url: '', description: '', crm_company_id: '', contact_type: '', owner_user_id: '',
-        city: '', state: '', country: '', timezone: '', source_system: '', custom_fields: {},
+        city: '', state: '', country: '', geography: '', timezone: '', source_system: '', custom_fields: {},
       });
       domainAutoFilledRef.current = true;
     };
@@ -324,6 +328,16 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
               </Select>
             </div>
           )}
+          <div className="space-y-1.5 col-span-2">
+            <Label className="text-xs">Geography</Label>
+            <Select value={form.geography || 'unset'} onValueChange={(v) => setForm(p => ({ ...p, geography: v === 'unset' ? '' : v }))}>
+              <SelectTrigger><SelectValue placeholder="Select geography" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unset">—</SelectItem>
+                {GEO_OPTIONS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
 
           {!isFieldDisabled('website_url') && (
             <div className="space-y-1.5 col-span-2">
