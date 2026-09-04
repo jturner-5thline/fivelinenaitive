@@ -129,6 +129,7 @@ interface LenderInfo {
     title: string;
     email: string;
     phone: string;
+    geography?: string | null;
   };
   preferences: string[];
   website?: string;
