@@ -18689,6 +18689,7 @@ export type Database = {
           cash_burn: string | null
           company_id: string | null
           company_requirements: string | null
+          contact_geography: string | null
           contact_name: string | null
           contact_phone: string | null
           contact_title: string | null
@@ -18752,6 +18753,7 @@ export type Database = {
           cash_burn?: string | null
           company_id?: string | null
           company_requirements?: string | null
+          contact_geography?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           contact_title?: string | null
@@ -18815,6 +18817,7 @@ export type Database = {
           cash_burn?: string | null
           company_id?: string | null
           company_requirements?: string | null
+          contact_geography?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           contact_title?: string | null
