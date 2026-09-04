@@ -43,7 +43,7 @@ interface CreateContactModalProps {
 const FORM_KEYS = [
   'first_name','last_name','email','phone_work','phone_mobile','job_title','department',
   'lifecycle_stage','status','lead_source','linkedin_url','website_url','description',
-  'crm_company_id','contact_type','owner_user_id','city','state','country','timezone','source_system',
+  'crm_company_id','contact_type','owner_user_id','city','state','country','geography','timezone','source_system',
 ] as const;
 
 export function CreateContactModal({ open, onClose, defaultCompanyId, initialValues, contactId, contentClassName, overlayClassName, onCreated, onSaveSuccess }: CreateContactModalProps) {
