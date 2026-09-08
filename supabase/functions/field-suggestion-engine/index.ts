@@ -246,8 +246,24 @@ Extract any field change suggestions.`;
       source_snippet: string;
     }> = [];
 
+    const callWithRetry = async (params: Parameters<typeof callClaude>[0]) => {
+      let lastErr: any;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          return await callClaude(params);
+        } catch (err: any) {
+          lastErr = err;
+          const st = err?.status ?? 500;
+          const retryable = st === 429 || st >= 500 || st === 0;
+          if (!retryable || attempt === 2) throw err;
+          await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
+        }
+      }
+      throw lastErr;
+    };
+
     try {
-      const result = await callClaude({
+      const result = await callWithRetry({
         system: systemPrompt,
         messages: [{ role: "user", content: userPrompt }],
         tools: [{
@@ -292,7 +308,7 @@ Extract any field change suggestions.`;
         );
       }
       return new Response(
-        JSON.stringify({ error: "AI extraction failed" }),
+        JSON.stringify({ error: `AI extraction failed: ${e?.message ?? "unknown error"}`, upstream_status: status }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

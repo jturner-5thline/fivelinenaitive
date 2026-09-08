@@ -239,6 +239,7 @@ export function ImportContactsModal({ open, onClose }: Props) {
           out[tgt] = v;
         }
       }
+      if (out.state_region && !out.state) out.state = out.state_region;
       if (hasContactIdentity(out)) {
         out.full_name = out.full_name || [out.first_name, out.last_name].filter(Boolean).join(' ') || undefined;
         out.created_by = user?.id;

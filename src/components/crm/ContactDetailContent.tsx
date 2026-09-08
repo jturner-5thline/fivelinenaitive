@@ -405,7 +405,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                             type="select"
                             placeholder="Select state"
                             value={(contact as any).state ?? (contact as any).state_region}
-                            onSave={(v) => handleQuickUpdate('state', v)}
+                            onSave={(v) => updateContact.mutate({ id: contact.id, state: v, state_region: v } as any)}
                             options={US_STATE_OPTIONS.map((s) => ({ value: s, label: s }))}
                           />
                         )}
