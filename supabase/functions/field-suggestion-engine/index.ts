@@ -254,7 +254,7 @@ Extract any field change suggestions.`;
         } catch (err: any) {
           lastErr = err;
           const st = err?.status ?? 500;
-          const retryable = st === 429 || st === 429 || st >= 500 || st === 0;
+          const retryable = st === 429 || st >= 500 || st === 0;
           if (!retryable || attempt === 2) throw err;
           await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
         }
@@ -308,7 +308,7 @@ Extract any field change suggestions.`;
         );
       }
       return new Response(
-        JSON.stringify({ error: "AI extraction failed" }),
+        JSON.stringify({ error: `AI extraction failed: ${e?.message ?? "unknown error"}`, upstream_status: status }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
