@@ -93,8 +93,12 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
     setForm(p => {
       const next: any = { ...p };
       for (const key of FORM_KEYS) {
-        const src = key === 'state' ? 'state_region' : key === 'country' ? 'hs_country' : key;
-        const incoming = (initialValues as any)[src] ?? (initialValues as any)[key];
+        const src = key === 'state' ? 'state' : key === 'country' ? 'hs_country' : key;
+        const legacy = key === 'state' ? 'state_region' : null;
+        const incoming =
+          (initialValues as any)[src] ??
+          (legacy ? (initialValues as any)[legacy] : undefined) ??
+          (initialValues as any)[key];
         if (incoming === undefined || incoming === null || incoming === '') continue;
         if (isEdit || !next[key]) next[key] = String(incoming);
       }
@@ -174,6 +178,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId, initialVal
       website_url: normalizeDomain(form.website_url) || null,
       city: form.city.trim() || null,
       state_region: form.state.trim() || null,
+      state: form.state.trim() || null,
       hs_country: form.country || null,
       country: form.country || null,
       geography: form.geography || null,
