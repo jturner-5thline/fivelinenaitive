@@ -585,7 +585,7 @@
       {
         "name": "list_deal_activity",
         "title": "List deal activity",
-        "description": "List recent activity/timeline events for a deal — stage changes, field updates, emails, calls, notes, and other logged actions. Combines deal_activity (structured field changes) with activity_logs (rich events including emails). Returns items ordered by most recent first.",
+        "description": "List recent activity/timeline events — stage changes, field updates, emails, calls, notes, and other logged actions. Pass deal_id to scope to one deal, or omit it to return activity across ALL deals and pipelines the caller can see (RLS scoped). Combines activity_logs (rich events including emails) with deal_activity (structured field changes). Ordered most recent first.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -596,13 +596,24 @@
           "properties": {
             "deal_id": {
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "description": "Optional. Omit to return activity across all deals."
             },
             "activity_type": {
               "type": "string",
               "minLength": 1,
               "maxLength": 60,
               "description": "Optional activity_type filter for activity_logs (e.g. 'email', 'call', 'note', 'stage_change')."
+            },
+            "since": {
+              "type": "string",
+              "maxLength": 40,
+              "description": "ISO timestamp lower bound on created_at (inclusive)."
+            },
+            "until": {
+              "type": "string",
+              "maxLength": 40,
+              "description": "ISO timestamp upper bound on created_at (exclusive)."
             },
             "limit": {
               "type": "integer",
@@ -611,9 +622,6 @@
               "default": 50
             }
           },
-          "required": [
-            "deal_id"
-          ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
