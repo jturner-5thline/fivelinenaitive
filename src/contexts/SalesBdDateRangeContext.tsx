@@ -56,7 +56,7 @@ export function SalesBdDateRangeProvider({ children }: { children: ReactNode }) 
           ...range,
           presetId: 'custom',
           custom: { start: tf.start, end: tf.end },
-          resolved: { start: tf.start, end: tf.end },
+          resolved: { ...range.resolved, id: 'custom', label: tf.label, start: tf.start, end: tf.end },
         }
       : range;
     const start = new Date(effective.resolved.start + 'T00:00:00');
