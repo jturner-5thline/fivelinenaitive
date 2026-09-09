@@ -6,6 +6,7 @@ import {
   type TimeRangePresetId,
 } from '@/lib/insightsTimeRange';
 import type { InsightsTimeRangeValue } from '@/components/insights/InsightsTimeRangeSelector';
+import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 
 /**
  * Single source of truth for the date range applied across the Sales & BD page
@@ -44,11 +45,24 @@ export function SalesBdDateRangeProvider({ children }: { children: ReactNode }) 
     resolved: initialResolved,
   }));
 
+  // The Insights header timeframe (month/quarter reporting period or preset)
+  // is authoritative whenever this provider renders inside /insights.
+  const insights = useInsightsTimeframeOptional();
+
   const value = useMemo<Ctx>(() => {
-    const start = new Date(range.resolved.start + 'T00:00:00');
-    const end = new Date(range.resolved.end + 'T23:59:59');
-    return { range, setRange, start, end };
-  }, [range]);
+    const tf = insights?.timeframe;
+    const effective: InsightsTimeRangeValue = tf
+      ? {
+          ...range,
+          presetId: 'custom',
+          custom: { start: tf.start, end: tf.end },
+          resolved: { ...range.resolved, id: 'custom', label: tf.label, start: tf.start, end: tf.end },
+        }
+      : range;
+    const start = new Date(effective.resolved.start + 'T00:00:00');
+    const end = new Date(effective.resolved.end + 'T23:59:59');
+    return { range: effective, setRange, start, end };
+  }, [range, insights?.timeframe]);
 
   return (
     <SalesBdDateRangeContext.Provider value={value}>
