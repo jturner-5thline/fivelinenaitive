@@ -12,17 +12,9 @@ import { SalesBdSearch } from "@/components/partners/SalesBdSearch";
 import { CrmUpdateQueueButton } from "@/components/crm/CrmUpdateQueueButton";
 import { Button } from "@/components/ui/button";
 import { useCanEditPartnerRules } from "@/hooks/usePartnerRules";
-import { SalesBdDateRangeProvider, useSalesBdDateRange } from "@/contexts/SalesBdDateRangeContext";
-import { InsightsTimeRangeSelector } from "@/components/insights/InsightsTimeRangeSelector";
+import { SalesBdDateRangeProvider } from "@/contexts/SalesBdDateRangeContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PartnerRulesSettings } from "@/components/settings/PartnerRulesSettings";
-
-function SalesBdRangeSelector() {
-  const { setRange } = useSalesBdDateRange();
-  return (
-    <InsightsTimeRangeSelector boardId="sales-bd" defaultPresetId="ytd" onChange={setRange} />
-  );
-}
 
 /**
  * Sales & BD — now rendered as a dashboard inside the Insights page
@@ -46,7 +38,6 @@ function SalesBdDashboardInner() {
           onSelectChannelEntry={(e) => setViewChannelEntry(e)}
           onSelectReferralSource={(r) => setReferralSearchSeed(r.name)}
         />
-        <SalesBdRangeSelector />
         {canEditPartnerRules && (
           <Button
             variant="outline"
