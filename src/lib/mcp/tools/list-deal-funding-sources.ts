@@ -6,24 +6,52 @@ export default defineTool({
   name: "list_deal_funding_sources",
   title: "List deal funding sources / lenders",
   description:
-    "List all funding sources (lenders) attached to a specific deal — the same records shown in the deal's Funding Sources tab. Returns each entry's stage/status, tracking bucket (active, on-deck, on-hold, passed, excluded), quote amount / rate / term, pass reason, and status-change timestamps (submitted, approved, declined, passed, on-deck, on-hold, excluded). Returns an empty list when the deal has no funding sources.",
+    "List funding sources (lenders) attached to deals — the same records shown in a deal's Funding Sources tab. Pass deal_id to scope to one deal, or omit it to return funding sources across ALL deals and ALL pipelines the caller can see (RLS scoped). Optional filters: deal_query (substring of the deal/company name), pipeline_id, tracking_status, stage, lender_name. Each row returns the funding source name, funding_source_type (lender_type from the master directory, e.g. senior debt / sub debt / mezzanine / equity), loan_types, commitment/quote amount, rate and term, stage + tracking bucket (active, on-deck, on-hold, passed, excluded) as status, pass reason, status-change timestamps, and the linked deal_id / deal_name / pipeline_id. Capital-stack position is not tracked as a discrete field; funding_source_type and loan_types are the closest available signal.",
   inputSchema: {
-    deal_id: z.string().uuid(),
+    deal_id: z.string().uuid().optional().describe("Optional. Omit to return funding sources across all deals."),
+    deal_query: z.string().trim().min(1).max(200).optional().describe("Substring filter on the deal/company name."),
+    pipeline_id: z.string().uuid().optional(),
+    tracking_status: z.string().trim().min(1).max(60).optional(),
+    stage: z.string().trim().min(1).max(100).optional(),
+    lender_name: z.string().trim().min(1).max(200).optional(),
+    limit: z.number().int().min(1).max(500).default(100),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id }, ctx) => {
+  handler: async ({ deal_id, deal_query, pipeline_id, tracking_status, stage, lender_name, limit }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    const denied = await assertDealAccess(sb, ctx, deal_id, "list_deal_funding_sources");
-    if (denied) return denied;
-    const { data, error } = await sb
+    if (deal_id) {
+      const denied = await assertDealAccess(sb, ctx, deal_id, "list_deal_funding_sources");
+      if (denied) return denied;
+    }
+
+    // Resolve deal scope when filtering by name/pipeline (no implicit default scope).
+    let dealIds: string[] | null = null;
+    if (deal_query || pipeline_id) {
+      let dq = sb.from("deals").select("id").limit(1000);
+      if (deal_query) dq = dq.ilike("company", `%${deal_query}%`);
+      if (pipeline_id) dq = dq.eq("pipeline_id", pipeline_id);
+      const { data: dealRows, error: dealErr } = await dq;
+      if (dealErr) return errorResult(dealErr.message);
+      dealIds = (dealRows ?? []).map((d: { id: string }) => d.id);
+      if (dealIds.length === 0) return textResult([], { count: 0 });
+    }
+
+    let q = sb
       .from("deal_lenders")
       .select(
-        "id, deal_id, name, stage, substage, tracking_status, tags, score, notes, pass_reason, quote_amount, quote_rate, quote_term, submitted_at, approved_at, declined_at, passed_at, on_deck_at, on_hold_at, excluded_at, last_status_change_at, last_contact_at, master_lender_id, selected_contact_id, created_at, updated_at",
+        "id, deal_id, name, stage, substage, tracking_status, tags, score, notes, pass_reason, quote_amount, quote_rate, quote_term, submitted_at, approved_at, declined_at, passed_at, on_deck_at, on_hold_at, excluded_at, last_status_change_at, last_contact_at, master_lender_id, selected_contact_id, created_at, updated_at, master_lenders:master_lender_id(id, name, lender_type, tier, loan_types), deals:deal_id(id, company, pipeline_id, stage, status)",
       )
-      .eq("deal_id", deal_id)
-      .order("last_status_change_at", { ascending: false, nullsFirst: false });
+      .order("last_status_change_at", { ascending: false, nullsFirst: false })
+      .limit(limit);
+    if (deal_id) q = q.eq("deal_id", deal_id);
+    if (dealIds) q = q.in("deal_id", dealIds);
+    if (tracking_status) q = q.eq("tracking_status", tracking_status);
+    if (stage) q = q.eq("stage", stage);
+    if (lender_name) q = q.ilike("name", `%${lender_name}%`);
+
+    const { data, error } = await q;
     if (error) {
       console.error("[list_deal_funding_sources] query error", {
         deal_id,
@@ -32,12 +60,21 @@ export default defineTool({
       });
       return errorResult(error.message);
     }
-    const rows = data ?? [];
+    const rows = (data ?? []).map((r: Record<string, any>) => ({
+      ...r,
+      funding_source_type: r.master_lenders?.lender_type ?? null,
+      loan_types: r.master_lenders?.loan_types ?? null,
+      lender_tier: r.master_lenders?.tier ?? null,
+      commitment_amount: r.quote_amount ?? null,
+      status: r.tracking_status ?? r.stage ?? null,
+      deal_name: r.deals?.company ?? null,
+      pipeline_id: r.deals?.pipeline_id ?? null,
+    }));
     console.log("[list_deal_funding_sources] ok", {
-      deal_id,
+      deal_id: deal_id ?? "all",
       user_id: ctx.getUserId?.(),
       count: rows.length,
     });
-    return textResult(rows, { count: rows.length, deal_id, deal_visible: true });
+    return textResult(rows, { count: rows.length, deal_id: deal_id ?? null, scope: deal_id ? "single_deal" : "all_deals" });
   },
 });

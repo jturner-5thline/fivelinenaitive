@@ -15,7 +15,7 @@ export default defineTool({
     created_to: z.string().trim().max(40).optional().describe("ISO date/timestamp upper bound on created_at (exclusive)."),
     closing_from: z.string().trim().max(40).optional().describe("ISO date lower bound on closing_date (inclusive)."),
     closing_to: z.string().trim().max(40).optional().describe("ISO date upper bound on closing_date (exclusive)."),
-    limit: z.number().int().min(1).max(200).default(50),
+    limit: z.number().int().min(1).max(500).default(50),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ query, stage, pipeline_id, created_from, created_to, closing_from, closing_to, limit }, ctx) => {

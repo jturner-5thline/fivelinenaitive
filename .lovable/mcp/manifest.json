@@ -67,7 +67,7 @@
             "limit": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 200,
+              "maximum": 500,
               "default": 50
             }
           },
@@ -473,7 +473,7 @@
       {
         "name": "search_lenders",
         "title": "Search funding sources / lenders",
-        "description": "Search the master lender directory by name, product, or geography. Optionally filter by deal_size (returns lenders whose min_deal_size <= size <= max_deal_size).",
+        "description": "Search the master funding-source (lender) directory by name. Optionally filter by deal_size, which returns funding sources whose min_deal <= size <= max_deal. Returns id, name, lender_type, tier, min_deal / max_deal (also echoed as min_deal_size / max_deal_size for convenience), loan_types, industries, geographies, appetite_status and website.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -490,10 +490,14 @@
               "type": "number",
               "minimum": 0
             },
+            "lender_type": {
+              "type": "string",
+              "maxLength": 100
+            },
             "limit": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 100,
+              "maximum": 200,
               "default": 25
             }
           },
@@ -581,7 +585,7 @@
       {
         "name": "list_deal_activity",
         "title": "List deal activity",
-        "description": "List recent activity/timeline events for a deal — stage changes, field updates, emails, calls, notes, and other logged actions. Combines deal_activity (structured field changes) with activity_logs (rich events including emails). Returns items ordered by most recent first.",
+        "description": "List recent activity/timeline events — stage changes, field updates, emails, calls, notes, and other logged actions. Pass deal_id to scope to one deal, or omit it to return activity across ALL deals and pipelines the caller can see (RLS scoped). Combines activity_logs (rich events including emails) with deal_activity (structured field changes). Ordered most recent first.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -592,13 +596,24 @@
           "properties": {
             "deal_id": {
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "description": "Optional. Omit to return activity across all deals."
             },
             "activity_type": {
               "type": "string",
               "minLength": 1,
               "maxLength": 60,
               "description": "Optional activity_type filter for activity_logs (e.g. 'email', 'call', 'note', 'stage_change')."
+            },
+            "since": {
+              "type": "string",
+              "maxLength": 40,
+              "description": "ISO timestamp lower bound on created_at (inclusive)."
+            },
+            "until": {
+              "type": "string",
+              "maxLength": 40,
+              "description": "ISO timestamp upper bound on created_at (exclusive)."
             },
             "limit": {
               "type": "integer",
@@ -607,9 +622,6 @@
               "default": 50
             }
           },
-          "required": [
-            "deal_id"
-          ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
@@ -771,7 +783,7 @@
       {
         "name": "list_deal_funding_sources",
         "title": "List deal funding sources / lenders",
-        "description": "List all funding sources (lenders) attached to a specific deal — the same records shown in the deal's Funding Sources tab. Returns each entry's stage/status, tracking bucket (active, on-deck, on-hold, passed, excluded), quote amount / rate / term, pass reason, and status-change timestamps (submitted, approved, declined, passed, on-deck, on-hold, excluded). Returns an empty list when the deal has no funding sources.",
+        "description": "List funding sources (lenders) attached to deals — the same records shown in a deal's Funding Sources tab. Pass deal_id to scope to one deal, or omit it to return funding sources across ALL deals and ALL pipelines the caller can see (RLS scoped). Optional filters: deal_query (substring of the deal/company name), pipeline_id, tracking_status, stage, lender_name. Each row returns the funding source name, funding_source_type (lender_type from the master directory, e.g. senior debt / sub debt / mezzanine / equity), loan_types, commitment/quote amount, rate and term, stage + tracking bucket (active, on-deck, on-hold, passed, excluded) as status, pass reason, status-change timestamps, and the linked deal_id / deal_name / pipeline_id. Capital-stack position is not tracked as a discrete field; funding_source_type and loan_types are the closest available signal.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -782,12 +794,41 @@
           "properties": {
             "deal_id": {
               "type": "string",
+              "format": "uuid",
+              "description": "Optional. Omit to return funding sources across all deals."
+            },
+            "deal_query": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Substring filter on the deal/company name."
+            },
+            "pipeline_id": {
+              "type": "string",
               "format": "uuid"
+            },
+            "tracking_status": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "stage": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "lender_name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
             }
           },
-          "required": [
-            "deal_id"
-          ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },

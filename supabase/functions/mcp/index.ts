@@ -146,7 +146,7 @@ var list_deals_default = defineTool({
     created_to: z.string().trim().max(40).optional().describe("ISO date/timestamp upper bound on created_at (exclusive)."),
     closing_from: z.string().trim().max(40).optional().describe("ISO date lower bound on closing_date (inclusive)."),
     closing_to: z.string().trim().max(40).optional().describe("ISO date upper bound on closing_date (exclusive)."),
-    limit: z.number().int().min(1).max(200).default(50)
+    limit: z.number().int().min(1).max(500).default(50)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ query, stage, pipeline_id, created_from, created_to, closing_from, closing_to, limit }, ctx) => {
@@ -496,23 +496,34 @@ import { z as z11 } from "npm:zod@^3.23.0";
 var search_lenders_default = defineTool11({
   name: "search_lenders",
   title: "Search funding sources / lenders",
-  description: "Search the master lender directory by name, product, or geography. Optionally filter by deal_size (returns lenders whose min_deal_size <= size <= max_deal_size).",
+  description: "Search the master funding-source (lender) directory by name. Optionally filter by deal_size, which returns funding sources whose min_deal <= size <= max_deal. Returns id, name, lender_type, tier, min_deal / max_deal (also echoed as min_deal_size / max_deal_size for convenience), loan_types, industries, geographies, appetite_status and website.",
   inputSchema: {
     query: z11.string().trim().max(200).optional(),
     deal_size: z11.number().nonnegative().optional(),
-    limit: z11.number().int().min(1).max(100).default(25)
+    lender_type: z11.string().trim().max(100).optional(),
+    limit: z11.number().int().min(1).max(200).default(25)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ query, deal_size, limit }, ctx) => {
+  handler: async ({ query, deal_size, lender_type, limit }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    let q = sb.from("master_lenders").select("id, name, lender_type, tier, min_deal_size, max_deal_size, loan_types, geographies, website").limit(limit);
+    let q = sb.from("master_lenders").select(
+      "id, name, lender_type, tier, active, appetite_status, min_deal, max_deal, sweet_spot_min, sweet_spot_max, loan_types, industries, geographies, website, contact_name, contact_title"
+    ).limit(limit);
     if (query) q = q.ilike("name", `%${query}%`);
-    if (deal_size !== void 0) q = q.lte("min_deal_size", deal_size).gte("max_deal_size", deal_size);
+    if (lender_type) q = q.ilike("lender_type", `%${lender_type}%`);
+    if (deal_size !== void 0) {
+      q = q.or(`min_deal.is.null,min_deal.lte.${deal_size}`).or(`max_deal.is.null,max_deal.gte.${deal_size}`);
+    }
     const { data, error } = await q;
     if (error) return errorResult(error.message);
-    return textResult(data ?? [], { count: data?.length ?? 0 });
+    const rows = (data ?? []).map((r) => ({
+      ...r,
+      min_deal_size: r.min_deal ?? null,
+      max_deal_size: r.max_deal ?? null
+    }));
+    return textResult(rows, { count: rows.length });
   }
 });
 
@@ -578,30 +589,45 @@ import { z as z14 } from "npm:zod@^3.23.0";
 var list_deal_activity_default = defineTool14({
   name: "list_deal_activity",
   title: "List deal activity",
-  description: "List recent activity/timeline events for a deal \u2014 stage changes, field updates, emails, calls, notes, and other logged actions. Combines deal_activity (structured field changes) with activity_logs (rich events including emails). Returns items ordered by most recent first.",
+  description: "List recent activity/timeline events \u2014 stage changes, field updates, emails, calls, notes, and other logged actions. Pass deal_id to scope to one deal, or omit it to return activity across ALL deals and pipelines the caller can see (RLS scoped). Combines activity_logs (rich events including emails) with deal_activity (structured field changes). Ordered most recent first.",
   inputSchema: {
-    deal_id: z14.string().uuid(),
+    deal_id: z14.string().uuid().optional().describe("Optional. Omit to return activity across all deals."),
     activity_type: z14.string().trim().min(1).max(60).optional().describe("Optional activity_type filter for activity_logs (e.g. 'email', 'call', 'note', 'stage_change')."),
+    since: z14.string().trim().max(40).optional().describe("ISO timestamp lower bound on created_at (inclusive)."),
+    until: z14.string().trim().max(40).optional().describe("ISO timestamp upper bound on created_at (exclusive)."),
     limit: z14.number().int().min(1).max(200).default(50)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, activity_type, limit }, ctx) => {
+  handler: async ({ deal_id, activity_type, since, until, limit }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    const denied = await assertDealAccess(sb, ctx, deal_id, "list_deal_activity");
-    if (denied) return denied;
+    if (deal_id) {
+      const denied = await assertDealAccess(sb, ctx, deal_id, "list_deal_activity");
+      if (denied) return denied;
+    }
     let logsQ = sb.from("activity_logs").select(
-      "id, activity_type, description, user_display_name, direction, subject, from_address, to_addresses, sent_at, thread_id, provider, metadata, created_at"
-    ).eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(limit);
+      "id, deal_id, activity_type, description, user_display_name, direction, subject, from_address, to_addresses, sent_at, thread_id, provider, metadata, created_at"
+    ).order("created_at", { ascending: false }).limit(limit);
+    let changesQ = sb.from("deal_activity").select("id, deal_id, source, action_type, before, after, user_id, created_at").order("created_at", { ascending: false }).limit(limit);
+    if (deal_id) {
+      logsQ = logsQ.eq("deal_id", deal_id);
+      changesQ = changesQ.eq("deal_id", deal_id);
+    }
     if (activity_type) logsQ = logsQ.eq("activity_type", activity_type);
-    const [logsRes, changesRes] = await Promise.all([
-      logsQ,
-      sb.from("deal_activity").select("id, source, action_type, before, after, user_id, created_at").eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(limit)
-    ]);
+    if (since) {
+      logsQ = logsQ.gte("created_at", since);
+      changesQ = changesQ.gte("created_at", since);
+    }
+    if (until) {
+      logsQ = logsQ.lt("created_at", until);
+      changesQ = changesQ.lt("created_at", until);
+    }
+    const [logsRes, changesRes] = await Promise.all([logsQ, changesQ]);
     if (logsRes.error) return errorResult(logsRes.error.message);
     if (changesRes.error) return errorResult(changesRes.error.message);
     return textResult({
+      scope: deal_id ? "single_deal" : "all_deals",
       activity_logs: logsRes.data ?? [],
       field_changes: changesRes.data ?? []
     });
@@ -747,20 +773,44 @@ import { z as z19 } from "npm:zod@^3.23.0";
 var list_deal_funding_sources_default = defineTool19({
   name: "list_deal_funding_sources",
   title: "List deal funding sources / lenders",
-  description: "List all funding sources (lenders) attached to a specific deal \u2014 the same records shown in the deal's Funding Sources tab. Returns each entry's stage/status, tracking bucket (active, on-deck, on-hold, passed, excluded), quote amount / rate / term, pass reason, and status-change timestamps (submitted, approved, declined, passed, on-deck, on-hold, excluded). Returns an empty list when the deal has no funding sources.",
+  description: "List funding sources (lenders) attached to deals \u2014 the same records shown in a deal's Funding Sources tab. Pass deal_id to scope to one deal, or omit it to return funding sources across ALL deals and ALL pipelines the caller can see (RLS scoped). Optional filters: deal_query (substring of the deal/company name), pipeline_id, tracking_status, stage, lender_name. Each row returns the funding source name, funding_source_type (lender_type from the master directory, e.g. senior debt / sub debt / mezzanine / equity), loan_types, commitment/quote amount, rate and term, stage + tracking bucket (active, on-deck, on-hold, passed, excluded) as status, pass reason, status-change timestamps, and the linked deal_id / deal_name / pipeline_id. Capital-stack position is not tracked as a discrete field; funding_source_type and loan_types are the closest available signal.",
   inputSchema: {
-    deal_id: z19.string().uuid()
+    deal_id: z19.string().uuid().optional().describe("Optional. Omit to return funding sources across all deals."),
+    deal_query: z19.string().trim().min(1).max(200).optional().describe("Substring filter on the deal/company name."),
+    pipeline_id: z19.string().uuid().optional(),
+    tracking_status: z19.string().trim().min(1).max(60).optional(),
+    stage: z19.string().trim().min(1).max(100).optional(),
+    lender_name: z19.string().trim().min(1).max(200).optional(),
+    limit: z19.number().int().min(1).max(500).default(100)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id }, ctx) => {
+  handler: async ({ deal_id, deal_query, pipeline_id, tracking_status, stage, lender_name, limit }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    const denied = await assertDealAccess(sb, ctx, deal_id, "list_deal_funding_sources");
-    if (denied) return denied;
-    const { data, error } = await sb.from("deal_lenders").select(
-      "id, deal_id, name, stage, substage, tracking_status, tags, score, notes, pass_reason, quote_amount, quote_rate, quote_term, submitted_at, approved_at, declined_at, passed_at, on_deck_at, on_hold_at, excluded_at, last_status_change_at, last_contact_at, master_lender_id, selected_contact_id, created_at, updated_at"
-    ).eq("deal_id", deal_id).order("last_status_change_at", { ascending: false, nullsFirst: false });
+    if (deal_id) {
+      const denied = await assertDealAccess(sb, ctx, deal_id, "list_deal_funding_sources");
+      if (denied) return denied;
+    }
+    let dealIds = null;
+    if (deal_query || pipeline_id) {
+      let dq = sb.from("deals").select("id").limit(1e3);
+      if (deal_query) dq = dq.ilike("company", `%${deal_query}%`);
+      if (pipeline_id) dq = dq.eq("pipeline_id", pipeline_id);
+      const { data: dealRows, error: dealErr } = await dq;
+      if (dealErr) return errorResult(dealErr.message);
+      dealIds = (dealRows ?? []).map((d) => d.id);
+      if (dealIds.length === 0) return textResult([], { count: 0 });
+    }
+    let q = sb.from("deal_lenders").select(
+      "id, deal_id, name, stage, substage, tracking_status, tags, score, notes, pass_reason, quote_amount, quote_rate, quote_term, submitted_at, approved_at, declined_at, passed_at, on_deck_at, on_hold_at, excluded_at, last_status_change_at, last_contact_at, master_lender_id, selected_contact_id, created_at, updated_at, master_lenders:master_lender_id(id, name, lender_type, tier, loan_types), deals:deal_id(id, company, pipeline_id, stage, status)"
+    ).order("last_status_change_at", { ascending: false, nullsFirst: false }).limit(limit);
+    if (deal_id) q = q.eq("deal_id", deal_id);
+    if (dealIds) q = q.in("deal_id", dealIds);
+    if (tracking_status) q = q.eq("tracking_status", tracking_status);
+    if (stage) q = q.eq("stage", stage);
+    if (lender_name) q = q.ilike("name", `%${lender_name}%`);
+    const { data, error } = await q;
     if (error) {
       console.error("[list_deal_funding_sources] query error", {
         deal_id,
@@ -769,13 +819,22 @@ var list_deal_funding_sources_default = defineTool19({
       });
       return errorResult(error.message);
     }
-    const rows = data ?? [];
+    const rows = (data ?? []).map((r) => ({
+      ...r,
+      funding_source_type: r.master_lenders?.lender_type ?? null,
+      loan_types: r.master_lenders?.loan_types ?? null,
+      lender_tier: r.master_lenders?.tier ?? null,
+      commitment_amount: r.quote_amount ?? null,
+      status: r.tracking_status ?? r.stage ?? null,
+      deal_name: r.deals?.company ?? null,
+      pipeline_id: r.deals?.pipeline_id ?? null
+    }));
     console.log("[list_deal_funding_sources] ok", {
-      deal_id,
+      deal_id: deal_id ?? "all",
       user_id: ctx.getUserId?.(),
       count: rows.length
     });
-    return textResult(rows, { count: rows.length, deal_id, deal_visible: true });
+    return textResult(rows, { count: rows.length, deal_id: deal_id ?? null, scope: deal_id ? "single_deal" : "all_deals" });
   }
 });
 
