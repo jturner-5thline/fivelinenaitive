@@ -1,5 +1,6 @@
 import { auth, defineMcp } from "@lovable.dev/mcp-js";
 import listDeals from "./tools/list-deals";
+import listPipelines from "./tools/list-pipelines";
 import getDeal from "./tools/get-deal";
 import updateDeal from "./tools/update-deal";
 import listTasks from "./tools/list-tasks";
@@ -49,6 +50,7 @@ export default defineMcp({
   }),
   tools: [
     listDeals,
+    listPipelines,
     getDeal,
     updateDeal,
     listTasks,
