@@ -19,7 +19,7 @@
       {
         "name": "list_deals",
         "title": "List deals",
-        "description": "List the naitive deals the signed-in user can see, returning full row records (not just a count). Optionally filter by stage, pipeline_id, a text query against the company/deal name, or a created_at/closing_date window (use created_from/created_to for questions like 'deals created in August'). Returns id, company, stage (the raw pipeline-scoped stage id), stage_label (the human stage name from the deal's assigned pipeline — ALWAYS report this to users, never the raw id, because stage ids are overloaded across pipelines, e.g. 'agreement-pending' is labelled 'Deal Had to be Benched' in the In Development pipeline), pipeline_name, value, closing_date, created_at, pipeline_id, deal_owner, manager, status, updated_at.",
+        "description": "List EVERY deal the signed-in user can see, across ALL pipelines. No implicit pipeline, owner, stage, or status filter is applied — results are only narrowed by the filters you pass explicitly. Returns full row records plus pipeline metadata: id, company, stage (raw pipeline-scoped stage id), stage_label (the human stage name from the deal's assigned pipeline — ALWAYS report this, never the raw id, because stage ids are overloaded across pipelines), pipeline_id, pipeline_name, value, closing_date, created_at, deal_owner, manager, status, updated_at. Pagination: pass `limit` and `offset`; the response includes `total_count` (matching rows regardless of limit), `returned`, `next_offset`, and `has_more` — keep calling with `next_offset` until `has_more` is false to walk the entire set across all pipelines. The response also includes `pipeline_breakdown` (distinct pipelines present in this page) so you can confirm coverage.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -42,7 +42,19 @@
             },
             "pipeline_id": {
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "description": "Optional. Omit to include deals from every pipeline."
+            },
+            "status": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "owner_email": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Optional substring match on deal_owner."
             },
             "created_from": {
               "type": "string",
@@ -67,8 +79,36 @@
             "limit": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 500,
-              "default": 50
+              "maximum": 1000,
+              "default": 200
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "description": "Row offset for pagination; use `next_offset` from the previous response."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_pipelines",
+        "title": "List pipelines",
+        "description": "List every deal pipeline the signed-in user can see, with each pipeline's id, name, whether it is the default, and its ordered stages (stage id + human label). Optionally include a live deal count per pipeline. Use this to confirm that `list_deals` results span all pipelines and to translate raw stage ids into their pipeline-specific labels.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "include_deal_counts": {
+              "type": "boolean",
+              "default": true
             }
           },
           "additionalProperties": false,
