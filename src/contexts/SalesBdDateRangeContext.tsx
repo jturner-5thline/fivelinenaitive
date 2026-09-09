@@ -6,6 +6,7 @@ import {
   type TimeRangePresetId,
 } from '@/lib/insightsTimeRange';
 import type { InsightsTimeRangeValue } from '@/components/insights/InsightsTimeRangeSelector';
+import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 
 /**
  * Single source of truth for the date range applied across the Sales & BD page
