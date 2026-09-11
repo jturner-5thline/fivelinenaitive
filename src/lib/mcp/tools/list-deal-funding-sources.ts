@@ -15,6 +15,7 @@ export default defineTool({
     stage: z.string().trim().min(1).max(100).optional(),
     lender_name: z.string().trim().min(1).max(200).optional(),
     limit: z.number().int().min(1).max(500).default(100),
+    offset: z.number().int().min(0).default(0).describe("Row offset for pagination; use next_offset from the previous page."),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ deal_id, deal_query, pipeline_id, tracking_status, stage, lender_name, limit }, ctx) => {
