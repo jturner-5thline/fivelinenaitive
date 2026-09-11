@@ -62,7 +62,7 @@ export default defineTool({
     if (stage) q = q.eq("stage", stage);
     if (lender_name) q = q.ilike("name", `%${lender_name}%`);
 
-    const { data, error } = await q;
+    const { data, error, count: totalCount } = await q;
     if (error) {
       console.error("[list_deal_funding_sources] query error", {
         deal_id,
@@ -81,11 +81,26 @@ export default defineTool({
       deal_name: r.deals?.company ?? null,
       pipeline_id: r.deals?.pipeline_id ?? null,
     }));
+    const total = totalCount ?? rows.length;
+    const hasMore = offset + rows.length < total;
     console.log("[list_deal_funding_sources] ok", {
       deal_id: deal_id ?? "all",
       user_id: ctx.getUserId?.(),
       count: rows.length,
+      total,
+      offset,
     });
-    return textResult(rows, { count: rows.length, deal_id: deal_id ?? null, scope: deal_id ? "single_deal" : "all_deals" });
+    return textResult(
+      { funding_sources: rows, total_count: total, returned: rows.length, offset, next_offset: hasMore ? offset + rows.length : null, has_more: hasMore },
+      {
+        count: rows.length,
+        total_count: total,
+        offset,
+        next_offset: hasMore ? offset + rows.length : null,
+        has_more: hasMore,
+        deal_id: deal_id ?? null,
+        scope: deal_id ? "single_deal" : "all_deals",
+      },
+    );
   },
 });
