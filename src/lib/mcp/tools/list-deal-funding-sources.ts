@@ -18,7 +18,7 @@ export default defineTool({
     offset: z.number().int().min(0).default(0).describe("Row offset for pagination; use next_offset from the previous page."),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, deal_query, pipeline_id, tracking_status, stage, lender_name, limit }, ctx) => {
+  handler: async ({ deal_id, deal_query, pipeline_id, tracking_status, stage, lender_name, limit, offset }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
@@ -30,22 +30,32 @@ export default defineTool({
     // Resolve deal scope when filtering by name/pipeline (no implicit default scope).
     let dealIds: string[] | null = null;
     if (deal_query || pipeline_id) {
-      let dq = sb.from("deals").select("id").limit(1000);
-      if (deal_query) dq = dq.ilike("company", `%${deal_query}%`);
-      if (pipeline_id) dq = dq.eq("pipeline_id", pipeline_id);
-      const { data: dealRows, error: dealErr } = await dq;
-      if (dealErr) return errorResult(dealErr.message);
-      dealIds = (dealRows ?? []).map((d: { id: string }) => d.id);
-      if (dealIds.length === 0) return textResult([], { count: 0 });
+      // Page through every matching deal — a single 1000-row page silently drops matches.
+      const PAGE = 1000;
+      const collected: string[] = [];
+      for (let page = 0; page < 50; page++) {
+        let dq = sb.from("deals").select("id").order("id", { ascending: true }).range(page * PAGE, page * PAGE + PAGE - 1);
+        if (deal_query) dq = dq.ilike("company", `%${deal_query}%`);
+        if (pipeline_id) dq = dq.eq("pipeline_id", pipeline_id);
+        const { data: dealRows, error: dealErr } = await dq;
+        if (dealErr) return errorResult(dealErr.message);
+        const ids = (dealRows ?? []).map((d: { id: string }) => d.id);
+        collected.push(...ids);
+        if (ids.length < PAGE) break;
+      }
+      dealIds = collected;
+      if (dealIds.length === 0) return textResult([], { count: 0, total_count: 0, has_more: false, next_offset: null });
     }
 
     let q = sb
       .from("deal_lenders")
       .select(
         "id, deal_id, name, stage, substage, tracking_status, tags, score, notes, pass_reason, quote_amount, quote_rate, quote_term, submitted_at, approved_at, declined_at, passed_at, on_deck_at, on_hold_at, excluded_at, last_status_change_at, last_contact_at, master_lender_id, selected_contact_id, created_at, updated_at, master_lenders:master_lender_id(id, name, lender_type, tier, loan_types), deals:deal_id(id, company, pipeline_id, stage, status)",
+        { count: "exact" },
       )
       .order("last_status_change_at", { ascending: false, nullsFirst: false })
-      .limit(limit);
+      .order("id", { ascending: true })
+      .range(offset, offset + limit - 1);
     if (deal_id) q = q.eq("deal_id", deal_id);
     if (dealIds) q = q.in("deal_id", dealIds);
     if (tracking_status) q = q.eq("tracking_status", tracking_status);
