@@ -64,6 +64,13 @@
       "when": 1788536060029,
       "tag": "0008_add_deals_user_edited_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789166163531,
+      "tag": "0009_task_activity_actor_guard",
+      "breakpoints": true
     }
   ]
 }
