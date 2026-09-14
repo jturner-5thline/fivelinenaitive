@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Plus, User, Mail, Briefcase, Phone, FileText, MapPin, Check, ChevronsUpDown } from 'lucide-react';
 import {
   Dialog,
@@ -35,6 +36,46 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
     notes: '',
     geography: '',
   });
+
+  // Live contact suggestions from the contacts database as the user types.
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const pickedRef = useRef(false);
+
+  useEffect(() => {
+    const q = form.name.trim();
+    if (pickedRef.current) { pickedRef.current = false; return; }
+    if (q.length < 2) { setSuggestions([]); return; }
+    let cancelled = false;
+    setSearching(true);
+    const t = setTimeout(async () => {
+      const esc = q.replace(/[%,()]/g, ' ').trim();
+      const { data } = await supabase
+        .from('contacts')
+        .select('id, full_name, first_name, last_name, email, job_title, phone_mobile, phone_work')
+        .or(`full_name.ilike.%${esc}%,first_name.ilike.%${esc}%,last_name.ilike.%${esc}%,email.ilike.%${esc}%`)
+        .limit(8);
+      if (cancelled) return;
+      setSuggestions(data || []);
+      setShowSuggestions(true);
+      setSearching(false);
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [form.name]);
+
+  const pickContact = (c: any) => {
+    pickedRef.current = true;
+    setForm((prev) => ({
+      ...prev,
+      name: c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || prev.name,
+      title: c.job_title || prev.title,
+      email: c.email || prev.email,
+      phone: c.phone_mobile || c.phone_work || prev.phone,
+    }));
+    setShowSuggestions(false);
+    setSuggestions([]);
+  };
 
   const filteredLocations = useMemo(() => {
     if (!geographySearch) return LOCATION_OPTIONS;
@@ -85,12 +126,44 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
               <User className="h-3 w-3" />
               Name *
             </Label>
-            <Input
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Contact name"
-              required
-            />
+            <div className="relative">
+              <Input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                onFocus={() => { if (suggestions.length) setShowSuggestions(true); }}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                placeholder="Contact name"
+                autoComplete="off"
+                required
+              />
+              {showSuggestions && (suggestions.length > 0 || searching) && (
+                <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg max-h-56 overflow-y-auto">
+                  {searching && suggestions.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-muted-foreground">Searching contacts…</div>
+                  ) : (
+                    suggestions.map((c) => {
+                      const nm = c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => pickContact(c)}
+                          className="w-full text-left px-3 py-2 hover:bg-accent transition-colors"
+                        >
+                          <div className="text-sm text-foreground truncate">{nm}</div>
+                          {(c.email || c.job_title) && (
+                            <div className="text-[11px] text-muted-foreground truncate">
+                              {[c.job_title, c.email].filter(Boolean).join(' · ')}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           
           <div className="space-y-1.5">
