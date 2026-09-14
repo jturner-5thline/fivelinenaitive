@@ -66,12 +66,38 @@ export async function syncLenderContactToCrm(
     const firstName = parts[0] || contact.name.trim();
     const lastName = parts.length > 1 ? parts.slice(1).join(' ') : null;
 
-    if (email) {
-      let q = supabase.from('contacts').select('id, crm_company_id, job_title').ilike('email', email).limit(1);
+    // Resolve an existing contacts row: explicit pick first, then exact email, then exact full name.
+    let existing: { id: string; crm_company_id: string | null; job_title: string | null } | null = null;
+
+    if (opts.existingContactId) {
+      const { data: picked } = await supabase
+        .from('contacts')
+        .select('id, crm_company_id, job_title')
+        .eq('id', opts.existingContactId)
+        .maybeSingle();
+      if (picked) existing = picked as any;
+    }
+
+    if (!existing && email) {
+      let q = supabase.from('contacts').select('id, crm_company_id, job_title').ilike('email', escapeLike(email)).limit(1);
       if (opts.orgCompanyId) q = q.eq('org_company_id', opts.orgCompanyId);
       const { data: found } = await q;
-      if (found && found.length) {
-        const existing = found[0];
+      if (found && found.length) existing = found[0] as any;
+    }
+
+    if (!existing && !email && contact.name.trim()) {
+      let q = supabase
+        .from('contacts')
+        .select('id, crm_company_id, job_title')
+        .ilike('full_name', escapeLike(contact.name.trim()))
+        .limit(2);
+      if (opts.orgCompanyId) q = q.eq('org_company_id', opts.orgCompanyId);
+      const { data: found } = await q;
+      if (found && found.length === 1) existing = found[0] as any;
+    }
+
+    {
+      if (existing) {
         const updates: Record<string, any> = { last_modified_by: opts.userId || null };
         if (!existing.crm_company_id && crmCompanyId) updates.crm_company_id = crmCompanyId;
         if (!existing.job_title && contact.title) updates.job_title = contact.title;
