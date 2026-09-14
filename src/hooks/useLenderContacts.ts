@@ -34,6 +34,8 @@ export interface LenderContactInsert {
   city?: string | null;
   state?: string | null;
   country?: string | null;
+  /** Existing contacts-database record chosen from the name dropdown (not stored on lender_contacts). */
+  crmContactId?: string | null;
 }
 
 export function useLenderContacts(lenderId: string | null) {
