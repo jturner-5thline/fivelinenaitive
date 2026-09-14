@@ -16,6 +16,9 @@ export interface LenderContact {
   is_primary: boolean | null;
   notes: string | null;
   geography: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -28,6 +31,9 @@ export interface LenderContactInsert {
   is_primary?: boolean;
   notes?: string | null;
   geography?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
 }
 
 export function useLenderContacts(lenderId: string | null) {
@@ -95,7 +101,15 @@ export function useLenderContacts(lenderId: string | null) {
       // Mirror into the contacts database and link to the funding source's company record.
       void syncLenderContactToCrm(
         lenderId,
-        { name: contact.name, title: contact.title, email: contact.email, phone: contact.phone },
+        {
+          name: contact.name,
+          title: contact.title,
+          email: contact.email,
+          phone: contact.phone,
+          city: contact.city,
+          state: contact.state,
+          country: contact.country,
+        },
         { userId: user.id, orgCompanyId: company?.id ?? null },
       );
       return newContact;

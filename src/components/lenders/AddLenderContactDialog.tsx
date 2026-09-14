@@ -17,6 +17,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { LenderContactInsert } from '@/hooks/useLenderContacts';
 import { LOCATION_OPTIONS } from '@/constants/locations';
+import { US_STATE_OPTIONS } from '@/constants/usStates';
+import { COUNTRY_OPTIONS } from '@/lib/countries';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface AddLenderContactDialogProps {
   onAdd: (contact: LenderContactInsert) => Promise<any>;
@@ -35,6 +38,9 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
     phone: '',
     notes: '',
     geography: '',
+    city: '',
+    state: '',
+    country: '',
   });
 
   // Live contact suggestions from the contacts database as the user types.
@@ -97,10 +103,13 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
         phone: form.phone?.trim() || null,
         notes: form.notes?.trim() || null,
         geography: form.geography?.trim() || null,
+        city: form.city?.trim() || null,
+        state: form.state?.trim() || null,
+        country: form.country?.trim() || null,
       });
       
       if (result) {
-        setForm({ name: '', title: '', email: '', phone: '', notes: '', geography: '' });
+        setForm({ name: '', title: '', email: '', phone: '', notes: '', geography: '', city: '', state: '', country: '' });
         setOpen(false);
       }
     } finally {
@@ -260,6 +269,53 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
             </Popover>
           </div>
           
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">City</Label>
+            <Input
+              value={form.city || ''}
+              onChange={(e) => setForm({ ...form, city: e.target.value })}
+              placeholder="City"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">State</Label>
+            <Select
+              value={form.state || '__none__'}
+              onValueChange={(v) => setForm({ ...form, state: v === '__none__' ? '' : v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select state" />
+              </SelectTrigger>
+              <SelectContent className="app-dropdown-surface lender-edit-popover max-h-64">
+                <SelectItem value="__none__">None</SelectItem>
+                {US_STATE_OPTIONS.map((st) => (
+                  <SelectItem key={st} value={st}>{st}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Country</Label>
+            <Select
+              value={form.country || '__none__'}
+              onValueChange={(v) => setForm({ ...form, country: v === '__none__' ? '' : v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select country" />
+              </SelectTrigger>
+              <SelectContent className="app-dropdown-surface lender-edit-popover max-h-64">
+                <SelectItem value="__none__">None</SelectItem>
+                {COUNTRY_OPTIONS.map((c: any) => {
+                  const value = typeof c === 'string' ? c : (c.value ?? c.label);
+                  const label = typeof c === 'string' ? c : (c.label ?? c.value);
+                  return <SelectItem key={value} value={value}>{label}</SelectItem>;
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
               <FileText className="h-3 w-3" />

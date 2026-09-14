@@ -17547,7 +17547,9 @@ export type Database = {
       }
       lender_contacts: {
         Row: {
+          city: string | null
           contact_id: string | null
+          country: string | null
           created_at: string
           email: string | null
           geography: string | null
@@ -17557,11 +17559,14 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          state: string | null
           title: string | null
           updated_at: string
         }
         Insert: {
+          city?: string | null
           contact_id?: string | null
+          country?: string | null
           created_at?: string
           email?: string | null
           geography?: string | null
@@ -17571,11 +17576,14 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          state?: string | null
           title?: string | null
           updated_at?: string
         }
         Update: {
+          city?: string | null
           contact_id?: string | null
+          country?: string | null
           created_at?: string
           email?: string | null
           geography?: string | null
@@ -17585,6 +17593,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          state?: string | null
           title?: string | null
           updated_at?: string
         }
