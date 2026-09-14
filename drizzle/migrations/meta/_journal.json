@@ -85,6 +85,13 @@
       "when": 1789424699403,
       "tag": "0011_add_lender_contacts_location_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789425514759,
+      "tag": "0012_task_completion_activity_actor_guard",
+      "breakpoints": true
     }
   ]
 }
