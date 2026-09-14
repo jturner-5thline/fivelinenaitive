@@ -18690,12 +18690,14 @@ export type Database = {
           appetite_status: string | null
           b2b_b2c: string | null
           cash_burn: string | null
+          city: string | null
           company_id: string | null
           company_requirements: string | null
           contact_geography: string | null
           contact_name: string | null
           contact_phone: string | null
           contact_title: string | null
+          country: string | null
           created_at: string
           criteria_confidence: string | null
           criteria_reviewed_at: string | null
@@ -18736,6 +18738,7 @@ export type Database = {
           relationship_owners: string | null
           sponsor_requirement: string | null
           sponsorship: string | null
+          state: string | null
           sub_debt: string | null
           sweet_spot_max: number | null
           sweet_spot_min: number | null
@@ -18754,12 +18757,14 @@ export type Database = {
           appetite_status?: string | null
           b2b_b2c?: string | null
           cash_burn?: string | null
+          city?: string | null
           company_id?: string | null
           company_requirements?: string | null
           contact_geography?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           contact_title?: string | null
+          country?: string | null
           created_at?: string
           criteria_confidence?: string | null
           criteria_reviewed_at?: string | null
@@ -18800,6 +18805,7 @@ export type Database = {
           relationship_owners?: string | null
           sponsor_requirement?: string | null
           sponsorship?: string | null
+          state?: string | null
           sub_debt?: string | null
           sweet_spot_max?: number | null
           sweet_spot_min?: number | null
@@ -18818,12 +18824,14 @@ export type Database = {
           appetite_status?: string | null
           b2b_b2c?: string | null
           cash_burn?: string | null
+          city?: string | null
           company_id?: string | null
           company_requirements?: string | null
           contact_geography?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           contact_title?: string | null
+          country?: string | null
           created_at?: string
           criteria_confidence?: string | null
           criteria_reviewed_at?: string | null
@@ -18864,6 +18872,7 @@ export type Database = {
           relationship_owners?: string | null
           sponsor_requirement?: string | null
           sponsorship?: string | null
+          state?: string | null
           sub_debt?: string | null
           sweet_spot_max?: number | null
           sweet_spot_min?: number | null

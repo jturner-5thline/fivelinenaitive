@@ -37,6 +37,8 @@ import { isActiveLenderDeal, normalizeLenderStatus } from '@/lib/lenderActiveDea
 import { useLenderAttachments, LenderAttachment, LENDER_ATTACHMENT_CATEGORIES, LenderAttachmentCategory } from '@/hooks/useLenderAttachments';
 import { useLenderContacts } from '@/hooks/useLenderContacts';
 import { useAuth } from '@/contexts/AuthContext';
+import { US_STATE_OPTIONS } from '@/constants/usStates';
+import { COUNTRY_OPTIONS } from '@/lib/countries';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useLenderSectionOrder, LenderSectionId } from '@/hooks/useLenderSectionOrder';
 import { LenderSectionReorderDialog } from './LenderSectionReorderDialog';
@@ -141,6 +143,9 @@ interface LenderInfo {
   websiteUrl?: string | null;
   linkedinUrl?: string | null;
   address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
   phoneMain?: string | null;
   sponsorship?: string | null;
   cashBurn?: string | null;
@@ -184,6 +189,9 @@ export interface LenderEditData {
   websiteUrl: string;
   linkedinUrl: string;
   address: string;
+  city?: string;
+  state?: string;
+  country?: string;
   phoneMain: string;
   contactTitle?: string;
   b2bB2c?: string;
@@ -243,6 +251,9 @@ function buildEditForm(lender: LenderInfo): LenderEditData {
     websiteUrl: lender.websiteUrl || '',
     linkedinUrl: lender.linkedinUrl || '',
     address: lender.address || '',
+    city: lender.city || '',
+    state: lender.state || '',
+    country: lender.country || '',
     phoneMain: lender.phoneMain || '',
     contactTitle: lender.contact.title || '',
     b2bB2c: lender.b2bB2c || '',
@@ -1211,13 +1222,55 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Address</Label>
-                      <Textarea
+                      <Input
                         value={editForm.address}
                         onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                        placeholder="Street, City, State, Zip"
-                        rows={2}
+                        placeholder="Street address"
                         className="text-sm"
                       />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">City</Label>
+                      <Input
+                        value={editForm.city || ''}
+                        onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                        placeholder="City"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">State</Label>
+                      <Select
+                        value={editForm.state || ''}
+                        onValueChange={(v) => setEditForm({ ...editForm, state: v === '__none__' ? '' : v })}
+                      >
+                        <SelectTrigger className="text-sm">
+                          <SelectValue placeholder="Select state" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-72">
+                          <SelectItem value="__none__">—</SelectItem>
+                          {US_STATE_OPTIONS.map((s) => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Country</Label>
+                      <Select
+                        value={editForm.country || ''}
+                        onValueChange={(v) => setEditForm({ ...editForm, country: v === '__none__' ? '' : v })}
+                      >
+                        <SelectTrigger className="text-sm">
+                          <SelectValue placeholder="Select country" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-72">
+                          <SelectItem value="__none__">—</SelectItem>
+                          {COUNTRY_OPTIONS.map((c) => (
+                            <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </section>
@@ -2138,8 +2191,12 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
                                 <div className="min-w-0 flex-1">
                                   <div className="text-xs text-muted-foreground mb-0.5">Address</div>
-                                  {lender.address ? (
-                                    <p className="text-sm whitespace-pre-wrap break-words">{lender.address}</p>
+                                  {(lender.address || lender.city || lender.state || lender.country) ? (
+                                    <p className="text-sm whitespace-pre-wrap break-words">
+                                      {[lender.address, [lender.city, lender.state].filter(Boolean).join(', '), lender.country]
+                                        .filter(Boolean)
+                                        .join('\n')}
+                                    </p>
                                   ) : onSave ? (
                                     <button
                                       type="button"

@@ -158,6 +158,9 @@ interface LenderInfo {
   websiteUrl?: string | null;
   linkedinUrl?: string | null;
   address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
   phoneMain?: string | null;
   sponsorship?: string | null;
   cashBurn?: string | null;
@@ -275,6 +278,9 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
     websiteUrl: lender.website,
     linkedinUrl: lender.linkedin_url,
     address: lender.address,
+    city: (lender as any).city ?? null,
+    state: (lender as any).state ?? null,
+    country: (lender as any).country ?? null,
     phoneMain: lender.phone,
     sponsorship: lender.sponsorship,
     cashBurn: lender.cash_burn,
@@ -1357,6 +1363,9 @@ export default function Lenders() {
       website: data.websiteUrl?.trim() || null,
       linkedin_url: data.linkedinUrl?.trim() || null,
       address: data.address?.trim() || null,
+      city: data.city?.trim() || null,
+      state: data.state?.trim() || null,
+      country: data.country?.trim() || null,
       phone: data.phoneMain?.trim() || null,
       contact_title: data.contactTitle?.trim() || null,
       contact_geography: data.contactGeography?.trim() || null,
