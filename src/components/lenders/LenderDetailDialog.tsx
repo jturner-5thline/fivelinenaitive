@@ -189,6 +189,9 @@ export interface LenderEditData {
   websiteUrl: string;
   linkedinUrl: string;
   address: string;
+  city?: string;
+  state?: string;
+  country?: string;
   phoneMain: string;
   contactTitle?: string;
   b2bB2c?: string;
