@@ -83,12 +83,14 @@ export function useLenderContacts(lenderId: string | null) {
   const addContact = async (contact: LenderContactInsert): Promise<LenderContact | null> => {
     if (!lenderId || !user) return null;
 
+    const { crmContactId, ...contactRow } = contact;
+
     try {
       const { data, error: insertError } = await supabase
         .from('lender_contacts')
         .insert({
           lender_id: lenderId,
-          ...contact,
+          ...contactRow,
         })
         .select()
         .single();
