@@ -1222,13 +1222,55 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Address</Label>
-                      <Textarea
+                      <Input
                         value={editForm.address}
                         onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                        placeholder="Street, City, State, Zip"
-                        rows={2}
+                        placeholder="Street address"
                         className="text-sm"
                       />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">City</Label>
+                      <Input
+                        value={editForm.city || ''}
+                        onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                        placeholder="City"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">State</Label>
+                      <Select
+                        value={editForm.state || ''}
+                        onValueChange={(v) => setEditForm({ ...editForm, state: v === '__none__' ? '' : v })}
+                      >
+                        <SelectTrigger className="text-sm">
+                          <SelectValue placeholder="Select state" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-72">
+                          <SelectItem value="__none__">—</SelectItem>
+                          {US_STATE_OPTIONS.map((s) => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Country</Label>
+                      <Select
+                        value={editForm.country || ''}
+                        onValueChange={(v) => setEditForm({ ...editForm, country: v === '__none__' ? '' : v })}
+                      >
+                        <SelectTrigger className="text-sm">
+                          <SelectValue placeholder="Select country" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-72">
+                          <SelectItem value="__none__">—</SelectItem>
+                          {COUNTRY_OPTIONS.map((c) => (
+                            <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </section>
