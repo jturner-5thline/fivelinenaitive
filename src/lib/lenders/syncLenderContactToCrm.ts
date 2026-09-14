@@ -32,7 +32,7 @@ export async function syncLenderContactToCrm(
     let crmCompanyId: string | null = (lender as any).crm_company_id ?? null;
 
     if (!crmCompanyId && lender.name) {
-      let q = supabase.from('crm_companies').select('id, name, website').ilike('name', lender.name).limit(1);
+      let q = supabase.from('crm_companies').select('id, name, domain').ilike('name', lender.name).limit(1);
       if (opts.orgCompanyId) q = q.eq('org_company_id', opts.orgCompanyId);
       const { data: existing } = await q;
       if (existing && existing.length) crmCompanyId = existing[0].id;
@@ -43,7 +43,7 @@ export async function syncLenderContactToCrm(
         .from('crm_companies')
         .insert({
           name: lender.name,
-          website: (lender as any).website || null,
+          domain: hostOf((lender as any).website) || null,
           created_by: opts.userId || null,
           org_company_id: opts.orgCompanyId || null,
         } as any)
