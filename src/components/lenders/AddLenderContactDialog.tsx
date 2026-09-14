@@ -137,7 +137,7 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
                 required
               />
               {showSuggestions && (suggestions.length > 0 || searching) && (
-                <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg max-h-56 overflow-y-auto">
+                <div className="app-dropdown-surface lender-edit-popover absolute z-50 mt-1 w-full rounded-md border border-border shadow-lg max-h-56 overflow-y-auto">
                   {searching && suggestions.length === 0 ? (
                     <div className="px-3 py-2 text-xs text-muted-foreground">Searching contacts…</div>
                   ) : (
