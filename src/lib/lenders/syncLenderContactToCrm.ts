@@ -5,6 +5,9 @@ export interface LenderContactCrmInput {
   title?: string | null;
   email?: string | null;
   phone?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
 }
 
 const hostOf = (url?: string | null) =>
@@ -70,6 +73,12 @@ export async function syncLenderContactToCrm(
         const updates: Record<string, any> = { last_modified_by: opts.userId || null };
         if (!existing.crm_company_id && crmCompanyId) updates.crm_company_id = crmCompanyId;
         if (!existing.job_title && contact.title) updates.job_title = contact.title;
+        if (contact.city?.trim()) updates.city = contact.city.trim();
+        if (contact.state?.trim()) {
+          updates.state = contact.state.trim();
+          updates.state_region = contact.state.trim();
+        }
+        if (contact.country?.trim()) updates.country = contact.country.trim();
         await supabase.from('contacts').update(updates as any).eq('id', existing.id);
         return { contactId: existing.id, crmCompanyId };
       }
@@ -84,6 +93,10 @@ export async function syncLenderContactToCrm(
         email,
         phone_work: contact.phone?.trim() || null,
         job_title: contact.title?.trim() || null,
+        city: contact.city?.trim() || null,
+        state: contact.state?.trim() || null,
+        state_region: contact.state?.trim() || null,
+        country: contact.country?.trim() || null,
         crm_company_id: crmCompanyId,
         email_domain_normalized: email ? email.split('@')[1] || null : hostOf((lender as any).website) || null,
         created_by: opts.userId || null,
