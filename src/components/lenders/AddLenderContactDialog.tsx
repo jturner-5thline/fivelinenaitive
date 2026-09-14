@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Plus, User, Mail, Briefcase, Phone, FileText, MapPin, Check, ChevronsUpDown } from 'lucide-react';
 import {
   Dialog,
