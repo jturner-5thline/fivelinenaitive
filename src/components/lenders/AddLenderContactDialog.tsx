@@ -125,18 +125,23 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
           Add Contact
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md !z-[1410]" overlayClassName="!z-[1400]">
-        <DialogHeader>
-          <DialogTitle>Add Contact</DialogTitle>
+      <DialogContent
+        className="sm:max-w-lg max-w-[95vw] max-h-[88vh] overflow-hidden flex flex-col !z-[1410]"
+        overlayClassName="!z-[1400]"
+      >
+        <DialogHeader className="pb-1">
+          <DialogTitle className="text-base">Add Contact</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
+        <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
+          <div className="space-y-1">
             <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
               <User className="h-3 w-3" />
               Name *
             </Label>
             <div className="relative">
               <Input
+                className="h-8 text-sm"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 onFocus={() => { if (suggestions.length) setShowSuggestions(true); }}
@@ -161,7 +166,7 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
                           type="button"
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => pickContact(c)}
-                          className="w-full text-left px-3 py-2 hover:bg-accent transition-colors"
+                          className="w-full text-left px-3 py-1.5 hover:bg-accent transition-colors"
                         >
                           <div className="text-sm text-foreground truncate">{nm}</div>
                           {(c.email || c.job_title) && (
@@ -177,163 +182,173 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
               )}
             </div>
           </div>
-          
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <Briefcase className="h-3 w-3" />
-              Title
-            </Label>
-            <Input
-              value={form.title || ''}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="e.g., Managing Director"
-            />
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Briefcase className="h-3 w-3" />
+                Title
+              </Label>
+              <Input
+                className="h-8 text-sm"
+                value={form.title || ''}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="e.g., Managing Director"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Phone className="h-3 w-3" />
+                Phone
+              </Label>
+              <Input
+                className="h-8 text-sm"
+                type="tel"
+                value={form.phone || ''}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="(555) 123-4567"
+              />
+            </div>
           </div>
-          
-          <div className="space-y-1.5">
+
+          <div className="space-y-1">
             <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
               <Mail className="h-3 w-3" />
               Email
             </Label>
             <Input
+              className="h-8 text-sm"
               type="email"
               value={form.email || ''}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               placeholder="email@example.com"
             />
           </div>
-          
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <Phone className="h-3 w-3" />
-              Phone
-            </Label>
-            <Input
-              type="tel"
-              value={form.phone || ''}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              placeholder="(555) 123-4567"
-            />
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <MapPin className="h-3 w-3" />
+                Geography
+              </Label>
+              <Popover open={geographyOpen} onOpenChange={setGeographyOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={geographyOpen}
+                    className="w-full h-8 justify-between font-normal text-sm px-2"
+                  >
+                    <span className="truncate">{form.geography || "Select geography"}</span>
+                    <ChevronsUpDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[260px] p-0" align="start">
+                  <div className="p-2 border-b">
+                    <Input
+                      placeholder="Search locations..."
+                      value={geographySearch}
+                      onChange={(e) => setGeographySearch(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
+                  <div className="max-h-[200px] overflow-y-auto p-1">
+                    {filteredLocations.length === 0 ? (
+                      <div className="py-2 px-3 text-sm text-muted-foreground">No locations found</div>
+                    ) : (
+                      filteredLocations.map(option => (
+                        <div
+                          key={option}
+                          className={cn(
+                            "flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer text-sm hover:bg-accent",
+                            form.geography === option && "bg-accent"
+                          )}
+                          onClick={() => {
+                            setForm({ ...form, geography: option });
+                            setGeographyOpen(false);
+                            setGeographySearch('');
+                          }}
+                        >
+                          <Check className={cn("h-4 w-4", form.geography === option ? "opacity-100" : "opacity-0")} />
+                          {option}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">City</Label>
+              <Input
+                className="h-8 text-sm"
+                value={form.city || ''}
+                onChange={(e) => setForm({ ...form, city: e.target.value })}
+                placeholder="City"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">State</Label>
+              <Select
+                value={form.state || '__none__'}
+                onValueChange={(v) => setForm({ ...form, state: v === '__none__' ? '' : v })}
+              >
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Select state" />
+                </SelectTrigger>
+                <SelectContent className="app-dropdown-surface lender-edit-popover max-h-64">
+                  <SelectItem value="__none__">None</SelectItem>
+                  {US_STATE_OPTIONS.map((st) => (
+                    <SelectItem key={st} value={st}>{st}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Country</Label>
+              <Select
+                value={form.country || '__none__'}
+                onValueChange={(v) => setForm({ ...form, country: v === '__none__' ? '' : v })}
+              >
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Select country" />
+                </SelectTrigger>
+                <SelectContent className="app-dropdown-surface lender-edit-popover max-h-64">
+                  <SelectItem value="__none__">None</SelectItem>
+                  {COUNTRY_OPTIONS.map((c: any) => {
+                    const value = typeof c === 'string' ? c : (c.value ?? c.label);
+                    const label = typeof c === 'string' ? c : (c.label ?? c.value);
+                    return <SelectItem key={value} value={value}>{label}</SelectItem>;
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <MapPin className="h-3 w-3" />
-              Geography
-            </Label>
-            <Popover open={geographyOpen} onOpenChange={setGeographyOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={geographyOpen}
-                  className="w-full justify-between font-normal"
-                >
-                  {form.geography || "Select geography"}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0" align="start">
-                <div className="p-2 border-b">
-                  <Input
-                    placeholder="Search locations..."
-                    value={geographySearch}
-                    onChange={(e) => setGeographySearch(e.target.value)}
-                    className="h-8"
-                  />
-                </div>
-                <div className="max-h-[200px] overflow-y-auto p-1">
-                  {filteredLocations.length === 0 ? (
-                    <div className="py-2 px-3 text-sm text-muted-foreground">No locations found</div>
-                  ) : (
-                    filteredLocations.map(option => (
-                      <div
-                        key={option}
-                        className={cn(
-                          "flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer text-sm hover:bg-accent",
-                          form.geography === option && "bg-accent"
-                        )}
-                        onClick={() => {
-                          setForm({ ...form, geography: option });
-                          setGeographyOpen(false);
-                          setGeographySearch('');
-                        }}
-                      >
-                        <Check className={cn("h-4 w-4", form.geography === option ? "opacity-100" : "opacity-0")} />
-                        {option}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-          
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">City</Label>
-            <Input
-              value={form.city || ''}
-              onChange={(e) => setForm({ ...form, city: e.target.value })}
-              placeholder="City"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">State</Label>
-            <Select
-              value={form.state || '__none__'}
-              onValueChange={(v) => setForm({ ...form, state: v === '__none__' ? '' : v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select state" />
-              </SelectTrigger>
-              <SelectContent className="app-dropdown-surface lender-edit-popover max-h-64">
-                <SelectItem value="__none__">None</SelectItem>
-                {US_STATE_OPTIONS.map((st) => (
-                  <SelectItem key={st} value={st}>{st}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Country</Label>
-            <Select
-              value={form.country || '__none__'}
-              onValueChange={(v) => setForm({ ...form, country: v === '__none__' ? '' : v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select country" />
-              </SelectTrigger>
-              <SelectContent className="app-dropdown-surface lender-edit-popover max-h-64">
-                <SelectItem value="__none__">None</SelectItem>
-                {COUNTRY_OPTIONS.map((c: any) => {
-                  const value = typeof c === 'string' ? c : (c.value ?? c.label);
-                  const label = typeof c === 'string' ? c : (c.label ?? c.value);
-                  return <SelectItem key={value} value={value}>{label}</SelectItem>;
-                })}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
               <FileText className="h-3 w-3" />
               Notes
             </Label>
             <Textarea
+              className="text-sm"
               value={form.notes || ''}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               placeholder="Additional notes about this contact..."
               rows={2}
             />
           </div>
-          
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
+          </div>
+
+          <DialogFooter className="pt-3 mt-1 border-t border-white/10">
+            <Button type="button" size="sm" variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!form.name.trim() || isSubmitting}>
+            <Button type="submit" size="sm" disabled={!form.name.trim() || isSubmitting}>
               {isSubmitting ? 'Adding...' : 'Add Contact'}
             </Button>
           </DialogFooter>
