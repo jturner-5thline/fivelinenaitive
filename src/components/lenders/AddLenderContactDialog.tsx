@@ -74,6 +74,7 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
     pickedRef.current = true;
     setForm((prev) => ({
       ...prev,
+      crmContactId: c.id,
       name: c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || prev.name,
       title: c.job_title || prev.title,
       email: c.email || prev.email,
