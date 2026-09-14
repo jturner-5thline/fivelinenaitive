@@ -143,6 +143,9 @@ interface LenderInfo {
   websiteUrl?: string | null;
   linkedinUrl?: string | null;
   address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
   phoneMain?: string | null;
   sponsorship?: string | null;
   cashBurn?: string | null;
