@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { isDemoEmail, withDemoLenderContactRow } from '@/lib/demoLenderContact';
 import { syncLenderContactToCrm } from '@/lib/lenders/syncLenderContactToCrm';
-import { useCompany } from '@/contexts/CompanyContext';
+import { useCompany } from '@/hooks/useCompany';
 
 export interface LenderContact {
   id: string;
