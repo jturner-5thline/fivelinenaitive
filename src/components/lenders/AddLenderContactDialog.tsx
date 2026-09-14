@@ -37,6 +37,46 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
     geography: '',
   });
 
+  // Live contact suggestions from the contacts database as the user types.
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const pickedRef = useRef(false);
+
+  useEffect(() => {
+    const q = form.name.trim();
+    if (pickedRef.current) { pickedRef.current = false; return; }
+    if (q.length < 2) { setSuggestions([]); return; }
+    let cancelled = false;
+    setSearching(true);
+    const t = setTimeout(async () => {
+      const esc = q.replace(/[%,()]/g, ' ').trim();
+      const { data } = await supabase
+        .from('contacts')
+        .select('id, full_name, first_name, last_name, email, job_title, phone_mobile, phone_work')
+        .or(`full_name.ilike.%${esc}%,first_name.ilike.%${esc}%,last_name.ilike.%${esc}%,email.ilike.%${esc}%`)
+        .limit(8);
+      if (cancelled) return;
+      setSuggestions(data || []);
+      setShowSuggestions(true);
+      setSearching(false);
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [form.name]);
+
+  const pickContact = (c: any) => {
+    pickedRef.current = true;
+    setForm((prev) => ({
+      ...prev,
+      name: c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || prev.name,
+      title: c.job_title || prev.title,
+      email: c.email || prev.email,
+      phone: c.phone_mobile || c.phone_work || prev.phone,
+    }));
+    setShowSuggestions(false);
+    setSuggestions([]);
+  };
+
   const filteredLocations = useMemo(() => {
     if (!geographySearch) return LOCATION_OPTIONS;
     const search = geographySearch.toLowerCase();
