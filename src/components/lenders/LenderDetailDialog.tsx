@@ -37,6 +37,8 @@ import { isActiveLenderDeal, normalizeLenderStatus } from '@/lib/lenderActiveDea
 import { useLenderAttachments, LenderAttachment, LENDER_ATTACHMENT_CATEGORIES, LenderAttachmentCategory } from '@/hooks/useLenderAttachments';
 import { useLenderContacts } from '@/hooks/useLenderContacts';
 import { useAuth } from '@/contexts/AuthContext';
+import { US_STATE_OPTIONS } from '@/constants/usStates';
+import { COUNTRY_OPTIONS } from '@/lib/countries';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useLenderSectionOrder, LenderSectionId } from '@/hooks/useLenderSectionOrder';
 import { LenderSectionReorderDialog } from './LenderSectionReorderDialog';
