@@ -19,10 +19,12 @@ const hostOf = (url?: string | null) =>
  * company (and back-links it on master_lenders) when it doesn't exist yet.
  * Best-effort: never throws — the lender_contacts row is the source of truth.
  */
+const escapeLike = (v: string) => v.replace(/([\\%_])/g, '\\$1');
+
 export async function syncLenderContactToCrm(
   lenderId: string,
   contact: LenderContactCrmInput,
-  opts: { userId?: string | null; orgCompanyId?: string | null } = {},
+  opts: { userId?: string | null; orgCompanyId?: string | null; existingContactId?: string | null } = {},
 ): Promise<{ contactId: string; crmCompanyId: string | null } | null> {
   try {
     const { data: lender } = await supabase
