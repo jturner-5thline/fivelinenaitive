@@ -101,7 +101,15 @@ export function useLenderContacts(lenderId: string | null) {
       // Mirror into the contacts database and link to the funding source's company record.
       void syncLenderContactToCrm(
         lenderId,
-        { name: contact.name, title: contact.title, email: contact.email, phone: contact.phone },
+        {
+          name: contact.name,
+          title: contact.title,
+          email: contact.email,
+          phone: contact.phone,
+          city: contact.city,
+          state: contact.state,
+          country: contact.country,
+        },
         { userId: user.id, orgCompanyId: company?.id ?? null },
       );
       return newContact;
