@@ -289,8 +289,8 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
               </SelectTrigger>
               <SelectContent className="app-dropdown-surface lender-edit-popover max-h-64">
                 <SelectItem value="__none__">None</SelectItem>
-                {US_STATE_OPTIONS.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                {US_STATE_OPTIONS.map((st) => (
+                  <SelectItem key={st} value={st}>{st}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
