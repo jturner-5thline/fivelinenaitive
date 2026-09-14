@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { isDemoEmail, withDemoLenderContactRow } from '@/lib/demoLenderContact';
+import { syncLenderContactToCrm } from '@/lib/lenders/syncLenderContactToCrm';
+import { useCompany } from '@/contexts/CompanyContext';
 
 export interface LenderContact {
   id: string;
@@ -30,6 +32,7 @@ export interface LenderContactInsert {
 
 export function useLenderContacts(lenderId: string | null) {
   const { user } = useAuth();
+  const { company } = useCompany();
   const [contacts, setContacts] = useState<LenderContact[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +91,13 @@ export function useLenderContacts(lenderId: string | null) {
       const newContact = withDemoLenderContactRow(data as LenderContact, isDemo);
       setContacts((prev) => [...prev, newContact]);
       toast.success('Contact added successfully');
+
+      // Mirror into the contacts database and link to the funding source's company record.
+      void syncLenderContactToCrm(
+        lenderId,
+        { name: contact.name, title: contact.title, email: contact.email, phone: contact.phone },
+        { userId: user.id, orgCompanyId: company?.id ?? null },
+      );
       return newContact;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to add contact';
