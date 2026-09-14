@@ -107,10 +107,11 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
         city: form.city?.trim() || null,
         state: form.state?.trim() || null,
         country: form.country?.trim() || null,
+        crmContactId: form.crmContactId ?? null,
       });
       
       if (result) {
-        setForm({ name: '', title: '', email: '', phone: '', notes: '', geography: '', city: '', state: '', country: '' });
+        setForm({ name: '', title: '', email: '', phone: '', notes: '', geography: '', city: '', state: '', country: '', crmContactId: null });
         setOpen(false);
       }
     } finally {
