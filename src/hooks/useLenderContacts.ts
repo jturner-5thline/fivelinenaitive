@@ -114,7 +114,7 @@ export function useLenderContacts(lenderId: string | null) {
           state: contact.state,
           country: contact.country,
         },
-        { userId: user.id, orgCompanyId: company?.id ?? null },
+        { userId: user.id, orgCompanyId: company?.id ?? null, existingContactId: crmContactId ?? null },
       );
       return newContact;
     } catch (err) {
