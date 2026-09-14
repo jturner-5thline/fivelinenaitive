@@ -2191,8 +2191,12 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
                                 <div className="min-w-0 flex-1">
                                   <div className="text-xs text-muted-foreground mb-0.5">Address</div>
-                                  {lender.address ? (
-                                    <p className="text-sm whitespace-pre-wrap break-words">{lender.address}</p>
+                                  {(lender.address || lender.city || lender.state || lender.country) ? (
+                                    <p className="text-sm whitespace-pre-wrap break-words">
+                                      {[lender.address, [lender.city, lender.state].filter(Boolean).join(', '), lender.country]
+                                        .filter(Boolean)
+                                        .join('\n')}
+                                    </p>
                                   ) : onSave ? (
                                     <button
                                       type="button"
