@@ -140,6 +140,7 @@ function SortableFieldItem({
 
 export function DealInfoFieldsSettings({ isAdmin = true }: DealInfoFieldsSettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [businessModelDialogOpen, setBusinessModelDialogOpen] = useState(false);
   const { company } = useCompany();
   const companyId = company?.id ?? null;
   const queryClient = useQueryClient();
