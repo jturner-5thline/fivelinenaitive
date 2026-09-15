@@ -155,6 +155,8 @@ export function FundingSourceFormDialog({
   const [saving, setSaving] = useState(false);
   const [geoOptionsOpen, setGeoOptionsOpen] = useState(false);
   const geoOptions = useGeoOptionsList();
+  const [industryOptionsOpen, setIndustryOptionsOpen] = useState(false);
+  const industryOptions = useIndustryOptionsList();
 
   useEffect(() => {
     if (!open) return;
