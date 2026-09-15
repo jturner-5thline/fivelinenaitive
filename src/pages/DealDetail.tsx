@@ -4671,9 +4671,9 @@ export default function DealDetail() {
                                      {isRailed ? (
                                        // Single-column rail: render fields strictly in the
                                        // order configured in Settings → Deal Information Fields.
-                                       orderedMainFields.length > 0 && (
+                                       orderedRailFields.length > 0 && (
                                          <div className="space-y-2 min-w-0">
-                                           {orderedMainFields.map(fId => renderDealInfoField(fId))}
+                                           {orderedRailFields.map(fId => renderDealInfoField(fId))}
                                          </div>
                                        )
                                      ) : (
