@@ -4555,7 +4555,19 @@ export default function DealDetail() {
                               )
                             )
                           );
-                          const leftFields = orderedMainFields.filter(fId => {
+                           // Single-column rail list keeps Narrative in its configured position.
+                           const orderedRailFields = dealInfoFieldOrder.filter(
+                             fId => fId !== 'hoursAndFees' && isDealInfoFieldVisible(fId) && !(
+                               isFinServDeal && (
+                                 fId === 'dealManager' ||
+                                 fId === 'type' ||
+                                 fId === 'engagement' ||
+                                 fId === 'exclusivity' ||
+                                 fId === 'analyst'
+                               )
+                             )
+                           );
+                           const leftFields = orderedMainFields.filter(fId => {
                             const def = DEAL_INFO_FIELD_DEFINITIONS.find(d => d.id === fId);
                             return def?.column === 'left';
                           });
