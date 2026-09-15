@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import {
   useGeoOptionsList,
   getDefaultGeoOptions,
-  saveGeoOptions,
+  useSaveGeoOptions,
   countFundingSourcesUsingGeographies,
 } from '@/lib/geoOptionsStore';
 
