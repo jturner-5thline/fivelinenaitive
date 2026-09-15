@@ -92,6 +92,13 @@
       "when": 1789425514759,
       "tag": "0012_task_completion_activity_actor_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1789480454685,
+      "tag": "0013_add_geo_preference_options",
+      "breakpoints": true
     }
   ]
 }
