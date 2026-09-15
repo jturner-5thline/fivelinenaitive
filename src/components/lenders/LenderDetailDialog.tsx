@@ -1961,7 +1961,32 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                   </div>
                                 </div>
                               )}
-                              {!lender.minDeal && !lender.maxDeal && !lender.geo && (!lender.industries || lender.industries.length === 0) && (!lender.loanTypes || lender.loanTypes.length === 0) && !lender.minRevenue && !lender.ebitdaMin && !lender.companyRequirements && !lender.b2bB2c && !lender.sponsorship && !lender.cashBurn && !lender.subDebt && !lender.refinancing && !lender.nda && !lender.referralLender && !lender.referralFeeOffered && !lender.referralAgreement && (!lender.industriesToAvoid || lender.industriesToAvoid.length === 0) && (
+                              {![
+                                lender.minDeal,
+                                lender.maxDeal,
+                                lender.sweetSpotMin,
+                                lender.sweetSpotMax,
+                                lender.minGrossMarginPct,
+                                lender.maxLeverage,
+                                lender.sponsorRequirement,
+                                lender.appetiteStatus,
+                                lender.geo,
+                                lender.industries?.length,
+                                lender.loanTypes?.length,
+                                lender.minRevenue,
+                                lender.ebitdaMin,
+                                lender.companyRequirements,
+                                lender.b2bB2c,
+                                lender.sponsorship,
+                                lender.cashBurn,
+                                lender.subDebt,
+                                lender.refinancing,
+                                lender.nda,
+                                lender.referralLender,
+                                lender.referralFeeOffered,
+                                lender.referralAgreement,
+                                lender.industriesToAvoid?.length,
+                              ].some((v) => (typeof v === 'string' ? v.trim().length > 0 : v != null && v !== 0)) && (
                                 <p className="text-muted-foreground text-sm">No lending criteria specified</p>
                               )}
                             </div>
