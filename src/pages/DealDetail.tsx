@@ -4656,16 +4656,25 @@ export default function DealDetail() {
                                 ) : (
 
                                   <>
-                                     {(leftFields.length > 0 || rightFields.length > 0) && (
-                                       <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-6", isRailed && "md:grid-cols-1 gap-3")}>
-                                         <div className={cn("space-y-3 min-w-0", isRailed && "space-y-2")}>
+                                     {isRailed ? (
+                                       // Single-column rail: render fields strictly in the
+                                       // order configured in Settings → Deal Information Fields.
+                                       orderedMainFields.length > 0 && (
+                                         <div className="space-y-2 min-w-0">
+                                           {orderedMainFields.map(fId => renderDealInfoField(fId))}
+                                         </div>
+                                       )
+                                     ) : (
+                                       (leftFields.length > 0 || rightFields.length > 0) && (
+                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                         <div className="space-y-3 min-w-0">
                                           {leftFields.map(fId => renderDealInfoField(fId))}
                                         </div>
-                                        <div className={cn("space-y-3 min-w-0", isRailed && "space-y-2")}>
+                                        <div className="space-y-3 min-w-0">
                                           {rightFields.map(fId => renderDealInfoField(fId))}
                                         </div>
                                       </div>
-                                    )}
+                                    ))}
                                     {/* Pipeline-specific fields. Driven by
                                         src/config/pipelineFieldSchemas.ts so the
                                         create-deal form and detail view stay in
