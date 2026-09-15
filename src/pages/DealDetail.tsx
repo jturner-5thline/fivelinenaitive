@@ -32,6 +32,7 @@ import {
   type DealOriginReturnState,
 } from '@/lib/dealOriginContext';
 import { getIndustryOptions, useIndustryOptionsList } from '@/lib/industryOptions';
+import { useBusinessModelOptions } from '@/hooks/useBusinessModelOptions';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, rectSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
@@ -1417,6 +1418,7 @@ export default function DealDetail() {
   // Panel reorder functionality
   const { panelOrder, panelVisibility, visiblePanels, reorderPanels, togglePanelVisibility, isPanelVisible, resetToDefault } = useDealPanelOrder();
   const { fieldOrder: dealInfoFieldOrder, isFieldVisible: isDealInfoFieldVisible } = useDealInfoFieldOrder();
+  const { options: businessModelOptions } = useBusinessModelOptions();
   const { options: sourcedViaOptions } = useDealSourcedViaOptions();
   const [isPanelReorderDialogOpen, setIsPanelReorderDialogOpen] = useState(false);
   
@@ -4458,8 +4460,8 @@ export default function DealDetail() {
                                     <Select value={deal.businessModel || ''} onValueChange={(value) => updateDeal('businessModel', value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select industry..." /></SelectTrigger>
                                       <SelectContent>
-                                        {getIndustryOptions().map((industry) => (
-                                          <SelectItem key={industry} value={industry}>{industry}</SelectItem>
+                                        {businessModelOptions.map((option) => (
+                                          <SelectItem key={option} value={option}>{option}</SelectItem>
                                         ))}
                                       </SelectContent>
                                     </Select>

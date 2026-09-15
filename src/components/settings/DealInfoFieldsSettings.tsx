@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
-import { GripVertical, Eye, EyeOff, RotateCcw, ChevronDown, LayoutList, Lock, Plus, X, ShieldAlert, ChevronRight } from 'lucide-react';
+import { GripVertical, Eye, EyeOff, RotateCcw, ChevronDown, LayoutList, Lock, Plus, X, ShieldAlert, ChevronRight, ListPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -33,6 +33,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { SourcedViaSettings } from '@/components/settings/SourcedViaSettings';
+import { BusinessModelOptionsDialog } from '@/components/settings/BusinessModelOptionsDialog';
 
 interface DealInfoFieldsSettingsProps {
   isAdmin?: boolean;
@@ -139,6 +140,7 @@ function SortableFieldItem({
 
 export function DealInfoFieldsSettings({ isAdmin = true }: DealInfoFieldsSettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [businessModelDialogOpen, setBusinessModelDialogOpen] = useState(false);
   const { company } = useCompany();
   const companyId = company?.id ?? null;
   const queryClient = useQueryClient();
@@ -219,7 +221,7 @@ export function DealInfoFieldsSettings({ isAdmin = true }: DealInfoFieldsSetting
   const availableToAdd = DEAL_INFO_FIELD_DEFINITIONS.filter(f => !fieldOrder.includes(f.id));
 
   return (
-    
+    <>
       <Card>
         
           <CardHeader className="">
@@ -317,6 +319,20 @@ export function DealInfoFieldsSettings({ isAdmin = true }: DealInfoFieldsSetting
                             <SourcedViaSettings isAdmin={!readOnly} />
                           </div>
                         )}
+                        {fieldId === 'businessModel' && !readOnly && (
+                          <div className="ml-7">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5"
+                              onClick={() => setBusinessModelDialogOpen(true)}
+                            >
+                              <ListPlus className="h-3.5 w-3.5" />
+                              Edit dropdown options
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -368,6 +384,7 @@ export function DealInfoFieldsSettings({ isAdmin = true }: DealInfoFieldsSetting
           </CardContent>
         
       </Card>
-    
+      <BusinessModelOptionsDialog open={businessModelDialogOpen} onOpenChange={setBusinessModelDialogOpen} />
+    </>
   );
 }
