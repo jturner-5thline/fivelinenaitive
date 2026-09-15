@@ -49,6 +49,8 @@ import { getIndustryOptions, useIndustryOptionsList } from '@/lib/industryOption
 import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
 import { GEO_OPTIONS } from '@/constants/geoOptions';
+import { useGeoOptionsList } from '@/lib/geoOptionsStore';
+import { GeoOptionsDialog } from '@/components/lenders/GeoOptionsDialog';
 import { useLenderAuditLog } from '@/hooks/useLenderAuditLog';
 import { useLenderLabelResolver } from '@/hooks/useLenderLabelResolver';
 import { format } from 'date-fns';
@@ -496,6 +498,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   const [isEditMode, setIsEditMode] = useState(initialEditMode);
   const [isSaving, setIsSaving] = useState(false);
   const [isReorderDialogOpen, setIsReorderDialogOpen] = useState(false);
+  const [geoOptionsOpen, setGeoOptionsOpen] = useState(false);
+  const geoOptions = useGeoOptionsList();
   const [industrySearchEdit, setIndustrySearchEdit] = useState('');
   const [industryAvoidSearchEdit, setIndustryAvoidSearchEdit] = useState('');
   const [loanTypeSearchEdit, setLoanTypeSearchEdit] = useState('');
