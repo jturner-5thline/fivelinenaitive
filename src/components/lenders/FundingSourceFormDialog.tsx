@@ -27,7 +27,8 @@ import { useGeoOptionsList } from '@/lib/geoOptionsStore';
 import { GeoOptionsDialog } from '@/components/lenders/GeoOptionsDialog';
 import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
-import { getIndustryOptions } from '@/lib/industryOptions';
+import { useIndustryOptionsList } from '@/lib/industryOptions';
+import { BusinessModelOptionsDialog } from '@/components/settings/BusinessModelOptionsDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -154,6 +155,8 @@ export function FundingSourceFormDialog({
   const [saving, setSaving] = useState(false);
   const [geoOptionsOpen, setGeoOptionsOpen] = useState(false);
   const geoOptions = useGeoOptionsList();
+  const [industryOptionsOpen, setIndustryOptionsOpen] = useState(false);
+  const industryOptions = useIndustryOptionsList();
 
   useEffect(() => {
     if (!open) return;
@@ -408,7 +411,15 @@ export function FundingSourceFormDialog({
                 </div>
                 <MultiSelectChips value={form.geo} onChange={(next) => updateForm('geo', next)} options={geoOptions} placeholder="Select regions" searchPlaceholder="Search regions..." />
               </div>
-              <div className="space-y-2"><Label className="text-xs text-muted-foreground">Industries</Label><MultiSelectChips value={form.industries} onChange={(next) => updateForm('industries', next)} options={getIndustryOptions()} placeholder="Select industries" searchPlaceholder="Search industries..." /></div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground">Industries</Label>
+                  <button type="button" onClick={() => setIndustryOptionsOpen(true)} className="rounded p-0.5 text-muted-foreground hover:text-foreground" aria-label="Edit industry options" title="Edit options">
+                    <Settings2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <MultiSelectChips value={form.industries} onChange={(next) => updateForm('industries', next)} options={industryOptions} placeholder="Select industries" searchPlaceholder="Search industries..." />
+              </div>
               <div className="space-y-2"><Label className="text-xs text-muted-foreground">Loan Types</Label><MultiSelectChips value={form.loanTypes} onChange={(next) => updateForm('loanTypes', next)} options={LOAN_TYPE_OPTIONS} placeholder="Select loan types" searchPlaceholder="Search loan types..." /></div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label htmlFor="new-funding-source-min-revenue" className="text-xs text-muted-foreground">Min Revenue ($)</Label><Input id="new-funding-source-min-revenue" inputMode="numeric" value={formatCurrencyInput(form.minRevenue)} onChange={(event) => updateForm('minRevenue', event.target.value.replace(/[^0-9]/g, ''))} placeholder="e.g., $5,000,000" /></div>
@@ -436,6 +447,7 @@ export function FundingSourceFormDialog({
         </DialogFooter>
       </DialogContent>
       <GeoOptionsDialog open={geoOptionsOpen} onOpenChange={setGeoOptionsOpen} />
+      <BusinessModelOptionsDialog open={industryOptionsOpen} onOpenChange={setIndustryOptionsOpen} />
     </Dialog>
   );
 }

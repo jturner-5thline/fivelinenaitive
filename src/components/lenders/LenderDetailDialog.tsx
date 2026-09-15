@@ -46,6 +46,7 @@ import { AddLenderContactDialog } from './AddLenderContactDialog';
 import { LenderContactsList } from './LenderContactsList';
 import { cn } from '@/lib/utils';
 import { getIndustryOptions, useIndustryOptionsList } from '@/lib/industryOptions';
+import { BusinessModelOptionsDialog } from '@/components/settings/BusinessModelOptionsDialog';
 import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
 import { GEO_OPTIONS } from '@/constants/geoOptions';
@@ -499,6 +500,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   const [isSaving, setIsSaving] = useState(false);
   const [isReorderDialogOpen, setIsReorderDialogOpen] = useState(false);
   const [geoOptionsOpen, setGeoOptionsOpen] = useState(false);
+  const [industryOptionsOpen, setIndustryOptionsOpen] = useState(false);
+  const liveIndustryOptions = useIndustryOptionsList();
   const geoOptions = useGeoOptionsList();
   const [industrySearchEdit, setIndustrySearchEdit] = useState('');
   const [industryAvoidSearchEdit, setIndustryAvoidSearchEdit] = useState('');
@@ -1426,7 +1429,12 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       </Popover>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Industries</Label>
+                      <div className="flex items-center gap-1.5">
+                        <Label className="text-xs text-muted-foreground">Industries</Label>
+                        <button type="button" onClick={() => setIndustryOptionsOpen(true)} className="rounded p-0.5 text-muted-foreground hover:text-foreground" aria-label="Edit industry options" title="Edit options">
+                          <Settings2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button variant="outline" className="w-full justify-between h-auto min-h-[2.25rem] text-sm font-normal">
@@ -1457,8 +1465,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           </div>
                           <div className="space-y-0.5 max-h-[300px] overflow-y-auto overscroll-contain pr-1" onWheel={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()}>
                             {(industrySearchEdit
-                              ? getIndustryOptions().filter(o => o.toLowerCase().includes(industrySearchEdit.toLowerCase()))
-                              : getIndustryOptions()
+                              ? liveIndustryOptions.filter(o => o.toLowerCase().includes(industrySearchEdit.toLowerCase()))
+                              : liveIndustryOptions
                             ).map((industry) => {
                               const current = editForm.industries ? editForm.industries.split(',').map(t => t.trim()).filter(Boolean) : [];
                               const isSelected = current.includes(industry);
@@ -1518,8 +1526,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           </div>
                           <div className="space-y-0.5 max-h-[300px] overflow-y-auto overscroll-contain pr-1" onWheel={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()}>
                             {(industryAvoidSearchEdit
-                              ? getIndustryOptions().filter(o => o.toLowerCase().includes(industryAvoidSearchEdit.toLowerCase()))
-                              : getIndustryOptions()
+                              ? liveIndustryOptions.filter(o => o.toLowerCase().includes(industryAvoidSearchEdit.toLowerCase()))
+                              : liveIndustryOptions
                             ).map((industry) => {
                               const current = editForm.industriesToAvoid ? editForm.industriesToAvoid.split(',').map(t => t.trim()).filter(Boolean) : [];
                               const isSelected = current.includes(industry);
@@ -2759,6 +2767,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
       </DialogContent>
       
       <GeoOptionsDialog open={geoOptionsOpen} onOpenChange={setGeoOptionsOpen} />
+      <BusinessModelOptionsDialog open={industryOptionsOpen} onOpenChange={setIndustryOptionsOpen} />
 
       <LenderSectionReorderDialog
         open={isReorderDialogOpen}
