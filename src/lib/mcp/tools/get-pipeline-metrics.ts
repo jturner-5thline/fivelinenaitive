@@ -121,7 +121,12 @@ export default defineTool({
       by_type: groupAggregate(deals, (d) => d.deal_type ?? "unknown", value),
       by_manager: groupAggregate(deals, (d) => d.manager ?? "unassigned", value),
       by_owner: groupAggregate(deals, (d) => d.deal_owner ?? "unassigned", value),
-      by_pipeline: groupAggregate(deals, (d) => d.pipeline_id ?? "none", value),
+      by_pipeline: byPipeline.map((p) => ({
+        key: p.pipeline_id ?? "none",
+        pipeline_name: p.pipeline_name,
+        count: p.count,
+        total_value: p.total_value,
+      })),
       by_month: groupAggregate(deals, (d) => monthKey(d[date_field] as string) ?? "unknown", value).sort((a, b) =>
         a.key.localeCompare(b.key),
       ),
