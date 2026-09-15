@@ -73,6 +73,19 @@ export const INSIGHTS_DATASETS = [
   "qbo_cashflow_snapshots",
   "claap_meetings",
   "team_interaction_metrics",
+  "deal_writeups",
+  "deal_memos",
+  "deal_checklist_items",
+  "deal_checklist_status",
+  "deal_attachments",
+  "deal_status_notes",
+  "deal_financial_data",
+  "deal_flag_notes",
+  "deal_ownership",
+  "deal_space_notes",
+  "deal_activity",
+  "contact_deals",
+  "deal_pipeline_configs",
 ] as const;
 
 export type InsightsDataset = (typeof INSIGHTS_DATASETS)[number];

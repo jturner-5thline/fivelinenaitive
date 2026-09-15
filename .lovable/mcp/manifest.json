@@ -19,7 +19,7 @@
       {
         "name": "list_deals",
         "title": "List deals",
-        "description": "List EVERY deal the signed-in user can see, across ALL pipelines. No implicit pipeline, owner, stage, or status filter is applied — results are only narrowed by the filters you pass explicitly. Returns full row records plus pipeline metadata: id, company, stage (raw pipeline-scoped stage id), stage_label (the human stage name from the deal's assigned pipeline — ALWAYS report this, never the raw id, because stage ids are overloaded across pipelines), pipeline_id, pipeline_name, value, closing_date, created_at, deal_owner, manager, status, updated_at. Pagination: pass `limit` and `offset`; the response includes `total_count` (matching rows regardless of limit), `returned`, `next_offset`, and `has_more` — keep calling with `next_offset` until `has_more` is false to walk the entire set across all pipelines. The response also includes `pipeline_breakdown` (distinct pipelines present in this page) so you can confirm coverage.",
+        "description": "List EVERY deal the signed-in user can see, across ALL pipelines. No implicit pipeline, owner, stage, or status filter is applied — results are only narrowed by the filters you pass explicitly. By default returns a summary column set: id, company, stage (raw pipeline-scoped stage id), stage_label (the human stage name from the deal's assigned pipeline — ALWAYS report this, never the raw id, because stage ids are overloaded across pipelines), pipeline_id, pipeline_name, value, closing_date, created_at, deal_owner, manager, status, updated_at. Pass `fields: \"*\"` to get EVERY column on each deal (all pipeline-specific fields included — this is how you extract complete deal records in bulk), or a comma-separated column list to choose your own set; use `describe_schema` with table `deals` to see the available column names. Pagination: pass `limit` and `offset`; the response includes `total_count` (matching rows regardless of limit), `returned`, `next_offset`, and `has_more` — keep calling with `next_offset` until `has_more` is false to walk the entire set across all pipelines. The response also includes `pipeline_breakdown` (distinct pipelines present in this page) so you can confirm coverage.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -75,6 +75,11 @@
               "type": "string",
               "maxLength": 40,
               "description": "ISO date upper bound on closing_date (exclusive)."
+            },
+            "fields": {
+              "type": "string",
+              "maxLength": 4000,
+              "description": "Columns to return: '*' for every column on the deal, or a comma-separated column list. Defaults to the summary set."
             },
             "limit": {
               "type": "integer",
@@ -600,7 +605,18 @@
           "properties": {
             "deal_id": {
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "description": "Single deal. Provide this or deal_ids."
+            },
+            "deal_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 1,
+              "maxItems": 200,
+              "description": "Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."
             },
             "query": {
               "type": "string",
@@ -614,9 +630,6 @@
               "default": 25
             }
           },
-          "required": [
-            "deal_id"
-          ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
@@ -681,7 +694,18 @@
           "properties": {
             "deal_id": {
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "description": "Single deal. Provide this or deal_ids."
+            },
+            "deal_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 1,
+              "maxItems": 200,
+              "description": "Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."
             },
             "query": {
               "type": "string",
@@ -700,9 +724,6 @@
               "default": 25
             }
           },
-          "required": [
-            "deal_id"
-          ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
@@ -751,7 +772,18 @@
           "properties": {
             "deal_id": {
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "description": "Single deal. Provide this or deal_ids."
+            },
+            "deal_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 1,
+              "maxItems": 200,
+              "description": "Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."
             },
             "query": {
               "type": "string",
@@ -772,9 +804,6 @@
               "default": 25
             }
           },
-          "required": [
-            "deal_id"
-          ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
@@ -794,7 +823,18 @@
           "properties": {
             "deal_id": {
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "description": "Single deal. Provide this or deal_ids."
+            },
+            "deal_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 1,
+              "maxItems": 200,
+              "description": "Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."
             },
             "query": {
               "type": "string",
@@ -812,9 +852,6 @@
               "default": 20
             }
           },
-          "required": [
-            "deal_id"
-          ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
@@ -1313,7 +1350,7 @@
       {
         "name": "query_insights_dataset",
         "title": "Query any Insights source dataset",
-        "description": "Read-only escape hatch for the Insights page: query any of its underlying datasets directly when no purpose-built metric tool covers the question. Allowed datasets: deals, deal_lenders, deal_pipelines, deal_stage_history, deal_milestones, deal_computed_metrics, deal_stage_durations, deal_stage_transitions, outstanding_items, tasks, activity_logs, contacts, crm_companies, master_lenders, custom_metrics, insights_metric_targets, metric_manual_inputs, dashboard_grid_layouts, dashboard_layouts, quickbooks_invoices, quickbooks_customers, quickbooks_payments, quickbooks_expenses, quickbooks_bills, quickbooks_reports, qbo_pnl_snapshots, qbo_cashflow_snapshots, claap_meetings, team_interaction_metrics. Supply optional column selection, filters (column + operator + value), ordering, and a row limit. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.",
+        "description": "Read-only escape hatch: query any platform dataset directly when no purpose-built tool covers the question. Allowed datasets: deals, deal_lenders, deal_pipelines, deal_stage_history, deal_milestones, deal_computed_metrics, deal_stage_durations, deal_stage_transitions, outstanding_items, tasks, activity_logs, contacts, crm_companies, master_lenders, custom_metrics, insights_metric_targets, metric_manual_inputs, dashboard_grid_layouts, dashboard_layouts, quickbooks_invoices, quickbooks_customers, quickbooks_payments, quickbooks_expenses, quickbooks_bills, quickbooks_reports, qbo_pnl_snapshots, qbo_cashflow_snapshots, claap_meetings, team_interaction_metrics, deal_writeups, deal_memos, deal_checklist_items, deal_checklist_status, deal_attachments, deal_status_notes, deal_financial_data, deal_flag_notes, deal_ownership, deal_space_notes, deal_activity, contact_deals, deal_pipeline_configs. Supply optional column selection (defaults to ALL columns), filters (column + operator + value), ordering, limit and offset. Results are paginated and the response reports total_count, returned, offset, next_offset and has_more — keep calling with next_offset until has_more is false, otherwise you are looking at a partial set. Use describe_schema to learn the available column names. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -1353,7 +1390,20 @@
                 "qbo_pnl_snapshots",
                 "qbo_cashflow_snapshots",
                 "claap_meetings",
-                "team_interaction_metrics"
+                "team_interaction_metrics",
+                "deal_writeups",
+                "deal_memos",
+                "deal_checklist_items",
+                "deal_checklist_status",
+                "deal_attachments",
+                "deal_status_notes",
+                "deal_financial_data",
+                "deal_flag_notes",
+                "deal_ownership",
+                "deal_space_notes",
+                "deal_activity",
+                "contact_deals",
+                "deal_pipeline_configs"
               ]
             },
             "columns": {
@@ -1434,11 +1484,45 @@
               "minimum": 1,
               "maximum": 1000,
               "default": 200
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "description": "Row offset for pagination; use next_offset from the previous response."
             }
           },
           "required": [
             "dataset"
           ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "describe_schema",
+        "title": "Describe table schema",
+        "description": "Field discovery: return the column list for one or more platform tables — column name, data type, nullability, default, and (for enum columns) the complete set of allowed values. Use this before pulling data so you know exactly which fields exist rather than guessing names; pair it with `list_deals` (`fields: \"*\"`) or `query_insights_dataset` to extract complete records. Omit `tables` to get the describable table list. Describable tables: activity_logs, claap_meetings, contact_deals, contacts, crm_companies, custom_metrics, dashboard_grid_layouts, dashboard_layouts, deal_activity, deal_attachments, deal_checklist_items, deal_checklist_status, deal_computed_metrics, deal_financial_data, deal_flag_notes, deal_lenders, deal_memos, deal_milestones, deal_ownership, deal_pipeline_configs, deal_pipelines, deal_space_notes, deal_stage_durations, deal_stage_history, deal_stage_transitions, deal_status_notes, deal_writeups, deals, insights_metric_targets, master_lenders, metric_manual_inputs, outstanding_items, qbo_cashflow_snapshots, qbo_pnl_snapshots, quickbooks_bills, quickbooks_customers, quickbooks_expenses, quickbooks_invoices, quickbooks_payments, quickbooks_reports, tasks, team_interaction_metrics.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "tables": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "maxItems": 20,
+              "description": "Table names to describe. Omit to list the tables that can be described."
+            }
+          },
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },

@@ -137,7 +137,7 @@ async function resolveStageInput(sb, pipelineId, input) {
 var list_deals_default = defineTool({
   name: "list_deals",
   title: "List deals",
-  description: "List EVERY deal the signed-in user can see, across ALL pipelines. No implicit pipeline, owner, stage, or status filter is applied \u2014 results are only narrowed by the filters you pass explicitly. Returns full row records plus pipeline metadata: id, company, stage (raw pipeline-scoped stage id), stage_label (the human stage name from the deal's assigned pipeline \u2014 ALWAYS report this, never the raw id, because stage ids are overloaded across pipelines), pipeline_id, pipeline_name, value, closing_date, created_at, deal_owner, manager, status, updated_at. Pagination: pass `limit` and `offset`; the response includes `total_count` (matching rows regardless of limit), `returned`, `next_offset`, and `has_more` \u2014 keep calling with `next_offset` until `has_more` is false to walk the entire set across all pipelines. The response also includes `pipeline_breakdown` (distinct pipelines present in this page) so you can confirm coverage.",
+  description: 'List EVERY deal the signed-in user can see, across ALL pipelines. No implicit pipeline, owner, stage, or status filter is applied \u2014 results are only narrowed by the filters you pass explicitly. By default returns a summary column set: id, company, stage (raw pipeline-scoped stage id), stage_label (the human stage name from the deal\'s assigned pipeline \u2014 ALWAYS report this, never the raw id, because stage ids are overloaded across pipelines), pipeline_id, pipeline_name, value, closing_date, created_at, deal_owner, manager, status, updated_at. Pass `fields: "*"` to get EVERY column on each deal (all pipeline-specific fields included \u2014 this is how you extract complete deal records in bulk), or a comma-separated column list to choose your own set; use `describe_schema` with table `deals` to see the available column names. Pagination: pass `limit` and `offset`; the response includes `total_count` (matching rows regardless of limit), `returned`, `next_offset`, and `has_more` \u2014 keep calling with `next_offset` until `has_more` is false to walk the entire set across all pipelines. The response also includes `pipeline_breakdown` (distinct pipelines present in this page) so you can confirm coverage.',
   inputSchema: {
     query: z.string().trim().min(1).max(200).optional().describe("Substring search across the company / deal name."),
     stage: z.string().trim().min(1).max(100).optional().describe("Stage id (e.g. 'nda-needs-list') or the stage's display label; requires pipeline_id when passing a label."),
@@ -148,19 +148,34 @@ var list_deals_default = defineTool({
     created_to: z.string().trim().max(40).optional().describe("ISO date/timestamp upper bound on created_at (exclusive)."),
     closing_from: z.string().trim().max(40).optional().describe("ISO date lower bound on closing_date (inclusive)."),
     closing_to: z.string().trim().max(40).optional().describe("ISO date upper bound on closing_date (exclusive)."),
+    fields: z.string().trim().max(4e3).optional().describe("Columns to return: '*' for every column on the deal, or a comma-separated column list. Defaults to the summary set."),
     limit: z.number().int().min(1).max(1e3).default(200),
     offset: z.number().int().min(0).default(0).describe("Row offset for pagination; use `next_offset` from the previous response.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ query, stage, pipeline_id, status, owner_email, created_from, created_to, closing_from, closing_to, limit, offset }, ctx) => {
+  handler: async ({ query, stage, pipeline_id, status, owner_email, created_from, created_to, closing_from, closing_to, fields, limit, offset }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
     const stageFilter = stage ? await resolveStageInput(sb, pipeline_id, stage) : void 0;
-    let q = sb.from("deals").select(
-      "id, company, stage, status, value, closing_date, created_at, pipeline_id, deal_owner, manager, updated_at",
-      { count: "exact" }
-    ).order("created_at", { ascending: false }).order("id", { ascending: true }).range(offset, offset + limit - 1);
+    const DEFAULT_FIELDS = "id, company, stage, status, value, closing_date, created_at, pipeline_id, deal_owner, manager, updated_at";
+    let selection = DEFAULT_FIELDS;
+    if (fields) {
+      const raw = fields.trim();
+      if (!/^[A-Za-z0-9_,*\s]+$/.test(raw)) {
+        return errorResult("`fields` may only contain column names separated by commas, or '*'.");
+      }
+      if (raw === "*") {
+        selection = "*";
+      } else {
+        const cols = raw.split(",").map((c) => c.trim()).filter(Boolean);
+        for (const required of ["id", "stage", "pipeline_id"]) {
+          if (!cols.includes(required)) cols.push(required);
+        }
+        selection = cols.join(", ");
+      }
+    }
+    let q = sb.from("deals").select(selection, { count: "exact" }).order("created_at", { ascending: false }).order("id", { ascending: true }).range(offset, offset + limit - 1);
     if (stageFilter) q = q.eq("stage", stageFilter);
     if (pipeline_id) q = q.eq("pipeline_id", pipeline_id);
     if (status) q = q.eq("status", status);
@@ -630,18 +645,24 @@ var search_deal_notes_default = defineTool14({
   title: "Search deal notes",
   description: "Search notes attached to a specific deal (deal space notes). Optionally filter by a text query against title/content/tags. Returns id, title, content, folder, tags, is_pinned, user_id, updated_at.",
   inputSchema: {
-    deal_id: z14.string().uuid(),
+    deal_id: z14.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
+    deal_ids: z14.array(z14.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
     query: z14.string().trim().min(1).max(200).optional(),
     limit: z14.number().int().min(1).max(100).default(25)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, query, limit }, ctx) => {
+  handler: async ({ deal_id, deal_ids, query, limit }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_notes");
-    if (denied) return denied;
-    let q = sb.from("deal_space_notes").select("id, deal_id, title, content, folder, tags, is_pinned, user_id, created_at, updated_at").eq("deal_id", deal_id).order("updated_at", { ascending: false }).limit(limit);
+    if (!deal_id && (!deal_ids || deal_ids.length === 0)) {
+      return errorResult("Provide deal_id or deal_ids.");
+    }
+    if (deal_id) {
+      const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_notes");
+      if (denied) return denied;
+    }
+    let q = sb.from("deal_space_notes").select("id, deal_id, title, content, folder, tags, is_pinned, user_id, created_at, updated_at").in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("updated_at", { ascending: false }).limit(limit);
     if (query) {
       const like = `%${query}%`;
       q = q.or(`title.ilike.${like},content.ilike.${like}`);
@@ -711,21 +732,27 @@ var search_deal_documents_default = defineTool16({
   title: "Search deal documents",
   description: "Search files/documents attached to a specific deal (virtual data room). Optionally filter by name, category, or a text query against name/source_subject/extracted_text. Returns id, name, category, size_bytes, content_type, source, source_subject, created_at.",
   inputSchema: {
-    deal_id: z16.string().uuid(),
+    deal_id: z16.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
+    deal_ids: z16.array(z16.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
     query: z16.string().trim().min(1).max(200).optional(),
     category: z16.string().trim().min(1).max(100).optional(),
     limit: z16.number().int().min(1).max(100).default(25)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, query, category, limit }, ctx) => {
+  handler: async ({ deal_id, deal_ids, query, category, limit }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_documents");
-    if (denied) return denied;
+    if (!deal_id && (!deal_ids || deal_ids.length === 0)) {
+      return errorResult("Provide deal_id or deal_ids.");
+    }
+    if (deal_id) {
+      const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_documents");
+      if (denied) return denied;
+    }
     let q = sb.from("deal_attachments").select(
       "id, deal_id, name, category, size_bytes, content_type, source, source_subject, source_sender, extraction_status, created_at, user_id"
-    ).eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(limit);
+    ).in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("created_at", { ascending: false }).limit(limit);
     if (category) q = q.eq("category", category);
     if (query) {
       const like = `%${query}%`;
@@ -769,21 +796,27 @@ var search_deal_emails_default = defineTool18({
   title: "Search deal emails",
   description: "Search email/communication history logged against a deal. Queries activity_logs where activity_type = 'email' for the deal, optionally filtered by a text query against subject, body, from, or to addresses. Returns subject, direction, from/to, sent_at, thread_id, and body snippet.",
   inputSchema: {
-    deal_id: z18.string().uuid(),
+    deal_id: z18.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
+    deal_ids: z18.array(z18.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
     query: z18.string().trim().min(1).max(200).optional(),
     direction: z18.enum(["inbound", "outbound"]).optional(),
     limit: z18.number().int().min(1).max(100).default(25)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, query, direction, limit }, ctx) => {
+  handler: async ({ deal_id, deal_ids, query, direction, limit }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_emails");
-    if (denied) return denied;
+    if (!deal_id && (!deal_ids || deal_ids.length === 0)) {
+      return errorResult("Provide deal_id or deal_ids.");
+    }
+    if (deal_id) {
+      const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_emails");
+      if (denied) return denied;
+    }
     let q = sb.from("activity_logs").select(
       "id, subject, body, direction, from_address, to_addresses, cc_addresses, sent_at, thread_id, message_id, provider, user_display_name, created_at"
-    ).eq("deal_id", deal_id).eq("activity_type", "email").order("sent_at", { ascending: false, nullsFirst: false }).limit(limit);
+    ).in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).eq("activity_type", "email").order("sent_at", { ascending: false, nullsFirst: false }).limit(limit);
     if (direction) q = q.eq("direction", direction);
     if (query) {
       const like = `%${query}%`;
@@ -803,27 +836,33 @@ var search_deal_recordings_default = defineTool19({
   title: "Search deal meeting recordings",
   description: "List Claap meeting recordings and transcripts linked to a deal. Returns recording title, duration, recorder, thumbnail/url, and \u2014 when include_transcript is true \u2014 the transcript text and summary from claap_transcripts. Optional query filters recording title/summary/transcript.",
   inputSchema: {
-    deal_id: z19.string().uuid(),
+    deal_id: z19.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
+    deal_ids: z19.array(z19.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
     query: z19.string().trim().min(1).max(200).optional(),
     include_transcript: z19.boolean().default(false),
     limit: z19.number().int().min(1).max(50).default(20)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, query, include_transcript, limit }, ctx) => {
+  handler: async ({ deal_id, deal_ids, query, include_transcript, limit }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_recordings");
-    if (denied) return denied;
+    if (!deal_id && (!deal_ids || deal_ids.length === 0)) {
+      return errorResult("Provide deal_id or deal_ids.");
+    }
+    if (deal_id) {
+      const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_recordings");
+      if (denied) return denied;
+    }
     let recQ = sb.from("deal_claap_recordings").select(
       "id, recording_id, recording_title, recording_url, thumbnail_url, duration_seconds, recorder_name, recorder_email, linked_at, notes, created_at"
-    ).eq("deal_id", deal_id).order("linked_at", { ascending: false, nullsFirst: false }).limit(limit);
+    ).in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("linked_at", { ascending: false, nullsFirst: false }).limit(limit);
     if (query) recQ = recQ.ilike("recording_title", `%${query}%`);
     const { data: recordings, error } = await recQ;
     if (error) return errorResult(error.message);
     let transcripts = [];
     if (include_transcript) {
-      let tQ = sb.from("claap_transcripts").select("id, claap_meeting_id, transcript_text, summary, participants, duration_seconds, recorded_at, call_type").eq("deal_id", deal_id).order("recorded_at", { ascending: false, nullsFirst: false }).limit(limit);
+      let tQ = sb.from("claap_transcripts").select("id, claap_meeting_id, transcript_text, summary, participants, duration_seconds, recorded_at, call_type").in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("recorded_at", { ascending: false, nullsFirst: false }).limit(limit);
       if (query) {
         const like = `%${query}%`;
         tQ = tQ.or(`transcript_text.ilike.${like},summary.ilike.${like}`);
@@ -1175,7 +1214,20 @@ var INSIGHTS_DATASETS = [
   "qbo_pnl_snapshots",
   "qbo_cashflow_snapshots",
   "claap_meetings",
-  "team_interaction_metrics"
+  "team_interaction_metrics",
+  "deal_writeups",
+  "deal_memos",
+  "deal_checklist_items",
+  "deal_checklist_status",
+  "deal_attachments",
+  "deal_status_notes",
+  "deal_financial_data",
+  "deal_flag_notes",
+  "deal_ownership",
+  "deal_space_notes",
+  "deal_activity",
+  "contact_deals",
+  "deal_pipeline_configs"
 ];
 var DASHBOARD_OPTIONS = [
   { id: "management-snapshot", name: "Weekly Rundown", isFavorite: true, folder: "management-insights" },
@@ -1507,7 +1559,7 @@ var OPERATORS = ["eq", "neq", "gt", "gte", "lt", "lte", "like", "ilike", "is", "
 var query_insights_dataset_default = defineTool32({
   name: "query_insights_dataset",
   title: "Query any Insights source dataset",
-  description: `Read-only escape hatch for the Insights page: query any of its underlying datasets directly when no purpose-built metric tool covers the question. Allowed datasets: ${INSIGHTS_DATASETS.join(", ")}. Supply optional column selection, filters (column + operator + value), ordering, and a row limit. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.`,
+  description: `Read-only escape hatch: query any platform dataset directly when no purpose-built tool covers the question. Allowed datasets: ${INSIGHTS_DATASETS.join(", ")}. Supply optional column selection (defaults to ALL columns), filters (column + operator + value), ordering, limit and offset. Results are paginated and the response reports total_count, returned, offset, next_offset and has_more \u2014 keep calling with next_offset until has_more is false, otherwise you are looking at a partial set. Use describe_schema to learn the available column names. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.`,
   inputSchema: {
     dataset: z32.enum(INSIGHTS_DATASETS),
     columns: z32.string().trim().max(1e3).optional().describe("Comma-separated column list; defaults to all columns."),
@@ -1520,14 +1572,15 @@ var query_insights_dataset_default = defineTool32({
     ).max(10).optional(),
     order_by: z32.string().trim().max(80).optional(),
     ascending: z32.boolean().default(false),
-    limit: z32.number().int().min(1).max(1e3).default(200)
+    limit: z32.number().int().min(1).max(1e3).default(200),
+    offset: z32.number().int().min(0).default(0).describe("Row offset for pagination; use next_offset from the previous response.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ dataset, columns, filters, order_by, ascending, limit }, ctx) => {
+  handler: async ({ dataset, columns, filters, order_by, ascending, limit, offset }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    let q = sb.from(dataset).select(columns?.trim() || "*").limit(limit);
+    let q = sb.from(dataset).select(columns?.trim() || "*", { count: "exact" }).range(offset, offset + limit - 1);
     for (const f of filters ?? []) {
       switch (f.op) {
         case "in":
@@ -1543,13 +1596,94 @@ var query_insights_dataset_default = defineTool32({
       }
     }
     if (order_by) q = q.order(order_by, { ascending, nullsFirst: false });
-    const { data, error } = await q;
+    const { data, error, count } = await q;
     if (error) {
       console.error("[query_insights_dataset] error", { dataset, user_id: ctx.getUserId?.(), message: error.message });
       return errorResult(error.message);
     }
     const rows = data ?? [];
-    return textResult(rows, { dataset, count: rows.length, rows });
+    const total_count = count ?? rows.length;
+    const next = offset + rows.length;
+    const has_more = next < total_count;
+    const payload = {
+      dataset,
+      total_count,
+      returned: rows.length,
+      offset,
+      next_offset: has_more ? next : null,
+      has_more,
+      rows
+    };
+    return textResult(payload, {
+      dataset,
+      count: rows.length,
+      total_count,
+      offset,
+      next_offset: has_more ? next : null,
+      has_more
+    });
+  }
+});
+
+// src/lib/mcp/tools/describe-schema.ts
+import { defineTool as defineTool33 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z33 } from "npm:zod@^3.23.0";
+var EXTRA_TABLES = [
+  "deal_writeups",
+  "deal_memos",
+  "deal_checklist_items",
+  "deal_checklist_status",
+  "deal_attachments",
+  "deal_status_notes",
+  "deal_financial_data",
+  "deal_flag_notes",
+  "deal_ownership",
+  "deal_space_notes",
+  "deal_activity",
+  "contact_deals",
+  "deal_pipeline_configs"
+];
+var DESCRIBABLE = Array.from(/* @__PURE__ */ new Set([...INSIGHTS_DATASETS, ...EXTRA_TABLES])).sort();
+var describe_schema_default = defineTool33({
+  name: "describe_schema",
+  title: "Describe table schema",
+  description: `Field discovery: return the column list for one or more platform tables \u2014 column name, data type, nullability, default, and (for enum columns) the complete set of allowed values. Use this before pulling data so you know exactly which fields exist rather than guessing names; pair it with \`list_deals\` (\`fields: "*"\`) or \`query_insights_dataset\` to extract complete records. Omit \`tables\` to get the describable table list. Describable tables: ${DESCRIBABLE.join(", ")}.`,
+  inputSchema: {
+    tables: z33.array(z33.string().trim().min(1).max(80)).max(20).optional().describe("Table names to describe. Omit to list the tables that can be described.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ tables }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    if (!tables || tables.length === 0) {
+      return textResult({ describable_tables: DESCRIBABLE }, { count: DESCRIBABLE.length });
+    }
+    const invalid = tables.filter((t) => !DESCRIBABLE.includes(t));
+    if (invalid.length) {
+      return errorResult(
+        `Not describable: ${invalid.join(", ")}. Allowed tables: ${DESCRIBABLE.join(", ")}.`
+      );
+    }
+    const sb = supabaseForUser(ctx);
+    const { data, error } = await sb.rpc("mcp_describe_tables", { p_tables: tables });
+    if (error) {
+      console.error("[describe_schema] error", { tables, user_id: ctx.getUserId?.(), message: error.message });
+      return errorResult(error.message);
+    }
+    const rows = data ?? [];
+    const grouped = {};
+    for (const r of rows) {
+      const { table_name, ...rest } = r;
+      (grouped[table_name] ??= []).push(rest);
+    }
+    const payload = {
+      tables: Object.entries(grouped).map(([table, columns]) => ({
+        table,
+        column_count: columns.length,
+        columns
+      }))
+    };
+    return textResult(payload, { tables: tables.join(","), column_count: rows.length });
   }
 });
 
@@ -1559,7 +1693,7 @@ var mcp_default = defineMcp({
   name: "naitive-api",
   title: "naitive API",
   version: "0.1.0",
-  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals \u2014 `list_deals` applies NO implicit pipeline/owner/stage filter and returns deals from every pipeline the caller can see, with `total_count`/`next_offset`/`has_more` for full pagination and a `pipeline_breakdown`; pair it with `list_pipelines` (all pipelines, their stages and deal counts) to confirm coverage across pipelines \u2014 `update_deal` to move stage or edit fields, `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups, `search_lenders`/`add_lender_to_deal` for the funding-source directory, `list_deal_funding_sources` to read the lenders attached to a specific deal (matches the deal's Funding Sources tab), and \u2014 for deep deal context \u2014 `search_deal_notes`, `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal. Daily rundown tools (`get_daily_rundown`, `add_daily_rundown_item`, `update_daily_rundown_item`, `complete_daily_rundown_item`, `reorder_daily_rundown_items`) manage the personal dashboard rundown \u2014 access is restricted to jturner@5thline.co and enforced at the database (RLS) and edge-function layers. Insights analytics tools give full read access to everything on the Insights page: `list_insights_dashboards` enumerates dashboards, saved widget layouts, and custom formula metrics; `get_pipeline_metrics` returns deal-pipeline aggregates (value, fees, counts) broken down by stage, status, type, manager, owner, pipeline, and month for any timeframe; `get_funnel_velocity` returns stage conversion and time-in-stage analytics; `get_revenue_metrics` returns QuickBooks invoiced revenue by month/customer/entity plus P&L snapshots; `get_lender_metrics` returns funding-source funnel analytics; `get_metric_targets` returns Master Plan targets and manual inputs for plan-vs-actual comparisons; and `query_insights_dataset` is a read-only escape hatch over every underlying Insights dataset. All of them apply the same global test-deal exclusions and RLS scoping as the UI.",
+  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals \u2014 `list_deals` applies NO implicit pipeline/owner/stage filter and returns deals from every pipeline the caller can see, with `total_count`/`next_offset`/`has_more` for full pagination and a `pipeline_breakdown`; pair it with `list_pipelines` (all pipelines, their stages and deal counts) to confirm coverage across pipelines \u2014 `update_deal` to move stage or edit fields, `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups, `search_lenders`/`add_lender_to_deal` for the funding-source directory, `list_deal_funding_sources` to read the lenders attached to a specific deal (matches the deal's Funding Sources tab), and \u2014 for deep deal context \u2014 `search_deal_notes`, `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal. Daily rundown tools (`get_daily_rundown`, `add_daily_rundown_item`, `update_daily_rundown_item`, `complete_daily_rundown_item`, `reorder_daily_rundown_items`) manage the personal dashboard rundown \u2014 access is restricted to jturner@5thline.co and enforced at the database (RLS) and edge-function layers. Insights analytics tools give full read access to everything on the Insights page: `list_insights_dashboards` enumerates dashboards, saved widget layouts, and custom formula metrics; `get_pipeline_metrics` returns deal-pipeline aggregates (value, fees, counts) broken down by stage, status, type, manager, owner, pipeline, and month for any timeframe; `get_funnel_velocity` returns stage conversion and time-in-stage analytics; `get_revenue_metrics` returns QuickBooks invoiced revenue by month/customer/entity plus P&L snapshots; `get_lender_metrics` returns funding-source funnel analytics; `get_metric_targets` returns Master Plan targets and manual inputs for plan-vs-actual comparisons; and `query_insights_dataset` is a read-only, fully paginated escape hatch over every underlying dataset (including deal write-ups, memos, checklists, attachments, financials and ownership). Use `describe_schema` first to discover exact column names and allowed enum values, then `list_deals` with fields=* to extract complete deal records in bulk across all pipelines. All of them apply the same global test-deal exclusions and RLS scoping as the UI.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
@@ -1596,7 +1730,8 @@ var mcp_default = defineMcp({
     get_revenue_metrics_default,
     get_lender_metrics_default,
     get_metric_targets_default,
-    query_insights_dataset_default
+    query_insights_dataset_default,
+    describe_schema_default
   ]
 });
 

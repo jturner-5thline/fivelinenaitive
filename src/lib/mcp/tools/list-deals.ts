@@ -6,7 +6,7 @@ export default defineTool({
   name: "list_deals",
   title: "List deals",
   description:
-    "List EVERY deal the signed-in user can see, across ALL pipelines. No implicit pipeline, owner, stage, or status filter is applied — results are only narrowed by the filters you pass explicitly. Returns full row records plus pipeline metadata: id, company, stage (raw pipeline-scoped stage id), stage_label (the human stage name from the deal's assigned pipeline — ALWAYS report this, never the raw id, because stage ids are overloaded across pipelines), pipeline_id, pipeline_name, value, closing_date, created_at, deal_owner, manager, status, updated_at. Pagination: pass `limit` and `offset`; the response includes `total_count` (matching rows regardless of limit), `returned`, `next_offset`, and `has_more` — keep calling with `next_offset` until `has_more` is false to walk the entire set across all pipelines. The response also includes `pipeline_breakdown` (distinct pipelines present in this page) so you can confirm coverage.",
+    "List EVERY deal the signed-in user can see, across ALL pipelines. No implicit pipeline, owner, stage, or status filter is applied — results are only narrowed by the filters you pass explicitly. By default returns a summary column set: id, company, stage (raw pipeline-scoped stage id), stage_label (the human stage name from the deal's assigned pipeline — ALWAYS report this, never the raw id, because stage ids are overloaded across pipelines), pipeline_id, pipeline_name, value, closing_date, created_at, deal_owner, manager, status, updated_at. Pass `fields: \"*\"` to get EVERY column on each deal (all pipeline-specific fields included — this is how you extract complete deal records in bulk), or a comma-separated column list to choose your own set; use `describe_schema` with table `deals` to see the available column names. Pagination: pass `limit` and `offset`; the response includes `total_count` (matching rows regardless of limit), `returned`, `next_offset`, and `has_more` — keep calling with `next_offset` until `has_more` is false to walk the entire set across all pipelines. The response also includes `pipeline_breakdown` (distinct pipelines present in this page) so you can confirm coverage.",
   inputSchema: {
     query: z.string().trim().min(1).max(200).optional().describe("Substring search across the company / deal name."),
     stage: z.string().trim().min(1).max(100).optional().describe("Stage id (e.g. 'nda-needs-list') or the stage's display label; requires pipeline_id when passing a label."),
@@ -17,12 +17,18 @@ export default defineTool({
     created_to: z.string().trim().max(40).optional().describe("ISO date/timestamp upper bound on created_at (exclusive)."),
     closing_from: z.string().trim().max(40).optional().describe("ISO date lower bound on closing_date (inclusive)."),
     closing_to: z.string().trim().max(40).optional().describe("ISO date upper bound on closing_date (exclusive)."),
+    fields: z
+      .string()
+      .trim()
+      .max(4000)
+      .optional()
+      .describe("Columns to return: '*' for every column on the deal, or a comma-separated column list. Defaults to the summary set."),
     limit: z.number().int().min(1).max(1000).default(200),
     offset: z.number().int().min(0).default(0).describe("Row offset for pagination; use `next_offset` from the previous response."),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (
-    { query, stage, pipeline_id, status, owner_email, created_from, created_to, closing_from, closing_to, limit, offset },
+    { query, stage, pipeline_id, status, owner_email, created_from, created_to, closing_from, closing_to, fields, limit, offset },
     ctx,
   ) => {
     const authErr = requireAuth(ctx);
@@ -30,13 +36,31 @@ export default defineTool({
     const sb = supabaseForUser(ctx);
     const stageFilter = stage ? await resolveStageInput(sb, pipeline_id, stage) : undefined;
 
+    const DEFAULT_FIELDS =
+      "id, company, stage, status, value, closing_date, created_at, pipeline_id, deal_owner, manager, updated_at";
+    // `fields` is a column projection, never raw SQL: allow only identifier
+    // characters, and always keep the columns the stage-label resolver needs.
+    let selection = DEFAULT_FIELDS;
+    if (fields) {
+      const raw = fields.trim();
+      if (!/^[A-Za-z0-9_,*\s]+$/.test(raw)) {
+        return errorResult("`fields` may only contain column names separated by commas, or '*'.");
+      }
+      if (raw === "*") {
+        selection = "*";
+      } else {
+        const cols = raw.split(",").map((c) => c.trim()).filter(Boolean);
+        for (const required of ["id", "stage", "pipeline_id"]) {
+          if (!cols.includes(required)) cols.push(required);
+        }
+        selection = cols.join(", ");
+      }
+    }
+
     // Stable ordering is required for correct cursoring across the whole set.
     let q = sb
       .from("deals")
-      .select(
-        "id, company, stage, status, value, closing_date, created_at, pipeline_id, deal_owner, manager, updated_at",
-        { count: "exact" },
-      )
+      .select(selection, { count: "exact" })
       .order("created_at", { ascending: false })
       .order("id", { ascending: true })
       .range(offset, offset + limit - 1);
@@ -53,7 +77,7 @@ export default defineTool({
 
     const { data, error, count } = await q;
     if (error) return errorResult(error.message);
-    const rows = await withStageLabels(sb, data ?? []);
+    const rows = await withStageLabels(sb, (data ?? []) as unknown as { stage?: string; pipeline_id?: string }[]);
 
     const breakdown = new Map<string, { pipeline_id: string | null; pipeline_name: string | null; deals: number }>();
     for (const r of rows) {

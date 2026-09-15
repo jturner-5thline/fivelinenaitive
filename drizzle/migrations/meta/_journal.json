@@ -99,6 +99,13 @@
       "when": 1789480454685,
       "tag": "0013_add_geo_preference_options",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1789506464481,
+      "tag": "0014_mcp_describe_tables",
+      "breakpoints": true
     }
   ]
 }
