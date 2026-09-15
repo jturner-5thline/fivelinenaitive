@@ -1788,6 +1788,57 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                   </div>
                                 </div>
                               )}
+                              {(lender.sweetSpotMin || lender.sweetSpotMax) && (
+                                <div className="flex items-start gap-3">
+                                  <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium">Sweet Spot: </span>
+                                    <span className="text-sm">
+                                      {lender.sweetSpotMin && lender.sweetSpotMax
+                                        ? `${formatLenderCurrency(lender.sweetSpotMin)} - ${formatLenderCurrency(lender.sweetSpotMax)}`
+                                        : lender.sweetSpotMin
+                                        ? `${formatLenderCurrency(lender.sweetSpotMin)}+`
+                                        : `Up to ${formatLenderCurrency(lender.sweetSpotMax)}`}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                              {lender.minGrossMarginPct != null && (
+                                <div className="flex items-start gap-3">
+                                  <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium">Min Gross Margin: </span>
+                                    <span className="text-sm">{lender.minGrossMarginPct}%</span>
+                                  </div>
+                                </div>
+                              )}
+                              {lender.maxLeverage != null && (
+                                <div className="flex items-start gap-3">
+                                  <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium">Max Leverage: </span>
+                                    <span className="text-sm">{lender.maxLeverage}x</span>
+                                  </div>
+                                </div>
+                              )}
+                              {lender.sponsorRequirement && (
+                                <div className="flex items-start gap-3">
+                                  <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium">Sponsor Requirement: </span>
+                                    <span className="text-sm">{lender.sponsorRequirement}</span>
+                                  </div>
+                                </div>
+                              )}
+                              {lender.appetiteStatus && (
+                                <div className="flex items-start gap-3">
+                                  <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium">Appetite Status: </span>
+                                    <Badge variant="secondary" className="text-xs ml-1 capitalize">{lender.appetiteStatus}</Badge>
+                                  </div>
+                                </div>
+                              )}
                               {lender.geo && (
                                 <div className="flex items-start gap-3">
                                   <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
