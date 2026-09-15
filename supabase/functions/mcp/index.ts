@@ -158,8 +158,8 @@ var list_deals_default = defineTool({
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
     const stageFilter = stage ? await resolveStageInput(sb, pipeline_id, stage) : void 0;
-    const DEFAULT_FIELDS3 = "id, company, stage, status, value, closing_date, created_at, pipeline_id, deal_owner, manager, updated_at";
-    let selection = DEFAULT_FIELDS3;
+    const DEFAULT_FIELDS4 = "id, company, stage, status, value, closing_date, created_at, pipeline_id, deal_owner, manager, updated_at";
+    let selection = DEFAULT_FIELDS4;
     if (fields) {
       const raw = fields.trim();
       if (!/^[A-Za-z0-9_,*\s]+$/.test(raw)) {
@@ -257,6 +257,22 @@ var INSIGHTS_DATASETS = [
   "activity_logs",
   "contacts",
   "crm_companies",
+  // Contact / CRM satellites
+  "contact_activities",
+  "contact_audit_log",
+  "contact_company_associations",
+  "contact_company_match_audit",
+  "contact_field_suggestions",
+  "contact_field_suggestion_audit",
+  "contact_tagging_rules",
+  "contact_types",
+  "crm_contact_attachments",
+  "crm_company_activities",
+  "crm_company_attachments",
+  "crm_company_team",
+  "crm_industry_options",
+  "partner_contacts",
+  "wf_contacts",
   "master_lenders",
   "custom_metrics",
   "insights_metric_targets",
@@ -617,7 +633,7 @@ var complete_task_default = defineTool7({
 // src/lib/mcp/tools/search-contacts.ts
 import { defineTool as defineTool8 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z8 } from "npm:zod@^3.23.0";
-var DEFAULT_FIELDS = "id, first_name, last_name, full_name, email, phone_mobile, phone_work, phone_other, website_url, job_title, city, state, country, linkedin_url, contact_type, tags, crm_company_id, last_contact_date, created_at, updated_at";
+var DEFAULT_FIELDS = "id, first_name, last_name, full_name, email, phone_mobile, phone_work, phone_other, website_url, job_title, city, state, country, linkedin_url, contact_type, tags, crm_company_id, last_contact_at, last_contacted_date, last_activity_date, created_at, updated_at";
 var FIELD_RE = /^[a-zA-Z0-9_,\s]+$/;
 var search_contacts_default = defineTool8({
   name: "search_contacts",
@@ -692,26 +708,53 @@ var search_contacts_default = defineTool8({
 // src/lib/mcp/tools/search-companies.ts
 import { defineTool as defineTool9 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z9 } from "npm:zod@^3.23.0";
+var DEFAULT_FIELDS2 = "id, name, domain, website_url, industry, company_type, status, hq_city, hq_state, hq_country, created_at, updated_at";
+var FIELD_RE2 = /^[a-zA-Z0-9_,\s]+$/;
 var search_companies_default = defineTool9({
   name: "search_companies",
   title: "Search companies",
-  description: "Search CRM companies by name, domain, or website. Returns full row records.",
+  description: 'Search CRM companies by name, domain or website. Paginated: returns total_count/returned/offset/next_offset/has_more. Pass `fields: "*"` for every column on the company record, or a comma-separated column list; defaults to a summary set. Omit `query` to browse all companies.',
   inputSchema: {
-    query: z9.string().trim().min(1).max(200),
-    limit: z9.number().int().min(1).max(100).default(25)
+    query: z9.string().trim().min(1).max(200).optional(),
+    fields: z9.string().trim().max(4e3).optional().describe('"*" for all columns, or a comma-separated column list.'),
+    limit: z9.number().int().min(1).max(500).default(50),
+    offset: z9.number().int().min(0).default(0),
+    order_by: z9.string().trim().max(80).default("created_at"),
+    ascending: z9.boolean().default(false)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ query, limit }, ctx) => {
+  handler: async ({ query, fields, limit, offset, order_by, ascending }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    const like = `%${query}%`;
-    const { data, error } = await sb.from("crm_companies").select(
-      "id, name, domain, website_url, industry, company_type, status, hq_city, hq_state, hq_country, created_at"
-    ).or(`name.ilike.${like},domain.ilike.${like},website_url.ilike.${like}`).limit(limit);
+    let select = DEFAULT_FIELDS2;
+    if (fields) {
+      const f = fields.trim();
+      if (f === "*") select = "*";
+      else {
+        if (!FIELD_RE2.test(f)) return errorResult("fields may only contain column names, commas and spaces.");
+        const cols = new Set(f.split(",").map((c) => c.trim()).filter(Boolean));
+        cols.add("id");
+        cols.add("name");
+        select = [...cols].join(", ");
+      }
+    }
+    let q = sb.from("crm_companies").select(select, { count: "exact" }).range(offset, offset + limit - 1);
+    if (query) {
+      const like = `%${query}%`;
+      q = q.or(`name.ilike.${like},domain.ilike.${like},website_url.ilike.${like}`);
+    }
+    if (order_by) q = q.order(order_by, { ascending, nullsFirst: false });
+    const { data, error, count } = await q;
     if (error) return errorResult(error.message);
-    const rows = data ?? [];
-    return textResult(rows, { count: rows.length, companies: rows });
+    const companies = data ?? [];
+    const total_count = count ?? companies.length;
+    const next = offset + companies.length;
+    const has_more = next < total_count;
+    return textResult(
+      { companies, total_count, returned: companies.length, offset, next_offset: has_more ? next : null, has_more },
+      { count: companies.length, total_count, offset, next_offset: has_more ? next : null, has_more }
+    );
   }
 });
 
@@ -779,7 +822,7 @@ var create_company_default = defineTool11({
 // src/lib/mcp/tools/search-lenders.ts
 import { defineTool as defineTool12 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z12 } from "npm:zod@^3.23.0";
-var DEFAULT_FIELDS2 = "id, name, lender_type, tier, active, appetite_status, min_deal, max_deal, sweet_spot_min, sweet_spot_max, loan_types, industries, geographies, website, contact_name, contact_title";
+var DEFAULT_FIELDS3 = "id, name, lender_type, tier, active, appetite_status, min_deal, max_deal, sweet_spot_min, sweet_spot_max, loan_types, industries, geographies, website, contact_name, contact_title";
 var search_lenders_default = defineTool12({
   name: "search_lenders",
   title: "Search funding sources / lenders",
@@ -803,7 +846,7 @@ var search_lenders_default = defineTool12({
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    let select = DEFAULT_FIELDS2;
+    let select = DEFAULT_FIELDS3;
     if (fields) {
       if (fields.trim() === "*") select = "*";
       else if (!/^[a-zA-Z0-9_,\s]+$/.test(fields)) return errorResult('fields may only contain column names, commas and spaces, or be "*".');

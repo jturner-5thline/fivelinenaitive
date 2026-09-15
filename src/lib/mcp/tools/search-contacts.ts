@@ -3,7 +3,7 @@ import { z } from "zod";
 import { supabaseForUser, requireAuth, textResult, errorResult } from "../supabase";
 
 const DEFAULT_FIELDS =
-  "id, first_name, last_name, full_name, email, phone_mobile, phone_work, phone_other, website_url, job_title, city, state, country, linkedin_url, contact_type, tags, crm_company_id, last_contact_date, created_at, updated_at";
+  "id, first_name, last_name, full_name, email, phone_mobile, phone_work, phone_other, website_url, job_title, city, state, country, linkedin_url, contact_type, tags, crm_company_id, last_contact_at, last_contacted_date, last_activity_date, created_at, updated_at";
 
 /** Only simple identifier characters — never interpolate arbitrary text into select(). */
 const FIELD_RE = /^[a-zA-Z0-9_,\s]+$/;
