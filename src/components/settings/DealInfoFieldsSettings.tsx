@@ -221,7 +221,7 @@ export function DealInfoFieldsSettings({ isAdmin = true }: DealInfoFieldsSetting
   const availableToAdd = DEAL_INFO_FIELD_DEFINITIONS.filter(f => !fieldOrder.includes(f.id));
 
   return (
-    
+    <>
       <Card>
         
           <CardHeader className="">
