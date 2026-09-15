@@ -1442,6 +1442,57 @@ var get_funnel_velocity_default = defineTool28({
     if (!stage_path || stage_path.length < 2) {
       return errorResult("Provide either stage_path (2+ stage ids) or deal_id.");
     }
+    if (pipeline_id) {
+      const rows = [];
+      const pageSize = 1e3;
+      for (let offset = 0; ; offset += pageSize) {
+        const { data: page, error: histErr } = await sb.from("deal_stage_history").select("deal_id, to_stage, changed_at").eq("pipeline_id", pipeline_id).order("changed_at", { ascending: true }).range(offset, offset + pageSize - 1);
+        if (histErr) return errorResult(histErr.message);
+        const chunk = page ?? [];
+        rows.push(...chunk);
+        if (chunk.length < pageSize) break;
+      }
+      const firstEntry = /* @__PURE__ */ new Map();
+      for (const r of rows) {
+        if (!r.to_stage || !r.changed_at) continue;
+        const perDeal = firstEntry.get(r.deal_id) ?? /* @__PURE__ */ new Map();
+        const prev = perDeal.get(r.to_stage);
+        if (!prev || r.changed_at < prev) perDeal.set(r.to_stage, r.changed_at);
+        firstEntry.set(r.deal_id, perDeal);
+      }
+      const dealIds = Array.from(firstEntry.keys());
+      const steps = [];
+      for (let i = 0; i < stage_path.length - 1; i++) {
+        const fromStage = stage_path[i];
+        const toStage = stage_path[i + 1];
+        const durations = [];
+        let fromCount = 0;
+        let toCount = 0;
+        for (const id of dealIds) {
+          const perDeal = firstEntry.get(id);
+          const a = perDeal.get(fromStage);
+          if (!a) continue;
+          fromCount++;
+          const b = perDeal.get(toStage);
+          if (!b || b < a) continue;
+          toCount++;
+          durations.push((new Date(b).getTime() - new Date(a).getTime()) / 864e5);
+        }
+        durations.sort((x, y) => x - y);
+        const median = durations.length ? durations.length % 2 ? durations[(durations.length - 1) / 2] : (durations[durations.length / 2 - 1] + durations[durations.length / 2]) / 2 : null;
+        steps.push({
+          from_stage: fromStage,
+          to_stage: toStage,
+          deals_reaching_from: fromCount,
+          deals_reaching_to: toCount,
+          conversion_rate: fromCount ? toCount / fromCount : null,
+          median_days: median,
+          avg_days: durations.length ? durations.reduce((s, d) => s + d, 0) / durations.length : null
+        });
+      }
+      const payload = { pipeline_id, stage_path, basis: "first entry per stage from deal_stage_history", steps };
+      return textResult(payload, payload);
+    }
     const { data, error } = await sb.rpc("get_funnel_velocity", {
       p_stage_path: stage_path,
       p_consecutive_only: consecutive_only
