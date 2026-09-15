@@ -362,7 +362,7 @@
       {
         "name": "search_contacts",
         "title": "Search contacts",
-        "description": "Search CRM contacts by name, email, or domain. Returns id, name, email, phones, domain, title, company.",
+        "description": "Search CRM contacts by name, email, domain, job title, phone or LinkedIn. Returns a paginated result set with total_count/returned/offset/next_offset/has_more — keep calling with next_offset until has_more is false. By default a summary field set is returned; pass `fields: \"*\"` for EVERY column on the contact record (all standard and custom fields), or a comma-separated column list. Optional filters narrow by contact type, tag, company, city/state/country, or whether an email exists. Use `get_contact` for one contact's full record plus activities, change history, deals, attachments and suggestions; `describe_schema` lists the available column names.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -374,18 +374,100 @@
             "query": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 200
+              "maxLength": 200,
+              "description": "Free-text match on name, email, domain, title, phone, LinkedIn. Omit to browse all contacts."
+            },
+            "fields": {
+              "type": "string",
+              "maxLength": 4000,
+              "description": "\"*\" for all columns, or a comma-separated column list. Defaults to a summary set."
+            },
+            "contact_type": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "tag": {
+              "type": "string",
+              "maxLength": 100,
+              "description": "Match a single tag in the contact's tags array."
+            },
+            "crm_company_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "city": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "country": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "has_email": {
+              "type": "boolean"
+            },
+            "order_by": {
+              "type": "string",
+              "maxLength": 80,
+              "default": "created_at"
+            },
+            "ascending": {
+              "type": "boolean",
+              "default": false
             },
             "limit": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 100,
-              "default": 25
+              "maximum": 500,
+              "default": 50
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
             }
           },
-          "required": [
-            "query"
-          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_contact",
+        "title": "Get contact detail",
+        "description": "Return the COMPLETE record for one CRM contact — every column on `contacts` (all custom and standard fields: names, all phone numbers, email(s), job title, geography/city/state/country, LinkedIn, tags, contact type, source, owner, last-contact timestamps, notes and every custom field) — plus its related rows: linked CRM company record, company associations, deals the contact is attached to (with deal name/stage/pipeline), logged activities, full field-level change history, AI field suggestions and their audit trail, attachments, and any funding-source or partner links. Look up by `contact_id`, or by `email` or partial `name` (ambiguous name matches return the candidates to choose from).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "contact_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "email": {
+              "type": "string",
+              "maxLength": 320
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Case-insensitive partial name match."
+            },
+            "include_related": {
+              "type": "boolean",
+              "default": true,
+              "description": "Include company, deals, activities, change history, suggestions, attachments and links."
+            }
+          },
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
@@ -394,7 +476,7 @@
       {
         "name": "search_companies",
         "title": "Search companies",
-        "description": "Search CRM companies by name, domain, or website. Returns full row records.",
+        "description": "Search CRM companies by name, domain or website. Paginated: returns total_count/returned/offset/next_offset/has_more. Pass `fields: \"*\"` for every column on the company record, or a comma-separated column list; defaults to a summary set. Omit `query` to browse all companies.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -408,16 +490,32 @@
               "minLength": 1,
               "maxLength": 200
             },
+            "fields": {
+              "type": "string",
+              "maxLength": 4000,
+              "description": "\"*\" for all columns, or a comma-separated column list."
+            },
             "limit": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 100,
-              "default": 25
+              "maximum": 500,
+              "default": 50
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "order_by": {
+              "type": "string",
+              "maxLength": 80,
+              "default": "created_at"
+            },
+            "ascending": {
+              "type": "boolean",
+              "default": false
             }
           },
-          "required": [
-            "query"
-          ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
@@ -1424,7 +1522,7 @@
       {
         "name": "query_insights_dataset",
         "title": "Query any Insights source dataset",
-        "description": "Read-only escape hatch: query any platform dataset directly when no purpose-built tool covers the question. Allowed datasets: deals, deal_lenders, deal_pipelines, deal_stage_history, deal_milestones, deal_computed_metrics, deal_stage_durations, deal_stage_transitions, outstanding_items, tasks, activity_logs, contacts, crm_companies, master_lenders, custom_metrics, insights_metric_targets, metric_manual_inputs, dashboard_grid_layouts, dashboard_layouts, quickbooks_invoices, quickbooks_customers, quickbooks_payments, quickbooks_expenses, quickbooks_bills, quickbooks_reports, qbo_pnl_snapshots, qbo_cashflow_snapshots, claap_meetings, team_interaction_metrics, deal_writeups, deal_memos, deal_checklist_items, deal_checklist_status, deal_attachments, deal_status_notes, deal_financial_data, deal_flag_notes, deal_ownership, deal_space_notes, deal_activity, contact_deals, deal_pipeline_configs, lender_contacts, lender_notes, lender_notes_history, lender_attachments, lender_audit_logs, lender_disqualifications, lender_doc_flags, lender_fit_attributes, lender_match_rules, lender_pass_detections, lender_pass_patterns, lender_recommendation_outcomes, lender_recommendation_run_items, lender_recommendation_runs, lender_stage_configs, lender_sync_requests, lender_sync_settings, funding_source_acquisition_plans, deal_lender_recommendation_exclusions, lender_outcome_stats, lender_match_weight_calibrations, lender_qa_regression_tests, lender_sync_request_decisions, lender_duplicate_dismissals, lender_history_warning_dismissals, pending_lender_notifications, external_deal_lenders, deal_saas_lenders, wf_lenders, flex_sync_settings, flex_sync_history, flex_notifications, flex_info_notifications, flex_auto_removal_audit. Supply optional column selection (defaults to ALL columns), filters (column + operator + value), ordering, limit and offset. Results are paginated and the response reports total_count, returned, offset, next_offset and has_more — keep calling with next_offset until has_more is false, otherwise you are looking at a partial set. Use describe_schema to learn the available column names. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.",
+        "description": "Read-only escape hatch: query any platform dataset directly when no purpose-built tool covers the question. Allowed datasets: deals, deal_lenders, deal_pipelines, deal_stage_history, deal_milestones, deal_computed_metrics, deal_stage_durations, deal_stage_transitions, outstanding_items, tasks, activity_logs, contacts, crm_companies, contact_activities, contact_audit_log, contact_company_associations, contact_company_match_audit, contact_field_suggestions, contact_field_suggestion_audit, contact_tagging_rules, contact_types, crm_contact_attachments, crm_company_activities, crm_company_attachments, crm_company_team, crm_industry_options, partner_contacts, wf_contacts, master_lenders, custom_metrics, insights_metric_targets, metric_manual_inputs, dashboard_grid_layouts, dashboard_layouts, quickbooks_invoices, quickbooks_customers, quickbooks_payments, quickbooks_expenses, quickbooks_bills, quickbooks_reports, qbo_pnl_snapshots, qbo_cashflow_snapshots, claap_meetings, team_interaction_metrics, deal_writeups, deal_memos, deal_checklist_items, deal_checklist_status, deal_attachments, deal_status_notes, deal_financial_data, deal_flag_notes, deal_ownership, deal_space_notes, deal_activity, contact_deals, deal_pipeline_configs, lender_contacts, lender_notes, lender_notes_history, lender_attachments, lender_audit_logs, lender_disqualifications, lender_doc_flags, lender_fit_attributes, lender_match_rules, lender_pass_detections, lender_pass_patterns, lender_recommendation_outcomes, lender_recommendation_run_items, lender_recommendation_runs, lender_stage_configs, lender_sync_requests, lender_sync_settings, funding_source_acquisition_plans, deal_lender_recommendation_exclusions, lender_outcome_stats, lender_match_weight_calibrations, lender_qa_regression_tests, lender_sync_request_decisions, lender_duplicate_dismissals, lender_history_warning_dismissals, pending_lender_notifications, external_deal_lenders, deal_saas_lenders, wf_lenders, flex_sync_settings, flex_sync_history, flex_notifications, flex_info_notifications, flex_auto_removal_audit. Supply optional column selection (defaults to ALL columns), filters (column + operator + value), ordering, limit and offset. Results are paginated and the response reports total_count, returned, offset, next_offset and has_more — keep calling with next_offset until has_more is false, otherwise you are looking at a partial set. Use describe_schema to learn the available column names. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -1449,6 +1547,21 @@
                 "activity_logs",
                 "contacts",
                 "crm_companies",
+                "contact_activities",
+                "contact_audit_log",
+                "contact_company_associations",
+                "contact_company_match_audit",
+                "contact_field_suggestions",
+                "contact_field_suggestion_audit",
+                "contact_tagging_rules",
+                "contact_types",
+                "crm_contact_attachments",
+                "crm_company_activities",
+                "crm_company_attachments",
+                "crm_company_team",
+                "crm_industry_options",
+                "partner_contacts",
+                "wf_contacts",
                 "master_lenders",
                 "custom_metrics",
                 "insights_metric_targets",
@@ -1611,7 +1724,7 @@
       {
         "name": "describe_schema",
         "title": "Describe table schema",
-        "description": "Field discovery: return the column list for one or more platform tables — column name, data type, nullability, default, and (for enum columns) the complete set of allowed values. Use this before pulling data so you know exactly which fields exist rather than guessing names; pair it with `list_deals` (`fields: \"*\"`) or `query_insights_dataset` to extract complete records. Omit `tables` to get the describable table list. Describable tables: activity_logs, claap_meetings, contact_deals, contacts, crm_companies, custom_metrics, dashboard_grid_layouts, dashboard_layouts, deal_activity, deal_attachments, deal_checklist_items, deal_checklist_status, deal_computed_metrics, deal_financial_data, deal_flag_notes, deal_lender_recommendation_exclusions, deal_lenders, deal_memos, deal_milestones, deal_ownership, deal_pipeline_configs, deal_pipelines, deal_saas_lenders, deal_space_notes, deal_stage_durations, deal_stage_history, deal_stage_transitions, deal_status_notes, deal_writeups, deals, external_deal_lenders, flex_auto_removal_audit, flex_info_notifications, flex_notifications, flex_sync_history, flex_sync_settings, funding_source_acquisition_plans, insights_metric_targets, lender_attachments, lender_audit_logs, lender_contacts, lender_disqualifications, lender_doc_flags, lender_duplicate_dismissals, lender_fit_attributes, lender_history_warning_dismissals, lender_match_rules, lender_match_weight_calibrations, lender_notes, lender_notes_history, lender_outcome_stats, lender_pass_detections, lender_pass_patterns, lender_qa_regression_tests, lender_recommendation_outcomes, lender_recommendation_run_items, lender_recommendation_runs, lender_stage_configs, lender_sync_request_decisions, lender_sync_requests, lender_sync_settings, master_lenders, metric_manual_inputs, outstanding_items, pending_lender_notifications, qbo_cashflow_snapshots, qbo_pnl_snapshots, quickbooks_bills, quickbooks_customers, quickbooks_expenses, quickbooks_invoices, quickbooks_payments, quickbooks_reports, tasks, team_interaction_metrics, wf_lenders.",
+        "description": "Field discovery: return the column list for one or more platform tables — column name, data type, nullability, default, and (for enum columns) the complete set of allowed values. Use this before pulling data so you know exactly which fields exist rather than guessing names; pair it with `list_deals` (`fields: \"*\"`) or `query_insights_dataset` to extract complete records. Omit `tables` to get the describable table list. Describable tables: activity_logs, claap_meetings, contact_activities, contact_audit_log, contact_company_associations, contact_company_match_audit, contact_deals, contact_field_suggestion_audit, contact_field_suggestions, contact_tagging_rules, contact_types, contacts, crm_companies, crm_company_activities, crm_company_attachments, crm_company_team, crm_contact_attachments, crm_industry_options, custom_metrics, dashboard_grid_layouts, dashboard_layouts, deal_activity, deal_attachments, deal_checklist_items, deal_checklist_status, deal_computed_metrics, deal_financial_data, deal_flag_notes, deal_lender_recommendation_exclusions, deal_lenders, deal_memos, deal_milestones, deal_ownership, deal_pipeline_configs, deal_pipelines, deal_saas_lenders, deal_space_notes, deal_stage_durations, deal_stage_history, deal_stage_transitions, deal_status_notes, deal_writeups, deals, external_deal_lenders, flex_auto_removal_audit, flex_info_notifications, flex_notifications, flex_sync_history, flex_sync_settings, funding_source_acquisition_plans, insights_metric_targets, lender_attachments, lender_audit_logs, lender_contacts, lender_disqualifications, lender_doc_flags, lender_duplicate_dismissals, lender_fit_attributes, lender_history_warning_dismissals, lender_match_rules, lender_match_weight_calibrations, lender_notes, lender_notes_history, lender_outcome_stats, lender_pass_detections, lender_pass_patterns, lender_qa_regression_tests, lender_recommendation_outcomes, lender_recommendation_run_items, lender_recommendation_runs, lender_stage_configs, lender_sync_request_decisions, lender_sync_requests, lender_sync_settings, master_lenders, metric_manual_inputs, outstanding_items, partner_contacts, pending_lender_notifications, qbo_cashflow_snapshots, qbo_pnl_snapshots, quickbooks_bills, quickbooks_customers, quickbooks_expenses, quickbooks_invoices, quickbooks_payments, quickbooks_reports, tasks, team_interaction_metrics, wf_contacts, wf_lenders.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
