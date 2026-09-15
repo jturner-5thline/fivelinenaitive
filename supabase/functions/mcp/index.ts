@@ -305,7 +305,23 @@ var INSIGHTS_DATASETS = [
   "lender_sync_requests",
   "lender_sync_settings",
   "funding_source_acquisition_plans",
-  "deal_lender_recommendation_exclusions"
+  "deal_lender_recommendation_exclusions",
+  "lender_outcome_stats",
+  "lender_match_weight_calibrations",
+  "lender_qa_regression_tests",
+  "lender_sync_request_decisions",
+  "lender_duplicate_dismissals",
+  "lender_history_warning_dismissals",
+  "pending_lender_notifications",
+  "external_deal_lenders",
+  "deal_saas_lenders",
+  "wf_lenders",
+  // Flex (lender sync) tables
+  "flex_sync_settings",
+  "flex_sync_history",
+  "flex_notifications",
+  "flex_info_notifications",
+  "flex_auto_removal_audit"
 ];
 var DASHBOARD_OPTIONS = [
   { id: "management-snapshot", name: "Weekly Rundown", isFavorite: true, folder: "management-insights" },
