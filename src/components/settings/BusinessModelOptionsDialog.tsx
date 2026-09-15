@@ -4,35 +4,55 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, X, RotateCcw } from 'lucide-react';
+import { Plus, X, RotateCcw, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { useBusinessModelOptions, getDefaultBusinessModelOptions, countDealsUsingBusinessModels } from '@/hooks/useBusinessModelOptions';
+import {
+  useBusinessModelOptions,
+  getDefaultBusinessModelOptions,
+  countDealsUsingBusinessModels,
+  countFundingSourcesUsingIndustries,
+} from '@/hooks/useBusinessModelOptions';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
+interface UsageSummary {
+  removed: string[];
+  added: string[];
+  deals: Record<string, number>;
+  fundingSources: Record<string, number>;
+}
+
 export function BusinessModelOptionsDialog({ open, onOpenChange }: Props) {
-  const { options, saveOptions, isSaving } = useBusinessModelOptions();
+  const { options, saveOptions } = useBusinessModelOptions();
   const [draft, setDraft] = useState<string[]>([]);
   const [newValue, setNewValue] = useState('');
-  const [inUse, setInUse] = useState<Record<string, number> | null>(null);
+  const [summary, setSummary] = useState<UsageSummary | null>(null);
   const [checking, setChecking] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
       setDraft([...options]);
       setNewValue('');
-      setInUse(null);
+      setSummary(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  const cleanedDraft = useMemo(() => draft.map(v => v.trim()).filter(Boolean), [draft]);
+
   const removed = useMemo(() => {
-    const draftSet = new Set(draft.map(v => v.trim().toLowerCase()));
-    return options.filter(v => !draftSet.has(v.trim().toLowerCase()));
-  }, [options, draft]);
+    const keys = new Set(cleanedDraft.map(v => v.toLowerCase()));
+    return options.filter(v => !keys.has(v.trim().toLowerCase()));
+  }, [options, cleanedDraft]);
+
+  const added = useMemo(() => {
+    const keys = new Set(options.map(v => v.trim().toLowerCase()));
+    return cleanedDraft.filter(v => !keys.has(v.toLowerCase()));
+  }, [options, cleanedDraft]);
 
   const addOption = () => {
     const v = newValue.trim();
@@ -45,51 +65,74 @@ export function BusinessModelOptionsDialog({ open, onOpenChange }: Props) {
     setNewValue('');
   };
 
-  const persist = async (list: string[]) => {
+  const persist = async () => {
+    setSaving(true);
     try {
-      await saveOptions(list.map(v => v.trim()).filter(Boolean));
-      toast({ title: 'Business Model options saved' });
-      setInUse(null);
+      await saveOptions(cleanedDraft);
+      toast({
+        title: 'Options saved',
+        description: 'Updated for Business Model on deals and Industries on funding sources.',
+      });
+      setSummary(null);
       onOpenChange(false);
     } catch (e: any) {
       toast({ title: 'Failed to save', description: e?.message ?? 'Please try again.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleSave = async () => {
-    const cleaned = draft.map(v => v.trim()).filter(Boolean);
-    if (cleaned.length === 0) {
+    if (cleanedDraft.length === 0) {
       toast({ title: 'Keep at least one option', variant: 'destructive' });
       return;
     }
-    if (removed.length > 0) {
-      setChecking(true);
-      try {
-        const counts = await countDealsUsingBusinessModels(removed);
-        if (Object.keys(counts).length > 0) {
-          setInUse(counts);
-          return;
-        }
-      } catch (e: any) {
-        toast({ title: 'Could not check deals', description: e?.message ?? '', variant: 'destructive' });
-        return;
-      } finally {
-        setChecking(false);
-      }
+    if (removed.length === 0 && added.length === 0) {
+      onOpenChange(false);
+      return;
     }
-    await persist(cleaned);
+    setChecking(true);
+    try {
+      const [deals, fundingSources] = await Promise.all([
+        countDealsUsingBusinessModels(removed),
+        countFundingSourcesUsingIndustries(removed),
+      ]);
+      setSummary({ removed, added, deals, fundingSources });
+    } catch (e: any) {
+      toast({ title: 'Could not check current usage', description: e?.message ?? '', variant: 'destructive' });
+    } finally {
+      setChecking(false);
+    }
   };
+
+  const inUseRows = summary
+    ? summary.removed
+        .map(value => ({
+          value,
+          deals: summary.deals[value] ?? 0,
+          sources: summary.fundingSources[value] ?? 0,
+        }))
+        .filter(r => r.deals > 0 || r.sources > 0)
+    : [];
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Business Model options</DialogTitle>
+            <DialogTitle>Business Model / Industry options</DialogTitle>
             <DialogDescription>
-              Add, rename or remove the choices shown in the Business Model dropdown on every deal.
+              Add, rename or remove the choices shown in the Business Model dropdown on deals.
             </DialogDescription>
           </DialogHeader>
+
+          <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              This is one shared list. Business Model on deals and Industries on funding sources use the
+              same options, so adding, renaming or deleting here changes both.
+            </span>
+          </div>
 
           <div className="flex gap-2">
             <Input
@@ -103,7 +146,7 @@ export function BusinessModelOptionsDialog({ open, onOpenChange }: Props) {
             </Button>
           </div>
 
-          <ScrollArea className="h-72 rounded-md border border-border/60">
+          <ScrollArea className="h-64 rounded-md border border-border/60">
             <div className="p-2 space-y-1.5">
               {draft.length === 0 && (
                 <p className="p-3 text-sm text-muted-foreground">No options yet — add one above.</p>
@@ -139,37 +182,49 @@ export function BusinessModelOptionsDialog({ open, onOpenChange }: Props) {
             </Button>
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="button" onClick={handleSave} disabled={isSaving || checking}>
-                {checking ? 'Checking deals...' : isSaving ? 'Saving...' : 'Save'}
+              <Button type="button" onClick={handleSave} disabled={checking || saving}>
+                {checking ? 'Checking usage...' : saving ? 'Saving...' : 'Save'}
               </Button>
             </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!inUse} onOpenChange={o => { if (!o) setInUse(null); }}>
+      <AlertDialog open={!!summary} onOpenChange={o => { if (!o) setSummary(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>These options are in use</AlertDialogTitle>
+            <AlertDialogTitle>Confirm changes to the shared list</AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div className="space-y-2">
-                <p>The following options are still set on active deals:</p>
-                <ul className="list-disc pl-5">
-                  {Object.entries(inUse ?? {}).map(([value, count]) => (
-                    <li key={value}>
-                      <span className="font-medium">{value}</span> — {count} deal{count === 1 ? '' : 's'}
-                    </li>
-                  ))}
-                </ul>
-                <p>Removing them from the dropdown keeps the value saved on those deals, but it can no longer be picked. Delete anyway?</p>
+              <div className="space-y-3">
+                <p>
+                  These options are used by both the Business Model field on deals and the Industries
+                  selection on funding sources. Saving applies the change in both places.
+                </p>
+                {summary && summary.added.length > 0 && (
+                  <p><span className="font-medium">Adding:</span> {summary.added.join(', ')}</p>
+                )}
+                {summary && summary.removed.length > 0 && (
+                  <p><span className="font-medium">Removing:</span> {summary.removed.join(', ')}</p>
+                )}
+                {inUseRows.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="font-medium text-amber-300">Some options you are removing are in use:</p>
+                    <ul className="list-disc pl-5">
+                      {inUseRows.map(r => (
+                        <li key={r.value}>
+                          <span className="font-medium">{r.value}</span> — {r.deals} deal{r.deals === 1 ? '' : 's'}, {r.sources} funding source{r.sources === 1 ? '' : 's'}
+                        </li>
+                      ))}
+                    </ul>
+                    <p>Existing records keep their saved value, but the option can no longer be picked.</p>
+                  </div>
+                )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep options</AlertDialogCancel>
-            <AlertDialogAction onClick={() => persist(draft.map(v => v.trim()).filter(Boolean))}>
-              Delete anyway
-            </AlertDialogAction>
+            <AlertDialogCancel>Go back</AlertDialogCancel>
+            <AlertDialogAction onClick={persist}>Save changes</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
