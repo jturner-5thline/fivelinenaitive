@@ -2130,6 +2130,12 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                     <CopyableText text={lender.contact.phone} href={`tel:${lender.contact.phone}`} className="hover:underline" iconSize="h-3.5 w-3.5" />
                                   </div>
                                 )}
+                                {lender.contact.geography && (
+                                  <div className="flex items-center gap-3">
+                                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-sm">{lender.contact.geography}</span>
+                                  </div>
+                                )}
                                 {!lender.contact.name && !lender.contact.email && !lender.contact.phone && additionalContacts.length === 0 && (
                                   <p className="text-muted-foreground text-sm italic">No contact info</p>
                                 )}
