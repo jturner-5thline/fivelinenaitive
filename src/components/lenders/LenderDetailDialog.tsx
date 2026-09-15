@@ -2261,6 +2261,32 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                   )}
                                 </div>
                               </div>
+                              <div className="flex items-start gap-3">
+                                <ExternalLink className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs text-muted-foreground mb-0.5">One Pager</div>
+                                  {lender.lenderOnePagerUrl ? (
+                                    <a
+                                      href={/^https?:\/\//i.test(lender.lenderOnePagerUrl) ? lender.lenderOnePagerUrl : `https://${lender.lenderOnePagerUrl}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm text-primary hover:underline break-all"
+                                    >
+                                      {lender.lenderOnePagerUrl}
+                                    </a>
+                                  ) : onSave ? (
+                                    <button
+                                      type="button"
+                                      onClick={handleEnterEditMode}
+                                      className="text-sm text-muted-foreground italic hover:text-foreground hover:underline"
+                                    >
+                                      Add one pager
+                                    </button>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground italic">—</span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           </section>
                           {showSeparator && <Separator className="my-6" />}
