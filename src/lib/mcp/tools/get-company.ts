@@ -133,7 +133,7 @@ export default defineTool({
       const { data: matchAudit, error: maErr } = await sb
         .from("contact_company_match_audit")
         .select("*")
-        .eq("company_id", id)
+        .eq("proposed_company_id", id)
         .limit(200);
       related.company_match_audit = maErr ? { error: maErr.message } : matchAudit ?? [];
 
