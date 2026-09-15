@@ -4555,7 +4555,19 @@ export default function DealDetail() {
                               )
                             )
                           );
-                          const leftFields = orderedMainFields.filter(fId => {
+                           // Single-column rail list keeps Narrative in its configured position.
+                           const orderedRailFields = dealInfoFieldOrder.filter(
+                             fId => fId !== 'hoursAndFees' && isDealInfoFieldVisible(fId) && !(
+                               isFinServDeal && (
+                                 fId === 'dealManager' ||
+                                 fId === 'type' ||
+                                 fId === 'engagement' ||
+                                 fId === 'exclusivity' ||
+                                 fId === 'analyst'
+                               )
+                             )
+                           );
+                           const leftFields = orderedMainFields.filter(fId => {
                             const def = DEAL_INFO_FIELD_DEFINITIONS.find(d => d.id === fId);
                             return def?.column === 'left';
                           });
@@ -4583,7 +4595,7 @@ export default function DealDetail() {
                                 </CardTitle>
                               </CardHeader>
                               <CardContent className={cn("space-y-4", isRailed && "px-0 pb-0 space-y-3")}>
-                                {isDealInfoFieldVisible('narrative') && renderDealInfoField('narrative')}
+                                {!(isRailed && !isFinServDeal) && isDealInfoFieldVisible('narrative') && renderDealInfoField('narrative')}
 
                                 {isFinServDeal ? (
                                   // FinServ-only strict form architecture:
@@ -4659,9 +4671,9 @@ export default function DealDetail() {
                                      {isRailed ? (
                                        // Single-column rail: render fields strictly in the
                                        // order configured in Settings → Deal Information Fields.
-                                       orderedMainFields.length > 0 && (
+                                       orderedRailFields.length > 0 && (
                                          <div className="space-y-2 min-w-0">
-                                           {orderedMainFields.map(fId => renderDealInfoField(fId))}
+                                           {orderedRailFields.map(fId => renderDealInfoField(fId))}
                                          </div>
                                        )
                                      ) : (
