@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Loader2, Plus, Settings2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +23,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { useMasterLenders, type MasterLender, type MasterLenderInsert } from '@/hooks/useMasterLenders';
 import { formatCurrencyInput } from '@/utils/formatLenderCurrency';
-import { GEO_OPTIONS } from '@/constants/geoOptions';
+import { useGeoOptionsList } from '@/lib/geoOptionsStore';
+import { GeoOptionsDialog } from '@/components/lenders/GeoOptionsDialog';
 import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
 import { getIndustryOptions } from '@/lib/industryOptions';
@@ -151,6 +152,8 @@ export function FundingSourceFormDialog({
   const [form, setForm] = useState<FundingSourceForm>(() => formWithInvitePrefill(initialName, initialContact));
   const [linkedCrmCompany, setLinkedCrmCompany] = useState<LinkedCrmCompany | null>(null);
   const [saving, setSaving] = useState(false);
+  const [geoOptionsOpen, setGeoOptionsOpen] = useState(false);
+  const geoOptions = useGeoOptionsList();
 
   useEffect(() => {
     if (!open) return;
@@ -396,7 +399,15 @@ export function FundingSourceFormDialog({
                 <div className="space-y-2"><Label htmlFor="new-funding-source-min-deal" className="text-xs text-muted-foreground">Min Deal Size ($)</Label><Input id="new-funding-source-min-deal" inputMode="numeric" value={formatCurrencyInput(form.minDeal)} onChange={(event) => updateForm('minDeal', event.target.value.replace(/[^0-9]/g, ''))} placeholder="e.g., $1,000,000" /></div>
                 <div className="space-y-2"><Label htmlFor="new-funding-source-max-deal" className="text-xs text-muted-foreground">Max Deal Size ($)</Label><Input id="new-funding-source-max-deal" inputMode="numeric" value={formatCurrencyInput(form.maxDeal)} onChange={(event) => updateForm('maxDeal', event.target.value.replace(/[^0-9]/g, ''))} placeholder="e.g., $25,000,000" /></div>
               </div>
-              <div className="space-y-2"><Label className="text-xs text-muted-foreground">Geographic Preference</Label><MultiSelectChips value={form.geo} onChange={(next) => updateForm('geo', next)} options={GEO_OPTIONS} placeholder="Select regions" searchPlaceholder="Search regions..." /></div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground">Geographic Preference</Label>
+                  <button type="button" onClick={() => setGeoOptionsOpen(true)} className="rounded p-0.5 text-muted-foreground hover:text-foreground" aria-label="Edit geographic preference options" title="Edit options">
+                    <Settings2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <MultiSelectChips value={form.geo} onChange={(next) => updateForm('geo', next)} options={geoOptions} placeholder="Select regions" searchPlaceholder="Search regions..." />
+              </div>
               <div className="space-y-2"><Label className="text-xs text-muted-foreground">Industries</Label><MultiSelectChips value={form.industries} onChange={(next) => updateForm('industries', next)} options={getIndustryOptions()} placeholder="Select industries" searchPlaceholder="Search industries..." /></div>
               <div className="space-y-2"><Label className="text-xs text-muted-foreground">Loan Types</Label><MultiSelectChips value={form.loanTypes} onChange={(next) => updateForm('loanTypes', next)} options={LOAN_TYPE_OPTIONS} placeholder="Select loan types" searchPlaceholder="Search loan types..." /></div>
               <div className="grid grid-cols-2 gap-4">
@@ -424,6 +435,7 @@ export function FundingSourceFormDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+      <GeoOptionsDialog open={geoOptionsOpen} onOpenChange={setGeoOptionsOpen} />
     </Dialog>
   );
 }

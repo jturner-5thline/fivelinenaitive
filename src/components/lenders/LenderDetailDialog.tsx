@@ -49,6 +49,8 @@ import { getIndustryOptions, useIndustryOptionsList } from '@/lib/industryOption
 import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
 import { GEO_OPTIONS } from '@/constants/geoOptions';
+import { useGeoOptionsList } from '@/lib/geoOptionsStore';
+import { GeoOptionsDialog } from '@/components/lenders/GeoOptionsDialog';
 import { useLenderAuditLog } from '@/hooks/useLenderAuditLog';
 import { useLenderLabelResolver } from '@/hooks/useLenderLabelResolver';
 import { format } from 'date-fns';
@@ -496,6 +498,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   const [isEditMode, setIsEditMode] = useState(initialEditMode);
   const [isSaving, setIsSaving] = useState(false);
   const [isReorderDialogOpen, setIsReorderDialogOpen] = useState(false);
+  const [geoOptionsOpen, setGeoOptionsOpen] = useState(false);
+  const geoOptions = useGeoOptionsList();
   const [industrySearchEdit, setIndustrySearchEdit] = useState('');
   const [industryAvoidSearchEdit, setIndustryAvoidSearchEdit] = useState('');
   const [loanTypeSearchEdit, setLoanTypeSearchEdit] = useState('');
@@ -1350,7 +1354,18 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Geographic Preference</Label>
+                      <div className="flex items-center gap-1.5">
+                        <Label className="text-xs text-muted-foreground">Geographic Preference</Label>
+                        <button
+                          type="button"
+                          onClick={() => setGeoOptionsOpen(true)}
+                          className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                          aria-label="Edit geographic preference options"
+                          title="Edit options"
+                        >
+                          <Settings2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button variant="outline" className="w-full justify-between h-auto min-h-[2.25rem] text-sm font-normal">
@@ -1381,8 +1396,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           </div>
                           <div className="space-y-0.5 max-h-[300px] overflow-y-auto overscroll-contain pr-1" onWheel={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()}>
                             {(geoSearchEdit
-                              ? GEO_OPTIONS.filter(o => o.toLowerCase().includes(geoSearchEdit.toLowerCase()))
-                              : GEO_OPTIONS
+                              ? geoOptions.filter(o => o.toLowerCase().includes(geoSearchEdit.toLowerCase()))
+                              : geoOptions
                             ).map((geo) => {
                               const current = editForm.geo ? editForm.geo.split(',').map(t => t.trim()).filter(Boolean) : [];
                               const isSelected = current.includes(geo);
@@ -2743,6 +2758,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
         </div>
       </DialogContent>
       
+      <GeoOptionsDialog open={geoOptionsOpen} onOpenChange={setGeoOptionsOpen} />
+
       <LenderSectionReorderDialog
         open={isReorderDialogOpen}
         onOpenChange={setIsReorderDialogOpen}
