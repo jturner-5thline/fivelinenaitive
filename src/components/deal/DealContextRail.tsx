@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { formatUSD } from '@/lib/formatters/currency';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NaitiveDatePicker } from '@/components/ui/naitive-date-picker';
 import { formatAmountWithCommas, parseCurrencyInputValue } from '@/utils/currencyFormat';
 import { EditableDealStatusTag } from './EditableDealStatusTag';
