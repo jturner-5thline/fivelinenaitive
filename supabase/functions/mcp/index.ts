@@ -1426,7 +1426,8 @@ var get_funnel_velocity_default = defineTool28({
   inputSchema: {
     stage_path: z28.array(z28.string().trim().min(1).max(100)).min(2).max(20).optional().describe("Ordered list of stage ids, e.g. ['nda-needs-list','on-deck','closed-won']."),
     consecutive_only: z28.boolean().default(false),
-    deal_id: z28.string().uuid().optional().describe("When set, returns per-stage durations for this deal instead.")
+    deal_id: z28.string().uuid().optional().describe("When set, returns per-stage durations for this deal instead."),
+    pipeline_id: z28.string().uuid().optional().describe("Restrict the funnel to deals in this pipeline (stage ids mean different things per pipeline).")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ stage_path, consecutive_only, deal_id }, ctx) => {

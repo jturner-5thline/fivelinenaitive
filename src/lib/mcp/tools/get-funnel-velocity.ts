@@ -16,6 +16,11 @@ export default defineTool({
       .describe("Ordered list of stage ids, e.g. ['nda-needs-list','on-deck','closed-won']."),
     consecutive_only: z.boolean().default(false),
     deal_id: z.string().uuid().optional().describe("When set, returns per-stage durations for this deal instead."),
+    pipeline_id: z
+      .string()
+      .uuid()
+      .optional()
+      .describe("Restrict the funnel to deals in this pipeline (stage ids mean different things per pipeline)."),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ stage_path, consecutive_only, deal_id }, ctx) => {
