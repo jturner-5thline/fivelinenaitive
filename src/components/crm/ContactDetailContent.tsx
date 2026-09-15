@@ -422,16 +422,6 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                         />
                       </div>
                     )}
-                    <div className="mt-2">
-                      <EditableField
-                        label="Geography"
-                        type="select"
-                        value={(contact as any).geography}
-                        placeholder="Select geography"
-                        onSave={(v) => handleQuickUpdate('geography', v)}
-                        options={GEO_OPTIONS.map((g) => ({ value: g, label: g }))}
-                      />
-                    </div>
                   </div>
                 )}
 
