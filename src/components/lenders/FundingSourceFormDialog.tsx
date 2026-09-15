@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Loader2, Plus, Settings2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +23,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { useMasterLenders, type MasterLender, type MasterLenderInsert } from '@/hooks/useMasterLenders';
 import { formatCurrencyInput } from '@/utils/formatLenderCurrency';
-import { GEO_OPTIONS } from '@/constants/geoOptions';
+import { useGeoOptionsList } from '@/lib/geoOptionsStore';
+import { GeoOptionsDialog } from '@/components/lenders/GeoOptionsDialog';
 import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
 import { getIndustryOptions } from '@/lib/industryOptions';
