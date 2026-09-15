@@ -124,6 +124,7 @@ export default defineTool({
         column_count: columns.length,
         columns,
       })),
+      ...(fieldLayout ? { field_layout: fieldLayout } : {}),
     };
     return textResult(payload, { tables: tables.join(","), column_count: rows.length });
   },
