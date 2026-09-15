@@ -1721,15 +1721,6 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         />
                       </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Industries to Avoid</Label>
-                      <Input
-                        value={editForm.industriesToAvoid || ''}
-                        onChange={(e) => setEditForm({ ...editForm, industriesToAvoid: e.target.value })}
-                        placeholder="Comma-separated list"
-                        className="text-sm"
-                      />
-                    </div>
                   </div>
                 </section>
                 <Separator />
