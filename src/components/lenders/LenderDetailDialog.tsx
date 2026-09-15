@@ -1129,6 +1129,15 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       />
                     </div>
                     <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Job Title</Label>
+                      <Input
+                        value={editForm.contactTitle || ''}
+                        onChange={(e) => setEditForm({ ...editForm, contactTitle: e.target.value })}
+                        placeholder="e.g., Managing Director"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Primary Email</Label>
                       <Input
                         type="email"
