@@ -3713,6 +3713,7 @@ export default function DealDetail() {
                 hideIdentity
                 hideStatusStage
                 measureRef={railMeasureRef}
+                ownerOptions={memberOptions}
                 lastActivityNode={
                   <DealUpdatesUnified
                     activities={activityLogs}
