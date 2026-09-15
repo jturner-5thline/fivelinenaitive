@@ -497,6 +497,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   const [isSaving, setIsSaving] = useState(false);
   const [isReorderDialogOpen, setIsReorderDialogOpen] = useState(false);
   const [industrySearchEdit, setIndustrySearchEdit] = useState('');
+  const [industryAvoidSearchEdit, setIndustryAvoidSearchEdit] = useState('');
   const [loanTypeSearchEdit, setLoanTypeSearchEdit] = useState('');
   const [reqSearchEdit, setReqSearchEdit] = useState('');
   const [geoSearchEdit, setGeoSearchEdit] = useState('');
