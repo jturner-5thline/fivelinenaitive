@@ -518,7 +518,7 @@
       {
         "name": "search_lenders",
         "title": "Search funding sources / lenders",
-        "description": "Search the master funding-source (lender) directory by name. Optionally filter by deal_size, which returns funding sources whose min_deal <= size <= max_deal. Returns id, name, lender_type, tier, min_deal / max_deal (also echoed as min_deal_size / max_deal_size for convenience), loan_types, industries, geographies, appetite_status and website.",
+        "description": "Search the master funding-source (lender) directory. By default returns a summary card per lender; pass fields=\"*\" to get EVERY column on master_lenders (criteria, leverage, revenue/EBITDA minimums, industries to avoid, excluded geographies, referral terms, NDA, sync metadata, address, notes) or a comma-separated column list. Filters: name query, deal_size (min_deal <= size <= max_deal), lender_type, tier, appetite_status, active, industry, geography, loan_type. Results are paginated — the response returns total_count, returned, offset, next_offset and has_more; keep calling with next_offset to walk the entire directory. Use `get_lender` for one lender's full record plus contacts, notes, attachments, change history and linked deals.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -539,11 +539,80 @@
               "type": "string",
               "maxLength": 100
             },
+            "tier": {
+              "type": "string",
+              "maxLength": 60
+            },
+            "appetite_status": {
+              "type": "string",
+              "maxLength": 60
+            },
+            "active": {
+              "type": "boolean"
+            },
+            "industry": {
+              "type": "string",
+              "maxLength": 120,
+              "description": "Matches a value in the lender's industries array."
+            },
+            "geography": {
+              "type": "string",
+              "maxLength": 120,
+              "description": "Matches a value in the lender's geographies array."
+            },
+            "loan_type": {
+              "type": "string",
+              "maxLength": 120,
+              "description": "Matches a value in the lender's loan_types array."
+            },
+            "fields": {
+              "type": "string",
+              "maxLength": 2000,
+              "description": "\"*\" for every column, or a comma-separated column list. Defaults to a summary set."
+            },
             "limit": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 200,
+              "maximum": 500,
               "default": 25
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_lender",
+        "title": "Get funding source / lender detail",
+        "description": "Return the COMPLETE record for one funding source (lender) from the master directory: every column on master_lenders (criteria, deal size, sweet spot, leverage, revenue/EBITDA minimums, industries and industries to avoid, geographies and exclusions, appetite, referral terms, NDA, sync metadata, address and contact fields, notes), plus its related rows — contacts, notes and note history, attachments, audit/change history, disqualifications, doc flags, fit attributes, pass detections, sync requests, acquisition plans — and every deal this funding source is attached to (deal_lenders rows with deal name, stage, tracking status, quote and status timestamps). Look the lender up by `lender_id` or by exact/partial `name`. Use `search_lenders` to find ids first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Name lookup when the id is unknown (case-insensitive, partial)."
+            },
+            "include_related": {
+              "type": "boolean",
+              "default": true,
+              "description": "Include contacts, notes, history, attachments and deal links."
             }
           },
           "additionalProperties": false,
@@ -1355,7 +1424,7 @@
       {
         "name": "query_insights_dataset",
         "title": "Query any Insights source dataset",
-        "description": "Read-only escape hatch: query any platform dataset directly when no purpose-built tool covers the question. Allowed datasets: deals, deal_lenders, deal_pipelines, deal_stage_history, deal_milestones, deal_computed_metrics, deal_stage_durations, deal_stage_transitions, outstanding_items, tasks, activity_logs, contacts, crm_companies, master_lenders, custom_metrics, insights_metric_targets, metric_manual_inputs, dashboard_grid_layouts, dashboard_layouts, quickbooks_invoices, quickbooks_customers, quickbooks_payments, quickbooks_expenses, quickbooks_bills, quickbooks_reports, qbo_pnl_snapshots, qbo_cashflow_snapshots, claap_meetings, team_interaction_metrics, deal_writeups, deal_memos, deal_checklist_items, deal_checklist_status, deal_attachments, deal_status_notes, deal_financial_data, deal_flag_notes, deal_ownership, deal_space_notes, deal_activity, contact_deals, deal_pipeline_configs. Supply optional column selection (defaults to ALL columns), filters (column + operator + value), ordering, limit and offset. Results are paginated and the response reports total_count, returned, offset, next_offset and has_more — keep calling with next_offset until has_more is false, otherwise you are looking at a partial set. Use describe_schema to learn the available column names. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.",
+        "description": "Read-only escape hatch: query any platform dataset directly when no purpose-built tool covers the question. Allowed datasets: deals, deal_lenders, deal_pipelines, deal_stage_history, deal_milestones, deal_computed_metrics, deal_stage_durations, deal_stage_transitions, outstanding_items, tasks, activity_logs, contacts, crm_companies, master_lenders, custom_metrics, insights_metric_targets, metric_manual_inputs, dashboard_grid_layouts, dashboard_layouts, quickbooks_invoices, quickbooks_customers, quickbooks_payments, quickbooks_expenses, quickbooks_bills, quickbooks_reports, qbo_pnl_snapshots, qbo_cashflow_snapshots, claap_meetings, team_interaction_metrics, deal_writeups, deal_memos, deal_checklist_items, deal_checklist_status, deal_attachments, deal_status_notes, deal_financial_data, deal_flag_notes, deal_ownership, deal_space_notes, deal_activity, contact_deals, deal_pipeline_configs, lender_contacts, lender_notes, lender_notes_history, lender_attachments, lender_audit_logs, lender_disqualifications, lender_doc_flags, lender_fit_attributes, lender_match_rules, lender_pass_detections, lender_pass_patterns, lender_recommendation_outcomes, lender_recommendation_run_items, lender_recommendation_runs, lender_stage_configs, lender_sync_requests, lender_sync_settings, funding_source_acquisition_plans, deal_lender_recommendation_exclusions. Supply optional column selection (defaults to ALL columns), filters (column + operator + value), ordering, limit and offset. Results are paginated and the response reports total_count, returned, offset, next_offset and has_more — keep calling with next_offset until has_more is false, otherwise you are looking at a partial set. Use describe_schema to learn the available column names. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -1408,7 +1477,26 @@
                 "deal_space_notes",
                 "deal_activity",
                 "contact_deals",
-                "deal_pipeline_configs"
+                "deal_pipeline_configs",
+                "lender_contacts",
+                "lender_notes",
+                "lender_notes_history",
+                "lender_attachments",
+                "lender_audit_logs",
+                "lender_disqualifications",
+                "lender_doc_flags",
+                "lender_fit_attributes",
+                "lender_match_rules",
+                "lender_pass_detections",
+                "lender_pass_patterns",
+                "lender_recommendation_outcomes",
+                "lender_recommendation_run_items",
+                "lender_recommendation_runs",
+                "lender_stage_configs",
+                "lender_sync_requests",
+                "lender_sync_settings",
+                "funding_source_acquisition_plans",
+                "deal_lender_recommendation_exclusions"
               ]
             },
             "columns": {
@@ -1508,7 +1596,7 @@
       {
         "name": "describe_schema",
         "title": "Describe table schema",
-        "description": "Field discovery: return the column list for one or more platform tables — column name, data type, nullability, default, and (for enum columns) the complete set of allowed values. Use this before pulling data so you know exactly which fields exist rather than guessing names; pair it with `list_deals` (`fields: \"*\"`) or `query_insights_dataset` to extract complete records. Omit `tables` to get the describable table list. Describable tables: activity_logs, claap_meetings, contact_deals, contacts, crm_companies, custom_metrics, dashboard_grid_layouts, dashboard_layouts, deal_activity, deal_attachments, deal_checklist_items, deal_checklist_status, deal_computed_metrics, deal_financial_data, deal_flag_notes, deal_lenders, deal_memos, deal_milestones, deal_ownership, deal_pipeline_configs, deal_pipelines, deal_space_notes, deal_stage_durations, deal_stage_history, deal_stage_transitions, deal_status_notes, deal_writeups, deals, insights_metric_targets, master_lenders, metric_manual_inputs, outstanding_items, qbo_cashflow_snapshots, qbo_pnl_snapshots, quickbooks_bills, quickbooks_customers, quickbooks_expenses, quickbooks_invoices, quickbooks_payments, quickbooks_reports, tasks, team_interaction_metrics.",
+        "description": "Field discovery: return the column list for one or more platform tables — column name, data type, nullability, default, and (for enum columns) the complete set of allowed values. Use this before pulling data so you know exactly which fields exist rather than guessing names; pair it with `list_deals` (`fields: \"*\"`) or `query_insights_dataset` to extract complete records. Omit `tables` to get the describable table list. Describable tables: activity_logs, claap_meetings, contact_deals, contacts, crm_companies, custom_metrics, dashboard_grid_layouts, dashboard_layouts, deal_activity, deal_attachments, deal_checklist_items, deal_checklist_status, deal_computed_metrics, deal_financial_data, deal_flag_notes, deal_lender_recommendation_exclusions, deal_lenders, deal_memos, deal_milestones, deal_ownership, deal_pipeline_configs, deal_pipelines, deal_space_notes, deal_stage_durations, deal_stage_history, deal_stage_transitions, deal_status_notes, deal_writeups, deals, funding_source_acquisition_plans, insights_metric_targets, lender_attachments, lender_audit_logs, lender_contacts, lender_disqualifications, lender_doc_flags, lender_fit_attributes, lender_match_rules, lender_notes, lender_notes_history, lender_pass_detections, lender_pass_patterns, lender_recommendation_outcomes, lender_recommendation_run_items, lender_recommendation_runs, lender_stage_configs, lender_sync_requests, lender_sync_settings, master_lenders, metric_manual_inputs, outstanding_items, qbo_cashflow_snapshots, qbo_pnl_snapshots, quickbooks_bills, quickbooks_customers, quickbooks_expenses, quickbooks_invoices, quickbooks_payments, quickbooks_reports, tasks, team_interaction_metrics.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,

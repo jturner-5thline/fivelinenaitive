@@ -86,6 +86,26 @@ export const INSIGHTS_DATASETS = [
   "deal_activity",
   "contact_deals",
   "deal_pipeline_configs",
+  // Funding-source (lender) directory and its satellites
+  "lender_contacts",
+  "lender_notes",
+  "lender_notes_history",
+  "lender_attachments",
+  "lender_audit_logs",
+  "lender_disqualifications",
+  "lender_doc_flags",
+  "lender_fit_attributes",
+  "lender_match_rules",
+  "lender_pass_detections",
+  "lender_pass_patterns",
+  "lender_recommendation_outcomes",
+  "lender_recommendation_run_items",
+  "lender_recommendation_runs",
+  "lender_stage_configs",
+  "lender_sync_requests",
+  "lender_sync_settings",
+  "funding_source_acquisition_plans",
+  "deal_lender_recommendation_exclusions",
 ] as const;
 
 export type InsightsDataset = (typeof INSIGHTS_DATASETS)[number];
