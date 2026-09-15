@@ -4595,7 +4595,7 @@ export default function DealDetail() {
                                 </CardTitle>
                               </CardHeader>
                               <CardContent className={cn("space-y-4", isRailed && "px-0 pb-0 space-y-3")}>
-                                {isDealInfoFieldVisible('narrative') && renderDealInfoField('narrative')}
+                                {!(isRailed && !isFinServDeal) && isDealInfoFieldVisible('narrative') && renderDealInfoField('narrative')}
 
                                 {isFinServDeal ? (
                                   // FinServ-only strict form architecture:
