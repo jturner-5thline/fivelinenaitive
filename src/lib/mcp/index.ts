@@ -7,6 +7,7 @@ import listTasks from "./tools/list-tasks";
 import createTask from "./tools/create-task";
 import completeTask from "./tools/complete-task";
 import searchContacts from "./tools/search-contacts";
+import getContact from "./tools/get-contact";
 import searchCompanies from "./tools/search-companies";
 import createContact from "./tools/create-contact";
 import createCompany from "./tools/create-company";
@@ -59,6 +60,7 @@ export default defineMcp({
     createTask,
     completeTask,
     searchContacts,
+    getContact,
     searchCompanies,
     createContact,
     createCompany,
