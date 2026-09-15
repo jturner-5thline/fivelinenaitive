@@ -30410,6 +30410,19 @@ export type Database = {
           similarity: number
         }[]
       }
+      mcp_describe_tables: {
+        Args: { p_tables: string[] }
+        Returns: {
+          column_default: string
+          column_name: string
+          data_type: string
+          enum_values: string[]
+          is_nullable: string
+          ordinal_position: number
+          table_name: string
+          udt_name: string
+        }[]
+      }
       merge_master_lenders: {
         Args: { _keep_id: string; _merge_ids: string[] }
         Returns: undefined
