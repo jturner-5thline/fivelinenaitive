@@ -35,9 +35,9 @@ export interface DealInfoFieldConfig {
 }
 
 export const DEAL_INFO_FIELD_DEFINITIONS: DealInfoFieldConfig[] = [
-  { id: 'narrative', label: 'Narrative', section: 'main', column: 'full', canHide: true, lockedVisible: true },
-  { id: 'dealManager', label: 'Deal Manager', section: 'main', column: 'left', canHide: false },
-  { id: 'dealOwner', label: 'Deal Owner', section: 'main', column: 'left', canHide: true, lockedVisible: true },
+  { id: 'narrative', label: 'Narrative', section: 'main', column: 'full', canHide: true },
+  { id: 'dealManager', label: 'Deal Manager', section: 'main', column: 'left', canHide: true },
+  { id: 'dealOwner', label: 'Deal Owner', section: 'main', column: 'left', canHide: true },
   { id: 'type', label: 'Type', section: 'main', column: 'left', canHide: true },
   { id: 'engagement', label: 'Engagement', section: 'main', column: 'left', canHide: true },
   { id: 'exclusivity', label: 'Exclusivity', section: 'main', column: 'left', canHide: true },
@@ -113,7 +113,6 @@ export function useDealInfoFieldOrder() {
               setFieldVisibility({
                 ...DEFAULT_FIELD_VISIBILITY,
                 ...layout.visibility,
-                dealManager: true, // Always visible
               });
             }
           }

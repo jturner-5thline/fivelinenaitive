@@ -276,7 +276,7 @@ export function DealInfoFieldsSettings({ isAdmin = true }: DealInfoFieldsSetting
               <p className="text-sm text-muted-foreground">
                 {readOnly
                   ? 'Drag, toggle, add, and remove are disabled for non-admins.'
-                  : 'Drag to reorder. Toggle visibility. Narrative and Deal Owner are always shown. Changes apply to all deals in your company.'}
+                  : 'Drag to reorder. Toggle any field off to hide it — existing data stays saved and reappears when you toggle it back on. Changes apply to all deals in your company.'}
               </p>
               <Button variant="outline" size="sm" onClick={handleReset} disabled={readOnly} className="gap-1.5 shrink-0">
                 <RotateCcw className="h-3.5 w-3.5" />

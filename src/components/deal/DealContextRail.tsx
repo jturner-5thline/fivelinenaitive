@@ -60,11 +60,12 @@ export interface DealContextRailProps {
   measureRef?: (node: HTMLDivElement | null) => void;
   /** Options for the deal owner dropdown; when omitted the owner is read-only. */
   ownerOptions?: { value: string; label: string }[];
+  hideOwner?: boolean;
   /** Extra content merged into the same module, below the core facts. */
   children?: React.ReactNode;
 }
 
-export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, hideStatusStage, lastActivityNode, measureRef, ownerOptions, children }: DealContextRailProps) {
+export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, hideStatusStage, lastActivityNode, measureRef, ownerOptions, hideOwner, children }: DealContextRailProps) {
   const lastActivity = deal.notesUpdatedAt || deal.updatedAt || null;
   const owner = deal.dealOwner || deal.manager || '';
 
@@ -176,6 +177,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
         )}
       </div>
 
+      {!hideOwner && (
       <div className="space-y-0.5">
         <RailLabel>Deal owner</RailLabel>
         {ownerOptions && ownerOptions.length > 0 && onUpdateField ? (
@@ -206,6 +208,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
           </div>
         )}
       </div>
+      )}
       </>
       )}
       </div>

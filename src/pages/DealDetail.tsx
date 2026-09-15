@@ -3714,6 +3714,7 @@ export default function DealDetail() {
                 hideStatusStage
                 measureRef={railMeasureRef}
                 ownerOptions={memberOptions}
+                hideOwner={!isDealInfoFieldVisible('dealOwner')}
                 lastActivityNode={
                   <DealUpdatesUnified
                     activities={activityLogs}
