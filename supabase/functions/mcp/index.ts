@@ -153,15 +153,29 @@ var list_deals_default = defineTool({
     offset: z.number().int().min(0).default(0).describe("Row offset for pagination; use `next_offset` from the previous response.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ query, stage, pipeline_id, status, owner_email, created_from, created_to, closing_from, closing_to, limit, offset }, ctx) => {
+  handler: async ({ query, stage, pipeline_id, status, owner_email, created_from, created_to, closing_from, closing_to, fields, limit, offset }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
     const stageFilter = stage ? await resolveStageInput(sb, pipeline_id, stage) : void 0;
-    let q = sb.from("deals").select(
-      "id, company, stage, status, value, closing_date, created_at, pipeline_id, deal_owner, manager, updated_at",
-      { count: "exact" }
-    ).order("created_at", { ascending: false }).order("id", { ascending: true }).range(offset, offset + limit - 1);
+    const DEFAULT_FIELDS = "id, company, stage, status, value, closing_date, created_at, pipeline_id, deal_owner, manager, updated_at";
+    let selection = DEFAULT_FIELDS;
+    if (fields) {
+      const raw = fields.trim();
+      if (!/^[A-Za-z0-9_,*\s]+$/.test(raw)) {
+        return errorResult("`fields` may only contain column names separated by commas, or '*'.");
+      }
+      if (raw === "*") {
+        selection = "*";
+      } else {
+        const cols = raw.split(",").map((c) => c.trim()).filter(Boolean);
+        for (const required of ["id", "stage", "pipeline_id"]) {
+          if (!cols.includes(required)) cols.push(required);
+        }
+        selection = cols.join(", ");
+      }
+    }
+    let q = sb.from("deals").select(selection, { count: "exact" }).order("created_at", { ascending: false }).order("id", { ascending: true }).range(offset, offset + limit - 1);
     if (stageFilter) q = q.eq("stage", stageFilter);
     if (pipeline_id) q = q.eq("pipeline_id", pipeline_id);
     if (status) q = q.eq("status", status);

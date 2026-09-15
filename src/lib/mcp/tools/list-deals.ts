@@ -28,7 +28,7 @@ export default defineTool({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (
-    { query, stage, pipeline_id, status, owner_email, created_from, created_to, closing_from, closing_to, limit, offset },
+    { query, stage, pipeline_id, status, owner_email, created_from, created_to, closing_from, closing_to, fields, limit, offset },
     ctx,
   ) => {
     const authErr = requireAuth(ctx);
@@ -36,13 +36,31 @@ export default defineTool({
     const sb = supabaseForUser(ctx);
     const stageFilter = stage ? await resolveStageInput(sb, pipeline_id, stage) : undefined;
 
+    const DEFAULT_FIELDS =
+      "id, company, stage, status, value, closing_date, created_at, pipeline_id, deal_owner, manager, updated_at";
+    // `fields` is a column projection, never raw SQL: allow only identifier
+    // characters, and always keep the columns the stage-label resolver needs.
+    let selection = DEFAULT_FIELDS;
+    if (fields) {
+      const raw = fields.trim();
+      if (!/^[A-Za-z0-9_,*\s]+$/.test(raw)) {
+        return errorResult("`fields` may only contain column names separated by commas, or '*'.");
+      }
+      if (raw === "*") {
+        selection = "*";
+      } else {
+        const cols = raw.split(",").map((c) => c.trim()).filter(Boolean);
+        for (const required of ["id", "stage", "pipeline_id"]) {
+          if (!cols.includes(required)) cols.push(required);
+        }
+        selection = cols.join(", ");
+      }
+    }
+
     // Stable ordering is required for correct cursoring across the whole set.
     let q = sb
       .from("deals")
-      .select(
-        "id, company, stage, status, value, closing_date, created_at, pipeline_id, deal_owner, manager, updated_at",
-        { count: "exact" },
-      )
+      .select(selection, { count: "exact" })
       .order("created_at", { ascending: false })
       .order("id", { ascending: true })
       .range(offset, offset + limit - 1);
