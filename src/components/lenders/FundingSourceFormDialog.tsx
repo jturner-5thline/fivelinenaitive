@@ -447,6 +447,7 @@ export function FundingSourceFormDialog({
         </DialogFooter>
       </DialogContent>
       <GeoOptionsDialog open={geoOptionsOpen} onOpenChange={setGeoOptionsOpen} />
+      <BusinessModelOptionsDialog open={industryOptionsOpen} onOpenChange={setIndustryOptionsOpen} />
     </Dialog>
   );
 }

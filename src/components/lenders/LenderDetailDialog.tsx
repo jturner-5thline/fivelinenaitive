@@ -46,6 +46,7 @@ import { AddLenderContactDialog } from './AddLenderContactDialog';
 import { LenderContactsList } from './LenderContactsList';
 import { cn } from '@/lib/utils';
 import { getIndustryOptions, useIndustryOptionsList } from '@/lib/industryOptions';
+import { BusinessModelOptionsDialog } from '@/components/settings/BusinessModelOptionsDialog';
 import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
 import { GEO_OPTIONS } from '@/constants/geoOptions';
@@ -499,6 +500,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   const [isSaving, setIsSaving] = useState(false);
   const [isReorderDialogOpen, setIsReorderDialogOpen] = useState(false);
   const [geoOptionsOpen, setGeoOptionsOpen] = useState(false);
+  const [industryOptionsOpen, setIndustryOptionsOpen] = useState(false);
+  const liveIndustryOptions = useIndustryOptionsList();
   const geoOptions = useGeoOptionsList();
   const [industrySearchEdit, setIndustrySearchEdit] = useState('');
   const [industryAvoidSearchEdit, setIndustryAvoidSearchEdit] = useState('');
@@ -2759,6 +2762,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
       </DialogContent>
       
       <GeoOptionsDialog open={geoOptionsOpen} onOpenChange={setGeoOptionsOpen} />
+      <BusinessModelOptionsDialog open={industryOptionsOpen} onOpenChange={setIndustryOptionsOpen} />
 
       <LenderSectionReorderDialog
         open={isReorderDialogOpen}
