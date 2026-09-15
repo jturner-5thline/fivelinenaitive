@@ -72,13 +72,7 @@ export default defineTool({
 
     if (include_related) {
       const related: Record<string, unknown> = {};
-      await Promise.all(
-        CHILD_TABLES.map(async ({ table, column, key, limit }) => {
-          const { data, error } = await sb.from(table as never).select("*").eq(column, id).limit(limit);
-          // A missing/blocked child table must not fail the whole lookup.
-          related[key] = error ? { error: error.message } : data ?? [];
-        }),
-      );
+      const lenderName = String(lender.name ?? "");
 
       const { data: dealLinks, error: dlErr } = await sb
         .from("deal_lenders")

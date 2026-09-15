@@ -801,18 +801,6 @@ var search_lenders_default = defineTool12({
 // src/lib/mcp/tools/get-lender.ts
 import { defineTool as defineTool13 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z13 } from "npm:zod@^3.23.0";
-var CHILD_TABLES = [
-  { table: "lender_contacts", column: "lender_id", key: "contacts", limit: 200 },
-  { table: "lender_notes", column: "master_lender_id", key: "notes", limit: 200 },
-  { table: "lender_attachments", column: "lender_name", key: "attachments", limit: 200 },
-  { table: "lender_audit_logs", column: "lender_id", key: "audit_history", limit: 300 },
-  { table: "lender_disqualifications", column: "master_lender_id", key: "disqualifications", limit: 100 },
-  { table: "lender_doc_flags", column: "lender_name", key: "doc_flags", limit: 100 },
-  { table: "lender_fit_attributes", column: "master_lender_id", key: "fit_attributes", limit: 200 },
-  { table: "lender_pass_detections", column: "lender_name", key: "pass_detections", limit: 200 },
-  { table: "lender_sync_requests", column: "existing_lender_id", key: "sync_requests", limit: 100 },
-  { table: "lender_notes_history", column: "deal_lender_id", key: "notes_history", limit: 300 }
-];
 var get_lender_default = defineTool13({
   name: "get_lender",
   title: "Get funding source / lender detail",
@@ -859,12 +847,7 @@ var get_lender_default = defineTool13({
     const payload = { lender };
     if (include_related) {
       const related = {};
-      await Promise.all(
-        CHILD_TABLES.map(async ({ table, column, key, limit }) => {
-          const { data, error } = await sb.from(table).select("*").eq(column, id).limit(limit);
-          related[key] = error ? { error: error.message } : data ?? [];
-        })
-      );
+      const lenderName = String(lender.name ?? "");
       const { data: dealLinks, error: dlErr } = await sb.from("deal_lenders").select(
         "id, deal_id, name, stage, substage, tracking_status, tags, score, notes, pass_reason, quote_amount, quote_rate, quote_term, submitted_at, approved_at, declined_at, passed_at, on_deck_at, on_hold_at, excluded_at, last_status_change_at, last_contact_at, created_at, updated_at, deals:deal_id(id, company, stage, status, pipeline_id)"
       ).eq("master_lender_id", id).order("last_status_change_at", { ascending: false, nullsFirst: false }).limit(500);
