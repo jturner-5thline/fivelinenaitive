@@ -1462,6 +1462,67 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       </Popover>
                     </div>
                     <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Industries to Avoid</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between h-auto min-h-[2.25rem] text-sm font-normal">
+                            {editForm.industriesToAvoid ? (
+                              <span className="flex flex-wrap gap-1">
+                                {editForm.industriesToAvoid.split(',').filter(t => t.trim()).map((t, i) => (
+                                  <Badge key={i} variant="secondary" className="text-xs">{t.trim()}</Badge>
+                                ))}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">Select industries to avoid</span>
+                            )}
+                            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="lender-edit-popover w-64 p-2 z-[9999]"
+                          align="start"
+                          onKeyDown={(e) => { if (e.key === 'Escape') e.stopPropagation(); }}
+                        >
+                          <div className="mb-2">
+                            <Input
+                              placeholder="Search industries..."
+                              value={industryAvoidSearchEdit}
+                              onChange={(e) => setIndustryAvoidSearchEdit(e.target.value)}
+                              className="h-7 text-xs"
+                            />
+                          </div>
+                          <div className="space-y-0.5 max-h-[300px] overflow-y-auto overscroll-contain pr-1" onWheel={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()}>
+                            {(industryAvoidSearchEdit
+                              ? getIndustryOptions().filter(o => o.toLowerCase().includes(industryAvoidSearchEdit.toLowerCase()))
+                              : getIndustryOptions()
+                            ).map((industry) => {
+                              const current = editForm.industriesToAvoid ? editForm.industriesToAvoid.split(',').map(t => t.trim()).filter(Boolean) : [];
+                              const isSelected = current.includes(industry);
+                              return (
+                                <button
+                                  key={industry}
+                                  type="button"
+                                  className="flex items-center gap-2 w-full px-2 py-1 text-xs rounded hover:bg-muted/50 text-left"
+                                  onPointerDown={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const next = isSelected
+                                      ? current.filter(t => t !== industry)
+                                      : [...current, industry];
+                                    setEditForm({ ...editForm, industriesToAvoid: next.join(',') });
+                                  }}
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                >
+                                  <Checkbox checked={isSelected} className="pointer-events-none h-3.5 w-3.5" />
+                                  {industry}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Loan Types</Label>
                       <Popover>
                         <PopoverTrigger asChild>
