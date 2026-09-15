@@ -645,18 +645,24 @@ var search_deal_notes_default = defineTool14({
   title: "Search deal notes",
   description: "Search notes attached to a specific deal (deal space notes). Optionally filter by a text query against title/content/tags. Returns id, title, content, folder, tags, is_pinned, user_id, updated_at.",
   inputSchema: {
-    deal_id: z14.string().uuid(),
+    deal_id: z14.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
+    deal_ids: z14.array(z14.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
     query: z14.string().trim().min(1).max(200).optional(),
     limit: z14.number().int().min(1).max(100).default(25)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, query, limit }, ctx) => {
+  handler: async ({ deal_id, deal_ids, query, limit }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_notes");
-    if (denied) return denied;
-    let q = sb.from("deal_space_notes").select("id, deal_id, title, content, folder, tags, is_pinned, user_id, created_at, updated_at").eq("deal_id", deal_id).order("updated_at", { ascending: false }).limit(limit);
+    if (!deal_id && (!deal_ids || deal_ids.length === 0)) {
+      return errorResult("Provide deal_id or deal_ids.");
+    }
+    if (deal_id) {
+      const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_notes");
+      if (denied) return denied;
+    }
+    let q = sb.from("deal_space_notes").select("id, deal_id, title, content, folder, tags, is_pinned, user_id, created_at, updated_at").in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("updated_at", { ascending: false }).limit(limit);
     if (query) {
       const like = `%${query}%`;
       q = q.or(`title.ilike.${like},content.ilike.${like}`);
@@ -726,21 +732,27 @@ var search_deal_documents_default = defineTool16({
   title: "Search deal documents",
   description: "Search files/documents attached to a specific deal (virtual data room). Optionally filter by name, category, or a text query against name/source_subject/extracted_text. Returns id, name, category, size_bytes, content_type, source, source_subject, created_at.",
   inputSchema: {
-    deal_id: z16.string().uuid(),
+    deal_id: z16.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
+    deal_ids: z16.array(z16.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
     query: z16.string().trim().min(1).max(200).optional(),
     category: z16.string().trim().min(1).max(100).optional(),
     limit: z16.number().int().min(1).max(100).default(25)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, query, category, limit }, ctx) => {
+  handler: async ({ deal_id, deal_ids, query, category, limit }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_documents");
-    if (denied) return denied;
+    if (!deal_id && (!deal_ids || deal_ids.length === 0)) {
+      return errorResult("Provide deal_id or deal_ids.");
+    }
+    if (deal_id) {
+      const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_documents");
+      if (denied) return denied;
+    }
     let q = sb.from("deal_attachments").select(
       "id, deal_id, name, category, size_bytes, content_type, source, source_subject, source_sender, extraction_status, created_at, user_id"
-    ).eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(limit);
+    ).in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("created_at", { ascending: false }).limit(limit);
     if (category) q = q.eq("category", category);
     if (query) {
       const like = `%${query}%`;
@@ -784,21 +796,27 @@ var search_deal_emails_default = defineTool18({
   title: "Search deal emails",
   description: "Search email/communication history logged against a deal. Queries activity_logs where activity_type = 'email' for the deal, optionally filtered by a text query against subject, body, from, or to addresses. Returns subject, direction, from/to, sent_at, thread_id, and body snippet.",
   inputSchema: {
-    deal_id: z18.string().uuid(),
+    deal_id: z18.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
+    deal_ids: z18.array(z18.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
     query: z18.string().trim().min(1).max(200).optional(),
     direction: z18.enum(["inbound", "outbound"]).optional(),
     limit: z18.number().int().min(1).max(100).default(25)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, query, direction, limit }, ctx) => {
+  handler: async ({ deal_id, deal_ids, query, direction, limit }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_emails");
-    if (denied) return denied;
+    if (!deal_id && (!deal_ids || deal_ids.length === 0)) {
+      return errorResult("Provide deal_id or deal_ids.");
+    }
+    if (deal_id) {
+      const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_emails");
+      if (denied) return denied;
+    }
     let q = sb.from("activity_logs").select(
       "id, subject, body, direction, from_address, to_addresses, cc_addresses, sent_at, thread_id, message_id, provider, user_display_name, created_at"
-    ).eq("deal_id", deal_id).eq("activity_type", "email").order("sent_at", { ascending: false, nullsFirst: false }).limit(limit);
+    ).in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).eq("activity_type", "email").order("sent_at", { ascending: false, nullsFirst: false }).limit(limit);
     if (direction) q = q.eq("direction", direction);
     if (query) {
       const like = `%${query}%`;
@@ -818,27 +836,33 @@ var search_deal_recordings_default = defineTool19({
   title: "Search deal meeting recordings",
   description: "List Claap meeting recordings and transcripts linked to a deal. Returns recording title, duration, recorder, thumbnail/url, and \u2014 when include_transcript is true \u2014 the transcript text and summary from claap_transcripts. Optional query filters recording title/summary/transcript.",
   inputSchema: {
-    deal_id: z19.string().uuid(),
+    deal_id: z19.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
+    deal_ids: z19.array(z19.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
     query: z19.string().trim().min(1).max(200).optional(),
     include_transcript: z19.boolean().default(false),
     limit: z19.number().int().min(1).max(50).default(20)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, query, include_transcript, limit }, ctx) => {
+  handler: async ({ deal_id, deal_ids, query, include_transcript, limit }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_recordings");
-    if (denied) return denied;
+    if (!deal_id && (!deal_ids || deal_ids.length === 0)) {
+      return errorResult("Provide deal_id or deal_ids.");
+    }
+    if (deal_id) {
+      const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_recordings");
+      if (denied) return denied;
+    }
     let recQ = sb.from("deal_claap_recordings").select(
       "id, recording_id, recording_title, recording_url, thumbnail_url, duration_seconds, recorder_name, recorder_email, linked_at, notes, created_at"
-    ).eq("deal_id", deal_id).order("linked_at", { ascending: false, nullsFirst: false }).limit(limit);
+    ).in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("linked_at", { ascending: false, nullsFirst: false }).limit(limit);
     if (query) recQ = recQ.ilike("recording_title", `%${query}%`);
     const { data: recordings, error } = await recQ;
     if (error) return errorResult(error.message);
     let transcripts = [];
     if (include_transcript) {
-      let tQ = sb.from("claap_transcripts").select("id, claap_meeting_id, transcript_text, summary, participants, duration_seconds, recorded_at, call_type").eq("deal_id", deal_id).order("recorded_at", { ascending: false, nullsFirst: false }).limit(limit);
+      let tQ = sb.from("claap_transcripts").select("id, claap_meeting_id, transcript_text, summary, participants, duration_seconds, recorded_at, call_type").in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("recorded_at", { ascending: false, nullsFirst: false }).limit(limit);
       if (query) {
         const like = `%${query}%`;
         tQ = tQ.or(`transcript_text.ilike.${like},summary.ilike.${like}`);
