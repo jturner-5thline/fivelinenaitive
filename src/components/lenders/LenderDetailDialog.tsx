@@ -1788,6 +1788,57 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                   </div>
                                 </div>
                               )}
+                              {(lender.sweetSpotMin || lender.sweetSpotMax) && (
+                                <div className="flex items-start gap-3">
+                                  <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium">Sweet Spot: </span>
+                                    <span className="text-sm">
+                                      {lender.sweetSpotMin && lender.sweetSpotMax
+                                        ? `${formatLenderCurrency(lender.sweetSpotMin)} - ${formatLenderCurrency(lender.sweetSpotMax)}`
+                                        : lender.sweetSpotMin
+                                        ? `${formatLenderCurrency(lender.sweetSpotMin)}+`
+                                        : `Up to ${formatLenderCurrency(lender.sweetSpotMax)}`}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                              {lender.minGrossMarginPct != null && (
+                                <div className="flex items-start gap-3">
+                                  <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium">Min Gross Margin: </span>
+                                    <span className="text-sm">{lender.minGrossMarginPct}%</span>
+                                  </div>
+                                </div>
+                              )}
+                              {lender.maxLeverage != null && (
+                                <div className="flex items-start gap-3">
+                                  <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium">Max Leverage: </span>
+                                    <span className="text-sm">{lender.maxLeverage}x</span>
+                                  </div>
+                                </div>
+                              )}
+                              {lender.sponsorRequirement && (
+                                <div className="flex items-start gap-3">
+                                  <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium">Sponsor Requirement: </span>
+                                    <span className="text-sm">{lender.sponsorRequirement}</span>
+                                  </div>
+                                </div>
+                              )}
+                              {lender.appetiteStatus && (
+                                <div className="flex items-start gap-3">
+                                  <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium">Appetite Status: </span>
+                                    <Badge variant="secondary" className="text-xs ml-1 capitalize">{lender.appetiteStatus}</Badge>
+                                  </div>
+                                </div>
+                              )}
                               {lender.geo && (
                                 <div className="flex items-start gap-3">
                                   <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
@@ -1920,14 +1971,22 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       );
 
                     case 'about':
-                      if (!lender.description) return null;
+                      if (!lender.description && !lender.aboutNotes) return null;
                       return (
                         <div key={sectionId}>
                           <section>
                             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                               About
                             </h3>
-                            <p className="text-sm leading-relaxed">{lender.description}</p>
+                            {lender.description && (
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{lender.description}</p>
+                            )}
+                            {lender.aboutNotes && (
+                              <div className={lender.description ? 'mt-3' : ''}>
+                                <div className="text-xs text-muted-foreground mb-1">About Notes</div>
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{lender.aboutNotes}</p>
+                              </div>
+                            )}
                           </section>
                           {showSeparator && <Separator className="my-6" />}
                         </div>
@@ -2079,6 +2138,12 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                     <CopyableText text={lender.contact.phone} href={`tel:${lender.contact.phone}`} className="hover:underline" iconSize="h-3.5 w-3.5" />
                                   </div>
                                 )}
+                                {lender.contact.geography && (
+                                  <div className="flex items-center gap-3">
+                                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-sm">{lender.contact.geography}</span>
+                                  </div>
+                                )}
                                 {!lender.contact.name && !lender.contact.email && !lender.contact.phone && additionalContacts.length === 0 && (
                                   <p className="text-muted-foreground text-sm italic">No contact info</p>
                                 )}
@@ -2204,6 +2269,32 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                       className="text-sm text-muted-foreground italic hover:text-foreground hover:underline"
                                     >
                                       Add address
+                                    </button>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground italic">—</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <ExternalLink className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs text-muted-foreground mb-0.5">One Pager</div>
+                                  {lender.lenderOnePagerUrl ? (
+                                    <a
+                                      href={/^https?:\/\//i.test(lender.lenderOnePagerUrl) ? lender.lenderOnePagerUrl : `https://${lender.lenderOnePagerUrl}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm text-primary hover:underline break-all"
+                                    >
+                                      {lender.lenderOnePagerUrl}
+                                    </a>
+                                  ) : onSave ? (
+                                    <button
+                                      type="button"
+                                      onClick={handleEnterEditMode}
+                                      className="text-sm text-muted-foreground italic hover:text-foreground hover:underline"
+                                    >
+                                      Add one pager
                                     </button>
                                   ) : (
                                     <span className="text-sm text-muted-foreground italic">—</span>
