@@ -2,19 +2,23 @@ import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser, requireAuth, textResult, errorResult } from "../supabase";
 
-/** Child tables keyed by lender id (master_lenders.id). */
-const CHILD_TABLES: Array<{ table: string; column: string; key: string; limit: number }> = [
+/**
+ * Child tables, each keyed by the column that actually links back to the master
+ * lender — some use the lender id, some the (denormalised) lender name, and
+ * note history hangs off deal_lenders rows.
+ */
+type LinkBy = "lender_id" | "master_lender_id" | "existing_lender_id" | "lender_name" | "deal_lender_id";
+const CHILD_TABLES: Array<{ table: string; column: LinkBy; key: string; limit: number }> = [
   { table: "lender_contacts", column: "lender_id", key: "contacts", limit: 200 },
-  { table: "lender_notes", column: "lender_id", key: "notes", limit: 200 },
-  { table: "lender_notes_history", column: "lender_id", key: "notes_history", limit: 200 },
-  { table: "lender_attachments", column: "lender_id", key: "attachments", limit: 200 },
+  { table: "lender_notes", column: "master_lender_id", key: "notes", limit: 200 },
+  { table: "lender_attachments", column: "lender_name", key: "attachments", limit: 200 },
   { table: "lender_audit_logs", column: "lender_id", key: "audit_history", limit: 300 },
-  { table: "lender_disqualifications", column: "lender_id", key: "disqualifications", limit: 100 },
-  { table: "lender_doc_flags", column: "lender_id", key: "doc_flags", limit: 100 },
-  { table: "lender_fit_attributes", column: "lender_id", key: "fit_attributes", limit: 200 },
-  { table: "lender_pass_detections", column: "lender_id", key: "pass_detections", limit: 200 },
-  { table: "lender_sync_requests", column: "lender_id", key: "sync_requests", limit: 100 },
-  { table: "funding_source_acquisition_plans", column: "lender_id", key: "acquisition_plans", limit: 50 },
+  { table: "lender_disqualifications", column: "master_lender_id", key: "disqualifications", limit: 100 },
+  { table: "lender_doc_flags", column: "lender_name", key: "doc_flags", limit: 100 },
+  { table: "lender_fit_attributes", column: "master_lender_id", key: "fit_attributes", limit: 200 },
+  { table: "lender_pass_detections", column: "lender_name", key: "pass_detections", limit: 200 },
+  { table: "lender_sync_requests", column: "existing_lender_id", key: "sync_requests", limit: 100 },
+  { table: "lender_notes_history", column: "deal_lender_id", key: "notes_history", limit: 300 },
 ];
 
 export default defineTool({

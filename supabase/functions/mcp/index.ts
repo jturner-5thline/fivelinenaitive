@@ -803,16 +803,15 @@ import { defineTool as defineTool13 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z13 } from "npm:zod@^3.23.0";
 var CHILD_TABLES = [
   { table: "lender_contacts", column: "lender_id", key: "contacts", limit: 200 },
-  { table: "lender_notes", column: "lender_id", key: "notes", limit: 200 },
-  { table: "lender_notes_history", column: "lender_id", key: "notes_history", limit: 200 },
-  { table: "lender_attachments", column: "lender_id", key: "attachments", limit: 200 },
+  { table: "lender_notes", column: "master_lender_id", key: "notes", limit: 200 },
+  { table: "lender_attachments", column: "lender_name", key: "attachments", limit: 200 },
   { table: "lender_audit_logs", column: "lender_id", key: "audit_history", limit: 300 },
-  { table: "lender_disqualifications", column: "lender_id", key: "disqualifications", limit: 100 },
-  { table: "lender_doc_flags", column: "lender_id", key: "doc_flags", limit: 100 },
-  { table: "lender_fit_attributes", column: "lender_id", key: "fit_attributes", limit: 200 },
-  { table: "lender_pass_detections", column: "lender_id", key: "pass_detections", limit: 200 },
-  { table: "lender_sync_requests", column: "lender_id", key: "sync_requests", limit: 100 },
-  { table: "funding_source_acquisition_plans", column: "lender_id", key: "acquisition_plans", limit: 50 }
+  { table: "lender_disqualifications", column: "master_lender_id", key: "disqualifications", limit: 100 },
+  { table: "lender_doc_flags", column: "lender_name", key: "doc_flags", limit: 100 },
+  { table: "lender_fit_attributes", column: "master_lender_id", key: "fit_attributes", limit: 200 },
+  { table: "lender_pass_detections", column: "lender_name", key: "pass_detections", limit: 200 },
+  { table: "lender_sync_requests", column: "existing_lender_id", key: "sync_requests", limit: 100 },
+  { table: "lender_notes_history", column: "deal_lender_id", key: "notes_history", limit: 300 }
 ];
 var get_lender_default = defineTool13({
   name: "get_lender",
