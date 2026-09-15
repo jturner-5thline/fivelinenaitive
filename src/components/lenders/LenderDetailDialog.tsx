@@ -1396,8 +1396,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           </div>
                           <div className="space-y-0.5 max-h-[300px] overflow-y-auto overscroll-contain pr-1" onWheel={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()}>
                             {(geoSearchEdit
-                              ? GEO_OPTIONS.filter(o => o.toLowerCase().includes(geoSearchEdit.toLowerCase()))
-                              : GEO_OPTIONS
+                              ? geoOptions.filter(o => o.toLowerCase().includes(geoSearchEdit.toLowerCase()))
+                              : geoOptions
                             ).map((geo) => {
                               const current = editForm.geo ? editForm.geo.split(',').map(t => t.trim()).filter(Boolean) : [];
                               const isSelected = current.includes(geo);
@@ -2758,6 +2758,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
         </div>
       </DialogContent>
       
+      <GeoOptionsDialog open={geoOptionsOpen} onOpenChange={setGeoOptionsOpen} />
+
       <LenderSectionReorderDialog
         open={isReorderDialogOpen}
         onOpenChange={setIsReorderDialogOpen}
