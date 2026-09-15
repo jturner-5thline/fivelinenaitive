@@ -90,6 +90,25 @@ export default defineTool({
             pipeline_id: r.deals?.pipeline_id ?? null,
           }));
 
+      const dealLenderIds = dlErr ? [] : (dealLinks ?? []).map((r: Record<string, any>) => r.id as string);
+
+      await Promise.all(
+        CHILD_TABLES.map(async ({ table, column, key, limit }) => {
+          let q = sb.from(table as never).select("*").limit(limit);
+          if (column === "lender_name") q = q.eq("lender_name", lenderName);
+          else if (column === "deal_lender_id") {
+            if (dealLenderIds.length === 0) {
+              related[key] = [];
+              return;
+            }
+            q = q.in("deal_lender_id", dealLenderIds.slice(0, 200));
+          } else q = q.eq(column, id);
+          const { data, error } = await q;
+          // A blocked or empty child table must not fail the whole lookup.
+          related[key] = error ? { error: error.message } : data ?? [];
+        }),
+      );
+
       payload.related = related;
     }
 

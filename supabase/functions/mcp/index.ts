@@ -801,6 +801,18 @@ var search_lenders_default = defineTool12({
 // src/lib/mcp/tools/get-lender.ts
 import { defineTool as defineTool13 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z13 } from "npm:zod@^3.23.0";
+var CHILD_TABLES = [
+  { table: "lender_contacts", column: "lender_id", key: "contacts", limit: 200 },
+  { table: "lender_notes", column: "master_lender_id", key: "notes", limit: 200 },
+  { table: "lender_attachments", column: "lender_name", key: "attachments", limit: 200 },
+  { table: "lender_audit_logs", column: "lender_id", key: "audit_history", limit: 300 },
+  { table: "lender_disqualifications", column: "master_lender_id", key: "disqualifications", limit: 100 },
+  { table: "lender_doc_flags", column: "lender_name", key: "doc_flags", limit: 100 },
+  { table: "lender_fit_attributes", column: "master_lender_id", key: "fit_attributes", limit: 200 },
+  { table: "lender_pass_detections", column: "lender_name", key: "pass_detections", limit: 200 },
+  { table: "lender_sync_requests", column: "existing_lender_id", key: "sync_requests", limit: 100 },
+  { table: "lender_notes_history", column: "deal_lender_id", key: "notes_history", limit: 300 }
+];
 var get_lender_default = defineTool13({
   name: "get_lender",
   title: "Get funding source / lender detail",
@@ -856,6 +868,22 @@ var get_lender_default = defineTool13({
         deal_name: r.deals?.company ?? null,
         pipeline_id: r.deals?.pipeline_id ?? null
       }));
+      const dealLenderIds = dlErr ? [] : (dealLinks ?? []).map((r) => r.id);
+      await Promise.all(
+        CHILD_TABLES.map(async ({ table, column, key, limit }) => {
+          let q = sb.from(table).select("*").limit(limit);
+          if (column === "lender_name") q = q.eq("lender_name", lenderName);
+          else if (column === "deal_lender_id") {
+            if (dealLenderIds.length === 0) {
+              related[key] = [];
+              return;
+            }
+            q = q.in("deal_lender_id", dealLenderIds.slice(0, 200));
+          } else q = q.eq(column, id);
+          const { data, error } = await q;
+          related[key] = error ? { error: error.message } : data ?? [];
+        })
+      );
       payload.related = related;
     }
     return textResult(payload, { lender_id: id, name: String(lender.name ?? "") });
