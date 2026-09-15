@@ -23,7 +23,7 @@ export default defineTool({
       .describe("Restrict the funnel to deals in this pipeline (stage ids mean different things per pipeline)."),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ stage_path, consecutive_only, deal_id }, ctx) => {
+  handler: async ({ stage_path, consecutive_only, deal_id, pipeline_id }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
