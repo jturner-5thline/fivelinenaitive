@@ -1350,7 +1350,18 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Geographic Preference</Label>
+                      <div className="flex items-center gap-1.5">
+                        <Label className="text-xs text-muted-foreground">Geographic Preference</Label>
+                        <button
+                          type="button"
+                          onClick={() => setGeoOptionsOpen(true)}
+                          className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                          aria-label="Edit geographic preference options"
+                          title="Edit options"
+                        >
+                          <Settings2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button variant="outline" className="w-full justify-between h-auto min-h-[2.25rem] text-sm font-normal">
