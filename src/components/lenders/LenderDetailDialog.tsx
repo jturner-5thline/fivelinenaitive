@@ -1971,14 +1971,22 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       );
 
                     case 'about':
-                      if (!lender.description) return null;
+                      if (!lender.description && !lender.aboutNotes) return null;
                       return (
                         <div key={sectionId}>
                           <section>
                             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                               About
                             </h3>
-                            <p className="text-sm leading-relaxed">{lender.description}</p>
+                            {lender.description && (
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{lender.description}</p>
+                            )}
+                            {lender.aboutNotes && (
+                              <div className={lender.description ? 'mt-3' : ''}>
+                                <div className="text-xs text-muted-foreground mb-1">About Notes</div>
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{lender.aboutNotes}</p>
+                              </div>
+                            )}
                           </section>
                           {showSeparator && <Separator className="my-6" />}
                         </div>
