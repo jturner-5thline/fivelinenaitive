@@ -67,10 +67,10 @@ export async function countFundingSourcesUsingGeographies(
 ): Promise<Record<string, number>> {
   const result: Record<string, number> = {};
   if (values.length === 0) return result;
-  const { data, error } = await supabase.from('master_lenders').select('geographies, geography');
+  const { data, error } = await supabase.from('master_lenders').select('geographies');
   if (error) throw error;
   const wanted = new Map(values.map(v => [v.trim().toLowerCase(), v]));
-  for (const row of (data ?? []) as Array<{ geographies: string[] | null; geography: string | null }>) {
+  for (const row of ((data ?? []) as unknown as Array<{ geographies: string[] | null; geography?: string | null }>)) {
     const tags = new Set<string>();
     for (const raw of row.geographies ?? []) {
       const k = String(raw || '').trim().toLowerCase();
