@@ -58,11 +58,13 @@ export interface DealContextRailProps {
   lastActivityNode?: React.ReactNode;
   /** Ref applied to the core facts block (used to size the header widget). */
   measureRef?: (node: HTMLDivElement | null) => void;
+  /** Options for the deal owner dropdown; when omitted the owner is read-only. */
+  ownerOptions?: { value: string; label: string }[];
   /** Extra content merged into the same module, below the core facts. */
   children?: React.ReactNode;
 }
 
-export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, hideStatusStage, lastActivityNode, measureRef, children }: DealContextRailProps) {
+export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, hideStatusStage, lastActivityNode, measureRef, ownerOptions, children }: DealContextRailProps) {
   const lastActivity = deal.notesUpdatedAt || deal.updatedAt || null;
   const owner = deal.dealOwner || deal.manager || '';
 
