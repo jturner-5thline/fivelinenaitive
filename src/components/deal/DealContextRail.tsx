@@ -175,12 +175,33 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
 
       <div className="space-y-0.5">
         <RailLabel>Deal owner</RailLabel>
-        <div className="flex items-center gap-2">
-          <span className="h-6 w-6 rounded-full bg-primary/15 text-primary text-[11px] font-semibold flex items-center justify-center">
-            {initials(owner)}
-          </span>
-          <span className="text-sm text-foreground truncate">{owner || 'Unassigned'}</span>
-        </div>
+        {ownerOptions && ownerOptions.length > 0 && onUpdateField ? (
+          <div className="flex items-center gap-2">
+            <span className="h-6 w-6 shrink-0 rounded-full bg-primary/15 text-primary text-[11px] font-semibold flex items-center justify-center">
+              {initials(owner)}
+            </span>
+            <Select
+              value={deal.dealOwner || ''}
+              onValueChange={(value) => onUpdateField('dealOwner', value)}
+            >
+              <SelectTrigger className="h-7 flex-1 min-w-0 text-sm">
+                <SelectValue placeholder="Unassigned" />
+              </SelectTrigger>
+              <SelectContent>
+                {ownerOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="h-6 w-6 rounded-full bg-primary/15 text-primary text-[11px] font-semibold flex items-center justify-center">
+              {initials(owner)}
+            </span>
+            <span className="text-sm text-foreground truncate">{owner || 'Unassigned'}</span>
+          </div>
+        )}
       </div>
       </>
       )}
