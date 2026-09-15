@@ -1522,7 +1522,7 @@ var OPERATORS = ["eq", "neq", "gt", "gte", "lt", "lte", "like", "ilike", "is", "
 var query_insights_dataset_default = defineTool32({
   name: "query_insights_dataset",
   title: "Query any Insights source dataset",
-  description: `Read-only escape hatch for the Insights page: query any of its underlying datasets directly when no purpose-built metric tool covers the question. Allowed datasets: ${INSIGHTS_DATASETS.join(", ")}. Supply optional column selection, filters (column + operator + value), ordering, and a row limit. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.`,
+  description: `Read-only escape hatch: query any platform dataset directly when no purpose-built tool covers the question. Allowed datasets: ${INSIGHTS_DATASETS.join(", ")}. Supply optional column selection (defaults to ALL columns), filters (column + operator + value), ordering, limit and offset. Results are paginated and the response reports total_count, returned, offset, next_offset and has_more \u2014 keep calling with next_offset until has_more is false, otherwise you are looking at a partial set. Use describe_schema to learn the available column names. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.`,
   inputSchema: {
     dataset: z32.enum(INSIGHTS_DATASETS),
     columns: z32.string().trim().max(1e3).optional().describe("Comma-separated column list; defaults to all columns."),
@@ -1535,14 +1535,15 @@ var query_insights_dataset_default = defineTool32({
     ).max(10).optional(),
     order_by: z32.string().trim().max(80).optional(),
     ascending: z32.boolean().default(false),
-    limit: z32.number().int().min(1).max(1e3).default(200)
+    limit: z32.number().int().min(1).max(1e3).default(200),
+    offset: z32.number().int().min(0).default(0).describe("Row offset for pagination; use next_offset from the previous response.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ dataset, columns, filters, order_by, ascending, limit }, ctx) => {
+  handler: async ({ dataset, columns, filters, order_by, ascending, limit, offset }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    let q = sb.from(dataset).select(columns?.trim() || "*").limit(limit);
+    let q = sb.from(dataset).select(columns?.trim() || "*", { count: "exact" }).range(offset, offset + limit - 1);
     for (const f of filters ?? []) {
       switch (f.op) {
         case "in":
@@ -1558,13 +1559,32 @@ var query_insights_dataset_default = defineTool32({
       }
     }
     if (order_by) q = q.order(order_by, { ascending, nullsFirst: false });
-    const { data, error } = await q;
+    const { data, error, count } = await q;
     if (error) {
       console.error("[query_insights_dataset] error", { dataset, user_id: ctx.getUserId?.(), message: error.message });
       return errorResult(error.message);
     }
     const rows = data ?? [];
-    return textResult(rows, { dataset, count: rows.length, rows });
+    const total_count = count ?? rows.length;
+    const next = offset + rows.length;
+    const has_more = next < total_count;
+    const payload = {
+      dataset,
+      total_count,
+      returned: rows.length,
+      offset,
+      next_offset: has_more ? next : null,
+      has_more,
+      rows
+    };
+    return textResult(payload, {
+      dataset,
+      count: rows.length,
+      total_count,
+      offset,
+      next_offset: has_more ? next : null,
+      has_more
+    });
   }
 });
 
