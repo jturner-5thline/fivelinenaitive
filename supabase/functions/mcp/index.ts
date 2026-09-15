@@ -1775,14 +1775,48 @@ var describe_schema_default = defineTool33({
   title: "Describe table schema",
   description: `Field discovery: return the column list for one or more platform tables \u2014 column name, data type, nullability, default, and (for enum columns) the complete set of allowed values. Use this before pulling data so you know exactly which fields exist rather than guessing names; pair it with \`list_deals\` (\`fields: "*"\`) or \`query_insights_dataset\` to extract complete records. Omit \`tables\` to get the describable table list. Describable tables: ${DESCRIBABLE.join(", ")}.`,
   inputSchema: {
-    tables: z33.array(z33.string().trim().min(1).max(80)).max(20).optional().describe("Table names to describe. Omit to list the tables that can be described.")
+    tables: z33.array(z33.string().trim().min(1).max(80)).max(20).optional().describe("Table names to describe. Omit to list the tables that can be described."),
+    include_field_layout: z33.boolean().default(false).describe(
+      "Also return the configured Deal Information field layout (order + visibility) per company, and which deal columns are actually populated per pipeline."
+    )
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ tables }, ctx) => {
+  handler: async ({ tables, include_field_layout }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
+    let fieldLayout = void 0;
+    if (include_field_layout) {
+      const sbLayout = supabaseForUser(ctx);
+      const { data: settings } = await sbLayout.from("company_settings").select("company_id, deal_info_layout");
+      const { data: pipes } = await sbLayout.from("deal_pipelines").select("id, name, company_id");
+      const usage = [];
+      for (const p of pipes ?? []) {
+        const { data: sample } = await sbLayout.from("deals").select("*").eq("pipeline_id", p.id).limit(500);
+        const rowsSample = sample ?? [];
+        const populated = /* @__PURE__ */ new Set();
+        for (const r of rowsSample) {
+          for (const [k, v] of Object.entries(r)) {
+            if (v !== null && v !== void 0 && v !== "") populated.add(k);
+          }
+        }
+        usage.push({
+          pipeline_id: p.id,
+          pipeline_name: p.name ?? null,
+          populated_fields: Array.from(populated).sort(),
+          sampled_deals: rowsSample.length
+        });
+      }
+      fieldLayout = {
+        company_deal_info_layout: settings ?? [],
+        pipeline_field_usage: usage,
+        note: "Deal Information field order/visibility is configured per company; pipeline_field_usage shows which deal columns are actually used by deals in each pipeline (sample of up to 500 deals)."
+      };
+    }
     if (!tables || tables.length === 0) {
-      return textResult({ describable_tables: DESCRIBABLE }, { count: DESCRIBABLE.length });
+      return textResult(
+        { describable_tables: DESCRIBABLE, ...fieldLayout ? { field_layout: fieldLayout } : {} },
+        { count: DESCRIBABLE.length }
+      );
     }
     const invalid = tables.filter((t) => !DESCRIBABLE.includes(t));
     if (invalid.length) {

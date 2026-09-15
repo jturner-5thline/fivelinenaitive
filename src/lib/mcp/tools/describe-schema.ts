@@ -44,13 +44,61 @@ export default defineTool({
       .max(20)
       .optional()
       .describe("Table names to describe. Omit to list the tables that can be described."),
+    include_field_layout: z
+      .boolean()
+      .default(false)
+      .describe(
+        "Also return the configured Deal Information field layout (order + visibility) per company, and which deal columns are actually populated per pipeline.",
+      ),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ tables }, ctx) => {
+  handler: async ({ tables, include_field_layout }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
+
+    let fieldLayout: unknown = undefined;
+    if (include_field_layout) {
+      const sbLayout = supabaseForUser(ctx);
+      const { data: settings } = await sbLayout
+        .from("company_settings")
+        .select("company_id, deal_info_layout");
+      const { data: pipes } = await sbLayout.from("deal_pipelines").select("id, name, company_id");
+
+      // Which deal columns actually carry data per pipeline (sampled, first 500 deals each).
+      const usage: Array<{ pipeline_id: string; pipeline_name: string | null; populated_fields: string[]; sampled_deals: number }> = [];
+      for (const p of (pipes ?? []) as Array<{ id: string; name: string | null }>) {
+        const { data: sample } = await sbLayout
+          .from("deals")
+          .select("*")
+          .eq("pipeline_id", p.id)
+          .limit(500);
+        const rowsSample = (sample ?? []) as Array<Record<string, unknown>>;
+        const populated = new Set<string>();
+        for (const r of rowsSample) {
+          for (const [k, v] of Object.entries(r)) {
+            if (v !== null && v !== undefined && v !== "") populated.add(k);
+          }
+        }
+        usage.push({
+          pipeline_id: p.id,
+          pipeline_name: p.name ?? null,
+          populated_fields: Array.from(populated).sort(),
+          sampled_deals: rowsSample.length,
+        });
+      }
+
+      fieldLayout = {
+        company_deal_info_layout: settings ?? [],
+        pipeline_field_usage: usage,
+        note: "Deal Information field order/visibility is configured per company; pipeline_field_usage shows which deal columns are actually used by deals in each pipeline (sample of up to 500 deals).",
+      };
+    }
+
     if (!tables || tables.length === 0) {
-      return textResult({ describable_tables: DESCRIBABLE }, { count: DESCRIBABLE.length });
+      return textResult(
+        { describable_tables: DESCRIBABLE, ...(fieldLayout ? { field_layout: fieldLayout } : {}) },
+        { count: DESCRIBABLE.length },
+      );
     }
     const invalid = tables.filter((t) => !DESCRIBABLE.includes(t));
     if (invalid.length) {
