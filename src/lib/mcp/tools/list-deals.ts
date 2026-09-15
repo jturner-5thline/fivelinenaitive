@@ -77,7 +77,7 @@ export default defineTool({
 
     const { data, error, count } = await q;
     if (error) return errorResult(error.message);
-    const rows = await withStageLabels(sb, data ?? []);
+    const rows = await withStageLabels(sb, (data ?? []) as unknown as { stage?: string; pipeline_id?: string }[]);
 
     const breakdown = new Map<string, { pipeline_id: string | null; pipeline_name: string | null; deals: number }>();
     for (const r of rows) {
