@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { formatUSD } from '@/lib/formatters/currency';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NaitiveDatePicker } from '@/components/ui/naitive-date-picker';
 import { formatAmountWithCommas, parseCurrencyInputValue } from '@/utils/currencyFormat';
 import { EditableDealStatusTag } from './EditableDealStatusTag';
@@ -57,11 +58,13 @@ export interface DealContextRailProps {
   lastActivityNode?: React.ReactNode;
   /** Ref applied to the core facts block (used to size the header widget). */
   measureRef?: (node: HTMLDivElement | null) => void;
+  /** Options for the deal owner dropdown; when omitted the owner is read-only. */
+  ownerOptions?: { value: string; label: string }[];
   /** Extra content merged into the same module, below the core facts. */
   children?: React.ReactNode;
 }
 
-export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, hideStatusStage, lastActivityNode, measureRef, children }: DealContextRailProps) {
+export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, hideStatusStage, lastActivityNode, measureRef, ownerOptions, children }: DealContextRailProps) {
   const lastActivity = deal.notesUpdatedAt || deal.updatedAt || null;
   const owner = deal.dealOwner || deal.manager || '';
 
@@ -175,12 +178,33 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
 
       <div className="space-y-0.5">
         <RailLabel>Deal owner</RailLabel>
-        <div className="flex items-center gap-2">
-          <span className="h-6 w-6 rounded-full bg-primary/15 text-primary text-[11px] font-semibold flex items-center justify-center">
-            {initials(owner)}
-          </span>
-          <span className="text-sm text-foreground truncate">{owner || 'Unassigned'}</span>
-        </div>
+        {ownerOptions && ownerOptions.length > 0 && onUpdateField ? (
+          <div className="flex items-center gap-2">
+            <span className="h-6 w-6 shrink-0 rounded-full bg-primary/15 text-primary text-[11px] font-semibold flex items-center justify-center">
+              {initials(owner)}
+            </span>
+            <Select
+              value={deal.dealOwner || ''}
+              onValueChange={(value) => onUpdateField('dealOwner', value)}
+            >
+              <SelectTrigger className="h-7 flex-1 min-w-0 text-sm">
+                <SelectValue placeholder="Unassigned" />
+              </SelectTrigger>
+              <SelectContent>
+                {ownerOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="h-6 w-6 rounded-full bg-primary/15 text-primary text-[11px] font-semibold flex items-center justify-center">
+              {initials(owner)}
+            </span>
+            <span className="text-sm text-foreground truncate">{owner || 'Unassigned'}</span>
+          </div>
+        )}
       </div>
       </>
       )}
