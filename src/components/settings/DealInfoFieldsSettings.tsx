@@ -384,6 +384,7 @@ export function DealInfoFieldsSettings({ isAdmin = true }: DealInfoFieldsSetting
           </CardContent>
         
       </Card>
-    
+      <BusinessModelOptionsDialog open={businessModelDialogOpen} onOpenChange={setBusinessModelDialogOpen} />
+    </>
   );
 }
