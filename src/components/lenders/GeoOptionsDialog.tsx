@@ -26,6 +26,7 @@ interface Summary {
 
 export function GeoOptionsDialog({ open, onOpenChange }: Props) {
   const options = useGeoOptionsList();
+  const saveGeoOptions = useSaveGeoOptions();
   const [draft, setDraft] = useState<string[]>([]);
   const [newValue, setNewValue] = useState('');
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -83,11 +84,15 @@ export function GeoOptionsDialog({ open, onOpenChange }: Props) {
     }
   };
 
-  const persist = () => {
-    saveGeoOptions(cleanedDraft);
-    toast.success('Geographic preference options saved.');
-    setSummary(null);
-    onOpenChange(false);
+  const persist = async () => {
+    try {
+      await saveGeoOptions(cleanedDraft);
+      toast.success('Geographic preference options saved.');
+      setSummary(null);
+      onOpenChange(false);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Could not save options.');
+    }
   };
 
   const inUseRows = summary
