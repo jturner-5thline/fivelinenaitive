@@ -113,7 +113,6 @@ export function useDealInfoFieldOrder() {
               setFieldVisibility({
                 ...DEFAULT_FIELD_VISIBILITY,
                 ...layout.visibility,
-                dealManager: true, // Always visible
               });
             }
           }
