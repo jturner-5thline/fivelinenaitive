@@ -158,8 +158,8 @@ var list_deals_default = defineTool({
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
     const stageFilter = stage ? await resolveStageInput(sb, pipeline_id, stage) : void 0;
-    const DEFAULT_FIELDS2 = "id, company, stage, status, value, closing_date, created_at, pipeline_id, deal_owner, manager, updated_at";
-    let selection = DEFAULT_FIELDS2;
+    const DEFAULT_FIELDS3 = "id, company, stage, status, value, closing_date, created_at, pipeline_id, deal_owner, manager, updated_at";
+    let selection = DEFAULT_FIELDS3;
     if (fields) {
       const raw = fields.trim();
       if (!/^[A-Za-z0-9_,*\s]+$/.test(raw)) {
@@ -617,40 +617,75 @@ var complete_task_default = defineTool7({
 // src/lib/mcp/tools/search-contacts.ts
 import { defineTool as defineTool8 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z8 } from "npm:zod@^3.23.0";
+var DEFAULT_FIELDS = "id, first_name, last_name, full_name, email, phone_mobile, phone_work, phone_other, website_url, job_title, city, state, country, linkedin_url, contact_type, tags, crm_company_id, last_contact_date, created_at, updated_at";
+var FIELD_RE = /^[a-zA-Z0-9_,\s]+$/;
 var search_contacts_default = defineTool8({
   name: "search_contacts",
   title: "Search contacts",
-  description: "Search CRM contacts by name, email, or domain. Returns id, name, email, phones, domain, title, company.",
+  description: 'Search CRM contacts by name, email, domain, job title, phone or LinkedIn. Returns a paginated result set with total_count/returned/offset/next_offset/has_more \u2014 keep calling with next_offset until has_more is false. By default a summary field set is returned; pass `fields: "*"` for EVERY column on the contact record (all standard and custom fields), or a comma-separated column list. Optional filters narrow by contact type, tag, company, city/state/country, or whether an email exists. Use `get_contact` for one contact\'s full record plus activities, change history, deals, attachments and suggestions; `describe_schema` lists the available column names.',
   inputSchema: {
-    query: z8.string().trim().min(1).max(200),
-    limit: z8.number().int().min(1).max(100).default(25)
+    query: z8.string().trim().min(1).max(200).optional().describe("Free-text match on name, email, domain, title, phone, LinkedIn. Omit to browse all contacts."),
+    fields: z8.string().trim().max(4e3).optional().describe('"*" for all columns, or a comma-separated column list. Defaults to a summary set.'),
+    contact_type: z8.string().trim().max(100).optional(),
+    tag: z8.string().trim().max(100).optional().describe("Match a single tag in the contact's tags array."),
+    crm_company_id: z8.string().uuid().optional(),
+    city: z8.string().trim().max(100).optional(),
+    state: z8.string().trim().max(100).optional(),
+    country: z8.string().trim().max(100).optional(),
+    has_email: z8.boolean().optional(),
+    order_by: z8.string().trim().max(80).default("created_at"),
+    ascending: z8.boolean().default(false),
+    limit: z8.number().int().min(1).max(500).default(50),
+    offset: z8.number().int().min(0).default(0)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ query, limit }, ctx) => {
+  handler: async (input, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
+    const { query, fields, contact_type, tag, crm_company_id, city, state, country, has_email, order_by, ascending, limit, offset } = input;
     const sb = supabaseForUser(ctx);
-    const like = `%${query}%`;
-    const { data, error } = await sb.from("contacts").select(
-      "id, first_name, last_name, full_name, email, phone_mobile, phone_work, phone_other, website_url, job_title, created_at, crm_company:crm_companies!crm_company_id(id, name)"
-    ).or(
-      `first_name.ilike.${like},last_name.ilike.${like},full_name.ilike.${like},email.ilike.${like},website_url.ilike.${like}`
-    ).limit(limit);
+    let select = DEFAULT_FIELDS;
+    if (fields) {
+      const f = fields.trim();
+      if (f === "*") select = "*";
+      else {
+        if (!FIELD_RE.test(f)) return errorResult("fields may only contain column names, commas and spaces.");
+        const cols = new Set(f.split(",").map((c) => c.trim()).filter(Boolean));
+        cols.add("id");
+        select = [...cols].join(", ");
+      }
+    }
+    let q = sb.from("contacts").select(select, { count: "exact" }).range(offset, offset + limit - 1);
+    if (query) {
+      const like = `%${query}%`;
+      q = q.or(
+        `first_name.ilike.${like},last_name.ilike.${like},full_name.ilike.${like},email.ilike.${like},website_url.ilike.${like},job_title.ilike.${like},phone_mobile.ilike.${like},phone_work.ilike.${like},linkedin_url.ilike.${like}`
+      );
+    }
+    if (contact_type) q = q.eq("contact_type", contact_type);
+    if (tag) q = q.contains("tags", [tag]);
+    if (crm_company_id) q = q.eq("crm_company_id", crm_company_id);
+    if (city) q = q.ilike("city", city);
+    if (state) q = q.ilike("state", state);
+    if (country) q = q.ilike("country", country);
+    if (has_email === true) q = q.not("email", "is", null);
+    if (has_email === false) q = q.is("email", null);
+    if (order_by) q = q.order(order_by, { ascending, nullsFirst: false });
+    const { data, error, count } = await q;
     if (error) return errorResult(error.message);
-    const rows = (data ?? []).map((c) => ({
-      id: c.id,
+    const rows = data ?? [];
+    const contacts = rows.map((c) => ({
+      ...c,
       name: c.full_name || [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email || null,
-      first_name: c.first_name,
-      last_name: c.last_name,
-      email: c.email,
-      phone: c.phone_mobile || c.phone_work || c.phone_other || null,
-      domain: c.website_url,
-      job_title: c.job_title,
-      company: c.crm_company?.name ?? null,
-      company_id: c.crm_company?.id ?? null,
-      created_at: c.created_at
+      phone: c.phone_mobile || c.phone_work || c.phone_other || null
     }));
-    return textResult(rows, { count: rows.length });
+    const total_count = count ?? contacts.length;
+    const next = offset + contacts.length;
+    const has_more = next < total_count;
+    return textResult(
+      { contacts, total_count, returned: contacts.length, offset, next_offset: has_more ? next : null, has_more },
+      { count: contacts.length, total_count, offset, next_offset: has_more ? next : null, has_more }
+    );
   }
 });
 
@@ -744,7 +779,7 @@ var create_company_default = defineTool11({
 // src/lib/mcp/tools/search-lenders.ts
 import { defineTool as defineTool12 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z12 } from "npm:zod@^3.23.0";
-var DEFAULT_FIELDS = "id, name, lender_type, tier, active, appetite_status, min_deal, max_deal, sweet_spot_min, sweet_spot_max, loan_types, industries, geographies, website, contact_name, contact_title";
+var DEFAULT_FIELDS2 = "id, name, lender_type, tier, active, appetite_status, min_deal, max_deal, sweet_spot_min, sweet_spot_max, loan_types, industries, geographies, website, contact_name, contact_title";
 var search_lenders_default = defineTool12({
   name: "search_lenders",
   title: "Search funding sources / lenders",
@@ -768,7 +803,7 @@ var search_lenders_default = defineTool12({
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    let select = DEFAULT_FIELDS;
+    let select = DEFAULT_FIELDS2;
     if (fields) {
       if (fields.trim() === "*") select = "*";
       else if (!/^[a-zA-Z0-9_,\s]+$/.test(fields)) return errorResult('fields may only contain column names, commas and spaces, or be "*".');
