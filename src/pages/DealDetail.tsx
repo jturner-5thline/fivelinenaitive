@@ -4357,19 +4357,8 @@ export default function DealDetail() {
                                   </div>
                                 );
                               case 'dealOwner':
-                                return (
-                                  <div key={fieldId} className="flex flex-col gap-1">
-                                    <span className="text-muted-foreground text-xs font-medium">Deal Owner</span>
-                                    <Select value={deal.dealOwner || ''} onValueChange={(value) => updateDeal('dealOwner', value)}>
-                                      <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select owner" /></SelectTrigger>
-                                      <SelectContent>
-                                        {memberOptions.map((option) => (
-                                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                );
+                                // Owner is edited in the left context rail; hidden here to avoid duplication.
+                                return null;
                               case 'type':
                                 return (
                                   <div key={fieldId} className="flex flex-col gap-1">
