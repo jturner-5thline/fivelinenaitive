@@ -152,6 +152,8 @@ export function FundingSourceFormDialog({
   const [form, setForm] = useState<FundingSourceForm>(() => formWithInvitePrefill(initialName, initialContact));
   const [linkedCrmCompany, setLinkedCrmCompany] = useState<LinkedCrmCompany | null>(null);
   const [saving, setSaving] = useState(false);
+  const [geoOptionsOpen, setGeoOptionsOpen] = useState(false);
+  const geoOptions = useGeoOptionsList();
 
   useEffect(() => {
     if (!open) return;
@@ -433,6 +435,7 @@ export function FundingSourceFormDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+      <GeoOptionsDialog open={geoOptionsOpen} onOpenChange={setGeoOptionsOpen} />
     </Dialog>
   );
 }
