@@ -80,16 +80,53 @@ export default defineTool({
       on_hold_count: deals.filter((d) => d.on_hold).length,
     };
 
+    // Pipeline names + stage labels so stage ids (reused across pipelines with
+    // different meanings) can be disambiguated.
+    const { data: pipelineRows } = await sb
+      .from("deal_pipelines")
+      .select("id, name, is_default, stages");
+    type PipeRow = { id: string; name?: string | null; is_default?: boolean | null; stages?: Array<{ id?: string; label?: string }> };
+    const pipeMap = new Map<string, PipeRow>(((pipelineRows ?? []) as unknown as PipeRow[]).map((p) => [p.id, p]));
+    const labelFor = (pid: string | null, stageId: string) => {
+      const stages = (pid && pipeMap.get(pid)?.stages) || [];
+      const match = Array.isArray(stages) ? stages.find((s) => s?.id === stageId) : undefined;
+      return match?.label ?? stageId;
+    };
+
+    const byPipeline = groupAggregate(deals, (d) => d.pipeline_id ?? "none", value).map((entry) => {
+      const pid = entry.key === "none" ? null : entry.key;
+      const subset = deals.filter((d) => (d.pipeline_id ?? "none") === entry.key);
+      return {
+        pipeline_id: pid,
+        pipeline_name: pid ? pipeMap.get(pid)?.name ?? null : "Unassigned (no pipeline)",
+        is_default: pid ? pipeMap.get(pid)?.is_default ?? false : false,
+        count: entry.count,
+        total_value: entry.total_value,
+        by_stage: groupAggregate(subset, (d) => d.stage ?? "unknown", value).map((s) => ({
+          stage_id: s.key,
+          stage_label: labelFor(pid, s.key),
+          count: s.count,
+          total_value: s.total_value,
+        })),
+      };
+    });
+
     const payload = {
       timeframe: { date_field, from: from ?? null, to: to ?? null },
       filters: { pipeline_id: pipeline_id ?? null, manager: manager ?? null, status: status ?? null, stage: stage ?? null },
       summary,
       by_stage: groupAggregate(deals, (d) => d.stage ?? "unknown", value),
+      by_pipeline_stage: byPipeline,
       by_status: groupAggregate(deals, (d) => d.status ?? "unknown", value),
       by_type: groupAggregate(deals, (d) => d.deal_type ?? "unknown", value),
       by_manager: groupAggregate(deals, (d) => d.manager ?? "unassigned", value),
       by_owner: groupAggregate(deals, (d) => d.deal_owner ?? "unassigned", value),
-      by_pipeline: groupAggregate(deals, (d) => d.pipeline_id ?? "none", value),
+      by_pipeline: byPipeline.map((p) => ({
+        key: p.pipeline_id ?? "none",
+        pipeline_name: p.pipeline_name,
+        count: p.count,
+        total_value: p.total_value,
+      })),
       by_month: groupAggregate(deals, (d) => monthKey(d[date_field] as string) ?? "unknown", value).sort((a, b) =>
         a.key.localeCompare(b.key),
       ),

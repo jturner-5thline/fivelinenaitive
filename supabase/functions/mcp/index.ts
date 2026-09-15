@@ -214,10 +214,97 @@ var list_deals_default = defineTool({
 // src/lib/mcp/tools/list-pipelines.ts
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z2 } from "npm:zod@^3.23.0";
+
+// src/lib/mcp/insights.ts
+var EXCLUDED_EXACT = /* @__PURE__ */ new Set(["test-niki's store", "example deal"]);
+function isExcludedDealName(name) {
+  const n = (name ?? "").trim().toLowerCase();
+  if (!n) return false;
+  if (EXCLUDED_EXACT.has(n)) return true;
+  return n.startsWith("test ");
+}
+function monthKey(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+function sum(values) {
+  return values.reduce((acc, v) => acc + (Number(v) || 0), 0);
+}
+function groupAggregate(rows, keyOf, valueOf) {
+  const map = /* @__PURE__ */ new Map();
+  for (const row of rows) {
+    const key = keyOf(row) || "unknown";
+    const entry = map.get(key) ?? { key, count: 0, total_value: 0 };
+    entry.count += 1;
+    entry.total_value += Number(valueOf(row)) || 0;
+    map.set(key, entry);
+  }
+  return [...map.values()].sort((a, b) => b.total_value - a.total_value);
+}
+var INSIGHTS_DATASETS = [
+  "deals",
+  "deal_lenders",
+  "deal_pipelines",
+  "deal_stage_history",
+  "deal_milestones",
+  "deal_computed_metrics",
+  "deal_stage_durations",
+  "deal_stage_transitions",
+  "outstanding_items",
+  "tasks",
+  "activity_logs",
+  "contacts",
+  "crm_companies",
+  "master_lenders",
+  "custom_metrics",
+  "insights_metric_targets",
+  "metric_manual_inputs",
+  "dashboard_grid_layouts",
+  "dashboard_layouts",
+  "quickbooks_invoices",
+  "quickbooks_customers",
+  "quickbooks_payments",
+  "quickbooks_expenses",
+  "quickbooks_bills",
+  "quickbooks_reports",
+  "qbo_pnl_snapshots",
+  "qbo_cashflow_snapshots",
+  "claap_meetings",
+  "team_interaction_metrics",
+  "deal_writeups",
+  "deal_memos",
+  "deal_checklist_items",
+  "deal_checklist_status",
+  "deal_attachments",
+  "deal_status_notes",
+  "deal_financial_data",
+  "deal_flag_notes",
+  "deal_ownership",
+  "deal_space_notes",
+  "deal_activity",
+  "contact_deals",
+  "deal_pipeline_configs"
+];
+var DASHBOARD_OPTIONS = [
+  { id: "management-snapshot", name: "Weekly Rundown", isFavorite: true, folder: "management-insights" },
+  { id: "revenue-customers", name: "Revenue & Customers", isFavorite: false, folder: "financial" },
+  { id: "controller-dashboard", name: "Controller Dashboard", isFavorite: false, folder: "financial" },
+  { id: "sales-bd-page", name: "Sales & BD", isFavorite: false, folder: "sales-bd" },
+  { id: "sales-dashboard-v2", name: "Sales Dashboard", isFavorite: false, folder: "sales-bd" },
+  { id: "finserv-financial-metrics", name: "FinServ Financial Metrics", isFavorite: false, folder: null },
+  { id: "consolidated-debt-pipeline", name: "Debt Advisory Metrics", isFavorite: false, folder: "sales-bd" },
+  { id: "lender-intelligence", name: "Lender Intelligence Dashboard", isFavorite: false, folder: "sales-bd" },
+  { id: "sales-bd-roi", name: "Sales & BD ROI", isFavorite: false, folder: "sales-bd" },
+  { id: "management-review", name: "Insights Dashboard", isFavorite: false, folder: "management-insights" }
+];
+
+// src/lib/mcp/tools/list-pipelines.ts
 var list_pipelines_default = defineTool2({
   name: "list_pipelines",
   title: "List pipelines",
-  description: "List every deal pipeline the signed-in user can see, with each pipeline's id, name, whether it is the default, and its ordered stages (stage id + human label). Optionally include a live deal count per pipeline. Use this to confirm that `list_deals` results span all pipelines and to translate raw stage ids into their pipeline-specific labels.",
+  description: "List every deal pipeline the signed-in user can see, with each pipeline's id, name, whether it is the default, and its ordered stages (stage id + human label). With deal counts enabled, each pipeline also reports total/active/on-hold/closed counts and a per-stage breakdown using that pipeline's own stage labels, and an extra `unassigned` bucket reports deals whose pipeline_id is null. Global test-deal exclusions (Test-Niki's Store, Example Deal, names starting with 'test ') are applied so counts agree with `get_pipeline_metrics` and the Insights UI.",
   inputSchema: {
     include_deal_counts: z2.boolean().default(true)
   },
@@ -236,21 +323,65 @@ var list_pipelines_default = defineTool2({
         is_default: p.is_default ?? false,
         company_id: p.company_id ?? null,
         stages: stages.map((s) => ({ id: s?.id ?? null, label: s?.label ?? s?.id ?? null })),
-        deal_count: null
+        deal_count: null,
+        active_deal_count: null,
+        on_hold_deal_count: null,
+        closed_deal_count: null,
+        by_stage: null
       };
     });
-    if (include_deal_counts && pipelines.length > 0) {
-      const counts = await Promise.all(
-        pipelines.map(async (p) => {
-          const { count } = await sb.from("deals").select("id", { count: "exact", head: true }).eq("pipeline_id", p.id);
-          return count ?? 0;
-        })
-      );
-      pipelines.forEach((p, i) => {
-        p.deal_count = counts[i];
+    let unassigned = null;
+    let excludedTestDeals = 0;
+    if (include_deal_counts) {
+      const rows = [];
+      const pageSize = 1e3;
+      for (let offset = 0; ; offset += pageSize) {
+        const { data: page, error: dealErr } = await sb.from("deals").select("id, company, stage, status, on_hold, pipeline_id").order("created_at", { ascending: false }).range(offset, offset + pageSize - 1);
+        if (dealErr) return errorResult(dealErr.message);
+        const chunk = page ?? [];
+        rows.push(...chunk);
+        if (chunk.length < pageSize) break;
+      }
+      const kept = rows.filter((r) => !isExcludedDealName(r.company));
+      excludedTestDeals = rows.length - kept.length;
+      const isClosed = (r) => {
+        const s = `${r.status ?? ""} ${r.stage ?? ""}`.toLowerCase();
+        return s.includes("closed") || s.includes("lost") || s.includes("dead");
+      };
+      const bucket = (subset) => ({
+        deal_count: subset.length,
+        on_hold_deal_count: subset.filter((r) => r.on_hold).length,
+        closed_deal_count: subset.filter((r) => isClosed(r)).length,
+        active_deal_count: subset.filter((r) => !r.on_hold && !isClosed(r)).length
       });
+      for (const p of pipelines) {
+        const subset = kept.filter((r) => r.pipeline_id === p.id);
+        const b = bucket(subset);
+        p.deal_count = b.deal_count;
+        p.active_deal_count = b.active_deal_count;
+        p.on_hold_deal_count = b.on_hold_deal_count;
+        p.closed_deal_count = b.closed_deal_count;
+        const labels = new Map(p.stages.map((s) => [s.id ?? "", s.label ?? s.id ?? ""]));
+        const counts = /* @__PURE__ */ new Map();
+        for (const r of subset) {
+          const key = r.stage ?? "unknown";
+          counts.set(key, (counts.get(key) ?? 0) + 1);
+        }
+        p.by_stage = Array.from(counts.entries()).map(([stage_id, count]) => ({
+          stage_id,
+          stage_label: labels.get(stage_id) ?? stage_id,
+          count
+        }));
+      }
+      unassigned = bucket(kept.filter((r) => !r.pipeline_id));
     }
-    const payload = { count: pipelines.length, pipelines };
+    const payload = {
+      count: pipelines.length,
+      pipelines,
+      unassigned_deals: unassigned,
+      excluded_test_deals: include_deal_counts ? excludedTestDeals : null,
+      notes: include_deal_counts ? "Counts exclude global test deals; 'closed' is inferred from status/stage text containing closed/lost/dead." : null
+    };
     return textResult(payload, payload);
   }
 });
@@ -1156,93 +1287,6 @@ var reorder_daily_rundown_items_default = defineTool25({
 // src/lib/mcp/tools/list-insights-dashboards.ts
 import { defineTool as defineTool26 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z26 } from "npm:zod@^3.23.0";
-
-// src/lib/mcp/insights.ts
-var EXCLUDED_EXACT = /* @__PURE__ */ new Set(["test-niki's store", "example deal"]);
-function isExcludedDealName(name) {
-  const n = (name ?? "").trim().toLowerCase();
-  if (!n) return false;
-  if (EXCLUDED_EXACT.has(n)) return true;
-  return n.startsWith("test ");
-}
-function monthKey(iso) {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-function sum(values) {
-  return values.reduce((acc, v) => acc + (Number(v) || 0), 0);
-}
-function groupAggregate(rows, keyOf, valueOf) {
-  const map = /* @__PURE__ */ new Map();
-  for (const row of rows) {
-    const key = keyOf(row) || "unknown";
-    const entry = map.get(key) ?? { key, count: 0, total_value: 0 };
-    entry.count += 1;
-    entry.total_value += Number(valueOf(row)) || 0;
-    map.set(key, entry);
-  }
-  return [...map.values()].sort((a, b) => b.total_value - a.total_value);
-}
-var INSIGHTS_DATASETS = [
-  "deals",
-  "deal_lenders",
-  "deal_pipelines",
-  "deal_stage_history",
-  "deal_milestones",
-  "deal_computed_metrics",
-  "deal_stage_durations",
-  "deal_stage_transitions",
-  "outstanding_items",
-  "tasks",
-  "activity_logs",
-  "contacts",
-  "crm_companies",
-  "master_lenders",
-  "custom_metrics",
-  "insights_metric_targets",
-  "metric_manual_inputs",
-  "dashboard_grid_layouts",
-  "dashboard_layouts",
-  "quickbooks_invoices",
-  "quickbooks_customers",
-  "quickbooks_payments",
-  "quickbooks_expenses",
-  "quickbooks_bills",
-  "quickbooks_reports",
-  "qbo_pnl_snapshots",
-  "qbo_cashflow_snapshots",
-  "claap_meetings",
-  "team_interaction_metrics",
-  "deal_writeups",
-  "deal_memos",
-  "deal_checklist_items",
-  "deal_checklist_status",
-  "deal_attachments",
-  "deal_status_notes",
-  "deal_financial_data",
-  "deal_flag_notes",
-  "deal_ownership",
-  "deal_space_notes",
-  "deal_activity",
-  "contact_deals",
-  "deal_pipeline_configs"
-];
-var DASHBOARD_OPTIONS = [
-  { id: "management-snapshot", name: "Weekly Rundown", isFavorite: true, folder: "management-insights" },
-  { id: "revenue-customers", name: "Revenue & Customers", isFavorite: false, folder: "financial" },
-  { id: "controller-dashboard", name: "Controller Dashboard", isFavorite: false, folder: "financial" },
-  { id: "sales-bd-page", name: "Sales & BD", isFavorite: false, folder: "sales-bd" },
-  { id: "sales-dashboard-v2", name: "Sales Dashboard", isFavorite: false, folder: "sales-bd" },
-  { id: "finserv-financial-metrics", name: "FinServ Financial Metrics", isFavorite: false, folder: null },
-  { id: "consolidated-debt-pipeline", name: "Debt Advisory Metrics", isFavorite: false, folder: "sales-bd" },
-  { id: "lender-intelligence", name: "Lender Intelligence Dashboard", isFavorite: false, folder: "sales-bd" },
-  { id: "sales-bd-roi", name: "Sales & BD ROI", isFavorite: false, folder: "sales-bd" },
-  { id: "management-review", name: "Insights Dashboard", isFavorite: false, folder: "management-insights" }
-];
-
-// src/lib/mcp/tools/list-insights-dashboards.ts
 var list_insights_dashboards_default = defineTool26({
   name: "list_insights_dashboards",
   title: "List Insights dashboards and widgets",
@@ -1322,16 +1366,46 @@ var get_pipeline_metrics_default = defineTool27({
       milestone_fees: sum(deals.map((d) => d.milestone_fee)),
       on_hold_count: deals.filter((d) => d.on_hold).length
     };
+    const { data: pipelineRows } = await sb.from("deal_pipelines").select("id, name, is_default, stages");
+    const pipeMap = new Map((pipelineRows ?? []).map((p) => [p.id, p]));
+    const labelFor = (pid, stageId) => {
+      const stages = pid && pipeMap.get(pid)?.stages || [];
+      const match = Array.isArray(stages) ? stages.find((s) => s?.id === stageId) : void 0;
+      return match?.label ?? stageId;
+    };
+    const byPipeline = groupAggregate(deals, (d) => d.pipeline_id ?? "none", value).map((entry) => {
+      const pid = entry.key === "none" ? null : entry.key;
+      const subset = deals.filter((d) => (d.pipeline_id ?? "none") === entry.key);
+      return {
+        pipeline_id: pid,
+        pipeline_name: pid ? pipeMap.get(pid)?.name ?? null : "Unassigned (no pipeline)",
+        is_default: pid ? pipeMap.get(pid)?.is_default ?? false : false,
+        count: entry.count,
+        total_value: entry.total_value,
+        by_stage: groupAggregate(subset, (d) => d.stage ?? "unknown", value).map((s) => ({
+          stage_id: s.key,
+          stage_label: labelFor(pid, s.key),
+          count: s.count,
+          total_value: s.total_value
+        }))
+      };
+    });
     const payload = {
       timeframe: { date_field, from: from ?? null, to: to ?? null },
       filters: { pipeline_id: pipeline_id ?? null, manager: manager ?? null, status: status ?? null, stage: stage ?? null },
       summary,
       by_stage: groupAggregate(deals, (d) => d.stage ?? "unknown", value),
+      by_pipeline_stage: byPipeline,
       by_status: groupAggregate(deals, (d) => d.status ?? "unknown", value),
       by_type: groupAggregate(deals, (d) => d.deal_type ?? "unknown", value),
       by_manager: groupAggregate(deals, (d) => d.manager ?? "unassigned", value),
       by_owner: groupAggregate(deals, (d) => d.deal_owner ?? "unassigned", value),
-      by_pipeline: groupAggregate(deals, (d) => d.pipeline_id ?? "none", value),
+      by_pipeline: byPipeline.map((p) => ({
+        key: p.pipeline_id ?? "none",
+        pipeline_name: p.pipeline_name,
+        count: p.count,
+        total_value: p.total_value
+      })),
       by_month: groupAggregate(deals, (d) => monthKey(d[date_field]) ?? "unknown", value).sort(
         (a, b) => a.key.localeCompare(b.key)
       ),
@@ -1352,10 +1426,11 @@ var get_funnel_velocity_default = defineTool28({
   inputSchema: {
     stage_path: z28.array(z28.string().trim().min(1).max(100)).min(2).max(20).optional().describe("Ordered list of stage ids, e.g. ['nda-needs-list','on-deck','closed-won']."),
     consecutive_only: z28.boolean().default(false),
-    deal_id: z28.string().uuid().optional().describe("When set, returns per-stage durations for this deal instead.")
+    deal_id: z28.string().uuid().optional().describe("When set, returns per-stage durations for this deal instead."),
+    pipeline_id: z28.string().uuid().optional().describe("Restrict the funnel to deals in this pipeline (stage ids mean different things per pipeline).")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ stage_path, consecutive_only, deal_id }, ctx) => {
+  handler: async ({ stage_path, consecutive_only, deal_id, pipeline_id }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
@@ -1366,6 +1441,57 @@ var get_funnel_velocity_default = defineTool28({
     }
     if (!stage_path || stage_path.length < 2) {
       return errorResult("Provide either stage_path (2+ stage ids) or deal_id.");
+    }
+    if (pipeline_id) {
+      const rows = [];
+      const pageSize = 1e3;
+      for (let offset = 0; ; offset += pageSize) {
+        const { data: page, error: histErr } = await sb.from("deal_stage_history").select("deal_id, to_stage, changed_at").eq("pipeline_id", pipeline_id).order("changed_at", { ascending: true }).range(offset, offset + pageSize - 1);
+        if (histErr) return errorResult(histErr.message);
+        const chunk = page ?? [];
+        rows.push(...chunk);
+        if (chunk.length < pageSize) break;
+      }
+      const firstEntry = /* @__PURE__ */ new Map();
+      for (const r of rows) {
+        if (!r.to_stage || !r.changed_at) continue;
+        const perDeal = firstEntry.get(r.deal_id) ?? /* @__PURE__ */ new Map();
+        const prev = perDeal.get(r.to_stage);
+        if (!prev || r.changed_at < prev) perDeal.set(r.to_stage, r.changed_at);
+        firstEntry.set(r.deal_id, perDeal);
+      }
+      const dealIds = Array.from(firstEntry.keys());
+      const steps = [];
+      for (let i = 0; i < stage_path.length - 1; i++) {
+        const fromStage = stage_path[i];
+        const toStage = stage_path[i + 1];
+        const durations = [];
+        let fromCount = 0;
+        let toCount = 0;
+        for (const id of dealIds) {
+          const perDeal = firstEntry.get(id);
+          const a = perDeal.get(fromStage);
+          if (!a) continue;
+          fromCount++;
+          const b = perDeal.get(toStage);
+          if (!b || b < a) continue;
+          toCount++;
+          durations.push((new Date(b).getTime() - new Date(a).getTime()) / 864e5);
+        }
+        durations.sort((x, y) => x - y);
+        const median = durations.length ? durations.length % 2 ? durations[(durations.length - 1) / 2] : (durations[durations.length / 2 - 1] + durations[durations.length / 2]) / 2 : null;
+        steps.push({
+          from_stage: fromStage,
+          to_stage: toStage,
+          deals_reaching_from: fromCount,
+          deals_reaching_to: toCount,
+          conversion_rate: fromCount ? toCount / fromCount : null,
+          median_days: median,
+          avg_days: durations.length ? durations.reduce((s, d) => s + d, 0) / durations.length : null
+        });
+      }
+      const payload = { pipeline_id, stage_path, basis: "first entry per stage from deal_stage_history", steps };
+      return textResult(payload, payload);
     }
     const { data, error } = await sb.rpc("get_funnel_velocity", {
       p_stage_path: stage_path,
@@ -1649,14 +1775,48 @@ var describe_schema_default = defineTool33({
   title: "Describe table schema",
   description: `Field discovery: return the column list for one or more platform tables \u2014 column name, data type, nullability, default, and (for enum columns) the complete set of allowed values. Use this before pulling data so you know exactly which fields exist rather than guessing names; pair it with \`list_deals\` (\`fields: "*"\`) or \`query_insights_dataset\` to extract complete records. Omit \`tables\` to get the describable table list. Describable tables: ${DESCRIBABLE.join(", ")}.`,
   inputSchema: {
-    tables: z33.array(z33.string().trim().min(1).max(80)).max(20).optional().describe("Table names to describe. Omit to list the tables that can be described.")
+    tables: z33.array(z33.string().trim().min(1).max(80)).max(20).optional().describe("Table names to describe. Omit to list the tables that can be described."),
+    include_field_layout: z33.boolean().default(false).describe(
+      "Also return the configured Deal Information field layout (order + visibility) per company, and which deal columns are actually populated per pipeline."
+    )
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ tables }, ctx) => {
+  handler: async ({ tables, include_field_layout }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
+    let fieldLayout = void 0;
+    if (include_field_layout) {
+      const sbLayout = supabaseForUser(ctx);
+      const { data: settings } = await sbLayout.from("company_settings").select("company_id, deal_info_layout");
+      const { data: pipes } = await sbLayout.from("deal_pipelines").select("id, name, company_id");
+      const usage = [];
+      for (const p of pipes ?? []) {
+        const { data: sample } = await sbLayout.from("deals").select("*").eq("pipeline_id", p.id).limit(500);
+        const rowsSample = sample ?? [];
+        const populated = /* @__PURE__ */ new Set();
+        for (const r of rowsSample) {
+          for (const [k, v] of Object.entries(r)) {
+            if (v !== null && v !== void 0 && v !== "") populated.add(k);
+          }
+        }
+        usage.push({
+          pipeline_id: p.id,
+          pipeline_name: p.name ?? null,
+          populated_fields: Array.from(populated).sort(),
+          sampled_deals: rowsSample.length
+        });
+      }
+      fieldLayout = {
+        company_deal_info_layout: settings ?? [],
+        pipeline_field_usage: usage,
+        note: "Deal Information field order/visibility is configured per company; pipeline_field_usage shows which deal columns are actually used by deals in each pipeline (sample of up to 500 deals)."
+      };
+    }
     if (!tables || tables.length === 0) {
-      return textResult({ describable_tables: DESCRIBABLE }, { count: DESCRIBABLE.length });
+      return textResult(
+        { describable_tables: DESCRIBABLE, ...fieldLayout ? { field_layout: fieldLayout } : {} },
+        { count: DESCRIBABLE.length }
+      );
     }
     const invalid = tables.filter((t) => !DESCRIBABLE.includes(t));
     if (invalid.length) {
@@ -1681,7 +1841,8 @@ var describe_schema_default = defineTool33({
         table,
         column_count: columns.length,
         columns
-      }))
+      })),
+      ...fieldLayout ? { field_layout: fieldLayout } : {}
     };
     return textResult(payload, { tables: tables.join(","), column_count: rows.length });
   }

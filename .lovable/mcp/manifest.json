@@ -102,7 +102,7 @@
       {
         "name": "list_pipelines",
         "title": "List pipelines",
-        "description": "List every deal pipeline the signed-in user can see, with each pipeline's id, name, whether it is the default, and its ordered stages (stage id + human label). Optionally include a live deal count per pipeline. Use this to confirm that `list_deals` results span all pipelines and to translate raw stage ids into their pipeline-specific labels.",
+        "description": "List every deal pipeline the signed-in user can see, with each pipeline's id, name, whether it is the default, and its ordered stages (stage id + human label). With deal counts enabled, each pipeline also reports total/active/on-hold/closed counts and a per-stage breakdown using that pipeline's own stage labels, and an extra `unassigned` bucket reports deals whose pipeline_id is null. Global test-deal exclusions (Test-Niki's Store, Example Deal, names starting with 'test ') are applied so counts agree with `get_pipeline_metrics` and the Insights UI.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -1226,6 +1226,11 @@
               "type": "string",
               "format": "uuid",
               "description": "When set, returns per-stage durations for this deal instead."
+            },
+            "pipeline_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Restrict the funnel to deals in this pipeline (stage ids mean different things per pipeline)."
             }
           },
           "additionalProperties": false,
@@ -1521,6 +1526,11 @@
               },
               "maxItems": 20,
               "description": "Table names to describe. Omit to list the tables that can be described."
+            },
+            "include_field_layout": {
+              "type": "boolean",
+              "default": false,
+              "description": "Also return the configured Deal Information field layout (order + visibility) per company, and which deal columns are actually populated per pipeline."
             }
           },
           "additionalProperties": false,
