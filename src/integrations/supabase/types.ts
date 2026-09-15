@@ -5644,6 +5644,7 @@ export type Database = {
           disclaimer: string | null
           feature_flags: Json
           fpa_dashboard_config: Json | null
+          geo_preference_options: Json | null
           id: string
           lender_matching_config: Json | null
           permission_settings: Json | null
@@ -5670,6 +5671,7 @@ export type Database = {
           disclaimer?: string | null
           feature_flags?: Json
           fpa_dashboard_config?: Json | null
+          geo_preference_options?: Json | null
           id?: string
           lender_matching_config?: Json | null
           permission_settings?: Json | null
@@ -5696,6 +5698,7 @@ export type Database = {
           disclaimer?: string | null
           feature_flags?: Json
           fpa_dashboard_config?: Json | null
+          geo_preference_options?: Json | null
           id?: string
           lender_matching_config?: Json | null
           permission_settings?: Json | null
