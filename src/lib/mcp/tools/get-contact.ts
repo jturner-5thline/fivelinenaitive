@@ -134,6 +134,44 @@ export default defineTool({
         }),
       );
 
+      // Email history is keyed by address, not contact id.
+      const addr = String(contact.email ?? "").trim().toLowerCase();
+      if (addr) {
+        const mailSources: Array<{ table: string; key: string; order: string }> = [
+          { table: "emails", key: "emails_received", order: "received_at" },
+          { table: "gmail_messages", key: "gmail_messages", order: "received_at" },
+          { table: "gmail_sent_messages", key: "gmail_sent_messages", order: "sent_at" },
+        ];
+        await Promise.all(
+          mailSources.map(async ({ table, key, order }) => {
+            const { data, error } = await sb
+              .from(table as never)
+              .select("*")
+              .or(`from_email.ilike.${addr},to_emails.cs.{"${addr}"}`)
+              .order(order, { ascending: false, nullsFirst: false })
+              .limit(200);
+            if (!error) {
+              related[key] = data ?? [];
+              return;
+            }
+            // `gmail_sent_messages` has no from_email column — fall back to recipients only.
+            const { data: toData, error: toErr } = await sb
+              .from(table as never)
+              .select("*")
+              .contains("to_emails", [addr])
+              .limit(200);
+            related[key] = toErr ? { error: toErr.message } : toData ?? [];
+          }),
+        );
+      }
+
+      const { data: recordings, error: recErr } = await sb
+        .from("event_claap_recordings")
+        .select("*")
+        .contains("contact_ids", [id])
+        .limit(200);
+      related.claap_recordings = recErr ? { error: recErr.message } : recordings ?? [];
+
       payload.related = related;
     }
 
