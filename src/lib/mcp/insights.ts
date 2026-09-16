@@ -224,6 +224,36 @@ export const INSIGHTS_DATASETS = [
   // Agenda comments
   "agenda_comment_threads",
   "agenda_comments",
+  // Virtual data room tasks
+  "vdr_tasks",
+  "vdr_task_document_links",
+  "vdr_task_request_links",
+  // Meetings — participants, scheduling, templates, personal notes
+  "claap_meeting_participants",
+  "proposed_meeting_slots",
+  "meeting_title_templates",
+  "user_meeting_notes",
+  "referral_meeting_exclusions",
+  // Milestone definitions
+  "default_milestones",
+  "naitive_stage_milestones",
+  // Task extras
+  "subtask_checklist_items",
+  "task_duplicate_candidates",
+  "task_view_tabs",
+  "weekly_hours_tasks",
+  // Deal chat / per-user preferences
+  "copilot_conversations",
+  "copilot_deal_messages",
+  "copilot_user_preferences",
+  "user_deal_summary_preferences",
+  // Workflow set
+  "wf_deals",
+  "wf_tasks",
+  "wf_meeting_notes",
+  // Reporting views
+  "v_deal_owner_resolution",
+  "v_deal_stage_transitions",
 ] as const;
 
 export type InsightsDataset = (typeof INSIGHTS_DATASETS)[number];
