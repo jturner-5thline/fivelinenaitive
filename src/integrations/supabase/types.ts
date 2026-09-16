@@ -5646,6 +5646,7 @@ export type Database = {
           fpa_dashboard_config: Json | null
           geo_preference_options: Json | null
           id: string
+          industry_options: Json
           lender_matching_config: Json | null
           permission_settings: Json | null
           referral_source_doc_fields: Json
@@ -5673,6 +5674,7 @@ export type Database = {
           fpa_dashboard_config?: Json | null
           geo_preference_options?: Json | null
           id?: string
+          industry_options?: Json
           lender_matching_config?: Json | null
           permission_settings?: Json | null
           referral_source_doc_fields?: Json
@@ -5700,6 +5702,7 @@ export type Database = {
           fpa_dashboard_config?: Json | null
           geo_preference_options?: Json | null
           id?: string
+          industry_options?: Json
           lender_matching_config?: Json | null
           permission_settings?: Json | null
           referral_source_doc_fields?: Json
