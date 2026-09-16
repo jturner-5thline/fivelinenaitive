@@ -13,6 +13,16 @@ const CHILD_TABLES: Array<{ table: string; column: string; key: string; limit: n
   { table: "lender_contacts", column: "contact_id", key: "lender_links", limit: 100 },
   { table: "partner_contacts", column: "contact_id", key: "partner_links", limit: 100 },
   { table: "crm_company_activities", column: "contact_id", key: "company_activities", limit: 200 },
+  { table: "tasks", column: "contact_id", key: "tasks", limit: 300, order: "created_at" },
+  { table: "channel_entries", column: "contact_id", key: "channel_entries", limit: 100 },
+  { table: "referral_sources", column: "contact_id", key: "referral_sources", limit: 100 },
+  { table: "ai_action_log", column: "contact_id", key: "ai_actions", limit: 300, order: "created_at" },
+  {
+    table: "claap_meeting_participants",
+    column: "contact_id",
+    key: "meeting_participation",
+    limit: 300,
+  },
 ];
 
 export default defineTool({
