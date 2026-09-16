@@ -816,6 +816,16 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
           : fetchPage({ labelIds: ['SENT'], forceRefresh: !!opts.manual }),
       ]);
       if (!isMountedRef.current) return;
+      // The user's own sign-in session expired and could not be refreshed —
+      // tell them to sign in again instead of showing a blank inbox.
+      if (inbox.sessionExpired || sent.sessionExpired) {
+        setRefreshError(true);
+        toast.error('Your session expired', {
+          description: 'Please sign in again to load your mail.',
+          action: { label: 'Sign in', onClick: () => { onOpenChange(false); navigate('/auth'); } },
+        });
+        return;
+      }
       // Reauth required from upstream — surface a CTA to /integrations
       // instead of silently swallowing the empty fetch.
       if (inbox.reauthRequired || sent.reauthRequired) {
