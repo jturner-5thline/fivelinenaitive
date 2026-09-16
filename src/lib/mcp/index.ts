@@ -9,6 +9,7 @@ import completeTask from "./tools/complete-task";
 import searchContacts from "./tools/search-contacts";
 import getContact from "./tools/get-contact";
 import searchCompanies from "./tools/search-companies";
+import getCompany from "./tools/get-company";
 import createContact from "./tools/create-contact";
 import createCompany from "./tools/create-company";
 import searchLenders from "./tools/search-lenders";
