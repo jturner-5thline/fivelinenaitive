@@ -173,12 +173,13 @@ async function fetchPage(args: {
   nextPageToken: string | null;
   rateLimited: boolean;
   reauthRequired?: boolean;
+  sessionExpired?: boolean;
   errorCode?: string;
   errorMessage?: string;
 }> {
   const { labelIds, pageToken, maxResults = PAGE_SIZE, forceRefresh = false } = args;
-  try {
-    const { data, error } = await supabase.functions.invoke('gmail-messages', {
+  const invoke = () =>
+    supabase.functions.invoke('gmail-messages', {
       body: {
         action: 'list',
         max_results: maxResults,
@@ -195,6 +196,28 @@ async function fetchPage(args: {
         _cb: forceRefresh ? Date.now() : undefined,
       },
     });
+  const isSessionExpired = (payload: any) =>
+    payload?.error === 'auth_expired' || payload?.error_code === 'auth_expired';
+  try {
+    let { data, error } = await invoke();
+    // An expired/invalid access token is NOT a transient glitch: refresh the
+    // session once and retry, otherwise the inbox silently renders empty.
+    if (!error && isSessionExpired(data)) {
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      if (refreshed?.session) {
+        ({ data, error } = await invoke());
+      }
+      if (!error && isSessionExpired(data)) {
+        return {
+          messages: [],
+          nextPageToken: null,
+          rateLimited: false,
+          sessionExpired: true,
+          errorCode: 'auth_expired',
+          errorMessage: data?.message || 'Your sign-in session expired. Please sign in again.',
+        };
+      }
+    }
     if (error) {
       // Defensive: supabase.functions.invoke throws/returns an `error`
       // on non-2xx. The edge function now soft-returns 200 for 4xx/5xx,
@@ -793,6 +816,16 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
           : fetchPage({ labelIds: ['SENT'], forceRefresh: !!opts.manual }),
       ]);
       if (!isMountedRef.current) return;
+      // The user's own sign-in session expired and could not be refreshed —
+      // tell them to sign in again instead of showing a blank inbox.
+      if (inbox.sessionExpired || sent.sessionExpired) {
+        setRefreshError(true);
+        toast.error('Your session expired', {
+          description: 'Please sign in again to load your mail.',
+          action: { label: 'Sign in', onClick: () => { onOpenChange(false); navigate('/auth'); } },
+        });
+        return;
+      }
       // Reauth required from upstream — surface a CTA to /integrations
       // instead of silently swallowing the empty fetch.
       if (inbox.reauthRequired || sent.reauthRequired) {

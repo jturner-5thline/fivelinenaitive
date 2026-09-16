@@ -15,6 +15,7 @@ import { useAdminRole } from "@/hooks/useAdminRole";
 import { usePageAccessFlags } from "@/hooks/useFeatureFlags";
 import { BetaBadge } from "@/components/ui/beta-badge";
 import { useCompany } from "@/hooks/useCompany";
+import { useIndustryOptionsSync } from "@/lib/industryOptionsStore";
 import { useNaitivePipelineAccess } from "@/hooks/useNaitivePipelineAccess";
 import { useCanAccessInsights } from "@/hooks/useCanAccessInsights";
 import { DealsFlyoutMenu } from "@/components/sidebar/DealsFlyoutMenu";
@@ -66,6 +67,9 @@ const footerItems = [
 export function AppSidebar() {
   const { state, isHovering, toggleSidebar } = useSidebar();
   const { company } = useCompany();
+  // Mirror the workspace-wide Business Model / Industries list into the local
+  // cache the deal and funding-source forms read.
+  useIndustryOptionsSync();
   const { resolvedTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();

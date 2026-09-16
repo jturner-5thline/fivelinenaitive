@@ -1,18 +1,13 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import {
-  INDUSTRIES_STORAGE_KEY,
-  getIndustryOptions,
-  useIndustryOptionsList,
-  addRemovedIndustry,
-  unremoveIndustry,
-  notifyIndustryOptionsChanged,
-} from '@/lib/industryOptions';
+import { useIndustryOptionsList } from '@/lib/industryOptions';
+import { useSaveIndustryOptions } from '@/lib/industryOptionsStore';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
 
 /**
  * The Business Model dropdown on deals and the Industries selection on funding
- * sources share ONE list. Editing it here edits it everywhere.
+ * sources share ONE list, stored per company so every teammate sees the same
+ * options. Editing it here edits it everywhere.
  */
 export function getDefaultBusinessModelOptions(): string[] {
   return [...INDUSTRY_OPTIONS];
@@ -20,26 +15,22 @@ export function getDefaultBusinessModelOptions(): string[] {
 
 export function useBusinessModelOptions() {
   const options = useIndustryOptionsList();
+  const saveToCompany = useSaveIndustryOptions();
+  const [isSaving, setIsSaving] = useState(false);
 
-  const saveOptions = useCallback(async (next: string[]) => {
-    const previous = getIndustryOptions();
-    const cleaned = next.map(v => v.trim()).filter(Boolean);
-    const nextKeys = new Set(cleaned.map(v => v.toLowerCase()));
+  const saveOptions = useCallback(
+    async (next: string[]) => {
+      setIsSaving(true);
+      try {
+        await saveToCompany(next.map(v => v.trim()).filter(Boolean));
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [saveToCompany],
+  );
 
-    // Removals are permanent so canonical defaults never re-merge on reload.
-    for (const prev of previous) {
-      if (!nextKeys.has(prev.trim().toLowerCase())) addRemovedIndustry(prev);
-    }
-    for (const value of cleaned) unremoveIndustry(value);
-
-    localStorage.setItem(
-      INDUSTRIES_STORAGE_KEY,
-      JSON.stringify(cleaned.map((value, i) => ({ id: String(i + 1), value, isDefault: false }))),
-    );
-    notifyIndustryOptionsChanged();
-  }, []);
-
-  return { options, isLoading: false, saveOptions, isSaving: false };
+  return { options, isLoading: false, saveOptions, isSaving };
 }
 
 /** Counts deals currently using each of the given business model values. */
