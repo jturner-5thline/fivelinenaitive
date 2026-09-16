@@ -349,7 +349,81 @@ var INSIGHTS_DATASETS = [
   "flex_sync_history",
   "flex_notifications",
   "flex_info_notifications",
-  "flex_auto_removal_audit"
+  "flex_auto_removal_audit",
+  // Deal satellites — meetings, documents, deal space, memos, governance
+  "deal_meeting_history",
+  "deal_call_transcripts",
+  "deal_claap_recordings",
+  "meeting_deal_links",
+  "meeting_synthesized_notes",
+  "meeting_task_suggestions",
+  "meeting_holds",
+  "meeting_claap_resolution",
+  "deal_space_documents",
+  "deal_space_document_summaries",
+  "deal_financial_files",
+  "deal_financial_insights",
+  "deal_drive_folders",
+  "deal_data_room_custom_folders",
+  "deal_document_exclusions",
+  "deal_space_conversations",
+  "deal_space_messages",
+  "deal_space_note_versions",
+  "deal_space_note_comments",
+  "deal_space_note_templates",
+  "deal_space_financials",
+  "deal_memo_approvals",
+  "deal_memo_comments",
+  "deal_memo_views",
+  "deal_memo_audit_logs",
+  "deal_stage_history_notes",
+  "deal_status_report_drafts",
+  "deal_emails",
+  "deal_email_prompts",
+  "deal_info_requests",
+  "client_requests",
+  "client_request_drafts",
+  "deal_audit_log",
+  "deal_access_requests",
+  "deal_advance_reasons",
+  "deal_aliases",
+  "deal_sla_rules",
+  "deal_saved_views",
+  "deal_ai_settings",
+  "deal_ai_status_snapshots",
+  "deal_research_cache",
+  "deal_fit_profiles",
+  "deal_calendar_items",
+  "deal_kpi_links",
+  "deal_saas_model",
+  "deal_saas_mappings",
+  "deal_saas_sensitivity",
+  "finserv_deal_projects",
+  "cashflow_deal_overrides",
+  "pending_deal_suggestions",
+  "duplicate_deal_suppressions",
+  "pending_deal_notifications",
+  "external_deals",
+  // Task satellites
+  "task_activity",
+  "task_attachments",
+  "task_collaborators",
+  "task_comments",
+  "task_dependencies",
+  "task_followers",
+  "task_labels",
+  "task_label_assignments",
+  "task_tags",
+  "task_tag_assignments",
+  "task_time_entries",
+  "task_templates",
+  "task_projects",
+  "task_watchers",
+  "task_mentions",
+  "task_saved_views",
+  // Agenda comments
+  "agenda_comment_threads",
+  "agenda_comments"
 ];
 var DASHBOARD_OPTIONS = [
   { id: "management-snapshot", name: "Weekly Rundown", isFavorite: true, folder: "management-insights" },
@@ -460,17 +534,74 @@ function contactName(contact) {
   if (fullName && fullName.toLowerCase() !== contact.email?.toLowerCase()) return fullName;
   return contact.email ?? "Unnamed contact";
 }
+var DEAL_CHILD_TABLES = [
+  ["milestones", "deal_milestones"],
+  ["stage_history", "deal_stage_history"],
+  ["stage_history_notes", "deal_stage_history_notes"],
+  ["status_notes", "deal_status_notes"],
+  ["status_report_drafts", "deal_status_report_drafts"],
+  ["flag_notes", "deal_flag_notes"],
+  ["ownership", "deal_ownership"],
+  ["advance_reasons", "deal_advance_reasons"],
+  ["aliases", "deal_aliases"],
+  ["access_requests", "deal_access_requests"],
+  ["audit_log", "deal_audit_log"],
+  ["checklist_status", "deal_checklist_status"],
+  ["attachments", "deal_attachments"],
+  ["writeups", "deal_writeups"],
+  ["memos", "deal_memos"],
+  ["memo_approvals", "deal_memo_approvals"],
+  ["memo_comments", "deal_memo_comments"],
+  ["memo_views", "deal_memo_views"],
+  ["memo_audit_logs", "deal_memo_audit_logs"],
+  ["notes", "deal_space_notes"],
+  ["space_documents", "deal_space_documents"],
+  ["space_conversations", "deal_space_conversations"],
+  ["space_financials", "deal_space_financials"],
+  ["financial_data", "deal_financial_data"],
+  ["financial_files", "deal_financial_files"],
+  ["financial_insights", "deal_financial_insights"],
+  ["computed_metrics", "deal_computed_metrics"],
+  ["drive_folders", "deal_drive_folders"],
+  ["data_room_folders", "deal_data_room_custom_folders"],
+  ["document_exclusions", "deal_document_exclusions"],
+  ["emails", "deal_emails"],
+  ["email_prompts", "deal_email_prompts"],
+  ["client_requests", "client_requests"],
+  ["meeting_history", "deal_meeting_history"],
+  ["meeting_links", "meeting_deal_links"],
+  ["meeting_holds", "meeting_holds"],
+  ["call_transcripts", "deal_call_transcripts"],
+  ["claap_recordings", "deal_claap_recordings"],
+  ["calendar_items", "deal_calendar_items"],
+  ["activity", "deal_activity"],
+  ["ai_settings", "deal_ai_settings"],
+  ["ai_status_snapshots", "deal_ai_status_snapshots"],
+  ["research_cache", "deal_research_cache"],
+  ["fit_profiles", "deal_fit_profiles"],
+  ["kpi_links", "deal_kpi_links"],
+  ["saas_model", "deal_saas_model"],
+  ["saas_mappings", "deal_saas_mappings"],
+  ["saas_sensitivity", "deal_saas_sensitivity"],
+  ["finserv_projects", "finserv_deal_projects"],
+  ["lender_recommendation_exclusions", "deal_lender_recommendation_exclusions"],
+  ["pending_suggestions", "pending_deal_suggestions"],
+  ["pending_notifications", "pending_deal_notifications"]
+];
+var CHILD_ROW_LIMIT = 200;
 var get_deal_default = defineTool3({
   name: "get_deal",
   title: "Get deal",
-  description: "Fetch a single deal by id with its full record, linked client contacts, recent status notes, tasks, and attached lenders. Client contacts include name, email, job title, and is_primary. The deal includes stage_label / pipeline_name resolved from the deal's assigned pipeline \u2014 always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
+  description: "Fetch a single deal by id with its full record, linked client contacts, recent status notes, tasks, and attached lenders. Set include_related=true to also return everything attached to the deal: milestones, stage history and stage notes, status notes and report drafts, flag notes, ownership, checklist status, attachments, write-ups, memos (with approvals, comments, views, audit), deal-space notes/documents/conversations/messages, financial data, files, insights and computed metrics, drive and data-room folders, emails and email prompts, client requests, meeting history, links, holds, call transcripts and Claap recordings, calendar items, activity, AI settings and snapshots, research cache, fit profiles, KPI links, SaaS/FinServ models, and task detail (comments, attachments, collaborators, followers, time entries, activity). Always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
   inputSchema: {
     deal_id: z3.string().uuid(),
     include_tasks: z3.boolean().default(true),
-    include_lenders: z3.boolean().default(true)
+    include_lenders: z3.boolean().default(true),
+    include_related: z3.boolean().default(false),
+    include_task_detail: z3.boolean().default(false)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, include_tasks, include_lenders }, ctx) => {
+  handler: async ({ deal_id, include_tasks, include_lenders, include_related, include_task_detail }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
@@ -505,11 +636,77 @@ var get_deal_default = defineTool3({
       }).filter((contact) => contact !== null).sort((a, b) => Number(b.is_primary) - Number(a.is_primary));
     }
     const [dealWithLabels] = await withStageLabels(sb, [deal]);
+    const related = {};
+    if (include_related) {
+      const results = await Promise.all(
+        DEAL_CHILD_TABLES.map(async ([key, table]) => {
+          const { data, error: childError } = await sb.from(table).select("*").eq("deal_id", deal_id).limit(CHILD_ROW_LIMIT);
+          if (childError) return [key, { error: childError.message }];
+          return [key, data ?? []];
+        })
+      );
+      for (const [key, value] of results) {
+        if (Array.isArray(value) && value.length === 0) continue;
+        related[key] = value;
+      }
+      const noteIds = (related.notes ?? []).map((r) => r.id).filter(Boolean);
+      const conversationIds = (related.space_conversations ?? []).map((r) => r.id).filter(Boolean);
+      const documentIds = (related.space_documents ?? []).map((r) => r.id).filter(Boolean);
+      const nested = [
+        ["note_versions", "deal_space_note_versions", "note_id", noteIds],
+        ["note_comments", "deal_space_note_comments", "note_id", noteIds],
+        ["space_messages", "deal_space_messages", "conversation_id", conversationIds],
+        ["document_summaries", "deal_space_document_summaries", "document_id", documentIds]
+      ];
+      await Promise.all(
+        nested.map(async ([key, table, column, ids]) => {
+          if (ids.length === 0) return;
+          const { data, error: nestedError } = await sb.from(table).select("*").in(column, ids.slice(0, CHILD_ROW_LIMIT)).limit(500);
+          if (nestedError) {
+            related[key] = { error: nestedError.message };
+            return;
+          }
+          if ((data ?? []).length > 0) related[key] = data;
+        })
+      );
+    }
+    let taskDetail;
+    if (include_task_detail) {
+      const taskIds = (tasksRes.data ?? []).map((t) => t.id).filter(Boolean);
+      taskDetail = {};
+      if (taskIds.length > 0) {
+        const taskChildren = [
+          ["comments", "task_comments"],
+          ["attachments", "task_attachments"],
+          ["collaborators", "task_collaborators"],
+          ["followers", "task_followers"],
+          ["watchers", "task_watchers"],
+          ["mentions", "task_mentions"],
+          ["dependencies", "task_dependencies"],
+          ["label_assignments", "task_label_assignments"],
+          ["tag_assignments", "task_tag_assignments"],
+          ["time_entries", "task_time_entries"],
+          ["activity", "task_activity"]
+        ];
+        await Promise.all(
+          taskChildren.map(async ([key, table]) => {
+            const { data, error: taskError } = await sb.from(table).select("*").in("task_id", taskIds).limit(500);
+            if (taskError) {
+              taskDetail[key] = { error: taskError.message };
+              return;
+            }
+            if ((data ?? []).length > 0) taskDetail[key] = data;
+          })
+        );
+      }
+    }
     return textResult({
       deal: dealWithLabels,
       client_contacts: clientContacts,
       tasks: tasksRes.data ?? [],
-      lenders: lendersRes.data ?? []
+      lenders: lendersRes.data ?? [],
+      ...include_related ? { related } : {},
+      ...taskDetail ? { task_detail: taskDetail } : {}
     });
   }
 });

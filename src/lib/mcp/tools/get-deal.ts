@@ -15,17 +15,78 @@ function contactName(contact: {
   return contact.email ?? "Unnamed contact";
 }
 
+/** Tables that hang directly off a deal via `deal_id`. */
+const DEAL_CHILD_TABLES: Array<[key: string, table: string]> = [
+  ["milestones", "deal_milestones"],
+  ["stage_history", "deal_stage_history"],
+  ["stage_history_notes", "deal_stage_history_notes"],
+  ["status_notes", "deal_status_notes"],
+  ["status_report_drafts", "deal_status_report_drafts"],
+  ["flag_notes", "deal_flag_notes"],
+  ["ownership", "deal_ownership"],
+  ["advance_reasons", "deal_advance_reasons"],
+  ["aliases", "deal_aliases"],
+  ["access_requests", "deal_access_requests"],
+  ["audit_log", "deal_audit_log"],
+  ["checklist_status", "deal_checklist_status"],
+  ["attachments", "deal_attachments"],
+  ["writeups", "deal_writeups"],
+  ["memos", "deal_memos"],
+  ["memo_approvals", "deal_memo_approvals"],
+  ["memo_comments", "deal_memo_comments"],
+  ["memo_views", "deal_memo_views"],
+  ["memo_audit_logs", "deal_memo_audit_logs"],
+  ["notes", "deal_space_notes"],
+  ["space_documents", "deal_space_documents"],
+  ["space_conversations", "deal_space_conversations"],
+  ["space_financials", "deal_space_financials"],
+  ["financial_data", "deal_financial_data"],
+  ["financial_files", "deal_financial_files"],
+  ["financial_insights", "deal_financial_insights"],
+  ["computed_metrics", "deal_computed_metrics"],
+  ["drive_folders", "deal_drive_folders"],
+  ["data_room_folders", "deal_data_room_custom_folders"],
+  ["document_exclusions", "deal_document_exclusions"],
+  ["emails", "deal_emails"],
+  ["email_prompts", "deal_email_prompts"],
+  ["client_requests", "client_requests"],
+  ["meeting_history", "deal_meeting_history"],
+  ["meeting_links", "meeting_deal_links"],
+  ["meeting_holds", "meeting_holds"],
+  ["call_transcripts", "deal_call_transcripts"],
+  ["claap_recordings", "deal_claap_recordings"],
+  ["calendar_items", "deal_calendar_items"],
+  ["activity", "deal_activity"],
+  ["ai_settings", "deal_ai_settings"],
+  ["ai_status_snapshots", "deal_ai_status_snapshots"],
+  ["research_cache", "deal_research_cache"],
+  ["fit_profiles", "deal_fit_profiles"],
+  ["kpi_links", "deal_kpi_links"],
+  ["saas_model", "deal_saas_model"],
+  ["saas_mappings", "deal_saas_mappings"],
+  ["saas_sensitivity", "deal_saas_sensitivity"],
+  ["finserv_projects", "finserv_deal_projects"],
+  ["lender_recommendation_exclusions", "deal_lender_recommendation_exclusions"],
+  ["pending_suggestions", "pending_deal_suggestions"],
+  ["pending_notifications", "pending_deal_notifications"],
+];
+
+const CHILD_ROW_LIMIT = 200;
+
 export default defineTool({
   name: "get_deal",
   title: "Get deal",
-  description: "Fetch a single deal by id with its full record, linked client contacts, recent status notes, tasks, and attached lenders. Client contacts include name, email, job title, and is_primary. The deal includes stage_label / pipeline_name resolved from the deal's assigned pipeline — always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
+  description:
+    "Fetch a single deal by id with its full record, linked client contacts, recent status notes, tasks, and attached lenders. Set include_related=true to also return everything attached to the deal: milestones, stage history and stage notes, status notes and report drafts, flag notes, ownership, checklist status, attachments, write-ups, memos (with approvals, comments, views, audit), deal-space notes/documents/conversations/messages, financial data, files, insights and computed metrics, drive and data-room folders, emails and email prompts, client requests, meeting history, links, holds, call transcripts and Claap recordings, calendar items, activity, AI settings and snapshots, research cache, fit profiles, KPI links, SaaS/FinServ models, and task detail (comments, attachments, collaborators, followers, time entries, activity). Always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
   inputSchema: {
     deal_id: z.string().uuid(),
     include_tasks: z.boolean().default(true),
     include_lenders: z.boolean().default(true),
+    include_related: z.boolean().default(false),
+    include_task_detail: z.boolean().default(false),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, include_tasks, include_lenders }, ctx) => {
+  handler: async ({ deal_id, include_tasks, include_lenders, include_related, include_task_detail }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
@@ -95,11 +156,101 @@ export default defineTool({
     }
 
     const [dealWithLabels] = await withStageLabels(sb, [deal as Record<string, unknown> & { stage?: string | null; pipeline_id?: string | null }]);
+
+    const related: Record<string, unknown> = {};
+    if (include_related) {
+      const results = await Promise.all(
+        DEAL_CHILD_TABLES.map(async ([key, table]) => {
+          const { data, error: childError } = await (sb as any)
+            .from(table)
+            .select("*")
+            .eq("deal_id", deal_id)
+            .limit(CHILD_ROW_LIMIT);
+          // A missing or RLS-blocked child table must never fail the whole lookup.
+          if (childError) return [key, { error: childError.message }] as const;
+          return [key, data ?? []] as const;
+        }),
+      );
+      for (const [key, value] of results) {
+        if (Array.isArray(value) && value.length === 0) continue;
+        related[key] = value;
+      }
+
+      // Second-level children that hang off deal-space rows rather than the deal.
+      const noteIds = ((related.notes as Array<{ id?: string }> | undefined) ?? [])
+        .map((r) => r.id)
+        .filter(Boolean) as string[];
+      const conversationIds = ((related.space_conversations as Array<{ id?: string }> | undefined) ?? [])
+        .map((r) => r.id)
+        .filter(Boolean) as string[];
+      const documentIds = ((related.space_documents as Array<{ id?: string }> | undefined) ?? [])
+        .map((r) => r.id)
+        .filter(Boolean) as string[];
+      const nested: Array<[string, string, string, string[]]> = [
+        ["note_versions", "deal_space_note_versions", "note_id", noteIds],
+        ["note_comments", "deal_space_note_comments", "note_id", noteIds],
+        ["space_messages", "deal_space_messages", "conversation_id", conversationIds],
+        ["document_summaries", "deal_space_document_summaries", "document_id", documentIds],
+      ];
+      await Promise.all(
+        nested.map(async ([key, table, column, ids]) => {
+          if (ids.length === 0) return;
+          const { data, error: nestedError } = await (sb as any)
+            .from(table)
+            .select("*")
+            .in(column, ids.slice(0, CHILD_ROW_LIMIT))
+            .limit(500);
+          if (nestedError) {
+            related[key] = { error: nestedError.message };
+            return;
+          }
+          if ((data ?? []).length > 0) related[key] = data;
+        }),
+      );
+    }
+
+    let taskDetail: Record<string, unknown> | undefined;
+    if (include_task_detail) {
+      const taskIds = ((tasksRes.data ?? []) as Array<{ id?: string }>).map((t) => t.id).filter(Boolean) as string[];
+      taskDetail = {};
+      if (taskIds.length > 0) {
+        const taskChildren: Array<[string, string]> = [
+          ["comments", "task_comments"],
+          ["attachments", "task_attachments"],
+          ["collaborators", "task_collaborators"],
+          ["followers", "task_followers"],
+          ["watchers", "task_watchers"],
+          ["mentions", "task_mentions"],
+          ["dependencies", "task_dependencies"],
+          ["label_assignments", "task_label_assignments"],
+          ["tag_assignments", "task_tag_assignments"],
+          ["time_entries", "task_time_entries"],
+          ["activity", "task_activity"],
+        ];
+        await Promise.all(
+          taskChildren.map(async ([key, table]) => {
+            const { data, error: taskError } = await (sb as any)
+              .from(table)
+              .select("*")
+              .in("task_id", taskIds)
+              .limit(500);
+            if (taskError) {
+              taskDetail![key] = { error: taskError.message };
+              return;
+            }
+            if ((data ?? []).length > 0) taskDetail![key] = data;
+          }),
+        );
+      }
+    }
+
     return textResult({
       deal: dealWithLabels,
       client_contacts: clientContacts,
       tasks: tasksRes.data ?? [],
       lenders: lendersRes.data ?? [],
+      ...(include_related ? { related } : {}),
+      ...(taskDetail ? { task_detail: taskDetail } : {}),
     });
   },
 });
