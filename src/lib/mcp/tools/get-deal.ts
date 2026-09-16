@@ -156,11 +156,101 @@ export default defineTool({
     }
 
     const [dealWithLabels] = await withStageLabels(sb, [deal as Record<string, unknown> & { stage?: string | null; pipeline_id?: string | null }]);
+
+    const related: Record<string, unknown> = {};
+    if (include_related) {
+      const results = await Promise.all(
+        DEAL_CHILD_TABLES.map(async ([key, table]) => {
+          const { data, error: childError } = await (sb as any)
+            .from(table)
+            .select("*")
+            .eq("deal_id", deal_id)
+            .limit(CHILD_ROW_LIMIT);
+          // A missing or RLS-blocked child table must never fail the whole lookup.
+          if (childError) return [key, { error: childError.message }] as const;
+          return [key, data ?? []] as const;
+        }),
+      );
+      for (const [key, value] of results) {
+        if (Array.isArray(value) && value.length === 0) continue;
+        related[key] = value;
+      }
+
+      // Second-level children that hang off deal-space rows rather than the deal.
+      const noteIds = ((related.notes as Array<{ id?: string }> | undefined) ?? [])
+        .map((r) => r.id)
+        .filter(Boolean) as string[];
+      const conversationIds = ((related.space_conversations as Array<{ id?: string }> | undefined) ?? [])
+        .map((r) => r.id)
+        .filter(Boolean) as string[];
+      const documentIds = ((related.space_documents as Array<{ id?: string }> | undefined) ?? [])
+        .map((r) => r.id)
+        .filter(Boolean) as string[];
+      const nested: Array<[string, string, string, string[]]> = [
+        ["note_versions", "deal_space_note_versions", "note_id", noteIds],
+        ["note_comments", "deal_space_note_comments", "note_id", noteIds],
+        ["space_messages", "deal_space_messages", "conversation_id", conversationIds],
+        ["document_summaries", "deal_space_document_summaries", "document_id", documentIds],
+      ];
+      await Promise.all(
+        nested.map(async ([key, table, column, ids]) => {
+          if (ids.length === 0) return;
+          const { data, error: nestedError } = await (sb as any)
+            .from(table)
+            .select("*")
+            .in(column, ids.slice(0, CHILD_ROW_LIMIT))
+            .limit(500);
+          if (nestedError) {
+            related[key] = { error: nestedError.message };
+            return;
+          }
+          if ((data ?? []).length > 0) related[key] = data;
+        }),
+      );
+    }
+
+    let taskDetail: Record<string, unknown> | undefined;
+    if (include_task_detail) {
+      const taskIds = ((tasksRes.data ?? []) as Array<{ id?: string }>).map((t) => t.id).filter(Boolean) as string[];
+      taskDetail = {};
+      if (taskIds.length > 0) {
+        const taskChildren: Array<[string, string]> = [
+          ["comments", "task_comments"],
+          ["attachments", "task_attachments"],
+          ["collaborators", "task_collaborators"],
+          ["followers", "task_followers"],
+          ["watchers", "task_watchers"],
+          ["mentions", "task_mentions"],
+          ["dependencies", "task_dependencies"],
+          ["label_assignments", "task_label_assignments"],
+          ["tag_assignments", "task_tag_assignments"],
+          ["time_entries", "task_time_entries"],
+          ["activity", "task_activity"],
+        ];
+        await Promise.all(
+          taskChildren.map(async ([key, table]) => {
+            const { data, error: taskError } = await (sb as any)
+              .from(table)
+              .select("*")
+              .in("task_id", taskIds)
+              .limit(500);
+            if (taskError) {
+              taskDetail![key] = { error: taskError.message };
+              return;
+            }
+            if ((data ?? []).length > 0) taskDetail![key] = data;
+          }),
+        );
+      }
+    }
+
     return textResult({
       deal: dealWithLabels,
       client_contacts: clientContacts,
       tasks: tasksRes.data ?? [],
       lenders: lendersRes.data ?? [],
+      ...(include_related ? { related } : {}),
+      ...(taskDetail ? { task_detail: taskDetail } : {}),
     });
   },
 });
