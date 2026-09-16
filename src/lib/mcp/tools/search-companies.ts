@@ -11,17 +11,29 @@ export default defineTool({
   name: "search_companies",
   title: "Search companies",
   description:
-    "Search CRM companies by name, domain or website. Paginated: returns total_count/returned/offset/next_offset/has_more. Pass `fields: \"*\"` for every column on the company record, or a comma-separated column list; defaults to a summary set. Omit `query` to browse all companies.",
+    "Search CRM companies by name, domain or website, with optional filters (industry, company_type, status, lifecycle_stage, city, state, country, tag, owner, has_deals). Paginated: returns total_count/returned/offset/next_offset/has_more. Pass `fields: \"*\"` for every column on the company record, or a comma-separated column list; defaults to a summary set. Omit `query` to browse all companies. Use `get_company` for one company's full record plus contacts, deals, activity history and attachments.",
   inputSchema: {
     query: z.string().trim().min(1).max(200).optional(),
     fields: z.string().trim().max(4000).optional().describe('"*" for all columns, or a comma-separated column list.'),
+    industry: z.string().trim().max(120).optional().describe("Case-insensitive partial match on industry or sub_industry."),
+    company_type: z.string().trim().max(120).optional(),
+    status: z.string().trim().max(120).optional(),
+    lifecycle_stage: z.string().trim().max(120).optional(),
+    city: z.string().trim().max(120).optional(),
+    state: z.string().trim().max(120).optional(),
+    country: z.string().trim().max(120).optional(),
+    tag: z.string().trim().max(120).optional().describe("Match a single tag in the company's tags array."),
+    owner_user_id: z.string().uuid().optional(),
     limit: z.number().int().min(1).max(500).default(50),
     offset: z.number().int().min(0).default(0),
     order_by: z.string().trim().max(80).default("created_at"),
     ascending: z.boolean().default(false),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ query, fields, limit, offset, order_by, ascending }, ctx) => {
+  handler: async (
+    { query, fields, industry, company_type, status, lifecycle_stage, city, state, country, tag, owner_user_id, limit, offset, order_by, ascending },
+    ctx,
+  ) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
@@ -47,6 +59,15 @@ export default defineTool({
       const like = `%${query}%`;
       q = q.or(`name.ilike.${like},domain.ilike.${like},website_url.ilike.${like}`);
     }
+    if (industry) q = q.or(`industry.ilike.%${industry}%,sub_industry.ilike.%${industry}%`);
+    if (company_type) q = q.ilike("company_type", company_type);
+    if (status) q = q.ilike("status", status);
+    if (lifecycle_stage) q = q.ilike("lifecycle_stage", lifecycle_stage);
+    if (city) q = q.ilike("hq_city", `%${city}%`);
+    if (state) q = q.ilike("hq_state", `%${state}%`);
+    if (country) q = q.ilike("hq_country", `%${country}%`);
+    if (tag) q = q.contains("tags", [tag]);
+    if (owner_user_id) q = q.eq("owner_user_id", owner_user_id);
     if (order_by) q = q.order(order_by, { ascending, nullsFirst: false });
 
     const { data, error, count } = await q;
