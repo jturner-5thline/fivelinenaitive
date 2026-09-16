@@ -453,7 +453,49 @@ var INSIGHTS_DATASETS = [
   "wf_meeting_notes",
   // Reporting views
   "v_deal_owner_resolution",
-  "v_deal_stage_transitions"
+  "v_deal_stage_transitions",
+  // Contact communications — mail, threads, drafts, sends, labels, templates
+  "emails",
+  "email_threads",
+  "email_thread_labels",
+  "email_labels",
+  "email_label_assignments",
+  "email_label_rules",
+  "email_drafts",
+  "staged_email_drafts",
+  "scheduled_emails",
+  "email_send_log",
+  "email_send_state",
+  "email_analysis",
+  "email_cadence_jobs",
+  "email_cadence_profiles",
+  "email_templates",
+  "email_templates_v2",
+  "outbound_email_templates",
+  "email_snippets",
+  "email_block_library",
+  "email_workflows",
+  "email_workflow_events",
+  "email_distribution_stats",
+  "email_priority_signal_log",
+  "email_intelligence_settings",
+  "user_email_preferences",
+  "user_email_ai_preferences",
+  "suppressed_emails",
+  "email_suppression_log",
+  "pending_mention_emails",
+  "claap_call_email_drafts",
+  "gmail_messages",
+  "gmail_sent_messages",
+  "ms_synced_emails",
+  // Referral / channel attribution
+  "referral_sources",
+  "channel_entries",
+  "channel_types",
+  "partner_channel_types",
+  // Contact AI actions and meeting participation
+  "ai_action_log",
+  "event_claap_recordings"
 ];
 var DASHBOARD_OPTIONS = [
   { id: "management-snapshot", name: "Weekly Rundown", isFavorite: true, folder: "management-insights" },
@@ -956,7 +998,17 @@ var CHILD_TABLES = [
   { table: "crm_contact_attachments", column: "contact_id", key: "attachments", limit: 200 },
   { table: "lender_contacts", column: "contact_id", key: "lender_links", limit: 100 },
   { table: "partner_contacts", column: "contact_id", key: "partner_links", limit: 100 },
-  { table: "crm_company_activities", column: "contact_id", key: "company_activities", limit: 200 }
+  { table: "crm_company_activities", column: "contact_id", key: "company_activities", limit: 200 },
+  { table: "tasks", column: "contact_id", key: "tasks", limit: 300, order: "created_at" },
+  { table: "channel_entries", column: "contact_id", key: "channel_entries", limit: 100 },
+  { table: "referral_sources", column: "contact_id", key: "referral_sources", limit: 100 },
+  { table: "ai_action_log", column: "contact_id", key: "ai_actions", limit: 300, order: "created_at" },
+  {
+    table: "claap_meeting_participants",
+    column: "contact_id",
+    key: "meeting_participation",
+    limit: 300
+  }
 ];
 var get_contact_default = defineTool9({
   name: "get_contact",
@@ -1039,6 +1091,27 @@ var get_contact_default = defineTool9({
           related[key] = error ? { error: error.message } : data ?? [];
         })
       );
+      const addr = String(contact.email ?? "").trim().toLowerCase();
+      if (addr) {
+        const mailSources = [
+          { table: "emails", key: "emails_received", order: "received_at" },
+          { table: "gmail_messages", key: "gmail_messages", order: "received_at" },
+          { table: "gmail_sent_messages", key: "gmail_sent_messages", order: "sent_at" }
+        ];
+        await Promise.all(
+          mailSources.map(async ({ table, key, order }) => {
+            const { data, error } = await sb.from(table).select("*").or(`from_email.ilike.${addr},to_emails.cs.{"${addr}"}`).order(order, { ascending: false, nullsFirst: false }).limit(200);
+            if (!error) {
+              related[key] = data ?? [];
+              return;
+            }
+            const { data: toData, error: toErr } = await sb.from(table).select("*").contains("to_emails", [addr]).limit(200);
+            related[key] = toErr ? { error: toErr.message } : toData ?? [];
+          })
+        );
+      }
+      const { data: recordings, error: recErr } = await sb.from("event_claap_recordings").select("*").contains("contact_ids", [id]).limit(200);
+      related.claap_recordings = recErr ? { error: recErr.message } : recordings ?? [];
       payload.related = related;
     }
     return textResult(payload, {
