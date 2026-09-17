@@ -3983,14 +3983,17 @@ aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
 
 /* Status + stage controls sit side by side and together span the rail width. */
 .deal-rail-statusstage {
-  display: flex !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
   width: 100% !important;
 }
 .deal-rail-statusstage > .deal-rail-control,
 .deal-detail-surface .deal-rail-statusstage > .deal-rail-control {
   flex: 1 1 0% !important;
   min-width: 0 !important;
-  width: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
   justify-content: center !important;
   padding: 0 6px !important;
   font-size: 11px !important;
@@ -4007,9 +4010,6 @@ aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
 .deal-rail-statusstage {
   max-width: 100% !important;
   overflow: hidden !important;
-}
-.deal-rail-statusstage > .deal-rail-control {
-  max-width: 50% !important;
 }
 .deal-rail-statusstage .deal-stage-chip,
 .deal-rail-statusstage .deal-rail-control > span,
