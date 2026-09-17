@@ -3223,9 +3223,10 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   [data-slot="select-trigger"],
   button[data-state]
 ):not(textarea):not(.status-note-editor):not([class*="rounded-full"]) {
-  background-color: #171b2c !important;
+  background-color: rgba(255, 255, 255, 0.03) !important;
   background-image: none !important;
-  border: 1px solid rgba(157, 162, 245, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0.5rem !important;
   color: #ffffff !important;
 }
 
