@@ -203,7 +203,7 @@ export default {
   		},
   		fontFamily: {
   			sans: [
-  				'Figtree',
+  				'Inter',
   				'ui-sans-serif',
   				'system-ui',
   				'sans-serif',
@@ -213,6 +213,7 @@ export default {
   				'Noto Color Emoji'
   			],
   			mono: [
+  				'JetBrains Mono',
   				'ui-monospace',
   				'SFMono-Regular',
   				'Menlo',
@@ -222,20 +223,27 @@ export default {
   				'Courier New',
   				'monospace'
   			],
+  			/* Serif is intentionally aliased to Inter: the system has no serif face. */
   			serif: [
-  				'Playfair Display',
-  				'ui-serif',
-  				'Georgia',
-  				'Cambria',
-  				'Times New Roman',
-  				'Times',
-  				'serif'
+  				'Inter',
+  				'ui-sans-serif',
+  				'system-ui',
+  				'sans-serif'
   			]
   		},
+  		spacing: {
+  			'ds-1': 'var(--space-1)',
+  			'ds-2': 'var(--space-2)',
+  			'ds-3': 'var(--space-3)',
+  			'ds-4': 'var(--space-4)',
+  			'ds-5': 'var(--space-5)',
+  			'ds-6': 'var(--space-6)',
+  			'ds-7': 'var(--space-7)'
+  		},
   		fontSize: {
-  			display: ['2rem', { lineHeight: '1.2', fontWeight: '600' }],
-  			heading: ['1.5rem', { lineHeight: '1.2', fontWeight: '600' }],
-  			subheading: ['1.125rem', { lineHeight: '1.4', fontWeight: '500' }]
+  			display: ['1.75rem', { lineHeight: '1.2', fontWeight: '600', letterSpacing: '-0.02em' }],
+  			heading: ['1.25rem', { lineHeight: '1.2', fontWeight: '600', letterSpacing: '-0.01em' }],
+  			subheading: ['1rem', { lineHeight: '1.35', fontWeight: '600', letterSpacing: '-0.01em' }]
   		}
   	}
   },
