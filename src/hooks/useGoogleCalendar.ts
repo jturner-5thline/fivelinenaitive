@@ -140,7 +140,19 @@ export function useGoogleCalendar() {
         setIsStatusLoading(false);
         return;
       }
-      const { data, error } = await supabase.functions.invoke('calendar-status');
+      let { data, error } = await supabase.functions.invoke('calendar-status');
+
+      // An expired/stale access token makes the function reply 401 "Invalid
+      // token". Refresh the session once and retry before giving up.
+      if (error && /401|Unauthorized|Invalid token/i.test(error.message || '')) {
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        if (!refreshed?.session?.access_token) {
+          setIsStatusLoading(false);
+          return;
+        }
+        ({ data, error } = await supabase.functions.invoke('calendar-status'));
+      }
+
       if (error) throw error;
       setStatus(data);
       writeCache(cacheKey, { status: data  });
