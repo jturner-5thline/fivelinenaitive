@@ -3940,3 +3940,28 @@ aside[aria-label="Deal context"] button[role="combobox"]:hover {
   background-color: rgba(255, 255, 255, 0.055) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
+
+/* Portaled Deal Information fields (deal manager, type, engagement, etc.) */
+.deal-info-railed-card input,
+.deal-info-railed-card textarea,
+.deal-info-railed-card button[role="combobox"],
+.deal-info-railed-card [data-radix-select-trigger],
+.deal-info-railed-card button[aria-haspopup="dialog"],
+.deal-info-railed-card button[aria-haspopup="listbox"],
+aside[aria-label="Deal context"] button[aria-haspopup="dialog"],
+aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  background-image: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: none !important;
+}
+
+.deal-info-railed-card input:hover,
+.deal-info-railed-card textarea:hover,
+.deal-info-railed-card button[role="combobox"]:hover,
+.deal-info-railed-card button[aria-haspopup="dialog"]:hover,
+.deal-info-railed-card button[aria-haspopup="listbox"]:hover {
+  background-color: rgba(255, 255, 255, 0.055) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
