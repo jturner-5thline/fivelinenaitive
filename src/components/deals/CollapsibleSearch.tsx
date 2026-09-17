@@ -78,7 +78,7 @@ export function CollapsibleSearch({ value, onChange, debounceMs = 350 }: Collaps
   return (
     <div
       ref={containerRef}
-      className="relative inline-flex items-center h-9 w-[180px] rounded-md border border-input bg-background text-sm transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
+      className="relative flex items-center h-9 w-full rounded-md border border-input bg-background text-sm transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
     >
       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <input
