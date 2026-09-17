@@ -191,13 +191,17 @@ export function DealFilters({
 
   return (
     <div className="space-y-3">
+      {/* Search is docked to the top-left corner, just right of the logo. */}
+      {createPortal(
+        <div className="fixed left-[196px] top-[21px] z-[1001]">
+          <CollapsibleSearch
+            value={filters.search}
+            onChange={(value) => onFilterChange({ search: value })}
+          />
+        </div>,
+        document.body,
+      )}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Search */}
-        <CollapsibleSearch
-          value={filters.search}
-          onChange={(value) => onFilterChange({ search: value })}
-        />
-
         {afterSearchSlot}
 
         {/* Consolidated Filters Popover */}
