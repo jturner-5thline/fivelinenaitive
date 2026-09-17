@@ -71,20 +71,8 @@ export function CollapsibleSearch({ value, onChange, debounceMs = 350 }: Collaps
     setExpanded(false);
   };
 
-  // Collapsed: render an actual Button matching Filters button exactly
-  if (!isActive) {
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        className="gap-2 h-9 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
-        onClick={() => setExpanded(true)}
-        aria-label="Search deals"
-      >
-        <Search className="h-4 w-4" />
-      </Button>
-    );
-  }
+  // Always rendered as an open search box.
+
 
   // Expanded: input styled to match the Button's border/height/radius
   return (
