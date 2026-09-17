@@ -471,7 +471,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
       type="button"
       variant="liquid-glass"
       size="sm"
-      className="gap-2"
+      className="gap-2 h-9"
       onPointerDownCapture={(e) => {
         if (shouldIgnoreOverlayOriginEvent(e, e.currentTarget)) {
           e.preventDefault();
