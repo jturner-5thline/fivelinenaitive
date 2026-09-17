@@ -377,12 +377,13 @@ export function DealsHeader() {
     { label: 'Mail' as const, isOpen: isMailOpen, open: () => setIsMailOpen(true), close: () => setIsMailOpen(false), available: true },
     { label: 'Dashboard' as const, isOpen: isBriefingOpen, open: () => setIsBriefingOpen(true), close: () => setIsBriefingOpen(false), available: canSeeBriefingHeaderItems },
     {
-      // Opens the exact same dashboard pop-up as the Dashboard icon.
+      // Available to every account. Internal users get the dashboard
+      // pop-up on its Tasks tab; everyone else gets the Tasks overlay.
       label: 'Tasks' as const,
-      isOpen: isBriefingOpen,
-      open: () => setIsBriefingOpen(true),
-      close: () => setIsBriefingOpen(false),
-      available: canSeeBriefingHeaderItems,
+      isOpen: canSeeBriefingHeaderItems ? isBriefingOpen : isTasksListOpen,
+      open: () => (canSeeBriefingHeaderItems ? setIsBriefingOpen(true) : setIsTasksListOpen(true)),
+      close: () => (canSeeBriefingHeaderItems ? setIsBriefingOpen(false) : setIsTasksListOpen(false)),
+      available: true,
     },
     {
       // Opens the exact same dashboard pop-up as the Dashboard icon.
