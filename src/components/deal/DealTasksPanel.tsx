@@ -142,13 +142,24 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
       <Card className="deal-tasks-panel-card h-full w-full flex flex-col">
         {/* ── Header ── fixed height, vertically centered */}
         <CardHeader className="flex flex-row items-center justify-between min-h-[44px] h-[44px] py-0 px-4 space-y-0 shrink-0 cursor-pointer hover:bg-white/5 transition-colors" onClick={() => setIsOpen(o => !o)}>
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2 shrink-0">
             Tasks
             {pendingTasks.length > 0 && !isOpen && (
               <Badge variant="secondary" className="text-[10px] h-5 font-normal">{pendingTasks.length} open</Badge>
             )}
           </CardTitle>
-          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          {isOpen && (
+            <div className="flex-1 min-w-0 px-2" onClick={(e) => e.stopPropagation()}>
+              <Input
+                placeholder="Search tasks..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') setSearchQuery(''); }}
+                className="h-7 w-full min-w-0 text-xs"
+              />
+            </div>
+          )}
+          <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
             <ToggleGroup
               type="single"
               value={statusFilter === 'all' ? 'all' : ''}
@@ -164,20 +175,8 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
 
         {/* ── Body ── flex-1 so it fills remaining card height */}
         {isOpen && (
-          <CardContent className="flex-1 flex flex-col px-4 pb-4 pt-0 space-y-0 min-h-0">
-            {/* Search row — mirrors the Outstanding Items search bar (size + offset)
-                so the first task tile lines up with the first outstanding item tile. */}
-            <div className="shrink-0 pt-0 pb-2">
-              <div className="relative">
-                <Input
-                  placeholder="Search tasks..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Escape') setSearchQuery(''); }}
-                  className="h-8 w-full text-xs"
-                />
-              </div>
-            </div>
+          <CardContent className="flex-1 flex flex-col px-4 pb-4 pt-2 space-y-0 min-h-0">
+
             {isLoading && tasks.length === 0 ? (
               <div className="flex-1 flex items-center justify-center">
                 <p className="text-xs text-muted-foreground">Loading tasks…</p>
