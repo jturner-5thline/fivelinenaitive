@@ -176,7 +176,7 @@ export function NotificationsDropdown() {
             <Badge 
               variant={hasAlerts ? "destructive" : "secondary"}
               className={cn(
-                "absolute -top-1 -right-1 h-5 min-w-[20px] px-1 text-xs",
+                "notif-count absolute -top-1 -right-1",
                 hasAlerts && "animate-pulse"
               )}
             >

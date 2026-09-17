@@ -3781,7 +3781,7 @@ export default function DealDetail() {
                       >
                         <Flag className={`h-5 w-5 ${activeFlagCount > 0 ? 'fill-current' : ''}`} />
                         {activeFlagCount > 1 && (
-                          <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center px-0.5">
+                          <span className="notif-count absolute -top-0.5 -right-0.5">
                             {activeFlagCount}
                           </span>
                         )}
@@ -6236,7 +6236,7 @@ export default function DealDetail() {
                         >
                           Management
                           {infoRequestActionCount > 0 && (
-                            <Badge variant="destructive" className="h-[18px] min-w-[18px] px-1 text-[11px] leading-none rounded-full justify-center">
+                            <Badge variant="destructive" className="notif-count">
                               {infoRequestActionCount}
                             </Badge>
                           )}
