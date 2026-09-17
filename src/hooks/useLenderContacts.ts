@@ -115,7 +115,14 @@ export function useLenderContacts(lenderId: string | null) {
           country: contact.country,
         },
         { userId: user.id, orgCompanyId: company?.id ?? null, existingContactId: crmContactId ?? null },
-      );
+      ).then((res) => {
+        if (res?.contactId && !(data as any).contact_id) {
+          void supabase
+            .from('lender_contacts')
+            .update({ contact_id: res.contactId } as any)
+            .eq('id', (data as LenderContact).id);
+        }
+      });
       return newContact;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to add contact';
