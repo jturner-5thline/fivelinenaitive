@@ -702,7 +702,7 @@ export default function Dashboard() {
           </>
         }
         headerActions={
-          <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+          <div className="flex items-center gap-1.5 flex-wrap shrink-0 mr-2">
             <LatestUpdatesDropdown />
             <Tooltip>
               <DropdownMenu>
