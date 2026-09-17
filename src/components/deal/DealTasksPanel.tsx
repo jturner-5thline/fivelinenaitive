@@ -168,7 +168,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
 
         {/* ── Body ── flex-1 so it fills remaining card height */}
         {isOpen && (
-          <CardContent className="flex-1 flex flex-col px-4 pb-4 pt-0 space-y-3 min-h-0">
+          <CardContent className="flex-1 flex flex-col px-4 pb-4 pt-0 space-y-0 min-h-0">
             {/* Search row — mirrors the Outstanding Items search bar (size + offset)
                 so the first task tile lines up with the first outstanding item tile. */}
             <div className="shrink-0 pt-2 pb-[30px]">
