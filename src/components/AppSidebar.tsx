@@ -139,12 +139,10 @@ export function AppSidebar() {
         className="relative overflow-hidden px-2 py-3 rounded-t-[11px] rounded-b-lg border-b text-foreground opacity-100 shadow-none before:content-none before:hidden group-data-[effective-state=collapsed]:px-0"
       >
         <div className="relative z-[1] flex items-center gap-2 group-data-[effective-state=collapsed]:justify-center group-data-[effective-state=collapsed]:gap-0">
-          <button
-            onClick={toggleSidebar}
-            className="h-9 w-9 rounded-md flex-shrink-0 flex items-center justify-center hover:bg-[rgba(126,184,247,0.2)] transition-colors group-data-[effective-state=collapsed]:h-9 group-data-[effective-state=collapsed]:w-9 group-data-[effective-state=collapsed]:rounded-md group-data-[effective-state=collapsed]:border group-data-[effective-state=collapsed]:border-transparent group-data-[effective-state=collapsed]:hover:border-[rgba(255,255,255,0.12)] group-data-[effective-state=collapsed]:mx-auto"
-          >
-            <Menu className="h-5 w-5 text-sidebar-foreground group-data-[effective-state=collapsed]:h-4 group-data-[effective-state=collapsed]:w-4" />
-          </button>
+          <div
+            aria-hidden="true"
+            className="h-9 w-9 flex-shrink-0 group-data-[effective-state=collapsed]:mx-auto"
+          />
           {showExpanded && <span className="font-semibold text-foreground">{company?.name || ''}</span>}
         </div>
       </SidebarHeader>
