@@ -535,16 +535,16 @@ export function exportPipelineToCSV(deals: Deal[]): void {
 
   deals.forEach(deal => {
     rows.push([
-      deal.company,
-      deal.name,
-      (deal.status ? STATUS_CONFIG[deal.status].label : "—"),
-      STAGE_CONFIG[deal.stage].label,
-      formatCurrency(deal.value),
-      formatCurrency(deal.totalFee),
-      deal.manager,
-      deal.lender,
-      deal.contact,
-      formatDate(deal.updatedAt),
+      deal.company ?? '',
+      deal.name ?? '',
+      STATUS_CONFIG[deal.status as DealStatus]?.label ?? (deal.status ?? '—'),
+      STAGE_CONFIG[deal.stage]?.label ?? (deal.stage ?? '—'),
+      formatCurrency(deal.value ?? 0),
+      formatCurrency(deal.totalFee ?? 0),
+      deal.manager ?? '',
+      deal.lender ?? '',
+      deal.contact ?? '',
+      deal.updatedAt ? formatDate(deal.updatedAt) : '',
     ]);
   });
 
