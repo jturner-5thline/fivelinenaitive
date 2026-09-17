@@ -130,9 +130,8 @@ export function AppSidebar() {
           translucent fill + gradient overlay instead. */}
       <SidebarHeader
         style={{
-          background:
-            'linear-gradient(180deg, #050d20 0%, #020611 50%, #000208 100%)',
-          backgroundColor: '#020611',
+          background: '#121b33',
+          backgroundColor: '#121b33',
           borderColor: 'rgba(190, 220, 255, 0.34)',
           backdropFilter: 'none',
           WebkitBackdropFilter: 'none',
