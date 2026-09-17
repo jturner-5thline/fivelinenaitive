@@ -117,7 +117,7 @@ export async function syncLenderContactToCrm(
       .insert({
         first_name: firstName,
         last_name: lastName,
-        full_name: contact.name.trim(),
+        // full_name is a generated column — never insert it.
         email,
         phone_work: contact.phone?.trim() || null,
         job_title: contact.title?.trim() || null,
