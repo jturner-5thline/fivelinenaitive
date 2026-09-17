@@ -514,7 +514,8 @@ export function exportPipelineToCSV(deals: Deal[]): void {
   };
 
   deals.forEach(deal => {
-    statusGroups[deal.status].push(deal);
+    const bucket = statusGroups[deal.status as DealStatus];
+    if (bucket) bucket.push(deal);
   });
 
   const rows: string[][] = [
