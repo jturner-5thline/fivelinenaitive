@@ -584,6 +584,7 @@ export default function DealDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [narrativeExpanded, setNarrativeExpanded] = useState(false);
   // When rendered inside the deal overlay modal, suppress app-shell chrome
   // (DealsHeader/sidebar trigger/brand) so the modal body stays clean and
   // the modal's own scroll container is the only scroll region.
