@@ -112,6 +112,24 @@ interface Props {
   onTzChange?: (tz: string) => void;
 }
 
+/** All-day entries Outlook/Google create for daily work-location ("Home"/"Office"). */
+const WORK_LOCATION_TITLES = new Set([
+  'home',
+  'office',
+  'in office',
+  'in the office',
+  'working from home',
+  'work from home',
+  'wfh',
+  'remote',
+]);
+
+function isWorkLocationMarker(ev: CalEvent): boolean {
+  if (!ev.all_day) return false;
+  const title = (ev.title ?? '').trim().toLowerCase();
+  return WORK_LOCATION_TITLES.has(title);
+}
+
 const HOUR_HEIGHT_NORMAL = 44;
 const HOUR_HEIGHT_COMPACT = 32;
 const SLOT_MINUTES = 30;
