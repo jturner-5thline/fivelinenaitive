@@ -113,6 +113,13 @@
       "when": 1789517205541,
       "tag": "0015_company_settings_industry_options",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1789676191169,
+      "tag": "0016_backfill_lender_contact_katherine_duquette",
+      "breakpoints": true
     }
   ]
 }
