@@ -93,7 +93,7 @@ export default defineTool({
 
       const { data: deals, error: dErr } = await sb
         .from("deals")
-        .select("id, company, stage, status, pipeline_id, deal_value, created_at, updated_at")
+        .select("id, company, stage, status, pipeline_id, value, created_at, updated_at")
         .eq("crm_company_id", id)
         .limit(500);
       related.deals = dErr
