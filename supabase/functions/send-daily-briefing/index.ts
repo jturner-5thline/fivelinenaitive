@@ -9,10 +9,21 @@ const corsHeaders = {
 
 const TARGET_EMAIL = "jturner@5thline.co";
 
+// Recipients who opted out of the daily briefing email.
+const OPTED_OUT_EMAILS = ["jturner@5thline.co"];
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  if (OPTED_OUT_EMAILS.includes(TARGET_EMAIL.toLowerCase())) {
+    return new Response(
+      JSON.stringify({ skipped: true, reason: "recipient_opted_out" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
 
   try {
     const now = new Date();

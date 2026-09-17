@@ -7,8 +7,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 }
 
+// jturner@5thline.co opted out of end-of-day briefing emails.
 const ELIGIBLE_EMAILS = [
-  'jturner@5thline.co',
   'nheikali@5thline.co',
   'ppina@5thline.co',
   'ffustinoni@5thline.co',
