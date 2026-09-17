@@ -71,7 +71,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
     writeTaskParam(null);
   };
   const [isOpen, setIsOpen] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<'incomplete' | 'completed'>('incomplete');
+  const [statusFilter, setStatusFilter] = useState<'incomplete' | 'all'>('incomplete');
   const [searchQuery, setSearchQuery] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
