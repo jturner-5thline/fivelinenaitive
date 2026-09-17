@@ -4039,4 +4039,5 @@ aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
   background-image: none !important;
   backdrop-filter: none !important;
   box-shadow: none !important;
+  border: none !important;
 }
