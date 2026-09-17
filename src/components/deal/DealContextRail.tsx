@@ -110,7 +110,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
       )}
 
       {!hideStatusStage && (
-      <div className="space-y-1.5">
+      <div className="flex items-stretch gap-1.5 w-full deal-rail-statusstage">
         <EditableDealStatusTag dealId={deal.id} status={deal.status} className="deal-rail-control" />
         <EditableDealStageTag
           dealId={deal.id}
