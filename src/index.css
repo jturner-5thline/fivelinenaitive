@@ -3980,3 +3980,25 @@ aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
   -webkit-backdrop-filter: none !important;
   box-shadow: none !important;
 }
+
+/* Status + stage controls sit side by side and together span the rail width. */
+.deal-rail-statusstage {
+  display: flex !important;
+  width: 100% !important;
+}
+.deal-rail-statusstage > .deal-rail-control,
+.deal-detail-surface .deal-rail-statusstage > .deal-rail-control {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  width: auto !important;
+  justify-content: center !important;
+  padding: 0 6px !important;
+  font-size: 11px !important;
+  overflow: hidden !important;
+}
+.deal-rail-statusstage .deal-rail-control :is(span, div) {
+  font-size: 11px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
