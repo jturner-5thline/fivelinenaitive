@@ -160,9 +160,6 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
             <Button size="sm" variant="outline" onClick={() => setIsCreateOpen(true)} className="h-7 gap-1 text-xs px-2">
               <Plus className="h-3 w-3" /> Add
             </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setIsOpen(o => !o)}>
-              {isOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            </Button>
           </div>
         </CardHeader>
 
