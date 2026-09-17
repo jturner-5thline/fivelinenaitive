@@ -7,14 +7,11 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
     ref={ref}
     data-slot="card"
     className={cn(
-      "rounded-xl border text-card-foreground transition-all duration-200 ease-out",
-      /* Light mode */
-      "bg-card border-border shadow-sm",
-      /* Dark mode — liquid glass */
-      "dark:bg-[rgba(255,255,255,0.04)] dark:border-[rgba(255,255,255,0.08)] dark:backdrop-blur-xl dark:backdrop-saturate-150",
-      "dark:shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)]",
-      "dark:hover:border-[rgba(255,255,255,0.14)]",
-      "dark:hover:shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)]",
+      "rounded-md border text-card-foreground transition-colors duration-150 ease-out",
+      /* Flat + hairlined on both themes */
+      "bg-card border-border/70",
+      "dark:bg-[rgba(255,255,255,0.03)] dark:border-[var(--hairline)]",
+      "dark:hover:border-[var(--hairline-strong)]",
       className
     )} 
     {...props} 
@@ -31,14 +28,14 @@ CardHeader.displayName = "CardHeader";
 
 const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} data-slot="card-title" className={cn("text-2xl font-semibold leading-none tracking-tight", className)} {...props} />
+    <h3 ref={ref} data-slot="card-title" className={cn("text-role-card-title", className)} {...props} />
   ),
 );
 CardTitle.displayName = "CardTitle";
 
 const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, ...props }, ref) => (
-    <p ref={ref} className={cn("text-sm text-muted-foreground", className)} {...props} />
+    <p ref={ref} className={cn("text-role-body-compact text-muted-foreground", className)} {...props} />
   ),
 );
 CardDescription.displayName = "CardDescription";

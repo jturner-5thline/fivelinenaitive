@@ -4,25 +4,31 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-sm border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center rounded-sm border px-2 py-0.5 text-[11px] font-medium leading-tight tracking-[0.02em] transition-colors focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ds-sky)/0.45)]",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground border-border",
-        /* Beta badge — indigo */
-        beta: "border-[rgba(99,102,241,0.4)] bg-[rgba(99,102,241,0.2)] text-[#A5B4FC] text-[10px] rounded-sm",
-        /* Soft pastel colors */
-        blue: "border-transparent bg-[#d0e7ff] text-[#1d4ed8] dark:bg-[#1e3a5f] dark:text-[#93c5fd]",
-        green: "border-transparent bg-[#d1fae5] text-[#047857] dark:bg-[#064e3b] dark:text-[#6ee7b7]",
-        purple: "border-transparent bg-[#ede9fe] text-[#6d28d9] dark:bg-[#3b0764] dark:text-[#c4b5fd]",
-        amber: "border-transparent bg-[#fef3c7] text-[#b45309] dark:bg-[#451a03] dark:text-[#fcd34d]",
-        pink: "border-transparent bg-[#fce7f3] text-[#be185d] dark:bg-[#500724] dark:text-[#f9a8d4]",
-        cyan: "border-transparent bg-[#cffafe] text-[#0e7490] dark:bg-[#083344] dark:text-[#67e8f9]",
-        peach: "border-transparent bg-[#fed7c3] text-[#c2410c] dark:bg-[#431407] dark:text-[#fdba74]",
-        gray: "border-transparent bg-[#e5e7eb] text-[#374151] dark:bg-[#374151] dark:text-[#d1d5db]",
+        default: "border-[hsl(var(--ds-sky)/0.35)] bg-[hsl(var(--ds-sky)/0.12)] text-[hsl(var(--ds-sky))]",
+        secondary: "border-border/70 bg-white/[0.04] text-muted-foreground",
+        destructive:
+          "border-[hsl(var(--status-critical)/0.4)] bg-[hsl(var(--status-critical)/0.14)] text-[hsl(var(--status-critical))]",
+        outline: "text-foreground border-border/70 bg-transparent",
+        beta: "border-[hsl(var(--ds-indigo)/0.4)] bg-[hsl(var(--ds-indigo)/0.14)] text-[hsl(var(--ds-indigo))] text-[10px]",
+        /* Status = position on the spectrum */
+        info: "border-[hsl(var(--status-info)/0.4)] bg-[hsl(var(--status-info)/0.12)] text-[hsl(var(--status-info))]",
+        active: "border-[hsl(var(--status-active)/0.4)] bg-[hsl(var(--status-active)/0.12)] text-[hsl(var(--status-active))]",
+        review: "border-[hsl(var(--status-review)/0.4)] bg-[hsl(var(--status-review)/0.14)] text-[hsl(var(--status-review))]",
+        critical:
+          "border-[hsl(var(--status-critical)/0.4)] bg-[hsl(var(--status-critical)/0.14)] text-[hsl(var(--status-critical))]",
+        /* Legacy hue aliases remapped onto the spectrum */
+        blue: "border-[hsl(var(--ds-blue)/0.4)] bg-[hsl(var(--ds-blue)/0.12)] text-[hsl(var(--ds-blue))]",
+        green: "border-[hsl(var(--ds-cyan)/0.4)] bg-[hsl(var(--ds-cyan)/0.12)] text-[hsl(var(--ds-cyan))]",
+        purple: "border-[hsl(var(--ds-violet)/0.4)] bg-[hsl(var(--ds-violet)/0.12)] text-[hsl(var(--ds-violet))]",
+        amber: "border-[hsl(var(--ds-indigo)/0.4)] bg-[hsl(var(--ds-indigo)/0.12)] text-[hsl(var(--ds-indigo))]",
+        pink: "border-[hsl(var(--ds-violet)/0.4)] bg-[hsl(var(--ds-violet)/0.12)] text-[hsl(var(--ds-violet))]",
+        cyan: "border-[hsl(var(--ds-cyan)/0.4)] bg-[hsl(var(--ds-cyan)/0.12)] text-[hsl(var(--ds-cyan))]",
+        peach: "border-[hsl(var(--ds-indigo)/0.4)] bg-[hsl(var(--ds-indigo)/0.12)] text-[hsl(var(--ds-indigo))]",
+        gray: "border-border/70 bg-white/[0.04] text-muted-foreground",
       },
     },
     defaultVariants: {
