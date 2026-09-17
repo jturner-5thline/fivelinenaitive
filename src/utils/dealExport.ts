@@ -43,8 +43,8 @@ export function exportDealToCSV(deal: Deal): void {
     ['Field', 'Value'],
     ['Company', deal.company],
     ['Deal Name', deal.name],
-    ['Stage', STAGE_CONFIG[deal.stage].label],
-    ['Status', (deal.status ? STATUS_CONFIG[deal.status].label : "—")],
+    ['Stage', (STAGE_CONFIG[deal.stage]?.label ?? deal.stage ?? "—")],
+    ['Status', (STATUS_CONFIG[deal.status as DealStatus]?.label ?? deal.status ?? "—")],
     ['Engagement Type', ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label],
     ['Deal Value', formatCurrency(deal.value)],
     ['Total Fee', formatCurrency(deal.totalFee)],
@@ -120,8 +120,8 @@ export function exportDealToPDF(deal: Deal): void {
   
   const summaryData = [
     ['Deal Name', deal.name],
-    ['Stage', STAGE_CONFIG[deal.stage].label],
-    ['Status', (deal.status ? STATUS_CONFIG[deal.status].label : "—")],
+    ['Stage', (STAGE_CONFIG[deal.stage]?.label ?? deal.stage ?? "—")],
+    ['Status', (STATUS_CONFIG[deal.status as DealStatus]?.label ?? deal.status ?? "—")],
     ['Engagement Type', ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label],
     ['Deal Value', formatCurrency(deal.value)],
     ['Total Fee', formatCurrency(deal.totalFee)],
@@ -288,8 +288,8 @@ export async function exportDealToWord(deal: Deal): Promise<void> {
             width: { size: 100, type: WidthType.PERCENTAGE },
             rows: [
               createTableRow('Deal Name', deal.name),
-              createTableRow('Stage', STAGE_CONFIG[deal.stage].label),
-              createTableRow('Status', (deal.status ? STATUS_CONFIG[deal.status].label : "—")),
+              createTableRow('Stage', (STAGE_CONFIG[deal.stage]?.label ?? deal.stage ?? "—")),
+              createTableRow('Status', (STATUS_CONFIG[deal.status as DealStatus]?.label ?? deal.status ?? "—")),
               createTableRow('Engagement Type', ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label),
               createTableRow('Deal Value', formatCurrency(deal.value)),
               createTableRow('Total Fee', formatCurrency(deal.totalFee)),
@@ -514,7 +514,8 @@ export function exportPipelineToCSV(deals: Deal[]): void {
   };
 
   deals.forEach(deal => {
-    statusGroups[deal.status].push(deal);
+    const bucket = statusGroups[deal.status as DealStatus];
+    if (bucket) bucket.push(deal);
   });
 
   const rows: string[][] = [
@@ -534,16 +535,16 @@ export function exportPipelineToCSV(deals: Deal[]): void {
 
   deals.forEach(deal => {
     rows.push([
-      deal.company,
-      deal.name,
-      (deal.status ? STATUS_CONFIG[deal.status].label : "—"),
-      STAGE_CONFIG[deal.stage].label,
-      formatCurrency(deal.value),
-      formatCurrency(deal.totalFee),
-      deal.manager,
-      deal.lender,
-      deal.contact,
-      formatDate(deal.updatedAt),
+      deal.company ?? '',
+      deal.name ?? '',
+      STATUS_CONFIG[deal.status as DealStatus]?.label ?? (deal.status ?? '—'),
+      STAGE_CONFIG[deal.stage]?.label ?? (deal.stage ?? '—'),
+      formatCurrency(deal.value ?? 0),
+      formatCurrency(deal.totalFee ?? 0),
+      deal.manager ?? '',
+      deal.lender ?? '',
+      deal.contact ?? '',
+      deal.updatedAt ? formatDate(deal.updatedAt) : '',
     ]);
   });
 
@@ -611,8 +612,8 @@ export function exportPipelineToPDF(deals: Deal[]): void {
   const dealsData = deals.map(deal => [
     deal.company,
     deal.name,
-    (deal.status ? STATUS_CONFIG[deal.status].label : "—"),
-    STAGE_CONFIG[deal.stage].label,
+    (STATUS_CONFIG[deal.status as DealStatus]?.label ?? deal.status ?? "—"),
+    (STAGE_CONFIG[deal.stage]?.label ?? deal.stage ?? "—"),
     formatCurrency(deal.value),
     formatCurrency(deal.totalFee),
     deal.manager,
@@ -747,8 +748,8 @@ export async function exportPipelineToWord(deals: Deal[]): Promise<void> {
                     children: [
                       createDataCell(deal.company),
                       createDataCell(deal.name),
-                      createDataCell((deal.status ? STATUS_CONFIG[deal.status].label : "—")),
-                      createDataCell(STAGE_CONFIG[deal.stage].label),
+                      createDataCell((STATUS_CONFIG[deal.status as DealStatus]?.label ?? deal.status ?? "—")),
+                      createDataCell((STAGE_CONFIG[deal.stage]?.label ?? deal.stage ?? "—")),
                       createDataCell(formatCurrency(deal.value)),
                       createDataCell(deal.manager),
                     ],
