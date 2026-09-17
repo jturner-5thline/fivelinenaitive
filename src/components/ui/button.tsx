@@ -5,54 +5,49 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:shadow-focus-accent disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-role-ui transition-colors duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        /* PRIMARY — standardized to match the "+ New Deal" liquid-glass button */
+        /* PRIMARY — flat spectrum fill */
         default:
-          "relative overflow-hidden border border-[rgba(126,184,247,0.35)] bg-[rgba(126,184,247,0.12)] text-foreground backdrop-blur-xl shadow-glass hover:bg-[rgba(126,184,247,0.2)] hover:border-[rgba(126,184,247,0.5)] hover:shadow-glass-hover before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.15)_0%,transparent_50%)]",
-        /* SECONDARY — ghost glass blue */
+          "bg-primary text-primary-foreground border border-transparent hover:bg-primary/90",
+        /* SECONDARY / OUTLINE — hairlined, transparent */
         outline:
-          "bg-[rgba(126,184,247,0.06)] backdrop-blur-[8px] border border-[rgba(126,184,247,0.22)] text-[#A8D0FF] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-[rgba(126,184,247,0.12)] hover:border-[rgba(126,184,247,0.4)] hover:shadow-[0_0_16px_rgba(126,184,247,0.15),inset_0_1px_0_rgba(255,255,255,0.08)] active:scale-[0.98]",
+          "border border-[hsl(var(--ds-sky)/0.30)] bg-transparent text-foreground hover:bg-[hsl(var(--ds-sky)/0.10)] hover:border-[hsl(var(--ds-sky)/0.45)]",
         secondary:
-          "bg-[rgba(126,184,247,0.06)] backdrop-blur-[8px] border border-[rgba(126,184,247,0.22)] text-[#A8D0FF] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-[rgba(126,184,247,0.12)] hover:border-[rgba(126,184,247,0.4)] hover:shadow-[0_0_16px_rgba(126,184,247,0.15),inset_0_1px_0_rgba(255,255,255,0.08)] active:scale-[0.98]",
-        /* TERTIARY — ghost, no border, muted text */
+          "border border-[hsl(var(--ds-sky)/0.30)] bg-transparent text-foreground hover:bg-[hsl(var(--ds-sky)/0.10)] hover:border-[hsl(var(--ds-sky)/0.45)]",
+        /* TERTIARY — ghost */
         ghost:
-          "bg-transparent border-none text-muted-foreground hover:text-foreground",
-        /* DROPDOWN — surface-3 fill, subtle border */
+          "bg-transparent border border-transparent text-muted-foreground hover:text-foreground hover:bg-white/[0.04]",
+        /* DROPDOWN — hairlined surface */
         dropdown:
-          "bg-secondary border border-border rounded-lg hover:border-[rgba(126,184,247,0.22)]",
-        /* Destructive */
+          "bg-transparent border border-border/60 hover:border-[hsl(var(--ds-sky)/0.35)]",
+        /* Destructive — violet, the spectrum's urgency end */
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
-        /* Link */
+          "bg-[hsl(var(--status-critical))] text-white border border-transparent hover:bg-[hsl(var(--status-critical)/0.88)]",
         link:
           "text-primary underline-offset-4 hover:underline",
-        /* Accent — same as primary */
         accent:
-          "relative overflow-hidden font-semibold border border-[rgba(168,208,255,0.35)] text-white shadow-[0_0_20px_rgba(126,184,247,0.2),inset_0_1px_0_rgba(255,255,255,0.25)] bg-[linear-gradient(135deg,rgba(126,184,247,0.85),rgba(74,144,217,0.9))] backdrop-blur-[8px] hover:bg-[linear-gradient(135deg,rgba(148,200,255,0.95),rgba(90,160,235,0.95))] hover:shadow-accent-glow",
-        /* Success */
+          "bg-[hsl(var(--ds-sky))] text-[hsl(222_47%_8%)] border border-transparent hover:bg-[hsl(var(--ds-cyan))]",
         success:
-          "bg-success text-success-foreground hover:bg-success/90 shadow-sm",
-        /* Hero */
+          "bg-[hsl(var(--status-info))] text-[hsl(222_47%_8%)] border border-transparent hover:bg-[hsl(var(--status-info)/0.88)]",
         hero:
-          "relative overflow-hidden font-semibold border border-[rgba(168,208,255,0.35)] text-white shadow-[0_0_20px_rgba(126,184,247,0.2),inset_0_1px_0_rgba(255,255,255,0.25)] bg-[linear-gradient(135deg,rgba(126,184,247,0.85),rgba(74,144,217,0.9))] backdrop-blur-[8px] hover:bg-[linear-gradient(135deg,rgba(148,200,255,0.95),rgba(90,160,235,0.95))] hover:shadow-accent-glow-strong hover:-translate-y-0.5",
+          "bg-[hsl(var(--ds-sky))] text-[hsl(222_47%_8%)] border border-transparent font-semibold hover:bg-[hsl(var(--ds-cyan))]",
         "hero-outline":
-          "border-2 border-primary bg-transparent text-primary hover:bg-primary/10 hover:border-primary/60",
-        /* Gradient — brand gradient */
+          "border border-primary/60 bg-transparent text-primary hover:bg-primary/10",
         gradient:
-          "bg-brand-gradient text-white font-semibold hover:bg-brand-gradient-hover shadow-sm hover:shadow-accent-glow",
-        /* Liquid glass */
+          "border border-transparent text-[hsl(222_47%_8%)] font-semibold bg-[linear-gradient(135deg,hsl(var(--ds-cyan)),hsl(var(--ds-indigo)))] hover:opacity-90",
+        /* Legacy alias — now flat like the primary */
         "liquid-glass":
-          "relative overflow-hidden border border-[rgba(126,184,247,0.35)] bg-[rgba(126,184,247,0.12)] text-foreground backdrop-blur-xl shadow-glass hover:bg-[rgba(126,184,247,0.2)] hover:border-[rgba(126,184,247,0.5)] hover:shadow-glass-hover before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.15)_0%,transparent_50%)]",
+          "bg-primary text-primary-foreground border border-transparent hover:bg-primary/90",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-lg px-3",
-        lg: "h-11 rounded-lg px-8 text-base",
-        xl: "h-12 rounded-lg px-10 text-base font-semibold",
-        icon: "h-10 w-10",
+        default: "h-9 px-3.5 py-2",
+        sm: "h-8 rounded-md px-3 text-[13px]",
+        lg: "h-10 rounded-md px-6",
+        xl: "h-11 rounded-md px-8 font-semibold",
+        icon: "h-9 w-9",
       },
     },
     defaultVariants: {
