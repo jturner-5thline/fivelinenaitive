@@ -4031,3 +4031,12 @@ aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
   backdrop-filter: none !important;
   box-shadow: none !important;
 }
+
+/* Tasks widget in deal detail: transparent fill, keep border */
+.deal-tasks-panel-card,
+.deal-detail-surface .deal-tasks-panel-card {
+  background-color: transparent !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
