@@ -853,7 +853,7 @@ export default function Dashboard() {
 
                 {/* Flag + Duplicates toggles moved into the Layout, sort & group menu. */}
 
-                <div className="relative self-center">
+                <div className="relative self-center -ml-2">
                   <DealSavedViewsMenu
                     views={savedViews}
                     onSave={handleSaveView}
