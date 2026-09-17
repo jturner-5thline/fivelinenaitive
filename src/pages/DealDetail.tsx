@@ -3997,7 +3997,7 @@ export default function DealDetail() {
               </div>
             </CardHeader>
             {useContextRailLayout && !isSimplifiedDeal && (
-              <CardContent className="pt-2 pb-2 border-t border-white/10 shrink-0">
+              <CardContent className="pt-3 pb-3 px-3 shrink-0 rounded-lg bg-white/[0.03] border border-white/[0.06]">
                 <DealMilestones
                   milestones={dbMilestones}
                   onAdd={addMilestone}
