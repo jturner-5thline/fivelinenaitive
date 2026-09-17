@@ -53,7 +53,7 @@ export function ClaapRoutingTasksBadge() {
           <Button variant="ghost" size="sm" className="relative h-8 gap-1.5">
             <Video className="h-4 w-4" />
             <span className="text-xs">Meeting Tasks</span>
-            <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px] absolute -top-1 -right-1">
+            <Badge variant="destructive" className="notif-count absolute -top-1 -right-1">
               {tasks.length}
             </Badge>
           </Button>
