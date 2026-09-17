@@ -278,7 +278,12 @@ export function NaitiveCalendar({
   });
   // Prefetch the previous + next range so prev/next nav is instant.
   usePrefetchAdjacentCalendarRanges({ range, tz, enabled: !externalEvents });
-  const events = externalEvents ?? fetched ?? [];
+  const rawEvents = externalEvents ?? fetched ?? [];
+  // Hide Outlook/Google daily "work location" markers (all-day "Home"/"Office" entries).
+  const events = useMemo(
+    () => rawEvents.filter((ev) => !isWorkLocationMarker(ev)),
+    [rawEvents],
+  );
 
   // Attendee free/busy overlay — only fires when attendees are passed.
   const attendeeEmails = useMemo(() => (attendees ?? []).map((a) => a.email.toLowerCase()), [attendees]);
