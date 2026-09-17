@@ -202,7 +202,7 @@ export function DealFilters({
         </div>,
         document.body,
       )}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 pl-4">
         {afterSearchSlot}
 
         {/* Consolidated Filters Popover */}
