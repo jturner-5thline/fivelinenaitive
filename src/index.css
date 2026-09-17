@@ -4002,3 +4002,22 @@ aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
   overflow: hidden !important;
   text-overflow: ellipsis !important;
 }
+
+/* Keep the status/stage pair inside the rail — no overflow past its width. */
+.deal-rail-statusstage {
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+.deal-rail-statusstage > .deal-rail-control {
+  max-width: 50% !important;
+}
+.deal-rail-statusstage .deal-stage-chip,
+.deal-rail-statusstage .deal-rail-control > span,
+.deal-rail-statusstage .deal-rail-control > div {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  display: block !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
