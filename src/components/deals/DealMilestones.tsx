@@ -150,7 +150,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
   };
 
   return (
-    <div className="pt-0 rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-3">
+    <div className="pt-0">
       <div>
         <div className="flex items-center gap-2 mb-0.5">
             <button
