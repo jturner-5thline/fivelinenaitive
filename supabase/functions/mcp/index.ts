@@ -1265,7 +1265,7 @@ var get_company_default = defineTool11({
       const related = {};
       const { data: contacts, error: ctErr } = await sb.from("contacts").select("*").eq("crm_company_id", id).limit(500);
       related.contacts = ctErr ? { error: ctErr.message } : contacts ?? [];
-      const { data: deals, error: dErr } = await sb.from("deals").select("id, company, stage, status, pipeline_id, deal_value, created_at, updated_at").eq("crm_company_id", id).limit(500);
+      const { data: deals, error: dErr } = await sb.from("deals").select("id, company, stage, status, pipeline_id, value, created_at, updated_at").eq("crm_company_id", id).limit(500);
       related.deals = dErr ? { error: dErr.message } : (deals ?? []).map((d) => ({ ...d, deal_name: d.company ?? null }));
       const parentId = company.parent_company_id;
       if (parentId) {
