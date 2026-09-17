@@ -4021,3 +4021,13 @@ aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
   overflow: hidden !important;
   text-overflow: ellipsis !important;
 }
+
+/* Deal Milestones widget matches the status-note box surface */
+.deal-milestones-surface,
+.deal-detail-surface .deal-milestones-surface {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0.5rem !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
