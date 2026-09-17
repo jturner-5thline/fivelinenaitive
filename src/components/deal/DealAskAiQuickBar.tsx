@@ -564,7 +564,7 @@ export function DealAskAiQuickBar({ dealId, dealName, onOpenDealSpace }: DealAsk
       )}
       <form
       onSubmit={submit}
-      className="flex items-center gap-2 rounded-lg border border-border/60 bg-card/60 px-3 py-2 backdrop-blur transition-all duration-200 focus-within:border-primary/50 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]"
+      className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2 transition-all duration-200 focus-within:border-primary/50 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]"
     >
       <Input
         value={value}
