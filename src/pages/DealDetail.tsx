@@ -4356,6 +4356,21 @@ export default function DealDetail() {
                                        debounceMs={800}
                                        showSaveIndicator
                                      />
+                                     <Dialog open={narrativeExpanded} onOpenChange={setNarrativeExpanded}>
+                                       <DialogContent className="sm:max-w-2xl">
+                                         <DialogHeader>
+                                           <DialogTitle className="text-base">Narrative</DialogTitle>
+                                         </DialogHeader>
+                                         <DebouncedTextarea
+                                           value={deal.narrative || ''}
+                                           onValueChange={(value) => updateDeal('narrative', value)}
+                                           placeholder="Enter deal narrative..."
+                                           className="w-full min-h-[50vh] resize-none bg-[#12141F] border border-white/[0.08]"
+                                           debounceMs={800}
+                                           showSaveIndicator
+                                         />
+                                       </DialogContent>
+                                     </Dialog>
                                    </div>
                                  );
                               case 'dealManager':
