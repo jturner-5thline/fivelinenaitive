@@ -4333,20 +4333,31 @@ export default function DealDetail() {
                               fieldId === 'analyst'
                             )) return null;
                             switch (fieldId) {
-                              case 'narrative':
-                                return (
-                                  <div key={fieldId} className="space-y-1.5">
-                                    <label className="text-xs font-medium text-muted-foreground">Narrative</label>
-                                    <DebouncedTextarea
-                                      value={deal.narrative || ''}
-                                      onValueChange={(value) => updateDeal('narrative', value)}
-                                      placeholder="Enter deal narrative..."
-                                      className="w-full min-h-[80px] resize-none bg-[#12141F] border border-white/[0.08]"
-                                      debounceMs={800}
-                                      showSaveIndicator
-                                    />
-                                  </div>
-                                );
+                               case 'narrative':
+                                 return (
+                                   <div key={fieldId} className="space-y-1.5">
+                                     <div className="flex items-center justify-between gap-2">
+                                       <label className="text-xs font-medium text-muted-foreground">Narrative</label>
+                                       <button
+                                         type="button"
+                                         aria-label="Expand narrative"
+                                         title="Expand narrative"
+                                         onClick={() => setNarrativeExpanded(true)}
+                                         className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-white/10"
+                                       >
+                                         <Maximize2 className="h-3 w-3" />
+                                       </button>
+                                     </div>
+                                     <DebouncedTextarea
+                                       value={deal.narrative || ''}
+                                       onValueChange={(value) => updateDeal('narrative', value)}
+                                       placeholder="Enter deal narrative..."
+                                       className="w-full min-h-[80px] resize-none bg-[#12141F] border border-white/[0.08]"
+                                       debounceMs={800}
+                                       showSaveIndicator
+                                     />
+                                   </div>
+                                 );
                               case 'dealManager':
                                 return (
                                   <div key={fieldId} className="flex flex-col gap-1">
