@@ -71,7 +71,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
     writeTaskParam(null);
   };
   const [isOpen, setIsOpen] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<'incomplete' | 'completed'>('incomplete');
+  const [statusFilter, setStatusFilter] = useState<'incomplete' | 'all'>('incomplete');
   const [searchQuery, setSearchQuery] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -126,7 +126,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
   const pendingTasks = tasks.filter(t => !isTaskCompleted(t));
   const completedTasks = tasks.filter(t => isTaskCompleted(t));
 
-  const displayedTasks = (statusFilter === 'incomplete' ? pendingTasks : completedTasks).filter(t => {
+  const displayedTasks = (statusFilter === 'incomplete' ? pendingTasks : tasks).filter(t => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return true;
     return `${t.title || ''} ${t.description || ''}`.toLowerCase().includes(q);
@@ -152,10 +152,10 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
             <ToggleGroup
               type="single"
               value={statusFilter}
-              onValueChange={(v) => v && setStatusFilter(v as 'incomplete' | 'completed')}
+              onValueChange={(v) => v && setStatusFilter(v as 'incomplete' | 'all')}
             >
               <ToggleGroupItem value="incomplete" className="text-[10px] h-6 px-2">Incomplete</ToggleGroupItem>
-              <ToggleGroupItem value="completed" className="text-[10px] h-6 px-2">Complete</ToggleGroupItem>
+              <ToggleGroupItem value="all" className="text-[10px] h-6 px-2">All</ToggleGroupItem>
             </ToggleGroup>
             <Button size="sm" variant="outline" onClick={() => setIsCreateOpen(true)} className="h-7 gap-1 text-xs px-2">
               <Plus className="h-3 w-3" /> Add
