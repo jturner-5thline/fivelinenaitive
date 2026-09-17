@@ -3966,3 +3966,17 @@ aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
   background-color: rgba(255, 255, 255, 0.055) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
+
+/* Company URL and other rail inputs: no recessed blur, same faint well. */
+.deal-detail-surface .deal-info-railed-card input,
+.deal-detail-surface aside[aria-label="Deal context"] input,
+.deal-detail-surface .deal-info-railed-card textarea,
+.deal-detail-surface aside[aria-label="Deal context"] textarea {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  background-image: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0.5rem !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
