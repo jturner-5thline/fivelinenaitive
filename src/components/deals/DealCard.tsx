@@ -437,7 +437,8 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
           {/* ── ROW 2: amount | type/engagement tags (single line, +N more) ── */}
           <div className="flex flex-nowrap items-center justify-between gap-x-3 min-w-0">
             <span
-              className="flex items-baseline gap-1 text-[28px] font-bold leading-none tracking-tight tabular-nums whitespace-nowrap shrink-0"
+              data-numeric
+              className="flex items-baseline gap-1 text-[26px] font-semibold leading-none tracking-tight tabular-nums whitespace-nowrap shrink-0"
               style={{ color: '#f8fbff' }}
               title={formatUSDFromDollars(deal.dealClass === 'finserv' ? (deal.mrr ?? 0) : deal.value)}
             >
