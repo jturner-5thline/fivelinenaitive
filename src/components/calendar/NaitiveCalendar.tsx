@@ -112,6 +112,24 @@ interface Props {
   onTzChange?: (tz: string) => void;
 }
 
+/** All-day entries Outlook/Google create for daily work-location ("Home"/"Office"). */
+const WORK_LOCATION_TITLES = new Set([
+  'home',
+  'office',
+  'in office',
+  'in the office',
+  'working from home',
+  'work from home',
+  'wfh',
+  'remote',
+]);
+
+function isWorkLocationMarker(ev: CalEvent): boolean {
+  if (!ev.all_day) return false;
+  const title = (ev.title ?? '').trim().toLowerCase();
+  return WORK_LOCATION_TITLES.has(title);
+}
+
 const HOUR_HEIGHT_NORMAL = 44;
 const HOUR_HEIGHT_COMPACT = 32;
 const SLOT_MINUTES = 30;
@@ -278,7 +296,12 @@ export function NaitiveCalendar({
   });
   // Prefetch the previous + next range so prev/next nav is instant.
   usePrefetchAdjacentCalendarRanges({ range, tz, enabled: !externalEvents });
-  const events = externalEvents ?? fetched ?? [];
+  const rawEvents = externalEvents ?? fetched ?? [];
+  // Hide Outlook/Google daily "work location" markers (all-day "Home"/"Office" entries).
+  const events = useMemo(
+    () => rawEvents.filter((ev) => !isWorkLocationMarker(ev)),
+    [rawEvents],
+  );
 
   // Attendee free/busy overlay — only fires when attendees are passed.
   const attendeeEmails = useMemo(() => (attendees ?? []).map((a) => a.email.toLowerCase()), [attendees]);
