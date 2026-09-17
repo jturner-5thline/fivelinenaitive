@@ -194,7 +194,7 @@ export function DealFilters({
     <div className="space-y-3">
       {/* Search is docked to the top-left corner, just right of the logo. */}
       {createPortal(
-        <div className="fixed left-[220px] top-[21px] z-[1001]">
+        <div className="fixed left-[220px] right-[26px] top-[21px] z-[1001]">
           <CollapsibleSearch
             value={filters.search}
             onChange={(value) => onFilterChange({ search: value })}
