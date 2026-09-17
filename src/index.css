@@ -3880,3 +3880,39 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
     font-family: var(--font-body) !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Notification count badge (shared)
+   Single source of truth for unread / pending / alert quantity bubbles.
+   Solid red fill, white bold text, centered, circular at one digit and
+   pill-shaped once the value needs more room.
+   --------------------------------------------------------------------------- */
+.notif-count,
+[class*="bg-destructive"].notif-count,
+[class*="bg-primary"].notif-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 1.125rem;
+  min-width: 1.125rem;
+  padding: 0 0.25rem;
+  border: 0;
+  border-radius: 9999px;
+  background-color: #e11d1d !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-family: var(--font-body, Inter, sans-serif);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.notif-count > * {
+  color: #ffffff !important;
+}

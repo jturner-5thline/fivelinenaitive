@@ -136,7 +136,7 @@ export function LatestUpdatesDropdown() {
           {unreadCount > 0 && (
             <Badge
               variant="destructive"
-              className="absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1.5 text-xs"
+              className="notif-count absolute -top-1.5 -right-1.5"
             >
               {unreadCount > 99 ? '99+' : unreadCount}
             </Badge>

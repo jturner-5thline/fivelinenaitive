@@ -65,7 +65,7 @@ export function DealManagementNotificationBell() {
           <Bell className="h-4 w-4" />
           <Badge
             variant="destructive"
-            className="absolute -top-1 -right-1 h-5 min-w-5 rounded-full text-xs px-1.5"
+            className="notif-count absolute -top-1 -right-1"
           >
             {count}
           </Badge>

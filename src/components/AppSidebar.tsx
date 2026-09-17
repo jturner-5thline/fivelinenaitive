@@ -190,13 +190,13 @@ export function AppSidebar() {
                       <div className="relative">
                         <item.icon className="h-4 w-4" />
                         {item.url === "/tasks" && meetingTaskCount > 0 && (
-                          <span className="absolute -top-1.5 -right-1.5 h-3.5 min-w-3.5 px-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+                          <span className="notif-count absolute -top-1.5 -right-1.5">
                             {meetingTaskCount}
                           </span>
                         )}
                         {item.url === "/lenders" && flexSyncUnresolvedCount > 0 && (
                           <span
-                            className="absolute -top-1.5 -right-1.5 h-3.5 min-w-3.5 px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center"
+                            className="notif-count absolute -top-1.5 -right-1.5"
                             aria-label={`${flexSyncUnresolvedCount} unresolved FLEx sync requests`}
                           >
                             {flexSyncUnresolvedCount > 99 ? '99+' : flexSyncUnresolvedCount}
@@ -209,7 +209,7 @@ export function AppSidebar() {
                           {item.featureKey && <BetaBadge featureKey={`page_${item.featureKey}`} />}
                           {item.url === "/lenders" && flexSyncUnresolvedCount > 0 && (
                             <span
-                              className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive/15 text-destructive text-[10px] font-semibold leading-none border border-destructive/30"
+                              className="notif-count ml-1"
                               title={`${flexSyncUnresolvedCount} unresolved FLEx sync requests`}
                             >
                               {flexSyncUnresolvedCount > 999 ? '999+' : flexSyncUnresolvedCount}
@@ -281,7 +281,7 @@ export function AppSidebar() {
                     <div className="relative">
                       <item.icon className={'iconClassName' in item ? (item as any).iconClassName : "h-4 w-4"} />
                       {item.url === "/settings" && pendingJoinCount > 0 && (
-                        <span className="absolute -top-1.5 -right-1.5 h-3.5 min-w-3.5 px-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+                        <span className="notif-count absolute -top-1.5 -right-1.5">
                           {pendingJoinCount}
                         </span>
                       )}

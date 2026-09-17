@@ -2235,7 +2235,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                           {badgeCount > 0 && (
                             <span
                               aria-label={`${tab.label} has ${badgeCount} outstanding`}
-                              className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold leading-none ring-2 ring-background tabular-nums pointer-events-none"
+                              className="notif-count absolute -top-0.5 -right-0.5 ring-2 ring-background pointer-events-none"
                             >
                               {badgeCount > 99 ? '99+' : badgeCount}
                             </span>
