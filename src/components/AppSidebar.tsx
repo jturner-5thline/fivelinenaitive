@@ -136,7 +136,7 @@ export function AppSidebar() {
           backdropFilter: 'none',
           WebkitBackdropFilter: 'none',
         }}
-        className="relative overflow-hidden px-2 py-3 rounded-t-[11px] border-0 text-foreground opacity-100 shadow-none before:content-none before:hidden group-data-[effective-state=collapsed]:px-0"
+        className="relative overflow-hidden px-2 pt-3 pb-[19px] rounded-t-[11px] border-0 text-foreground opacity-100 shadow-none before:content-none before:hidden group-data-[effective-state=collapsed]:px-0"
       >
         <div className="relative z-[1] flex items-center gap-2 group-data-[effective-state=collapsed]:justify-center group-data-[effective-state=collapsed]:gap-0">
           <div
