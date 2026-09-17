@@ -2992,14 +2992,13 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .status-note-2rows textarea {
   resize: none;
 }
-/* Status note box colors */
+/* Status note box colors — matches the deal tile status box. */
 .status-note-2rows .status-note-editor {
-  /* Match the Tasks widget surface exactly. */
-  background-color: #020611 !important;
+  background-color: rgba(255, 255, 255, 0.03) !important;
   background-image: none !important;
-  border: 0 !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.55) !important;
-  border-radius: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0.5rem !important;
+  padding: 6px 4px !important;
 }
 /* Breathing room between the box's left edge and the status text. */
 .status-note-2rows .status-note-editor .ProseMirror,
@@ -3344,11 +3343,11 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   padding-right: 0 !important;
 }
 
-/* Status note: divider line above the text instead of a boxed border. */
+/* Status note: same subtle translucent box as the deal tiles. */
 .deal-detail-surface .status-note-2rows .status-note-editor {
-  border: 0 !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.55) !important;
-  border-radius: 0 !important;
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0.5rem !important;
 }
 
 /* ── Deal status chips: flat glassy tint (matches the "Stale" flag) ───────
