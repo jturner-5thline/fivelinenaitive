@@ -128,24 +128,7 @@ export function AppSidebar() {
           entire underlying layer on every animation frame, which made the
           sidebar slide-in/out janky and slowed the whole app. Use a solid
           translucent fill + gradient overlay instead. */}
-      <SidebarHeader
-        style={{
-          background: '#121b33',
-          backgroundColor: '#121b33',
-          borderColor: 'rgba(190, 220, 255, 0.34)',
-          backdropFilter: 'none',
-          WebkitBackdropFilter: 'none',
-        }}
-        className="relative overflow-hidden px-2 pt-3 pb-[19px] rounded-t-[11px] border-0 text-foreground opacity-100 shadow-none before:content-none before:hidden group-data-[effective-state=collapsed]:px-0"
-      >
-        <div className="relative z-[1] flex items-center gap-2 group-data-[effective-state=collapsed]:justify-center group-data-[effective-state=collapsed]:gap-0">
-          <div
-            aria-hidden="true"
-            className="h-9 w-9 flex-shrink-0 group-data-[effective-state=collapsed]:mx-auto"
-          />
-          {showExpanded && <span className="font-semibold text-foreground">{company?.name || ''}</span>}
-        </div>
-      </SidebarHeader>
+      {/* Header removed — the sidebar now starts at the first menu item. */}
 
       <SidebarContent className="min-h-0 overflow-y-auto group-data-[collapsible=icon]:overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [&::-webkit-scrollbar]:w-0 [&::-webkit-scrollbar]:bg-transparent">
         <SidebarGroup>
