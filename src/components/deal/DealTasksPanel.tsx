@@ -151,10 +151,9 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <ToggleGroup
               type="single"
-              value={statusFilter}
-              onValueChange={(v) => v && setStatusFilter(v as 'incomplete' | 'all')}
+              value={statusFilter === 'all' ? 'all' : ''}
+              onValueChange={(v) => setStatusFilter(v === 'all' ? 'all' : 'incomplete')}
             >
-              <ToggleGroupItem value="incomplete" className="text-[10px] h-6 px-2">Incomplete</ToggleGroupItem>
               <ToggleGroupItem value="all" className="text-[10px] h-6 px-2">All</ToggleGroupItem>
             </ToggleGroup>
             <Button size="sm" variant="outline" onClick={() => setIsCreateOpen(true)} className="h-7 gap-1 text-xs px-2">
