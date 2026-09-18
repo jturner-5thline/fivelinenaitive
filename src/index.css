@@ -4210,6 +4210,18 @@ main:has(.deals-surface) .toolbar-control,
   backdrop-filter: none !important;
 }
 
+/* Deal title + deal size in the pop-up header stay chromeless — no control
+   fill or border, they read as plain headline text until focused. */
+.deal-detail-surface input.deal-header-field,
+.deal-detail-surface .deal-header-field input,
+main:has(.deals-surface) input.deal-header-field {
+  background-color: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
 main:has(.deals-surface) button:not([role="combobox"]):not([data-notif-count]):is(
   .inline-flex, [data-slot="button"]
 ) {
