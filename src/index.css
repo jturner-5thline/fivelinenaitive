@@ -98,10 +98,10 @@
        a whisper of cool blue lower-right, and a barely-there warm amber
        veil so the shell keeps its night-light temperature. */
     --app-backdrop:
-      linear-gradient(180deg, rgba(255, 178, 102, 0.022) 0%, rgba(255, 158, 84, 0.012) 100%),
-      radial-gradient(110% 90% at 94% 90%, rgba(63, 134, 247, 0.055) 0%, rgba(63, 134, 247, 0.018) 45%, rgba(63, 134, 247, 0) 72%),
-      radial-gradient(120% 105% at 5% 0%, rgba(17, 22, 31, 0.55) 0%, rgba(17, 22, 31, 0) 78%),
-      linear-gradient(118deg, #191f2b 0%, #1a2029 46%, #1a212e 70%, #1b2330 86%, #1d2636 100%);
+      linear-gradient(180deg, rgba(255, 178, 102, 0.018) 0%, rgba(255, 158, 84, 0.010) 100%),
+      radial-gradient(110% 90% at 94% 90%, rgba(63, 134, 247, 0.085) 0%, rgba(63, 134, 247, 0.030) 45%, rgba(63, 134, 247, 0) 74%),
+      radial-gradient(120% 105% at 5% 0%, rgba(16, 22, 34, 0.50) 0%, rgba(16, 22, 34, 0) 78%),
+      linear-gradient(118deg, #182031 0%, #192234 46%, #1a2438 70%, #1b273e 86%, #1d2a45 100%);
 
 
 
