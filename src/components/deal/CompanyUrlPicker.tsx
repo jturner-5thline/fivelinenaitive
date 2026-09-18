@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Building2, Check } from 'lucide-react';
+import { Building2, Check, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -109,5 +110,57 @@ export function CompanyUrlPicker({ currentUrl, onSelect }: CompanyUrlPickerProps
         </div>
       </PopoverContent>
     </Popover>
+  );
+}
+
+const hostOf = (value?: string) => {
+  const raw = (value || '').trim();
+  if (!raw) return '';
+  const withProto = /^https?:\/\//i.test(raw) ? raw : `https://${raw.replace(/^\/+/, '')}`;
+  try {
+    return new URL(withProto).hostname.replace(/^www\./i, '').toLowerCase();
+  } catch {
+    return '';
+  }
+};
+
+/** Shows a link to the matching company record in the companies database, when one exists. */
+export function CompanyRecordLink({ currentUrl }: { currentUrl?: string }) {
+  const { company } = useCompany();
+  const navigate = useNavigate();
+  const host = hostOf(currentUrl);
+
+  const { data: match } = useQuery({
+    queryKey: ['company-url-record-link', company?.id, host],
+    enabled: !!company?.id && !!host,
+    queryFn: async () => {
+      const term = `%${host}%`;
+      const { data, error } = await supabase
+        .from('crm_companies')
+        .select('id, name, domain, website_url')
+        .eq('org_company_id', company!.id)
+        .or(`domain.ilike.${term},website_url.ilike.${term}`)
+        .limit(10);
+      if (error) throw error;
+      const rows = (data || []) as CompanyRow[];
+      return (
+        rows.find((r) => hostOf(r.website_url || r.domain || '') === host) || null
+      );
+    },
+  });
+
+  if (!match) return null;
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className="h-5 w-5 shrink-0 text-muted-foreground hover:text-foreground"
+      title={`Open ${match.name} in the companies database`}
+      onClick={() => navigate(`/crm-companies/${match.id}`)}
+    >
+      <ExternalLink className="h-3.5 w-3.5" />
+    </Button>
   );
 }
