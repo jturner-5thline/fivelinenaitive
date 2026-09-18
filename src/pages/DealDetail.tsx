@@ -3664,7 +3664,7 @@ export default function DealDetail() {
                 manualCommit
                 fieldName="Deal name"
                 onSave={(value) => updateDeal('company' as any, value as any)}
-                className="w-auto max-w-full shrink"
+                className="deal-header-identity-field w-auto max-w-full shrink"
                 displayClassName="text-[2rem] md:text-[2.7rem] font-bold leading-tight break-words text-foreground"
                 inputClassName="w-auto max-w-full [field-sizing:content] deal-header-field"
               />
@@ -3681,7 +3681,7 @@ export default function DealDetail() {
                 manualCommit
                 fieldName="Deal amount"
                 onSave={(value) => updateDeal('value' as any, (parseCurrencyInputValue(value) ?? 0) as any)}
-                className="w-auto shrink-0"
+                className="deal-header-identity-field w-auto shrink-0"
                 displayClassName="text-[2rem] md:text-[2.7rem] font-bold leading-none text-primary"
                 inputClassName="w-auto [field-sizing:content] deal-header-field"
               />
