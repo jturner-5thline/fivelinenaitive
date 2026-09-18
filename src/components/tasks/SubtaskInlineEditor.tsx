@@ -68,7 +68,7 @@ export function SubtaskInlineEditor({
   };
 
   return (
-    <div className="rounded-lg overflow-hidden" style={{ border: isExpanded ? '1px solid #2a2f3e' : 'none' }}>
+    <div className="rounded-lg overflow-hidden" style={{ border: isExpanded ? '1px solid #F0E9DC' : 'none' }}>
       {/* Collapsed row */}
       <div
         className={cn(
@@ -113,7 +113,7 @@ export function SubtaskInlineEditor({
 
       {/* Expanded detail */}
       {isExpanded && (
-        <div className="px-3 pb-3 pt-2 space-y-3" style={{ backgroundColor: '#0d1117', borderTop: '1px solid #2a2f3e' }}>
+        <div className="px-3 pb-3 pt-2 space-y-3" style={{ backgroundColor: '#0d1117', borderTop: '1px solid #F0E9DC' }}>
           {/* Editable title */}
           <div>
             {editingTitle ? (
@@ -125,7 +125,7 @@ export function SubtaskInlineEditor({
                   if (e.key === 'Enter') handleSaveTitle();
                   if (e.key === 'Escape') { setTitleValue(subtask.title); setEditingTitle(false); }
                 }}
-                className="h-7 text-xs bg-[#13181f] text-white border-[#2a2f3e]"
+                className="h-7 text-xs bg-[#FFFDF8] text-white border-[#F0E9DC]"
                 autoFocus
               />
             ) : (
@@ -190,7 +190,7 @@ export function SubtaskInlineEditor({
                     variant="outline"
                     size="sm"
                     className={cn(
-                      'h-6 text-[11px] w-[130px] justify-start gap-1 px-2 bg-[#13181f] border-[#2a2f3e]',
+                      'h-6 text-[11px] w-[130px] justify-start gap-1 px-2 bg-[#FFFDF8] border-[#F0E9DC]',
                       subtask.due_date ? 'text-white' : 'text-[#8b92a5]',
                     )}
                   >
@@ -212,9 +212,9 @@ export function SubtaskInlineEditor({
                   />
                 </PopoverContent>
               </Popover>
-              <Button variant="outline" size="sm" className="h-5 text-[9px] px-1.5 rounded-full border-[#2a2f3e]" style={{ color: '#8b92a5' }}
+              <Button variant="outline" size="sm" className="h-5 text-[9px] px-1.5 rounded-full border-[#F0E9DC]" style={{ color: '#8b92a5' }}
                 onClick={() => onUpdate(subtask.id, { due_date: today })}>Today</Button>
-              <Button variant="outline" size="sm" className="h-5 text-[9px] px-1.5 rounded-full border-[#2a2f3e]" style={{ color: '#8b92a5' }}
+              <Button variant="outline" size="sm" className="h-5 text-[9px] px-1.5 rounded-full border-[#F0E9DC]" style={{ color: '#8b92a5' }}
                 onClick={() => onUpdate(subtask.id, { due_date: format(addDays(new Date(), 1), 'yyyy-MM-dd') })}>Tomorrow</Button>
             </div>
           </div>
@@ -235,7 +235,7 @@ export function SubtaskInlineEditor({
 
             {/* Progress bar */}
             {totalCount > 0 && (
-              <div className="h-1 rounded-full mb-2 overflow-hidden" style={{ backgroundColor: '#2a2f3e' }}>
+              <div className="h-1 rounded-full mb-2 overflow-hidden" style={{ backgroundColor: '#F0E9DC' }}>
                 <div className="h-full rounded-full transition-all" style={{
                   width: `${(completedCount / totalCount) * 100}%`,
                   backgroundColor: completedCount === totalCount ? '#22c55e' : '#3b7eff',
@@ -258,7 +258,7 @@ export function SubtaskInlineEditor({
                       if (e.key === 'Enter') handleSaveItemLabel(item.id);
                       if (e.key === 'Escape') setEditingItemId(null);
                     }}
-                    className="h-5 text-[11px] flex-1 bg-[#13181f] text-white border-[#2a2f3e] px-1"
+                    className="h-5 text-[11px] flex-1 bg-[#FFFDF8] text-white border-[#F0E9DC] px-1"
                     autoFocus
                   />
                 ) : (
@@ -290,7 +290,7 @@ export function SubtaskInlineEditor({
                     if (e.key === 'Escape') { setShowChecklistInput(false); setNewChecklistLabel(''); }
                   }}
                   placeholder="Checklist item..."
-                  className="h-5 text-[11px] flex-1 bg-[#13181f] text-white border-[#2a2f3e] px-1.5"
+                  className="h-5 text-[11px] flex-1 bg-[#FFFDF8] text-white border-[#F0E9DC] px-1.5"
                   autoFocus
                 />
               </div>

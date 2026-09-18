@@ -135,7 +135,7 @@ function DroppableStageColumnImpl({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex-shrink-0 w-[300px] rounded-[8px] border border-white/[0.10] bg-[#0b1226]/70 transition-colors duration-150",
+        "flex-shrink-0 w-[300px] rounded-[8px] border border-white/[0.10] bg-[#FFFDF8]/70 transition-colors duration-150",
         "shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_1px_2px_rgba(0,0,0,0.25)]",
 
         isDraggingAny && !isOver && "opacity-60",

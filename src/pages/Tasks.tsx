@@ -2142,8 +2142,8 @@ function TaskBoardView({ tasks, statusGroups, onSelectTask, onUpdateTask, onCrea
           );
         })}
         {isAddingSection ? (
-          <div className="flex flex-col min-w-[280px] w-[280px] rounded-xl" style={{ backgroundColor: '#13181f', border: '1px solid #2a2f3e' }}>
-            <div className="px-3 py-2.5 border-b" style={{ borderColor: '#2a2f3e' }}>
+          <div className="flex flex-col min-w-[280px] w-[280px] rounded-xl" style={{ backgroundColor: '#FFFDF8', border: '1px solid #F0E9DC' }}>
+            <div className="px-3 py-2.5 border-b" style={{ borderColor: '#F0E9DC' }}>
               <Input ref={sectionInputRef} value={newSectionName} onChange={e => setNewSectionName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddSection(); } if (e.key === 'Escape') { setIsAddingSection(false); setNewSectionName(''); } }}
                 onBlur={handleAddSection} placeholder="Section name..." className="h-8 text-sm" autoFocus />
@@ -2152,7 +2152,7 @@ function TaskBoardView({ tasks, statusGroups, onSelectTask, onUpdateTask, onCrea
         ) : (
           <button onClick={() => { setIsAddingSection(true); setNewSectionName(''); }}
             className="flex flex-col items-center justify-center min-w-[280px] w-[280px] rounded-xl border border-dashed transition-colors gap-2"
-            style={{ borderColor: '#2a2f3e', color: '#8b92a5' }}>
+            style={{ borderColor: '#F0E9DC', color: '#8b92a5' }}>
             <Plus className="h-5 w-5" />
             <span className="text-sm">Add Section</span>
           </button>
@@ -2160,7 +2160,7 @@ function TaskBoardView({ tasks, statusGroups, onSelectTask, onUpdateTask, onCrea
       </div>
       <DragOverlay>
         {activeTask ? (
-          <div className="rounded-xl p-4 shadow-lg w-[260px]" style={{ backgroundColor: '#13181f', border: '1px solid #2a2f3e' }}>
+          <div className="rounded-xl p-4 shadow-lg w-[260px]" style={{ backgroundColor: '#FFFDF8', border: '1px solid #F0E9DC' }}>
             <p className="text-sm font-semibold" style={{ color: 'white' }}>{activeTask.title}</p>
           </div>
         ) : null}
@@ -2196,7 +2196,7 @@ function SortableBoardCard({ task, priorityPill, todayStr, selectedTaskId, onSel
 
   return (
     <div ref={setNodeRef}
-      style={{ ...style, backgroundColor: '#13181f', border: '1px solid #2a2f3e' }}
+      style={{ ...style, backgroundColor: '#FFFDF8', border: '1px solid #F0E9DC' }}
       className={cn('rounded-xl p-4 cursor-pointer transition-all', selectedTaskId === task.id && 'ring-1 ring-[#3b7eff]')}
       onClick={() => onSelectTask(task.id)}
       {...attributes} {...listeners}
@@ -2407,8 +2407,8 @@ function BoardColumn({ groupKey, label, tasks: groupTasks, statusColor, priority
 
   return (
     <div className={cn('flex flex-col min-w-[280px] w-[280px] rounded-xl transition-colors', isOver && 'ring-1 ring-[#3b7eff]/30')}
-      style={{ backgroundColor: '#0d1117', border: '1px solid #2a2f3e' }}>
-      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #2a2f3e' }}>
+      style={{ backgroundColor: '#0d1117', border: '1px solid #F0E9DC' }}>
+      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #F0E9DC' }}>
         <div className="flex items-center gap-2">
           <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: statusColor }} />
           <span className="text-sm font-semibold" style={{ color: 'white' }}>{label}</span>
@@ -2425,7 +2425,7 @@ function BoardColumn({ groupKey, label, tasks: groupTasks, statusColor, priority
       </div>
       <div ref={setNodeRef} className="flex-1 overflow-auto p-3 space-y-2 min-h-[60px]">
         {isAdding && (
-          <div className="rounded-xl p-3" style={{ backgroundColor: '#13181f', border: '1px solid #2a2f3e' }}>
+          <div className="rounded-xl p-3" style={{ backgroundColor: '#FFFDF8', border: '1px solid #F0E9DC' }}>
             <Input ref={inputRef} value={newTitle} onChange={e => setNewTitle(e.target.value)} onKeyDown={handleKeyDown} onBlur={handleSubmit}
               placeholder="Task name..." className="h-7 text-sm border-0 shadow-none focus-visible:ring-0 px-1 bg-transparent text-white" />
           </div>
