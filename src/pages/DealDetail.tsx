@@ -3261,7 +3261,7 @@ export default function DealDetail() {
                       )}
                     </div>
                     </div>
-                    <div className="flex items-center gap-2 pt-1">
+                    <div className="flex flex-col items-start gap-1 pt-1">
                       <EditableDealStatusTag dealId={deal.id} status={deal.status} className="deal-rail-control" />
                       <EditableDealStageTag
                         dealId={deal.id}
