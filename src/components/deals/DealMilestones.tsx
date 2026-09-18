@@ -195,7 +195,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
 
         {/* Collapsed View — pill markers */}
         {milestones.length > 0 && markerVariant === 'pill' && (
-          <div className="grid gap-2 py-1" style={{ gridTemplateColumns: `repeat(${milestones.length}, minmax(0, 1fr))` }}>
+          <div className="grid gap-2 rounded-lg border border-white/15 px-2 py-2" style={{ gridTemplateColumns: `repeat(${milestones.length}, minmax(0, 1fr))` }}>
             {milestones.map((milestone) => (
               <Tooltip key={milestone.id}>
                 <TooltipTrigger asChild>
