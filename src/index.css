@@ -329,7 +329,7 @@
   body {
     @apply bg-background text-foreground font-sans;
     min-height: 100vh;
-    background-color: #030310;
+    background-color: var(--bg-app);
     background-image: var(--app-backdrop);
     background-attachment: fixed;
     background-repeat: no-repeat;
@@ -369,7 +369,7 @@
   }
 
   .dark body {
-    background-color: #030310 !important;
+    background-color: var(--bg-app) !important;
     background-image: var(--app-backdrop) !important;
     background-attachment: fixed !important;
     background-repeat: no-repeat !important;
@@ -2792,7 +2792,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    Mirrors the /insights page shell: same navy gradient backdrop and the
    shared Insights widget skin so widgets keep clear, visible borders. */
 .sales-dashboard-popup {
-  background-color: #030310 !important;
+  background-color: var(--bg-app) !important;
   background-image: linear-gradient(180deg, #030310 0%, #030b1e 10%, #051a39 25%, #063765 50%, #065193 75%, #076cc1 100%) !important;
   background-repeat: no-repeat !important;
   background-size: cover !important;
@@ -3583,7 +3583,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .dashboard-popup-surface[role="dialog"],
 .dashboard-popup-surface.popup-shell-surface {
   background: var(--app-backdrop) !important;
-  background-color: #01030a !important;
+  background-color: var(--bg-app) !important;
 }
 .dashboard-popup-surface [role="tabpanel"] {
   background: transparent !important;
