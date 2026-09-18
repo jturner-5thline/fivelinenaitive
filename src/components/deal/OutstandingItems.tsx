@@ -847,32 +847,64 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
             controls drop to row 2 before anything important is clipped.
           */}
           <div className="flex flex-row flex-nowrap items-center gap-1 order-2 justify-end ml-auto shrink-0">
-            {/* Filter by requester — wraps to next line first at narrow widths */}
+            {/* Combined group-by + filter-by-requester menu */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
                   className={cn(
-                    'gap-1 text-xs h-8 px-1.5 order-6 shrink-0 max-w-[96px]',
-                    filterByLender.length > 0 && 'border-primary bg-primary/5'
+                    'gap-1 text-xs h-8 px-1.5 order-4 shrink-0 max-w-[110px]',
+                    (filterByLender.length > 0 || groupBy !== 'none') && 'border-primary bg-primary/5'
                   )}
+                  title="Group & filter"
                 >
-                  <User className="h-3 w-3 shrink-0" />
-                  <span className="truncate hidden @[420px]:inline">{filterByLender.length === 0 
-                    ? 'All' 
-                    : filterByLender.length === 1 
-                      ? filterByLender[0] 
-                      : `${filterByLender.length}`}</span>
+                  <Group className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate hidden @[420px]:inline">
+                    {filterByLender.length > 0
+                      ? (filterByLender.length === 1 ? filterByLender[0] : `${filterByLender.length} filters`)
+                      : groupBy !== 'none'
+                        ? 'Grouped'
+                        : 'All'}
+                  </span>
                   <ChevronDown className="h-3 w-3 shrink-0 hidden @[420px]:inline" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[220px] p-0 bg-popover" align="start">
-                <SearchableRequesterList
-                  options={requestedByOptions}
-                  selected={filterByLender}
-                  onToggle={toggleFilterLender}
-                />
+              <PopoverContent className="w-[240px] p-0 bg-popover" align="end">
+                <div className="p-1">
+                  <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Group by
+                  </div>
+                  {([
+                    { value: 'none', label: 'No grouping' },
+                    { value: 'requester', label: 'By requester' },
+                    { value: 'status', label: 'By status' },
+                    { value: 'priority', label: 'By priority' },
+                  ] as { value: GroupBy; label: string }[]).map(opt => (
+                    <Button
+                      key={opt.value}
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        'w-full justify-start text-xs h-7',
+                        groupBy === opt.value && 'bg-primary/10 text-primary'
+                      )}
+                      onClick={() => setGroupBy(opt.value)}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+                <div className="border-t border-border">
+                  <div className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Filter by requester
+                  </div>
+                  <SearchableRequesterList
+                    options={requestedByOptions}
+                    selected={filterByLender}
+                    onToggle={toggleFilterLender}
+                  />
+                </div>
                 {filterByLender.length > 0 && (
                   <div className="border-t border-border p-1">
                     <Button
@@ -887,19 +919,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                 )}
               </PopoverContent>
             </Popover>
-            
-            {/* Group by */}
-            <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
-              <SelectTrigger className="h-8 w-8 p-0 shrink-0 flex items-center justify-center text-xs [&>svg:last-child]:hidden order-4" title="Group by">
-                <Group className="h-4 w-4" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No grouping</SelectItem>
-                <SelectItem value="requester">By requester</SelectItem>
-                <SelectItem value="status">By status</SelectItem>
-                <SelectItem value="priority">By priority</SelectItem>
-              </SelectContent>
-            </Select>
+
 
             {/* Bulk import */}
             {onBulkAdd && !readOnly && (
