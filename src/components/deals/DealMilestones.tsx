@@ -216,8 +216,8 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                         milestone.completed
                           ? "border-transparent bg-brand-gradient shadow-[0_2px_10px_hsl(272,100%,60%,0.35)]"
                           : isOverdue(milestone)
-                          ? "border-destructive/60 bg-transparent"
-                          : "border-primary/40 bg-transparent",
+                          ? "!border-destructive/70 !bg-transparent !bg-none !shadow-none"
+                          : "!border-white/35 !bg-transparent !bg-none !shadow-none",
                       )}
                     />
                     <span
