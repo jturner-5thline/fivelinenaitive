@@ -4235,6 +4235,19 @@ main:has(.deals-surface) :is(input, textarea, button, [role="combobox"], a):focu
   box-shadow: 0 0 0 2px rgba(63, 134, 247, 0.35) !important;
 }
 
+/* Header identity fields remain plain text in every interaction state. This
+   must follow the shared focus rule above so title/value never gain a ring. */
+.deal-detail-surface input.deal-header-field,
+.deal-detail-surface input.deal-header-field:hover,
+.deal-detail-surface input.deal-header-field:focus,
+.deal-detail-surface input.deal-header-field:focus-visible {
+  background-color: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
 main:has(.deals-surface) :is(button, [role="combobox"], input, a)[disabled],
 main:has(.deals-surface) :is(button, [role="combobox"])[aria-disabled="true"],
 .deal-detail-surface :is(button, [role="combobox"])[disabled] {
