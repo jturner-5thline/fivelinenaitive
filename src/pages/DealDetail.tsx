@@ -72,6 +72,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { resolveDealClientContact } from '@/lib/dealClientContact';
 import { DealClientContactField } from '@/components/deal/DealClientContactField';
 import { DealAffiliatedContactsField } from '@/components/deal/DealAffiliatedContactsField';
+import { CompanyUrlPicker } from '@/components/deal/CompanyUrlPicker';
 import { Deal, DealStatus, DealStage, EngagementType, ExclusivityType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, Referrer, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG } from '@/types/deal';
 import { useLenders } from '@/contexts/LendersContext';
 import { useMasterLenders } from '@/hooks/useMasterLenders';
