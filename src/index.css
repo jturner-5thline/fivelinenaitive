@@ -93,11 +93,15 @@
     --gradient-accent: linear-gradient(135deg, hsl(229 35% 50%), hsl(216 37% 60%));
     --gradient-hero: linear-gradient(180deg, hsl(210 20% 99%) 0%, hsl(210 30% 96%) 100%);
 
-    /* App backdrop — deep navy with a soft blue diagonal band (dark top-left, blue lower-right) */
+    /* App backdrop — deep blue-charcoal canvas (--bg-app) with the same
+       restrained diagonal character as before: slightly deeper top-left,
+       a whisper of cool blue lower-right, and a barely-there warm amber
+       veil so the shell keeps its night-light temperature. */
     --app-backdrop:
-      radial-gradient(100% 85% at 94% 88%, rgba(7, 27, 52, 0.26) 0%, rgba(5, 19, 37, 0.10) 42%, rgba(4, 12, 28, 0) 70%),
-      radial-gradient(120% 105% at 5% 0%, rgba(2, 8, 20, 0.92) 0%, rgba(2, 8, 20, 0) 80%),
-      linear-gradient(118deg, #02060d 0%, #02070f 48%, #030a17 72%, #041021 88%, #05162c 100%);
+      linear-gradient(180deg, rgba(255, 178, 102, 0.022) 0%, rgba(255, 158, 84, 0.012) 100%),
+      radial-gradient(110% 90% at 94% 90%, rgba(63, 134, 247, 0.055) 0%, rgba(63, 134, 247, 0.018) 45%, rgba(63, 134, 247, 0) 72%),
+      radial-gradient(120% 105% at 5% 0%, rgba(17, 22, 31, 0.55) 0%, rgba(17, 22, 31, 0) 78%),
+      linear-gradient(118deg, #191f2b 0%, #1a2029 46%, #1a212e 70%, #1b2330 86%, #1d2636 100%);
 
 
 
@@ -319,13 +323,15 @@
   body,
   #root {
     min-height: 100%;
-    background-color: hsl(var(--background));
+    /* Single base canvas for html / body / the React root so no light or
+       near-black flash can appear during load, navigation or transitions. */
+    background-color: var(--bg-app);
   }
 
   body {
     @apply bg-background text-foreground font-sans;
     min-height: 100vh;
-    background-color: #030310;
+    background-color: var(--bg-app);
     background-image: var(--app-backdrop);
     background-attachment: fixed;
     background-repeat: no-repeat;
@@ -365,7 +371,7 @@
   }
 
   .dark body {
-    background-color: #030310 !important;
+    background-color: var(--bg-app) !important;
     background-image: var(--app-backdrop) !important;
     background-attachment: fixed !important;
     background-repeat: no-repeat !important;
@@ -2788,7 +2794,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    Mirrors the /insights page shell: same navy gradient backdrop and the
    shared Insights widget skin so widgets keep clear, visible borders. */
 .sales-dashboard-popup {
-  background-color: #030310 !important;
+  background-color: var(--bg-app) !important;
   background-image: linear-gradient(180deg, #030310 0%, #030b1e 10%, #051a39 25%, #063765 50%, #065193 75%, #076cc1 100%) !important;
   background-repeat: no-repeat !important;
   background-size: cover !important;
@@ -3579,7 +3585,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .dashboard-popup-surface[role="dialog"],
 .dashboard-popup-surface.popup-shell-surface {
   background: var(--app-backdrop) !important;
-  background-color: #01030a !important;
+  background-color: var(--bg-app) !important;
 }
 .dashboard-popup-surface [role="tabpanel"] {
   background: transparent !important;
