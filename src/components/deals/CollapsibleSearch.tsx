@@ -28,6 +28,31 @@ export function CollapsibleSearch({ value, onChange, debounceMs = 350 }: Collaps
     }
   }, [value]);
 
+  // Keep the box from ever running under the floating menu header: measure the
+  // gap between our left edge and the header pill, and clamp the width to it.
+  const MAX_W = 243;
+  const MIN_W = 110;
+  const [boxWidth, setBoxWidth] = useState<number>(MAX_W);
+
+  useEffect(() => {
+    const measure = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      const left = el.getBoundingClientRect().left;
+      const header = document.querySelector('.floating-header') as HTMLElement | null;
+      const headerLeft = header ? header.getBoundingClientRect().left : window.innerWidth;
+      const available = headerLeft - left - 12;
+      setBoxWidth(Math.max(MIN_W, Math.min(MAX_W, available)));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    const id = window.setInterval(measure, 500);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.clearInterval(id);
+    };
+  }, []);
+
   const scheduleCommit = (next: string) => {
     hasPendingRef.current = true;
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -78,7 +103,8 @@ export function CollapsibleSearch({ value, onChange, debounceMs = 350 }: Collaps
   return (
     <div
       ref={containerRef}
-      className="relative inline-flex items-center h-9 w-[243px] rounded-md border border-input bg-background text-sm transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
+      className="relative inline-flex items-center h-9 rounded-md border border-input bg-background text-sm transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
+      style={{ width: boxWidth }}
     >
       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <input
