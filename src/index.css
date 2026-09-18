@@ -323,7 +323,9 @@
   body,
   #root {
     min-height: 100%;
-    background-color: hsl(var(--background));
+    /* Single base canvas for html / body / the React root so no light or
+       near-black flash can appear during load, navigation or transitions. */
+    background-color: var(--bg-app);
   }
 
   body {
