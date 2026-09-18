@@ -100,6 +100,13 @@
     --app-backdrop:
       linear-gradient(0deg, var(--bg-app) 0%, var(--bg-app) 100%);
 
+    /* Marketing backdrop — the original blue/dark-blue gradient, kept for the
+       public homepage and login-adjacent shells only. */
+    --marketing-backdrop:
+      radial-gradient(100% 85% at 94% 88%, rgba(7, 27, 52, 0.26) 0%, rgba(5, 19, 37, 0.10) 42%, rgba(4, 12, 28, 0) 70%),
+      radial-gradient(120% 105% at 5% 0%, rgba(2, 8, 20, 0.92) 0%, rgba(2, 8, 20, 0) 80%),
+      linear-gradient(118deg, #02060d 0%, #02070f 48%, #030a17 72%, #041021 88%, #05162c 100%);
+
 
 
 
