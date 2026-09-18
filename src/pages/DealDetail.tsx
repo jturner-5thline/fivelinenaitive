@@ -678,6 +678,8 @@ export default function DealDetail() {
   }, []);
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones, pendingClosingDateSync, dismissClosingDateSync } = useDealMilestones(id);
   const { user } = useAuth();
+  // 5th Line-only surfaces (Analysis tab).
+  const canSeeAnalysisTab = canUse5thLineProprietaryActions(user);
   const { company, members } = useCompany();
   const { features: companyFeatures } = useCompanyFeatures();
   const requestStatusChange = useRequestStatusChange();
