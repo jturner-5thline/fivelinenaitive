@@ -4082,3 +4082,267 @@ aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
   box-shadow: none !important;
   border: none !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DEALS — PHASE 1 SKIN
+   ----------------------------------------------------------------------
+   Scoped retrofit of the Deals experience onto the shared Phase 1 tokens
+   declared in :root (--bg-app / --bg-card / --bg-control / --bg-chip /
+   --table-* / --border-* / --text-* / --accent-*).
+
+   Scope boundaries:
+     • `main:has(.deals-surface)`  → the Deals page canvas + everything in it
+     • `body:has(.deals-surface)`  → portalled popovers/menus opened FROM Deals
+     • `.deal-popup-shell` / `.deal-detail-surface` → deal detail pop-up
+     • `.deal-tile`, `.deal-glass` inside the above
+   Nothing outside these scopes is touched — Tasks, Email, Calendar,
+   Analytics, Contacts, Companies, Lenders and the global nav are untouched
+   in this phase.
+
+   Rules: flat surfaces, 1px --border-subtle, 8px radius, one restrained
+   shadow (0 2px 8px rgba(0,0,0,.12)), no glow, no bright white borders,
+   no transparent overlays. A faint warm amber veil (--warm-veil) keeps the
+   dark surfaces feeling like night-light rather than cold slate.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Page canvas ─────────────────────────────────────────────────────── */
+main:has(.deals-surface) {
+  background-color: var(--bg-page);
+  background-image: var(--warm-veil);
+  color: var(--text-primary);
+}
+
+/* ── Cards / widgets / tiles / panels ────────────────────────────────── */
+main:has(.deals-surface) .deal-tile,
+main:has(.deals-surface) .deal-glass,
+main:has(.deals-surface) .glass-module,
+main:has(.deals-surface) [data-slot="card"],
+.deal-tile.deal-glass,
+.deal-glass.deal-tile,
+div.deal-tile.deal-glass,
+.deal-tile[class*="deal-glass"],
+.deal-detail-surface .deal-glass,
+.deal-detail-surface [data-slot="card"],
+.deal-detail-surface .bg-card,
+.deal-detail-surface [class*="bg-card"] {
+  background-color: var(--bg-card) !important;
+  background-image: var(--warm-veil) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--elevation-card) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+main:has(.deals-surface) .deal-tile:hover,
+main:has(.deals-surface) .deal-glass:hover,
+.deal-tile.deal-glass:hover,
+.deal-glass.deal-tile:hover,
+div.deal-tile.deal-glass:hover,
+.deal-tile[class*="deal-glass"]:hover,
+.deal-detail-surface .deal-glass:hover,
+.deal-detail-surface [class*="bg-card"]:hover {
+  background-color: var(--bg-card-hover) !important;
+  border-color: var(--border-control) !important;
+  box-shadow: var(--elevation-card) !important;
+  transform: none !important;
+}
+
+/* Selected deal tile — restrained blue tint + rim, never a solid block. */
+main:has(.deals-surface) .deal-tile[data-selected="true"],
+main:has(.deals-surface) .deal-tile[aria-selected="true"],
+main:has(.deals-surface) .deal-tile.is-selected,
+main:has(.deals-surface) .deal-tile[data-state="selected"] {
+  background-color: color-mix(in srgb, var(--accent-blue) 10%, var(--bg-card)) !important;
+  border-color: var(--selected-border) !important;
+  box-shadow: inset 2px 0 0 0 var(--accent-blue), var(--elevation-card) !important;
+}
+
+/* Stale-deal cue — keep the gentle warning, tone it into the new theme. */
+main:has(.deals-surface) .deal-tile-stale-glow,
+.deal-tile-stale-glow {
+  border-color: rgba(243, 76, 134, 0.42) !important;
+  box-shadow: inset 2px 0 0 0 rgba(243, 76, 134, 0.55), var(--elevation-card) !important;
+}
+
+/* ── Typography layers ───────────────────────────────────────────────── */
+main:has(.deals-surface) .text-muted-foreground,
+main:has(.deals-surface) [class*="text-muted-foreground"],
+.deal-detail-surface .text-muted-foreground,
+.deal-detail-surface [class*="text-muted-foreground"] {
+  color: var(--text-secondary) !important;
+}
+main:has(.deals-surface) .text-\[10px\].text-muted-foreground,
+main:has(.deals-surface) time,
+main:has(.deals-surface) ::placeholder,
+.deal-detail-surface ::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* ── Controls: filters, search, selects, buttons, date pickers ───────── */
+main:has(.deals-surface) input:not([type="checkbox"]):not([type="radio"]),
+main:has(.deals-surface) textarea,
+main:has(.deals-surface) select,
+main:has(.deals-surface) [data-radix-select-trigger],
+main:has(.deals-surface) button[role="combobox"],
+main:has(.deals-surface) .toolbar-control,
+.deal-detail-surface input:not([type="checkbox"]):not([type="radio"]),
+.deal-detail-surface textarea,
+.deal-detail-surface [data-radix-select-trigger],
+.deal-detail-surface button[role="combobox"] {
+  background-color: var(--bg-control) !important;
+  background-image: none !important;
+  border: 1px solid var(--border-control) !important;
+  border-radius: var(--radius-card) !important;
+  color: var(--text-primary) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+main:has(.deals-surface) button:not([role="combobox"]):not([data-notif-count]):is(
+  .inline-flex, [data-slot="button"]
+) {
+  border-radius: var(--radius-card);
+}
+
+main:has(.deals-surface) :is(input, textarea, button, [role="combobox"], a):focus-visible,
+.deal-detail-surface :is(input, textarea, button, [role="combobox"], a):focus-visible {
+  outline: none !important;
+  border-color: var(--accent-blue) !important;
+  box-shadow: 0 0 0 2px rgba(63, 134, 247, 0.35) !important;
+}
+
+main:has(.deals-surface) :is(button, [role="combobox"], input, a)[disabled],
+main:has(.deals-surface) :is(button, [role="combobox"])[aria-disabled="true"],
+.deal-detail-surface :is(button, [role="combobox"])[disabled] {
+  opacity: 0.45;
+  color: var(--text-muted) !important;
+}
+
+/* Active / selected control state (view toggles, tabs, filter pills). */
+main:has(.deals-surface) [data-state="active"],
+main:has(.deals-surface) [data-state="on"],
+.deal-detail-surface [role="tab"][data-state="active"] {
+  background-color: color-mix(in srgb, var(--accent-blue) 16%, var(--bg-control)) !important;
+  border-color: var(--selected-border) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── Tags / chips / compact classifications ──────────────────────────── */
+main:has(.deals-surface) [data-slot="badge"],
+main:has(.deals-surface) .deal-type-chip,
+.deal-detail-surface [data-slot="badge"] {
+  background-color: var(--bg-chip);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+/* Status chips keep their semantic hue but sit on the chip surface. */
+main:has(.deals-surface) .deal-status-chip,
+.deal-detail-surface .deal-status-chip {
+  background-image: none !important;
+  background-color: var(--bg-chip) !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+/* Notification counts keep the platform red bubble — untouched. */
+main:has(.deals-surface) .notif-count {
+  background-color: #e11d1d !important;
+  border: none !important;
+  color: #fff !important;
+}
+
+/* ── Tables & lists ──────────────────────────────────────────────────── */
+main:has(.deals-surface) table,
+.deal-detail-surface table {
+  background-color: var(--table-row);
+  border-color: var(--border-subtle);
+}
+main:has(.deals-surface) thead tr,
+main:has(.deals-surface) thead th,
+.deal-detail-surface thead tr,
+.deal-detail-surface thead th {
+  background-color: var(--table-header) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--divider) !important;
+}
+main:has(.deals-surface) tbody tr,
+.deal-detail-surface tbody tr {
+  background-color: var(--table-row) !important;
+  border-bottom: 1px solid var(--divider) !important;
+}
+main:has(.deals-surface) tbody tr:hover,
+.deal-detail-surface tbody tr:hover {
+  background-color: var(--table-row-hover) !important;
+}
+
+/* ── Deal detail pop-up / drawer — opaque layered surfaces ───────────── */
+.popup-shell-surface.deal-popup-shell {
+  background: var(--bg-app) !important;
+  background-image: var(--warm-veil) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.deal-detail-surface {
+  color: var(--text-primary);
+}
+.deal-milestones-surface,
+.deal-detail-surface .deal-milestones-surface {
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--elevation-card) !important;
+}
+
+/* Portalled menus, selects, popovers and command lists opened from Deals —
+   always opaque, same layered surface language. */
+body:has(.deals-surface) [data-radix-popper-content-wrapper] :is(
+  [data-radix-select-content],
+  [data-radix-menu-content],
+  [data-radix-dropdown-menu-content],
+  [data-radix-popover-content],
+  [role="listbox"],
+  [role="menu"]
+) {
+  background-color: var(--bg-card) !important;
+  background-image: var(--warm-veil) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  color: var(--text-primary) !important;
+}
+body:has(.deals-surface) [data-radix-popper-content-wrapper] [role="option"]:hover,
+body:has(.deals-surface) [data-radix-popper-content-wrapper] [role="menuitem"]:hover,
+body:has(.deals-surface) [data-radix-popper-content-wrapper] [data-highlighted] {
+  background-color: var(--bg-card-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── Deal charts / KPI widgets ───────────────────────────────────────── */
+main:has(.deals-surface) .recharts-cartesian-grid line,
+.deal-detail-surface .recharts-cartesian-grid line {
+  stroke: var(--chart-gridline) !important;
+}
+main:has(.deals-surface) .recharts-text,
+.deal-detail-surface .recharts-text {
+  fill: var(--text-muted) !important;
+}
+
+/* ── Loading / empty states ──────────────────────────────────────────── */
+main:has(.deals-surface) [data-slot="skeleton"],
+main:has(.deals-surface) .animate-pulse > div {
+  background-color: var(--bg-card-hover) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main:has(.deals-surface) .deal-tile {
+    transition: none !important;
+  }
+}
