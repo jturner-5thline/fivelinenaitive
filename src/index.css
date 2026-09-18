@@ -3049,7 +3049,21 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   background-image: none !important;
   border: 1px solid rgba(255, 255, 255, 0.06) !important;
   border-radius: 0.5rem !important;
-  padding: 6px 4px !important;
+  padding: 1px 4px 6px !important;
+}
+/* Status note text: 20% smaller than the original 18px. */
+.status-note-2rows .status-note-editor,
+.status-note-2rows .status-note-editor .ProseMirror,
+.status-note-2rows .status-note-editor [contenteditable="true"],
+.status-note-2rows .status-note-editor textarea,
+.status-note-2rows .status-note-editor p {
+  font-size: 14.4px !important;
+  line-height: 1.45 !important;
+}
+.status-note-2rows .status-note-editor .ProseMirror > *:first-child,
+.status-note-2rows .status-note-editor [contenteditable="true"] > *:first-child {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
 }
 /* Breathing room between the box's left edge and the status text. */
 .status-note-2rows .status-note-editor .ProseMirror,
