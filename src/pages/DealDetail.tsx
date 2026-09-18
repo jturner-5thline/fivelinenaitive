@@ -1266,6 +1266,13 @@ export default function DealDetail() {
       setDealInfoTab('deal-info');
     }
   }, [isProjectsDeal, dealInfoTab]);
+
+  // The Analysis tab is a 5th Line proprietary surface. Never expose it to
+  // other company accounts, and snap back if a URL/persisted tab lands there.
+  useEffect(() => {
+    if (canSeeAnalysisTab) return;
+    if (dealInfoTab === 'analysis') setDealInfoTab('deal-info');
+  }, [canSeeAnalysisTab, dealInfoTab]);
   const [tabDirection, setTabDirection] = useState<'left' | 'right' | 'none'>('none');
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   
