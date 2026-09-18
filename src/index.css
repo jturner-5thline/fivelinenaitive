@@ -4398,15 +4398,16 @@ main:has(.deals-surface) .animate-pulse > div {
 
 /* Deal identity is headline text, not a boxed form control. Keep this final
    override after every Deals skin rule. */
-.deal-detail-surface input:is([aria-label="Deal name"], [aria-label="Deal amount"]),
-.deal-detail-surface input:is([aria-label="Deal name"], [aria-label="Deal amount"]):hover,
-.deal-detail-surface input:is([aria-label="Deal name"], [aria-label="Deal amount"]):focus,
-.deal-detail-surface input:is([aria-label="Deal name"], [aria-label="Deal amount"]):focus-visible {
+.deal-carousel-viewport.deal-detail-surface .deal-header-identity-field input.deal-header-field,
+.deal-carousel-viewport.deal-detail-surface .deal-header-identity-field input.deal-header-field:hover,
+.deal-carousel-viewport.deal-detail-surface .deal-header-identity-field input.deal-header-field:focus,
+.deal-carousel-viewport.deal-detail-surface .deal-header-identity-field input.deal-header-field:focus-visible {
   appearance: none !important;
   background: transparent !important;
-  border-width: 0 !important;
-  border-color: transparent !important;
+  border: 0 !important;
   border-radius: 0 !important;
   outline: 0 !important;
   box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
