@@ -39,7 +39,7 @@ const Index = () => {
       
       <div
         className="min-h-screen relative overflow-hidden"
-        style={{ background: 'var(--app-backdrop)' }}
+        style={{ background: 'var(--marketing-backdrop)' }}
       >
         {/* YouTube Video Background */}
         <div className="absolute inset-0 w-full h-full overflow-hidden">
@@ -55,7 +55,7 @@ const Index = () => {
         {/* Dark blue overlay — matches the app backdrop */}
         <div
           className="absolute inset-0"
-          style={{ background: 'var(--app-backdrop)', opacity: 0.88 }}
+          style={{ background: 'var(--marketing-backdrop)', opacity: 0.88 }}
         />
         
         {/* Content */}
