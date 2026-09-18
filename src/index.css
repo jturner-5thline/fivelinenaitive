@@ -1362,8 +1362,8 @@
 .deal-glass.deal-tile,
 div.deal-tile.deal-glass,
 .deal-tile[class*="deal-glass"] {
-  background: #171d38 !important;
-  background-color: #171d38 !important;
+  background: #1b2439 !important;
+  background-color: #1b2439 !important;
   background-image: none !important;
   border-color: rgba(47, 238, 251, 0.18) !important;
   border-radius: 8px !important;
@@ -1376,8 +1376,8 @@ div.deal-tile.deal-glass,
 .deal-glass.deal-tile:hover,
 div.deal-tile.deal-glass:hover,
 .deal-tile[class*="deal-glass"]:hover {
-  background: #1d2545 !important;
-  background-color: #1d2545 !important;
+  background: #212c46 !important;
+  background-color: #212c46 !important;
   background-image: none !important;
   border-color: rgba(47, 238, 251, 0.34) !important;
   box-shadow: none !important;
@@ -2871,7 +2871,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [class*="bg-card"],
 .deal-detail-surface [class*="bg-muted/"],
 .deal-detail-surface .deal-glass {
-  background-color: #171d38 !important;
+  background-color: #1b2439 !important;
   background-image: none !important;
   border-width: var(--deal-module-border) !important;
   border-style: solid !important;
@@ -2911,7 +2911,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [class*="bg-card"]:hover,
 .deal-detail-surface .deal-glass:hover {
   border-color: var(--deal-module-border-color-hover) !important;
-  background-color: #1d2545 !important;
+  background-color: #212c46 !important;
   background-image: none !important;
   transform: translateY(-2px);
   box-shadow:
@@ -2942,7 +2942,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 /* Nested modules step one level brighter so hierarchy stays readable. */
 .deal-detail-surface .bg-card .bg-card,
 .deal-detail-surface [class*="bg-card"] [class*="bg-muted/"] {
-  background-color: #1d2545 !important;
+  background-color: #212c46 !important;
   background-image: none !important;
   border-color: rgba(47, 238, 251, 0.18) !important;
   border-radius: var(--deal-module-radius) !important;
@@ -3538,7 +3538,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .sidebar-flyout {
   border-radius: 10px !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  background-color: #171d38 !important;
+  background-color: #1b2439 !important;
   background-image: none !important;
   box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.75) !important;
   backdrop-filter: none;
@@ -4076,7 +4076,7 @@ aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
 /* Deal Milestones widget matches the status-note box surface */
 .deal-milestones-surface,
 .deal-detail-surface .deal-milestones-surface {
-  background-color: #171d38 !important;
+  background-color: #1b2439 !important;
   border: 1px solid rgba(255, 255, 255, 0.06) !important;
   border-radius: 0.5rem !important;
   backdrop-filter: none !important;
