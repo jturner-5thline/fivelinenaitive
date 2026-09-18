@@ -1325,8 +1325,8 @@ div.deal-tile.deal-glass,
 .deal-glass.deal-tile:hover,
 div.deal-tile.deal-glass:hover,
 .deal-tile[class*="deal-glass"]:hover {
-  background: #22243f !important;
-  background-color: #22243f !important;
+  background: #17233f !important;
+  background-color: #17233f !important;
   background-image: none !important;
   border-color: rgba(47, 238, 251, 0.34) !important;
   box-shadow: none !important;
