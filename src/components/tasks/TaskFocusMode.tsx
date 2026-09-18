@@ -128,7 +128,7 @@ export function TaskFocusMode({ tasks, onExit, onUpdate }: TaskFocusModeProps) {
             <Button onClick={handleStartBreak} style={{ backgroundColor: '#3b7eff' }} className="text-white">
               Yes, start break
             </Button>
-            <Button variant="outline" onClick={handleSkipBreak} style={{ borderColor: '#F0E9DC', color: '#8b92a5' }}>
+            <Button variant="outline" onClick={handleSkipBreak} style={{ borderColor: '#2a2f3e', color: '#8b92a5' }}>
               Skip, keep working
             </Button>
           </div>
@@ -138,7 +138,7 @@ export function TaskFocusMode({ tasks, onExit, onUpdate }: TaskFocusModeProps) {
           {/* Timer ring */}
           <div className="relative mb-8">
             <svg width="200" height="200" viewBox="0 0 200 200">
-              <circle cx="100" cy="100" r="90" fill="none" stroke="#F0E9DC" strokeWidth="6" />
+              <circle cx="100" cy="100" r="90" fill="none" stroke="#2a2f3e" strokeWidth="6" />
               <circle
                 cx="100" cy="100" r="90" fill="none"
                 stroke={isBreak ? '#22c55e' : '#3b7eff'}
@@ -165,7 +165,7 @@ export function TaskFocusMode({ tasks, onExit, onUpdate }: TaskFocusModeProps) {
               size="icon"
               variant="outline"
               className="h-10 w-10 rounded-full"
-              style={{ borderColor: '#F0E9DC' }}
+              style={{ borderColor: '#2a2f3e' }}
               onClick={handleReset}
             >
               <RotateCcw className="h-4 w-4" style={{ color: '#8b92a5' }} />
@@ -182,7 +182,7 @@ export function TaskFocusMode({ tasks, onExit, onUpdate }: TaskFocusModeProps) {
               size="icon"
               variant="outline"
               className="h-10 w-10 rounded-full"
-              style={{ borderColor: '#F0E9DC' }}
+              style={{ borderColor: '#2a2f3e' }}
               onClick={handleNext}
               disabled={currentIndex >= incompleteTasks.length - 1}
             >
@@ -194,7 +194,7 @@ export function TaskFocusMode({ tasks, onExit, onUpdate }: TaskFocusModeProps) {
           {currentTask && (
             <div
               className="w-full max-w-lg rounded-xl border p-6"
-              style={{ backgroundColor: '#FFFDF8', borderColor: '#F0E9DC' }}
+              style={{ backgroundColor: '#13181f', borderColor: '#2a2f3e' }}
             >
               <div className="flex items-start gap-3">
                 <Checkbox
@@ -212,7 +212,7 @@ export function TaskFocusMode({ tasks, onExit, onUpdate }: TaskFocusModeProps) {
                   )}
                 </div>
               </div>
-              <div className="flex items-center justify-between mt-4 pt-3" style={{ borderTop: '1px solid #F0E9DC' }}>
+              <div className="flex items-center justify-between mt-4 pt-3" style={{ borderTop: '1px solid #2a2f3e' }}>
                 <span className="text-xs" style={{ color: '#8b92a5' }}>
                   Task {currentIndex + 1} of {incompleteTasks.length}
                 </span>

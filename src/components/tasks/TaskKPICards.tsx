@@ -40,8 +40,8 @@ export function TaskKPICards({ tasks }: TaskKPICardsProps) {
             key={card.key}
             className="flex items-center gap-3 rounded-xl border px-4 py-3"
             style={{
-              backgroundColor: '#FFFDF8',
-              borderColor: '#F0E9DC',
+              backgroundColor: '#13181f',
+              borderColor: '#2a2f3e',
             }}
           >
             <div

@@ -115,7 +115,7 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
       )}
       style={{
         // Match the floating menu bar (sidebar shell) fill exactly.
-        background: 'linear-gradient(180deg, #FFFDF8 0%, #0b1830 100%)',
+        background: 'linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%)',
         backdropFilter: 'none',
         WebkitBackdropFilter: 'none',
         border: '1px solid rgba(255, 255, 255, 0.07)',

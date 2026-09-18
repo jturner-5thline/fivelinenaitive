@@ -148,7 +148,7 @@ export function ExpandedTaskDetails({ task, onUpdate, onOpenFullDetail }: Expand
                   if (e.key === 'Escape') { setDescDraft(task.description || ''); setEditingDesc(false); }
                 }}
                 placeholder="Add more detail…"
-                className="min-h-[72px] text-[12.5px] bg-[#FFFDF8] border-[rgba(255,255,255,0.08)] text-[#eef1f6]"
+                className="min-h-[72px] text-[12.5px] bg-[#13181f] border-[rgba(255,255,255,0.08)] text-[#eef1f6]"
                 autoFocus
               />
               <div className="flex items-center gap-2">

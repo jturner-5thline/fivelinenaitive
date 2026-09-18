@@ -6,9 +6,9 @@
 .mapping-workbench {
   --map-bg: #111827;
   --map-surface: #18212f;
-  --map-surface-2: #FFFDF8;
+  --map-surface-2: #1b2635;
   --map-sidebar: #18212f;
-  --map-grid: #F0E9DC;
+  --map-grid: #2a3a58;
   --map-grid-soft: #1e293b;
   --map-text: #e5e7eb;
   --map-text-secondary: #94a3b8;
@@ -23,10 +23,10 @@
   --map-indigo-bg: rgba(79, 70, 229, 0.15);
   --map-amber: #fbbf24;
   --map-amber-bg: rgba(217, 119, 6, 0.12);
-  --map-header-bg: #FFFDF8;
+  --map-header-bg: #1b2635;
   --map-row-hover: #1e293b;
   --map-selected: rgba(37, 99, 235, 0.15);
-  --map-border: #F0E9DC;
+  --map-border: #2a3a58;
   --map-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 

@@ -232,7 +232,7 @@ export function MemoHeader({ deal, showLiveDot = true, onOpenDeal, onClose }: Me
               type="button"
               size="sm"
               variant="ghost"
-              className="h-7 w-7 p-0 shrink-0 text-[#968C7D] hover:text-[#f4f4f7]"
+              className="h-7 w-7 p-0 shrink-0 text-[#9697a6] hover:text-[#f4f4f7]"
               onClick={(e) => { e.stopPropagation(); onClose(); }}
               aria-label="Close deal summary"
             >

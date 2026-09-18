@@ -45,7 +45,7 @@ function formatCurrency(v: number): string {
 const glassCard = [
   "relative isolate rounded-lg overflow-hidden",
   "border border-[rgba(126,184,247,0.22)]",
-  "bg-[#FFFDF8]",
+  "bg-[#0b1226]",
   "shadow-[inset_0_1px_0_rgba(200,225,255,0.09),0_1px_2px_rgba(0,0,0,0.32),0_12px_32px_-16px_rgba(0,0,0,0.62)]",
 ].join(" ");
 
