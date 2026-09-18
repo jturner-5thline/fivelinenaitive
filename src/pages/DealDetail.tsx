@@ -3743,7 +3743,10 @@ export default function DealDetail() {
           )}>
           {/* Header Card */}
           <Card className={cn(
-            "w-full mt-4 mb-6 border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]",
+            "w-full mt-4 mb-6 deal-milestones-card",
+            useContextRailLayout
+              ? "border-0 bg-transparent shadow-none"
+              : "border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]",
             useContextRailLayout && "mt-0",
             useContextRailLayout && "flex flex-col overflow-hidden",
             // Header widget (status + milestones) is scoped to the Deal Space tab
