@@ -242,7 +242,7 @@ const Sidebar = React.forwardRef<
           className,
         )}
         style={{
-          background: '#1b2439',
+          background: '#1c2437',
           opacity: 1,
           borderRadius: 12,
           overflow: 'hidden',
@@ -268,7 +268,7 @@ const Sidebar = React.forwardRef<
             className,
           )}
           style={{
-            background: '#1b2439',
+            background: '#1c2437',
             opacity: 1,
             boxShadow: 'none',
             filter: 'none',
