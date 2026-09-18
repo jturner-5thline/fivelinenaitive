@@ -150,8 +150,8 @@
        ═══════════════════════════════════════════════════════════════════ */
     --bg-app: #161d2c;
     --bg-page: #18202f;
-    --bg-card: #1e2634;
-    --bg-card-hover: #232d3d;
+    --bg-card: #1c2437;
+    --bg-card-hover: #232d43;
     --bg-control: #333d4e;
     --bg-chip: #29354a;
     --table-header: #3b4659;
@@ -4136,7 +4136,8 @@ div.deal-tile.deal-glass,
 .deal-detail-surface .bg-card,
 .deal-detail-surface [class*="bg-card"] {
   background-color: var(--bg-card) !important;
-  background-image: var(--warm-veil) !important;
+  /* No veil here — tiles must read as the exact sidebar fill. */
+  background-image: none !important;
   border: 1px solid var(--border-subtle) !important;
   border-radius: var(--radius-card) !important;
   box-shadow: var(--elevation-card) !important;
