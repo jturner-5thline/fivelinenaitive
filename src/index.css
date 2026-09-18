@@ -98,10 +98,7 @@
        a whisper of cool blue lower-right, and a barely-there warm amber
        veil so the shell keeps its night-light temperature. */
     --app-backdrop:
-      linear-gradient(180deg, rgba(255, 178, 102, 0.018) 0%, rgba(255, 158, 84, 0.010) 100%),
-      radial-gradient(110% 90% at 94% 90%, rgba(63, 134, 247, 0.085) 0%, rgba(63, 134, 247, 0.030) 45%, rgba(63, 134, 247, 0) 74%),
-      radial-gradient(120% 105% at 5% 0%, rgba(16, 22, 34, 0.50) 0%, rgba(16, 22, 34, 0) 78%),
-      linear-gradient(118deg, #182031 0%, #192234 46%, #1a2438 70%, #1b273e 86%, #1d2a45 100%);
+      linear-gradient(0deg, var(--bg-app) 0%, var(--bg-app) 100%);
 
 
 
@@ -144,8 +141,8 @@
        of this file). Raw hex is intentional — these are literal surface
        values from the design reference, not themed HSL channels.
        ═══════════════════════════════════════════════════════════════════ */
-    --bg-app: #182031;
-    --bg-page: #1a2436;
+    --bg-app: #161d2c;
+    --bg-page: #18202f;
     --bg-card: #1e2634;
     --bg-card-hover: #232d3d;
     --bg-control: #333d4e;
