@@ -925,21 +925,8 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
           </div>
         </CardHeader>
 
-        {/* Search / add combo */}
+        {/* Quick-add suggestion row for the inline header search */}
         <div className="px-4 pt-2 pb-1 shrink-0 space-y-2">
-          <div className="relative">
-            <Input
-              placeholder="Search or Add Items..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (readOnly) return;
-                if (e.key === 'Enter' && searchQuery.trim()) handleAdd();
-                if (e.key === 'Escape') setSearchQuery('');
-              }}
-              className="h-8 w-full text-xs"
-            />
-          </div>
           {!readOnly && searchQuery.trim() && (
             <div className="flex items-center gap-2">
               <Button
