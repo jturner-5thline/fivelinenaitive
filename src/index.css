@@ -4248,6 +4248,19 @@ main:has(.deals-surface) :is(input, textarea, button, [role="combobox"], a):focu
   box-shadow: none !important;
 }
 
+.deal-detail-surface .deal-header-identity-field,
+.deal-detail-surface .deal-header-identity-field:hover,
+.deal-detail-surface .deal-header-identity-field:focus-within,
+.deal-detail-surface .deal-header-identity-field input,
+.deal-detail-surface .deal-header-identity-field input:hover,
+.deal-detail-surface .deal-header-identity-field input:focus,
+.deal-detail-surface .deal-header-identity-field input:focus-visible {
+  background: transparent !important;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
 main:has(.deals-surface) :is(button, [role="combobox"], input, a)[disabled],
 main:has(.deals-surface) :is(button, [role="combobox"])[aria-disabled="true"],
 .deal-detail-surface :is(button, [role="combobox"])[disabled] {
