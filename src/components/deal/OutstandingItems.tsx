@@ -349,6 +349,9 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
   const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
   const [filterByLender, setFilterByLender] = useState<string[]>([]);
   const groupFilterAnchorRef = useRef<HTMLDivElement>(null);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddText, setQuickAddText] = useState('');
+  const [quickAddRequestedBy, setQuickAddRequestedBy] = useState<string[]>([]);
   const [groupFilterBoundary, setGroupFilterBoundary] = useState<HTMLElement | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedItem, setSelectedItem] = useState<OutstandingItem | null>(null);
@@ -956,6 +959,71 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
             >
               <Maximize2 className="h-4 w-4" />
             </Button>
+
+            {/* Quick add a single open item */}
+            {!readOnly && (
+              <Popover open={quickAddOpen} onOpenChange={(open) => {
+                setQuickAddOpen(open);
+                if (!open) { setQuickAddText(''); setQuickAddRequestedBy([]); }
+              }}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 order-6"
+                    title="Add item"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-[280px] p-2 bg-popover space-y-2"
+                  align="end"
+                  sideOffset={6}
+                  collisionPadding={12}
+                  collisionBoundary={groupFilterBoundary}
+                >
+                  <Input
+                    autoFocus
+                    value={quickAddText}
+                    onChange={(e) => setQuickAddText(e.target.value)}
+                    placeholder="New open item..."
+                    className="h-8 text-xs"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && quickAddText.trim()) {
+                        e.preventDefault();
+                        onAdd(quickAddText.trim(), quickAddRequestedBy);
+                        setQuickAddText('');
+                        setQuickAddRequestedBy([]);
+                        setQuickAddOpen(false);
+                      }
+                    }}
+                  />
+                  <div className="max-h-[180px] overflow-y-auto rounded border border-border">
+                    <SearchableRequesterList
+                      options={requestedByOptions}
+                      selected={quickAddRequestedBy}
+                      onToggle={(option) => setQuickAddRequestedBy(prev =>
+                        prev.includes(option) ? prev.filter(o => o !== option) : [...prev, option]
+                      )}
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full h-8 text-xs"
+                    disabled={!quickAddText.trim()}
+                    onClick={() => {
+                      onAdd(quickAddText.trim(), quickAddRequestedBy);
+                      setQuickAddText('');
+                      setQuickAddRequestedBy([]);
+                      setQuickAddOpen(false);
+                    }}
+                  >
+                    Add item
+                  </Button>
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
         </CardHeader>
 
