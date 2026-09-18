@@ -264,7 +264,7 @@ const Sidebar = React.forwardRef<
           data-effective-state={effectiveState}
           className={cn(
             "flex h-full w-full flex-col rounded-xl transition-colors duration-100 relative opacity-100 backdrop-blur-none",
-            "border border-[rgba(255,255,255,0.07)]",
+            "border border-[rgba(255,255,255,0.16)]",
             className,
           )}
           style={{
