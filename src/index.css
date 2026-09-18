@@ -144,8 +144,8 @@
        of this file). Raw hex is intentional — these are literal surface
        values from the design reference, not themed HSL channels.
        ═══════════════════════════════════════════════════════════════════ */
-    --bg-app: #191f2b;
-    --bg-page: #1b2330;
+    --bg-app: #182031;
+    --bg-page: #1a2436;
     --bg-card: #1e2634;
     --bg-card-hover: #232d3d;
     --bg-control: #333d4e;
