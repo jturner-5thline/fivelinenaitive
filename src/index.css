@@ -4470,3 +4470,20 @@ main:has(.deals-surface) .deal-outstanding-panel-card {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
+
+/* Deal Milestones widget in the deal detail pop-up: no container chrome. */
+.deal-milestones-surface,
+.deal-milestones-surface:hover,
+.deal-detail-surface .deal-milestones-surface,
+.deal-detail-surface .deal-milestones-surface:hover,
+body:has(.deals-surface) .deal-milestones-surface,
+main:has(.deals-surface) .deal-milestones-surface {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-width: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
