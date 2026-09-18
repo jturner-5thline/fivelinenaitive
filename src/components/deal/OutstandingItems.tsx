@@ -915,7 +915,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
         <div className="px-4 pt-2 pb-1 shrink-0 space-y-2">
           <div className="relative">
             <Input
-              placeholder="Search items or type to add..."
+              placeholder="Search or Add Items..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {
