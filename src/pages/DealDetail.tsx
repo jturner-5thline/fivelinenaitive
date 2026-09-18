@@ -6042,7 +6042,7 @@ export default function DealDetail() {
                 </TabsContent>
 
                 <TabsContent value="analysis" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`analysis-${tabDirection}`}>
-                  {hasNaitivePipelineAccess ? (
+                  {canSeeAnalysisTab && hasNaitivePipelineAccess ? (
                     <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
                       <SaaSModelTab dealId={id!} dealData={{ company: deal.company, value: deal.value, stage: deal.stage }} />
                     </Suspense>
