@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { SearchableRequesterList } from '@/components/deal/SearchableRequesterList';
-import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, ChevronRight, LayoutGrid, ArrowRight, GripVertical, CheckSquare, Square, Search, AlertTriangle, ArrowUp, ArrowUpRight, ClipboardPaste, UserPlus, Group } from 'lucide-react';
+import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, ChevronRight, LayoutGrid, ArrowRight, GripVertical, CheckSquare, Square, Search, AlertTriangle, ArrowUp, ArrowUpRight, ClipboardPaste, UserPlus, Group, Maximize2 } from 'lucide-react';
 import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
 
 // Parse YYYY-MM-DD as local date to avoid timezone shift
@@ -954,7 +954,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
               className="h-8 w-8 shrink-0 order-5"
               onClick={() => setIsKanbanOpen(true)}
             >
-              <LayoutGrid className="h-4 w-4" />
+              <Maximize2 className="h-4 w-4" />
             </Button>
           </div>
         </CardHeader>
