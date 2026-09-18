@@ -348,6 +348,8 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
   const [isKanbanOpen, setIsKanbanOpen] = useState(false);
   const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
   const [filterByLender, setFilterByLender] = useState<string[]>([]);
+  const groupFilterAnchorRef = useRef<HTMLDivElement>(null);
+  const [groupFilterBoundary, setGroupFilterBoundary] = useState<HTMLElement | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedItem, setSelectedItem] = useState<OutstandingItem | null>(null);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
