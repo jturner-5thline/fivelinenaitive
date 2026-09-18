@@ -4049,7 +4049,7 @@ aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
    ============================================================ */
 :root {
   /* 0 = off, 1 = full warmth. Tuned for a subtle, readable shift. */
-  --night-light-strength: 0.5;
+  --night-light-strength: 0.8;
 }
 
 body::after {
