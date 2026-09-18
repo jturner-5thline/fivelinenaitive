@@ -348,6 +348,8 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
   const [isKanbanOpen, setIsKanbanOpen] = useState(false);
   const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
   const [filterByLender, setFilterByLender] = useState<string[]>([]);
+  const groupFilterAnchorRef = useRef<HTMLDivElement>(null);
+  const [groupFilterBoundary, setGroupFilterBoundary] = useState<HTMLElement | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedItem, setSelectedItem] = useState<OutstandingItem | null>(null);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
@@ -846,9 +848,14 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
             so they stay visible on row 1, and the icon-only / requester
             controls drop to row 2 before anything important is clipped.
           */}
-          <div className="flex flex-row flex-nowrap items-center gap-1 order-2 justify-end ml-auto shrink-0">
+          <div ref={groupFilterAnchorRef} className="flex flex-row flex-nowrap items-center gap-1 order-2 justify-end ml-auto shrink-0">
             {/* Combined group-by + filter-by-requester menu */}
-            <Popover>
+            <Popover onOpenChange={(open) => {
+              if (open) {
+                const el = groupFilterAnchorRef.current?.closest('.deal-popup-shell, [role="dialog"]') as HTMLElement | null;
+                setGroupFilterBoundary(el);
+              }
+            }}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -870,7 +877,14 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                   <ChevronDown className="h-3 w-3 shrink-0 hidden @[420px]:inline" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[240px] p-0 bg-popover" align="end">
+              <PopoverContent
+                className="w-[240px] p-0 bg-popover overflow-y-auto max-h-[min(70vh,var(--radix-popover-content-available-height))]"
+                align="end"
+                sideOffset={6}
+                collisionPadding={12}
+                collisionBoundary={groupFilterBoundary}
+                avoidCollisions
+              >
                 <div className="p-1">
                   <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Group by
