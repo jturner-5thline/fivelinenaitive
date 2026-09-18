@@ -3748,7 +3748,7 @@ export default function DealDetail() {
               ? "border-0 bg-transparent shadow-none"
               : "border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]",
             useContextRailLayout && "-mt-2 lg:-mt-14 mb-1",
-            useContextRailLayout && "flex flex-col overflow-hidden",
+            useContextRailLayout && "flex flex-col overflow-visible",
             // Header widget (status + milestones) is scoped to the Deal Space tab
             // only. Keep this last so `hidden` wins over the `flex` display
             // class above when tailwind-merge resolves the display group.
