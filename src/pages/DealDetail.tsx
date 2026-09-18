@@ -4483,15 +4483,21 @@ export default function DealDetail() {
                                 return <DealAffiliatedContactsField key={fieldId} dealId={deal.id} />;
                               case 'companyUrl':
                                 return (
-                                  <div key={fieldId} className="flex flex-col gap-1">
-                                    <span className="text-muted-foreground text-xs font-medium">Company URL</span>
-                                    <DebouncedInput
-                                      value={deal.companyUrl || ''}
-                                      onChange={(value) => updateDeal('companyUrl', String(value))}
-                                      placeholder="https://example.com"
-                                      className="w-full h-8 text-sm"
-                                    />
-                                  </div>
+                                   <div key={fieldId} className="flex flex-col gap-1">
+                                     <span className="text-muted-foreground text-xs font-medium">Company URL</span>
+                                     <div className="flex items-center gap-1">
+                                       <DebouncedInput
+                                         value={deal.companyUrl || ''}
+                                         onChange={(value) => updateDeal('companyUrl', String(value))}
+                                         placeholder="https://example.com"
+                                         className="w-full h-8 text-sm"
+                                       />
+                                       <CompanyUrlPicker
+                                         currentUrl={deal.companyUrl || ''}
+                                         onSelect={(url) => updateDeal('companyUrl', url)}
+                                       />
+                                     </div>
+                                   </div>
                                 );
                               case 'businessModel':
                                 return (
