@@ -3245,7 +3245,7 @@ export default function DealDetail() {
                         }
                       }}
                       placeholder="Click to add status notes..."
-                      displayClassName="text-lg text-white"
+                      displayClassName="text-[14.4px] leading-[1.45] text-white"
                       autoSave
                       autoSaveDelay={1500}
                       mentionUsers={mentionUsers}
