@@ -819,7 +819,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
       <Card className="deal-outstanding-panel-card h-full flex flex-col">
         <CardHeader className="@container flex flex-row flex-nowrap items-center justify-between gap-x-2 min-h-[44px] h-[44px] py-0 px-4 space-y-0 shrink-0 overflow-hidden border-b border-white/15">
           <div className="flex items-center gap-2 min-w-0 flex-1 basis-[140px] order-1">
-            <CardTitle className="text-sm font-medium truncate">Outstanding Items</CardTitle>
+            <CardTitle className="text-sm font-medium truncate">Open Items</CardTitle>
             {overdueCount > 0 && (
               <span className="text-xs font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-md">
                 {overdueCount} overdue
