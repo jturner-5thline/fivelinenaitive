@@ -132,6 +132,47 @@
     --surface-tile: 210 20% 96%;
     --surface-tile-hover: 210 20% 92%;
     --surface-tile-selected: 213 90% 92%;
+
+    /* ═══════════════════════════════════════════════════════════════════
+       Naitive Phase 1 — reusable dark product tokens.
+       Defined globally so later phases can adopt them; currently consumed
+       by the Deals experience only (see "Deals Phase 1 skin" at the end
+       of this file). Raw hex is intentional — these are literal surface
+       values from the design reference, not themed HSL channels.
+       ═══════════════════════════════════════════════════════════════════ */
+    --bg-app: #191f2b;
+    --bg-page: #1b2330;
+    --bg-card: #1e2634;
+    --bg-card-hover: #232d3d;
+    --bg-control: #333d4e;
+    --bg-chip: #29354a;
+    --table-header: #3b4659;
+    --table-row: #1e2634;
+    --table-row-hover: #232d3d;
+    --border-subtle: #2a3444;
+    --border-control: #485267;
+    --border-strong: #566277;
+    --divider: #2b3546;
+    --chart-gridline: #283241;
+    --text-primary: #eef2f8;
+    --text-secondary: #9da9bc;
+    --text-muted: #728096;
+    --accent-blue: #3f86f7;
+    --accent-cyan: #22d0cc;
+    --accent-pink: #f34c86;
+
+    /* Shared elevation + shape for the new surface language */
+    --elevation-card: 0 2px 8px rgba(0, 0, 0, 0.12);
+    --radius-card: 8px;
+    /* Night-light warmth: a whisper of amber laid over dark surfaces so
+       they read warm without leaving dark mode. */
+    --warm-veil: linear-gradient(
+      180deg,
+      rgba(255, 178, 102, 0.028) 0%,
+      rgba(255, 158, 84, 0.014) 100%
+    );
+    --selected-tint: rgba(63, 134, 247, 0.12);
+    --selected-border: rgba(63, 134, 247, 0.55);
   }
 
   .dark {
