@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
+import { useCompany } from '@/hooks/useCompany';
 
 interface CompanyRow {
   id: string;
@@ -28,14 +29,16 @@ interface CompanyUrlPickerProps {
 export function CompanyUrlPicker({ currentUrl, onSelect }: CompanyUrlPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const { company } = useCompany();
 
   const { data: companies = [], isLoading } = useQuery({
-    queryKey: ['company-url-picker', search],
-    enabled: open,
+    queryKey: ['company-url-picker', company?.id, search],
+    enabled: open && !!company?.id,
     queryFn: async () => {
       let query = supabase
         .from('crm_companies')
         .select('id, name, domain, website_url')
+        .eq('org_company_id', company!.id)
         .order('name', { ascending: true })
         .limit(50);
       if (search.trim()) {
