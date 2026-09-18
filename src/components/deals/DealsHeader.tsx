@@ -538,8 +538,8 @@ export function DealsHeader() {
             // viewports so the cluster never clips.
             width: `min(${overlayRegistry.length * 40 + Math.max(0, overlayRegistry.length - 1) * 6 + 48}px, calc(100vw - 16px))`,
             borderRadius: 8,
-            background: '#121b33',
-            backgroundColor: '#121b33',
+            background: '#171d38',
+            backgroundColor: '#171d38',
             backdropFilter: 'none',
             WebkitBackdropFilter: 'none',
             border: '1px solid rgba(190, 220, 255, 0.34)',
