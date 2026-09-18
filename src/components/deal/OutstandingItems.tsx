@@ -846,9 +846,14 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
             so they stay visible on row 1, and the icon-only / requester
             controls drop to row 2 before anything important is clipped.
           */}
-          <div className="flex flex-row flex-nowrap items-center gap-1 order-2 justify-end ml-auto shrink-0">
+          <div ref={groupFilterAnchorRef} className="flex flex-row flex-nowrap items-center gap-1 order-2 justify-end ml-auto shrink-0">
             {/* Combined group-by + filter-by-requester menu */}
-            <Popover>
+            <Popover onOpenChange={(open) => {
+              if (open) {
+                const el = groupFilterAnchorRef.current?.closest('.deal-popup-shell, [role="dialog"]') as HTMLElement | null;
+                setGroupFilterBoundary(el);
+              }
+            }}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
