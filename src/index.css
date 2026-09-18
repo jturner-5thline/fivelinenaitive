@@ -4136,7 +4136,8 @@ div.deal-tile.deal-glass,
 .deal-detail-surface .bg-card,
 .deal-detail-surface [class*="bg-card"] {
   background-color: var(--bg-card) !important;
-  background-image: var(--warm-veil) !important;
+  /* No veil here — tiles must read as the exact sidebar fill. */
+  background-image: none !important;
   border: 1px solid var(--border-subtle) !important;
   border-radius: var(--radius-card) !important;
   box-shadow: var(--elevation-card) !important;
