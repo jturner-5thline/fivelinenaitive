@@ -870,7 +870,14 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                   <ChevronDown className="h-3 w-3 shrink-0 hidden @[420px]:inline" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[240px] p-0 bg-popover" align="end">
+              <PopoverContent
+                className="w-[240px] p-0 bg-popover overflow-y-auto max-h-[min(70vh,var(--radix-popover-content-available-height))]"
+                align="end"
+                sideOffset={6}
+                collisionPadding={12}
+                collisionBoundary={groupFilterBoundary}
+                avoidCollisions
+              >
                 <div className="p-1">
                   <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Group by
