@@ -3666,7 +3666,7 @@ export default function DealDetail() {
                 onSave={(value) => updateDeal('company' as any, value as any)}
                 className="deal-header-identity-field w-auto max-w-full shrink"
                 displayClassName="text-[2rem] md:text-[2.7rem] font-bold leading-tight break-words text-foreground"
-                inputClassName="w-auto max-w-full [field-sizing:content] deal-header-field"
+                inputClassName="w-auto max-w-full [field-sizing:content] deal-header-field !border-0 !outline-none !ring-0 !shadow-none !bg-transparent hover:!border-0 focus:!border-0 focus-visible:!border-0 focus-visible:!ring-0 focus-visible:!shadow-none"
               />
               <span
                 aria-hidden
@@ -3683,7 +3683,7 @@ export default function DealDetail() {
                 onSave={(value) => updateDeal('value' as any, (parseCurrencyInputValue(value) ?? 0) as any)}
                 className="deal-header-identity-field w-auto shrink-0"
                 displayClassName="text-[2rem] md:text-[2.7rem] font-bold leading-none text-primary"
-                inputClassName="w-auto [field-sizing:content] deal-header-field"
+                inputClassName="w-auto [field-sizing:content] deal-header-field !border-0 !outline-none !ring-0 !shadow-none !bg-transparent hover:!border-0 focus:!border-0 focus-visible:!border-0 focus-visible:!ring-0 focus-visible:!shadow-none"
               />
             </div>
           )}
