@@ -117,13 +117,13 @@ function SortableFilterableHead({
       ref={setNodeRef}
       style={style}
       data-deal-col={id}
-      className="text-[#9697a6] text-center text-[10px] uppercase tracking-[0.14em]"
+      className="text-[#968C7D] text-center text-[10px] uppercase tracking-[0.14em]"
     >
       <div className="inline-flex items-center gap-1 whitespace-nowrap">
         <span
           {...attributes}
           {...listeners}
-          className="cursor-grab p-0.5 text-[#5f606e] hover:text-[#9697a6]"
+          className="cursor-grab p-0.5 text-[#70685B] hover:text-[#968C7D]"
           aria-label="Reorder column"
         >
           <GripVertical className="h-3 w-3" />
@@ -435,14 +435,14 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
             <button
               type="button"
               onClick={() => onFiltersChange(clearAllColumnFilters())}
-              className="ml-1 text-[11px] text-[#9697a6] hover:text-[#f4f4f7] underline-offset-2 hover:underline"
+              className="ml-1 text-[11px] text-[#968C7D] hover:text-[#f4f4f7] underline-offset-2 hover:underline"
             >
               Clear all
             </button>
           </div>
         )}
         <div className="px-0 py-1 min-w-0 max-w-full">
-          <div className="flex items-center gap-2 px-2 pb-2 text-[11px] text-[#9697a6]">
+          <div className="flex items-center gap-2 px-2 pb-2 text-[11px] text-[#968C7D]">
             <Checkbox
               checked={sortedDeals.length > 0 && selectedDealIds.size === sortedDeals.length}
               onCheckedChange={toggleSelectAll}

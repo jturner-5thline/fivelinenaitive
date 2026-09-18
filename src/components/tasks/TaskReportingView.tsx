@@ -76,17 +76,17 @@ export function TaskReportingView({ tasks }: TaskReportingViewProps) {
   return (
     <div className="p-6 space-y-6 overflow-auto">
       {/* Widget 1: Tasks Completed This Week */}
-      <div className="rounded-xl p-5" style={{ backgroundColor: '#13181f', border: '1px solid #2a2f3e' }}>
+      <div className="rounded-xl p-5" style={{ backgroundColor: '#FFFDF8', border: '1px solid #F0E9DC' }}>
         <div className="flex items-center gap-2 mb-4">
           <TrendingUp className="h-4 w-4" style={{ color: '#3b7eff' }} />
           <h3 className="text-sm font-semibold" style={{ color: 'white' }}>Tasks Completed This Week</h3>
         </div>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={stats.completionTrend}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3e" />
-            <XAxis dataKey="day" tick={{ fill: '#8b92a5', fontSize: 11 }} axisLine={{ stroke: '#2a2f3e' }} />
-            <YAxis tick={{ fill: '#8b92a5', fontSize: 11 }} axisLine={{ stroke: '#2a2f3e' }} allowDecimals={false} />
-            <Tooltip contentStyle={{ backgroundColor: '#1a1f2e', border: '1px solid #2a2f3e', borderRadius: 8, color: 'white', fontSize: 12 }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#F0E9DC" />
+            <XAxis dataKey="day" tick={{ fill: '#8b92a5', fontSize: 11 }} axisLine={{ stroke: '#F0E9DC' }} />
+            <YAxis tick={{ fill: '#8b92a5', fontSize: 11 }} axisLine={{ stroke: '#F0E9DC' }} allowDecimals={false} />
+            <Tooltip contentStyle={{ backgroundColor: '#1a1f2e', border: '1px solid #F0E9DC', borderRadius: 8, color: 'white', fontSize: 12 }} />
             <Bar dataKey="completed" fill="#3b7eff" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -94,17 +94,17 @@ export function TaskReportingView({ tasks }: TaskReportingViewProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Widget 2: Avg Days to Complete by Priority */}
-        <div className="rounded-xl p-5" style={{ backgroundColor: '#13181f', border: '1px solid #2a2f3e' }}>
+        <div className="rounded-xl p-5" style={{ backgroundColor: '#FFFDF8', border: '1px solid #F0E9DC' }}>
           <div className="flex items-center gap-2 mb-4">
             <BarChart3 className="h-4 w-4" style={{ color: '#3b7eff' }} />
             <h3 className="text-sm font-semibold" style={{ color: 'white' }}>Avg Days to Complete by Priority</h3>
           </div>
           <ResponsiveContainer width="100%" height={160}>
             <BarChart data={stats.avgByPriority} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3e" />
-              <XAxis type="number" tick={{ fill: '#8b92a5', fontSize: 11 }} axisLine={{ stroke: '#2a2f3e' }} />
-              <YAxis dataKey="priority" type="category" tick={{ fill: '#8b92a5', fontSize: 11 }} axisLine={{ stroke: '#2a2f3e' }} width={60} />
-              <Tooltip contentStyle={{ backgroundColor: '#1a1f2e', border: '1px solid #2a2f3e', borderRadius: 8, color: 'white', fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#F0E9DC" />
+              <XAxis type="number" tick={{ fill: '#8b92a5', fontSize: 11 }} axisLine={{ stroke: '#F0E9DC' }} />
+              <YAxis dataKey="priority" type="category" tick={{ fill: '#8b92a5', fontSize: 11 }} axisLine={{ stroke: '#F0E9DC' }} width={60} />
+              <Tooltip contentStyle={{ backgroundColor: '#1a1f2e', border: '1px solid #F0E9DC', borderRadius: 8, color: 'white', fontSize: 12 }} />
               <Bar dataKey="avgDays" radius={[0, 4, 4, 0]}>
                 {stats.avgByPriority.map((entry, i) => (
                   <Cell key={i} fill={PRIORITY_COLORS[entry.priority] || '#6b7280'} />
@@ -115,7 +115,7 @@ export function TaskReportingView({ tasks }: TaskReportingViewProps) {
         </div>
 
         {/* Widget 3: Overdue Rate by Owner */}
-        <div className="rounded-xl p-5" style={{ backgroundColor: '#13181f', border: '1px solid #2a2f3e' }}>
+        <div className="rounded-xl p-5" style={{ backgroundColor: '#FFFDF8', border: '1px solid #F0E9DC' }}>
           <div className="flex items-center gap-2 mb-4">
             <AlertTriangle className="h-4 w-4" style={{ color: '#ff4d4d' }} />
             <h3 className="text-sm font-semibold" style={{ color: 'white' }}>Overdue Rate by Owner</h3>
@@ -128,7 +128,7 @@ export function TaskReportingView({ tasks }: TaskReportingViewProps) {
               <span className="text-center">Rate</span>
             </div>
             {stats.overdueByOwner.map((row, i) => (
-              <div key={i} className="grid grid-cols-[1fr_60px_60px_60px] gap-2 text-xs items-center py-1" style={{ borderBottom: '1px solid #2a2f3e' }}>
+              <div key={i} className="grid grid-cols-[1fr_60px_60px_60px] gap-2 text-xs items-center py-1" style={{ borderBottom: '1px solid #F0E9DC' }}>
                 <span className="truncate" style={{ color: 'white' }}>{row.name}</span>
                 <span className="text-center" style={{ color: '#8b92a5' }}>{row.total}</span>
                 <span className="text-center font-medium" style={{ color: row.overdue > 0 ? '#ff4d4d' : '#8b92a5' }}>{row.overdue}</span>

@@ -244,28 +244,28 @@
     --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
 
     /* Shadows — deep dark */
-    --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.25);
-    --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.3);
-    --shadow-sm: 0 2px 6px -1px hsl(0 0% 0% / 0.35);
-    --shadow: 0 4px 8px -1px hsl(0 0% 0% / 0.35);
-    --shadow-md: 0 6px 16px -2px hsl(0 0% 0% / 0.4);
-    --shadow-lg: 0 12px 28px -4px hsl(0 0% 0% / 0.45);
-    --shadow-xl: 0 20px 40px -8px hsl(0 0% 0% / 0.5);
-    --shadow-2xl: 0 30px 60px -12px hsl(0 0% 0% / 0.6);
+    --shadow-2xs: 0 1px 2px 0 hsl(36 49% 19% / 0.25);
+    --shadow-xs: 0 1px 3px 0 hsl(36 49% 19% / 0.3);
+    --shadow-sm: 0 2px 6px -1px hsl(36 49% 19% / 0.35);
+    --shadow: 0 4px 8px -1px hsl(36 49% 19% / 0.35);
+    --shadow-md: 0 6px 16px -2px hsl(36 49% 19% / 0.4);
+    --shadow-lg: 0 12px 28px -4px hsl(36 49% 19% / 0.45);
+    --shadow-xl: 0 20px 40px -8px hsl(36 49% 19% / 0.5);
+    --shadow-2xl: 0 30px 60px -12px hsl(36 49% 19% / 0.6);
 
     /* ═══ Liquid Glass Tokens ═══ (lighter, airier — less heavy overlay) */
-    --glass-surface: rgba(255,255,255,0.10);
-    --glass-elevated: rgba(255,255,255,0.14);
-    --glass-content-surface: rgba(255,255,255,0.05);
-    --glass-border: rgba(255,255,255,0.24);
+    --glass-surface: rgba(41, 37, 31, 0.10);
+    --glass-elevated: rgba(41, 37, 31, 0.14);
+    --glass-content-surface: rgba(41, 37, 31, 0.05);
+    --glass-border: rgba(41, 37, 31, 0.24);
     --glass-border-accent: rgba(126,184,247,0.32);
     --glass-glow: rgba(126,184,247,0.16);
-    --glass-shadow: 0 4px 20px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.08);
+    --glass-shadow: 0 4px 20px rgba(73, 53, 25, 0.22), inset 0 1px 0 rgba(41, 37, 31, 0.08);
     --glass-blur: blur(12px) saturate(1.4);
     --glass-content-blur: blur(40px) saturate(1.2);
     --glass-row-hover: rgba(126,184,247,0.14);
-    --glass-row-alt: rgba(255,255,255,0.04);
-    --glass-header-bg: rgba(255,255,255,0.07);
+    --glass-row-alt: rgba(41, 37, 31, 0.04);
+    --glass-header-bg: rgba(41, 37, 31, 0.07);
   }
 }
 
@@ -284,7 +284,7 @@
   body {
     @apply bg-background text-foreground font-sans;
     min-height: 100vh;
-    background-color: #030310;
+    background-color: #F7F2E8;
     background-image: var(--app-backdrop);
     background-attachment: fixed;
     background-repeat: no-repeat;
@@ -293,7 +293,7 @@
 
   .recharts-default-tooltip {
     background: hsl(var(--popover) / 0.96) !important;
-    border: 1px solid hsl(0 0% 100% / 0.14) !important;
+    border: 1px solid hsl(36 14% 14% / 0.14) !important;
     border-radius: 8px !important;
     color: hsl(0 0% 100%) !important;
     box-shadow: var(--shadow-xl) !important;
@@ -311,7 +311,7 @@
   }
 
   .recharts-tooltip-item-name {
-    color: hsl(0 0% 100% / 0.88) !important;
+    color: hsl(36 14% 14% / 0.88) !important;
   }
 
   .recharts-tooltip-item-value {
@@ -324,7 +324,7 @@
   }
 
   .dark body {
-    background-color: #030310 !important;
+    background-color: #F7F2E8 !important;
     background-image: var(--app-backdrop) !important;
     background-attachment: fixed !important;
     background-repeat: no-repeat !important;
@@ -513,7 +513,7 @@
   max-width: 100% !important;
   height: auto !important;
   border-radius: 4px;
-  background-color: hsl(0 0% 100% / 0.92);
+  background-color: hsl(36 14% 14% / 0.92);
   padding: 2px;
 }
 /* Avoid double-padding when an image is wrapped in a link */
@@ -632,7 +632,7 @@
   .panel-shell {
     border-radius: 0.75rem;
     border: 1px solid rgba(var(--panel-border-rgb), 0.6);
-    background-image: linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%);
+    background-image: linear-gradient(135deg, #F7F2E8 0%, #FFFDF8 20%, #F7F2E8 40%, #F7F2E8 60%, #F7F2E8 80%, #F7F2E8 100%);
     overflow: hidden;
   }
   .panel-divider-b {
@@ -689,7 +689,7 @@
     border-radius: 12px !important;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
+    box-shadow: inset 0 1px 0 rgba(41, 37, 31, 0.32);
     overflow: hidden;
   }
   .glass-module::before {
@@ -698,7 +698,7 @@
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
-    background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.00) 55%);
+    background: linear-gradient(135deg, rgba(41, 37, 31, 0.18) 0%, rgba(41, 37, 31, 0.00) 55%);
     z-index: 0;
   }
   .glass-module > * {
@@ -790,11 +790,11 @@
   background: transparent;
 }
 .main-scrollable::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(41, 37, 31, 0.15);
   border-radius: 3px;
 }
 .main-scrollable::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(41, 37, 31, 0.25);
 }
 
 @keyframes ripple-effect {
@@ -883,7 +883,7 @@
      not by hard outlines. They are theme-aware so they don't appear as
      bright white outlines on light backgrounds. */
   .glass-border-soft {
-    border: 1px solid hsl(0 0% 0% / 0.06);
+    border: 1px solid hsl(36 49% 19% / 0.06);
   }
 
   /* ─── Shared near-fullscreen popup shell ──────────────────────────────
@@ -899,17 +899,17 @@
 
     backdrop-filter: blur(18px) saturate(135%);
     -webkit-backdrop-filter: blur(18px) saturate(135%);
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border: 1px solid rgba(41, 37, 31, 0.12) !important;
     box-shadow:
-      0 40px 120px rgba(0, 0, 0, 0.65),
-      0 12px 32px rgba(0, 0, 0, 0.45),
-      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+      0 40px 120px rgba(73, 53, 25, 0.65),
+      0 12px 32px rgba(73, 53, 25, 0.45),
+      inset 0 1px 0 rgba(41, 37, 31, 0.07);
   }
 
   /* Keep the deal-details canvas distinct without changing its widgets.
      Flat fill — no gradient, no sheen, no blur bleed-through. */
   .popup-shell-surface.deal-popup-shell {
-    background: #121b33 !important;
+    background: #FFFDF8 !important;
     background-image: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
@@ -940,37 +940,37 @@
   }
 
   .dark .glass-border-soft {
-    border-color: hsl(0 0% 100% / 0.06);
+    border-color: hsl(36 14% 14% / 0.06);
   }
   .glass-border-softer {
-    border: 1px solid hsl(0 0% 0% / 0.04);
+    border: 1px solid hsl(36 49% 19% / 0.04);
   }
   .dark .glass-border-softer {
-    border-color: hsl(0 0% 100% / 0.04);
+    border-color: hsl(36 14% 14% / 0.04);
   }
   .glass-divider-b {
-    border-bottom: 1px solid hsl(0 0% 0% / 0.06);
+    border-bottom: 1px solid hsl(36 49% 19% / 0.06);
   }
   .dark .glass-divider-b {
-    border-bottom-color: hsl(0 0% 100% / 0.06);
+    border-bottom-color: hsl(36 14% 14% / 0.06);
   }
   .glass-divider-t {
-    border-top: 1px solid hsl(0 0% 0% / 0.06);
+    border-top: 1px solid hsl(36 49% 19% / 0.06);
   }
   .dark .glass-divider-t {
-    border-top-color: hsl(0 0% 100% / 0.06);
+    border-top-color: hsl(36 14% 14% / 0.06);
   }
   .glass-divider-r {
-    border-right: 1px solid hsl(0 0% 0% / 0.06);
+    border-right: 1px solid hsl(36 49% 19% / 0.06);
   }
   .dark .glass-divider-r {
-    border-right-color: hsl(0 0% 100% / 0.06);
+    border-right-color: hsl(36 14% 14% / 0.06);
   }
   .glass-divider-l {
-    border-left: 1px solid hsl(0 0% 0% / 0.06);
+    border-left: 1px solid hsl(36 49% 19% / 0.06);
   }
   .dark .glass-divider-l {
-    border-left-color: hsl(0 0% 100% / 0.06);
+    border-left-color: hsl(36 14% 14% / 0.06);
   }
 
   /* ─── Widget carousel directional swipe ───────────────────────────────
@@ -1055,16 +1055,16 @@
   /* Translucent surface layers for nested cards inside the carousel.
      Use background separation + blur instead of a bright border. */
   .glass-surface-1 {
-    background-color: hsl(0 0% 0% / 0.02);
+    background-color: hsl(36 49% 19% / 0.02);
   }
   .dark .glass-surface-1 {
-    background-color: hsl(0 0% 100% / 0.03);
+    background-color: hsl(36 14% 14% / 0.03);
   }
   .glass-surface-2 {
-    background-color: hsl(0 0% 0% / 0.035);
+    background-color: hsl(36 49% 19% / 0.035);
   }
   .dark .glass-surface-2 {
-    background-color: hsl(0 0% 100% / 0.05);
+    background-color: hsl(36 14% 14% / 0.05);
   }
 
   /* ─── Calendar gridlines ─────────────────────────────────────────────────
@@ -1072,14 +1072,14 @@
      Use these in place of `border-border/15` or bare `border-b`/`border-r`
      anywhere in the calendar (column separators, hour rows, day cells,
      all-day row dividers, sticky headers). 1px, very low opacity. */
-  .cal-grid-r { border-right:  1px solid hsl(0 0% 0% / 0.04); }
-  .cal-grid-l { border-left:   1px solid hsl(0 0% 0% / 0.04); }
-  .cal-grid-t { border-top:    1px solid hsl(0 0% 0% / 0.04); }
-  .cal-grid-b { border-bottom: 1px solid hsl(0 0% 0% / 0.04); }
-  .dark .cal-grid-r { border-right-color:  hsl(0 0% 100% / 0.04); }
-  .dark .cal-grid-l { border-left-color:   hsl(0 0% 100% / 0.04); }
-  .dark .cal-grid-t { border-top-color:    hsl(0 0% 100% / 0.04); }
-  .dark .cal-grid-b { border-bottom-color: hsl(0 0% 100% / 0.04); }
+  .cal-grid-r { border-right:  1px solid hsl(36 49% 19% / 0.04); }
+  .cal-grid-l { border-left:   1px solid hsl(36 49% 19% / 0.04); }
+  .cal-grid-t { border-top:    1px solid hsl(36 49% 19% / 0.04); }
+  .cal-grid-b { border-bottom: 1px solid hsl(36 49% 19% / 0.04); }
+  .dark .cal-grid-r { border-right-color:  hsl(36 14% 14% / 0.04); }
+  .dark .cal-grid-l { border-left-color:   hsl(36 14% 14% / 0.04); }
+  .dark .cal-grid-t { border-top-color:    hsl(36 14% 14% / 0.04); }
+  .dark .cal-grid-b { border-bottom-color: hsl(36 14% 14% / 0.04); }
 
   /* Marketing site — lighter airy-blue frosted glass CTA (logo-derived palette).
      Tokens: --glass-blue-50 #C9DCFF / --glass-blue-100 #A9C6FF / --glass-blue-200 #7FB3FF.
@@ -1088,36 +1088,36 @@
     position: relative;
     color: #fff;
     letter-spacing: 0.01em;
-    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+    text-shadow: 0 1px 1px rgba(73, 53, 25, 0.35);
     background: linear-gradient(180deg, rgba(169, 198, 255, 0.18), rgba(127, 179, 255, 0.10));
     border: 1px solid rgba(201, 220, 255, 0.22);
     -webkit-backdrop-filter: blur(14px) saturate(140%);
     backdrop-filter: blur(14px) saturate(140%);
     box-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.35),
-      inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      0 1px 2px rgba(73, 53, 25, 0.35),
+      inset 0 1px 0 rgba(41, 37, 31, 0.22);
     transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
   }
   .marketing-glass-cta:hover {
     background: linear-gradient(180deg, rgba(201, 220, 255, 0.26), rgba(169, 198, 255, 0.16));
     border-color: rgba(201, 220, 255, 0.32);
     box-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.35),
-      inset 0 1px 0 rgba(255, 255, 255, 0.32);
+      0 1px 2px rgba(73, 53, 25, 0.35),
+      inset 0 1px 0 rgba(41, 37, 31, 0.32);
     transform: translateY(-1px);
   }
   .marketing-glass-cta:active {
     background: linear-gradient(180deg, rgba(169, 198, 255, 0.16), rgba(127, 179, 255, 0.10));
     box-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.35),
-      inset 0 1px 0 rgba(255, 255, 255, 0.16);
+      0 1px 2px rgba(73, 53, 25, 0.35),
+      inset 0 1px 0 rgba(41, 37, 31, 0.16);
     transform: translateY(0);
   }
   .marketing-glass-cta:focus-visible {
     outline: none;
     box-shadow:
       0 0 0 2px rgba(201, 220, 255, 0.55),
-      inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      inset 0 1px 0 rgba(41, 37, 31, 0.22);
   }
   /* Fallback for browsers without backdrop-filter support — keep palette, raise alpha (cap 0.45) */
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -1146,26 +1146,26 @@
   .mgmt-widget .text-foreground\/90,
   .mgmt-widget .text-foreground\/80,
   .mgmt-widget .text-foreground\/70 {
-    color: #ffffff !important;
+    color: #29251F !important;
   }
   .mgmt-widget .text-muted-foreground {
-    color: rgba(255, 255, 255, 0.72) !important;
+    color: rgba(41, 37, 31, 0.72) !important;
   }
-  .mgmt-widget [style*="rgba(255,255,255,0.45)"],
-  .mgmt-widget [style*="rgba(255,255,255,0.5)"],
-  .mgmt-widget [style*="rgba(255,255,255,0.55)"],
-  .mgmt-widget [style*="rgba(255,255,255,0.6)"],
-  .mgmt-widget [style*="rgba(255,255,255,0.7)"],
-  .mgmt-widget [style*="rgba(255,255,255,0.75)"] {
-    color: rgba(255, 255, 255, 0.96) !important;
+  .mgmt-widget [style*="rgba(41, 37, 31, 0.45)"],
+  .mgmt-widget [style*="rgba(41, 37, 31, 0.5)"],
+  .mgmt-widget [style*="rgba(41, 37, 31, 0.55)"],
+  .mgmt-widget [style*="rgba(41, 37, 31, 0.6)"],
+  .mgmt-widget [style*="rgba(41, 37, 31, 0.7)"],
+  .mgmt-widget [style*="rgba(41, 37, 31, 0.75)"] {
+    color: rgba(41, 37, 31, 0.96) !important;
   }
   .mgmt-widget th,
   .mgmt-widget [role="columnheader"],
   .mgmt-widget .recharts-cartesian-axis-tick text,
   .mgmt-widget .recharts-text,
   .mgmt-widget .recharts-label {
-    color: rgba(255, 255, 255, 0.96) !important;
-    fill: rgba(255, 255, 255, 0.96) !important;
+    color: rgba(41, 37, 31, 0.96) !important;
+    fill: rgba(41, 37, 31, 0.96) !important;
   }
 
   /* Subtle hover/focus glow for Management Review widget cards — keeps border thin */
@@ -1174,11 +1174,11 @@
   }
   .mgmt-widget:hover,
   .mgmt-widget:focus-within {
-    border-color: #ffffff !important;
+    border-color: #29251F !important;
     box-shadow:
-      0 12px 32px -18px rgba(0, 0, 0, 0.75),
-      inset 0 1px 0 rgba(255, 255, 255, 0.14),
-      0 0 0 1px rgba(255, 255, 255, 0.35),
+      0 12px 32px -18px rgba(73, 53, 25, 0.75),
+      inset 0 1px 0 rgba(41, 37, 31, 0.14),
+      0 0 0 1px rgba(41, 37, 31, 0.35),
       0 0 22px 2px rgba(147, 197, 253, 0.22),
       0 0 44px 8px rgba(168, 85, 247, 0.14) !important;
   }
@@ -1252,8 +1252,8 @@
      bloom underneath. Whisper-soft inner top highlight, no rim glow. */
   box-shadow:
     inset 0 1px 0 0 rgba(200, 225, 255, 0.09),
-    0 1px 2px rgba(0, 0, 0, 0.32),
-    0 12px 32px -16px rgba(0, 0, 0, 0.62);
+    0 1px 2px rgba(73, 53, 25, 0.32),
+    0 12px 32px -16px rgba(73, 53, 25, 0.62);
   transition:
     border-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
     background-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -1273,8 +1273,8 @@
   border-color: rgba(196, 226, 255, 0.70) !important;
   box-shadow:
     inset 0 1px 0 0 rgba(200, 225, 255, 0.12),
-    0 1px 2px rgba(0, 0, 0, 0.36),
-    0 18px 40px -16px rgba(0, 0, 0, 0.70);
+    0 1px 2px rgba(73, 53, 25, 0.36),
+    0 18px 40px -16px rgba(73, 53, 25, 0.70);
 }
 .deal-glass::before {
   content: '';
@@ -1285,7 +1285,7 @@
   background: linear-gradient(
     135deg,
     rgba(180, 220, 255, 0.04) 0%,
-    rgba(255, 255, 255, 0.00) 55%
+    rgba(41, 37, 31, 0.00) 55%
   );
   z-index: 0;
 }
@@ -1311,22 +1311,22 @@
 .deal-glass.deal-tile,
 div.deal-tile.deal-glass,
 .deal-tile[class*="deal-glass"] {
-  background: #121b33 !important;
-  background-color: #121b33 !important;
+  background: #FFFDF8 !important;
+  background-color: #FFFDF8 !important;
   background-image: none !important;
   border-color: rgba(47, 238, 251, 0.18) !important;
   border-radius: 8px !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   box-shadow: none !important;
-  color: #ffffff !important;
+  color: #29251F !important;
 }
 .deal-tile.deal-glass:hover,
 .deal-glass.deal-tile:hover,
 div.deal-tile.deal-glass:hover,
 .deal-tile[class*="deal-glass"]:hover {
-  background: #17233f !important;
-  background-color: #17233f !important;
+  background: #F0E9DC !important;
+  background-color: #F0E9DC !important;
   background-image: none !important;
   border-color: rgba(47, 238, 251, 0.34) !important;
   box-shadow: none !important;
@@ -1346,11 +1346,11 @@ div.deal-tile.deal-glass:hover,
 /* Brighten text inside deal tiles for stronger readability */
 .deal-tile.deal-glass,
 .deal-tile.deal-glass * {
-  color: #ffffff;
+  color: #29251F;
 }
 .deal-tile.deal-glass .text-muted-foreground,
 .deal-tile.deal-glass [class*="text-muted"] {
-  color: rgba(255, 255, 255, 0.85) !important;
+  color: rgba(41, 37, 31, 0.85) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -1412,14 +1412,14 @@ button[role="combobox"] {
      SalesDashboardV2's `glassStyle` consumes these variables directly.
      ──────────────────────────────────────────────────────────────────── */
   --insights-widget-bg:
-    linear-gradient(180deg, #050d20 0%, #020611 50%, #000208 100%);
+    linear-gradient(180deg, #FFFDF8 0%, #F7F2E8 50%, #F7F2E8 100%);
   --insights-widget-border: 1px solid rgba(190, 220, 255, 0.34);
   --insights-widget-radius: 8px;
   --insights-widget-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
-    0 0 0 1px rgba(0, 0, 0, 0.55),
-    0 1px 2px rgba(0, 0, 0, 0.5),
-    0 18px 40px -14px rgba(0, 0, 0, 0.8);
+    inset 0 1px 0 0 rgba(41, 37, 31, 0.12),
+    0 0 0 1px rgba(73, 53, 25, 0.55),
+    0 1px 2px rgba(73, 53, 25, 0.5),
+    0 18px 40px -14px rgba(73, 53, 25, 0.8);
 }
 
 /* Every widget container on Insights renders through this fill —
@@ -1470,7 +1470,7 @@ button[role="combobox"] {
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.00) 55%);
+  background: linear-gradient(135deg, rgba(41, 37, 31, 0.07) 0%, rgba(41, 37, 31, 0.00) 55%);
   z-index: 0;
 }
 .dark .insights-glass-skin [data-slot="card"] > * {
@@ -1490,11 +1490,11 @@ button[role="combobox"] {
 /* Recharts — strip default chrome, apply platform-consistent muted styling */
 .dark .insights-glass-skin .recharts-surface { overflow: visible; }
 .dark .insights-glass-skin .recharts-cartesian-grid line {
-  stroke: rgba(255, 255, 255, 0.05) !important;
+  stroke: rgba(41, 37, 31, 0.05) !important;
 }
 .dark .insights-glass-skin .recharts-cartesian-axis-line,
 .dark .insights-glass-skin .recharts-cartesian-axis-tick-line {
-  stroke: rgba(255, 255, 255, 0.08) !important;
+  stroke: rgba(41, 37, 31, 0.08) !important;
 }
 .dark .insights-glass-skin .recharts-cartesian-axis-tick text,
 .dark .insights-glass-skin .recharts-text {
@@ -1505,7 +1505,7 @@ button[role="combobox"] {
    overriding the low-contrast .insights-glass-skin defaults above. */
 .funnel-chart-dark .recharts-cartesian-axis-tick text,
 .funnel-chart-dark .recharts-text {
-  fill: rgba(255, 255, 255, 0.92) !important;
+  fill: rgba(41, 37, 31, 0.92) !important;
   font-size: 11px;
 }
 .dark .insights-glass-skin .recharts-legend-item-text {
@@ -1517,8 +1517,8 @@ button[role="combobox"] {
   background: rgba(10, 18, 36, 0.95) !important;
   border: 1px solid rgba(80, 140, 255, 0.25) !important;
   border-radius: 8px !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
-  color: #ffffff !important;
+  box-shadow: 0 8px 24px rgba(73, 53, 25, 0.5) !important;
+  color: #29251F !important;
   font-size: 11px !important;
   padding: 8px 10px !important;
 }
@@ -1527,7 +1527,7 @@ button[role="combobox"] {
 .dark .insights-glass-skin .recharts-tooltip-item-name,
 .dark .insights-glass-skin .recharts-tooltip-item-value,
 .dark .insights-glass-skin .recharts-tooltip-item-separator {
-  color: #ffffff !important;
+  color: #29251F !important;
 }
 .dark .insights-glass-skin .recharts-tooltip-cursor {
   fill: rgba(120, 170, 255, 0.06) !important;
@@ -1558,24 +1558,24 @@ button[role="combobox"] {
    ───────────────────────────────────────────────────────────────────── */
 .dark .insights-glass-skin .text-muted-foreground,
 .dark .insights-glass-skin [class*="text-muted-foreground/"] {
-  color: rgba(255, 255, 255, 0.92) !important;
+  color: rgba(41, 37, 31, 0.92) !important;
 }
 
 /* Chart axis ticks, legends, pie labels — bump to white for readability */
 .dark .insights-glass-skin .recharts-cartesian-axis-tick text,
 .dark .insights-glass-skin .recharts-text,
 .dark .insights-glass-skin .recharts-pie-label-text {
-  fill: rgba(255, 255, 255, 0.92) !important;
+  fill: rgba(41, 37, 31, 0.92) !important;
 }
 .dark .insights-glass-skin .recharts-legend-item-text {
-  color: rgba(255, 255, 255, 0.92) !important;
+  color: rgba(41, 37, 31, 0.92) !important;
 }
 
 /* GlassCard header title/subtitle use inline style colors — override those */
 .dark .insights-glass-skin [data-slot="card-title"],
 .dark .insights-glass-skin [data-slot="card-header"] p,
 .dark .insights-glass-skin [data-slot="card-description"] {
-  color: rgba(255, 255, 255, 0.90) !important;
+  color: rgba(41, 37, 31, 0.90) !important;
 }
 
 /* ── react-day-picker layout guardrails ───────────────────────────────────
@@ -1659,46 +1659,46 @@ button[role="combobox"] {
   position: relative;
   border-radius: 14px;
   background:
-    linear-gradient(180deg, #050d20 0%, #020611 50%, #000208 100%) !important;
-  background-color: #020611 !important;
+    linear-gradient(180deg, #FFFDF8 0%, #F7F2E8 50%, #F7F2E8 100%) !important;
+  background-color: #F7F2E8 !important;
   border: 1px solid rgba(190, 220, 255, 0.34) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  color: #ffffff;
+  color: #29251F;
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
-    0 12px 32px -22px rgba(0, 0, 0, 0.55);
+    inset 0 1px 0 0 rgba(41, 37, 31, 0.04),
+    0 12px 32px -22px rgba(73, 53, 25, 0.55);
 }
 .lg-toolbar {
   position: relative;
   border-radius: 12px;
   background:
-    linear-gradient(180deg, #050d20 0%, #020611 50%, #000208 100%) !important;
-  background-color: #020611 !important;
+    linear-gradient(180deg, #FFFDF8 0%, #F7F2E8 50%, #F7F2E8 100%) !important;
+  background-color: #F7F2E8 !important;
   border: 1px solid rgba(190, 220, 255, 0.34) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  color: #ffffff;
+  color: #29251F;
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
-    0 8px 24px -18px rgba(0, 0, 0, 0.55);
+    inset 0 1px 0 0 rgba(41, 37, 31, 0.04),
+    0 8px 24px -18px rgba(73, 53, 25, 0.55);
 }
 /* Secondary glass pill button (Import / Merge / Sync / Configuration / Analytics) */
 .lg-pill {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  background: rgba(41, 37, 31, 0.04) !important;
+  border: 1px solid rgba(41, 37, 31, 0.10) !important;
   color: hsl(var(--foreground) / 0.85) !important;
   border-radius: 9px !important;
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
-    0 1px 0 0 rgba(0, 0, 0, 0.18) !important;
+    inset 0 1px 0 0 rgba(41, 37, 31, 0.04),
+    0 1px 0 0 rgba(73, 53, 25, 0.18) !important;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 .lg-pill:hover {
-  background: rgba(255, 255, 255, 0.07) !important;
-  border-color: rgba(255, 255, 255, 0.18) !important;
+  background: rgba(41, 37, 31, 0.07) !important;
+  border-color: rgba(41, 37, 31, 0.18) !important;
   color: hsl(var(--foreground)) !important;
 }
 /* Primary filled glass CTA (Add Lender) */
@@ -1707,10 +1707,10 @@ button[role="combobox"] {
   border: 1px solid rgba(170, 205, 255, 0.42) !important;
   color: #fff !important;
   border-radius: 9px !important;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 1px rgba(73, 53, 25, 0.35);
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
-    0 1px 0 0 rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 0 rgba(41, 37, 31, 0.22),
+    0 1px 0 0 rgba(73, 53, 25, 0.25),
     0 6px 16px -8px rgba(60, 120, 220, 0.55) !important;
   backdrop-filter: blur(12px) saturate(150%);
   -webkit-backdrop-filter: blur(12px) saturate(150%);
@@ -1723,21 +1723,21 @@ button[role="combobox"] {
 /* Glass input/select trigger */
 .lg-input,
 .lg-input:focus-visible {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgba(41, 37, 31, 0.04) !important;
+  border: 1px solid rgba(41, 37, 31, 0.08) !important;
   color: hsl(var(--foreground)) !important;
   border-radius: 9px !important;
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.03) !important;
+  box-shadow: inset 0 1px 0 0 rgba(41, 37, 31, 0.03) !important;
   transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }
 .lg-input:hover {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border-color: rgba(255, 255, 255, 0.14) !important;
+  background: rgba(41, 37, 31, 0.06) !important;
+  border-color: rgba(41, 37, 31, 0.14) !important;
 }
 .lg-input:focus-visible {
   border-color: rgba(170, 205, 255, 0.55) !important;
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+    inset 0 1px 0 0 rgba(41, 37, 31, 0.04),
     0 0 0 3px rgba(120, 170, 240, 0.18) !important;
   outline: none !important;
 }
@@ -1747,9 +1747,9 @@ button[role="combobox"] {
   align-items: center;
   padding: 3px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+  background: rgba(41, 37, 31, 0.04);
+  border: 1px solid rgba(41, 37, 31, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(41, 37, 31, 0.04);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -1764,15 +1764,15 @@ button[role="combobox"] {
   transition: background-color 150ms ease, color 150ms ease;
 }
 .lg-segmented > button:hover {
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: rgba(41, 37, 31, 0.05) !important;
   color: hsl(var(--foreground) / 0.9) !important;
 }
 .lg-segmented > button[data-active='true'] {
   background: linear-gradient(180deg, rgba(150, 195, 255, 0.22), rgba(120, 170, 240, 0.14)) !important;
   color: #fff !important;
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.18),
-    0 1px 0 0 rgba(0, 0, 0, 0.22) !important;
+    inset 0 1px 0 0 rgba(41, 37, 31, 0.18),
+    0 1px 0 0 rgba(73, 53, 25, 0.22) !important;
 }
 
 /* ---------------------------------------------------------------- */
@@ -1918,24 +1918,24 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 
 /* Dark surface treatment for Create New Deal dialog — matches popup-shell-surface */
 .create-deal-compact {
-  color: rgba(255,255,255,0.92);
+  color: rgba(41, 37, 31, 0.92);
 }
 .create-deal-compact label,
 .create-deal-compact [data-radix-dialog-title] {
-  color: rgba(255,255,255,0.88);
+  color: rgba(41, 37, 31, 0.88);
 }
 .create-deal-compact .text-muted-foreground {
-  color: rgba(255,255,255,0.55) !important;
+  color: rgba(41, 37, 31, 0.55) !important;
 }
 .create-deal-compact input,
 .create-deal-compact textarea,
 .create-deal-compact button[role="combobox"],
 .create-deal-compact [data-slot="select-trigger"],
 .create-deal-compact .create-deal-dropdown-trigger {
-  background: linear-gradient(135deg, #0a1224 0%, #060b18 50%, #04060f 100%) !important;
-  border: 1px solid rgba(255,255,255,0.18) !important;
-  color: rgba(255,255,255,0.95) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.3) !important;
+  background: linear-gradient(135deg, #FFFDF8 0%, #FFFDF8 50%, #F7F2E8 100%) !important;
+  border: 1px solid rgba(41, 37, 31, 0.18) !important;
+  color: rgba(41, 37, 31, 0.95) !important;
+  box-shadow: inset 0 1px 0 rgba(41, 37, 31, 0.06), 0 1px 2px rgba(73, 53, 25, 0.3) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
@@ -1944,7 +1944,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 }
 .create-deal-compact .create-deal-dropdown-trigger > span,
 .create-deal-compact [data-slot="select-trigger"] > span {
-  color: rgba(255,255,255,0.95) !important;
+  color: rgba(41, 37, 31, 0.95) !important;
 }
 .create-deal-compact input::placeholder,
 .create-deal-compact textarea::placeholder,
@@ -1953,18 +1953,18 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .create-deal-compact button[role="combobox"] [data-placeholder],
 .create-deal-compact [data-slot="select-trigger"] [data-placeholder],
 .create-deal-compact .create-deal-dropdown-trigger .text-muted-foreground {
-  color: rgba(255,255,255,0.4) !important;
+  color: rgba(41, 37, 31, 0.4) !important;
 }
 .create-deal-compact input:focus,
 .create-deal-compact textarea:focus,
 .create-deal-compact button[role="combobox"]:focus,
 .create-deal-compact [data-slot="select-trigger"]:focus,
 .create-deal-compact .create-deal-dropdown-trigger:focus {
-  border-color: rgba(255,255,255,0.28) !important;
+  border-color: rgba(41, 37, 31, 0.28) !important;
   box-shadow: 0 0 0 2px rgba(99,102,241,0.35) !important;
 }
 .create-deal-compact svg {
-  color: rgba(255,255,255,0.6);
+  color: rgba(41, 37, 31, 0.6);
 }
 
 /* Opaque dropdown panels for any Select/Combobox/Popover opened from the
@@ -1976,17 +1976,17 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 [data-radix-popper-content-wrapper] [data-create-deal-popover] *,
 .create-deal-dropdown-content,
 .create-deal-dropdown-content * {
-  color: rgba(255,255,255,0.95);
+  color: rgba(41, 37, 31, 0.95);
 }
 [data-create-deal-popover],
 .create-deal-dropdown-content,
 [data-radix-popper-content-wrapper]:has(> [data-create-deal-popover]) > * {
-  background: linear-gradient(135deg, #0a1224 0%, #060b18 50%, #04060f 100%) !important;
-  border: 1px solid rgba(255,255,255,0.18) !important;
-  box-shadow: 0 16px 40px rgba(0,0,0,0.55) !important;
+  background: linear-gradient(135deg, #FFFDF8 0%, #FFFDF8 50%, #F7F2E8 100%) !important;
+  border: 1px solid rgba(41, 37, 31, 0.18) !important;
+  box-shadow: 0 16px 40px rgba(73, 53, 25, 0.55) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  color: rgba(255,255,255,0.95) !important;
+  color: rgba(41, 37, 31, 0.95) !important;
 }
 [data-create-deal-popover] [data-slot="select-item"],
 [data-create-deal-popover] [role="option"],
@@ -1995,7 +1995,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .create-deal-dropdown-content [cmdk-item],
 .create-deal-dropdown-content button {
   background: transparent !important;
-  color: rgba(255,255,255,0.92) !important;
+  color: rgba(41, 37, 31, 0.92) !important;
 }
 [data-create-deal-popover] [role="option"]:hover,
 [data-create-deal-popover] [role="option"][data-highlighted],
@@ -2007,14 +2007,14 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .create-deal-dropdown-content [role="option"][data-highlighted],
 .create-deal-dropdown-content [cmdk-item][data-selected="true"],
 .create-deal-dropdown-content button:hover {
-  background-color: rgba(255,255,255,0.08) !important;
+  background-color: rgba(41, 37, 31, 0.08) !important;
   color: #fff !important;
 }
 
 /* Company dropdown panel matches dark modal */
 .create-deal-compact ~ [data-radix-popper-content-wrapper] .popup-shell-surface button:hover,
 .popup-shell-surface.dark button:hover {
-  background-color: rgba(255,255,255,0.06);
+  background-color: rgba(41, 37, 31, 0.06);
 }
 
 /* ─── Unified dark surface inside popup-shell modals ──────────────────────
@@ -2055,15 +2055,15 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .popup-shell-surface .glass-module,
 .popup-shell-surface .glass-module-interactive {
   background:
-    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+    linear-gradient(135deg, #F7F2E8 0%, #FFFDF8 20%, #F7F2E8 40%, #F7F2E8 60%, #F7F2E8 80%, #F7F2E8 100%) !important;
+  border: 1px solid rgba(41, 37, 31, 0.10) !important;
   border-radius: 6px !important;
   box-shadow:
-    0 12px 32px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    0 12px 32px rgba(73, 53, 25, 0.45),
+    inset 0 1px 0 rgba(41, 37, 31, 0.05) !important;
 }
 .popup-shell-surface .glass-module::before {
-  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.00) 60%) !important;
+  background: linear-gradient(135deg, rgba(41, 37, 31, 0.04) 0%, rgba(41, 37, 31, 0.00) 60%) !important;
 }
 .popup-shell-surface .glass-module-interactive:hover {
   border-color: rgba(126, 184, 247, 0.30) !important;
@@ -2071,17 +2071,17 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 /* Table headers and select/dropdown triggers inside popups */
 .popup-shell-surface table thead tr,
 .popup-shell-surface thead {
-  background: rgba(255, 255, 255, 0.03) !important;
+  background: rgba(41, 37, 31, 0.03) !important;
 }
 .popup-shell-surface table tr.border-b,
 .popup-shell-surface tbody tr {
-  border-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(41, 37, 31, 0.06) !important;
 }
 .popup-shell-surface [data-radix-select-trigger],
 .popup-shell-surface button[role="combobox"] {
   background:
-    linear-gradient(135deg, #050d1f 0%, #02080f 50%, #040008 100%) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+    linear-gradient(135deg, #FFFDF8 0%, #F7F2E8 50%, #F7F2E8 100%) !important;
+  border-color: rgba(41, 37, 31, 0.12) !important;
   color: rgb(226, 232, 240) !important;
 }
 /* Restore minimal contrast for interactive rows/cards so they remain
@@ -2092,14 +2092,14 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .popup-shell-surface li > .group,
 .popup-shell-surface .task-row,
 .popup-shell-surface .queue-item {
-  background-color: rgba(255, 255, 255, 0.025) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(41, 37, 31, 0.025) !important;
+  border-color: rgba(41, 37, 31, 0.08) !important;
 }
 .popup-shell-surface .card:hover,
 .popup-shell-surface [data-card]:hover,
 .popup-shell-surface .task-row:hover,
 .popup-shell-surface .queue-item:hover {
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  background-color: rgba(41, 37, 31, 0.05) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -2121,18 +2121,18 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 [data-radix-hover-card-content],
 [cmdk-root][role="dialog"] {
   background:
-    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+    linear-gradient(135deg, #F7F2E8 0%, #FFFDF8 20%, #F7F2E8 40%, #F7F2E8 60%, #F7F2E8 80%, #F7F2E8 100%) !important;
   /* Solid base color underneath the gradient — guarantees no pop-up is
      ever see-through, even if a later rule strips the gradient image. */
   background-color: #02040c !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(41, 37, 31, 0.12) !important;
   color: hsl(0 0% 98%) !important;
   backdrop-filter: blur(18px) saturate(135%);
   -webkit-backdrop-filter: blur(18px) saturate(135%);
   box-shadow:
-    0 40px 120px rgba(0, 0, 0, 0.65),
-    0 12px 32px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
+    0 40px 120px rgba(73, 53, 25, 0.65),
+    0 12px 32px rgba(73, 53, 25, 0.45),
+    inset 0 1px 0 rgba(41, 37, 31, 0.07) !important;
 }
 
 /* Neutralize any lighter nested surface tokens inside these overlays so
@@ -2174,15 +2174,15 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   [role="dialog"][data-state],
   [role="alertdialog"][data-state]
 ) :is(.card, [data-card], [role="listitem"], .task-row, .queue-item) {
-  background-color: rgba(255, 255, 255, 0.025) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(41, 37, 31, 0.025) !important;
+  border-color: rgba(41, 37, 31, 0.08) !important;
 }
 :is(
   [data-radix-popper-content-wrapper] > *:not([role="tooltip"]):not([data-tooltip]),
   [role="dialog"][data-state],
   [role="alertdialog"][data-state]
 ) :is(.card:hover, [data-card]:hover, .task-row:hover, .queue-item:hover) {
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  background-color: rgba(41, 37, 31, 0.05) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -2206,13 +2206,13 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .bg-stone-50, .bg-stone-100, .bg-stone-200 {
   background-color: transparent !important;
   background-image:
-    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+    linear-gradient(135deg, #F7F2E8 0%, #FFFDF8 20%, #F7F2E8 40%, #F7F2E8 60%, #F7F2E8 80%, #F7F2E8 100%) !important;
   color: hsl(0 0% 96%);
 }
 
 /* Subtle borders on these surfaces so they don't visually collapse. */
 .bg-card, .bg-muted, .bg-secondary, .bg-accent, .bg-popover {
-  border-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(41, 37, 31, 0.08);
 }
 
 /* Buttons that intentionally use these utility tints must keep their own
@@ -2231,18 +2231,18 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .sales-bd-page .glass-module-interactive,
 .sales-bd-page [data-slot="card"],
 .sales-bd-page [class*="bg-card"] {
-  background: #0b1226 !important;
-  background-color: #0b1226 !important;
+  background: #FFFDF8 !important;
+  background-color: #FFFDF8 !important;
   background-image: none !important;
   border: 1px solid rgba(126, 184, 247, 0.22) !important;
   border-radius: 8px !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  color: #ffffff !important;
+  color: #29251F !important;
   box-shadow:
     inset 0 1px 0 rgba(200, 225, 255, 0.09),
-    0 1px 2px rgba(0, 0, 0, 0.32),
-    0 12px 32px -16px rgba(0, 0, 0, 0.62) !important;
+    0 1px 2px rgba(73, 53, 25, 0.32),
+    0 12px 32px -16px rgba(73, 53, 25, 0.62) !important;
 }
 .sales-bd-page .glass-module::before,
 .sales-bd-page .glass-module-interactive::before {
@@ -2251,13 +2251,13 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .sales-bd-page .glass-module-interactive:hover,
 .sales-bd-page [data-slot="card"]:hover,
 .sales-bd-page [class*="bg-card"]:hover {
-  background: #101836 !important;
-  background-color: #101836 !important;
+  background: #FFFDF8 !important;
+  background-color: #FFFDF8 !important;
   border-color: rgba(126, 184, 247, 0.4) !important;
   box-shadow:
     inset 0 1px 0 rgba(200, 225, 255, 0.12),
-    0 2px 4px rgba(0, 0, 0, 0.4),
-    0 18px 40px -16px rgba(0, 0, 0, 0.7) !important;
+    0 2px 4px rgba(73, 53, 25, 0.4),
+    0 18px 40px -16px rgba(73, 53, 25, 0.7) !important;
 }
 
 /* Sub-navigation/filter toolbars (Channels / Companies / Referral Sources,
@@ -2265,7 +2265,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .sales-bd-page [class*="bg-muted/40"],
 .sales-bd-page [class*="bg-muted/30"],
 .sales-bd-page [class*="bg-background/60"] {
-  background: #0b1226 !important;
+  background: #FFFDF8 !important;
   border-color: rgba(126, 184, 247, 0.22) !important;
 }
 .sales-bd-page [class*="hover\\:bg-background/30"]:hover,
@@ -2280,16 +2280,16 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .sales-bd-page .bg-muted\/30,
 .sales-bd-page .bg-accent\/20,
 .sales-bd-page .bg-accent\/40 {
-  background-color: rgba(255, 255, 255, 0.05) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(41, 37, 31, 0.05) !important;
+  border-color: rgba(41, 37, 31, 0.08) !important;
 }
 
 /* Tables nested inside Sales & BD glass cards */
 .sales-bd-page table tr.border-b {
-  border-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(41, 37, 31, 0.06) !important;
 }
 .sales-bd-page table thead tr {
-  background: rgba(255, 255, 255, 0.03) !important;
+  background: rgba(41, 37, 31, 0.03) !important;
 }
 
 /* =========================================================================
@@ -2300,14 +2300,14 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .naitive-pipeline-page .glass-module,
 .naitive-pipeline-page .glass-module-interactive {
   background:
-    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+    linear-gradient(135deg, #F7F2E8 0%, #FFFDF8 20%, #F7F2E8 40%, #F7F2E8 60%, #F7F2E8 80%, #F7F2E8 100%) !important;
+  border: 1px solid rgba(41, 37, 31, 0.10) !important;
   box-shadow:
-    0 12px 32px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    0 12px 32px rgba(73, 53, 25, 0.45),
+    inset 0 1px 0 rgba(41, 37, 31, 0.05) !important;
 }
 .naitive-pipeline-page .glass-module::before {
-  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.00) 60%) !important;
+  background: linear-gradient(135deg, rgba(41, 37, 31, 0.04) 0%, rgba(41, 37, 31, 0.00) 60%) !important;
 }
 .naitive-pipeline-page .glass-module-interactive:hover {
   border-color: rgba(126, 184, 247, 0.30) !important;
@@ -2316,8 +2316,8 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .naitive-pipeline-page .bg-card,
 .naitive-pipeline-page [class*="bg-card"] {
   background:
-    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
-  border-color: rgba(255, 255, 255, 0.10) !important;
+    linear-gradient(135deg, #F7F2E8 0%, #FFFDF8 20%, #F7F2E8 40%, #F7F2E8 60%, #F7F2E8 80%, #F7F2E8 100%) !important;
+  border-color: rgba(41, 37, 31, 0.10) !important;
 }
 
 .naitive-pipeline-page [class*="bg-muted/40"],
@@ -2325,8 +2325,8 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .naitive-pipeline-page [class*="bg-background/60"],
 .naitive-pipeline-page [class*="bg-background/40"] {
   background:
-    linear-gradient(135deg, #050d1f 0%, #02080f 50%, #040008 100%) !important;
-  border-color: rgba(255, 255, 255, 0.10) !important;
+    linear-gradient(135deg, #FFFDF8 0%, #F7F2E8 50%, #F7F2E8 100%) !important;
+  border-color: rgba(41, 37, 31, 0.10) !important;
 }
 
 .naitive-pipeline-page .bg-muted\/40,
@@ -2334,16 +2334,16 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .naitive-pipeline-page .bg-muted\/20,
 .naitive-pipeline-page .bg-accent\/20,
 .naitive-pipeline-page .bg-accent\/40 {
-  background-color: rgba(255, 255, 255, 0.05) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(41, 37, 31, 0.05) !important;
+  border-color: rgba(41, 37, 31, 0.08) !important;
 }
 
 /* Select / dropdown triggers on this page */
 .naitive-pipeline-page [data-radix-select-trigger],
 .naitive-pipeline-page button[role="combobox"] {
   background:
-    linear-gradient(135deg, #050d1f 0%, #02080f 50%, #040008 100%) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+    linear-gradient(135deg, #FFFDF8 0%, #F7F2E8 50%, #F7F2E8 100%) !important;
+  border-color: rgba(41, 37, 31, 0.12) !important;
   color: rgb(226, 232, 240) !important;
 }
 
@@ -2397,11 +2397,11 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .popup-shell-surface.create-deal-compact button.create-deal-dropdown-trigger[role="combobox"],
 .popup-shell-surface.create-deal-compact [data-slot="select-trigger"].create-deal-dropdown-trigger,
 .popup-shell-surface.create-deal-compact [data-radix-select-trigger].create-deal-dropdown-trigger {
-  background-color: #060b18 !important;
-  background-image: linear-gradient(135deg, #0a1224 0%, #060b18 52%, #04060f 100%) !important;
+  background-color: #FFFDF8 !important;
+  background-image: linear-gradient(135deg, #FFFDF8 0%, #FFFDF8 52%, #F7F2E8 100%) !important;
   border: 1px solid rgba(148, 163, 184, 0.22) !important;
-  color: rgba(255, 255, 255, 0.95) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 1px 2px rgba(0,0,0,0.35) !important;
+  color: rgba(41, 37, 31, 0.95) !important;
+  box-shadow: inset 0 1px 0 rgba(41, 37, 31, 0.07), 0 1px 2px rgba(73, 53, 25, 0.35) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
@@ -2410,22 +2410,22 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 }
 .popup-shell-surface.create-deal-compact button.create-deal-dropdown-trigger > span,
 .popup-shell-surface.create-deal-compact [data-slot="select-trigger"].create-deal-dropdown-trigger > span {
-  color: rgba(255, 255, 255, 0.95) !important;
+  color: rgba(41, 37, 31, 0.95) !important;
 }
 .popup-shell-surface.create-deal-compact button.create-deal-dropdown-trigger[data-placeholder] > span,
 .popup-shell-surface.create-deal-compact [data-slot="select-trigger"].create-deal-dropdown-trigger[data-placeholder] > span,
 .popup-shell-surface.create-deal-compact button.create-deal-dropdown-trigger .text-muted-foreground {
-  color: rgba(255, 255, 255, 0.48) !important;
+  color: rgba(41, 37, 31, 0.48) !important;
 }
 .create-deal-dropdown-content,
 .create-deal-dropdown-content[data-radix-popper-content-wrapper],
 [data-radix-popper-content-wrapper] .create-deal-dropdown-content,
 .popup-shell-surface.create-deal-compact .create-deal-dropdown-content {
-  background-color: #060b18 !important;
-  background-image: linear-gradient(135deg, #0a1224 0%, #060b18 52%, #04060f 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.20) !important;
-  color: rgba(255, 255, 255, 0.95) !important;
-  box-shadow: 0 18px 44px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.07) !important;
+  background-color: #FFFDF8 !important;
+  background-image: linear-gradient(135deg, #FFFDF8 0%, #FFFDF8 52%, #F7F2E8 100%) !important;
+  border: 1px solid rgba(41, 37, 31, 0.20) !important;
+  color: rgba(41, 37, 31, 0.95) !important;
+  box-shadow: 0 18px 44px rgba(73, 53, 25, 0.62), inset 0 1px 0 rgba(41, 37, 31, 0.07) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
@@ -2434,20 +2434,20 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .create-deal-dropdown-content [cmdk-group],
 .create-deal-dropdown-content [cmdk-root] {
   background: transparent !important;
-  color: rgba(255, 255, 255, 0.95) !important;
+  color: rgba(41, 37, 31, 0.95) !important;
 }
 .create-deal-dropdown-content [data-slot="select-item"],
 .create-deal-dropdown-content [role="option"],
 .create-deal-dropdown-content [cmdk-item],
 .create-deal-dropdown-content button {
-  color: rgba(255, 255, 255, 0.92) !important;
+  color: rgba(41, 37, 31, 0.92) !important;
 }
 .create-deal-dropdown-content [data-slot="select-item"][data-highlighted],
 .create-deal-dropdown-content [role="option"][data-highlighted],
 .create-deal-dropdown-content [role="option"]:hover,
 .create-deal-dropdown-content [cmdk-item][data-selected="true"],
 .create-deal-dropdown-content button:hover {
-  background-color: rgba(255, 255, 255, 0.10) !important;
+  background-color: rgba(41, 37, 31, 0.10) !important;
   color: #fff !important;
 }
 
@@ -2467,11 +2467,11 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    opened inside dialogs see-through. */
 .app-dropdown-surface.app-dropdown-surface.app-dropdown-surface,
 [data-radix-popper-content-wrapper] .app-dropdown-surface {
-  background-color: #060b18 !important;
-  background-image: linear-gradient(135deg, #0a1224 0%, #060b18 52%, #04060f 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.20) !important;
-  color: rgba(255, 255, 255, 0.95) !important;
-  box-shadow: 0 18px 44px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.07) !important;
+  background-color: #FFFDF8 !important;
+  background-image: linear-gradient(135deg, #FFFDF8 0%, #FFFDF8 52%, #F7F2E8 100%) !important;
+  border: 1px solid rgba(41, 37, 31, 0.20) !important;
+  color: rgba(41, 37, 31, 0.95) !important;
+  box-shadow: 0 18px 44px rgba(73, 53, 25, 0.62), inset 0 1px 0 rgba(41, 37, 31, 0.07) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   opacity: 1 !important;
@@ -2482,11 +2482,11 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .app-dropdown-surface [cmdk-root],
 .app-dropdown-surface [cmdk-input-wrapper] {
   background: transparent !important;
-  color: rgba(255, 255, 255, 0.95) !important;
+  color: rgba(41, 37, 31, 0.95) !important;
 }
 .app-dropdown-surface [cmdk-input] {
   background: transparent !important;
-  color: rgba(255, 255, 255, 0.95) !important;
+  color: rgba(41, 37, 31, 0.95) !important;
 }
 .app-dropdown-surface [data-slot="select-item"],
 .app-dropdown-surface [role="option"],
@@ -2495,7 +2495,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .app-dropdown-surface [role="menuitemradio"],
 .app-dropdown-surface [cmdk-item],
 .app-dropdown-surface button {
-  color: rgba(255, 255, 255, 0.92) !important;
+  color: rgba(41, 37, 31, 0.92) !important;
   background: transparent !important;
 }
 /* Doubled class selector (.app-dropdown-surface.app-dropdown-surface) bumps
@@ -2511,13 +2511,13 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .app-dropdown-surface.app-dropdown-surface [cmdk-item][data-selected="true"],
 .app-dropdown-surface.app-dropdown-surface [cmdk-item]:hover,
 .app-dropdown-surface.app-dropdown-surface button:hover {
-  background-color: rgba(255, 255, 255, 0.10) !important;
+  background-color: rgba(41, 37, 31, 0.10) !important;
   color: #fff !important;
 }
 .app-dropdown-surface [data-radix-dropdown-menu-separator],
 .app-dropdown-surface .bg-muted,
 .app-dropdown-surface [role="separator"] {
-  background-color: rgba(255, 255, 255, 0.10) !important;
+  background-color: rgba(41, 37, 31, 0.10) !important;
 }
 
 /* Revenue/hour chart tooltip — force the Deal Details popup dark gradient over
@@ -2525,15 +2525,15 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .recharts-tooltip-wrapper > .revenue-per-hour-tooltip.revenue-per-hour-tooltip,
 .dark .insights-glass-skin .recharts-tooltip-wrapper > .revenue-per-hour-tooltip.revenue-per-hour-tooltip,
 .revenue-per-hour-tooltip.revenue-per-hour-tooltip {
-  background-color: #020208 !important;
+  background-color: #F7F2E8 !important;
   background-image:
-    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    linear-gradient(135deg, #F7F2E8 0%, #FFFDF8 20%, #F7F2E8 40%, #F7F2E8 60%, #F7F2E8 80%, #F7F2E8 100%) !important;
+  border: 1px solid rgba(41, 37, 31, 0.14) !important;
   border-radius: 8px !important;
   box-shadow:
-    0 18px 45px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
-  color: rgba(255, 255, 255, 0.96) !important;
+    0 18px 45px rgba(73, 53, 25, 0.55),
+    inset 0 1px 0 rgba(41, 37, 31, 0.08) !important;
+  color: rgba(41, 37, 31, 0.96) !important;
   font-size: 12px !important;
   min-width: 180px;
   padding: 8px 10px !important;
@@ -2548,17 +2548,17 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 }
 
 .revenue-per-hour-tooltip__title {
-  color: rgba(255, 255, 255, 0.96) !important;
+  color: rgba(41, 37, 31, 0.96) !important;
   font-weight: 600;
   margin-bottom: 4px;
 }
 
 .revenue-per-hour-tooltip__rate {
-  color: rgba(255, 255, 255, 0.9) !important;
+  color: rgba(41, 37, 31, 0.9) !important;
 }
 
 .revenue-per-hour-tooltip__detail {
-  color: rgba(255, 255, 255, 0.72) !important;
+  color: rgba(41, 37, 31, 0.72) !important;
   margin-top: 2px;
 }
 
@@ -2628,7 +2628,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .crm-companies-table tbody,
 .crm-companies-table tbody tr,
 .crm-companies-table tbody td {
-  background: linear-gradient(180deg, #050d20 0%, #020611 50%, #000208 100%) !important;
+  background: linear-gradient(180deg, #FFFDF8 0%, #F7F2E8 50%, #F7F2E8 100%) !important;
   background-color: transparent;
 }
 .crm-companies-table thead th,
@@ -2640,11 +2640,11 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    pagination count — but never override anchor colors. */
 .crm-companies-surface,
 .crm-companies-surface * {
-  color: #ffffff;
+  color: #29251F;
 }
 .crm-companies-surface .text-muted-foreground,
 .crm-companies-surface [class*="text-muted"] {
-  color: rgba(255, 255, 255, 0.85) !important;
+  color: rgba(41, 37, 31, 0.85) !important;
 }
 /* Preserve hyperlink color + hover — anchors keep whatever color utility
    they were given (e.g. `.text-primary`) instead of inheriting white. */
@@ -2654,7 +2654,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 }
 /* Row hover — keep subtle contrast on the navy fill. */
 .crm-companies-table tbody tr:hover td {
-  background: rgba(255, 255, 255, 0.04) !important;
+  background: rgba(41, 37, 31, 0.04) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -2683,7 +2683,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .settings-surface .bg-white\/\[0\.04\],
 .settings-surface .bg-white\/\[0\.05\],
 .settings-surface .bg-white\/\[0\.06\] {
-  background: linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%) !important;
+  background: linear-gradient(180deg, #FFFDF8 0%, #0b1830 100%) !important;
   background-color: transparent;
   border-color: rgba(190, 220, 255, 0.34) !important;
   backdrop-filter: none !important;
@@ -2747,8 +2747,8 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    Mirrors the /insights page shell: same navy gradient backdrop and the
    shared Insights widget skin so widgets keep clear, visible borders. */
 .sales-dashboard-popup {
-  background-color: #030310 !important;
-  background-image: linear-gradient(180deg, #030310 0%, #030b1e 10%, #051a39 25%, #063765 50%, #065193 75%, #076cc1 100%) !important;
+  background-color: #F7F2E8 !important;
+  background-image: linear-gradient(180deg, #F7F2E8 0%, #030b1e 10%, #051a39 25%, #063765 50%, #065193 75%, #076cc1 100%) !important;
   background-repeat: no-repeat !important;
   background-size: cover !important;
 }
@@ -2756,7 +2756,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .sales-dashboard-popup .insights-glass-skin .glass-module,
 .sales-dashboard-popup .insights-glass-skin .glass-module-interactive,
 .sales-dashboard-popup .insights-glass-skin .insights-widget-surface {
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border: 1px solid rgba(41, 37, 31, 0.16) !important;
 }
 
 /* Email rich-text editor: readable paragraph and list spacing.
@@ -2813,14 +2813,14 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .dark .deal-detail-surface .dark\:text-white,
 .deal-detail-surface .text-foreground,
 .deal-detail-surface [class*="data-\[state\=active\]\:text-white"][data-state="active"] {
-  color: #ffffff !important;
+  color: #29251F !important;
 }
 
 .deal-detail-surface .bg-card,
 .deal-detail-surface [class*="bg-card"],
 .deal-detail-surface [class*="bg-muted/"],
 .deal-detail-surface .deal-glass {
-  background-color: #121b33 !important;
+  background-color: #FFFDF8 !important;
   background-image: none !important;
   border-width: var(--deal-module-border) !important;
   border-style: solid !important;
@@ -2828,8 +2828,8 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   border-radius: var(--deal-module-radius) !important;
   box-shadow:
     inset 0 1px 0 rgba(200, 225, 255, 0.09),
-    0 1px 2px rgba(0, 0, 0, 0.32),
-    0 12px 32px -16px rgba(0, 0, 0, 0.62) !important;
+    0 1px 2px rgba(73, 53, 25, 0.32),
+    0 12px 32px -16px rgba(73, 53, 25, 0.62) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   transition: border-color 200ms ease, box-shadow 200ms ease,
@@ -2848,7 +2848,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [class*="bg-card"] [class*="text-muted"],
 .deal-detail-surface .deal-glass .text-muted-foreground,
 .deal-detail-surface .deal-glass [class*="text-muted"] {
-  color: rgba(255, 255, 255, 0.85) !important;
+  color: rgba(41, 37, 31, 0.85) !important;
 }
 
 /* Pills, avatars and other fully-rounded chips keep their own radius. */
@@ -2860,13 +2860,13 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [class*="bg-card"]:hover,
 .deal-detail-surface .deal-glass:hover {
   border-color: var(--deal-module-border-color-hover) !important;
-  background-color: #17233f !important;
+  background-color: #F0E9DC !important;
   background-image: none !important;
   transform: translateY(-2px);
   box-shadow:
     inset 0 1px 0 rgba(200, 225, 255, 0.12),
-    0 1px 2px rgba(0, 0, 0, 0.36),
-    0 18px 40px -16px rgba(0, 0, 0, 0.70) !important;
+    0 1px 2px rgba(73, 53, 25, 0.36),
+    0 18px 40px -16px rgba(73, 53, 25, 0.70) !important;
 }
 
 /* Nested modules shouldn't double-lift when the parent module is hovered. */
@@ -2891,7 +2891,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 /* Nested modules step one level brighter so hierarchy stays readable. */
 .deal-detail-surface .bg-card .bg-card,
 .deal-detail-surface [class*="bg-card"] [class*="bg-muted/"] {
-  background-color: #17233f !important;
+  background-color: #F0E9DC !important;
   background-image: none !important;
   border-color: rgba(47, 238, 251, 0.18) !important;
   border-radius: var(--deal-module-radius) !important;
@@ -2902,13 +2902,13 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface input:not([type="checkbox"]):not([type="radio"]),
 .deal-detail-surface textarea,
 .deal-detail-surface select {
-  background-color: #171b2c !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: #FFFDF8 !important;
+  border-color: rgba(41, 37, 31, 0.08) !important;
   border-radius: 12px !important;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
+  color: #29251F !important;
+  -webkit-text-fill-color: #29251F !important;
 }
 
 /* Placeholder copy inside deal detail inputs. */
@@ -2920,12 +2920,12 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 
 /* Module / widget titles. */
 .deal-detail-surface [data-slot="card-title"] {
-  color: #ffffff !important;
+  color: #29251F !important;
 }
 
 .deal-detail-surface input:focus-visible,
 .deal-detail-surface textarea:focus-visible {
-  border-color: rgba(255, 255, 255, 0.28) !important;
+  border-color: rgba(41, 37, 31, 0.28) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -2967,7 +2967,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [class*="bg-card"],
 .deal-detail-surface [class*="bg-muted/"],
 .deal-detail-surface .deal-glass {
-  color: hsl(0 0% 100% / 0.94);
+  color: hsl(36 14% 14% / 0.94);
 }
 
 .deal-detail-surface .text-muted-foreground,
@@ -2994,9 +2994,9 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 }
 /* Status note box colors — matches the deal tile status box. */
 .status-note-2rows .status-note-editor {
-  background-color: rgba(255, 255, 255, 0.03) !important;
+  background-color: rgba(41, 37, 31, 0.03) !important;
   background-image: none !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(41, 37, 31, 0.06) !important;
   border-radius: 0.5rem !important;
   padding: 6px 4px !important;
 }
@@ -3025,8 +3025,8 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .status-note-2rows .ProseMirror,
 .status-note-2rows [contenteditable="true"],
 .status-note-2rows textarea {
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
+  color: #29251F !important;
+  -webkit-text-fill-color: #29251F !important;
   opacity: 1 !important;
 }
 /* Keep the two-row scroll behavior but hide the visible scrollbar. */
@@ -3090,9 +3090,9 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   backdrop-filter: none !important;
   transform: none !important;
   /* Deal name + amount always render as pure, fully opaque white. */
-  color: #ffffff !important;
+  color: #29251F !important;
   opacity: 1 !important;
-  -webkit-text-fill-color: #ffffff !important;
+  -webkit-text-fill-color: #29251F !important;
   text-shadow: none !important;
   filter: none !important;
   mix-blend-mode: normal !important;
@@ -3131,14 +3131,14 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [class*="rounded-full"].deal-rail-control {
   border-radius: 8px !important;
   border: 1px solid rgba(157, 162, 245, 0.25) !important;
-  background-color: #171b2c !important;
+  background-color: #FFFDF8 !important;
   background-image: none !important;
-  color: #ffffff !important;
+  color: #29251F !important;
 }
 
 .deal-rail-control *,
 .deal-detail-surface .deal-rail-control * {
-  color: #ffffff !important;
+  color: #29251F !important;
 }
 
 /* Close-date picker placeholder ("Not set") reads white like other rail text. */
@@ -3146,7 +3146,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface .deal-rail-control .text-muted-foreground,
 .deal-rail-control span,
 .deal-detail-surface .deal-rail-control span {
-  color: #ffffff !important;
+  color: #29251F !important;
   opacity: 1 !important;
 }
 
@@ -3209,7 +3209,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-inline-panel [data-slot="card-title"],
 .deal-inline-panel .text-foreground,
 .deal-inline-panel .text-white {
-  color: #ffffff !important;
+  color: #29251F !important;
 }
 
 /* Deal Information field controls (close date, owner/manager, type, engagement,
@@ -3223,11 +3223,11 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   [data-slot="select-trigger"],
   button[data-state]
 ):not(textarea):not(.status-note-editor):not([class*="rounded-full"]) {
-  background-color: rgba(255, 255, 255, 0.03) !important;
+  background-color: rgba(41, 37, 31, 0.03) !important;
   background-image: none !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(41, 37, 31, 0.06) !important;
   border-radius: 0.5rem !important;
-  color: #ffffff !important;
+  color: #29251F !important;
 }
 
 .deal-detail-surface .deal-info-railed-card :is(
@@ -3236,12 +3236,12 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   button[role="combobox"],
   [data-slot="select-trigger"]
 ) :is(span, svg, .text-muted-foreground) {
-  color: #ffffff !important;
+  color: #29251F !important;
   opacity: 1 !important;
 }
 
 .deal-detail-surface .deal-info-railed-card input::placeholder {
-  color: rgba(255, 255, 255, 0.55) !important;
+  color: rgba(41, 37, 31, 0.55) !important;
 }
 
 /* ── Deal detail: brighter white text ─────────────────────────────────────
@@ -3260,8 +3260,8 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [contenteditable="true"],
 .deal-detail-surface .ProseMirror,
 .deal-detail-surface .ProseMirror * {
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
+  color: #29251F !important;
+  -webkit-text-fill-color: #29251F !important;
   opacity: 1 !important;
   text-shadow: none !important;
   filter: none !important;
@@ -3274,14 +3274,14 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .deal-detail-surface [class*="bg-card"] [class*="text-muted"],
 .deal-detail-surface .deal-glass .text-muted-foreground,
 .deal-detail-surface .deal-glass [class*="text-muted"] {
-  color: rgba(255, 255, 255, 0.96) !important;
+  color: rgba(41, 37, 31, 0.96) !important;
 }
 
 /* Hours & Fees widget — all text at full-strength white. */
 .deal-hours-fees-panel,
 .deal-hours-fees-panel * {
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
+  color: #29251F !important;
+  -webkit-text-fill-color: #29251F !important;
   opacity: 1 !important;
 }
 
@@ -3346,8 +3346,8 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 
 /* Status note: same subtle translucent box as the deal tiles. */
 .deal-detail-surface .status-note-2rows .status-note-editor {
-  background-color: rgba(255, 255, 255, 0.03) !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background-color: rgba(41, 37, 31, 0.03) !important;
+  border: 1px solid rgba(41, 37, 31, 0.06) !important;
   border-radius: 0.5rem !important;
 }
 
@@ -3486,10 +3486,10 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 /* ---- Sidebar flyout submenus (Deals / Insights / Dashboard) ---- */
 .sidebar-flyout {
   border-radius: 10px !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  background-color: #0f1f3d !important;
+  border: 1px solid rgba(41, 37, 31, 0.08) !important;
+  background-color: #FFFDF8 !important;
   background-image: none !important;
-  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.75) !important;
+  box-shadow: 0 18px 40px -18px rgba(73, 53, 25, 0.75) !important;
   backdrop-filter: none;
   color: hsl(var(--foreground));
 }
@@ -3510,7 +3510,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .sidebar-flyout-item:hover,
 .sidebar-flyout-item:focus-visible,
 .sidebar-flyout [role='menuitem'].sidebar-flyout-item:hover {
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  background-color: rgba(41, 37, 31, 0.05) !important;
   border-color: transparent !important;
   color: hsl(var(--foreground)) !important;
 }
@@ -3525,7 +3525,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 }
 
 .sidebar-flyout-separator {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: rgba(41, 37, 31, 0.08);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -3609,8 +3609,8 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
     --space-7: 48px;
 
     /* ── Hairline surfaces ────────────────────────────── */
-    --hairline: rgba(255, 255, 255, 0.08);
-    --hairline-strong: rgba(255, 255, 255, 0.14);
+    --hairline: rgba(41, 37, 31, 0.08);
+    --hairline-strong: rgba(41, 37, 31, 0.14);
     --hairline-accent: hsl(var(--ds-sky) / 0.35);
   }
 
@@ -3926,9 +3926,9 @@ aside[aria-label="Deal context"] input,
 aside[aria-label="Deal context"] textarea,
 aside[aria-label="Deal context"] button[role="combobox"],
 aside[aria-label="Deal context"] [data-radix-select-trigger] {
-  background-color: rgba(255, 255, 255, 0.03) !important;
+  background-color: rgba(41, 37, 31, 0.03) !important;
   background-image: none !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(41, 37, 31, 0.06) !important;
   border-radius: 0.5rem !important;
   box-shadow: none !important;
 }
@@ -3938,8 +3938,8 @@ aside[aria-label="Deal context"] [data-radix-select-trigger] {
 aside[aria-label="Deal context"] input:hover,
 aside[aria-label="Deal context"] textarea:hover,
 aside[aria-label="Deal context"] button[role="combobox"]:hover {
-  background-color: rgba(255, 255, 255, 0.055) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(41, 37, 31, 0.055) !important;
+  border-color: rgba(41, 37, 31, 0.1) !important;
 }
 
 /* Portaled Deal Information fields (deal manager, type, engagement, etc.) */
@@ -3951,9 +3951,9 @@ aside[aria-label="Deal context"] button[role="combobox"]:hover {
 .deal-info-railed-card button[aria-haspopup="listbox"],
 aside[aria-label="Deal context"] button[aria-haspopup="dialog"],
 aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
-  background-color: rgba(255, 255, 255, 0.03) !important;
+  background-color: rgba(41, 37, 31, 0.03) !important;
   background-image: none !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(41, 37, 31, 0.06) !important;
   border-radius: 0.5rem !important;
   box-shadow: none !important;
 }
@@ -3963,8 +3963,8 @@ aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
 .deal-info-railed-card button[role="combobox"]:hover,
 .deal-info-railed-card button[aria-haspopup="dialog"]:hover,
 .deal-info-railed-card button[aria-haspopup="listbox"]:hover {
-  background-color: rgba(255, 255, 255, 0.055) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(41, 37, 31, 0.055) !important;
+  border-color: rgba(41, 37, 31, 0.1) !important;
 }
 
 /* Company URL and other rail inputs: no recessed blur, same faint well. */
@@ -3972,9 +3972,9 @@ aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
 .deal-detail-surface aside[aria-label="Deal context"] input,
 .deal-detail-surface .deal-info-railed-card textarea,
 .deal-detail-surface aside[aria-label="Deal context"] textarea {
-  background-color: rgba(255, 255, 255, 0.03) !important;
+  background-color: rgba(41, 37, 31, 0.03) !important;
   background-image: none !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(41, 37, 31, 0.06) !important;
   border-radius: 0.5rem !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -4025,8 +4025,8 @@ aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
 /* Deal Milestones widget matches the status-note box surface */
 .deal-milestones-surface,
 .deal-detail-surface .deal-milestones-surface {
-  background-color: #14172f !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background-color: #FFFDF8 !important;
+  border: 1px solid rgba(41, 37, 31, 0.06) !important;
   border-radius: 0.5rem !important;
   backdrop-filter: none !important;
   box-shadow: none !important;
@@ -4042,27 +4042,276 @@ aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
   border: none !important;
 }
 
+
 /* ============================================================
-   Night-light warmth — global blue-light reduction.
-   A single fixed, non-interactive warm wash over the whole app.
-   Purely presentational: no layout, spacing or behaviour impact.
+   Warm Night Light 32 — native warm theme token layer.
+   Native tokens (no overlay, no CSS filter). Layout, spacing and
+   behaviour are untouched; only color/surface values change.
    ============================================================ */
 :root {
-  /* 0 = off, 1 = full warmth. Tuned for a subtle, readable shift. */
-  --night-light-strength: 3.0;
+  --nl-bg: #F7F2E8;
+  --nl-surface: #FFFDF8;
+  --nl-surface-muted: #F0E9DC;
+  --nl-text: #29251F;
+  --nl-text-muted: #70685B;
+  --nl-text-subtle: #968C7D;
+  --nl-border: #DED4C4;
+  --nl-border-strong: #CDBFA9;
+  --nl-primary: #A66D20;
+  --nl-primary-hover: #875617;
+  --nl-primary-soft: #F4E3C3;
+  --nl-accent: #C48A32;
+  --nl-success: #4F7A5C;
+  --nl-warning: #A66D20;
+  --nl-danger: #A94C42;
+  --nl-info: #557487;
+  --nl-shadow: 0 6px 24px rgba(73, 53, 25, 0.10);
 }
 
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 2147483000;
-  pointer-events: none;
-  mix-blend-mode: multiply;
-  background: rgb(255, 214, 170);
-  opacity: calc(var(--night-light-strength) * 0.22);
+/* HSL mirrors so every shadcn/Tailwind token resolves to the warm palette */
+:root,
+.dark,
+html.dark {
+  --background: 40 48% 94%;
+  --foreground: 36 14% 14%;
+  --card: 45 100% 99%;
+  --card-foreground: 36 14% 14%;
+  --popover: 45 100% 99%;
+  --popover-foreground: 36 14% 14%;
+
+  --primary: 35 68% 39%;
+  --primary-foreground: 45 100% 99%;
+  --secondary: 39 40% 90%;
+  --secondary-foreground: 36 14% 14%;
+  --muted: 39 40% 90%;
+  --muted-foreground: 37 10% 40%;
+  --accent: 36 59% 48%;
+  --accent-foreground: 45 100% 99%;
+
+  --success: 138 21% 39%;
+  --success-foreground: 45 100% 99%;
+  --warning: 35 68% 39%;
+  --warning-foreground: 45 100% 99%;
+  --destructive: 6 44% 46%;
+  --destructive-foreground: 45 100% 99%;
+  --info: 203 23% 43%;
+
+  --border: 37 28% 82%;
+  --input: 37 28% 82%;
+  --ring: 35 68% 39%;
+  --brand: 35 68% 39%;
+
+  --sidebar-background: 45 100% 99%;
+  --sidebar-foreground: 36 14% 14%;
+  --sidebar-primary: 35 68% 39%;
+  --sidebar-primary-foreground: 45 100% 99%;
+  --sidebar-accent: 39 69% 86%;
+  --sidebar-accent-foreground: 36 14% 14%;
+  --sidebar-border: 37 28% 82%;
+  --sidebar-ring: 35 68% 39%;
+
+  --surface-tile: 45 100% 99%;
+  --surface-tile-hover: 39 40% 90%;
+  --surface-tile-selected: 39 69% 86%;
+
+  /* Status statuses stay semantic, muted and warm-compatible */
+  --status-info: 203 23% 43%;
+  --status-active: 35 68% 39%;
+  --status-progress: 36 59% 48%;
+  --status-review: 35 68% 39%;
+  --status-critical: 6 44% 46%;
+
+  /* Charts: warm primaries + muted semantic categories */
+  --chart-1: 35 68% 39%;
+  --chart-2: 36 59% 48%;
+  --chart-3: 138 21% 39%;
+  --chart-4: 203 23% 43%;
+  --chart-5: 6 44% 46%;
+
+  --gradient-primary: linear-gradient(135deg, #A66D20, #C48A32);
+  --gradient-accent: linear-gradient(135deg, #C48A32, #A66D20);
+  --gradient-hero: linear-gradient(180deg, #FFFDF8 0%, #F7F2E8 100%);
+
+  /* Flat warm canvas — no navy backdrop */
+  --app-backdrop: linear-gradient(180deg, #F7F2E8 0%, #F7F2E8 100%);
+
+  /* Surfaces previously built from white alpha become warm solids */
+  --glass-surface: rgba(255, 253, 248, 0.92);
+  --glass-elevated: #FFFDF8;
+  --glass-content-surface: rgba(240, 233, 220, 0.6);
+  --glass-border: #DED4C4;
+  --glass-border-accent: rgba(166, 109, 32, 0.35);
+  --glass-glow: rgba(166, 109, 32, 0.12);
+  --glass-shadow: var(--nl-shadow);
+  --glass-blur: none;
+  --glass-content-blur: none;
+  --glass-row-hover: rgba(166, 109, 32, 0.08);
+  --glass-row-alt: rgba(240, 233, 220, 0.55);
+  --glass-header-bg: #F0E9DC;
+
+  --hairline: rgba(41, 37, 31, 0.10);
+  --hairline-strong: rgba(41, 37, 31, 0.18);
+  --hairline-accent: rgba(166, 109, 32, 0.35);
+
+  /* Email surfaces */
+  --inbox-surface: 45 100% 99%;
+  --email-panel-surface: 45 100% 99%;
+  --email-sidebar-bg: 39 40% 90%;
+  --email-list-bg: 40 48% 94%;
+  --email-toolbar-bg: 39 40% 90%;
+  --email-reading-bg: 45 100% 99%;
+  --email-text-primary: 36 14% 14%;
+  --email-text-secondary: 37 10% 40%;
+  --email-text-muted: 36 11% 54%;
+  --email-border: 37 28% 82%;
+  --email-cat-clients: 138 21% 39%;
+  --email-cat-asana: 6 44% 46%;
+  --email-cat-calendar: 203 23% 43%;
+  --outlook-blue: 203 23% 43%;
+
+  /* Warm, soft elevation */
+  --shadow-2xs: 0 1px 2px rgba(73, 53, 25, 0.05);
+  --shadow-xs: 0 1px 3px rgba(73, 53, 25, 0.06);
+  --shadow-sm: 0 2px 6px rgba(73, 53, 25, 0.07);
+  --shadow: 0 3px 10px rgba(73, 53, 25, 0.08);
+  --shadow-md: 0 6px 24px rgba(73, 53, 25, 0.10);
+  --shadow-lg: 0 10px 30px rgba(73, 53, 25, 0.12);
+  --shadow-xl: 0 16px 40px rgba(73, 53, 25, 0.14);
+  --shadow-2xl: 0 24px 60px rgba(73, 53, 25, 0.16);
 }
 
-@media print {
-  body::after { display: none; }
+html,
+body,
+#root {
+  background-color: var(--nl-bg);
+}
+
+body {
+  background-color: var(--nl-bg) !important;
+  background-image: none !important;
+  color: var(--nl-text);
+}
+
+/* ── Legacy dark utilities remapped onto the warm palette ───────── */
+@layer utilities {
+  :is(.text-white, [class*="text-white/"]):not(
+      .email-html-body *,
+      [data-email-root] *,
+      [data-keep-hue] *,
+      [data-keep-hue],
+      .notif-count,
+      .notif-count *
+    ) {
+    color: var(--nl-text) !important;
+  }
+
+  :is(
+      [class*="text-slate-1"], [class*="text-slate-2"], [class*="text-slate-3"], [class*="text-slate-4"],
+      [class*="text-gray-1"], [class*="text-gray-2"], [class*="text-gray-3"], [class*="text-gray-4"],
+      [class*="text-zinc-1"], [class*="text-zinc-2"], [class*="text-zinc-3"], [class*="text-zinc-4"],
+      [class*="text-neutral-1"], [class*="text-neutral-2"], [class*="text-neutral-3"], [class*="text-neutral-4"]
+    ):not(.email-html-body *, [data-email-root] *, [data-keep-hue] *, [data-keep-hue]) {
+    color: var(--nl-text-muted) !important;
+  }
+
+  :is([class*="bg-white/"]):not(.email-html-body *, [data-email-root] *, [data-keep-hue] *, [data-keep-hue]) {
+    background-color: var(--nl-surface-muted) !important;
+  }
+
+  :is([class*="border-white/"], [class*="border-slate-"], [class*="border-gray-"], [class*="border-zinc-"]):not(
+      .email-html-body *,
+      [data-email-root] *,
+      [data-keep-hue] *,
+      [data-keep-hue]
+    ) {
+    border-color: var(--nl-border) !important;
+  }
+
+  :is(
+      [class*="bg-slate-7"], [class*="bg-slate-8"], [class*="bg-slate-9"],
+      [class*="bg-gray-7"], [class*="bg-gray-8"], [class*="bg-gray-9"],
+      [class*="bg-zinc-7"], [class*="bg-zinc-8"], [class*="bg-zinc-9"],
+      [class*="bg-neutral-8"], [class*="bg-neutral-9"], .bg-black, [class*="bg-black/"]
+    ):not(.email-html-body *, [data-email-root] *, [data-keep-hue] *, [data-keep-hue]) {
+    background-color: var(--nl-surface-muted) !important;
+    color: var(--nl-text) !important;
+  }
+}
+
+/* Charts: warm neutral gridlines, warm labels */
+.recharts-cartesian-grid line,
+.recharts-cartesian-axis-line,
+.recharts-cartesian-axis-tick-line {
+  stroke: var(--nl-border) !important;
+}
+
+.recharts-text,
+.recharts-cartesian-axis-tick-value,
+.recharts-legend-item-text {
+  fill: var(--nl-text-muted) !important;
+  color: var(--nl-text-muted) !important;
+}
+
+.recharts-default-tooltip {
+  background: var(--nl-surface) !important;
+  border: 1px solid var(--nl-border) !important;
+  color: var(--nl-text) !important;
+  box-shadow: var(--nl-shadow) !important;
+  backdrop-filter: none !important;
+}
+
+/* Cards, dialogs, popovers, tables and command palettes on the warm surface */
+[role="dialog"],
+[data-radix-popper-content-wrapper] > *,
+.deal-detail-surface,
+.deal-glass,
+.sales-dashboard-popup {
+  background-color: var(--nl-surface) !important;
+  background-image: none !important;
+  color: var(--nl-text);
+  border-color: var(--nl-border) !important;
+  box-shadow: var(--nl-shadow) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Inputs, inactive tabs and secondary panels */
+input,
+textarea,
+select,
+.deal-rail-control,
+.deal-info-railed-card input,
+.deal-info-railed-card textarea,
+.deal-info-railed-card button[role="combobox"],
+aside[aria-label="Deal context"] input,
+aside[aria-label="Deal context"] textarea,
+aside[aria-label="Deal context"] button[role="combobox"] {
+  background-color: var(--nl-surface-muted) !important;
+  color: var(--nl-text) !important;
+  border-color: var(--nl-border) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--nl-text-subtle) !important;
+}
+
+.deal-milestones-surface,
+.deal-detail-surface .deal-milestones-surface {
+  background-color: var(--nl-surface) !important;
+  border-color: var(--nl-border) !important;
+}
+
+/* Selected rows / active filter chips */
+[data-state="selected"],
+[aria-selected="true"]:not([role="tab"]) {
+  background-color: var(--nl-primary-soft) !important;
+  color: var(--nl-text) !important;
+}
+
+::selection {
+  background: var(--nl-primary-soft);
+  color: var(--nl-text);
 }

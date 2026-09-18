@@ -2601,7 +2601,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       {/* Split panel: spreadsheet + field sidebar */}
       <ResizablePanelGroup
         direction="horizontal"
-        className="rounded-lg border border-[#2a3a58] overflow-hidden bg-[#18212f]"
+        className="rounded-lg border border-[#F0E9DC] overflow-hidden bg-[#18212f]"
         style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.2)" }}
         onLayout={(sizes) => {
           try {
@@ -2624,7 +2624,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           <div ref={spreadsheetRef} tabIndex={0} className="outline-none">
             <div className="bg-[#18212f] overflow-hidden">
               {/* Sheet tabs + mode toggles */}
-              <div className="flex items-center justify-between border-b border-[#2a3a58] bg-[#1b2635]">
+              <div className="flex items-center justify-between border-b border-[#F0E9DC] bg-[#FFFDF8]">
                 <div className="flex overflow-x-auto">
                   {selectedFile.sheets.map((s, i) => (
                     <button
@@ -2700,13 +2700,13 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               </div>
               <div className="h-[500px] overflow-auto relative" style={{ fontSize: `${zoomLevel}%` }}>
                 <table className="w-max text-[13px] border-collapse" style={{ fontSize: "inherit" }}>
-                  <thead className="sticky top-0 z-20 bg-[#1b2635]">
+                  <thead className="sticky top-0 z-20 bg-[#FFFDF8]">
                     <tr>
-                      <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-[#64748b] text-[10px] bg-[#1b2635] border-b border-[#2a3a58]">
+                      <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-[#64748b] text-[10px] bg-[#FFFDF8] border-b border-[#F0E9DC]">
                         #
                       </th>
                       <th
-                        className="sticky left-8 z-30 py-1.5 px-3 text-left text-[#94a3b8] w-[220px] min-w-[220px] max-w-[220px] font-semibold text-[11px] uppercase tracking-wide bg-[#1b2635] border-b border-[#2a3a58]"
+                        className="sticky left-8 z-30 py-1.5 px-3 text-left text-[#94a3b8] w-[220px] min-w-[220px] max-w-[220px] font-semibold text-[11px] uppercase tracking-wide bg-[#FFFDF8] border-b border-[#F0E9DC]"
                         style={{ boxShadow: "2px 0 4px -2px rgba(0,0,0,0.3)" }}
                       >
                         Account
@@ -2721,7 +2721,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             <ContextMenuTrigger asChild>
                               <th
                                 className={cn(
-                                  "py-1.5 px-3 text-right text-[#94a3b8] min-w-[80px] font-semibold group/col relative cursor-pointer select-none bg-[#1b2635] text-[11px] uppercase tracking-wide border-b border-[#2a3a58]",
+                                  "py-1.5 px-3 text-right text-[#94a3b8] min-w-[80px] font-semibold group/col relative cursor-pointer select-none bg-[#FFFDF8] text-[11px] uppercase tracking-wide border-b border-[#F0E9DC]",
                                   isColSelected &&
                                     !eraserMode &&
                                     !signFlipMode &&
@@ -2807,15 +2807,15 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                       })}
                     </tr>
                     <tr className="h-5">
-                      <th className="sticky left-0 z-30 bg-[#1b2635] border-b border-[#2a3a58]" />
-                      <th className="sticky left-8 z-30 bg-[#1b2635] border-b border-[#2a3a58]" style={{ boxShadow: "2px 0 4px -2px rgba(0,0,0,0.3)" }} />
+                      <th className="sticky left-0 z-30 bg-[#FFFDF8] border-b border-[#F0E9DC]" />
+                      <th className="sticky left-8 z-30 bg-[#FFFDF8] border-b border-[#F0E9DC]" style={{ boxShadow: "2px 0 4px -2px rgba(0,0,0,0.3)" }} />
                       {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
                         const colIdx = i + 1;
                         return (
                           <th
                             key={colIdx}
                             className={cn(
-                              "py-0 px-1 text-center text-[9px] font-mono text-[#64748b] min-w-[80px] cursor-pointer select-none bg-[#1b2635] border-b border-[#2a3a58] hover:text-foreground/80",
+                              "py-0 px-1 text-center text-[9px] font-mono text-[#64748b] min-w-[80px] cursor-pointer select-none bg-[#FFFDF8] border-b border-[#F0E9DC] hover:text-foreground/80",
                               eraserMode && eraserSelectedCols.has(colIdx) && "bg-[rgba(220,38,38,0.15)] text-red-400",
                               signFlipMode && signFlipSelectedCols.has(colIdx) && "bg-[rgba(217,119,6,0.15)] text-amber-400",
                             )}
@@ -2861,7 +2861,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                                 ? "bg-[rgba(217,119,6,0.1)]/50 hover:bg-[rgba(217,119,6,0.1)]"
                                 : hasSuggestion
                                   ? "bg-[rgba(37,99,235,0.15)]/30 hover:bg-[rgba(37,99,235,0.15)]/60"
-                                  : "bg-[#18212f] hover:bg-[#1b2635]";
+                                  : "bg-[#18212f] hover:bg-[#FFFDF8]";
 
                       // Left border style for selection/mapped/pending state
                       const leftBorderClass = isSelected
@@ -2893,7 +2893,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             <tr
                               data-row-idx={rowIdx}
                               className={cn(
-                                "cursor-pointer transition-colors border-b border-[#2a3a58]",
+                                "cursor-pointer transition-colors border-b border-[#F0E9DC]",
                                 rowBgClass,
                                 leftBorderClass,
                                 isLinkedFromField && !isSelected && !isFlashing && "map-row--linked-hover",
@@ -2942,7 +2942,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             >
                               <td
                                 className={cn(
-                                  "sticky left-0 z-30 isolate overflow-hidden bg-clip-padding py-1 px-1 text-center text-[#64748b] text-[10px] border-b border-[#2a3a58]",
+                                  "sticky left-0 z-30 isolate overflow-hidden bg-clip-padding py-1 px-1 text-center text-[#64748b] text-[10px] border-b border-[#F0E9DC]",
                                   signFlipMode && signFlipSelectedRows.has(rowIdx)
                                     ? "bg-[hsl(32_42%_18%)]"
                                     : eraserMode && eraserSelectedRows.has(rowIdx)
@@ -2961,7 +2961,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                               </td>
                               <td
                                 className={cn(
-                                  "sticky left-8 z-20 isolate overflow-hidden bg-clip-padding py-1 px-3 w-[220px] min-w-[220px] max-w-[220px] font-medium text-[#e5e7eb] border-b border-[#2a3a58]",
+                                  "sticky left-8 z-20 isolate overflow-hidden bg-clip-padding py-1 px-3 w-[220px] min-w-[220px] max-w-[220px] font-medium text-[#e5e7eb] border-b border-[#F0E9DC]",
                                   stickyBg,
                                 )}
                                 style={{ boxShadow: "2px 0 4px -2px rgba(0,0,0,0.3)" }}
@@ -2981,7 +2981,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                                 </div>
                               </td>
                               {/* Mapping status indicator column – not sticky, scrolls with data */}
-                              <td className="py-1 px-1 border-b border-[#2a3a58] whitespace-nowrap">
+                              <td className="py-1 px-1 border-b border-[#F0E9DC] whitespace-nowrap">
                                 <div className="flex items-center gap-0.5">
                                   {isMappedRow && mappedToField && (
                                     <Badge

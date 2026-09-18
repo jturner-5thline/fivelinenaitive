@@ -194,7 +194,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
           return (
             <span className="font-semibold text-[#f4f4f7] tabular-nums">
               {prefix}{num}
-              {suffix && <span className="text-[#9697a6]">{suffix}</span>}
+              {suffix && <span className="text-[#968C7D]">{suffix}</span>}
             </span>
           );
         })()}
@@ -237,7 +237,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
                   {initials}
                 </span>
               ) : (
-                <User className="h-3.5 w-3.5 text-[#5f606e]" />
+                <User className="h-3.5 w-3.5 text-[#70685B]" />
               )}
               <span className="truncate max-w-[120px]">{name || 'No manager'}</span>
             </div>
@@ -249,7 +249,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       <TableCell key="type" data-deal-col="type" className="text-center">
         <Badge
           variant="outline"
-          className="text-[10px] uppercase tracking-wider rounded-md whitespace-nowrap border-white/10 bg-white/[0.03] text-[#9697a6]"
+          className="text-[10px] uppercase tracking-wider rounded-md whitespace-nowrap border-white/10 bg-white/[0.03] text-[#968C7D]"
         >
           {ENGAGEMENT_TYPE_CONFIG[deal.engagementType]?.label ?? (deal.engagementType || '—')}
         </Badge>
@@ -264,19 +264,19 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
                 <Badge
                   key={index}
                   variant="outline"
-                  className="text-[10px] uppercase tracking-wider rounded-md border-white/10 bg-white/[0.03] text-[#9697a6]"
+                  className="text-[10px] uppercase tracking-wider rounded-md border-white/10 bg-white/[0.03] text-[#968C7D]"
                 >
                   {label}
                 </Badge>
               ))}
               {dealTypeLabels.length > 1 && (
-                <span className="text-[10px] text-[#5f606e] border-l border-white/10 pl-1.5 ml-0.5">
+                <span className="text-[10px] text-[#70685B] border-l border-white/10 pl-1.5 ml-0.5">
                   +{dealTypeLabels.length - 1}
                 </span>
               )}
             </>
           ) : (
-            <span className="text-sm text-[#5f606e]">—</span>
+            <span className="text-sm text-[#70685B]">—</span>
           )}
         </div>
       </TableCell>
@@ -334,7 +334,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
             <span>{timeAgoData.text}</span>
           </div>
         ) : (
-          <div className={`flex items-center gap-1.5 text-xs text-[#9697a6] ${timeAgoData.highlightClass}`}>
+          <div className={`flex items-center gap-1.5 text-xs text-[#968C7D] ${timeAgoData.highlightClass}`}>
             <Clock className="h-3 w-3" />
             <span>{timeAgoData.text}</span>
           </div>

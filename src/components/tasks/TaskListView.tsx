@@ -457,7 +457,7 @@ export function TaskListView({
                                 onChange={e => onNewTaskChange(e.target.value)}
                                 onKeyDown={onNewTaskKeyDown}
                                 placeholder="Task name... (Enter to create, Esc to cancel)"
-                                className="h-7 text-sm border-[#3b7eff] bg-[#13181f] text-white"
+                                className="h-7 text-sm border-[#3b7eff] bg-[#FFFDF8] text-white"
                                 autoFocus
                               />
                               {/* trailing column placeholders */}
@@ -489,7 +489,7 @@ export function TaskListView({
 
       <DragOverlay>
         {draggedTask && (
-          <div className="rounded-lg shadow-lg px-4 py-2 text-sm opacity-90" style={{ backgroundColor: '#13181f', border: '1px solid #2a2f3e', color: 'white' }}>
+          <div className="rounded-lg shadow-lg px-4 py-2 text-sm opacity-90" style={{ backgroundColor: '#FFFDF8', border: '1px solid #F0E9DC', color: 'white' }}>
             {draggedTask.title}
           </div>
         )}
@@ -804,7 +804,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
         {editingTitle ? (
           <Input value={titleValue} onChange={e => setTitleValue(e.target.value)} onBlur={handleSaveTitle}
             onKeyDown={e => { if (e.key === 'Enter') handleSaveTitle(); if (e.key === 'Escape') { setTitleValue(task.title); setEditingTitle(false); } }}
-            className="h-7 text-sm bg-[#13181f] text-white" autoFocus />
+            className="h-7 text-sm bg-[#FFFDF8] text-white" autoFocus />
         ) : (
           <>
             <div className="flex items-center gap-1.5 min-w-0">
@@ -936,7 +936,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
         {collaborators && collaborators.length > 0 ? (
           <div className="flex items-center -space-x-1.5">
             {collaborators.slice(0, 3).map(c => (
-              <Avatar key={c.user_id} className="h-4 w-4 ring-1 ring-[#13181f]">
+              <Avatar key={c.user_id} className="h-4 w-4 ring-1 ring-[#FFFDF8]">
                 {c.avatar_url && <AvatarImage src={c.avatar_url} />}
                 <AvatarFallback className="text-[6px]" style={{ backgroundColor: '#6b7280', color: 'white' }}>
                   {c.display_name?.slice(0, 2).toUpperCase()}
