@@ -29,7 +29,7 @@ interface CompanyUrlPickerProps {
 export function CompanyUrlPicker({ currentUrl, onSelect }: CompanyUrlPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const { data: company } = useCompany();
+  const { company } = useCompany();
 
   const { data: companies = [], isLoading } = useQuery({
     queryKey: ['company-url-picker', company?.id, search],
