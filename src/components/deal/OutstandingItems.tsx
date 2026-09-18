@@ -349,6 +349,9 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
   const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
   const [filterByLender, setFilterByLender] = useState<string[]>([]);
   const groupFilterAnchorRef = useRef<HTMLDivElement>(null);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddText, setQuickAddText] = useState('');
+  const [quickAddRequestedBy, setQuickAddRequestedBy] = useState<string[]>([]);
   const [groupFilterBoundary, setGroupFilterBoundary] = useState<HTMLElement | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedItem, setSelectedItem] = useState<OutstandingItem | null>(null);
