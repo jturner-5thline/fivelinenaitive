@@ -3902,7 +3902,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   border-radius: 9999px;
   background-color: #e11d1d !important;
   background-image: none !important;
-  color: #29251F !important;
+  color: #ffffff !important;
   font-family: var(--font-body, Inter, sans-serif);
   font-size: 10px;
   font-weight: 700;
@@ -3915,7 +3915,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 }
 
 .notif-count > * {
-  color: #29251F !important;
+  color: #ffffff !important;
 }
 
 /* ── Deal pop-up left rail: unify all inputs, dropdowns and text boxes with
@@ -4042,3 +4042,276 @@ aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
   border: none !important;
 }
 
+
+/* ============================================================
+   Warm Night Light 32 — native warm theme token layer.
+   Native tokens (no overlay, no CSS filter). Layout, spacing and
+   behaviour are untouched; only color/surface values change.
+   ============================================================ */
+:root {
+  --nl-bg: #F7F2E8;
+  --nl-surface: #FFFDF8;
+  --nl-surface-muted: #F0E9DC;
+  --nl-text: #29251F;
+  --nl-text-muted: #70685B;
+  --nl-text-subtle: #968C7D;
+  --nl-border: #DED4C4;
+  --nl-border-strong: #CDBFA9;
+  --nl-primary: #A66D20;
+  --nl-primary-hover: #875617;
+  --nl-primary-soft: #F4E3C3;
+  --nl-accent: #C48A32;
+  --nl-success: #4F7A5C;
+  --nl-warning: #A66D20;
+  --nl-danger: #A94C42;
+  --nl-info: #557487;
+  --nl-shadow: 0 6px 24px rgba(73, 53, 25, 0.10);
+}
+
+/* HSL mirrors so every shadcn/Tailwind token resolves to the warm palette */
+:root,
+.dark,
+html.dark {
+  --background: 40 48% 94%;
+  --foreground: 36 14% 14%;
+  --card: 45 100% 99%;
+  --card-foreground: 36 14% 14%;
+  --popover: 45 100% 99%;
+  --popover-foreground: 36 14% 14%;
+
+  --primary: 35 68% 39%;
+  --primary-foreground: 45 100% 99%;
+  --secondary: 39 40% 90%;
+  --secondary-foreground: 36 14% 14%;
+  --muted: 39 40% 90%;
+  --muted-foreground: 37 10% 40%;
+  --accent: 36 59% 48%;
+  --accent-foreground: 45 100% 99%;
+
+  --success: 138 21% 39%;
+  --success-foreground: 45 100% 99%;
+  --warning: 35 68% 39%;
+  --warning-foreground: 45 100% 99%;
+  --destructive: 6 44% 46%;
+  --destructive-foreground: 45 100% 99%;
+  --info: 203 23% 43%;
+
+  --border: 37 28% 82%;
+  --input: 37 28% 82%;
+  --ring: 35 68% 39%;
+  --brand: 35 68% 39%;
+
+  --sidebar-background: 45 100% 99%;
+  --sidebar-foreground: 36 14% 14%;
+  --sidebar-primary: 35 68% 39%;
+  --sidebar-primary-foreground: 45 100% 99%;
+  --sidebar-accent: 39 69% 86%;
+  --sidebar-accent-foreground: 36 14% 14%;
+  --sidebar-border: 37 28% 82%;
+  --sidebar-ring: 35 68% 39%;
+
+  --surface-tile: 45 100% 99%;
+  --surface-tile-hover: 39 40% 90%;
+  --surface-tile-selected: 39 69% 86%;
+
+  /* Status statuses stay semantic, muted and warm-compatible */
+  --status-info: 203 23% 43%;
+  --status-active: 35 68% 39%;
+  --status-progress: 36 59% 48%;
+  --status-review: 35 68% 39%;
+  --status-critical: 6 44% 46%;
+
+  /* Charts: warm primaries + muted semantic categories */
+  --chart-1: 35 68% 39%;
+  --chart-2: 36 59% 48%;
+  --chart-3: 138 21% 39%;
+  --chart-4: 203 23% 43%;
+  --chart-5: 6 44% 46%;
+
+  --gradient-primary: linear-gradient(135deg, #A66D20, #C48A32);
+  --gradient-accent: linear-gradient(135deg, #C48A32, #A66D20);
+  --gradient-hero: linear-gradient(180deg, #FFFDF8 0%, #F7F2E8 100%);
+
+  /* Flat warm canvas — no navy backdrop */
+  --app-backdrop: linear-gradient(180deg, #F7F2E8 0%, #F7F2E8 100%);
+
+  /* Surfaces previously built from white alpha become warm solids */
+  --glass-surface: rgba(255, 253, 248, 0.92);
+  --glass-elevated: #FFFDF8;
+  --glass-content-surface: rgba(240, 233, 220, 0.6);
+  --glass-border: #DED4C4;
+  --glass-border-accent: rgba(166, 109, 32, 0.35);
+  --glass-glow: rgba(166, 109, 32, 0.12);
+  --glass-shadow: var(--nl-shadow);
+  --glass-blur: none;
+  --glass-content-blur: none;
+  --glass-row-hover: rgba(166, 109, 32, 0.08);
+  --glass-row-alt: rgba(240, 233, 220, 0.55);
+  --glass-header-bg: #F0E9DC;
+
+  --hairline: rgba(41, 37, 31, 0.10);
+  --hairline-strong: rgba(41, 37, 31, 0.18);
+  --hairline-accent: rgba(166, 109, 32, 0.35);
+
+  /* Email surfaces */
+  --inbox-surface: 45 100% 99%;
+  --email-panel-surface: 45 100% 99%;
+  --email-sidebar-bg: 39 40% 90%;
+  --email-list-bg: 40 48% 94%;
+  --email-toolbar-bg: 39 40% 90%;
+  --email-reading-bg: 45 100% 99%;
+  --email-text-primary: 36 14% 14%;
+  --email-text-secondary: 37 10% 40%;
+  --email-text-muted: 36 11% 54%;
+  --email-border: 37 28% 82%;
+  --email-cat-clients: 138 21% 39%;
+  --email-cat-asana: 6 44% 46%;
+  --email-cat-calendar: 203 23% 43%;
+  --outlook-blue: 203 23% 43%;
+
+  /* Warm, soft elevation */
+  --shadow-2xs: 0 1px 2px rgba(73, 53, 25, 0.05);
+  --shadow-xs: 0 1px 3px rgba(73, 53, 25, 0.06);
+  --shadow-sm: 0 2px 6px rgba(73, 53, 25, 0.07);
+  --shadow: 0 3px 10px rgba(73, 53, 25, 0.08);
+  --shadow-md: 0 6px 24px rgba(73, 53, 25, 0.10);
+  --shadow-lg: 0 10px 30px rgba(73, 53, 25, 0.12);
+  --shadow-xl: 0 16px 40px rgba(73, 53, 25, 0.14);
+  --shadow-2xl: 0 24px 60px rgba(73, 53, 25, 0.16);
+}
+
+html,
+body,
+#root {
+  background-color: var(--nl-bg);
+}
+
+body {
+  background-color: var(--nl-bg) !important;
+  background-image: none !important;
+  color: var(--nl-text);
+}
+
+/* ── Legacy dark utilities remapped onto the warm palette ───────── */
+@layer utilities {
+  :is(.text-white, [class*="text-white/"]):not(
+      .email-html-body *,
+      [data-email-root] *,
+      [data-keep-hue] *,
+      [data-keep-hue],
+      .notif-count,
+      .notif-count *
+    ) {
+    color: var(--nl-text) !important;
+  }
+
+  :is(
+      [class*="text-slate-1"], [class*="text-slate-2"], [class*="text-slate-3"], [class*="text-slate-4"],
+      [class*="text-gray-1"], [class*="text-gray-2"], [class*="text-gray-3"], [class*="text-gray-4"],
+      [class*="text-zinc-1"], [class*="text-zinc-2"], [class*="text-zinc-3"], [class*="text-zinc-4"],
+      [class*="text-neutral-1"], [class*="text-neutral-2"], [class*="text-neutral-3"], [class*="text-neutral-4"]
+    ):not(.email-html-body *, [data-email-root] *, [data-keep-hue] *, [data-keep-hue]) {
+    color: var(--nl-text-muted) !important;
+  }
+
+  :is([class*="bg-white/"]):not(.email-html-body *, [data-email-root] *, [data-keep-hue] *, [data-keep-hue]) {
+    background-color: var(--nl-surface-muted) !important;
+  }
+
+  :is([class*="border-white/"], [class*="border-slate-"], [class*="border-gray-"], [class*="border-zinc-"]):not(
+      .email-html-body *,
+      [data-email-root] *,
+      [data-keep-hue] *,
+      [data-keep-hue]
+    ) {
+    border-color: var(--nl-border) !important;
+  }
+
+  :is(
+      [class*="bg-slate-7"], [class*="bg-slate-8"], [class*="bg-slate-9"],
+      [class*="bg-gray-7"], [class*="bg-gray-8"], [class*="bg-gray-9"],
+      [class*="bg-zinc-7"], [class*="bg-zinc-8"], [class*="bg-zinc-9"],
+      [class*="bg-neutral-8"], [class*="bg-neutral-9"], .bg-black, [class*="bg-black/"]
+    ):not(.email-html-body *, [data-email-root] *, [data-keep-hue] *, [data-keep-hue]) {
+    background-color: var(--nl-surface-muted) !important;
+    color: var(--nl-text) !important;
+  }
+}
+
+/* Charts: warm neutral gridlines, warm labels */
+.recharts-cartesian-grid line,
+.recharts-cartesian-axis-line,
+.recharts-cartesian-axis-tick-line {
+  stroke: var(--nl-border) !important;
+}
+
+.recharts-text,
+.recharts-cartesian-axis-tick-value,
+.recharts-legend-item-text {
+  fill: var(--nl-text-muted) !important;
+  color: var(--nl-text-muted) !important;
+}
+
+.recharts-default-tooltip {
+  background: var(--nl-surface) !important;
+  border: 1px solid var(--nl-border) !important;
+  color: var(--nl-text) !important;
+  box-shadow: var(--nl-shadow) !important;
+  backdrop-filter: none !important;
+}
+
+/* Cards, dialogs, popovers, tables and command palettes on the warm surface */
+[role="dialog"],
+[data-radix-popper-content-wrapper] > *,
+.deal-detail-surface,
+.deal-glass,
+.sales-dashboard-popup {
+  background-color: var(--nl-surface) !important;
+  background-image: none !important;
+  color: var(--nl-text);
+  border-color: var(--nl-border) !important;
+  box-shadow: var(--nl-shadow) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Inputs, inactive tabs and secondary panels */
+input,
+textarea,
+select,
+.deal-rail-control,
+.deal-info-railed-card input,
+.deal-info-railed-card textarea,
+.deal-info-railed-card button[role="combobox"],
+aside[aria-label="Deal context"] input,
+aside[aria-label="Deal context"] textarea,
+aside[aria-label="Deal context"] button[role="combobox"] {
+  background-color: var(--nl-surface-muted) !important;
+  color: var(--nl-text) !important;
+  border-color: var(--nl-border) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--nl-text-subtle) !important;
+}
+
+.deal-milestones-surface,
+.deal-detail-surface .deal-milestones-surface {
+  background-color: var(--nl-surface) !important;
+  border-color: var(--nl-border) !important;
+}
+
+/* Selected rows / active filter chips */
+[data-state="selected"],
+[aria-selected="true"]:not([role="tab"]) {
+  background-color: var(--nl-primary-soft) !important;
+  color: var(--nl-text) !important;
+}
+
+::selection {
+  background: var(--nl-primary-soft);
+  color: var(--nl-text);
+}
