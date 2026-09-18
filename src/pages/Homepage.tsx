@@ -32,7 +32,7 @@ export default function Homepage() {
         className="dark min-h-screen relative"
         style={{
           colorScheme: 'dark',
-          background: 'var(--app-backdrop)',
+          background: 'var(--marketing-backdrop)',
           backgroundAttachment: 'fixed',
         }}
       >
