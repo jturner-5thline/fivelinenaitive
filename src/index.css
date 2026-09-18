@@ -4041,28 +4041,3 @@ aside[aria-label="Deal context"] button[aria-haspopup="listbox"] {
   box-shadow: none !important;
   border: none !important;
 }
-
-/* ============================================================
-   Night-light warmth — global blue-light reduction.
-   A single fixed, non-interactive warm wash over the whole app.
-   Purely presentational: no layout, spacing or behaviour impact.
-   ============================================================ */
-:root {
-  /* 0 = off, 1 = full warmth. Tuned for a subtle, readable shift. */
-  --night-light-strength: 4.55;
-}
-
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 2147483000;
-  pointer-events: none;
-  mix-blend-mode: multiply;
-  background: rgb(255, 214, 170);
-  opacity: calc(var(--night-light-strength) * 0.22);
-}
-
-@media print {
-  body::after { display: none; }
-}
