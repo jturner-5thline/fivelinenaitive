@@ -53,6 +53,7 @@ import { DraftEmailToClientContactButton } from '@/components/deal/DraftEmailToC
 import { FlexVisibilityBadge } from '@/components/deal/FlexVisibilityBadge';
 import { useDealMilestones } from '@/hooks/useDealMilestones';
 import { Button } from '@/components/ui/button';
+import { canUse5thLineProprietaryActions } from '@/lib/proprietaryAccess';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -678,6 +679,8 @@ export default function DealDetail() {
   }, []);
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones, pendingClosingDateSync, dismissClosingDateSync } = useDealMilestones(id);
   const { user } = useAuth();
+  // 5th Line-only surfaces (Analysis tab).
+  const canSeeAnalysisTab = canUse5thLineProprietaryActions(user);
   const { company, members } = useCompany();
   const { features: companyFeatures } = useCompanyFeatures();
   const requestStatusChange = useRequestStatusChange();
@@ -1266,6 +1269,13 @@ export default function DealDetail() {
       setDealInfoTab('deal-info');
     }
   }, [isProjectsDeal, dealInfoTab]);
+
+  // The Analysis tab is a 5th Line proprietary surface. Never expose it to
+  // other company accounts, and snap back if a URL/persisted tab lands there.
+  useEffect(() => {
+    if (canSeeAnalysisTab) return;
+    if (dealInfoTab === 'analysis') setDealInfoTab('deal-info');
+  }, [canSeeAnalysisTab, dealInfoTab]);
   const [tabDirection, setTabDirection] = useState<'left' | 'right' | 'none'>('none');
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   
@@ -6032,7 +6042,7 @@ export default function DealDetail() {
                 </TabsContent>
 
                 <TabsContent value="analysis" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`analysis-${tabDirection}`}>
-                  {hasNaitivePipelineAccess ? (
+                  {canSeeAnalysisTab && hasNaitivePipelineAccess ? (
                     <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
                       <SaaSModelTab dealId={id!} dealData={{ company: deal.company, value: deal.value, stage: deal.stage }} />
                     </Suspense>
@@ -6250,7 +6260,7 @@ export default function DealDetail() {
                           )}
                         </TabsTrigger>
                       )}
-                      {!isSimplifiedDeal && !isProjectsDeal && (
+                      {canSeeAnalysisTab && !isSimplifiedDeal && !isProjectsDeal && (
                         <TabsTrigger
                           value="analysis"
                           className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-slate-900 shadow-none hover:text-white hover:bg-slate-800 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mb-2 data-[state=active]:rounded-b-sm data-[state=active]:rounded-t-none data-[state=active]:bg-gradient-to-t data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_8px_18px_-8px_rgba(0,0,0,0.7)] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-top-px data-[state=active]:after:z-20 data-[state=active]:after:h-[2px] data-[state=active]:after:bg-slate-900"
