@@ -127,7 +127,13 @@ const WORK_LOCATION_TITLES = new Set([
 function isWorkLocationMarker(ev: CalEvent): boolean {
   if (!ev.all_day) return false;
   const title = (ev.title ?? '').trim().toLowerCase();
-  return WORK_LOCATION_TITLES.has(title);
+  if (!WORK_LOCATION_TITLES.has(title)) return false;
+  // Only hide bare provider-generated markers — a real all-day block with
+  // guests, notes or a location stays visible.
+  if (ev.attendees && ev.attendees.length > 0) return false;
+  if ((ev.description ?? '').trim()) return false;
+  if ((ev.location ?? '').trim()) return false;
+  return true;
 }
 
 const HOUR_HEIGHT_NORMAL = 44;

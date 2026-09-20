@@ -108,7 +108,7 @@ export default defineTool({
       include_lenders
         ? sb
             .from("deal_lenders")
-            .select("id, lender_id, status, stage, updated_at")
+            .select("id, name, master_lender_id, tracking_status, stage, substage, updated_at")
             .eq("deal_id", deal_id)
             .order("updated_at", { ascending: false })
             .limit(200)

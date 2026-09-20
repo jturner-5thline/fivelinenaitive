@@ -5575,7 +5575,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         supabase.from("deals").select("*").eq("id", dealId).single(),
         supabase.from("deal_writeups").select("*").eq("deal_id", dealId).maybeSingle(),
         supabase.from("deal_lenders")
-          .select("id, name, stage, notes, tracking_status, created_at, updated_at, lender_id")
+          .select("id, name, stage, substage, notes, tracking_status, created_at, updated_at, master_lender_id")
           .eq("deal_id", dealId).order("updated_at", { ascending: false }),
         supabase.from("deal_milestones")
           .select("id, title, completed, completed_at, due_date, status, position")
