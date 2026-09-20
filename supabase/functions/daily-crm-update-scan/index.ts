@@ -66,6 +66,8 @@ serve(async (req) => {
       .order("received_at", { ascending: false })
       .limit(500);
 
+    if (emailsError) stats.errors.push(`email query: ${emailsError.message}`);
+
     const seenContact = new Set<string>();
     for (const e of emails || []) {
       const d = domainOf(e.from_email);
