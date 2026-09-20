@@ -58,9 +58,9 @@ serve(async (req) => {
 
   // ---- SOURCE 1: Email signatures (last 24h) ----
   try {
-    const { data: emails } = await supabase
+    const { data: emails, error: emailsError } = await supabase
       .from("emails")
-      .select("id, message_id, from_email, subject, body_text, received_at")
+      .select("id, message_id, from_email, subject, preview, received_at")
       .gte("received_at", since)
       .not("from_email", "is", null)
       .order("received_at", { ascending: false })
