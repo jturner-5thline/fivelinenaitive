@@ -89,8 +89,8 @@ serve(async (req) => {
         email_data: {
           from: e.from_email,
           subject: e.subject,
-          body_text: (e.body_text || "").slice(0, 4000),
-          signature_block: (e.body_text || "").slice(-1500),
+          body_text: (e.preview || "").slice(0, 4000),
+          signature_block: (e.preview || "").slice(-1500),
         },
       });
     }
@@ -143,12 +143,14 @@ serve(async (req) => {
 
   // ---- SOURCE 3: Deal close → suggest lifecycle change ----
   try {
-    const { data: deals } = await supabase
+    const { data: deals, error: dealsError } = await supabase
       .from("deals")
-      .select("id, company, stage, status, crm_company_id, updated_at, org_company_id")
+      .select("id, company, stage, status, crm_company_id, company_id, updated_at")
       .gte("updated_at", since)
       .or("status.eq.closed_won,status.eq.closed_lost,stage.ilike.%closed%")
       .limit(200);
+
+    if (dealsError) stats.errors.push(`deals query: ${dealsError.message}`);
 
     for (const d of deals || []) {
       stats.deals_scanned++;
