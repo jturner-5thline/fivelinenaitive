@@ -46,6 +46,19 @@ const KIND_COLORS: Record<ItemKind, { dot: string; bar: string; label: string }>
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
+/** Render a stored "HH:mm[:ss]" time as 12-hour clock (e.g. "2:30 PM"). */
+function formatClock(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const m = /^(\d{1,2}):(\d{2})/.exec(value.trim());
+  if (!m) return value;
+  let h = Number(m[1]);
+  const mins = m[2];
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${h}:${mins} ${suffix}`;
+}
+
 function toDateKey(value: string | null | undefined): string | null {
   if (!value) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value.slice(0, 10);
