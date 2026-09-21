@@ -139,7 +139,42 @@ serve(async (req: Request): Promise<Response> => {
     const matchDomains = new Set<string>([primaryDomain, ...fallbackDomains].filter(Boolean) as string[]);
     const nameLower = companyName && companyName.length >= 3 ? companyName.toLowerCase() : null;
     const tokens = significantTokens(companyName);
-    if (matchDomains.size === 0 && !nameLower && tokens.length === 0) {
+
+    // Client contacts of the deal: their email addresses match an attendee
+    // directly, and their (non-freemail) domains widen the domain match.
+    const contactEmails = new Set<string>();
+    const addEmail = (value?: string | null) => {
+      const em = (value || "").toLowerCase().trim();
+      if (!em || !em.includes("@")) return;
+      contactEmails.add(em);
+      const d = domainOf(em);
+      if (d && !FREE_PROVIDERS.has(d)) matchDomains.add(d);
+    };
+    addEmail((deal as any).contact_email);
+    try {
+      const { data: links } = await supabase
+        .from("contact_deals")
+        .select("contact_id")
+        .eq("deal_id", body.deal_id)
+        .limit(500);
+      const contactIds = (links || []).map((l: any) => l.contact_id).filter(Boolean);
+      if (contactIds.length > 0) {
+        const { data: contacts } = await supabase
+          .from("contacts")
+          .select("email, additional_emails")
+          .in("id", contactIds);
+        for (const c of contacts || []) {
+          addEmail((c as any).email);
+          const extra = (c as any).additional_emails;
+          if (Array.isArray(extra)) for (const em of extra) addEmail(typeof em === "string" ? em : (em as any)?.email);
+          else if (typeof extra === "string") for (const em of extra.split(/[,;\s]+/)) addEmail(em);
+        }
+      }
+    } catch (err) {
+      console.error("[deal-team-calendar-events] contact lookup failed", (err as any)?.message);
+    }
+
+    if (matchDomains.size === 0 && contactEmails.size === 0 && !nameLower && tokens.length === 0) {
       return new Response(JSON.stringify({ events: [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
