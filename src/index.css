@@ -4514,3 +4514,13 @@ main:has(.deals-surface) .deal-milestones-card {
     0 0 0 1px rgba(0, 0, 0, 0.85),
     0 18px 32px -12px rgba(0, 0, 0, 0.7) !important;
 }
+
+/* ------------------------------------------------------------------
+   Deal calendar day markers: the deal detail surface strips the
+   background from every rounded-full element, which erased the
+   meeting/task dots. Repaint them from their inline colour token.
+   ------------------------------------------------------------------ */
+.calendar-day-dot {
+  background-color: var(--cal-dot) !important;
+  opacity: 1 !important;
+}
