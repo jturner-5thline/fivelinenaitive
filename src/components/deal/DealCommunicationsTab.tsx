@@ -27,6 +27,39 @@ interface Props {
   hideAttachmentsToggle?: boolean;
 }
 
+type MatchReason = 'logged' | 'linked' | 'contact' | 'domain' | 'subject';
+
+const MATCH_REASON_LABEL: Record<MatchReason, string> = {
+  logged: 'logged on deal',
+  linked: 'linked manually',
+  contact: 'client contact',
+  domain: 'company domain',
+  subject: 'subject match',
+};
+
+/**
+ * Generic descriptors that appear inside company names but say nothing about
+ * WHICH company — "Gabb Wireless" must not pull in "Acme Wireless" threads.
+ * Only distinctive tokens (plus the full deal name as a phrase) are used to
+ * match on subject lines.
+ */
+const GENERIC_NAME_WORDS = new Set([
+  'deal','client','company','the','and','llc','inc','incorporated','corp','corporation','co','group','holdings',
+  'holding','capital','partners','partner','ltd','limited','plc','lp','llp','pllc','gmbh',
+  'wireless','mobile','telecom','telecommunications','communications','media','digital','technology','technologies',
+  'tech','software','systems','system','solutions','solution','services','service','industries','industrial',
+  'enterprise','enterprises','ventures','venture','labs','lab','studio','studios','works','works','brands','brand',
+  'products','product','manufacturing','logistics','transport','transportation','freight','trucking','energy',
+  'power','solar','health','healthcare','medical','dental','pharma','pharmaceutical','clinic','clinics','care',
+  'financial','finance','bank','banking','insurance','realty','properties','property','estate','construction',
+  'builders','building','contracting','restaurant','restaurants','foods','food','beverage','retail','stores',
+  'store','market','markets','supply','distribution','distributors','consulting','consultants','advisors',
+  'advisory','management','managed','international','global','national','american','america','usa','united',
+  'states','national','associates','association','network','networks','data','cloud','security','automotive',
+  'auto','equipment','machine','machinery','engineering','resources','resource','development','acquisition',
+  'acquisitions','investment','investments','fund','funds','trust','agency','agencies','labs','holdco','opco',
+]);
+
 interface CommItem {
   key: string;
   source: 'activity_logs' | 'deal_emails';
@@ -40,6 +73,7 @@ interface CommItem {
   sent_at: string | null;
   has_attachments?: boolean;
   attachments?: EmailAttachmentMeta[];
+  match_reason?: MatchReason;
 }
 
 /**
