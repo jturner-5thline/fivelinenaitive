@@ -4520,7 +4520,10 @@ main:has(.deals-surface) .deal-milestones-card {
    background from every rounded-full element, which erased the
    meeting/task dots. Repaint them from their inline colour token.
    ------------------------------------------------------------------ */
-.calendar-day-dot {
+.calendar-day-dot,
+.deal-detail-surface .calendar-day-dot,
+.deal-popup-shell .calendar-day-dot,
+.deal-detail-surface :is(.calendar-day-dot) {
   background-color: var(--cal-dot) !important;
   opacity: 1 !important;
 }
