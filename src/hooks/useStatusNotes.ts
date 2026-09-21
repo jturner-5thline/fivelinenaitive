@@ -7,6 +7,7 @@ export interface StatusNote {
   deal_id: string;
   note: string;
   created_at: string;
+  user_id?: string | null;
 }
 
 export function useStatusNotes(dealId: string | undefined) {
