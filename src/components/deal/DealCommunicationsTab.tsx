@@ -605,8 +605,21 @@ export function DealCommunicationsTab({ dealId, attachmentsOnly: controlledAttac
                   <div onClick={(e) => e.stopPropagation()}>
                     <MessageAttachments item={m} />
                   </div>
-                  <div className="mt-1">
+                  <div className="mt-1 flex items-center gap-1.5">
                     <span className="text-[10px] text-muted-foreground/70">{m.source === 'activity_logs' ? 'activity' : 'inbox link'}</span>
+                    {m.match_reason && (
+                      <span
+                        title={`Included because of a ${MATCH_REASON_LABEL[m.match_reason]}`}
+                        className={cn(
+                          'text-[9px] uppercase tracking-wide rounded px-1 py-[1px] border',
+                          m.match_reason === 'subject'
+                            ? 'border-amber-400/30 text-amber-300/80'
+                            : 'border-border/50 text-muted-foreground/70',
+                        )}
+                      >
+                        {MATCH_REASON_LABEL[m.match_reason]}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
