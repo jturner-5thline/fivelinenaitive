@@ -647,7 +647,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                               {it.type || KIND_COLORS[it.kind].label}
                             </span>
                             <span className="text-foreground">{it.title}</span>
-                            {it.time && <span className="text-muted-foreground"> · {it.time.slice(0, 5)}</span>}
+                            {it.time && <span className="text-muted-foreground"> · {formatClock(it.time)}</span>}
                             {it.weekendTag && (
                               <span className="text-[10px] text-muted-foreground/70 ml-1">({it.weekendTag})</span>
                             )}
