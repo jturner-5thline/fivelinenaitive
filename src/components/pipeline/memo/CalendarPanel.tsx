@@ -464,11 +464,14 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                     const t = it.team.teammate;
                     const name = t.display_name || t.email || 'Teammate';
                     const initials = (name.split(' ').map((s) => s[0]).filter(Boolean).slice(0, 2).join('') || 'T').toUpperCase();
-                    const matchLabel = it.team.match.title && it.team.match.domain
-                      ? 'Company name & attendee domain match'
-                      : it.team.match.title
-                        ? 'Company name in title'
-                        : 'Attendee email domain match';
+                    const matchReasons = [
+                      it.team.match.title && 'deal name in title',
+                      it.team.match.contact && 'client contact attended',
+                      it.team.match.domain && 'attendee email domain match',
+                    ].filter(Boolean) as string[];
+                    const matchLabel = matchReasons.length
+                      ? matchReasons.join(' · ')
+                      : 'Matched to this deal';
                     return (
                       <Tooltip>
                         <TooltipTrigger asChild>
