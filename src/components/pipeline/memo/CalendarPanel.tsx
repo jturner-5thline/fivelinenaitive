@@ -46,6 +46,21 @@ const KIND_COLORS: Record<ItemKind, { dot: string; bar: string; label: string }>
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
+/**
+ * Explicit dot colours. The deal detail surface resets the background of every
+ * rounded-full element, which would otherwise erase these markers, so they are
+ * painted through an inline custom property restored by `.calendar-day-dot`.
+ */
+const KIND_DOT_HEX: Record<ItemKind, string> = {
+  milestone: 'hsl(265,85%,65%)',
+  task: '#3b82f6',
+  custom: '#10b981',
+  lender: '#f59e0b',
+  team: '#22d3ee',
+};
+
+const dotStyle = (kind: ItemKind) => ({ ['--cal-dot' as any]: KIND_DOT_HEX[kind] } as React.CSSProperties);
+
 /** Render a stored "HH:mm[:ss]" time as 12-hour clock (e.g. "2:30 PM"). */
 function formatClock(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -440,7 +455,8 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                       {Array.from({ length: Math.min(meetingCount, 3) }).map((_, i) => (
                         <span
                           key={`meet-dot-${i}`}
-                          className="h-1 w-1 rounded-full bg-cyan-400"
+                          className="calendar-day-dot h-1 w-1 rounded-full bg-cyan-400"
+                          style={dotStyle('team')}
                           aria-hidden
                         />
                       ))}
@@ -451,7 +467,8 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                         {visible.map((it) => (
                           <span
                             key={it.id}
-                            className={cn('h-1.5 w-1.5 rounded-full', KIND_COLORS[it.kind].dot)}
+                            className={cn('calendar-day-dot h-1.5 w-1.5 rounded-full', KIND_COLORS[it.kind].dot)}
+                            style={dotStyle(it.kind)}
                           />
                         ))}
                         {overflow > 0 && (
@@ -467,7 +484,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                     <ul className="space-y-0.5">
                       {dayItems.slice(0, 6).map((it) => (
                         <li key={it.id} className="flex items-center gap-1.5 text-[11px]">
-                          <span className={cn('h-1.5 w-1.5 rounded-full', KIND_COLORS[it.kind].dot)} />
+                          <span className={cn('calendar-day-dot h-1.5 w-1.5 rounded-full', KIND_COLORS[it.kind].dot)} style={dotStyle(it.kind)} />
                           <span className="text-muted-foreground">{KIND_COLORS[it.kind].label}:</span>
                           <span className="truncate max-w-[8rem]">{it.title}</span>
                           {it.weekendTag && (
@@ -666,7 +683,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                     <ul className="space-y-1.5">
                       {items.map((it) => (
                         <li key={`full-item-${it.id}`} className="flex items-start gap-2 text-sm">
-                          <span className={cn('mt-1.5 h-2 w-2 rounded-full shrink-0', KIND_COLORS[it.kind].dot)} />
+                          <span className={cn('calendar-day-dot mt-1.5 h-2 w-2 rounded-full shrink-0', KIND_COLORS[it.kind].dot)} style={dotStyle(it.kind)} />
                           <div className="min-w-0 flex-1">
                             <span className="text-[10px] uppercase tracking-wider text-muted-foreground mr-2">
                               {it.type || KIND_COLORS[it.kind].label}
