@@ -68,7 +68,7 @@ export function StatusHistoryPopover({ statusNotes, onDeleteNote, className }: S
         align="end"
         sideOffset={6}
         collisionPadding={12}
-        className="w-80 p-0 z-50 bg-popover"
+        className="w-80 p-0 z-[1300] bg-popover"
       >
         <div className="px-4 py-3 border-b">
           <h4 className="font-medium text-sm">Status History</h4>
