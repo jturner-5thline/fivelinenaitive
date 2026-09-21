@@ -406,6 +406,8 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
             const isSelected = key === selectedKey;
             const visible = dayItems.slice(0, 3);
             const overflow = dayItems.length - visible.length;
+            const meetingCount = dayItems.filter((it) => it.kind === 'team').length;
+
 
             return (
               <Tooltip key={key} delayDuration={300}>
