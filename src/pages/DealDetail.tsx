@@ -3264,7 +3264,10 @@ export default function DealDetail() {
                     />
                     </div>
                     <div className="shrink-0 flex flex-col justify-between items-start gap-1">
-                      {dealMemoButton}
+                      <div className="flex items-center gap-1">
+                        {dealMemoButton}
+                        <StatusHistoryPopover statusNotes={statusNotes} onDeleteNote={deleteStatusNote} />
+                      </div>
                       {deal.notesUpdatedAt && (
                         <p className="mt-auto whitespace-nowrap text-xs text-muted-foreground/70">
                           Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
