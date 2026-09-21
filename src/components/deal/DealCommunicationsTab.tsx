@@ -225,18 +225,44 @@ export function DealCommunicationsTab({ dealId, attachmentsOnly: controlledAttac
           if (d && !FREEMAIL.has(d) && /\./.test(d)) contactDomains.add(d);
         }
 
-        // Subject-line tokens: deal.company (deal name) plus any word ≥4 chars
-        // out of it (dropping generic connectors). Lets threads whose subject
-        // mentions the company/deal (but that never went to a known contact)
-        // still surface here — e.g. internal FWDs, intro threads, etc.
-        const STOP = new Set(['deal','client','company','the','and','llc','inc','corp','group','holdings','capital','partners','ltd']);
+        // Subject-line tokens: the FULL deal name as a phrase, plus only the
+        // DISTINCTIVE words out of it. Generic descriptors ("wireless",
+        // "capital", "solutions"…) are dropped, so "Gabb Wireless" matches
+        // "Gabb" threads but never "[Other] Wireless" threads.
         const subjectTokens = new Set<string>();
         const dealName = String((dealRes?.data as any)?.company ?? '').trim();
         if (dealName.length >= 3) subjectTokens.add(dealName.toLowerCase());
-        for (const w of dealName.split(/[^\p{L}\p{N}]+/u)) {
+        const nameWords = dealName.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+        for (const w of nameWords) {
           const lw = w.toLowerCase();
-          if (lw.length >= 4 && !STOP.has(lw)) subjectTokens.add(lw);
+          if (lw.length >= 4 && !GENERIC_NAME_WORDS.has(lw)) subjectTokens.add(lw);
         }
+        // If every word was generic, fall back to the full name only — never
+        // match on a lone generic word.
+        const distinctiveTokens = Array.from(subjectTokens);
+
+        // Whole-word test so "gabb" doesn't match "gabbro"/"gabbana".
+        const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const subjectHit = (subject: string) => {
+          const s = subject || '';
+          return distinctiveTokens.some((t) =>
+            new RegExp(`(^|[^\\p{L}\\p{N}])${escRe(t)}([^\\p{L}\\p{N}]|$)`, 'iu').test(s),
+          );
+        };
+        const domainOf = (addr: string) => String(addr || '').toLowerCase().split('@')[1]?.trim() ?? '';
+        /**
+         * Why did this message qualify? Returns null when nothing genuinely
+         * matches — e.g. a broad SQL ilike hit that isn't a whole-word subject
+         * match — so those rows are dropped instead of polluting the list.
+         */
+        const classify = (from_email: string, tos: string[], subject: string): MatchReason | null => {
+          const addrs = [String(from_email || '').toLowerCase(), ...(tos || []).map((t) => String(t || '').toLowerCase())];
+          if (addrs.some((a) => a && contactEmails.has(a))) return 'contact';
+          if (addrs.some((a) => a && contactDomains.has(domainOf(a)))) return 'domain';
+          if (subjectHit(subject)) return 'subject';
+          return null;
+        };
+
 
         // Escape ilike wildcards / commas / parens in tokens for PostgREST
         // `.or()` composition. Commas would split the OR list; percent/
