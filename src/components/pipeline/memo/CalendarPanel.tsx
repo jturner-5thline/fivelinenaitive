@@ -46,6 +46,21 @@ const KIND_COLORS: Record<ItemKind, { dot: string; bar: string; label: string }>
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
+/**
+ * Explicit dot colours. The deal detail surface resets the background of every
+ * rounded-full element, which would otherwise erase these markers, so they are
+ * painted through an inline custom property restored by `.calendar-day-dot`.
+ */
+const KIND_DOT_HEX: Record<ItemKind, string> = {
+  milestone: 'hsl(265,85%,65%)',
+  task: '#3b82f6',
+  custom: '#10b981',
+  lender: '#f59e0b',
+  team: '#22d3ee',
+};
+
+const dotStyle = (kind: ItemKind) => ({ ['--cal-dot' as any]: KIND_DOT_HEX[kind] } as React.CSSProperties);
+
 /** Render a stored "HH:mm[:ss]" time as 12-hour clock (e.g. "2:30 PM"). */
 function formatClock(value: string | null | undefined): string | null {
   if (!value) return null;
