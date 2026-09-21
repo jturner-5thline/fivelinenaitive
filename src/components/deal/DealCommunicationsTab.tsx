@@ -305,22 +305,26 @@ export function DealCommunicationsTab({ dealId, attachmentsOnly: controlledAttac
               .limit(300),
           ]);
           const cmsgs = [...(cacheRes.data ?? []), ...(gmailRes.data ?? [])];
-          fromContacts = cmsgs.map((m: any) => {
+          fromContacts = cmsgs.flatMap((m: any) => {
             const atts = normalizeAttachmentsFromJson(m.attachments);
-            return {
+            const to = (m.to_emails ?? []) as string[];
+            const reason = classify(m.from_email, to, m.subject ?? '');
+            if (!reason) return [];
+            return [{
               key: `cm:${m.gmail_message_id}`,
               source: 'deal_emails' as const,
               message_id: m.gmail_message_id,
               thread_id: m.thread_id ?? null,
               subject: m.subject ?? '(no subject)',
               from: m.from_name || m.from_email || '',
-              to: (m.to_emails ?? []) as string[],
+              to,
               preview: (m.snippet ?? '').slice(0, 220),
               direction: null,
               sent_at: m.received_at ?? null,
               has_attachments: atts.length > 0,
               attachments: atts,
-            };
+              match_reason: reason,
+            }];
           });
         }
 
