@@ -426,14 +426,24 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                         : 'border-white/[0.04] hover:bg-white/[0.04] hover:border-white/10',
                     )}
                   >
-                    <span
-                      className={cn(
-                        'text-[10px] leading-none font-medium',
-                        today ? 'text-primary' : 'text-foreground/80',
-                      )}
-                    >
-                      {format(day, 'd')}
+                    <span className="flex items-center gap-[3px] leading-none">
+                      <span
+                        className={cn(
+                          'text-[10px] leading-none font-medium',
+                          today ? 'text-primary' : 'text-foreground/80',
+                        )}
+                      >
+                        {format(day, 'd')}
+                      </span>
+                      {Array.from({ length: Math.min(meetingCount, 3) }).map((_, i) => (
+                        <span
+                          key={`meet-dot-${i}`}
+                          className="h-1 w-1 rounded-full bg-cyan-400"
+                          aria-hidden
+                        />
+                      ))}
                     </span>
+
                     {dayItems.length > 0 && (
                       <div className="mt-auto flex items-center gap-[2px] pb-0.5 flex-wrap justify-center">
                         {visible.map((it) => (
