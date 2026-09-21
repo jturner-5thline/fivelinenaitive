@@ -103,8 +103,14 @@ export function CollapsibleSearch({ value, onChange, debounceMs = 350 }: Collaps
   return (
     <div
       ref={containerRef}
-      className="relative inline-flex items-center h-9 rounded-md border border-input bg-background text-sm transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
-      style={{ width: boxWidth }}
+      className="deals-search-box relative inline-flex items-center h-9 text-sm transition-colors duration-200"
+      style={{
+        width: boxWidth,
+        backgroundColor: 'var(--bg-card)',
+        border: '1px solid var(--border-subtle)',
+        borderRadius: 'var(--radius-card)',
+        boxShadow: 'var(--elevation-card)',
+      }}
     >
       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <input
