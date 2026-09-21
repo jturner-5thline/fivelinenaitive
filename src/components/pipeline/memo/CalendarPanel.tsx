@@ -158,10 +158,22 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
     // The same meeting can appear on several synced calendars (one per
     // attendee/teammate). Collapse those into a single entry, merging match
     // reasons so the tooltip still explains why it surfaced.
+    const minuteKey = (v: string | null | undefined): string => {
+      if (!v) return '';
+      try {
+        const d = parseISO(v);
+        if (isNaN(d.getTime())) return String(v);
+        return String(Math.floor(d.getTime() / 60000));
+      } catch {
+        return String(v);
+      }
+    };
     const dedupedTeamEvents: typeof teamEvents = [];
     const seenTeamEvents = new Map<string, number>();
     for (const ev of teamEvents) {
-      const key = `${(ev.title || '').trim().toLowerCase()}|${ev.start || ''}|${ev.end || ''}`;
+      // Same meeting on several synced calendars: same start/end minute, even
+      // when titles or provider IDs differ per attendee.
+      const key = `${minuteKey(ev.start)}|${minuteKey(ev.end)}`;
       const existingIdx = seenTeamEvents.get(key);
       if (existingIdx === undefined) {
         seenTeamEvents.set(key, dedupedTeamEvents.length);
@@ -181,6 +193,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
         hangout_link: prev.hangout_link || ev.hangout_link,
       };
     }
+
     for (const ev of dedupedTeamEvents) {
       const dateKey = toDateKey(ev.start);
       let time: string | null = null;
@@ -393,6 +406,8 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
             const isSelected = key === selectedKey;
             const visible = dayItems.slice(0, 3);
             const overflow = dayItems.length - visible.length;
+            const meetingCount = dayItems.filter((it) => it.kind === 'team').length;
+
 
             return (
               <Tooltip key={key} delayDuration={300}>
@@ -413,14 +428,24 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                         : 'border-white/[0.04] hover:bg-white/[0.04] hover:border-white/10',
                     )}
                   >
-                    <span
-                      className={cn(
-                        'text-[10px] leading-none font-medium',
-                        today ? 'text-primary' : 'text-foreground/80',
-                      )}
-                    >
-                      {format(day, 'd')}
+                    <span className="flex items-center gap-[3px] leading-none">
+                      <span
+                        className={cn(
+                          'text-[10px] leading-none font-medium',
+                          today ? 'text-primary' : 'text-foreground/80',
+                        )}
+                      >
+                        {format(day, 'd')}
+                      </span>
+                      {Array.from({ length: Math.min(meetingCount, 3) }).map((_, i) => (
+                        <span
+                          key={`meet-dot-${i}`}
+                          className="h-1 w-1 rounded-full bg-cyan-400"
+                          aria-hidden
+                        />
+                      ))}
                     </span>
+
                     {dayItems.length > 0 && (
                       <div className="mt-auto flex items-center gap-[2px] pb-0.5 flex-wrap justify-center">
                         {visible.map((it) => (
