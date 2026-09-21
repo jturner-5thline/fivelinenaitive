@@ -153,6 +153,7 @@ export function DealCommunicationsTab({ dealId, attachmentsOnly: controlledAttac
           preview: stripHtml(r.body ?? r.description ?? '').slice(0, 220),
           direction: r.direction ?? null,
           sent_at: r.sent_at ?? r.created_at ?? null,
+          match_reason: 'logged' as MatchReason,
         }));
 
         const linkIds = (b.data ?? []).map((r: any) => r.gmail_message_id).filter(Boolean);
@@ -174,6 +175,7 @@ export function DealCommunicationsTab({ dealId, attachmentsOnly: controlledAttac
             direction: null,
             sent_at: m.received_at ?? null,
             has_attachments: !!m.has_attachments,
+            match_reason: 'linked' as MatchReason,
           }));
         }
 
