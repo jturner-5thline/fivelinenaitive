@@ -158,10 +158,22 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
     // The same meeting can appear on several synced calendars (one per
     // attendee/teammate). Collapse those into a single entry, merging match
     // reasons so the tooltip still explains why it surfaced.
+    const minuteKey = (v: string | null | undefined): string => {
+      if (!v) return '';
+      try {
+        const d = parseISO(v);
+        if (isNaN(d.getTime())) return String(v);
+        return String(Math.floor(d.getTime() / 60000));
+      } catch {
+        return String(v);
+      }
+    };
     const dedupedTeamEvents: typeof teamEvents = [];
     const seenTeamEvents = new Map<string, number>();
     for (const ev of teamEvents) {
-      const key = `${(ev.title || '').trim().toLowerCase()}|${ev.start || ''}|${ev.end || ''}`;
+      // Same meeting on several synced calendars: same start/end minute, even
+      // when titles or provider IDs differ per attendee.
+      const key = `${minuteKey(ev.start)}|${minuteKey(ev.end)}`;
       const existingIdx = seenTeamEvents.get(key);
       if (existingIdx === undefined) {
         seenTeamEvents.set(key, dedupedTeamEvents.length);
@@ -181,6 +193,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
         hangout_link: prev.hangout_link || ev.hangout_link,
       };
     }
+
     for (const ev of dedupedTeamEvents) {
       const dateKey = toDateKey(ev.start);
       let time: string | null = null;
