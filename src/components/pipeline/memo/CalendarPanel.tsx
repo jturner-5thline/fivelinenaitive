@@ -46,6 +46,19 @@ const KIND_COLORS: Record<ItemKind, { dot: string; bar: string; label: string }>
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
+/** Render a stored "HH:mm[:ss]" time as 12-hour clock (e.g. "2:30 PM"). */
+function formatClock(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const m = /^(\d{1,2}):(\d{2})/.exec(value.trim());
+  if (!m) return value;
+  let h = Number(m[1]);
+  const mins = m[2];
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${h}:${mins} ${suffix}`;
+}
+
 function toDateKey(value: string | null | undefined): string | null {
   if (!value) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value.slice(0, 10);
@@ -142,7 +155,33 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
         raw: c,
       }));
     }
+    // The same meeting can appear on several synced calendars (one per
+    // attendee/teammate). Collapse those into a single entry, merging match
+    // reasons so the tooltip still explains why it surfaced.
+    const dedupedTeamEvents: typeof teamEvents = [];
+    const seenTeamEvents = new Map<string, number>();
     for (const ev of teamEvents) {
+      const key = `${(ev.title || '').trim().toLowerCase()}|${ev.start || ''}|${ev.end || ''}`;
+      const existingIdx = seenTeamEvents.get(key);
+      if (existingIdx === undefined) {
+        seenTeamEvents.set(key, dedupedTeamEvents.length);
+        dedupedTeamEvents.push(ev);
+        continue;
+      }
+      const prev = dedupedTeamEvents[existingIdx];
+      dedupedTeamEvents[existingIdx] = {
+        ...prev,
+        match: {
+          title: prev.match?.title || ev.match?.title,
+          domain: prev.match?.domain || ev.match?.domain,
+          contact: prev.match?.contact || ev.match?.contact,
+        },
+        participants: Array.from(new Set([...(prev.participants || []), ...(ev.participants || [])])),
+        html_link: prev.html_link || ev.html_link,
+        hangout_link: prev.hangout_link || ev.hangout_link,
+      };
+    }
+    for (const ev of dedupedTeamEvents) {
       const dateKey = toDateKey(ev.start);
       let time: string | null = null;
       if (!ev.all_day && ev.start) {
@@ -454,7 +493,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                     </span>
                     <span className="text-foreground">{it.title}</span>
                     {it.time && (
-                      <span className="text-muted-foreground"> · {it.time.slice(0, 5)}</span>
+                      <span className="text-muted-foreground"> · {formatClock(it.time)}</span>
                     )}
                     {it.weekendTag && (
                       <span className="text-[9px] text-muted-foreground/70 ml-1">({it.weekendTag})</span>
@@ -608,7 +647,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                               {it.type || KIND_COLORS[it.kind].label}
                             </span>
                             <span className="text-foreground">{it.title}</span>
-                            {it.time && <span className="text-muted-foreground"> · {it.time.slice(0, 5)}</span>}
+                            {it.time && <span className="text-muted-foreground"> · {formatClock(it.time)}</span>}
                             {it.weekendTag && (
                               <span className="text-[10px] text-muted-foreground/70 ml-1">({it.weekendTag})</span>
                             )}
