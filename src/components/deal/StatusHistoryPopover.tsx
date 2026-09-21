@@ -38,10 +38,10 @@ export function StatusHistoryPopover({ statusNotes, onDeleteNote, className }: S
         .from('profiles')
         .select('id, full_name, email')
         .in('id', missing);
-      if (!data) return;
       setNames(prev => {
         const next = { ...prev };
-        for (const p of data as any[]) next[p.id] = p.full_name || p.email || 'Unknown';
+        for (const id of missing) next[id] = 'Unknown';
+        for (const p of (data as any[]) || []) next[p.id] = p.full_name || p.email || 'Unknown';
         return next;
       });
     })();
