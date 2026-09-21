@@ -27,6 +27,39 @@ interface Props {
   hideAttachmentsToggle?: boolean;
 }
 
+type MatchReason = 'logged' | 'linked' | 'contact' | 'domain' | 'subject';
+
+const MATCH_REASON_LABEL: Record<MatchReason, string> = {
+  logged: 'logged on deal',
+  linked: 'linked manually',
+  contact: 'client contact',
+  domain: 'company domain',
+  subject: 'subject match',
+};
+
+/**
+ * Generic descriptors that appear inside company names but say nothing about
+ * WHICH company — "Gabb Wireless" must not pull in "Acme Wireless" threads.
+ * Only distinctive tokens (plus the full deal name as a phrase) are used to
+ * match on subject lines.
+ */
+const GENERIC_NAME_WORDS = new Set([
+  'deal','client','company','the','and','llc','inc','incorporated','corp','corporation','co','group','holdings',
+  'holding','capital','partners','partner','ltd','limited','plc','lp','llp','pllc','gmbh',
+  'wireless','mobile','telecom','telecommunications','communications','media','digital','technology','technologies',
+  'tech','software','systems','system','solutions','solution','services','service','industries','industrial',
+  'enterprise','enterprises','ventures','venture','labs','lab','studio','studios','works','works','brands','brand',
+  'products','product','manufacturing','logistics','transport','transportation','freight','trucking','energy',
+  'power','solar','health','healthcare','medical','dental','pharma','pharmaceutical','clinic','clinics','care',
+  'financial','finance','bank','banking','insurance','realty','properties','property','estate','construction',
+  'builders','building','contracting','restaurant','restaurants','foods','food','beverage','retail','stores',
+  'store','market','markets','supply','distribution','distributors','consulting','consultants','advisors',
+  'advisory','management','managed','international','global','national','american','america','usa','united',
+  'states','national','associates','association','network','networks','data','cloud','security','automotive',
+  'auto','equipment','machine','machinery','engineering','resources','resource','development','acquisition',
+  'acquisitions','investment','investments','fund','funds','trust','agency','agencies','labs','holdco','opco',
+]);
+
 interface CommItem {
   key: string;
   source: 'activity_logs' | 'deal_emails';
@@ -40,6 +73,7 @@ interface CommItem {
   sent_at: string | null;
   has_attachments?: boolean;
   attachments?: EmailAttachmentMeta[];
+  match_reason?: MatchReason;
 }
 
 /**
@@ -119,6 +153,7 @@ export function DealCommunicationsTab({ dealId, attachmentsOnly: controlledAttac
           preview: stripHtml(r.body ?? r.description ?? '').slice(0, 220),
           direction: r.direction ?? null,
           sent_at: r.sent_at ?? r.created_at ?? null,
+          match_reason: 'logged' as MatchReason,
         }));
 
         const linkIds = (b.data ?? []).map((r: any) => r.gmail_message_id).filter(Boolean);
@@ -140,6 +175,7 @@ export function DealCommunicationsTab({ dealId, attachmentsOnly: controlledAttac
             direction: null,
             sent_at: m.received_at ?? null,
             has_attachments: !!m.has_attachments,
+            match_reason: 'linked' as MatchReason,
           }));
         }
 
@@ -189,18 +225,44 @@ export function DealCommunicationsTab({ dealId, attachmentsOnly: controlledAttac
           if (d && !FREEMAIL.has(d) && /\./.test(d)) contactDomains.add(d);
         }
 
-        // Subject-line tokens: deal.company (deal name) plus any word ≥4 chars
-        // out of it (dropping generic connectors). Lets threads whose subject
-        // mentions the company/deal (but that never went to a known contact)
-        // still surface here — e.g. internal FWDs, intro threads, etc.
-        const STOP = new Set(['deal','client','company','the','and','llc','inc','corp','group','holdings','capital','partners','ltd']);
+        // Subject-line tokens: the FULL deal name as a phrase, plus only the
+        // DISTINCTIVE words out of it. Generic descriptors ("wireless",
+        // "capital", "solutions"…) are dropped, so "Gabb Wireless" matches
+        // "Gabb" threads but never "[Other] Wireless" threads.
         const subjectTokens = new Set<string>();
         const dealName = String((dealRes?.data as any)?.company ?? '').trim();
         if (dealName.length >= 3) subjectTokens.add(dealName.toLowerCase());
-        for (const w of dealName.split(/[^\p{L}\p{N}]+/u)) {
+        const nameWords = dealName.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+        for (const w of nameWords) {
           const lw = w.toLowerCase();
-          if (lw.length >= 4 && !STOP.has(lw)) subjectTokens.add(lw);
+          if (lw.length >= 4 && !GENERIC_NAME_WORDS.has(lw)) subjectTokens.add(lw);
         }
+        // If every word was generic, fall back to the full name only — never
+        // match on a lone generic word.
+        const distinctiveTokens = Array.from(subjectTokens);
+
+        // Whole-word test so "gabb" doesn't match "gabbro"/"gabbana".
+        const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const subjectHit = (subject: string) => {
+          const s = subject || '';
+          return distinctiveTokens.some((t) =>
+            new RegExp(`(^|[^\\p{L}\\p{N}])${escRe(t)}([^\\p{L}\\p{N}]|$)`, 'iu').test(s),
+          );
+        };
+        const domainOf = (addr: string) => String(addr || '').toLowerCase().split('@')[1]?.trim() ?? '';
+        /**
+         * Why did this message qualify? Returns null when nothing genuinely
+         * matches — e.g. a broad SQL ilike hit that isn't a whole-word subject
+         * match — so those rows are dropped instead of polluting the list.
+         */
+        const classify = (from_email: string, tos: string[], subject: string): MatchReason | null => {
+          const addrs = [String(from_email || '').toLowerCase(), ...(tos || []).map((t) => String(t || '').toLowerCase())];
+          if (addrs.some((a) => a && contactEmails.has(a))) return 'contact';
+          if (addrs.some((a) => a && contactDomains.has(domainOf(a)))) return 'domain';
+          if (subjectHit(subject)) return 'subject';
+          return null;
+        };
+
 
         // Escape ilike wildcards / commas / parens in tokens for PostgREST
         // `.or()` composition. Commas would split the OR list; percent/
@@ -243,22 +305,26 @@ export function DealCommunicationsTab({ dealId, attachmentsOnly: controlledAttac
               .limit(300),
           ]);
           const cmsgs = [...(cacheRes.data ?? []), ...(gmailRes.data ?? [])];
-          fromContacts = cmsgs.map((m: any) => {
+          fromContacts = cmsgs.flatMap((m: any) => {
             const atts = normalizeAttachmentsFromJson(m.attachments);
-            return {
+            const to = (m.to_emails ?? []) as string[];
+            const reason = classify(m.from_email, to, m.subject ?? '');
+            if (!reason) return [];
+            return [{
               key: `cm:${m.gmail_message_id}`,
               source: 'deal_emails' as const,
               message_id: m.gmail_message_id,
               thread_id: m.thread_id ?? null,
               subject: m.subject ?? '(no subject)',
               from: m.from_name || m.from_email || '',
-              to: (m.to_emails ?? []) as string[],
+              to,
               preview: (m.snippet ?? '').slice(0, 220),
               direction: null,
               sent_at: m.received_at ?? null,
               has_attachments: atts.length > 0,
               attachments: atts,
-            };
+              match_reason: reason,
+            }];
           });
         }
 
@@ -291,18 +357,21 @@ export function DealCommunicationsTab({ dealId, attachmentsOnly: controlledAttac
               },
             });
             const msgs: any[] = Array.isArray((live as any)?.messages) ? (live as any).messages : [];
-            fromLive = msgs.map((m: any) => {
+            fromLive = msgs.flatMap((m: any) => {
               const to = Array.isArray(m.to)
                 ? m.to.map((x: any) => x?.email ?? x).filter(Boolean)
                 : Array.isArray(m.to_emails) ? m.to_emails : [];
               const fromObj = Array.isArray(m.from) ? m.from[0] : m.from;
+              const fromEmail = fromObj?.email || m.from_email || '';
               const fromStr = fromObj?.name || fromObj?.email || m.from_email || m.from_name || '';
               const sentAt = m.date
                 ? new Date(Number(m.date) * 1000).toISOString()
                 : (m.received_at ?? null);
               const id = m.id || m.gmail_message_id;
               const atts = normalizeAttachmentsFromJson(m.attachments ?? m.files);
-              return {
+              const reason = classify(fromEmail, to, m.subject ?? '');
+              if (!reason) return [];
+              return [{
                 key: `lv:${id}`,
                 source: 'deal_emails' as const,
                 message_id: id ?? null,
@@ -315,7 +384,8 @@ export function DealCommunicationsTab({ dealId, attachmentsOnly: controlledAttac
                 sent_at: sentAt,
                 has_attachments: atts.length > 0 || !!m.has_attachments,
                 attachments: atts,
-              };
+                match_reason: reason,
+              }];
             });
           } catch (err) {
             console.warn('[DealCommunicationsTab] live nylas fetch failed', err);
@@ -535,8 +605,21 @@ export function DealCommunicationsTab({ dealId, attachmentsOnly: controlledAttac
                   <div onClick={(e) => e.stopPropagation()}>
                     <MessageAttachments item={m} />
                   </div>
-                  <div className="mt-1">
+                  <div className="mt-1 flex items-center gap-1.5">
                     <span className="text-[10px] text-muted-foreground/70">{m.source === 'activity_logs' ? 'activity' : 'inbox link'}</span>
+                    {m.match_reason && (
+                      <span
+                        title={`Included because of a ${MATCH_REASON_LABEL[m.match_reason]}`}
+                        className={cn(
+                          'text-[9px] uppercase tracking-wide rounded px-1 py-[1px] border',
+                          m.match_reason === 'subject'
+                            ? 'border-amber-400/30 text-amber-300/80'
+                            : 'border-border/50 text-muted-foreground/70',
+                        )}
+                      >
+                        {MATCH_REASON_LABEL[m.match_reason]}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
