@@ -357,18 +357,21 @@ export function DealCommunicationsTab({ dealId, attachmentsOnly: controlledAttac
               },
             });
             const msgs: any[] = Array.isArray((live as any)?.messages) ? (live as any).messages : [];
-            fromLive = msgs.map((m: any) => {
+            fromLive = msgs.flatMap((m: any) => {
               const to = Array.isArray(m.to)
                 ? m.to.map((x: any) => x?.email ?? x).filter(Boolean)
                 : Array.isArray(m.to_emails) ? m.to_emails : [];
               const fromObj = Array.isArray(m.from) ? m.from[0] : m.from;
+              const fromEmail = fromObj?.email || m.from_email || '';
               const fromStr = fromObj?.name || fromObj?.email || m.from_email || m.from_name || '';
               const sentAt = m.date
                 ? new Date(Number(m.date) * 1000).toISOString()
                 : (m.received_at ?? null);
               const id = m.id || m.gmail_message_id;
               const atts = normalizeAttachmentsFromJson(m.attachments ?? m.files);
-              return {
+              const reason = classify(fromEmail, to, m.subject ?? '');
+              if (!reason) return [];
+              return [{
                 key: `lv:${id}`,
                 source: 'deal_emails' as const,
                 message_id: id ?? null,
@@ -381,7 +384,8 @@ export function DealCommunicationsTab({ dealId, attachmentsOnly: controlledAttac
                 sent_at: sentAt,
                 has_attachments: atts.length > 0 || !!m.has_attachments,
                 attachments: atts,
-              };
+                match_reason: reason,
+              }];
             });
           } catch (err) {
             console.warn('[DealCommunicationsTab] live nylas fetch failed', err);
