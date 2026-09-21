@@ -245,7 +245,10 @@ serve(async (req: Request): Promise<Response> => {
                   return d ? matchDomains.has(d) : false;
                 })
               : false;
-            if (!titleHit && !domainHit) return null;
+            const contactHit = contactEmails.size > 0
+              ? participantEmails.some((em: string) => contactEmails.has(em))
+              : false;
+            if (!titleHit && !domainHit && !contactHit) return null;
             const w = e.when || {};
             const isAllDay = !w.start_time && !!w.start_date;
             const start = w.start_time ? new Date(w.start_time * 1000).toISOString() : (w.start_date || "");
@@ -259,7 +262,7 @@ serve(async (req: Request): Promise<Response> => {
               html_link: e.html_link || null,
               hangout_link: e.conferencing?.details?.url || null,
               participants: participantEmails,
-              match: { title: titleHit, domain: domainHit },
+              match: { title: titleHit, domain: domainHit, contact: contactHit },
               teammate: {
                 user_id: userId,
                 email: prof?.email || null,
