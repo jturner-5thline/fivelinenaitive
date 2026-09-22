@@ -185,10 +185,14 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
     };
     const dedupedTeamEvents: typeof teamEvents = [];
     const seenTeamEvents = new Map<string, number>();
+    // Normalized title so per-attendee copies of the SAME meeting merge, while
+    // two genuinely different meetings at the same time stay separate.
+    const titleKey = (t: string | null | undefined): string =>
+      String(t || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
     for (const ev of teamEvents) {
-      // Same meeting on several synced calendars: same start/end minute, even
-      // when titles or provider IDs differ per attendee.
-      const key = `${minuteKey(ev.start)}|${minuteKey(ev.end)}`;
+      // Same meeting on several synced calendars: same start/end minute AND the
+      // same normalized title (provider IDs still differ per attendee).
+      const key = `${minuteKey(ev.start)}|${minuteKey(ev.end)}|${titleKey(ev.title)}`;
       const existingIdx = seenTeamEvents.get(key);
       if (existingIdx === undefined) {
         seenTeamEvents.set(key, dedupedTeamEvents.length);
