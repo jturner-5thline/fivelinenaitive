@@ -802,6 +802,664 @@
         "outputSchema": null
       },
       {
+        "name": "update_lender",
+        "title": "Update funding source / lender",
+        "description": "Update columns on an existing funding source (lender) row in the master directory (`master_lenders`). Partial update: ONLY the fields you pass are changed, everything else is left untouched; pass null to clear a field. Bumps updated_at, returns the full updated lender record, and writes one `lender_audit_logs` entry per changed field (old value -> new value), the same change history `get_lender` returns as `audit_history`. Identify the lender by `lender_id`, or by `name` (case-insensitive, partial) when the id is unknown — ambiguous names are rejected with the candidate ids. NOTE: this tool edits the LEGACY single-contact columns on master_lenders (contact_name, contact_title, contact_phone, contact_geography, email, phone). It does NOT touch the separate multi-contact list in `lender_contacts` — use `upsert_lender_contact` for that. The two are not interchangeable.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "name_lookup": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Find the lender by name when lender_id is unknown (case-insensitive, partial). Use `name` to RENAME the lender."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "New name for the lender (rename)."
+            },
+            "lender_type": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "loan_types": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sub_debt": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "cash_burn": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sponsorship": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "min_revenue": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "ebitda_min": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "min_deal": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "max_deal": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "sweet_spot_min": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "sweet_spot_max": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "min_gross_margin_pct": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "max_leverage": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "industries": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "industries_to_avoid": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "b2b_b2c": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "refinancing": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "company_requirements": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 5000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "deal_structure_notes": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 10000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "geo": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "geographies": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "geographies_excluded": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sponsor_requirement": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "tier": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 50
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "active": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "appetite_status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "tags": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "website": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "linkedin_url": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "city": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "state": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "country": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "phone": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "email": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 320
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_name": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_title": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_phone": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_geography": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "relationship_owners": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "referral_lender": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "referral_fee_offered": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "referral_agreement": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "nda": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "funding_source_notes": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "about_notes": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "lender_one_pager_url": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "upsert_lender_contact",
+        "title": "Add or update a funding source contact",
+        "description": "Create or update ONE contact on a funding source. Contacts live in the separate `lender_contacts` table (the multi-contact list shown on the funding source), NOT as columns on master_lenders — use `update_lender` for the legacy single contact_name/contact_title/contact_phone columns; these two tools are not interchangeable. Pass `contact_id` to update an existing contact, or omit it to create a new one. Only the fields you pass are written. Setting `is_primary: true` promotes this contact and automatically demotes any other primary contact on the same lender (one primary per lender). Returns the full created/updated contact row and logs the change to `lender_audit_logs`, the same change history `get_lender` returns as `audit_history`.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "master_lenders.id of the funding source that owns this contact."
+            },
+            "contact_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Omit to create a new contact; provide to update an existing one."
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "title": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "email": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 320
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "phone": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "city": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "state": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "country": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "geography": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "notes": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 10000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "is_primary": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "lender_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
         "name": "add_lender_to_deal",
         "title": "Add lender to deal",
         "description": "Attach a funding source / lender to a deal. Per project rule, new lenders default to the 'On Deck' stage.",
