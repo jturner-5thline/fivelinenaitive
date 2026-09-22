@@ -70,6 +70,8 @@ export default defineMcp({
     createCompany,
     searchLenders,
     getLender,
+    updateLender,
+    upsertLenderContact,
     addLenderToDeal,
     searchDealNotes,
     listDealActivity,
