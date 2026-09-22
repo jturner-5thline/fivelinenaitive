@@ -14,6 +14,8 @@ import createContact from "./tools/create-contact";
 import createCompany from "./tools/create-company";
 import searchLenders from "./tools/search-lenders";
 import getLender from "./tools/get-lender";
+import updateLender from "./tools/update-lender";
+import upsertLenderContact from "./tools/upsert-lender-contact";
 import addLenderToDeal from "./tools/add-lender-to-deal";
 import searchDealNotes from "./tools/search-deal-notes";
 import listDealActivity from "./tools/list-deal-activity";
