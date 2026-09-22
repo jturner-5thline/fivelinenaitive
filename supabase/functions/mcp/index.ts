@@ -2867,6 +2867,246 @@ var describe_schema_default = defineTool38({
   }
 });
 
+// src/lib/mcp/lenderWrites.ts
+async function resolveLenderId(sb, lender_id, name) {
+  if (lender_id) return { id: lender_id };
+  if (!name) return { error: errorResult("Provide lender_id or name_lookup.") };
+  const { data, error } = await sb.from("master_lenders").select("id, name, lender_type").ilike("name", `%${name}%`).limit(5);
+  if (error) return { error: errorResult(error.message) };
+  const matches = data ?? [];
+  if (matches.length === 0) return { error: errorResult("Funding source not found (or not visible to this user).") };
+  if (matches.length > 1) {
+    const exact = matches.find((m) => String(m.name ?? "").toLowerCase() === String(name).toLowerCase());
+    if (!exact) {
+      return {
+        error: textResult(
+          {
+            ambiguous: true,
+            message: "Multiple funding sources match that name; call again with one of these ids.",
+            matches: matches.map((m) => ({ id: m.id, name: m.name, lender_type: m.lender_type }))
+          },
+          { count: matches.length }
+        )
+      };
+    }
+    return { id: exact.id };
+  }
+  return { id: matches[0].id };
+}
+function lenderAuditDisplay(value) {
+  if (value === null || value === void 0) return null;
+  if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+async function lenderActorName(sb, userId) {
+  if (!userId) return null;
+  const { data } = await sb.from("profiles").select("display_name, email").eq("user_id", userId).maybeSingle();
+  return data?.display_name || data?.email || null;
+}
+async function logLenderAudit(sb, ctx, lenderId, action, before, after, fields, metadata) {
+  const userId = ctx.getUserId?.() ?? null;
+  const who = await lenderActorName(sb, userId);
+  const rows = [];
+  const changed = [];
+  for (const field of fields) {
+    const oldValue = lenderAuditDisplay(before?.[field]);
+    const newValue = lenderAuditDisplay(after?.[field]);
+    if (oldValue === newValue) continue;
+    changed.push(field);
+    rows.push({
+      lender_id: lenderId,
+      user_id: userId,
+      user_display_name: who,
+      action,
+      field_changed: field,
+      old_value: oldValue,
+      new_value: newValue,
+      metadata: metadata ?? null
+    });
+  }
+  if (rows.length === 0 && before !== null) return changed;
+  if (rows.length === 0) {
+    rows.push({
+      lender_id: lenderId,
+      user_id: userId,
+      user_display_name: who,
+      action,
+      field_changed: null,
+      old_value: null,
+      new_value: null,
+      metadata: metadata ?? null
+    });
+  }
+  const { error } = await sb.from("lender_audit_logs").insert(rows);
+  if (error) console.warn("[lender-audit] failed to log change", { lenderId, action, message: error.message });
+  return changed;
+}
+
+// src/lib/mcp/tools/update-lender.ts
+import { defineTool as defineToolUL } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as zUL } from "npm:zod@^3.23.0";
+var ulStr = (max = 2e3) => zUL.string().max(max).nullable().optional();
+var ulArr = () => zUL.array(zUL.string().trim().min(1).max(200)).nullable().optional();
+var ulNum = () => zUL.number().nullable().optional();
+var update_lender_default = defineToolUL({
+  name: "update_lender",
+  title: "Update funding source / lender",
+  description: "Update columns on an existing funding source (lender) row in the master directory (`master_lenders`). Partial update: ONLY the fields you pass are changed, everything else is left untouched; pass null to clear a field. Bumps updated_at, returns the full updated lender record, and writes one `lender_audit_logs` entry per changed field (old value -> new value), the same change history `get_lender` returns as `audit_history`. Identify the lender by `lender_id`, or by `name_lookup` (case-insensitive, partial) when the id is unknown \u2014 ambiguous names are rejected with the candidate ids. NOTE: this tool edits the LEGACY single-contact columns on master_lenders (contact_name, contact_title, contact_phone, contact_geography, email, phone). It does NOT touch the separate multi-contact list in `lender_contacts` \u2014 use `upsert_lender_contact` for that. The two are not interchangeable.",
+  inputSchema: {
+    lender_id: zUL.string().uuid().optional(),
+    name_lookup: zUL.string().trim().min(1).max(200).optional().describe("Find the lender by name when lender_id is unknown (case-insensitive, partial). Use `name` to RENAME the lender."),
+    name: zUL.string().trim().min(1).max(200).optional().describe("New name for the lender (rename)."),
+    lender_type: ulStr(200),
+    loan_types: ulArr(),
+    sub_debt: ulStr(500),
+    cash_burn: ulStr(500),
+    sponsorship: ulStr(500),
+    min_revenue: ulNum(),
+    ebitda_min: ulNum(),
+    min_deal: ulNum(),
+    max_deal: ulNum(),
+    sweet_spot_min: ulNum(),
+    sweet_spot_max: ulNum(),
+    min_gross_margin_pct: ulNum(),
+    max_leverage: ulNum(),
+    industries: ulArr(),
+    industries_to_avoid: ulArr(),
+    b2b_b2c: ulStr(200),
+    refinancing: ulStr(500),
+    company_requirements: ulStr(5e3),
+    deal_structure_notes: ulStr(1e4),
+    geo: ulStr(500),
+    geographies: ulArr(),
+    geographies_excluded: ulArr(),
+    sponsor_requirement: ulStr(500),
+    tier: ulStr(50),
+    active: zUL.boolean().nullable().optional(),
+    appetite_status: ulStr(100),
+    tags: ulArr(),
+    website: ulStr(500),
+    linkedin_url: ulStr(500),
+    address: ulStr(500),
+    city: ulStr(200),
+    state: ulStr(200),
+    country: ulStr(200),
+    phone: ulStr(100),
+    email: ulStr(320),
+    contact_name: ulStr(200),
+    contact_title: ulStr(200),
+    contact_phone: ulStr(100),
+    contact_geography: ulStr(200),
+    relationship_owners: ulStr(500),
+    referral_lender: ulStr(200),
+    referral_fee_offered: ulStr(500),
+    referral_agreement: ulStr(500),
+    nda: ulStr(500),
+    funding_source_notes: ulStr(2e4),
+    about_notes: ulStr(2e4),
+    lender_one_pager_url: ulStr(1e3)
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (input, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const { lender_id, name_lookup, ...rest } = input;
+    const patch = {};
+    for (const [k, v] of Object.entries(rest)) if (v !== void 0) patch[k] = v;
+    if (Object.keys(patch).length === 0) return errorResult("No fields to update.");
+    const sb = supabaseForUser(ctx);
+    const resolved = await resolveLenderId(sb, lender_id, name_lookup);
+    if (resolved.error) return resolved.error;
+    const id = resolved.id;
+    const { data: before, error: beforeErr } = await sb.from("master_lenders").select("*").eq("id", id).maybeSingle();
+    if (beforeErr) return errorResult(beforeErr.message);
+    if (!before) return errorResult("Funding source not found (or not visible to this user).");
+    patch.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+    const { data, error } = await sb.from("master_lenders").update(patch).eq("id", id).select("*").maybeSingle();
+    if (error) return errorResult(error.message);
+    if (!data) return errorResult("Funding source not found or you do not have permission to update it.");
+    const changed = await logLenderAudit(sb, ctx, id, "updated", before, data, Object.keys(patch).filter((k) => k !== "updated_at"), { via: "mcp:update_lender" });
+    return textResult({ lender: data, changed_fields: changed }, { lender_id: id, changed_count: changed.length });
+  }
+});
+
+// src/lib/mcp/tools/upsert-lender-contact.ts
+import { defineTool as defineToolULC } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as zULC } from "npm:zod@^3.23.0";
+var LENDER_CONTACT_FIELDS = ["name", "title", "email", "phone", "city", "state", "country", "geography", "notes", "is_primary"];
+var upsert_lender_contact_default = defineToolULC({
+  name: "upsert_lender_contact",
+  title: "Add or update a funding source contact",
+  description: "Create or update ONE contact on a funding source. Contacts live in the separate `lender_contacts` table (the multi-contact list shown on the funding source), NOT as columns on master_lenders \u2014 use `update_lender` for the legacy single contact_name/contact_title/contact_phone columns; these two tools are not interchangeable. Pass `contact_id` to update an existing contact, or omit it to create a new one. Only the fields you pass are written. Setting `is_primary: true` promotes this contact and automatically demotes any other primary contact on the same lender (one primary per lender). Returns the full created/updated contact row and logs the change to `lender_audit_logs`, the same change history `get_lender` returns as `audit_history`.",
+  inputSchema: {
+    lender_id: zULC.string().uuid().describe("master_lenders.id of the funding source that owns this contact."),
+    contact_id: zULC.string().uuid().optional().describe("Omit to create a new contact; provide to update an existing one."),
+    name: zULC.string().trim().max(200).optional(),
+    title: zULC.string().trim().max(200).nullable().optional(),
+    email: zULC.string().trim().max(320).nullable().optional(),
+    phone: zULC.string().trim().max(100).nullable().optional(),
+    city: zULC.string().trim().max(200).nullable().optional(),
+    state: zULC.string().trim().max(200).nullable().optional(),
+    country: zULC.string().trim().max(200).nullable().optional(),
+    geography: zULC.string().trim().max(200).nullable().optional(),
+    notes: zULC.string().max(1e4).nullable().optional(),
+    is_primary: zULC.boolean().optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (input, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const { lender_id, contact_id, ...rest } = input;
+    const patch = {};
+    for (const [k, v] of Object.entries(rest)) if (v !== void 0) patch[k] = v;
+    const sb = supabaseForUser(ctx);
+    const { data: lender, error: lenderErr } = await sb.from("master_lenders").select("id, name").eq("id", lender_id).maybeSingle();
+    if (lenderErr) return errorResult(lenderErr.message);
+    if (!lender) return errorResult("Funding source not found (or not visible to this user).");
+    let before = null;
+    if (contact_id) {
+      const { data, error } = await sb.from("lender_contacts").select("*").eq("id", contact_id).eq("lender_id", lender_id).maybeSingle();
+      if (error) return errorResult(error.message);
+      if (!data) return errorResult("Contact not found on this funding source (or not visible to this user).");
+      before = data;
+    } else if (!patch.name) {
+      return errorResult("A `name` is required when creating a new contact.");
+    }
+    let row = null;
+    if (contact_id) {
+      if (Object.keys(patch).length === 0) return errorResult("No fields to update.");
+      patch.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+      const { data, error } = await sb.from("lender_contacts").update(patch).eq("id", contact_id).select("*").maybeSingle();
+      if (error) return errorResult(error.message);
+      row = data ?? null;
+    } else {
+      const { data, error } = await sb.from("lender_contacts").insert({ lender_id, ...patch }).select("*").maybeSingle();
+      if (error) return errorResult(error.message);
+      row = data ?? null;
+    }
+    if (!row) return errorResult("Contact write failed or you do not have permission to write it.");
+    let demoted = [];
+    if (patch.is_primary === true) {
+      const { data: others, error: demoteErr } = await sb.from("lender_contacts").update({ is_primary: false }).eq("lender_id", lender_id).eq("is_primary", true).neq("id", row.id).select("id");
+      if (demoteErr) console.warn("[upsert_lender_contact] failed to demote other primaries", demoteErr.message);
+      demoted = (others ?? []).map((o) => o.id);
+    }
+    const changed = await logLenderAudit(
+      sb,
+      ctx,
+      lender_id,
+      contact_id ? "contact_updated" : "contact_added",
+      before,
+      row,
+      LENDER_CONTACT_FIELDS,
+      { via: "mcp:upsert_lender_contact", contact_id: row.id, contact_name: row.name ?? null, demoted_primary_contact_ids: demoted }
+    );
+    return textResult(
+      { contact: row, changed_fields: changed, demoted_primary_contact_ids: demoted },
+      { lender_id, contact_id: row.id, created: !contact_id }
+    );
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "tgkksvazruzbghssnxde";
 var mcp_default = defineMcp({
