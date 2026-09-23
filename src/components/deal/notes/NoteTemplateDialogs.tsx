@@ -7,7 +7,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Trash2, Pencil, FileText, Check, X } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { NOTE_TEMPLATES } from './NoteTemplates';
+import { NOTE_TEMPLATES, FIFTH_LINE_NOTE_TEMPLATES } from './NoteTemplates';
+import { useAuth } from '@/contexts/AuthContext';
+import { canUse5thLineProprietaryActions } from '@/lib/proprietaryAccess';
 import { useCustomNoteTemplates, CustomNoteTemplate } from '@/hooks/useCustomNoteTemplates';
 import { cn } from '@/lib/utils';
 
