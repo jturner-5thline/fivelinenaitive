@@ -7,7 +7,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Trash2, Pencil, FileText, Check, X } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { NOTE_TEMPLATES } from './NoteTemplates';
+import { NOTE_TEMPLATES, FIFTH_LINE_NOTE_TEMPLATES } from './NoteTemplates';
+import { useAuth } from '@/contexts/AuthContext';
+import { canUse5thLineProprietaryActions } from '@/lib/proprietaryAccess';
 import { useCustomNoteTemplates, CustomNoteTemplate } from '@/hooks/useCustomNoteTemplates';
 import { cn } from '@/lib/utils';
 
@@ -19,9 +21,9 @@ interface UnifiedTemplate {
   isCustom: boolean;
 }
 
-function combineTemplates(custom: CustomNoteTemplate[]): UnifiedTemplate[] {
+function combineTemplates(custom: CustomNoteTemplate[], includeFifthLine = false): UnifiedTemplate[] {
   return [
-    ...NOTE_TEMPLATES.map(t => ({ id: `builtin:${t.name}`, title: t.title, icon: t.icon, content: t.content, isCustom: false })),
+    ...[...NOTE_TEMPLATES, ...(includeFifthLine ? FIFTH_LINE_NOTE_TEMPLATES : [])].map(t => ({ id: `builtin:${t.name}`, title: t.title, icon: t.icon, content: t.content, isCustom: false })),
     ...custom.map(t => ({ id: t.id, title: t.name, icon: t.icon || '📝', content: t.content, isCustom: true })),
   ];
 }
@@ -32,7 +34,8 @@ export function TemplatePickerDialog({ open, onOpenChange, onPick }: {
   onPick: (title: string, content: string) => void;
 }) {
   const { templates: custom } = useCustomNoteTemplates();
-  const all = combineTemplates(custom);
+  const { user } = useAuth();
+  const all = combineTemplates(custom, canUse5thLineProprietaryActions(user));
   const [selectedId, setSelectedId] = useState<string | null>(all[0]?.id || null);
   const selected = all.find(t => t.id === selectedId) || all[0];
 
