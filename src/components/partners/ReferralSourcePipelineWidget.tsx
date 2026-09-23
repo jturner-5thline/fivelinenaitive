@@ -400,6 +400,12 @@ export function ReferralSourcePipelineWidget() {
         {total} referral source{total === 1 ? '' : 's'} in selected period
       </p>
 
+      <ReferralSourceDealsDialog
+        name={openSource}
+        open={!!openSource}
+        onOpenChange={(o) => { if (!o) setOpenSource(null); }}
+      />
+
       <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) resetAdd(); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
