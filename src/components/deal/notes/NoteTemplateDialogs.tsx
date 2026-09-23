@@ -21,9 +21,9 @@ interface UnifiedTemplate {
   isCustom: boolean;
 }
 
-function combineTemplates(custom: CustomNoteTemplate[]): UnifiedTemplate[] {
+function combineTemplates(custom: CustomNoteTemplate[], includeFifthLine = false): UnifiedTemplate[] {
   return [
-    ...NOTE_TEMPLATES.map(t => ({ id: `builtin:${t.name}`, title: t.title, icon: t.icon, content: t.content, isCustom: false })),
+    ...[...NOTE_TEMPLATES, ...(includeFifthLine ? FIFTH_LINE_NOTE_TEMPLATES : [])].map(t => ({ id: `builtin:${t.name}`, title: t.title, icon: t.icon, content: t.content, isCustom: false })),
     ...custom.map(t => ({ id: t.id, title: t.name, icon: t.icon || '📝', content: t.content, isCustom: true })),
   ];
 }
