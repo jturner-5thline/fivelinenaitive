@@ -34,7 +34,8 @@ export function TemplatePickerDialog({ open, onOpenChange, onPick }: {
   onPick: (title: string, content: string) => void;
 }) {
   const { templates: custom } = useCustomNoteTemplates();
-  const all = combineTemplates(custom);
+  const { user } = useAuth();
+  const all = combineTemplates(custom, canUse5thLineProprietaryActions(user));
   const [selectedId, setSelectedId] = useState<string | null>(all[0]?.id || null);
   const selected = all.find(t => t.id === selectedId) || all[0];
 
