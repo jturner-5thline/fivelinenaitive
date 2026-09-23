@@ -170,6 +170,25 @@ export function ReferralSourcePipelineWidget() {
 
 
   const teamMembers = useTeamMembers();
+
+  // Owner of each manually added source = owner of its linked contact.
+  const [manualOwnerById, setManualOwnerById] = useState<Map<string, string | null>>(new Map());
+  useEffect(() => {
+    const cid = company?.id;
+    if (!cid) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('referral_sources')
+        .select('id, contact:contacts!referral_sources_contact_id_fkey(owner_user_id)')
+        .eq('company_id', cid);
+      if (cancelled) return;
+      const m = new Map<string, string | null>();
+      for (const r of (data || []) as any[]) m.set(r.id, r.contact?.owner_user_id ?? null);
+      setManualOwnerById(m);
+    })();
+    return () => { cancelled = true; };
+  }, [company?.id, manualSources.length]);
   const ownerNameById = useMemo(() => {
     const m = new Map<string, string>();
     for (const t of teamMembers) m.set(t.id, t.display_name);
@@ -217,7 +236,7 @@ export function ReferralSourcePipelineWidget() {
     // Manually added sources with no qualifying deals yet start in Nurturing.
     for (const m of manualSources) {
       if (seen.has(normalize(m.name))) continue;
-      if (!ownerAllows(null)) continue;
+      if (!ownerAllows(manualOwnerById.get(m.id) ?? null)) continue;
       if (!matchesSearch(m.name, m.company || null)) continue;
 
       byStage.get('nurturing')!.push({
