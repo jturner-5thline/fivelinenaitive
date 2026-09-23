@@ -285,12 +285,20 @@ Deno.serve(async (req) => {
           .eq('id', recording_id)
           .maybeSingle();
         row = data ?? null;
+        // `recording_id` may actually be a Claap external id (older callers
+        // pass the share id). Fall back to that before giving up.
+        if (!row) row = await ensureRecordingRow(admin, String(recording_id));
       } else if (meeting_id) {
         row = await resolveRecordingByMeeting(admin, meeting_id);
-      } else if (claap_id) {
-        row = await ensureRecordingRow(admin, String(claap_id));
       }
-      if (!row) return json({ ok: false, error: 'recording_not_found' }, 404);
+      if (!row && claap_id) row = await ensureRecordingRow(admin, String(claap_id));
+      if (!row) {
+        // Nothing to sync yet — this is a benign "not linked to a recording"
+        // state, not a hard failure. Returning 404 made the client invoke
+        // throw and blanked the screen.
+        return json({ ok: false, single: true, skipped: true, error: 'recording_not_found' }, 200);
+      }
+
       if (force) {
         await admin
           .from('claap_recordings')
