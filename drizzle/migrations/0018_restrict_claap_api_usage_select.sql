@@ -1,0 +1,2 @@
+DROP POLICY IF EXISTS "Authenticated users can read Claap quota status" ON public.claap_api_usage;
+CREATE POLICY "Admins can read Claap API usage" ON public.claap_api_usage FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'::app_role));
