@@ -94,11 +94,44 @@ export function ReferralSourceDealsDialog({
     },
   });
 
+  // Resolve the contact record behind this referral source: the linked
+  // referral_sources.contact_id first, then an exact name match in contacts.
+  const { data: contactId } = useQuery({
+    queryKey: ['referral_source_contact_id', company?.id, name],
+    enabled: open && !!company?.id && !!name,
+    queryFn: async (): Promise<string | null> => {
+      const { data: rs } = await supabase
+        .from('referral_sources')
+        .select('contact_id')
+        .eq('company_id', company!.id)
+        .ilike('name', name!)
+        .not('contact_id', 'is', null)
+        .limit(1);
+      if (rs?.[0]?.contact_id) return rs[0].contact_id as string;
+      const bare = name!.split(/\s*(?:@|\s-\s)\s*/)[0].trim();
+      const { data: c } = await supabase
+        .from('contacts')
+        .select('id')
+        .eq('org_company_id', company!.id)
+        .ilike('full_name', bare)
+        .limit(1);
+      return c?.[0]?.id ?? null;
+    },
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{name}</DialogTitle>
+          <DialogTitle>
+            {contactId ? (
+              <a href={`/contacts/${contactId}`} className="hover:underline" title="Open contact details">
+                {name}
+              </a>
+            ) : (
+              name
+            )}
+          </DialogTitle>
           <DialogDescription>
             {isLoading ? 'Loading referred deals…' : `${rows.length} referred deal${rows.length === 1 ? '' : 's'}`}
           </DialogDescription>
