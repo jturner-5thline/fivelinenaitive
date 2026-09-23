@@ -122,7 +122,10 @@ function formatCurrencyCompact(v: number): string {
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
 export function ReferralSourcePipelineWidget() {
-  const { referralSources } = useDealReferralSources();
+  // Tiers are trailing/all-time metrics — the pipeline must not depend on the
+  // viewer's header date range, or the same source lands in different columns
+  // for different users (e.g. Tier 3 vs Nurturing).
+  const { referralSources } = useDealReferralSources({ ignoreDateRange: true });
   const { referralSources: manualSources, addReferralSource, deleteReferralSource, refreshReferralSources } = useReferralSources();
   const { data: rules } = usePartnerRules();
   const tiers = rules?.tiers || DEFAULT_PARTNER_RULES.tiers;
