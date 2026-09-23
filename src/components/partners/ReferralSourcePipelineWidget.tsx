@@ -24,6 +24,7 @@ const contactLabel = (c: ContactHit) =>
 import { Plus, Info, Trash2, Building2, Search, X } from 'lucide-react';
 import { liquidGlassCard, LIQUID_GLASS_SERIES } from '@/components/metrics/liquidGlass';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
+import { ReferralSourceDealsDialog } from './ReferralSourceDealsDialog';
 import { useReferralSources } from '@/hooks/useReferralSources';
 import { usePartnerRules, DEFAULT_PARTNER_RULES } from '@/hooks/usePartnerRules';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -138,6 +139,7 @@ export function ReferralSourcePipelineWidget() {
   const [contactResults, setContactResults] = useState<ContactHit[]>([]);
   const [searching, setSearching] = useState(false);
   const [selectedContact, setSelectedContact] = useState<ContactHit | null>(null);
+  const [openSource, setOpenSource] = useState<string | null>(null);
   const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
   const [search, setSearch] = useState('');
 
@@ -358,7 +360,11 @@ export function ReferralSourcePipelineWidget() {
                 {stage.cards.map(card => (
                   <div
                     key={card.id}
-                    className="group rounded-md border border-[rgba(126,184,247,0.22)] bg-[#0b1226] px-2 py-1.5 hover:bg-[#101836] hover:border-[rgba(126,184,247,0.4)] transition-colors"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setOpenSource(card.name)}
+                    onKeyDown={e => { if (e.key === 'Enter') setOpenSource(card.name); }}
+                    className="group cursor-pointer rounded-md border border-[rgba(126,184,247,0.22)] bg-[#0b1226] px-2 py-1.5 hover:bg-[#101836] hover:border-[rgba(126,184,247,0.4)] transition-colors"
                   >
                     <div className="flex items-start justify-between gap-1">
                       <p className="text-[11px] font-medium text-foreground leading-tight truncate">{card.name}</p>
@@ -367,7 +373,7 @@ export function ReferralSourcePipelineWidget() {
                           type="button"
                           aria-label={`Remove ${card.name}`}
                           className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
-                          onClick={() => deleteReferralSource(card.id.replace('manual:', ''))}
+                          onClick={(e) => { e.stopPropagation(); deleteReferralSource(card.id.replace('manual:', '')); }}
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>
