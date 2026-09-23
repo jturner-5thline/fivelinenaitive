@@ -6,7 +6,7 @@ type: constraint
 **Scope:** ALL deals across the platform — active, paused, archived, closed, historical imports, and any future imports. No exceptions, no subsets.
 
 **Exceptions (explicit user-approved carve-outs):**
-- Blount Capital tenant (company id `c4753066-0da9-4d87-8858-7eb1adecd173`): historical activity backfill into `activity_logs` is permitted, per explicit user approval on 2026-06-05. - 5th Line, 2026-09-23: user explicitly approved replacing stage history AND Activity feed stage_change rows for 49 Closed Won/Lost Active Deals from closed_won_deals_stage_history.xlsx (source='sheet_import_2026_09_23'). One-off; ask again for future imports.
+- Blount Capital tenant (company id `c4753066-0da9-4d87-8858-7eb1adecd173`): historical activity backfill into `activity_logs` is permitted, per explicit user approval on 2026-06-05. - 5th Line, 2026-09-23: user explicitly approved replacing stage history AND Activity feed stage_change rows for 49 Closed Won/Lost Active Deals from closed_won_deals_stage_history.xlsx (source='sheet_import_2026_09_23'). Same day: also 110 Closed Lost deals from closed_lost_deals_stage_history.xlsx (source='sheet_import_2026_09_23_lost'). One-off; ask again for future imports.
 - Other tenants remain fully covered by the no-backfill rule.
 
 **Rules:**
