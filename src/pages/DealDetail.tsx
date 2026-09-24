@@ -1345,11 +1345,11 @@ export default function DealDetail() {
     if (!urlTab) return;
     if (urlTab === dealInfoTab) return;
     if (urlTab === 'deal-space') return;
-    const allowed = [...DEAL_TABS, 'activity-log'];
-    if (urlTab === 'communications') {
-      setActivityView('communications');
-      prevTabRef.current = 'activity-log' as typeof dealInfoTab;
-      setDealInfoTab('activity-log' as typeof dealInfoTab);
+    const allowed = [...DEAL_TABS];
+    if (urlTab === 'communications' || urlTab === 'activity-log') {
+      // Activity tab is hidden — open the Activity pop-up instead.
+      setActivityView(urlTab === 'communications' ? 'communications' : 'activity');
+      setActivityPopupOpen(true);
       return;
     }
     if (!allowed.includes(urlTab)) return;
@@ -6443,7 +6443,7 @@ export default function DealDetail() {
                           )}
                         </TabsTrigger>
                       )}
-                      {!isProjectsDeal && (
+                      {false && !isProjectsDeal && (
                       <TabsTrigger
                         value="activity-log"
                         className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-slate-900 shadow-none hover:text-white hover:bg-slate-800 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mb-2 data-[state=active]:rounded-b-sm data-[state=active]:rounded-t-none data-[state=active]:bg-gradient-to-t data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_8px_18px_-8px_rgba(0,0,0,0.7)] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-top-px data-[state=active]:after:z-20 data-[state=active]:after:h-[2px] data-[state=active]:after:bg-slate-900"
