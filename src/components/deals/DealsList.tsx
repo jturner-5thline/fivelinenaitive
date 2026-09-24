@@ -602,12 +602,19 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
       })()
     : groupOrder;
 
+  // Shared render budget across expanded groups (progressive rendering).
+  let budget = renderCount;
   return (
     <div className="space-y-6">
       {orderedKeys.map((groupValue, groupIdx) => {
         const groupDeals = groupMap.get(groupValue) || [];
         const isCollapsed = collapsedGroups.has(groupValue) || collapsedGroups.has('__ALL__');
         const dotColor = groupBy === 'status' ? STATUS_CONFIG[groupValue as DealStatus]?.dotColor : undefined;
+        let renderGroupDeals: Deal[] = [];
+        if (!isCollapsed) {
+          renderGroupDeals = groupDeals.slice(0, Math.max(0, budget));
+          budget -= renderGroupDeals.length;
+        }
         
         return (
           <Collapsible
@@ -665,7 +672,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-4">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 pt-3 pb-2 px-2 overflow-visible">
-                {groupDeals.map((deal, index) => {
+                {renderGroupDeals.map((deal, index) => {
                   const isFirstDealOverall = groupIdx === 0 && index === 0;
                   
                   if (isFirstDealOverall) {
@@ -714,6 +721,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
           </Collapsible>
         );
       })}
+      {budget <= 0 && sentinel}
     </div>
   );
 }
