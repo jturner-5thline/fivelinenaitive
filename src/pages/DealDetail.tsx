@@ -5093,14 +5093,13 @@ export default function DealDetail() {
                                  aria-label="Activity"
                                  title="Activity"
                                >
-                                 <Activity className="h-4 w-4" />
+                                 <History className="h-4 w-4" />
                                  Activity
                                </Button>
                              </DialogTrigger>
                              <DialogContent
-                               className="z-[120] w-[420px] max-w-[92vw] p-4 gap-3 bg-background border border-border shadow-2xl"
+                               className="z-[120] w-[960px] max-w-[94vw] h-[80vh] flex flex-col p-4 gap-3 bg-background border border-border shadow-2xl"
                                onEscapeKeyDown={(e) => {
-                                 // Close only this popup; keep the deal details modal open.
                                  e.preventDefault();
                                  e.stopPropagation();
                                  setIsActivityDialogOpen(false);
@@ -5118,12 +5117,94 @@ export default function DealDetail() {
                              >
                                <DialogHeader className="space-y-0">
                                  <DialogTitle className="text-sm font-semibold flex items-center gap-2">
-                                   <Activity className="h-4 w-4" />
+                                   <History className="h-4 w-4" />
                                    Activity
                                  </DialogTitle>
                                </DialogHeader>
-                               <div className="max-h-[55vh] overflow-y-auto pr-1">
-                                 <ActivityTimeline activities={activities} />
+                               <div className="flex min-w-0 flex-1 min-h-0 gap-4">
+                                 <nav className="w-[196px] shrink-0 overflow-y-auto rounded-md border border-white/10 bg-white/[0.03] p-1.5">
+                                   <button
+                                     type="button"
+                                     onClick={() => setActivityView('activity')}
+                                     className={cn(
+                                       "w-full inline-flex items-center gap-1.5 px-2.5 h-8 rounded-sm text-[12px] font-medium transition-colors",
+                                       activityView === 'activity' ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                                     )}
+                                   >
+                                     <History className="h-3.5 w-3.5" />
+                                     Activity
+                                   </button>
+                                   {activityView === 'activity' && (
+                                     <div className="mt-0.5 mb-1 ml-3 border-l border-white/10 pl-1.5">
+                                       {ACTIVITY_FILTER_OPTIONS.map((opt) => (
+                                         <button
+                                           key={opt.value}
+                                           type="button"
+                                           onClick={() => setActivityFilter(opt.value)}
+                                           aria-pressed={activityFilter === opt.value}
+                                           className={cn(
+                                             "w-full text-left px-2 h-7 rounded-sm text-[11px] transition-colors",
+                                             activityFilter === opt.value ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                                           )}
+                                         >
+                                           {opt.label}
+                                         </button>
+                                       ))}
+                                     </div>
+                                   )}
+                                   <button
+                                     type="button"
+                                     onClick={() => setActivityView('communications')}
+                                     className={cn(
+                                       "w-full inline-flex items-center gap-1.5 px-2.5 h-8 rounded-sm text-[12px] font-medium transition-colors",
+                                       activityView === 'communications' ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                                     )}
+                                   >
+                                     <Mail className="h-3.5 w-3.5" />
+                                     Communications
+                                   </button>
+                                   {activityView === 'communications' && (
+                                     <div className="mt-0.5 ml-3 border-l border-white/10 pl-1.5">
+                                       {[{ v: false, l: 'All emails' }, { v: true, l: 'Attachments only' }].map((o) => (
+                                         <button
+                                           key={o.l}
+                                           type="button"
+                                           onClick={() => setCommsAttachmentsOnly(o.v)}
+                                           aria-pressed={commsAttachmentsOnly === o.v}
+                                           className={cn(
+                                             "w-full text-left px-2 h-7 rounded-sm text-[11px] transition-colors",
+                                             commsAttachmentsOnly === o.v ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                                           )}
+                                         >
+                                           {o.l}
+                                         </button>
+                                       ))}
+                                     </div>
+                                   )}
+                                 </nav>
+                                 <div className="min-w-0 flex-1 overflow-y-auto">
+                                   {activityView === 'activity' ? (
+                                     <Card className="w-full max-w-full overflow-hidden p-0 min-h-full">
+                                       <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading activity…</div>}>
+                                         <DealActivityLogTab
+                                           dealId={id!}
+                                           activeFilter={activityFilter}
+                                           onFilterChange={setActivityFilter}
+                                           hideFilterChips
+                                         />
+                                       </Suspense>
+                                     </Card>
+                                   ) : (
+                                     <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading communications…</div>}>
+                                       <DealCommunicationsTab
+                                         dealId={id!}
+                                         attachmentsOnly={commsAttachmentsOnly}
+                                         onAttachmentsOnlyChange={setCommsAttachmentsOnly}
+                                         hideAttachmentsToggle
+                                       />
+                                     </Suspense>
+                                   )}
+                                 </div>
                                </div>
                              </DialogContent>
                            </Dialog>
