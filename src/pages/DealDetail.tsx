@@ -1072,6 +1072,7 @@ export default function DealDetail() {
   // portaled when the context-rail layout is active.
   const [railPanelSlot, setRailPanelSlot] = useState<HTMLDivElement | null>(null);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  const [activityPopupOpen, setActivityPopupOpen] = useState(false);
 
   // Projects pipeline (currently Blount Capital only) is a fully siloed
   // pipeline: only Deal Info + Data Room tabs are visible/functional, no
@@ -3373,6 +3374,21 @@ export default function DealDetail() {
         </TooltipTrigger>
         <TooltipContent side="bottom">Notes</TooltipContent>
       </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Open activity"
+            onClick={() => setActivityPopupOpen(true)}
+            className="relative overflow-hidden h-8 w-8 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]"
+          >
+            <History className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Activity</TooltipContent>
+      </Tooltip>
     </div>
   );
 
@@ -3726,6 +3742,28 @@ export default function DealDetail() {
                 <DialogTitle>Notes — {deal.company}</DialogTitle>
               </DialogHeader>
               {notesDialogOpen && <DealSpaceNotesTab dealId={deal.id} />}
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={activityPopupOpen} onOpenChange={setActivityPopupOpen}>
+            <DialogContent className="max-w-4xl h-[85vh] flex flex-col overflow-hidden">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <History className="h-4 w-4" />
+                  Activity — {deal.company}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                {activityPopupOpen && (
+                  <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading activity…</div>}>
+                    <DealActivityLogTab
+                      dealId={deal.id}
+                      activeFilter={activityFilter}
+                      onFilterChange={setActivityFilter}
+                    />
+                  </Suspense>
+                )}
+              </div>
             </DialogContent>
           </Dialog>
 
