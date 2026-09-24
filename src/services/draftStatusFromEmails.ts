@@ -97,7 +97,36 @@ export async function draftStatusFromEmails(dealId: string): Promise<DraftFromEm
     return b.gte('received_at', since).order('received_at', { ascending: false }).limit(withOr ? 30 : 1000)
       .then((r: any) => (r.data || []).map((m: any) => ({ ...m, _src: table })));
   };
+  // Live mailbox search (catches mail not yet synced into the local cache):
+  // any thread where the client domain/address is sender, recipient or CC.
+  const liveTerms = [...Array.from(domains), ...Array.from(emails)].slice(0, 12);
+  const cutoff = new Date(Date.now() - 90 * 86400000);
+  const gDate = `${cutoff.getFullYear()}/${String(cutoff.getMonth() + 1).padStart(2, '0')}/${String(cutoff.getDate()).padStart(2, '0')}`;
+  const liveQuery = liveTerms.length
+    ? `(${liveTerms.map((t) => `from:${t} OR to:${t} OR cc:${t}`).join(' OR ')}) after:${gDate}`
+    : '';
+  const live = liveQuery
+    ? supabase.functions
+        .invoke('gmail-messages', { body: { action: 'list', max_results: 30, query: liveQuery, search_all_mail: true } })
+        .then(({ data, error }: any) =>
+          error || data?.fallback
+            ? []
+            : (data?.messages || []).map((m: any) => ({
+                gmail_message_id: m.id,
+                subject: m.subject,
+                from_email: m.from_email,
+                from_name: m.from_name,
+                to_emails: m.to_emails || [],
+                cc_emails: m.cc_emails || [],
+                received_at: m.received_at,
+                _src: 'live',
+                _body: m.body_text || stripHtml(m.body_html || '') || m.snippet || '',
+              })),
+        )
+        .catch(() => [])
+    : Promise.resolve([]);
   const lists = await Promise.all([
+    live,
     fromOr ? q('gmail_messages', true) : Promise.resolve([]),
     q('gmail_messages', false),
     fromOr ? q('email_cache', true) : Promise.resolve([]),
@@ -105,8 +134,8 @@ export async function draftStatusFromEmails(dealId: string): Promise<DraftFromEm
   ]);
   const seen = new Map<string, any>();
   for (const m of lists.flat() as any[]) {
-    if (seen.has(m.gmail_message_id)) continue;
-    if (matches([m.from_email, ...(m.to_emails || []), ...(m.cc_emails || [])])) seen.set(m.gmail_message_id, m);
+    if (!m.gmail_message_id || seen.has(m.gmail_message_id)) continue;
+    if (m._src === 'live' || matches([m.from_email, ...(m.to_emails || []), ...(m.cc_emails || [])])) seen.set(m.gmail_message_id, m);
   }
   const top = Array.from(seen.values())
     .sort((a, b) => String(b.received_at).localeCompare(String(a.received_at)))
@@ -126,7 +155,7 @@ export async function draftStatusFromEmails(dealId: string): Promise<DraftFromEm
 
   const blocks = top.map((m) => {
     const b: any = bodyMap.get(m.gmail_message_id) || {};
-    const body = latestPart(b.body_text || stripHtml(b.body_html || '') || b.snippet || '');
+    const body = latestPart(b.body_text || stripHtml(b.body_html || '') || m._body || b.snippet || '');
     const dir = domains.has(domainOf(m.from_email)) || emails.has(String(m.from_email || '').toLowerCase()) ? 'FROM CLIENT' : 'TO CLIENT';
     const d = m.received_at ? new Date(m.received_at).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }) : '';
     return `[${d}] ${dir} — from ${m.from_name || m.from_email}\nSubject: ${m.subject || '(no subject)'}\n${body}`;
