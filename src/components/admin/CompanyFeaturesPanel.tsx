@@ -12,7 +12,6 @@ import { Building2, Sparkles, Presentation } from 'lucide-react';
 const FEATURE_FLAGS = [
   { key: 'workflows_enabled', label: 'Workflows', description: 'Enable the Workflows page in the sidebar' },
   { key: 'timeline_view_enabled', label: 'Timeline View', description: 'Enable the timeline view option on the Deals page' },
-  { key: 'agreement_icon_visible', label: 'Agreement Drafter', description: 'Show the agreement drafter icon on deal detail pages' },
   { key: 'deal_memo_enabled', label: 'Deal Memo', description: 'Show the deal memo button on deal detail pages' },
   { key: 'sample_deal_on_signup', label: 'Sample Deal on Signup', description: 'Create a sample deal when new users complete onboarding' },
 ] as const;
