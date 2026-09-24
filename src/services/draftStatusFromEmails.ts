@@ -34,11 +34,20 @@ const SYSTEM_PROMPT =
   'No prefix, no bullets, no quotes, no signature. Output only the sentence.';
 
 export async function draftStatusFromEmails(dealId: string): Promise<DraftFromEmailsResult> {
-  const [dealRes, linksRes] = await Promise.all([
-    supabase.from('deals').select('company, contact_info, company_url').eq('id', dealId).maybeSingle(),
-    supabase.from('contact_deals').select('contact_id').eq('deal_id', dealId),
-  ]);
-  const deal: any = dealRes.data || {};
+  const { data: dealRow } = await supabase.from('deals').select('company, contact_info, company_url').eq('id', dealId).maybeSingle();
+  const deal: any = dealRow || {};
+  // Include duplicate deals for the same company (contacts are often linked to only one copy).
+  const companyName = String(deal.company || '').trim();
+  let dealIds = [dealId];
+  if (companyName) {
+    const { data: sibs } = await supabase.from('deals').select('id, contact_info, company_url').ilike('company', companyName).limit(10);
+    (sibs || []).forEach((d: any) => {
+      if (!dealIds.includes(d.id)) dealIds.push(d.id);
+      if (!deal.contact_info && d.contact_info) deal.contact_info = d.contact_info;
+      if (!deal.company_url && d.company_url) deal.company_url = d.company_url;
+    });
+  }
+  const linksRes = await supabase.from('contact_deals').select('contact_id').in('deal_id', dealIds);
 
   const emails = new Set<string>();
   const ci = String(deal.contact_info || '');
@@ -57,6 +66,15 @@ export async function draftStatusFromEmails(dealId: string): Promise<DraftFromEm
     const d = deal.company_url.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split(/[/?#]/)[0].trim();
     if (d && /\./.test(d) && !FREEMAIL.has(d)) domains.add(d);
   }
+  // Company record domain (Companies database) matched by name.
+  if (companyName) {
+    const { data: cos } = await supabase.from('crm_companies').select('domain, website_url').ilike('name', companyName).limit(5);
+    (cos || []).forEach((c: any) => {
+      const raw = String(c.domain || c.website_url || '').toLowerCase();
+      const d = raw.replace(/^https?:\/\//, '').replace(/^www\./, '').split(/[/?#]/)[0].trim();
+      if (d && /\./.test(d) && !FREEMAIL.has(d)) domains.add(d);
+    });
+  }
   if (!domains.size && !emails.size) return { ok: false, text: '', emailCount: 0, reason: 'no_domains' };
 
   const matches = (addrs: (string | null | undefined)[]) =>
@@ -73,14 +91,20 @@ export async function draftStatusFromEmails(dealId: string): Promise<DraftFromEm
     ...Array.from(domains).map((d) => `from_email.ilike.*@${d.replace(/[,()*%]/g, '')}`),
     ...Array.from(emails).map((e) => `from_email.eq.${e.replace(/[,()]/g, '')}`),
   ].join(',');
-  const [bySender, recent] = await Promise.all([
-    fromOr
-      ? supabase.from('gmail_messages').select(cols).or(fromOr).gte('received_at', since).order('received_at', { ascending: false }).limit(30)
-      : Promise.resolve({ data: [] as any[] }),
-    supabase.from('gmail_messages').select(cols).gte('received_at', since).order('received_at', { ascending: false }).limit(1000),
+  const q = (table: 'gmail_messages' | 'email_cache', withOr: boolean) => {
+    let b: any = (supabase.from(table as any) as any).select(cols);
+    if (withOr) b = b.or(fromOr);
+    return b.gte('received_at', since).order('received_at', { ascending: false }).limit(withOr ? 30 : 1000)
+      .then((r: any) => (r.data || []).map((m: any) => ({ ...m, _src: table })));
+  };
+  const lists = await Promise.all([
+    fromOr ? q('gmail_messages', true) : Promise.resolve([]),
+    q('gmail_messages', false),
+    fromOr ? q('email_cache', true) : Promise.resolve([]),
+    q('email_cache', false),
   ]);
   const seen = new Map<string, any>();
-  for (const m of [...(bySender.data || []), ...(recent.data || [])] as any[]) {
+  for (const m of lists.flat() as any[]) {
     if (seen.has(m.gmail_message_id)) continue;
     if (matches([m.from_email, ...(m.to_emails || []), ...(m.cc_emails || [])])) seen.set(m.gmail_message_id, m);
   }
@@ -89,11 +113,16 @@ export async function draftStatusFromEmails(dealId: string): Promise<DraftFromEm
     .slice(0, 8);
   if (!top.length) return { ok: false, text: '', emailCount: 0, reason: 'no_emails' };
 
-  const { data: bodies } = await supabase
-    .from('gmail_messages')
-    .select('gmail_message_id, body_text, body_html, snippet')
-    .in('gmail_message_id', top.map((m) => m.gmail_message_id));
-  const bodyMap = new Map((bodies || []).map((b: any) => [b.gmail_message_id, b]));
+  const ids = top.map((m) => m.gmail_message_id);
+  const [b1, b2] = await Promise.all([
+    supabase.from('gmail_messages').select('gmail_message_id, body_text, body_html, snippet').in('gmail_message_id', ids),
+    supabase.from('email_cache').select('gmail_message_id, body_text, body_html, snippet').in('gmail_message_id', ids),
+  ]);
+  const bodyMap = new Map<string, any>();
+  for (const b of [...(b1.data || []), ...(b2.data || [])] as any[]) {
+    const prev = bodyMap.get(b.gmail_message_id);
+    if (!prev || (!prev.body_text && !prev.body_html)) bodyMap.set(b.gmail_message_id, b);
+  }
 
   const blocks = top.map((m) => {
     const b: any = bodyMap.get(m.gmail_message_id) || {};
