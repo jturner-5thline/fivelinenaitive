@@ -40,6 +40,7 @@ import { DealMilestones } from '@/components/deals/DealMilestones';
 import { DealContextRail } from '@/components/deal/DealContextRail';
 import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
 import { StatusHistoryPopover } from '@/components/deal/StatusHistoryPopover';
+import { DraftAiStatusButton } from '@/components/deal/DraftAiStatusButton';
 import { EditableDealStageTag } from '@/components/deal/EditableDealStageTag';
 import { DealAskAiQuickBar } from '@/components/deal/DealAskAiQuickBar';
 import { NaitiveStageMilestonesSection } from '@/components/naitive-pipeline/NaitiveStageMilestonesSection';
@@ -3267,6 +3268,15 @@ export default function DealDetail() {
                     <div className="shrink-0 flex flex-col justify-between items-start gap-1">
                       <div className="flex items-center gap-1">
                         {dealMemoButton}
+                        <DraftAiStatusButton
+                          dealId={deal.id}
+                          onApply={(text) => {
+                            const oldNotes = deal.notes || '';
+                            const safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                            updateDeal('notes', `<p>${safe}</p>`);
+                            if (oldNotes && oldNotes.trim() && oldNotes !== '<p></p>') addStatusNote(oldNotes.trim());
+                          }}
+                        />
                         <StatusHistoryPopover statusNotes={statusNotes} onDeleteNote={deleteStatusNote} />
                       </div>
                       {deal.notesUpdatedAt && (
