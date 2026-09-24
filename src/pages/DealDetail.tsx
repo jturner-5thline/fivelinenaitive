@@ -1345,7 +1345,7 @@ export default function DealDetail() {
     if (!urlTab) return;
     if (urlTab === dealInfoTab) return;
     if (urlTab === 'deal-space') return;
-    const allowed = [...DEAL_TABS];
+    const allowed: string[] = [...DEAL_TABS];
     if (urlTab === 'communications' || urlTab === 'activity-log') {
       // Activity tab is hidden — open the Activity pop-up instead.
       setActivityView(urlTab === 'communications' ? 'communications' : 'activity');
