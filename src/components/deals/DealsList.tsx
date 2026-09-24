@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useDeferredValue } from 'react';
+import { useProgressiveCount } from '@/hooks/useProgressiveCount';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
 import { DealCard } from './DealCard';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
@@ -315,18 +316,31 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
   const mentionUsers = useTeamMembers();
 
   // Apply FLEx engagement sorting if selected (done here since we have access to engagement scores)
+  // Deferred so typing in search / clicking sort stays responsive while the
+  // (potentially 1,600+ card) list re-renders in the background.
+  const deferredDeals = useDeferredValue(deals);
   const sortedDeals = useMemo(() => {
     if (sortField !== 'flexEngagement' || !flexEngagementScores) {
-      return deals;
+      return deferredDeals;
     }
     
-    return [...deals].sort((a, b) => {
+    return [...deferredDeals].sort((a, b) => {
       const scoreA = flexEngagementScores.get(a.id)?.score ?? 0;
       const scoreB = flexEngagementScores.get(b.id)?.score ?? 0;
       const comparison = scoreA - scoreB;
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [deals, sortField, sortDirection, flexEngagementScores]);
+  }, [deferredDeals, sortField, sortDirection, flexEngagementScores]);
+
+  // Progressive rendering: mount cards in batches as the user scrolls
+  // instead of all at once.
+  const { count: renderCount, hasMore, sentinelRef } = useProgressiveCount(
+    sortedDeals.length,
+    sortedDeals,
+    60,
+  );
+  const visibleDeals = useMemo(() => sortedDeals.slice(0, renderCount), [sortedDeals, renderCount]);
+  const sentinel = hasMore ? <div ref={sentinelRef} className="h-8 w-full" aria-hidden /> : null;
 
   const toggleSelectDeal = useCallback((dealId: string) => {
     setSelectedDealIds(prev => {
@@ -467,7 +481,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
               </div>
             </div>
             <div className="flex flex-col gap-1.5 p-1.5">
-            {sortedDeals.map((deal) => (
+            {visibleDeals.map((deal) => (
               <DealListCardRow
                 key={deal.id}
                 deal={deal}
@@ -483,6 +497,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                 compact={detailPanelOpen}
               />
             ))}
+            {sentinel}
             </div>
           </div>
         </div>
@@ -498,8 +513,9 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
   // If not grouping, show flat grid
   if (!groupBy) {
     return (
+      <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 pt-3 pb-2 px-2 overflow-visible">
-        {sortedDeals.map((deal, index) => (
+        {visibleDeals.map((deal, index) => (
           index === 0 ? (
             <HintTooltip
               key={deal.id}
@@ -538,6 +554,8 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
           )
         ))}
       </div>
+      {sentinel}
+      </>
     );
   }
 
@@ -584,12 +602,19 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
       })()
     : groupOrder;
 
+  // Shared render budget across expanded groups (progressive rendering).
+  let budget = renderCount;
   return (
     <div className="space-y-6">
       {orderedKeys.map((groupValue, groupIdx) => {
         const groupDeals = groupMap.get(groupValue) || [];
         const isCollapsed = collapsedGroups.has(groupValue) || collapsedGroups.has('__ALL__');
         const dotColor = groupBy === 'status' ? STATUS_CONFIG[groupValue as DealStatus]?.dotColor : undefined;
+        let renderGroupDeals: Deal[] = [];
+        if (!isCollapsed) {
+          renderGroupDeals = groupDeals.slice(0, Math.max(0, budget));
+          budget -= renderGroupDeals.length;
+        }
         
         return (
           <Collapsible
@@ -647,7 +672,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-4">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 pt-3 pb-2 px-2 overflow-visible">
-                {groupDeals.map((deal, index) => {
+                {renderGroupDeals.map((deal, index) => {
                   const isFirstDealOverall = groupIdx === 0 && index === 0;
                   
                   if (isFirstDealOverall) {
@@ -696,6 +721,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
           </Collapsible>
         );
       })}
+      {budget <= 0 && sentinel}
     </div>
   );
 }
