@@ -156,7 +156,6 @@ import { DealDetailSideNavigation } from '@/components/deal/DealDetailSideNaviga
 const SaaSModelTab = lazy(lazyRetry(() => import('@/components/deal/saas-model/SaaSModelTab').then(m => ({ default: m.SaaSModelTab }))));
 const DealPanelReorderDialog = lazy(lazyRetry(() => import('@/components/deal/DealPanelReorderDialog').then(m => ({ default: m.DealPanelReorderDialog }))));
 const DealMemoDialog = lazy(lazyRetry(() => import('@/components/deal/DealMemoDialog').then(m => ({ default: m.DealMemoDialog }))));
-const AgreementDrafterDialog = lazy(lazyRetry(() => import('@/components/agreement/AgreementDrafterDialog').then(m => ({ default: m.AgreementDrafterDialog }))));
 import { EmailPromptCenterButton } from '@/components/deal/EmailPromptCenter';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
@@ -3305,11 +3304,6 @@ export default function DealDetail() {
     <div className="flex flex-wrap items-center gap-2">
       <CreateTaskButton dealId={id!} dealName={deal?.company} />
       {hasNaitivePipelineAccess && <EmailPromptCenterButton dealId={id!} dealName={deal?.company} contactEmail={(deal as any)?.contactEmail ?? null} />}
-      {!isSimplifiedDeal && companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
-        <Suspense fallback={null}>
-          <AgreementDrafterDialog dealId={deal.id} companyName={deal.company} companyShort={deal.company?.split(' ')[0]} />
-        </Suspense>
-      )}
       <Tooltip>
         <TooltipTrigger asChild>
           <Button

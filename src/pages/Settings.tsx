@@ -46,7 +46,6 @@ import { DealInfoFieldsSettings } from '@/components/settings/DealInfoFieldsSett
 import { WriteUpFieldsSettings } from '@/components/settings/WriteUpFieldsSettings';
 import { GammaTemplatesSettings } from '@/components/settings/GammaTemplatesSettings';
 import { DisclaimerSettings } from '@/components/settings/DisclaimerSettings';
-import { AgreementTemplatesSettings } from '@/components/agreement/AgreementTemplatesSettings';
 import { KPICardSettings } from '@/components/settings/KPICardSettings';
 import { AIConfigurationSettings } from '@/components/settings/AIConfigurationSettings';
 import { AICopilotSettings } from '@/components/settings/AICopilotSettings';
@@ -90,8 +89,6 @@ type GroupDef = {
 type GateCtx = {
   isAdmin: boolean;
   workflowsEnabled: boolean;
-  agreementVisible: boolean;
-  agreementAccess: boolean;
   canEditPartnerRules: boolean;
   gammaEnabled: boolean;
 };
@@ -190,14 +187,6 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
         keywords: ['gamma', 'templates', 'presentation', 'pitch'],
         visible: () => false,
         render: ({ isAdmin }) => <GammaTemplatesSettings isAdmin={isAdmin} />,
-      },
-      {
-        id: 'agreement-templates',
-        label: 'Agreements',
-        description: 'Legal templates for advisory and engagement agreements.',
-        keywords: ['agreement', 'templates', 'legal', 'advisory', 'contract'],
-        visible: (g) => g.agreementVisible && g.agreementAccess,
-        render: ({ isAdmin }) => <AgreementTemplatesSettings isAdmin={isAdmin} />,
       },
     ],
   },
@@ -320,8 +309,6 @@ export default function Settings() {
   const gateCtx: GateCtx = {
     isAdmin,
     workflowsEnabled: !!companyFeatures.workflows_enabled,
-    agreementVisible: !!companyFeatures.agreement_icon_visible,
-    agreementAccess: hasPageAccess('agreement_drafter'),
     canEditPartnerRules: !!canEditPartnerRules,
     gammaEnabled: !!companyFeatures.gamma_enabled,
   };
@@ -337,7 +324,7 @@ export default function Settings() {
         }))
         .filter((g) => g.sections.length > 0),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allGroups, gateCtx.workflowsEnabled, gateCtx.agreementVisible, gateCtx.agreementAccess, gateCtx.isAdmin, gateCtx.canEditPartnerRules, gateCtx.gammaEnabled],
+    [allGroups, gateCtx.workflowsEnabled, gateCtx.isAdmin, gateCtx.canEditPartnerRules, gateCtx.gammaEnabled],
   );
 
   // Legacy ?tab= URL → group redirect (maintain backwards-compatibility with old links)
