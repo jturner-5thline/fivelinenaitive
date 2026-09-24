@@ -141,6 +141,13 @@
       "when": 1790192825223,
       "tag": "0019_restrict_avatars_to_company",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790215061418,
+      "tag": "0020_calibrations_allow_global_read",
+      "breakpoints": true
     }
   ]
 }
