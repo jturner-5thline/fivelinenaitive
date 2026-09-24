@@ -573,8 +573,20 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         if (hardError) {
-          return new Response(JSON.stringify({ error: hardError.message }), {
-            status: hardError.status,
+          const he = hardError as { status: number; message: string };
+          // Expired/revoked calendar grant: degrade to an empty calendar with a
+          // reconnect hint instead of a hard 401 that blanks the UI.
+          if (he.status === 401 || he.status === 403 || he.status === 404) {
+            return new Response(JSON.stringify({
+              events: [],
+              next_page_token: null,
+              needs_reconnect: true,
+              error_code: "calendar_reauth_required",
+              warning: "Calendar connection expired. Reconnect in Integrations.",
+            }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+          return new Response(JSON.stringify({ error: he.message }), {
+            status: he.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
