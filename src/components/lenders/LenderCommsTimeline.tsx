@@ -141,7 +141,7 @@ export function LenderCommsTimeline({ dealId, lenderName, masterLenderId, fallba
         for (let i = 0; i < ids.length; i += 300) {
           const ch = ids.slice(i, i + 300);
           queries.push(
-            (supabase.from("gmail_messages") as any).select(cols).in("gmail_message_id", ch)
+            (supabase.from("gmail_messages") as any).select(cols).in("id", ch)
               .then((r: any) => { if (r.data) fetched.push(...r.data.map((m: any) => ({ ...m, _linked: true }))); })
           );
         }
