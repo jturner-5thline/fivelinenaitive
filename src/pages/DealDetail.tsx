@@ -3267,7 +3267,6 @@ export default function DealDetail() {
                     </div>
                     <div className="shrink-0 flex flex-col justify-between items-start gap-1">
                       <div className="flex items-center gap-1">
-                        {dealMemoButton}
                         <DraftAiStatusButton
                           dealId={deal.id}
                           onApply={(text) => {
@@ -3302,6 +3301,7 @@ export default function DealDetail() {
 
   const dealActionCluster = (
     <div className="flex flex-wrap items-center gap-2">
+      {dealMemoButton}
       <CreateTaskButton dealId={id!} dealName={deal?.company} />
       {hasNaitivePipelineAccess && <EmailPromptCenterButton dealId={id!} dealName={deal?.company} contactEmail={(deal as any)?.contactEmail ?? null} />}
       <Tooltip>
