@@ -16,16 +16,16 @@ export function DraftAiLenderStatusButton({ lenderId, onApply }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState('');
-  const [meta, setMeta] = useState({ count: 0, lender: '', deal: '' });
+  const [meta, setMeta] = useState({ count: 0, calls: 0, lender: '', deal: '' });
 
   const run = async () => {
     setLoading(true);
     setText('');
     try {
       const r = await draftLenderStatusFromEmails(lenderId);
-      setMeta({ count: r.emailCount, lender: r.lenderName, deal: r.dealName });
+      setMeta({ count: r.emailCount, calls: r.callCount || 0, lender: r.lenderName, deal: r.dealName });
       if (r.reason === 'no_contacts') { toast.error('No contact emails on this funding source to search by.'); setOpen(false); return; }
-      if (r.reason === 'no_emails') { toast.info(`No recent emails with ${r.lenderName} mentioning ${r.dealName || 'this deal'}.`); setOpen(false); return; }
+      if (r.reason === 'no_emails') { toast.info(`No recent emails or calls with ${r.lenderName} mentioning ${r.dealName || 'this deal'}.`); setOpen(false); return; }
       if (!r.text) { toast.error('Could not draft an update. Try again.'); return; }
       setText(r.text);
     } catch (e: any) {
@@ -46,14 +46,14 @@ export function DraftAiLenderStatusButton({ lenderId, onApply }: Props) {
         <div className="text-xs font-medium">Draft AI update</div>
         {loading ? (
           <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Scanning emails with this funding source…
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Scanning emails and calls with this funding source…
           </div>
         ) : (
           <>
             <Textarea value={text} onChange={(e) => setText(e.target.value)} className="min-h-[70px] text-sm" />
-            {meta.count > 0 && (
+            {(meta.count > 0 || meta.calls > 0) && (
               <p className="text-[11px] text-muted-foreground">
-                Based on {meta.count} email{meta.count === 1 ? '' : 's'} with {meta.lender}{meta.deal ? ` referencing ${meta.deal}` : ''}.
+                Based on {[meta.count > 0 && `${meta.count} email${meta.count === 1 ? '' : 's'}`, meta.calls > 0 && `${meta.calls} recorded call${meta.calls === 1 ? '' : 's'}`].filter(Boolean).join(' and ')} with {meta.lender}{meta.deal ? ` referencing ${meta.deal}` : ''}.
               </p>
             )}
             <div className="flex justify-end gap-2">
