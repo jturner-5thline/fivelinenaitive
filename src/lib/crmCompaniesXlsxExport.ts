@@ -2,12 +2,15 @@ import ExcelJS from 'exceljs';
 import { supabase } from '@/integrations/supabase/client';
 import { applyFiltersToQuery } from '@/lib/filterUtils';
 import type { FilterRule, MatchMode } from '@/lib/filterTypes';
+import { COMPANY_CSV, selectColumns } from '@/utils/csvSchemas';
+import { exportToCsv, downloadCsv } from '@/utils/entityCsv';
 
 interface ExportParams {
   orgCompanyId: string;
   quickFilter?: string;
   advancedFilters?: FilterRule[];
   matchMode?: MatchMode;
+  format?: 'xlsx' | 'csv';
 }
 
 const EXPORT_COLUMNS =
@@ -21,7 +24,7 @@ function fmtDate(v: any): string {
 }
 
 export async function exportCrmCompaniesToXlsx(params: ExportParams): Promise<number> {
-  const { orgCompanyId, quickFilter, advancedFilters = [], matchMode = 'all' } = params;
+  const { orgCompanyId, quickFilter, advancedFilters = [], matchMode = 'all', format = 'xlsx' } = params;
 
   const PAGE = 1000;
   let from = 0;
@@ -30,7 +33,7 @@ export async function exportCrmCompaniesToXlsx(params: ExportParams): Promise<nu
   while (true) {
     let query = supabase
       .from('crm_companies')
-      .select(EXPORT_COLUMNS)
+      .select(format === 'csv' ? selectColumns(COMPANY_CSV) : EXPORT_COLUMNS)
       .eq('org_company_id', orgCompanyId);
 
     if (quickFilter && quickFilter !== 'all') {
@@ -69,6 +72,11 @@ export async function exportCrmCompaniesToXlsx(params: ExportParams): Promise<nu
     rows.push(...batch);
     if (batch.length < PAGE) break;
     from += PAGE;
+  }
+
+  if (format === 'csv') {
+    downloadCsv(exportToCsv(COMPANY_CSV, rows), `companies-${new Date().toISOString().slice(0, 10)}.csv`);
+    return rows.length;
   }
 
   const wb = new ExcelJS.Workbook();

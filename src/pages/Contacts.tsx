@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Upload, RefreshCw, Loader2, Link2, Download, Tags, ChevronDown } from 'lucide-react';
+import { Plus, Upload, RefreshCw, Loader2, Link2, Download, Tags, ChevronDown, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import {
@@ -18,7 +18,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useContacts } from '@/hooks/useContacts';
 import { ContactsTable } from '@/components/contacts/ContactsTable';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
-import { ImportContactsModal } from '@/components/contacts/ImportContactsModal';
+import { EntityCsvImportDialog, downloadEntityTemplate } from '@/components/shared/EntityCsvImportDialog';
+import { contactImportConfig } from '@/lib/entityImportConfigs';
+import { useAuth } from '@/contexts/AuthContext';
 import { ContactTaggingRulesDialog } from '@/components/contacts/ContactTaggingRulesDialog';
 import { TablePagination } from '@/components/shared/TablePagination';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -60,6 +62,11 @@ export default function Contacts() {
   const debouncedFilters = useDebouncedValue(advancedFilters, 500);
   const queryClient = useQueryClient();
   const { company } = useCompany();
+  const { user } = useAuth();
+  const importConfig = useMemo(
+    () => contactImportConfig({ userId: user?.id, orgCompanyId: company?.id ?? null }),
+    [user?.id, company?.id],
+  );
 
   const handleSyncContacts = async () => {
     setIsSyncingContacts(true);
@@ -289,6 +296,9 @@ export default function Contacts() {
                   <DropdownMenuItem onSelect={() => setShowImport(true)}>
                     <Upload className="h-4 w-4 mr-2" /> Import
                   </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => downloadEntityTemplate(importConfig)}>
+                    <FileDown className="h-4 w-4 mr-2" /> Download template CSV
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button size="sm" onClick={() => setShowCreate(true)}>
@@ -344,7 +354,12 @@ export default function Contacts() {
           if (contact?.id) navigate(`/contacts/${contact.id}`);
         }}
       />
-      <ImportContactsModal open={showImport} onClose={() => setShowImport(false)} />
+      <EntityCsvImportDialog
+        open={showImport}
+        onOpenChange={setShowImport}
+        config={importConfig}
+        onDone={() => queryClient.invalidateQueries({ queryKey: ['contacts'] })}
+      />
       <ContactTaggingRulesDialog open={showTaggingRules} onOpenChange={setShowTaggingRules} />
 
       <AlertDialog open={!!matchPreview} onOpenChange={(o) => !o && setMatchPreview(null)}>

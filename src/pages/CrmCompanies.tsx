@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Upload, Building2, Loader2, RefreshCw, Download, Search, X, ChevronDown } from 'lucide-react';
+import { Plus, Upload, Building2, Loader2, RefreshCw, Download, Search, X, ChevronDown, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCrmCompaniesInfinite } from '@/hooks/useCrmCompanies';
 import { CrmCompaniesTable } from '@/components/crm-companies/CrmCompaniesTable';
 import { CreateCrmCompanyModal } from '@/components/crm-companies/CreateCrmCompanyModal';
-import { ImportCrmCompaniesModal } from '@/components/crm-companies/ImportCrmCompaniesModal';
+import { EntityCsvImportDialog, downloadEntityTemplate } from '@/components/shared/EntityCsvImportDialog';
+import { companyImportConfig } from '@/lib/entityImportConfigs';
+import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -35,6 +37,11 @@ export default function CrmCompanies() {
   const debouncedSearch = useDebouncedValue(search, 300);
   const queryClient = useQueryClient();
   const { company } = useCompany();
+  const { user } = useAuth();
+  const importConfig = useMemo(
+    () => companyImportConfig({ userId: user?.id, orgCompanyId: company?.id ?? null }),
+    [user?.id, company?.id],
+  );
 
   const {
     data,
@@ -122,7 +129,7 @@ export default function CrmCompanies() {
     }
   };
 
-  const handleExport = async () => {
+  const handleExport = async (format: 'xlsx' | 'csv' = 'csv') => {
     if (!company?.id) return;
     setIsExporting(true);
     try {
@@ -131,6 +138,7 @@ export default function CrmCompanies() {
         quickFilter,
         advancedFilters: debouncedFilters,
         matchMode,
+        format,
       });
       toast.success(`Exported ${count} companies`);
     } catch (e: any) {
@@ -210,12 +218,18 @@ export default function CrmCompanies() {
                             <ChevronDown className="h-4 w-4 ml-1.5" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem onSelect={() => handleExport()} disabled={isExporting}>
-                            <Download className="h-4 w-4 mr-2" /> Export
+                        <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuItem onSelect={() => handleExport('csv')} disabled={isExporting}>
+                            <Download className="h-4 w-4 mr-2" /> Export CSV (all fields)
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleExport('xlsx')} disabled={isExporting}>
+                            <Download className="h-4 w-4 mr-2" /> Export Excel
                           </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => setShowImport(true)}>
                             <Upload className="h-4 w-4 mr-2" /> Import
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => downloadEntityTemplate(importConfig)}>
+                            <FileDown className="h-4 w-4 mr-2" /> Download template CSV
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -276,7 +290,12 @@ export default function CrmCompanies() {
         onClose={() => setShowCreate(false)}
         onCreated={(company) => { if (company?.id) navigate(`/crm-companies/${company.id}`); }}
       />
-      <ImportCrmCompaniesModal open={showImport} onClose={() => setShowImport(false)} />
+      <EntityCsvImportDialog
+        open={showImport}
+        onOpenChange={setShowImport}
+        config={importConfig}
+        onDone={() => queryClient.invalidateQueries({ queryKey: ['crm-companies'] })}
+      />
     </>
   );
 }

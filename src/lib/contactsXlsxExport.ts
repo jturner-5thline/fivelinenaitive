@@ -2,6 +2,8 @@ import ExcelJS from 'exceljs';
 import { supabase } from '@/integrations/supabase/client';
 import { applyFiltersToQuery } from '@/lib/filterUtils';
 import type { FilterRule, MatchMode } from '@/lib/filterTypes';
+import { CONTACT_CSV, CONTACT_COMPANY_NAME, selectColumns } from '@/utils/csvSchemas';
+import { exportToCsv } from '@/utils/entityCsv';
 
 interface ExportParams {
   orgCompanyId: string;
@@ -54,7 +56,7 @@ export async function exportContactsToXlsx(params: ExportParams): Promise<number
   while (true) {
     let query = supabase
       .from('contacts')
-      .select(EXPORT_COLUMNS)
+      .select(format === 'csv' ? `${selectColumns(CONTACT_CSV)}, hs_company_name, crm_company:crm_companies!crm_company_id(name)` : EXPORT_COLUMNS)
       .eq('org_company_id', orgCompanyId);
 
     const s = search?.trim();
@@ -118,23 +120,9 @@ export async function exportContactsToXlsx(params: ExportParams): Promise<number
   const stamp = new Date().toISOString().slice(0, 10);
 
   if (format === 'csv') {
-    const headers = [
-      'First Name', 'Last Name', 'Email', 'City', 'Lead Status', 'Contact Type', 'Create Date',
-      'Last Contacted', 'Industry', 'Job Title', 'Opted out of email: One to One', 'Email Domain',
-      'State/Region', 'Company Name', 'Linkedin Url', 'Phone Number', 'Mobile Phone Number',
-    ];
-    const lines = [headers.join(',')];
-    for (const c of rows as any[]) {
-      lines.push([
-        c.first_name || '', c.last_name || '', c.email || '', c.hs_city || '',
-        c.hs_contact_status || '', c.hs_contact_type || '', fmtDate(c.created_at),
-        fmtDate(c.hs_notes_last_contacted), c.hs_industry || '', c.job_title || '',
-        fmtBool(c.hs_hs_email_optout), c.email_domain_normalized || '', c.hs_state || '',
-        c.crm_company?.name || c.hs_company_name || '', c.linkedin_url || '',
-        c.phone_work || '', c.phone_mobile || '',
-      ].map(csvCell).join(','));
-    }
-    downloadBlob(new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' }), `contacts-${stamp}.csv`);
+    // Full-field export using the canonical import template headers (round-trips with no mapping).
+    const mapped = (rows as any[]).map(c => ({ ...c, [CONTACT_COMPANY_NAME]: c.crm_company?.name || c.hs_company_name || '' }));
+    downloadBlob(new Blob([exportToCsv(CONTACT_CSV, mapped)], { type: 'text/csv;charset=utf-8;' }), `contacts-${stamp}.csv`);
     return rows.length;
   }
 
