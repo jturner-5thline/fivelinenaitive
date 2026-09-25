@@ -324,7 +324,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
     <>
       <div className="space-y-4">
         {/* Compact Header */}
-        <div className="rounded-lg border bg-card px-4 py-3">
+        <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-4 py-3 shadow-none">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">
               {company.logo_url ? (
@@ -497,11 +497,9 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
           </Card>
         )}
 
-        <div className="grid grid-cols-12 gap-4">
-          {/* Main */}
-          <div className="col-span-12 lg:col-span-8 space-y-4 min-w-0">
-            {/* 1. Snapshot */}
-            <Card id="overview" className="border-border/70 scroll-mt-24">
+        <div className="grid gap-5 grid-cols-1 lg:[grid-template-columns:minmax(192px,252px)_minmax(0,1fr)] items-start">
+          <aside className="space-y-4 min-w-0 lg:sticky lg:top-12">
+            <Card id="overview" className="border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-none scroll-mt-24">
               <CardHeader className="pb-2 border-b flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-sm flex items-center gap-1.5">
                   <Building2 className="h-4 w-4 text-muted-foreground" /> Company Snapshot
@@ -528,7 +526,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                   onSave={(v) => handleQuickUpdate('description', v)}
                   hideLabel
                 />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 pt-2 border-t">
+                <div className="grid grid-cols-1 gap-x-6 gap-y-2 pt-2 border-t">
                   {!snapshotFields.isDisabled('industry') && (
                   <div className="flex items-end gap-1 min-w-0">
                     <div className="flex-1 min-w-0">
@@ -629,9 +627,10 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                 </div>
               </CardContent>
             </Card>
-
+          </aside>
+          <div className="space-y-4 min-w-0">
             {/* Recent Notes */}
-            <Card id="notes" className="border-border/70 scroll-mt-24">
+            <Card id="notes" className="border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-none scroll-mt-24">
               <CardHeader className="pb-2 border-b flex flex-row items-center justify-between">
                 <CardTitle className="text-sm flex items-center gap-1.5">
                   <MessageSquare className="h-4 w-4 text-muted-foreground" /> Recent Notes
@@ -791,11 +790,6 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
               entityDomain={(company as any)?.domain}
               contactIds={contacts.map((c: any) => c.id)}
             />
-          </div>
-
-          {/* Right sticky sidebar */}
-          <aside className="col-span-12 lg:col-span-4 space-y-4">
-            <div className="lg:sticky lg:top-12 space-y-4">
               {/* Tasks */}
               <CrmCompanyTasksCard
                 companyId={company.id}
@@ -911,8 +905,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                 </CardContent>
               </Card>
 
-            </div>
-          </aside>
+          </div>
         </div>
       </div>
 
@@ -1201,7 +1194,7 @@ function Kpi({
   label, value, hint, valueClassName,
 }: { label: string; value: string; hint?: string; valueClassName?: string }) {
   return (
-    <div className="rounded-lg border bg-card px-3 py-2.5">
+    <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2.5">
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className={cn('text-base font-semibold mt-0.5 truncate', valueClassName)}>{value}</p>
       {hint && <p className="text-[10px] text-muted-foreground mt-0.5">{hint}</p>}
