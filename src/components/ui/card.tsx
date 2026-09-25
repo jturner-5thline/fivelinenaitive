@@ -10,8 +10,8 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
       "rounded-md border text-card-foreground transition-colors duration-150 ease-out",
       /* Flat + hairlined on both themes */
       "bg-card border-border/70",
-      "dark:bg-[rgba(255,255,255,0.03)] dark:border-[var(--hairline)]",
-      "dark:hover:border-[var(--hairline-strong)]",
+      "dark:bg-[var(--bg-card)] dark:border-[var(--border-subtle)]",
+      "dark:hover:border-[var(--border-control)]",
       className
     )} 
     {...props} 

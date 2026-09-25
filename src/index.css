@@ -2693,14 +2693,29 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .settings-surface [data-slot="card"],
 .settings-surface .glass-card,
 .settings-surface .glass-module,
-.settings-surface .glass-border-soft,
 .settings-surface .insights-widget-surface,
-.settings-surface [data-settings-panel],
-.settings-surface [role="tabpanel"],
+.settings-surface [data-settings-panel] {
+  background: var(--bg-card) !important;
+  background-image: none !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-card, 8px) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+/* Nested cards inside a card stay chromeless */
+.settings-surface [data-slot="card"] [data-slot="card"] {
+  background: transparent !important;
+}
+/* Inner rows/options (stage rows, type rows, field items, save bars) */
+.settings-surface .glass-border-soft,
+.settings-surface [role="tabpanel"] .bg-card,
 .settings-surface .bg-card,
 .settings-surface .bg-muted,
 .settings-surface .bg-muted\/30,
+.settings-surface .bg-muted\/40,
 .settings-surface .bg-muted\/50,
+.settings-surface .bg-muted\/20,
 .settings-surface .bg-background,
 .settings-surface .bg-background\/50,
 .settings-surface .bg-background\/60,
@@ -2710,11 +2725,26 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .settings-surface .bg-white\/\[0\.04\],
 .settings-surface .bg-white\/\[0\.05\],
 .settings-surface .bg-white\/\[0\.06\] {
-  background: linear-gradient(180deg, #0f1f3d 0%, #0b1830 100%) !important;
-  background-color: transparent;
-  border-color: rgba(190, 220, 255, 0.34) !important;
+  background: var(--bg-card) !important;
+  background-image: none !important;
+  border-color: var(--border-subtle) !important;
+  box-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+.settings-surface [data-slot="card"] .bg-muted\/50,
+.settings-surface [data-slot="card"] .bg-muted\/30,
+.settings-surface [data-slot="card"] .bg-muted\/40,
+.settings-surface [data-slot="card"] .bg-muted\/20,
+.settings-surface [data-slot="card"] .bg-muted,
+.settings-surface [data-slot="card"] .bg-background,
+.settings-surface [data-slot="card"] .bg-card {
+  background: rgba(255, 255, 255, 0.025) !important;
+  border: 1px solid var(--border-subtle) !important;
+}
+.settings-surface [data-slot="card"] .bg-muted\/50:hover,
+.settings-surface [data-slot="card"] .bg-muted\/30:hover {
+  background: var(--bg-card-hover) !important;
 }
 /* Preserve interactive form controls — their outlined treatment must not
    inherit the panel fill. */
