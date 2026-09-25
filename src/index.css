@@ -2134,7 +2134,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    they remain lightweight. This guarantees no overlay renders with a
    lighter "glass/lens" fill anywhere in the app.
    ───────────────────────────────────────────────────────────────────────── */
-[data-radix-popper-content-wrapper] > *:not([role="tooltip"]):not([data-tooltip]),
+[data-radix-popper-content-wrapper] > *:not([role="tooltip"]):not([data-tooltip]):not(.sidebar-flyout),
 [role="dialog"][data-state],
 [role="alertdialog"][data-state],
 [data-radix-select-content],
@@ -4579,4 +4579,14 @@ main:has(.deals-surface) .deal-milestones-card {
 .flat-tile-skin .crm-companies-table tbody tr:hover,
 .flat-tile-skin .crm-companies-table tbody tr:hover td {
   background-color: var(--bg-card-hover) !important;
+}
+
+/* Sidebar flyouts: flat deal-tile surface (beats global overlay rule) */
+[data-radix-popper-content-wrapper] > .sidebar-flyout,
+[data-radix-popper-content-wrapper] .sidebar-flyout[data-state] {
+  background: var(--bg-card) !important;
+  background-image: none !important;
+  border: 1px solid var(--border-subtle) !important;
+  box-shadow: 0 12px 28px -14px rgba(0, 0, 0, 0.55) !important;
+  backdrop-filter: none !important;
 }
