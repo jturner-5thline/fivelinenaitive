@@ -2755,7 +2755,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .settings-surface [data-slot="select-trigger"],
 .settings-surface [data-slot="input"],
 .settings-surface [data-slot="textarea"],
-.settings-surface button:not([role="switch"]) {
+.settings-surface button:not([role="switch"]):not([class*="bg-[linear-gradient"]):not([class*="bg-[hsl(var(--ds-sky))]"]) {
   background: transparent !important;
   background-color: transparent !important;
 }
