@@ -2785,7 +2785,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .settings-surface [data-slot="card"]:hover,
 .settings-surface .glass-card:hover,
 .settings-surface .glass-module:hover {
-  background: linear-gradient(180deg, #142547 0%, #0f1d38 100%) !important;
+  background: var(--bg-card-hover) !important;
 }
 
 /* Funding source edit controls are portalled into the detail dialog. Keep the
