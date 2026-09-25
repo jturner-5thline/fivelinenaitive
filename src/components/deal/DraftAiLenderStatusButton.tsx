@@ -39,7 +39,7 @@ export function DraftAiLenderStatusButton({ lenderId, onApply }: Props) {
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (o && !text && !loading) run(); }}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="h-5 w-5" title="Draft AI update from funding source emails" aria-label="Draft AI funding source update">
-          <Sparkles className="h-3 w-3" />
+          <Sparkles className="h-3 w-3 text-primary" />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={6} collisionPadding={12} className="w-80 p-3 z-[1300] bg-popover space-y-2">
