@@ -4600,3 +4600,28 @@ html body [data-radix-popper-content-wrapper] .sidebar-flyout > div:not(.sidebar
   box-shadow: none !important;
   backdrop-filter: none !important;
 }
+
+/* Funding source pop-up: flat deal-tile skin (beats global dialog overlay rule) */
+html body [role="dialog"][data-state].flat-tile-dialog {
+  background: var(--bg-app) !important;
+  background-image: none !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-card, 8px) !important;
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html body .flat-tile-dialog .fs-panel,
+html body .flat-tile-dialog .fs-field,
+html body .flat-tile-dialog .fs-pillbar {
+  background-color: var(--bg-card) !important;
+  background-image: none !important;
+  border: 1px solid var(--border-subtle) !important;
+  box-shadow: none !important;
+}
+html body .flat-tile-dialog .fs-tab[data-state="active"],
+html body .flat-tile-dialog .fs-tab[data-state="on"] {
+  background-color: var(--bg-card-hover) !important;
+  box-shadow: inset 0 0 0 1px var(--border-subtle) !important;
+}
+html body .flat-tile-dialog .fs-tab:hover { background-color: var(--bg-card-hover) !important; }

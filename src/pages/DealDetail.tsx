@@ -6503,8 +6503,8 @@ export default function DealDetail() {
       </Dialog>
 
       <Dialog open={!!selectedLenderName} onOpenChange={(open) => !open && setSelectedLenderName(null)}>
-        <DialogContent className="max-w-6xl w-[95vw] h-[88vh] flex flex-col p-0 gap-0 overflow-hidden">
-          <DialogHeader className="shrink-0 px-7 pt-5 pb-4 border-b border-border/60 bg-muted/10 relative">
+        <DialogContent className="flat-tile-dialog max-w-6xl w-[95vw] h-[88vh] flex flex-col p-0 gap-0 overflow-hidden">
+          <DialogHeader className="shrink-0 px-7 pt-5 pb-4 border-b border-[var(--border-subtle)] relative">
             <DialogTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight pr-40">
               {(() => {
                 const ml = masterLenders.find(
@@ -6612,10 +6612,10 @@ export default function DealDetail() {
               >
                 <div className="shrink-0 border-b border-border/60 px-7 pt-2">
                   <TabsList className="h-9 bg-transparent p-0 gap-1">
-                    <TabsTrigger value="workflow" className="text-xs h-8 px-3 gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <TabsTrigger value="workflow" className="text-xs h-8 px-3 gap-1.5 fs-tab">
                       Deal Activity
                     </TabsTrigger>
-                    <TabsTrigger value="funding-source" className="text-xs h-8 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <TabsTrigger value="funding-source" className="text-xs h-8 px-3 fs-tab">
                       Funding Source Profile
                     </TabsTrigger>
                   </TabsList>
@@ -6632,15 +6632,15 @@ export default function DealDetail() {
                       type="single"
                       value={lenderWorkflowFilter}
                       onValueChange={(v) => v && setLenderWorkflowFilter(v as any)}
-                      className="bg-muted/40 rounded-md p-0.5"
+                      className="fs-pillbar rounded-md p-0.5"
                     >
-                      <ToggleGroupItem value="all" className="h-7 px-3 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                      <ToggleGroupItem value="all" className="h-7 px-3 text-xs fs-tab">
                         All Activity
                       </ToggleGroupItem>
-                      <ToggleGroupItem value="comms" className="h-7 px-3 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                      <ToggleGroupItem value="comms" className="h-7 px-3 text-xs fs-tab">
                         Emails &amp; Meetings
                       </ToggleGroupItem>
-                      <ToggleGroupItem value="requested" className="h-7 px-3 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm gap-1.5">
+                      <ToggleGroupItem value="requested" className="h-7 px-3 text-xs fs-tab gap-1.5">
                         Requested Items
                         {lenderOutstandingItems.length > 0 && (
                           <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
@@ -6648,7 +6648,7 @@ export default function DealDetail() {
                           </Badge>
                         )}
                       </ToggleGroupItem>
-                      <ToggleGroupItem value="completed" className="h-7 px-3 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm gap-1.5">
+                      <ToggleGroupItem value="completed" className="h-7 px-3 text-xs fs-tab gap-1.5">
                         Completed
                         {lenderCompletedItems.length > 0 && (
                           <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
@@ -6747,7 +6747,7 @@ export default function DealDetail() {
                   <aside className="lg:col-span-2 min-w-0 space-y-5">
                   {dealLender ? (<>
                         {/* Stage — visually prominent */}
-                        <div className="rounded-lg border border-border/70 bg-muted/20 p-3.5">
+                        <div className="fs-panel rounded-lg border p-3.5">
                           <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                             Stage
                           </Label>
@@ -6770,7 +6770,7 @@ export default function DealDetail() {
                               }
                             }}
                           >
-                            <SelectTrigger className="h-10 mt-2 w-full min-w-0 bg-background text-sm font-medium [&>span]:truncate [&>span]:whitespace-nowrap">
+                            <SelectTrigger className="h-10 mt-2 w-full min-w-0 fs-field text-sm font-medium [&>span]:truncate [&>span]:whitespace-nowrap">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -6803,7 +6803,7 @@ export default function DealDetail() {
                                 });
                               }}
                             >
-                              <SelectTrigger className="h-9 mt-2 w-full min-w-0 bg-background [&>span]:truncate [&>span]:whitespace-nowrap">
+                              <SelectTrigger className="h-9 mt-2 w-full min-w-0 fs-field [&>span]:truncate [&>span]:whitespace-nowrap">
                                 <SelectValue placeholder="No score" />
                               </SelectTrigger>
                               <SelectContent>
@@ -6831,7 +6831,7 @@ export default function DealDetail() {
                           <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                             Notes
                           </Label>
-                          <div className="mt-2 min-h-[140px] rounded-lg border border-border/70 bg-background p-2 text-sm leading-relaxed">
+                          <div className="mt-2 min-h-[140px] fs-field rounded-lg border p-2 text-sm leading-relaxed">
                             <InlineEditField
                               value={dealLender.notes || ''}
                               onSave={(value) => {
@@ -6844,7 +6844,7 @@ export default function DealDetail() {
                             />
                           </div>
                         </div>
-                        <div className="rounded-lg border border-border/60 bg-muted/20 p-4">
+                        <div className="fs-panel rounded-lg border p-4">
                           <div className="flex items-center justify-between mb-3">
                             <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                               Status History
@@ -6890,7 +6890,7 @@ export default function DealDetail() {
                         </div>
 
                         {/* Quick meta */}
-                        <div className="rounded-lg border border-border/60 bg-muted/10 p-4 space-y-2.5 text-xs">
+                        <div className="fs-panel rounded-lg border p-4 space-y-2.5 text-xs">
                           <div className="flex items-center justify-between">
                             <span className="text-muted-foreground">Open requests</span>
                             <span className="font-medium">{lenderOutstandingItems.length}</span>
@@ -6937,7 +6937,7 @@ export default function DealDetail() {
                       Available Contacts
                     </h4>
                     {masterLender?.contact_name ? (
-                      <div className="rounded-lg border border-border/60 bg-muted/10 p-3.5 space-y-1 text-sm">
+                      <div className="fs-panel rounded-lg border p-3.5 space-y-1 text-sm">
                         <p className="font-medium">
                           {masterLender.contact_name}
                           {masterLender.contact_title ? <span className="font-normal text-muted-foreground">, {masterLender.contact_title}</span> : null}
