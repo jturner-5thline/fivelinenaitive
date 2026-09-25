@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Authenticated users can read news cache" ON public.news_feed_cache;
