@@ -3688,7 +3688,9 @@ export default function DealDetail() {
           {useContextRailLayout && (
             <div
               className={cn(
-                "flex flex-row flex-wrap items-baseline gap-x-3 gap-y-1 mt-4 min-w-0",
+                // ml-2 + the field's 4px inner inset puts the title's first
+                // letter on the status note box's left border (ml-3 = 12px).
+                "flex flex-row flex-wrap items-baseline gap-x-3 gap-y-1 mt-4 min-w-0 ml-2",
                 // Reserve the modal header's navigation zone (prev/next + close)
                 // so the deal title never sits underneath it.
                 isEmbedded && "pr-32 md:pr-[22rem]",
