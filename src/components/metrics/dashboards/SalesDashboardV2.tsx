@@ -369,8 +369,6 @@ const glassStyle: React.CSSProperties = {
   border: 'var(--insights-widget-border)',
   borderRadius: 'var(--insights-widget-radius)',
   boxShadow: 'var(--insights-widget-shadow)',
-  backdropFilter: 'blur(10px)',
-  WebkitBackdropFilter: 'blur(10px)',
 };
 
 // ============================================================

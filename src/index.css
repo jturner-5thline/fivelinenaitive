@@ -1462,15 +1462,11 @@ button[role="combobox"] {
      or the Sales V2 inline shells — resolves to the exact same tokens.
      SalesDashboardV2's `glassStyle` consumes these variables directly.
      ──────────────────────────────────────────────────────────────────── */
-  --insights-widget-bg:
-    linear-gradient(180deg, #050d20 0%, #020611 50%, #000208 100%);
-  --insights-widget-border: 1px solid rgba(190, 220, 255, 0.34);
-  --insights-widget-radius: 8px;
-  --insights-widget-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
-    0 0 0 1px rgba(0, 0, 0, 0.55),
-    0 1px 2px rgba(0, 0, 0, 0.5),
-    0 18px 40px -14px rgba(0, 0, 0, 0.8);
+  /* Matches the Deals grid tiles exactly (flat fill, hairline border). */
+  --insights-widget-bg: var(--bg-card);
+  --insights-widget-border: 1px solid var(--border-subtle);
+  --insights-widget-radius: var(--radius-card, 8px);
+  --insights-widget-shadow: var(--elevation-card, none);
 }
 
 /* Every widget container on Insights renders through this fill —
@@ -1485,48 +1481,33 @@ button[role="combobox"] {
   border: var(--insights-widget-border) !important;
   border-radius: var(--insights-widget-radius) !important;
   box-shadow: var(--insights-widget-shadow) !important;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   position: relative;
   overflow: hidden;
 }
 .dark .insights-glass-skin [data-slot="card"]:hover,
 .insights-glass-skin .glass-module-interactive:hover {
-  /* Keep the base fill on hover — the shared surface has no hover variant. */
-  background: var(--insights-widget-bg) !important;
-  border: var(--insights-widget-border) !important;
+  background: var(--bg-card-hover) !important;
+  border-color: var(--border-control) !important;
   box-shadow: var(--insights-widget-shadow) !important;
 }
 /* Scrub any lingering light-gray inner surfaces inside chart containers
-   (muted backgrounds, light card fills) so chart bodies sit flat on the
-   dark Deal Details surface — no nested pale panels. */
+   so chart bodies sit flat on the tile — no nested pale panels. */
 .dark .insights-glass-skin [data-slot="card"] [class*="bg-muted"],
 .dark .insights-glass-skin [data-slot="card"] [class*="bg-card"],
 .dark .insights-glass-skin [data-slot="card"] [class*="bg-white/"] {
   background-color: transparent !important;
 }
-/* Recharts cartesian/area background rects sometimes render with the
-   default `--background` token which can read as a light gray on the dark
-   shell — keep them transparent. */
 .dark .insights-glass-skin .recharts-cartesian-grid-bg,
 .dark .insights-glass-skin .recharts-layer > rect[fill="#fff"],
 .dark .insights-glass-skin .recharts-layer > rect[fill="#FFFFFF"],
 .dark .insights-glass-skin .recharts-layer > rect[fill="white"] {
   fill: transparent !important;
 }
-/* Diagonal sheen highlight matching <GlassCard /> */
-.dark .insights-glass-skin [data-slot="card"]::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.00) 55%);
-  z-index: 0;
-}
-.dark .insights-glass-skin [data-slot="card"] > * {
-  position: relative;
-  z-index: 1;
+/* Nested cards inside a widget stay chromeless (no double tile). */
+.dark .insights-glass-skin [data-slot="card"] [data-slot="card"] {
+  background: transparent !important;
 }
 
 /* Card titles — bring oversized dashboard titles down to GLASS_TOKENS scale */
