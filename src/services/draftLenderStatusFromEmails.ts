@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeStatusSuggestion } from '@/lib/staleNoteSanitize';
+import { fetchClaapCallBlocks } from '@/services/claapCallContext';
 
 const FREEMAIL = new Set([
   'gmail.com','googlemail.com','yahoo.com','yahoo.co.uk','hotmail.com','outlook.com','live.com','msn.com',
@@ -24,16 +25,17 @@ export interface DraftLenderResult {
   ok: boolean;
   text: string;
   emailCount: number;
+  callCount?: number;
   lenderName: string;
   dealName: string;
   reason?: 'no_contacts' | 'no_emails' | 'llm_error';
 }
 
 const SYSTEM_PROMPT =
-  'You write a funding source status update for an M&A / debt advisory team, based on recent emails with a lender/investor about ONE specific deal. ' +
+  'You write a funding source status update for an M&A / debt advisory team, based on recent emails and recorded call summaries with a lender/investor about ONE specific deal. ' +
   'Output exactly ONE concise, natural-language sentence (max ~200 characters) capturing the funding source\'s current stance, feedback, ' +
   'diligence requests, or next steps — e.g. "Reviewing financials; expects to come back with indicative terms by 10/2." or "Passed — too early-stage for their credit box." ' +
-  'Base it on the MOST RECENT meaningful exchange. Ignore content about other deals. No prefix, no bullets, no quotes, no signature. Output only the sentence.';
+  'Base it on the MOST RECENT meaningful exchange (email or call). Ignore content about other deals. No prefix, no bullets, no quotes, no signature. Output only the sentence.';
 
 export async function draftLenderStatusFromEmails(dealLenderId: string): Promise<DraftLenderResult> {
   const { data: dl } = await (supabase.from('deal_lenders') as any).select('*').eq('id', dealLenderId).maybeSingle();
@@ -104,7 +106,10 @@ export async function draftLenderStatusFromEmails(dealLenderId: string): Promise
       .then((r: any) => (r.data || []).map((m: any) => ({ ...m, _body: m.body_text || stripHtml(m.body_html || '') || m.snippet || '' })))
       .catch(() => []);
 
-  const lists = await Promise.all([live, cached('gmail_messages'), cached('email_cache')]);
+  const callsP = lender.deal_id
+    ? fetchClaapCallBlocks({ dealIds: [lender.deal_id], masterLenderId: lender.master_lender_id || null, lenderDomains: domains, lenderEmails: emails, dealRefRe: refRe, days: 180, limit: 3 })
+    : Promise.resolve([]);
+  const [lists, calls] = await Promise.all([Promise.all([live, cached('gmail_messages'), cached('email_cache')]), callsP]);
   const seen = new Map<string, any>();
   for (const m of lists.flat() as any[]) {
     if (!m.gmail_message_id || seen.has(m.gmail_message_id)) continue;
@@ -114,23 +119,26 @@ export async function draftLenderStatusFromEmails(dealLenderId: string): Promise
   }
   const top = Array.from(seen.values())
     .sort((a, b) => String(b.received_at).localeCompare(String(a.received_at)))
-    .slice(0, 8);
-  if (!top.length) return { ...base, reason: 'no_emails' };
+    .slice(0, calls.length ? 5 : 8);
+  if (!top.length && !calls.length) return { ...base, reason: 'no_emails' };
 
-  const blocks = top.map((m) => {
+  const emailBlocks = top.map((m) => {
     const fromLender = matchesLender([m.from_email]);
     const d = m.received_at ? new Date(m.received_at).toLocaleDateString('en-US') : '';
-    return `[${d}] ${fromLender ? 'FROM FUNDING SOURCE' : 'TO FUNDING SOURCE'} — from ${m.from_name || m.from_email}\nSubject: ${m.subject || '(no subject)'}\n${latestPart(m._body || '')}`;
+    return { at: String(m.received_at || ''), block: `[${d}] ${fromLender ? 'FROM FUNDING SOURCE' : 'TO FUNDING SOURCE'} EMAIL — from ${m.from_name || m.from_email}\nSubject: ${m.subject || '(no subject)'}\n${latestPart(m._body || '')}` };
   });
+  const blocks = [...emailBlocks, ...calls.map((c) => ({ at: c.startedAt, block: c.block }))]
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .map((x) => x.block);
   const userPrompt =
     `Deal: ${dealName || 'Unknown'}\nFunding source: ${lenderName}\nToday: ${new Date().toLocaleDateString('en-US')}\n\n` +
-    `Recent emails with this funding source about this deal (newest first):\n\n${blocks.join('\n\n---\n\n')}`;
+    `Recent emails and recorded calls with this funding source about this deal (newest first):\n\n${blocks.join('\n\n---\n\n')}`;
 
   const { data, error } = await supabase.functions.invoke('smart-email-ai', {
     body: { action: 'suggest_status_update', dealId: lender.deal_id, systemPrompt: SYSTEM_PROMPT, userPrompt, fastModel: false },
   });
   const raw: string = data?.result?.text || '';
-  if (error || data?.error_kind || !raw) return { ...base, emailCount: top.length, reason: 'llm_error' };
+  if (error || data?.error_kind || !raw) return { ...base, emailCount: top.length, callCount: calls.length, reason: 'llm_error' };
   const s = sanitizeStatusSuggestion(raw);
-  return { ...base, ok: true, text: s.text || raw.trim(), emailCount: top.length };
+  return { ...base, ok: true, text: s.text || raw.trim(), emailCount: top.length, callCount: calls.length };
 }
