@@ -1841,12 +1841,12 @@ function CumulativePace() {
           <AreaChart data={data} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="actualGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={C.cyan} stopOpacity={0.35} />
-                <stop offset="100%" stopColor={C.cyan} stopOpacity={0} />
+                <stop offset="0%" stopColor={C.cyan} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={C.cyan} stopOpacity={0.2} />
               </linearGradient>
               <linearGradient id="planGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#a855f7" stopOpacity={0.35} />
-                <stop offset="100%" stopColor="#a855f7" stopOpacity={0} />
+                <stop offset="0%" stopColor="#a855f7" stopOpacity={0.2} />
+                <stop offset="100%" stopColor="#a855f7" stopOpacity={0.2} />
               </linearGradient>
             </defs>
             <CartesianGrid stroke={C.hairline} vertical={false} />
