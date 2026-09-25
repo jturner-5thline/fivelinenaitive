@@ -17,6 +17,7 @@ export function DraftAiStatusButton({ dealId, onApply }: Props) {
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState('');
   const [count, setCount] = useState(0);
+  const [calls, setCalls] = useState(0);
 
   const run = async () => {
     setLoading(true);
@@ -24,8 +25,9 @@ export function DraftAiStatusButton({ dealId, onApply }: Props) {
     try {
       const r = await draftStatusFromEmails(dealId);
       setCount(r.emailCount);
+      setCalls(r.callCount || 0);
       if (r.reason === 'no_domains') { toast.error('No client contact emails on this deal to search by.'); setOpen(false); return; }
-      if (r.reason === 'no_emails') { toast.info('No recent emails with this client found in your mailbox.'); setOpen(false); return; }
+      if (r.reason === 'no_emails') { toast.info('No recent emails or recorded calls with this client found.'); setOpen(false); return; }
       if (!r.text) { toast.error('Could not draft an update. Try again.'); return; }
       setText(r.text);
     } catch (e: any) {
@@ -46,12 +48,12 @@ export function DraftAiStatusButton({ dealId, onApply }: Props) {
         <div className="text-xs font-medium">Draft AI update</div>
         {loading ? (
           <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading client emails…
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading client emails and calls…
           </div>
         ) : (
           <>
             <Textarea value={text} onChange={(e) => setText(e.target.value)} className="min-h-[70px] text-sm" />
-            {count > 0 && <p className="text-[11px] text-muted-foreground">Based on {count} recent email{count === 1 ? '' : 's'} with the client.</p>}
+            {(count > 0 || calls > 0) && <p className="text-[11px] text-muted-foreground">Based on {[count > 0 && `${count} email${count === 1 ? '' : 's'}`, calls > 0 && `${calls} recorded call${calls === 1 ? '' : 's'}`].filter(Boolean).join(' and ')} with the client.</p>}
             <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={run}>Regenerate</Button>
               <Button size="sm" disabled={!text.trim()} onClick={() => { onApply(text.trim()); setOpen(false); setText(''); }}>

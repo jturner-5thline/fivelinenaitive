@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeStatusSuggestion } from '@/lib/staleNoteSanitize';
+import { fetchClaapCallBlocks } from '@/services/claapCallContext';
 
 const FREEMAIL = new Set([
   'gmail.com','googlemail.com','yahoo.com','yahoo.co.uk','hotmail.com','outlook.com','live.com','msn.com',
@@ -23,14 +24,15 @@ export interface DraftFromEmailsResult {
   ok: boolean;
   text: string;
   emailCount: number;
+  callCount?: number;
   reason?: 'no_domains' | 'no_emails' | 'llm_error';
 }
 
 const SYSTEM_PROMPT =
-  'You write a deal status update for an M&A / debt advisory team, based on recent emails with the client. ' +
+  'You write a deal status update for an M&A / debt advisory team, based on recent emails and recorded call summaries with the client. ' +
   'Output exactly ONE concise, natural-language sentence (max ~200 characters) capturing where things stand ' +
   'and what happens next — e.g. "Client wants to revisit in October." or "Client will send the financials over next week." ' +
-  'Base it on the MOST RECENT meaningful exchange. Use short dates like 9/22 only when useful. ' +
+  'Base it on the MOST RECENT meaningful exchange (email or call); calls often carry the real decisions. Use short dates like 9/22 only when useful. ' +
   'No prefix, no bullets, no quotes, no signature. Output only the sentence.';
 
 export async function draftStatusFromEmails(dealId: string): Promise<DraftFromEmailsResult> {
@@ -47,6 +49,7 @@ export async function draftStatusFromEmails(dealId: string): Promise<DraftFromEm
       if (!deal.company_url && d.company_url) deal.company_url = d.company_url;
     });
   }
+  const callsP = fetchClaapCallBlocks({ dealIds, days: 60, limit: 3 });
   const linksRes = await supabase.from('contact_deals').select('contact_id').in('deal_id', dealIds);
 
   const emails = new Set<string>();
@@ -75,7 +78,8 @@ export async function draftStatusFromEmails(dealId: string): Promise<DraftFromEm
       if (d && /\./.test(d) && !FREEMAIL.has(d)) domains.add(d);
     });
   }
-  if (!domains.size && !emails.size) return { ok: false, text: '', emailCount: 0, reason: 'no_domains' };
+  const calls = await callsP;
+  if (!domains.size && !emails.size && !calls.length) return { ok: false, text: '', emailCount: 0, reason: 'no_domains' };
 
   const matches = (addrs: (string | null | undefined)[]) =>
     addrs.some((a) => {
@@ -139,8 +143,8 @@ export async function draftStatusFromEmails(dealId: string): Promise<DraftFromEm
   }
   const top = Array.from(seen.values())
     .sort((a, b) => String(b.received_at).localeCompare(String(a.received_at)))
-    .slice(0, 8);
-  if (!top.length) return { ok: false, text: '', emailCount: 0, reason: 'no_emails' };
+    .slice(0, calls.length ? 5 : 8);
+  if (!top.length && !calls.length) return { ok: false, text: '', emailCount: 0, reason: 'no_emails' };
 
   const ids = top.map((m) => m.gmail_message_id);
   const [b1, b2] = await Promise.all([
@@ -153,23 +157,26 @@ export async function draftStatusFromEmails(dealId: string): Promise<DraftFromEm
     if (!prev || (!prev.body_text && !prev.body_html)) bodyMap.set(b.gmail_message_id, b);
   }
 
-  const blocks = top.map((m) => {
+  const emailBlocks = top.map((m) => {
     const b: any = bodyMap.get(m.gmail_message_id) || {};
     const body = latestPart(b.body_text || stripHtml(b.body_html || '') || m._body || b.snippet || '');
     const dir = domains.has(domainOf(m.from_email)) || emails.has(String(m.from_email || '').toLowerCase()) ? 'FROM CLIENT' : 'TO CLIENT';
     const d = m.received_at ? new Date(m.received_at).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }) : '';
-    return `[${d}] ${dir} — from ${m.from_name || m.from_email}\nSubject: ${m.subject || '(no subject)'}\n${body}`;
+    return { at: String(m.received_at || ''), block: `[${d}] ${dir} EMAIL — from ${m.from_name || m.from_email}\nSubject: ${m.subject || '(no subject)'}\n${body}` };
   });
+  const blocks = [...emailBlocks, ...calls.map((c) => ({ at: c.startedAt, block: c.block }))]
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .map((x) => x.block);
 
   const userPrompt =
     `Deal: ${deal.company || 'Unknown'}\nToday: ${new Date().toLocaleDateString('en-US')}\n\n` +
-    `Recent emails with the client (newest first):\n\n${blocks.join('\n\n---\n\n')}`;
+    `Recent emails and recorded calls with the client (newest first):\n\n${blocks.join('\n\n---\n\n')}`;
 
   const { data, error } = await supabase.functions.invoke('smart-email-ai', {
     body: { action: 'suggest_status_update', dealId, systemPrompt: SYSTEM_PROMPT, userPrompt, fastModel: false },
   });
   const raw: string = data?.result?.text || '';
-  if (error || data?.error_kind || !raw) return { ok: false, text: '', emailCount: top.length, reason: 'llm_error' };
+  if (error || data?.error_kind || !raw) return { ok: false, text: '', emailCount: top.length, callCount: calls.length, reason: 'llm_error' };
   const s = sanitizeStatusSuggestion(raw);
-  return { ok: !!s.text, text: s.text || raw.trim(), emailCount: top.length };
+  return { ok: !!s.text, text: s.text || raw.trim(), emailCount: top.length, callCount: calls.length };
 }
