@@ -70,70 +70,104 @@ export function LenderCommsTimeline({ dealId, lenderName, masterLenderId, fallba
       setLoading(true);
       setError(null);
       try {
-        // 1) Resolve lender contact emails
+        // 1) Resolve lender contact emails + domains (domain-wide, so split lender records still match)
+        const FREEMAIL = new Set(["gmail.com","yahoo.com","outlook.com","hotmail.com","icloud.com","aol.com","live.com","me.com","msn.com","protonmail.com"]);
         const lenderEmails = new Set<string>(
           fallbackContactEmails.map(e => (e || "").toLowerCase().trim()).filter(Boolean)
         );
+        const domains = new Set<string>();
+        const addDomain = (raw: string) => {
+          const d = String(raw || "").toLowerCase().trim().replace(/^https?:\/\//, "").replace(/^www\./, "").split(/[/?#]/)[0];
+          if (d && d.includes(".") && !FREEMAIL.has(d)) domains.add(d);
+        };
         if (masterLenderId) {
-          const { data: contacts } = await supabase
-            .from("lender_contacts")
-            .select("email")
-            .eq("lender_id", masterLenderId);
+          const [{ data: contacts }, { data: ml }] = await Promise.all([
+            supabase.from("lender_contacts").select("email").eq("lender_id", masterLenderId),
+            (supabase.from("master_lenders") as any).select("*").eq("id", masterLenderId).maybeSingle(),
+          ]);
           for (const c of contacts || []) {
             if (c.email) lenderEmails.add(String(c.email).toLowerCase().trim());
           }
+          if (ml?.email) lenderEmails.add(String(ml.email).toLowerCase().trim());
+          if (ml?.website) addDomain(ml.website);
         }
+        lenderEmails.forEach(e => addDomain(e.split("@")[1] || ""));
 
         // 2) Resolve current user's email(s) for direction inference
         const userEmails = new Set<string>();
         const { data: auth } = await supabase.auth.getUser();
         if (auth?.user?.email) userEmails.add(auth.user.email.toLowerCase());
 
-        // 3) Pull emails linked to this deal, then narrow to those touching the funding source
+        // Deal reference (company name, minus entity suffixes)
+        const { data: dealRow } = await supabase.from("deals").select("company").eq("id", dealId).maybeSingle();
+        const dealName = String((dealRow as any)?.company || "").trim();
+        const stripped = dealName.replace(/[,.]?\s*\b(llc|inc|corp|corporation|co|ltd|lp|plc|holdings)\b\.?/gi, "").trim();
+        const refs = Array.from(new Set([dealName, stripped].filter(s => s.length >= 3)));
+        const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const refRe = refs.length ? new RegExp(`\\b(${refs.map(esc).join("|")})\\b`, "i") : null;
+
+        const touchesLender = (addrs: string[]) =>
+          addrs.some(a => {
+            const s = String(a || "").toLowerCase();
+            return lenderEmails.has(s) || domains.has(s.split("@")[1] || "");
+          });
+
+        // 3) Linked deal emails + cached mailbox messages that touch the lender AND mention the deal
         const { data: dealEmails } = await supabase
           .from("deal_emails")
           .select("gmail_message_id")
           .eq("deal_id", dealId);
-        const messageIds = (dealEmails || []).map(e => e.gmail_message_id).filter(Boolean);
+        const linkedIds = new Set((dealEmails || []).map(e => e.gmail_message_id).filter(Boolean));
 
-        let emails: EmailItem[] = [];
-        if (messageIds.length > 0 && lenderEmails.size > 0) {
-          // Fetch in chunks (Postgres `in` filter limit ≈ 1000)
-          const chunks: string[][] = [];
-          for (let i = 0; i < messageIds.length; i += 500) chunks.push(messageIds.slice(i, i + 500));
-          const fetched: any[] = [];
-          for (const ch of chunks) {
-            const { data } = await supabase
-              .from("gmail_messages")
-              .select("id, thread_id, subject, from_email, from_name, to_emails, snippet, received_at")
-              .in("id", ch);
-            if (data) fetched.push(...data);
+        const cols = "gmail_message_id, thread_id, subject, from_email, from_name, to_emails, cc_emails, snippet, received_at";
+        const fetched: any[] = [];
+        const queries: Promise<any>[] = [];
+        if (domains.size > 0 || lenderEmails.size > 0) {
+          const orParts: string[] = [];
+          domains.forEach(d => orParts.push(`from_email.ilike.%@${d}`));
+          refs.forEach(r => orParts.push(`subject.ilike.%${r.replace(/[,()%]/g, "")}%`));
+          for (const table of ["gmail_messages", "email_cache"]) {
+            queries.push(
+              (supabase.from(table as any) as any)
+                .select(cols)
+                .or(orParts.join(","))
+                .order("received_at", { ascending: false })
+                .limit(500)
+                .then((r: any) => { if (r.data) fetched.push(...r.data); })
+            );
           }
-          for (const m of fetched) {
-            const from = String(m.from_email || "").toLowerCase();
-            const tos = (m.to_emails || []).map((t: string) => String(t).toLowerCase());
-            const touchesLender =
-              lenderEmails.has(from) ||
-              tos.some((t: string) => lenderEmails.has(t)) ||
-              // Domain fallback: match by lender contact email domains
-              [...lenderEmails].some(le => {
-                const dom = le.split("@")[1];
-                return dom && (from.endsWith(`@${dom}`) || tos.some((t: string) => t.endsWith(`@${dom}`)));
-              });
-            if (!touchesLender) continue;
-            emails.push({
-              kind: "email",
-              id: m.id,
-              ts: m.received_at,
-              subject: m.subject || "(no subject)",
-              fromName: m.from_name,
-              fromEmail: m.from_email,
-              toEmails: m.to_emails || [],
-              snippet: m.snippet,
-              threadId: m.thread_id,
-              direction: isOutboundFrom(userEmails, m.from_email || ""),
-            });
-          }
+        }
+        const ids = [...linkedIds];
+        for (let i = 0; i < ids.length; i += 300) {
+          const ch = ids.slice(i, i + 300);
+          queries.push(
+            (supabase.from("gmail_messages") as any).select(cols).in("gmail_message_id", ch)
+              .then((r: any) => { if (r.data) fetched.push(...r.data.map((m: any) => ({ ...m, _linked: true }))); })
+          );
+        }
+        await Promise.all(queries);
+
+        const emails: EmailItem[] = [];
+        const seen = new Set<string>();
+        for (const m of fetched) {
+          const key = m.gmail_message_id || `${m.subject}|${m.received_at}`;
+          if (seen.has(key)) continue;
+          const addrs = [m.from_email, ...(m.to_emails || []), ...(m.cc_emails || [])];
+          if (!touchesLender(addrs)) continue;
+          if (!m._linked && refRe && !refRe.test(`${m.subject || ""} ${m.snippet || ""}`)) continue;
+          seen.add(key);
+          emails.push({
+            kind: "email",
+            id: key,
+            ts: m.received_at,
+            subject: m.subject || "(no subject)",
+            fromName: m.from_name,
+            fromEmail: m.from_email || "",
+            toEmails: m.to_emails || [],
+            snippet: m.snippet,
+            threadId: m.thread_id,
+            direction: isOutboundFrom(userEmails, m.from_email || ""),
+          });
         }
 
         // 4) Pull Claap meetings for this deal that match the funding source (matched_lender_id or organizer/participants)
