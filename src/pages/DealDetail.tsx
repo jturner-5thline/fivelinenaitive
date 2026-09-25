@@ -3276,6 +3276,7 @@ export default function DealDetail() {
                             if (oldNotes && oldNotes.trim() && oldNotes !== '<p></p>') addStatusNote(oldNotes.trim());
                           }}
                         />
+                        <span className="whitespace-nowrap text-[11px] text-muted-foreground">Draft AI Status Update</span>
                         <StatusHistoryPopover statusNotes={statusNotes} onDeleteNote={deleteStatusNote} />
                       </div>
                       {deal.notesUpdatedAt && (
