@@ -32,14 +32,6 @@ export function GlassActiveShape(props: Record<string, unknown>) {
         startAngle={startAngle} endAngle={endAngle}
         fill={fill} opacity={0.82}
       />
-      {/* Subtle inner rim */}
-      <Sector
-        cx={cx} cy={cy}
-        innerRadius={innerRadius}
-        outerRadius={innerRadius + 2}
-        startAngle={startAngle} endAngle={endAngle}
-        fill="white" opacity={0.08}
-      />
     </g>
   );
 }
@@ -53,9 +45,8 @@ export function PieGlassDefs({ colors }: { colors: string[] }) {
     <defs>
       {colors.map((color, i) => (
         <radialGradient key={i} id={`pie-glass-${i}`} cx="35%" cy="35%" r="65%">
-          <stop offset="0%" stopColor="white" stopOpacity={0.1} />
-          <stop offset="40%" stopColor={color} stopOpacity={0.78} />
-          <stop offset="100%" stopColor={color} stopOpacity={0.65} />
+          <stop offset="0%" stopColor={color} stopOpacity={0.85} />
+          <stop offset="100%" stopColor={color} stopOpacity={0.85} />
         </radialGradient>
       ))}
     </defs>

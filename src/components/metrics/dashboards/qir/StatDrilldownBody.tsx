@@ -158,8 +158,8 @@ function TrendChart({ buckets, values, formatValue, seriesLabel }: ChartProps) {
         {areaD && <path d={areaD} fill="url(#stat-area-grad)" opacity={0.35} />}
         <defs>
           <linearGradient id="stat-area-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={LINE} stopOpacity={0.55} />
-            <stop offset="100%" stopColor={LINE} stopOpacity={0} />
+            <stop offset="0%" stopColor={LINE} stopOpacity={0.25} />
+            <stop offset="100%" stopColor={LINE} stopOpacity={0.25} />
           </linearGradient>
         </defs>
         <path d={pathD} stroke={LINE} strokeWidth={2} fill="none" />

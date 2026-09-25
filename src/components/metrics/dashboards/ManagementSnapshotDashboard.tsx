@@ -384,7 +384,7 @@ function GenericDashboardCard({
           <defs>
             {negEnabled && (
               <linearGradient id={`negGrad-${cardId}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(0, 72%, 60%)" />
+                <stop offset="0%" stopColor={negColor} />
                 <stop offset="100%" stopColor={negColor} />
               </linearGradient>
             )}

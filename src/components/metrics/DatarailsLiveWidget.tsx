@@ -231,13 +231,13 @@ export function DatarailsLiveChart({ widget }: DatarailsLiveChartProps) {
                   return (
                     <linearGradient key={name} id={`drGrad-live-${i}`} x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor={c1} />
-                      <stop offset="100%" stopColor={c2} />
+                      <stop offset="100%" stopColor={c1} />
                     </linearGradient>
                   );
                 })}
                 {negEnabled && (
                   <linearGradient id="drGrad-negative" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(0, 72%, 60%)" />
+                    <stop offset="0%" stopColor={negColor} />
                     <stop offset="100%" stopColor={negColor} />
                   </linearGradient>
                 )}

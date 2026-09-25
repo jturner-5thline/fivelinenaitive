@@ -136,14 +136,8 @@ export function LiquidGlassBar(props: LiquidGlassBarProps) {
         </linearGradient>
       </defs>
 
-      {/* Soft shadow – very subtle */}
-      <path d={path} fill={fill} opacity={0.08} transform="translate(0.5, 1)" />
-
-      {/* Base fill */}
-      <path d={path} fill={`url(#${gradId})`} />
-
-      {/* Internal highlight overlay */}
-      <path d={path} fill={`url(#${highlightId})`} />
+      {/* Flat solid fill — no gradient, highlight, or shadow */}
+      <path d={path} fill={fill} opacity={0.85} />
     </g>
   );
 }

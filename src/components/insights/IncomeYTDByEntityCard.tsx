@@ -369,8 +369,8 @@ export function IncomeYTDByEntityCard() {
                     >
                       <defs>
                         <linearGradient id="incomeByEntityTotalFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="hsla(213,90%,70%,0.55)" />
-                          <stop offset="100%" stopColor="hsla(213,90%,70%,0.04)" />
+                          <stop offset="0%" stopColor="hsla(213,90%,70%,0.25)" />
+                          <stop offset="100%" stopColor="hsla(213,90%,70%,0.25)" />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,170,220,0.12)" vertical={false} />
