@@ -653,7 +653,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   placeholder="Add a note…"
                   value={newNote}
                   onChange={e => setNewNote(e.target.value)}
-                  className="text-sm min-h-[64px]"
+                  className="text-sm min-h-[64px] bg-[var(--bg-card)] border-[var(--border-subtle)]"
                 />
                 <Button size="sm" onClick={handleAddNote} disabled={!newNote.trim()}>
                   <Plus className="h-4 w-4" />
