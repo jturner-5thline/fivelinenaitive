@@ -1124,7 +1124,7 @@ function useStageEntryMetric(
       if (!deal) continue;
       // Only count entries logged while the deal sat in an allowed pipeline
       // (e.g. 'ndaneeds-list-sent' in In Development means "Client Paused Deal").
-      if (historyPipelines && !historyPipelines.has(String((row as any).pipeline_id ?? ''))) continue;
+      if (historyPipelines && (row as any).pipeline_id && !historyPipelines.has(String((row as any).pipeline_id))) continue;
       // Excluded deal_owner filter (e.g. remove NDA entries authored under
       // former team member John Moffitt's ownership).
       if (excludedOwners.size > 0) {
