@@ -1202,11 +1202,11 @@ export default function DealDetail() {
 
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [directFetchedLender, setDirectFetchedLender] = useState<import('@/hooks/useMasterLenders').MasterLender | null>(null);
-  const [lenderDialogTab, setLenderDialogTab] = useState<'overview' | 'workflow' | 'funding-source'>('overview');
+  const [lenderDialogTab, setLenderDialogTab] = useState<'overview' | 'workflow' | 'funding-source'>('workflow');
   const [lenderWorkflowFilter, setLenderWorkflowFilter] = useState<'all' | 'comms' | 'requested' | 'completed'>('all');
   useEffect(() => {
     if (selectedLenderName) {
-      setLenderDialogTab('overview');
+      setLenderDialogTab('workflow');
       setLenderWorkflowFilter('all');
     }
   }, [selectedLenderName]);
@@ -6606,34 +6606,17 @@ export default function DealDetail() {
             const currentStage = configuredStages.find(s => s.id === dealLender?.stage);
             return (
               <Tabs
-                value={lenderDialogTab}
+                value={lenderDialogTab === 'overview' ? 'workflow' : lenderDialogTab}
                 onValueChange={(v) => setLenderDialogTab(v as any)}
-                className="w-full flex flex-row flex-1 min-h-0"
+                className="w-full flex flex-col flex-1 min-h-0"
               >
-                <div className="shrink-0 w-40 border-r border-border/60 bg-muted/15 px-2.5 py-4">
-                  <TabsList className="flex flex-col h-auto w-full bg-transparent p-0 gap-0.5">
-                    <TabsTrigger
-                      value="overview"
-                      className="w-full justify-start text-xs h-9 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
-                    >
-                      Overview
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="workflow"
-                      className="w-full justify-start text-xs h-9 px-3 gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
-                    >
+                <div className="shrink-0 border-b border-border/60 px-7 pt-2">
+                  <TabsList className="h-9 bg-transparent p-0 gap-1">
+                    <TabsTrigger value="workflow" className="text-xs h-8 px-3 gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                       Deal Activity
-                      {(lenderOutstandingItems.length + lenderActivities.length) > 0 && (
-                        <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px] ml-auto">
-                          {lenderOutstandingItems.length + lenderActivities.length}
-                        </Badge>
-                      )}
                     </TabsTrigger>
-                    <TabsTrigger
-                      value="funding-source"
-                      className="w-full justify-start text-xs h-9 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
-                    >
-                      Funding Source
+                    <TabsTrigger value="funding-source" className="text-xs h-8 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                      Funding Source Profile
                     </TabsTrigger>
                   </TabsList>
                 </div>
@@ -6641,194 +6624,9 @@ export default function DealDetail() {
                 <ScrollArea className="flex-1 min-h-0 min-w-0">
                   <div className="px-7 py-6">
 
-                {/* ─────────── OVERVIEW ─────────── */}
-                <TabsContent value="overview" className="m-0 focus-visible:outline-none">
-                  {dealLender ? (
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-                      {/* Left: editable decision fields (~60%) */}
-                      <div className="md:col-span-3 min-w-0 space-y-5">
-                        {/* Stage — visually prominent */}
-                        <div className="rounded-lg border border-border/70 bg-muted/20 p-3.5">
-                          <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            Stage
-                          </Label>
-                          <Select
-                            value={dealLender.stage}
-                            onValueChange={(value) => {
-                              const newStage = configuredStages.find(s => s.id === value);
-                              if (newStage?.group === 'passed') {
-                                setPendingPassStageChange({ lenderId: dealLender.id, newStageId: value, isEditing: false });
-                                setSelectedPassReasons([]); setOtherPassReasonText("");
-                                setPassReasonDialogOpen(true);
-                              } else {
-                                const newGroup = newStage?.group || 'active';
-                                withSavingAsync(`lender-stage-${dealLender.id}`, async () => {
-                                  await updateLenderInDb(dealLender.id, {
-                                    stage: value,
-                                    trackingStatus: newGroup,
-                                  });
-                                });
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="h-10 mt-2 w-full min-w-0 bg-background text-sm font-medium [&>span]:truncate [&>span]:whitespace-nowrap">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {configuredStages.map((stage) => (
-                                <SelectItem key={stage.id} value={stage.id}>
-                                  {stage.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {currentStage?.group && (
-                            <p className="mt-2 text-[10px] capitalize text-muted-foreground/80">
-                              Group · {currentStage.group}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Score (secondary) */}
-                        {scoreConfig.enabled && (
-                          <div className="min-w-0">
-                            <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                              Score
-                            </Label>
-                            <Select
-                              value={dealLender.score != null ? String(dealLender.score) : ''}
-                              onValueChange={(value) => {
-                                const scoreVal = value === '' ? null : Number(value);
-                                withSavingAsync(`lender-score-${dealLender.id}`, async () => {
-                                  await updateLenderInDb(dealLender.id, { score: scoreVal });
-                                });
-                              }}
-                            >
-                              <SelectTrigger className="h-9 mt-2 w-full min-w-0 bg-background [&>span]:truncate [&>span]:whitespace-nowrap">
-                                <SelectValue placeholder="No score" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="1">1 — Most Interested</SelectItem>
-                                <SelectItem value="2">2 — Moderate Interest</SelectItem>
-                                <SelectItem value="3">3 — Least Interested</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
-
-                        {/* Preferred contact for this deal */}
-                        <DealLenderContactPicker
-                          dealLenderId={dealLender.id}
-                          masterLenderId={masterLender?.id ?? null}
-                          directoryDefault={{
-                            name: masterLender?.contact_name ?? null,
-                            title: masterLender?.contact_title ?? null,
-                            email: masterLender?.email ?? null,
-                          }}
-                        />
-
-                        {/* Notes — larger */}
-                        <div className="min-w-0">
-                          <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            Notes
-                          </Label>
-                          <div className="mt-2 min-h-[140px] rounded-lg border border-border/70 bg-background p-2 text-sm leading-relaxed">
-                            <InlineEditField
-                              value={dealLender.notes || ''}
-                              onSave={(value) => {
-                                withSavingAsync(`lender-notes-${dealLender.id}`, async () => {
-                                  await updateLenderInDb(dealLender.id, { notes: value });
-                                });
-                              }}
-                              type="textarea"
-                              placeholder="Add notes specific to this funding source on this deal…"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right: status history + meta (~40%) */}
-                      <div className="md:col-span-2 min-w-0 space-y-4">
-                        <div className="rounded-lg border border-border/60 bg-muted/20 p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                              Status History
-                            </Label>
-                            <Badge variant="outline" className="h-4 px-1 text-[10px] font-normal">
-                              Read-only
-                            </Badge>
-                          </div>
-                          {(() => {
-                            const timeline = buildStatusTimeline(dealLender);
-                            if (timeline.length === 0) {
-                              return <p className="text-xs text-muted-foreground italic">No recorded transitions</p>;
-                            }
-                            return (
-                              <div className="space-y-2.5">
-                                {timeline.map((event, index) => (
-                                  <div key={`${event.kind}-${event.iso}-${index}`} className="flex gap-2.5">
-                                    <div className="flex flex-col items-center pt-1">
-                                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
-                                      {index < timeline.length - 1 && <span className="mt-1 h-6 w-px bg-border" />}
-                                    </div>
-                                    <div className="min-w-0 pb-0.5">
-                                      <div className="text-xs font-medium leading-tight">{event.label}</div>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <span className="text-[10px] text-muted-foreground cursor-default">
-                                            {event.approximate ? '~' : ''}{formatShortDate(event.iso)}
-                                          </span>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="top">
-                                          <div className="space-y-1">
-                                            <div>{formatFullTimestamp(event.iso)}</div>
-                                            {event.approximate && <div className="text-muted-foreground">approximate</div>}
-                                          </div>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            );
-                          })()}
-                        </div>
-
-                        {/* Quick meta */}
-                        <div className="rounded-lg border border-border/60 bg-muted/10 p-4 space-y-2.5 text-xs">
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">Open requests</span>
-                            <span className="font-medium">{lenderOutstandingItems.length}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">Completed</span>
-                            <span className="font-medium">{lenderCompletedItems.length}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">Activity events</span>
-                            <span className="font-medium">{lenderActivities.length}</span>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-full mt-2 text-xs justify-start"
-                            onClick={() => setLenderDialogTab('workflow')}
-                          >
-                            <ArrowRight className="h-3 w-3 mr-1.5" />
-                            Open Workflow
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">
-                      This funding source isn't linked to the deal yet.
-                    </p>
-                  )}
-                </TabsContent>
-
-                {/* ─────────── WORKFLOW ─────────── */}
                 <TabsContent value="workflow" className="m-0 focus-visible:outline-none">
+                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                  <div className="lg:col-span-3 min-w-0">
                   <div className="flex items-center justify-between gap-3 mb-4">
                     <ToggleGroup
                       type="single"
@@ -6944,6 +6742,172 @@ export default function DealDetail() {
                         )}
                       </section>
                     )}
+                  </div>
+                  </div>
+                  <aside className="lg:col-span-2 min-w-0 space-y-5">
+                  {dealLender ? (<>
+                        {/* Stage — visually prominent */}
+                        <div className="rounded-lg border border-border/70 bg-muted/20 p-3.5">
+                          <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Stage
+                          </Label>
+                          <Select
+                            value={dealLender.stage}
+                            onValueChange={(value) => {
+                              const newStage = configuredStages.find(s => s.id === value);
+                              if (newStage?.group === 'passed') {
+                                setPendingPassStageChange({ lenderId: dealLender.id, newStageId: value, isEditing: false });
+                                setSelectedPassReasons([]); setOtherPassReasonText("");
+                                setPassReasonDialogOpen(true);
+                              } else {
+                                const newGroup = newStage?.group || 'active';
+                                withSavingAsync(`lender-stage-${dealLender.id}`, async () => {
+                                  await updateLenderInDb(dealLender.id, {
+                                    stage: value,
+                                    trackingStatus: newGroup,
+                                  });
+                                });
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-10 mt-2 w-full min-w-0 bg-background text-sm font-medium [&>span]:truncate [&>span]:whitespace-nowrap">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {configuredStages.map((stage) => (
+                                <SelectItem key={stage.id} value={stage.id}>
+                                  {stage.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {currentStage?.group && (
+                            <p className="mt-2 text-[10px] capitalize text-muted-foreground/80">
+                              Group · {currentStage.group}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Score (secondary) */}
+                        {scoreConfig.enabled && (
+                          <div className="min-w-0">
+                            <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Score
+                            </Label>
+                            <Select
+                              value={dealLender.score != null ? String(dealLender.score) : ''}
+                              onValueChange={(value) => {
+                                const scoreVal = value === '' ? null : Number(value);
+                                withSavingAsync(`lender-score-${dealLender.id}`, async () => {
+                                  await updateLenderInDb(dealLender.id, { score: scoreVal });
+                                });
+                              }}
+                            >
+                              <SelectTrigger className="h-9 mt-2 w-full min-w-0 bg-background [&>span]:truncate [&>span]:whitespace-nowrap">
+                                <SelectValue placeholder="No score" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1">1 — Most Interested</SelectItem>
+                                <SelectItem value="2">2 — Moderate Interest</SelectItem>
+                                <SelectItem value="3">3 — Least Interested</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        {/* Preferred contact for this deal */}
+                        <DealLenderContactPicker
+                          dealLenderId={dealLender.id}
+                          masterLenderId={masterLender?.id ?? null}
+                          directoryDefault={{
+                            name: masterLender?.contact_name ?? null,
+                            title: masterLender?.contact_title ?? null,
+                            email: masterLender?.email ?? null,
+                          }}
+                        />
+
+                        {/* Notes — larger */}
+                        <div className="min-w-0">
+                          <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Notes
+                          </Label>
+                          <div className="mt-2 min-h-[140px] rounded-lg border border-border/70 bg-background p-2 text-sm leading-relaxed">
+                            <InlineEditField
+                              value={dealLender.notes || ''}
+                              onSave={(value) => {
+                                withSavingAsync(`lender-notes-${dealLender.id}`, async () => {
+                                  await updateLenderInDb(dealLender.id, { notes: value });
+                                });
+                              }}
+                              type="textarea"
+                              placeholder="Add notes specific to this funding source on this deal…"
+                            />
+                          </div>
+                        </div>
+                        <div className="rounded-lg border border-border/60 bg-muted/20 p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Status History
+                            </Label>
+                            <Badge variant="outline" className="h-4 px-1 text-[10px] font-normal">
+                              Read-only
+                            </Badge>
+                          </div>
+                          {(() => {
+                            const timeline = buildStatusTimeline(dealLender);
+                            if (timeline.length === 0) {
+                              return <p className="text-xs text-muted-foreground italic">No recorded transitions</p>;
+                            }
+                            return (
+                              <div className="space-y-2.5">
+                                {timeline.map((event, index) => (
+                                  <div key={`${event.kind}-${event.iso}-${index}`} className="flex gap-2.5">
+                                    <div className="flex flex-col items-center pt-1">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+                                      {index < timeline.length - 1 && <span className="mt-1 h-6 w-px bg-border" />}
+                                    </div>
+                                    <div className="min-w-0 pb-0.5">
+                                      <div className="text-xs font-medium leading-tight">{event.label}</div>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="text-[10px] text-muted-foreground cursor-default">
+                                            {event.approximate ? '~' : ''}{formatShortDate(event.iso)}
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">
+                                          <div className="space-y-1">
+                                            <div>{formatFullTimestamp(event.iso)}</div>
+                                            {event.approximate && <div className="text-muted-foreground">approximate</div>}
+                                          </div>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        {/* Quick meta */}
+                        <div className="rounded-lg border border-border/60 bg-muted/10 p-4 space-y-2.5 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Open requests</span>
+                            <span className="font-medium">{lenderOutstandingItems.length}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Completed</span>
+                            <span className="font-medium">{lenderCompletedItems.length}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Activity events</span>
+                            <span className="font-medium">{lenderActivities.length}</span>
+                          </div>
+                        </div>
+                  </>) : (
+                    <p className="text-sm text-muted-foreground italic">This funding source isn't linked to the deal yet.</p>
+                  )}
+                  </aside>
                   </div>
                 </TabsContent>
 
