@@ -294,7 +294,7 @@ export default function CrmCompanies() {
         open={showImport}
         onOpenChange={setShowImport}
         config={importConfig}
-        onDone={() => queryClient.invalidateQueries({ queryKey: ['crm-companies'] })}
+        onDone={() => queryClient.invalidateQueries({ predicate: q => String(q.queryKey[0]).startsWith('crm-compan') })}
       />
     </>
   );
