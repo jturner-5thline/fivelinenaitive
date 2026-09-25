@@ -430,13 +430,13 @@ const App = () => (
                             <Route path="/reports" element={<Reports />} />
                             <Route path="/widget-editor" element={<WidgetEditorPage />} />
                             <Route path="/sales-bd" element={<Navigate to="/insights?dashboard=sales-bd-page" replace />} />
-                            <Route path="/contacts" element={<Contacts />} />
-                            <Route path="/contacts/:id" element={<ContactDetail />} />
+                            <Route path="/contacts" element={<div className="flat-tile-skin contents"><Contacts /></div>} />
+                            <Route path="/contacts/:id" element={<div className="flat-tile-skin contents"><ContactDetail /></div>} />
                             <Route path="/admin/contact-company-sync" element={<ContactCompanySync />} />
                             <Route path="/admin/claude-usage" element={<ClaudeUsageAdmin />} />
                             <Route path="/admin/api-usage" element={<ApiUsageAdmin />} />
-                            <Route path="/crm-companies" element={<CrmCompanies />} />
-                            <Route path="/crm-companies/:id" element={<CrmCompanyDetail />} />
+                            <Route path="/crm-companies" element={<div className="flat-tile-skin contents"><CrmCompanies /></div>} />
+                            <Route path="/crm-companies/:id" element={<div className="flat-tile-skin contents"><CrmCompanyDetail /></div>} />
                             <Route path="/field-layout-editor" element={<FieldLayoutEditorPage />} />
                             <Route path="/hr" element={<HR />} />
                             <Route path="/naitive-pipeline" element={<NaitivePipeline />} />
@@ -451,10 +451,10 @@ const App = () => (
                             <Route path="/settings/:group" element={<Settings />} />
                             <Route path="/settings/:group/:section" element={<Settings />} />
                             <Route path="/account" element={<Account />} />
-                            <Route path="/lenders" element={<Lenders />} />
+                            <Route path="/lenders" element={<div className="flat-tile-skin contents"><Lenders /></div>} />
                             <Route path="/lenders/config" element={<LenderDatabaseConfig />} />
                             <Route path="/lenders/sync-history" element={<LenderSyncHistory />} />
-                            <Route path="/lenders/:lenderName/history" element={<LenderDealHistory />} />
+                            <Route path="/lenders/:lenderName/history" element={<div className="flat-tile-skin contents"><LenderDealHistory /></div>} />
                             <Route path="/lenders/qa" element={<LenderMatchingQA />} />
                             <Route path="/preferences" element={<Preferences />} />
                             <Route path="/workflows" element={<Workflows />} />

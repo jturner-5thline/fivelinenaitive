@@ -1686,10 +1686,8 @@ button[role="combobox"] {
 .lg-shell {
   position: relative;
   border-radius: 14px;
-  background:
-    linear-gradient(180deg, #050d20 0%, #020611 50%, #000208 100%) !important;
-  background-color: #020611 !important;
-  border: 1px solid rgba(190, 220, 255, 0.34) !important;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-subtle) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   color: #ffffff;
@@ -1700,10 +1698,8 @@ button[role="combobox"] {
 .lg-toolbar {
   position: relative;
   border-radius: 12px;
-  background:
-    linear-gradient(180deg, #050d20 0%, #020611 50%, #000208 100%) !important;
-  background-color: #020611 !important;
-  border: 1px solid rgba(190, 220, 255, 0.34) !important;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-subtle) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   color: #ffffff;
@@ -2650,14 +2646,17 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    surface as deal tiles. All text inside the surface renders white; only
    hyperlinks (`a`) keep their link color and hover behavior.
    ───────────────────────────────────────────────────────────────────── */
-.crm-companies-table,
+.crm-companies-table {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card, 8px);
+}
 .crm-companies-table thead tr,
 .crm-companies-table thead th,
 .crm-companies-table tbody,
 .crm-companies-table tbody tr,
 .crm-companies-table tbody td {
-  background: linear-gradient(180deg, #050d20 0%, #020611 50%, #000208 100%) !important;
-  background-color: transparent;
+  background: transparent !important;
 }
 .crm-companies-table thead th,
 .crm-companies-table tbody td,
@@ -4510,4 +4509,43 @@ main:has(.deals-surface) .deal-milestones-card {
 .insights-glass-skin [data-slot="card"]::before {
   content: none !important;
   background: none !important;
+}
+
+/* Flat deal-tile surface rollout: Funding Sources, Contacts, Companies. */
+.dark .flat-tile-skin [data-slot="card"],
+.flat-tile-skin .glass-module,
+.flat-tile-skin .glass-module-interactive {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-card, 8px) !important;
+  box-shadow: var(--elevation-card, none) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-image: none !important;
+}
+.flat-tile-skin .glass-module::before,
+.dark .flat-tile-skin [data-slot="card"]::before { content: none !important; }
+.dark .flat-tile-skin [data-slot="card"] [data-slot="card"] {
+  background: transparent !important;
+}
+.flat-tile-skin .crm-companies-table {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-card, 8px) !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+.flat-tile-skin .crm-companies-table table,
+.flat-tile-skin .crm-companies-table thead,
+.flat-tile-skin .crm-companies-table tbody,
+.flat-tile-skin .crm-companies-table tr,
+.flat-tile-skin .crm-companies-table th,
+.flat-tile-skin .crm-companies-table td,
+.flat-tile-skin .crm-companies-table > div {
+  background-color: transparent !important;
+  border-color: var(--border-subtle) !important;
+}
+.flat-tile-skin .crm-companies-table tbody tr:hover,
+.flat-tile-skin .crm-companies-table tbody tr:hover td {
+  background-color: var(--bg-card-hover) !important;
 }
