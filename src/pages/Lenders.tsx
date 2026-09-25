@@ -2547,6 +2547,12 @@ export default function Lenders() {
         initialEditMode={isDetailEditMode}
       />
 
+      <ImportLendersCsvDialog
+        open={csvImportOpen}
+        onOpenChange={setCsvImportOpen}
+        existing={masterLenders}
+        onDone={() => refetchMasterLenders()}
+      />
       <ImportLendersDialog
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
