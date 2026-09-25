@@ -34,6 +34,7 @@ export function useCalendarEvents({ range, tz, calendarId = 'primary', enabled =
     enabled,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
+    retry: (count, err: any) => !err?.needsReconnect && count < 2,
     queryFn: () => fetchCalendarEvents({ start, end, tz, calendarId }),
   });
 }
@@ -50,6 +51,11 @@ async function fetchCalendarEvents(args: { start: string; end: string; tz?: stri
     },
   });
   if (error) throw new Error(error.message || 'Could not load calendar events.');
+  if (data?.needs_reconnect) {
+    const err = new Error(data.warning || 'Calendar connection expired. Reconnect in Integrations.');
+    (err as any).needsReconnect = true;
+    throw err;
+  }
   return (data?.events ?? []).map((e: any) => ({
     id: e.id,
     title: e.title || e.summary || e.subject || null,
