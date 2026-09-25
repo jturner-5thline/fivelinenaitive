@@ -23,7 +23,8 @@ const PopoverContent = React.forwardRef<
     typeof className === "string" &&
     (className.includes("create-deal-dropdown-content") ||
       className.includes("app-dropdown-surface") ||
-      className.includes("bg-transparent"));
+      className.includes("bg-transparent") ||
+      className.includes("sidebar-flyout"));
 
   return (
     <PopoverPortal container={container ?? overlayContainer ?? undefined}>
