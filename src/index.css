@@ -4590,3 +4590,13 @@ main:has(.deals-surface) .deal-milestones-card {
   box-shadow: 0 12px 28px -14px rgba(0, 0, 0, 0.55) !important;
   backdrop-filter: none !important;
 }
+
+/* Flatten any inner menu layer so only the outer tile border shows */
+html body [data-radix-popper-content-wrapper] .sidebar-flyout [role="menu"],
+html body [data-radix-popper-content-wrapper] .sidebar-flyout > div:not(.sidebar-flyout-item):not(.sidebar-flyout-separator) {
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
