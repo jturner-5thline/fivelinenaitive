@@ -78,7 +78,7 @@ export function EmailPromptCenterButton({ dealId, dealName, contactEmail }: Emai
             variant="outline"
             size="icon"
             aria-label="Email Prompt Center"
-            className="relative overflow-visible h-8 w-8 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]"
+            className="relative h-8 w-8 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
             onClick={handleClick}
             onContextMenu={(e) => {
               // Right-click → always open the prompt-center list, even when
