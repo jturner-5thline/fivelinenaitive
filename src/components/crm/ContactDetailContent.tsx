@@ -218,7 +218,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
     <>
       <div className="flex flex-col">
         {/* Sticky header */}
-        <header className="sticky top-0 z-20 rounded-lg border border-blue-500/25 bg-gradient-to-br from-[hsl(220,30%,10%)] to-[hsl(260,15%,5%)] shadow-md backdrop-blur">
+        <header className="sticky top-0 z-20 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-none">
           <div className="px-4 py-3 flex items-start justify-between gap-4 flex-wrap">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
@@ -309,12 +309,12 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
 
         {/* Two-column layout: compact left rail + flexible right column */}
         <div
-          className="grid gap-5 pt-5 grid-cols-1 lg:[grid-template-columns:minmax(320px,420px)_minmax(0,1fr)] items-start"
+          className="grid gap-5 pt-5 grid-cols-1 lg:[grid-template-columns:minmax(192px,252px)_minmax(0,1fr)] items-start"
         >
           {/* LEFT RAIL — contact profile, core fields, related records, additional details */}
           <aside className="space-y-3 min-w-0 lg:sticky lg:top-32">
             {/* Profile card with all core editable fields */}
-            <div className="rounded-lg border border-white/25 bg-card p-4 space-y-3 min-w-0 shadow-[0_0_0_1px_hsl(0_0%_100%/0.12)]">
+            <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 space-y-3 min-w-0 shadow-none">
               {isFieldAdmin && (
                 <div className="flex justify-end -mt-1 -mr-1">
                   <Button
