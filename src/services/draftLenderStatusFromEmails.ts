@@ -48,6 +48,7 @@ export async function draftLenderStatusFromEmails(dealLenderId: string): Promise
   // 1) Funding source contact emails + domains
   const emails = new Set<string>();
   const addEmail = (e: any) => { const s = String(e || '').trim().toLowerCase(); if (/@/.test(s)) emails.add(s); };
+  let mlWebsite = '';
   const contactIds: string[] = [];
   if (lender.selected_contact_id) contactIds.push(lender.selected_contact_id);
   if (lender.master_lender_id) {
@@ -59,7 +60,7 @@ export async function draftLenderStatusFromEmails(dealLenderId: string): Promise
     if (ml) {
       addEmail(ml.email);
       addEmail(ml.contact_email);
-      var mlWebsite = ml.website || ml.website_url || ml.domain || '';
+      mlWebsite = ml.website || ml.website_url || ml.domain || '';
     }
   }
   if (contactIds.length) {
@@ -68,8 +69,7 @@ export async function draftLenderStatusFromEmails(dealLenderId: string): Promise
   }
   const domains = new Set<string>();
   emails.forEach((e) => { const d = domainOf(e); if (d && !FREEMAIL.has(d)) domains.add(d); });
-  // @ts-ignore - declared in block above
-  const w = cleanDomain(typeof mlWebsite === 'string' ? mlWebsite : '');
+  const w = cleanDomain(String(mlWebsite || ''));
   if (w && /\./.test(w) && !FREEMAIL.has(w)) domains.add(w);
   if (!emails.size && !domains.size) return { ...base, reason: 'no_contacts' };
 
