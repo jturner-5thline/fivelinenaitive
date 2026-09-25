@@ -1203,7 +1203,7 @@ export default function DealDetail() {
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [directFetchedLender, setDirectFetchedLender] = useState<import('@/hooks/useMasterLenders').MasterLender | null>(null);
   const [lenderDialogTab, setLenderDialogTab] = useState<'overview' | 'workflow' | 'funding-source'>('overview');
-  const [lenderWorkflowFilter, setLenderWorkflowFilter] = useState<'all' | 'requested' | 'completed'>('all');
+  const [lenderWorkflowFilter, setLenderWorkflowFilter] = useState<'all' | 'comms' | 'requested' | 'completed'>('all');
   useEffect(() => {
     if (selectedLenderName) {
       setLenderDialogTab('overview');
@@ -6502,7 +6502,7 @@ export default function DealDetail() {
       </Dialog>
 
       <Dialog open={!!selectedLenderName} onOpenChange={(open) => !open && setSelectedLenderName(null)}>
-        <DialogContent className="max-w-3xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+        <DialogContent className="max-w-5xl w-[95vw] h-[88vh] flex flex-col p-0 gap-0 overflow-hidden">
           <DialogHeader className="shrink-0 px-7 pt-5 pb-4 border-b border-border/60 bg-muted/10 relative">
             <DialogTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight pr-40">
               {(() => {
@@ -6621,7 +6621,7 @@ export default function DealDetail() {
                       value="workflow"
                       className="w-full justify-start text-xs h-9 px-3 gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
                     >
-                      Workflow
+                      Deal Activity
                       {(lenderOutstandingItems.length + lenderActivities.length) > 0 && (
                         <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px] ml-auto">
                           {lenderOutstandingItems.length + lenderActivities.length}
@@ -6838,6 +6838,9 @@ export default function DealDetail() {
                       <ToggleGroupItem value="all" className="h-7 px-3 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm">
                         All Activity
                       </ToggleGroupItem>
+                      <ToggleGroupItem value="comms" className="h-7 px-3 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                        Emails &amp; Meetings
+                      </ToggleGroupItem>
                       <ToggleGroupItem value="requested" className="h-7 px-3 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm gap-1.5">
                         Requested Items
                         {lenderOutstandingItems.length > 0 && (
@@ -6869,6 +6872,18 @@ export default function DealDetail() {
                   </div>
 
                   <div className="space-y-6">
+                    {(lenderWorkflowFilter === 'all' || lenderWorkflowFilter === 'comms') && deal && (
+                      <section>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                          Emails &amp; Meetings
+                        </h4>
+                        <LenderCommsTimeline
+                          dealId={deal.id}
+                          lenderName={selectedLenderName}
+                          masterLenderId={masterLender?.id}
+                        />
+                      </section>
+                    )}
                     {(lenderWorkflowFilter === 'all' || lenderWorkflowFilter === 'requested') && (
                       <section>
                         <div className="flex items-center gap-2 mb-2">
@@ -6917,7 +6932,7 @@ export default function DealDetail() {
                     {lenderWorkflowFilter === 'all' && (
                       <section>
                         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                          Activity &amp; Communications
+                          Deal Log
                         </h4>
                         {lenderActivities.length > 0 ? (
                           <ActivityTimeline activities={lenderActivities} />
@@ -6926,25 +6941,13 @@ export default function DealDetail() {
                             No activity recorded for this funding source on this deal
                           </p>
                         )}
-                        {deal && (
-                          <div className="mt-5 pt-5 border-t border-border/60">
-                            <h5 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                              Comms timeline
-                            </h5>
-                            <LenderCommsTimeline
-                              dealId={deal.id}
-                              lenderName={selectedLenderName}
-                              masterLenderId={masterLender?.id}
-                            />
-                          </div>
-                        )}
                       </section>
                     )}
                   </div>
                 </TabsContent>
 
                 {/* ─────────── FUNDING SOURCE ─────────── */}
-                <TabsContent value="funding-source" className="m-0 focus-visible:outline-none divide-y divide-border/50 [&>section]:py-5 [&>section:first-child]:pt-0 [&>section:last-child]:pb-0">
+                <TabsContent value="funding-source" className="m-0 focus-visible:outline-none grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                   {/* About the funding source */}
                   <section className="min-w-0">
                     <div className="mb-2 flex items-center justify-between gap-3">
