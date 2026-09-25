@@ -30,7 +30,7 @@ function CopyRow({ label, value, mono = true }: { label: string; value: string; 
     <div className="space-y-1">
       <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="flex items-start gap-2">
-        <pre className={`flex-1 rounded-md border bg-muted/40 px-3 py-2 text-xs ${mono ? "font-mono" : ""} overflow-x-auto whitespace-pre-wrap break-all`}>{value}</pre>
+        <pre className={`flex-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-app)] px-3 py-2 text-xs ${mono ? "font-mono" : ""} overflow-x-auto whitespace-pre-wrap break-all`}>{value}</pre>
         <Button type="button" size="icon" variant="ghost" onClick={copy} aria-label={`Copy ${label}`}>
           {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
         </Button>
@@ -48,7 +48,7 @@ export function NaitiveApiAccessCard() {
         </h2>
         <span className="text-[11px] text-muted-foreground/70">Visible to you only</span>
       </div>
-      <div className="rounded-lg border bg-card p-5 space-y-5">
+      <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-none p-5 space-y-5">
         <div className="flex items-start gap-3">
           <div className="rounded-md bg-primary/10 p-2 text-primary">
             <KeyRound className="h-5 w-5" />
@@ -119,7 +119,7 @@ export function NaitiveApiAccessCard() {
           </Button>
         </div>
 
-        <div className="flex items-start gap-2 rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+        <div className="flex items-start gap-2 rounded-md border border-[var(--border-subtle)] bg-transparent px-3 py-2 text-[11px] text-muted-foreground">
           <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
           <div className="space-y-0.5">
             <div className="text-foreground font-medium">Manual setup required</div>
