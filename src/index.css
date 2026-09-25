@@ -4511,3 +4511,21 @@ main:has(.deals-surface) .deal-milestones-card {
   content: none !important;
   background: none !important;
 }
+
+/* Flat deal-tile surface rollout: Funding Sources, Contacts, Companies. */
+.dark .flat-tile-skin [data-slot="card"],
+.flat-tile-skin .glass-module,
+.flat-tile-skin .glass-module-interactive {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-card, 8px) !important;
+  box-shadow: var(--elevation-card, none) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-image: none !important;
+}
+.flat-tile-skin .glass-module::before,
+.dark .flat-tile-skin [data-slot="card"]::before { content: none !important; }
+.dark .flat-tile-skin [data-slot="card"] [data-slot="card"] {
+  background: transparent !important;
+}
