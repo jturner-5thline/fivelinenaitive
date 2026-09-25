@@ -28,6 +28,7 @@ import {
 import { useTotalRevenueOpportunity } from '@/hooks/usePipelineStageMetrics';
 import { useTermsConversionRate } from '@/hooks/useTermsConversionRate';
 import { cn } from '@/lib/utils';
+import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 import type { Deal } from '@/types/deal';
@@ -131,6 +132,14 @@ const formatStageLabel = (slug: string | null | undefined): string => {
   if (STAGE_LABEL_OVERRIDES[key]) return STAGE_LABEL_OVERRIDES[key];
   return slug.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 };
+
+/** Resolves the stage label through the deal's own pipeline (In Development overloads slugs). */
+function PipelineStageLabel({ stage, pipelineId }: { stage: string | null | undefined; pipelineId?: string | null }) {
+  const { getStageConfigForDeal } = usePipelineStageConfig();
+  if (!stage) return <>—</>;
+  const label = getStageConfigForDeal(stage, pipelineId)?.label;
+  return <>{label && label !== stage ? label : formatStageLabel(stage)}</>;
+}
 
 interface MetricCardConfig {
   id: string;
@@ -1421,7 +1430,7 @@ function DrilldownModalInner({
                     </td>
                     <td className="px-3 py-2 text-xs text-right font-mono">{formatCurrencyFull(deal.value)}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {formatStageLabel(deal.current_stage)}
+                      <PipelineStageLabel stage={deal.current_stage} pipelineId={deal.pipeline_id} />
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
                       {new Date(deal.entered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
