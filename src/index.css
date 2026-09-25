@@ -4504,3 +4504,10 @@ main:has(.deals-surface) .deal-milestones-card {
   background-color: var(--cal-dot) !important;
   opacity: 1 !important;
 }
+
+/* Insights: flat tiles — no diagonal sheen on any widget (matches deal tiles). */
+.insights-glass-skin .glass-module::before,
+.insights-glass-skin [data-slot="card"]::before {
+  content: none !important;
+  background: none !important;
+}
