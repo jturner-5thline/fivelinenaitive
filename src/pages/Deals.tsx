@@ -2,7 +2,11 @@ import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } fr
 import { DealSizeConfirmDialog } from '@/components/deals/DealSizeConfirmDialog';
 import { computeTotalFee } from '@/lib/fees';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt, CopyCheck, Share2, RotateCcw } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt, CopyCheck, Share2, RotateCcw, Upload, FileDown } from 'lucide-react';
+import { EntityCsvImportDialog, downloadEntityTemplate } from '@/components/shared/EntityCsvImportDialog';
+import { dealImportConfig, fetchRowsByIds } from '@/lib/entityImportConfigs';
+import { DEAL_CSV, selectColumns } from '@/utils/csvSchemas';
+import { exportToCsv, downloadCsv } from '@/utils/entityCsv';
 import { useDealDuplicates, DuplicateCluster } from '@/hooks/useDealDuplicates';
 import { DuplicatesView } from '@/components/deals/duplicates/DuplicatesView';
 import { DealMergeDrawer } from '@/components/deals/duplicates/DealMergeDrawer';
@@ -198,6 +202,20 @@ export default function Dashboard() {
   const { company } = useCompany();
   const activePipelineName = pipelines.find(p => p.id === activePipelineId)?.name ?? null;
   const [shareReportOpen, setShareReportOpen] = useState(false);
+  const [dealImportOpen, setDealImportOpen] = useState(false);
+  const dealCsvConfig = useMemo(
+    () => dealImportConfig({ userId: user?.id, companyId: company?.id ?? null, pipelineId: activePipelineId ?? null }),
+    [user?.id, company?.id, activePipelineId],
+  );
+  const handleDealCsvExport = async () => {
+    try {
+      const rows = await fetchRowsByIds('deals', selectColumns(DEAL_CSV), deals.map(d => d.id));
+      downloadCsv(exportToCsv(DEAL_CSV, rows), `deals-${new Date().toISOString().slice(0, 10)}.csv`);
+      toast({ title: "CSV exported", description: `${rows.length} deals exported with every field.` });
+    } catch (e: any) {
+      toast({ title: "Export failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
   
   const { preferences } = usePreferences();
   const { visibleColumns, toggleColumnVisibility } = useDealListColumnOrder();
@@ -732,10 +750,7 @@ export default function Dashboard() {
                     Export deals
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
-                    <DropdownMenuItem onClick={() => {
-                      exportPipelineToCSV(deals);
-                      toast({ title: "CSV exported", description: `${deals.length} deals exported to CSV.` });
-                    }}>
+                    <DropdownMenuItem onClick={handleDealCsvExport}>
                       <FileText className="h-4 w-4 mr-2" />
                       Export as CSV
                     </DropdownMenuItem>
@@ -759,9 +774,18 @@ export default function Dashboard() {
                     </DropdownMenuItem>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
+                <DropdownMenuItem onClick={() => setDealImportOpen(true)}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import deals
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => downloadEntityTemplate(dealCsvConfig)}>
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Download template CSV
+                </DropdownMenuItem>
               </DropdownMenuContent>
               </DropdownMenu>
             </Tooltip>
+            <EntityCsvImportDialog open={dealImportOpen} onOpenChange={setDealImportOpen} config={dealCsvConfig} onDone={refreshDeals} />
             <CreateDealDialog />
             <ShareReportDialog
               open={shareReportOpen}
