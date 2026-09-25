@@ -112,6 +112,47 @@ function RibbonDivider() {
   return <div className="w-px h-5 bg-border/60 mx-0.5" />;
 }
 
+// ─── Paste sanitizer ───
+// Removes the heavy markup Word / Google Docs / web pages add to copied text
+// (inline styles, classes, <style> blocks, Office namespaces, huge embedded
+// images) so pasting stays instant. Structure (headings, lists, tables, links,
+// bold/italic) is kept.
+function sanitizePastedHtml(html: string): string {
+  if (!html) return html;
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('style, script, meta, link, title, xml, o\\:p, colgroup, col').forEach(el => el.remove());
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_COMMENT);
+    const comments: Node[] = [];
+    while (walker.nextNode()) comments.push(walker.currentNode);
+    comments.forEach(c => c.parentNode?.removeChild(c));
+    doc.body.querySelectorAll('*').forEach(el => {
+      for (const attr of Array.from(el.attributes)) {
+        const n = attr.name.toLowerCase();
+        const keep = n === 'href' || n === 'colspan' || n === 'rowspan' || (n === 'src' && el.tagName === 'IMG');
+        if (!keep) el.removeAttribute(attr.name);
+      }
+      // Drop giant inline images (base64 previews) — they freeze the editor.
+      if (el.tagName === 'IMG') {
+        const src = el.getAttribute('src') || '';
+        if (src.startsWith('data:') && src.length > 200_000) el.remove();
+      }
+    });
+    // Unwrap meaningless span/font/div wrappers Docs uses around every run.
+    doc.body.querySelectorAll('span, font').forEach(el => {
+      el.replaceWith(...Array.from(el.childNodes));
+    });
+    // Google Docs wraps everything in <b id="docs-internal-guid-…"> (id already stripped).
+    const first = doc.body.firstElementChild;
+    if (doc.body.children.length === 1 && first?.tagName === 'B' && first.querySelector('p, h1, h2, h3, ul, ol, table')) {
+      first.replaceWith(...Array.from(first.childNodes));
+    }
+    return doc.body.innerHTML;
+  } catch {
+    return html;
+  }
+}
+
 // ─── Main Editor ───
 interface DealSpaceNoteEditorProps {
   note: DealSpaceNote;
@@ -253,26 +294,18 @@ export function DealSpaceNoteEditor({
       // <style> blocks is what froze the page on paste.
       transformPastedHTML: (html: string) => sanitizePastedHtml(html),
     },
-    onUpdate: ({ editor: ed, transaction }) => {
-      // Check for newly added mentions by walking only the inserted content —
-      // never serialize the whole document on every keystroke.
+    onUpdate: ({ editor: ed }) => {
+      // Look for newly added mentions by walking nodes — never serialize the
+      // whole document to HTML on every keystroke.
       let found: { id: string; label: string } | null = null;
-      transaction.steps.forEach((_s, i) => {
-        if (found) return;
-        const map = transaction.mapping.maps[i];
-        map.forEach((_os, _oe, newStart, newEnd) => {
-          if (found) return;
-          const end = Math.min(transaction.mapping.slice(i + 1).map(newEnd), ed.state.doc.content.size);
-          const start = Math.min(transaction.mapping.slice(i + 1).map(newStart), end);
-          ed.state.doc.nodesBetween(start, end, (node) => {
-            if (found) return false;
-            if (node.type.name === 'mention') {
-              const id = String(node.attrs.id ?? '');
-              if (id && !seenMentionIdsRef.current.has(id)) found = { id, label: String(node.attrs.label ?? id) };
-            }
-            return true;
-          });
-        });
+      ed.state.doc.descendants((node) => {
+        if (found) return false;
+        if (node.type.name === 'mention') {
+          const id = String(node.attrs.id ?? '');
+          if (id && !seenMentionIdsRef.current.has(id)) found = { id, label: String(node.attrs.label ?? id) };
+          return false;
+        }
+        return !node.isTextblock || node.childCount > 0;
       });
       if (found) {
         const f = found as { id: string; label: string };
