@@ -38,7 +38,7 @@ const SYSTEM_PROMPT =
 export async function draftLenderStatusFromEmails(dealLenderId: string): Promise<DraftLenderResult> {
   const { data: dl } = await (supabase.from('deal_lenders') as any).select('*').eq('id', dealLenderId).maybeSingle();
   const lender: any = dl || {};
-  const lenderName = String(lender.lender_name || 'Funding source');
+  const lenderName = String(lender.name || lender.lender_name || 'Funding source');
   const { data: dealRow } = lender.deal_id
     ? await supabase.from('deals').select('company').eq('id', lender.deal_id).maybeSingle()
     : { data: null };
