@@ -447,9 +447,9 @@ const App = () => (
                             <Route path="/claap/review" element={<ClaapMappingReview />} />
                             <Route path="/operations" element={<Operations />} />
                             <Route path="/debug/recognition" element={<DebugRecognition />} />
-                            <Route path="/settings" element={<Settings />} />
-                            <Route path="/settings/:group" element={<Settings />} />
-                            <Route path="/settings/:group/:section" element={<Settings />} />
+                            <Route path="/settings" element={<div className="flat-tile-skin contents"><Settings /></div>} />
+                            <Route path="/settings/:group" element={<div className="flat-tile-skin contents"><Settings /></div>} />
+                            <Route path="/settings/:group/:section" element={<div className="flat-tile-skin contents"><Settings /></div>} />
                             <Route path="/account" element={<Account />} />
                             <Route path="/lenders" element={<div className="flat-tile-skin contents"><Lenders /></div>} />
                             <Route path="/lenders/config" element={<LenderDatabaseConfig />} />
@@ -465,7 +465,7 @@ const App = () => (
                             <Route path="/admin/performance-audit" element={<PerformanceAudit />} />
                             <Route path="/signal" element={<Signal />} />
                             <Route path="/studio" element={<Studio />} />
-                            <Route path="/integrations/hubspot/health" element={<HubspotSyncHealth />} />
+                            <Route path="/integrations/hubspot/health" element={<div className="flat-tile-skin contents"><HubspotSyncHealth /></div>} />
                             <Route path="/wf" element={<WfHub />} />
                             <Route path="/wf-deals/:id" element={<WfDealDetail />} />
                             <Route path="/agents" element={<Agents />} />
@@ -499,7 +499,7 @@ const App = () => (
                             <ProtectedRoute><MigrationTool /></ProtectedRoute>
                           } />
                           <Route path="/integrations" element={
-                            <ProtectedRoute><Integrations /></ProtectedRoute>
+                            <ProtectedRoute><div className="flat-tile-skin contents"><Integrations /></div></ProtectedRoute>
                           } />
                           <Route path="/finance" element={
                             <ProtectedRoute><Finance /></ProtectedRoute>
