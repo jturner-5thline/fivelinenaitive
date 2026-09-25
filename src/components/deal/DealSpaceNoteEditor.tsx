@@ -112,6 +112,47 @@ function RibbonDivider() {
   return <div className="w-px h-5 bg-border/60 mx-0.5" />;
 }
 
+// ─── Paste sanitizer ───
+// Removes the heavy markup Word / Google Docs / web pages add to copied text
+// (inline styles, classes, <style> blocks, Office namespaces, huge embedded
+// images) so pasting stays instant. Structure (headings, lists, tables, links,
+// bold/italic) is kept.
+function sanitizePastedHtml(html: string): string {
+  if (!html) return html;
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('style, script, meta, link, title, xml, o\\:p, colgroup, col').forEach(el => el.remove());
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_COMMENT);
+    const comments: Node[] = [];
+    while (walker.nextNode()) comments.push(walker.currentNode);
+    comments.forEach(c => c.parentNode?.removeChild(c));
+    doc.body.querySelectorAll('*').forEach(el => {
+      for (const attr of Array.from(el.attributes)) {
+        const n = attr.name.toLowerCase();
+        const keep = n === 'href' || n === 'colspan' || n === 'rowspan' || (n === 'src' && el.tagName === 'IMG');
+        if (!keep) el.removeAttribute(attr.name);
+      }
+      // Drop giant inline images (base64 previews) — they freeze the editor.
+      if (el.tagName === 'IMG') {
+        const src = el.getAttribute('src') || '';
+        if (src.startsWith('data:') && src.length > 200_000) el.remove();
+      }
+    });
+    // Unwrap meaningless span/font/div wrappers Docs uses around every run.
+    doc.body.querySelectorAll('span, font').forEach(el => {
+      el.replaceWith(...Array.from(el.childNodes));
+    });
+    // Google Docs wraps everything in <b id="docs-internal-guid-…"> (id already stripped).
+    const first = doc.body.firstElementChild;
+    if (doc.body.children.length === 1 && first?.tagName === 'B' && first.querySelector('p, h1, h2, h3, ul, ol, table')) {
+      first.replaceWith(...Array.from(first.childNodes));
+    }
+    return doc.body.innerHTML;
+  } catch {
+    return html;
+  }
+}
+
 // ─── Main Editor ───
 interface DealSpaceNoteEditorProps {
   note: DealSpaceNote;
@@ -240,24 +281,37 @@ export function DealSpaceNoteEditor({
       },
       handlePaste: (_view, event) => {
         const items = event.clipboardData?.items;
-        if (items) { for (const item of Array.from(items)) { if (item.type.startsWith('image/')) { event.preventDefault(); const file = item.getAsFile(); if (file) handleImageUpload(file); return true; } } }
+        if (items) {
+          const hasText = Array.from(items).some(i => i.type === 'text/plain' || i.type === 'text/html');
+          // Only treat as an image paste when there's no text (Word/Docs put a
+          // preview image on the clipboard alongside the text).
+          if (!hasText) { for (const item of Array.from(items)) { if (item.type.startsWith('image/')) { event.preventDefault(); const file = item.getAsFile(); if (file) handleImageUpload(file); return true; } } }
+        }
         return false;
       },
+      // Strip the heavy inline styling Word / Google Docs / web pages put on the
+      // clipboard. Parsing thousands of style/class attributes and embedded
+      // <style> blocks is what froze the page on paste.
+      transformPastedHTML: (html: string) => sanitizePastedHtml(html),
     },
     onUpdate: ({ editor: ed }) => {
-      // Check for newly added mentions
-      const html = ed.getHTML();
-      const mentionRegex = /data-id="([^"]+)"[^>]*>@([^<]+)</g;
-      let match;
-      while ((match = mentionRegex.exec(html)) !== null) {
-        const mentionId = match[1];
-        const mentionName = match[2];
-        if (!seenMentionIdsRef.current.has(mentionId)) {
-          seenMentionIdsRef.current.add(mentionId);
-          setPendingMention({ userId: mentionId, userName: mentionName });
-          setMentionDialogOpen(true);
-          break; // Only handle one new mention at a time
+      // Look for newly added mentions by walking nodes — never serialize the
+      // whole document to HTML on every keystroke.
+      let found: { id: string; label: string } | null = null;
+      ed.state.doc.descendants((node) => {
+        if (found) return false;
+        if (node.type.name === 'mention') {
+          const id = String(node.attrs.id ?? '');
+          if (id && !seenMentionIdsRef.current.has(id)) found = { id, label: String(node.attrs.label ?? id) };
+          return false;
         }
+        return !node.isTextblock || node.childCount > 0;
+      });
+      if (found) {
+        const f = found as { id: string; label: string };
+        seenMentionIdsRef.current.add(f.id);
+        setPendingMention({ userId: f.id, userName: f.label });
+        setMentionDialogOpen(true);
       }
     },
   }, [note.id, mentionExtension]);
@@ -385,22 +439,26 @@ export function DealSpaceNoteEditor({
     } catch (err) { console.error('Image upload error:', err); }
   };
 
-  const debouncedSave = useCallback((content: string) => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
-      setIsSaving(true);
-      await onUpdate(note.id, { content });
-      lastSavedContentRef.current = content;
-      setIsSaving(false);
-    }, 1000);
-  }, [note.id, onUpdate]);
-
+  // Serialize the document only once the user pauses, not on every change.
   useEffect(() => {
     if (!editor) return;
-    const handler = () => { const html = editor.getHTML(); if (html !== lastSavedContentRef.current) debouncedSave(html); };
+    const handler = () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(async () => {
+        const content = editor.getHTML();
+        if (content === lastSavedContentRef.current) return;
+        setIsSaving(true);
+        try {
+          await onUpdate(note.id, { content });
+          lastSavedContentRef.current = content;
+        } finally {
+          setIsSaving(false);
+        }
+      }, 1000);
+    };
     editor.on('update', handler);
     return () => { editor.off('update', handler); };
-  }, [editor, debouncedSave]);
+  }, [editor, note.id, onUpdate]);
 
   const handleTitleBlur = useCallback(() => { if (title !== note.title) onUpdate(note.id, { title }); }, [title, note.id, note.title, onUpdate]);
   useEffect(() => { setTitle(note.title); }, [note.id, note.title]);
