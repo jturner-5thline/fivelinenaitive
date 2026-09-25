@@ -79,7 +79,9 @@ import { LendersListSkeleton } from '@/components/lenders/LenderCardSkeleton';
 import { LenderGridCard } from '@/components/lenders/LenderGridCard';
 import { LenderListCard } from '@/components/lenders/LenderListCard';
 import { LenderSpreadsheetView } from '@/components/lenders/LenderSpreadsheetView';
-import { exportLendersToCsv, parseCsvToLenders, downloadCsv } from '@/utils/lenderCsv';
+import { exportLendersToCsv, downloadCsv } from '@/utils/lenderCsv';
+import { ImportLendersCsvDialog, downloadLenderTemplate } from '@/components/lenders/ImportLendersCsvDialog';
+import { FileDown } from 'lucide-react';
 import { extractFlexSyncErrorPayload } from '@/utils/flexSyncError';
 import { useMasterLenders, MasterLender, MasterLenderInsert } from '@/hooks/useMasterLenders';
 import { LenderTileDisplaySettings } from '@/pages/LenderDatabaseConfig';
@@ -343,6 +345,7 @@ export default function Lenders() {
     return (saved === 'grid' || saved === 'list' || saved === 'spreadsheet') ? saved : 'list';
   });
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [isCallReviewOpen, setIsCallReviewOpen] = useState(false);
   const { data: pendingCallMatches = 0 } = useClaapPendingLinkCount();
@@ -1078,14 +1081,7 @@ export default function Lenders() {
     if (selectedLenderIds.size === 0) return;
 
     const selectedLenders = masterLenders.filter(l => selectedLenderIds.has(l.id));
-    const exportData = selectedLenders.map(l => ({
-      name: l.name,
-      contact: { name: l.contact_name || '', email: l.email || '', phone: '' },
-      preferences: [...(l.loan_types || []), ...(l.industries || [])],
-      website: l.lender_one_pager_url,
-      description: l.deal_structure_notes,
-    }));
-    const csv = exportLendersToCsv(exportData);
+    const csv = exportLendersToCsv(selectedLenders as any);
     downloadCsv(csv, `lenders-export-${new Date().toISOString().split('T')[0]}.csv`);
     toast({ 
       title: 'Export complete', 
@@ -1436,70 +1432,9 @@ export default function Lenders() {
       console.error('Full lender export failed, falling back to loaded rows', err);
       allRows = masterLenders;
     }
-    const exportData = allRows.map(l => ({
-      name: l.name,
-      tier: l.tier || '',
-      contact: { name: l.contact_name || '', email: l.email || '', phone: '' },
-      preferences: [...(l.loan_types || []), ...(l.industries || [])],
-      website: l.lender_one_pager_url,
-      description: l.deal_structure_notes,
-    }));
-    const csv = exportLendersToCsv(exportData);
+    const csv = exportLendersToCsv(allRows as any);
     downloadCsv(csv, `lenders-${new Date().toISOString().split('T')[0]}.csv`);
     toast({ title: 'Export complete', description: `Exported ${allRows.length.toLocaleString()} funding sources to CSV.` });
-  };
-
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const content = e.target?.result as string;
-        const parsedLenders = parseCsvToLenders(content);
-        
-        const lendersToImport: MasterLenderInsert[] = [];
-        let skipped = 0;
-        
-        parsedLenders.forEach(row => {
-          const exists = masterLenders.some(l => l.name.toLowerCase() === row.name.toLowerCase());
-          if (!exists) {
-            lendersToImport.push({
-              name: row.name,
-              contact_name: row.contactName || null,
-              email: row.email || null,
-              loan_types: row.preferences?.split(';').map(p => p.trim()).filter(p => p) || null,
-              lender_one_pager_url: row.website || null,
-              deal_structure_notes: row.description || null,
-            });
-          } else {
-            skipped++;
-          }
-        });
-
-        if (lendersToImport.length > 0) {
-          const result = await importLenders(lendersToImport);
-          toast({ 
-            title: 'Import complete', 
-            description: `Added ${result.success} lenders${skipped > 0 ? `, skipped ${skipped} duplicates` : ''}.` 
-          });
-        } else {
-          toast({ 
-            title: 'Import skipped', 
-            description: `All ${skipped} lenders already exist.` 
-          });
-        }
-      } catch (error) {
-        toast({ 
-          title: 'Import failed', 
-          description: error instanceof Error ? error.message : 'Failed to parse CSV file',
-          variant: 'destructive' 
-        });
-      }
-    };
-    reader.readAsText(file);
-    event.target.value = '';
   };
 
   const handleQuickUpload = (lenderName: string, category: 'nda' | 'marketing_materials') => {
@@ -1755,13 +1690,14 @@ export default function Lenders() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="bg-popover w-56">
-                    <label className="cursor-pointer">
-                      <input type="file" accept=".csv" onChange={handleImport} className="hidden" />
-                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Import CSV
-                      </DropdownMenuItem>
-                    </label>
+                    <DropdownMenuItem onClick={() => setCsvImportOpen(true)}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Import CSV
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={downloadLenderTemplate}>
+                      <FileDown className="h-4 w-4 mr-2" />
+                      Download template CSV
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleExport}>
                       <Download className="h-4 w-4 mr-2" />
                       Export CSV
@@ -2611,6 +2547,12 @@ export default function Lenders() {
         initialEditMode={isDetailEditMode}
       />
 
+      <ImportLendersCsvDialog
+        open={csvImportOpen}
+        onOpenChange={setCsvImportOpen}
+        existing={masterLenders}
+        onDone={() => refetchMasterLenders()}
+      />
       <ImportLendersDialog
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
