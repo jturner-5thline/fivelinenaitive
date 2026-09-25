@@ -6503,7 +6503,7 @@ export default function DealDetail() {
       </Dialog>
 
       <Dialog open={!!selectedLenderName} onOpenChange={(open) => !open && setSelectedLenderName(null)}>
-        <DialogContent className="max-w-5xl w-[95vw] h-[88vh] flex flex-col p-0 gap-0 overflow-hidden">
+        <DialogContent className="max-w-6xl w-[95vw] h-[88vh] flex flex-col p-0 gap-0 overflow-hidden">
           <DialogHeader className="shrink-0 px-7 pt-5 pb-4 border-b border-border/60 bg-muted/10 relative">
             <DialogTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight pr-40">
               {(() => {
