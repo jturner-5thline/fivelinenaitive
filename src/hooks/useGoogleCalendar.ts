@@ -278,6 +278,9 @@ export function useGoogleCalendar() {
         },
       });
       if (error) throw error;
+      if (data?.needs_reconnect) {
+        throw new Error(data.warning || 'Calendar connection expired. Reconnect in Integrations.');
+      }
       setEvents(data.events || []);
       writeCache(cacheKey, { events: data.events || [] });
       setError(null);
