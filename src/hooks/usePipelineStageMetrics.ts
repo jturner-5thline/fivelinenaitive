@@ -1018,7 +1018,7 @@ function useStageEntryMetric(
   targetStage: string | string[],
   quarter: QuarterOption,
   pipelineId?: string | string[],
-  options?: { excludeDealOwners?: string[]; excludeChangedByUserIds?: string[]; firstEverInWindow?: boolean },
+  options?: { excludeDealOwners?: string[]; excludeChangedByUserIds?: string[]; firstEverInWindow?: boolean; historyPipelineIds?: string[] },
 ): StageMetricResult {
   const { user } = useAuth();
   const targetStages = Array.isArray(targetStage) ? targetStage : [targetStage];
@@ -1058,6 +1058,7 @@ function useStageEntryMetric(
           to_stage_id,
           from_stage_id,
           changed_by,
+          pipeline_id,
           deals!inner (
             company,
             value,
@@ -1114,12 +1115,16 @@ function useStageEntryMetric(
       (options?.excludeDealOwners ?? []).map((s) => s.toLowerCase().trim()),
     );
     const excludedChangedBy = new Set(options?.excludeChangedByUserIds ?? []);
+    const historyPipelines = options?.historyPipelineIds ? new Set(options.historyPipelineIds) : null;
     // Deduplicate: first entry per deal_id only
     const seen = new Map<string, StageEntryDeal>();
     for (const row of data) {
       if (seen.has(row.deal_id)) continue;
       const deal = row.deals as any;
       if (!deal) continue;
+      // Only count entries logged while the deal sat in an allowed pipeline
+      // (e.g. 'ndaneeds-list-sent' in In Development means "Client Paused Deal").
+      if (historyPipelines && !historyPipelines.has(String((row as any).pipeline_id ?? ''))) continue;
       // Excluded deal_owner filter (e.g. remove NDA entries authored under
       // former team member John Moffitt's ownership).
       if (excludedOwners.size > 0) {
@@ -1602,10 +1607,12 @@ export function useConsolidatedDebtPipelineMetrics(
   const ndaNeedsList = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, quarter, NDA_PIPELINES, {
     excludeDealOwners: NDA_EXCLUDED_OWNERS,
     excludeChangedByUserIds: NDA_EXCLUDED_CHANGED_BY,
+    historyPipelineIds: [ACTIVE_PIPELINE_ID],
   });
   const ndaNeedsListPrior = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, priorQuarter, NDA_PIPELINES, {
     excludeDealOwners: NDA_EXCLUDED_OWNERS,
     excludeChangedByUserIds: NDA_EXCLUDED_CHANGED_BY,
+    historyPipelineIds: [ACTIVE_PIPELINE_ID],
   });
   const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, DEBT_STAGE_PIPELINES);
   const proposalsIssuedPrior = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, priorQuarter, DEBT_STAGE_PIPELINES);
