@@ -154,7 +154,15 @@ export function LenderCommsTimeline({ dealId, lenderName, masterLenderId, fallba
           if (seen.has(key)) continue;
           const addrs = [m.from_email, ...(m.to_emails || []), ...(m.cc_emails || [])];
           if (!touchesLender(addrs)) continue;
-          if (!m._linked && refRe && !refRe.test(`${m.subject || ""} ${m.snippet || ""}`)) continue;
+          if (!m._linked && refRe) {
+            const subj = String(m.subject || "");
+            // "<Company> | <Lender> - ..." — if the lead company is a different deal, reject
+            // even when the body casually mentions this deal.
+            const clean = subj.replace(/^((re|fwd?|fw|invitation|updated invitation|accepted|declined|tentative|automatic reply)\s*:\s*)+/i, "").trim();
+            const pipe = clean.indexOf("|");
+            if (pipe > 0 && !refRe.test(clean.slice(0, pipe))) continue;
+            if (!refRe.test(`${subj} ${m.snippet || ""}`)) continue;
+          }
           seen.add(key);
           emails.push({
             kind: "email",
