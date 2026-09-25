@@ -83,7 +83,7 @@ function CardSurface({ children, className }: { children: React.ReactNode; class
   return (
     <div
       className={cn(
-        'rounded-lg bg-card/40 border border-border/40 px-5 py-4 transition-colors',
+        'rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] shadow-none px-5 py-4 transition-colors hover:bg-[var(--bg-card-hover)]',
         className,
       )}
     >
