@@ -240,24 +240,45 @@ export function DealSpaceNoteEditor({
       },
       handlePaste: (_view, event) => {
         const items = event.clipboardData?.items;
-        if (items) { for (const item of Array.from(items)) { if (item.type.startsWith('image/')) { event.preventDefault(); const file = item.getAsFile(); if (file) handleImageUpload(file); return true; } } }
+        if (items) {
+          const hasText = Array.from(items).some(i => i.type === 'text/plain' || i.type === 'text/html');
+          // Only treat as an image paste when there's no text (Word/Docs put a
+          // preview image on the clipboard alongside the text).
+          if (!hasText) { for (const item of Array.from(items)) { if (item.type.startsWith('image/')) { event.preventDefault(); const file = item.getAsFile(); if (file) handleImageUpload(file); return true; } } }
+        }
         return false;
       },
+      // Strip the heavy inline styling Word / Google Docs / web pages put on the
+      // clipboard. Parsing thousands of style/class attributes and embedded
+      // <style> blocks is what froze the page on paste.
+      transformPastedHTML: (html: string) => sanitizePastedHtml(html),
     },
-    onUpdate: ({ editor: ed }) => {
-      // Check for newly added mentions
-      const html = ed.getHTML();
-      const mentionRegex = /data-id="([^"]+)"[^>]*>@([^<]+)</g;
-      let match;
-      while ((match = mentionRegex.exec(html)) !== null) {
-        const mentionId = match[1];
-        const mentionName = match[2];
-        if (!seenMentionIdsRef.current.has(mentionId)) {
-          seenMentionIdsRef.current.add(mentionId);
-          setPendingMention({ userId: mentionId, userName: mentionName });
-          setMentionDialogOpen(true);
-          break; // Only handle one new mention at a time
-        }
+    onUpdate: ({ editor: ed, transaction }) => {
+      // Check for newly added mentions by walking only the inserted content —
+      // never serialize the whole document on every keystroke.
+      let found: { id: string; label: string } | null = null;
+      transaction.steps.forEach((_s, i) => {
+        if (found) return;
+        const map = transaction.mapping.maps[i];
+        map.forEach((_os, _oe, newStart, newEnd) => {
+          if (found) return;
+          const end = Math.min(transaction.mapping.slice(i + 1).map(newEnd), ed.state.doc.content.size);
+          const start = Math.min(transaction.mapping.slice(i + 1).map(newStart), end);
+          ed.state.doc.nodesBetween(start, end, (node) => {
+            if (found) return false;
+            if (node.type.name === 'mention') {
+              const id = String(node.attrs.id ?? '');
+              if (id && !seenMentionIdsRef.current.has(id)) found = { id, label: String(node.attrs.label ?? id) };
+            }
+            return true;
+          });
+        });
+      });
+      if (found) {
+        const f = found as { id: string; label: string };
+        seenMentionIdsRef.current.add(f.id);
+        setPendingMention({ userId: f.id, userName: f.label });
+        setMentionDialogOpen(true);
       }
     },
   }, [note.id, mentionExtension]);
@@ -385,22 +406,26 @@ export function DealSpaceNoteEditor({
     } catch (err) { console.error('Image upload error:', err); }
   };
 
-  const debouncedSave = useCallback((content: string) => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
-      setIsSaving(true);
-      await onUpdate(note.id, { content });
-      lastSavedContentRef.current = content;
-      setIsSaving(false);
-    }, 1000);
-  }, [note.id, onUpdate]);
-
+  // Serialize the document only once the user pauses, not on every change.
   useEffect(() => {
     if (!editor) return;
-    const handler = () => { const html = editor.getHTML(); if (html !== lastSavedContentRef.current) debouncedSave(html); };
+    const handler = () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(async () => {
+        const content = editor.getHTML();
+        if (content === lastSavedContentRef.current) return;
+        setIsSaving(true);
+        try {
+          await onUpdate(note.id, { content });
+          lastSavedContentRef.current = content;
+        } finally {
+          setIsSaving(false);
+        }
+      }, 1000);
+    };
     editor.on('update', handler);
     return () => { editor.off('update', handler); };
-  }, [editor, debouncedSave]);
+  }, [editor, note.id, onUpdate]);
 
   const handleTitleBlur = useCallback(() => { if (title !== note.title) onUpdate(note.id, { title }); }, [title, note.id, note.title, onUpdate]);
   useEffect(() => { setTitle(note.title); }, [note.id, note.title]);
