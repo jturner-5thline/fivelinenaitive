@@ -89,7 +89,7 @@ export function EntityCsvImportDialog({
         continue;
       }
       const existingId = keys.map(k => existing.get(k)).find(Boolean);
-      byKey.size; keys.forEach(k => byKey.set(k, out.length));
+      keys.forEach(k => byKey.set(k, out.length));
       out.push({ rec, existingId });
     }
     return out;
