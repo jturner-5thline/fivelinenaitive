@@ -148,6 +148,13 @@
       "when": 1790215061418,
       "tag": "0020_calibrations_allow_global_read",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790366400413,
+      "tag": "0021_archive_closed_deals_active_pipeline",
+      "breakpoints": true
     }
   ]
 }
