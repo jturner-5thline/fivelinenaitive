@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { Check, Loader2 } from 'lucide-react';
+import { DraftAiLenderStatusButton } from './DraftAiLenderStatusButton';
 
 interface LenderNotesFieldProps {
   lenderId: string;
@@ -86,9 +87,15 @@ export function LenderNotesField({
         )}
         rows={rows}
       />
-      <div className="absolute right-2 top-1.5 flex items-center gap-1">
+      <div className="absolute right-1.5 top-1 flex items-center gap-1">
         {isSaving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
         {showSuccess && <Check className="h-3 w-3 text-success" />}
+        {!isSaving && !showSuccess && (
+          <DraftAiLenderStatusButton
+            lenderId={lenderId}
+            onApply={(text) => { setLocalValue(text); onSave(lenderId, text); }}
+          />
+        )}
       </div>
       {hasUnsavedChanges && isFocused && (
         <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 ml-0.5">
