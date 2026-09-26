@@ -30,19 +30,25 @@ export function CollapsibleSearch({ value, onChange, debounceMs = 350 }: Collaps
 
   // Keep the box from ever running under the floating menu header: measure the
   // gap between our left edge and the header pill, and clamp the width to it.
-  const MAX_W = 243;
-  const MIN_W = 110;
-  const [boxWidth, setBoxWidth] = useState<number>(MAX_W);
+  // Sized dynamically: sits just right of the workspace logo and stops before
+  // the floating menu pill, growing on wide screens and shrinking on small ones.
+  const MIN_W = 96;
+  const [boxWidth, setBoxWidth] = useState<number>(243);
 
   useEffect(() => {
     const measure = () => {
       const el = containerRef.current;
       if (!el) return;
-      const left = el.getBoundingClientRect().left;
+      const wrapper = el.parentElement;
+      const logo = document.querySelector('.workspace-logo img, .workspace-logo svg') as HTMLElement | null;
+      const logoRight = logo ? logo.getBoundingClientRect().right : 200;
+      const left = Math.round(logoRight + 12);
+      if (wrapper && wrapper.style.left !== `${left}px`) wrapper.style.left = `${left}px`;
       const header = document.querySelector('.floating-header') as HTMLElement | null;
       const headerLeft = header ? header.getBoundingClientRect().left : window.innerWidth;
-      const available = headerLeft - left - 12;
-      setBoxWidth(Math.max(MIN_W, Math.min(MAX_W, available)));
+      const maxW = Math.round(Math.min(380, Math.max(200, window.innerWidth * 0.18)));
+      const available = headerLeft - left - 16;
+      setBoxWidth(Math.max(MIN_W, Math.min(maxW, available)));
     };
     measure();
     window.addEventListener('resize', measure);
