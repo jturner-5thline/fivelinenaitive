@@ -39,7 +39,6 @@ export const INDUSTRY_OPTIONS = [
   'Cloud Infrastructure',
   'Coal and Consumable Fuels Equipment',
   'Coal Mining',
-  'Commercial and Industrial',
   'Commercial Banks',
   'Commercial Products',
   'Commercial Services',
