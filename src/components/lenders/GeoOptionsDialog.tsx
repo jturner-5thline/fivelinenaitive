@@ -162,7 +162,7 @@ export function GeoOptionsDialog({ open, onOpenChange }: Props) {
       </Dialog>
 
       <AlertDialog open={!!summary} onOpenChange={o => { if (!o) setSummary(null); }}>
-        <AlertDialogContent className="z-[10001]">
+        <AlertDialogContent className="z-[10001] max-h-[90vh] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm geographic preference changes</AlertDialogTitle>
             <AlertDialogDescription asChild>

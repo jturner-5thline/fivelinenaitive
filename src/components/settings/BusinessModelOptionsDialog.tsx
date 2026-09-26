@@ -191,7 +191,7 @@ export function BusinessModelOptionsDialog({ open, onOpenChange }: Props) {
       </Dialog>
 
       <AlertDialog open={!!summary} onOpenChange={o => { if (!o) setSummary(null); }}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-h-[90vh] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm changes to the shared list</AlertDialogTitle>
             <AlertDialogDescription asChild>
