@@ -1,3 +1,4 @@
+import { isExcludedDealName } from '@/utils/excludedDeals';
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -96,7 +97,6 @@ export function ReferralSourceDeals({
         .from('deals')
         .select('id, company, value, stage, referred_by, sourced_via, created_at, closing_date, pipeline_id')
         .eq('company_id', company!.id)
-        .ilike('sourced_via', 'referral%');
       if (naitivePipelineId) query = query.neq('pipeline_id', naitivePipelineId);
       const { data, error } = await query;
       if (error) throw error;
@@ -257,8 +257,8 @@ export function ReferralSourceDeals({
   );
 
   const drillMeta: Record<string, { title: string; kind: 'deals' | 'sources' | 'conversion' }> = {
-    deals: { title: 'Deals on Board from Referral Sources · entered NDA / Needs List Sent', kind: 'deals' },
-    value: { title: 'Dollars on Board from Referral Sources · entered NDA / Needs List Sent', kind: 'deals' },
+    deals: { title: 'Deals on the Board · entered NDA / Needs List Sent', kind: 'deals' },
+    value: { title: 'Dollars on the Board · entered NDA / Needs List Sent', kind: 'deals' },
     conversion: { title: 'Conversion Rate · trailing 12 months', kind: 'conversion' },
     sources: { title: 'Referral Sources · linked CRM records', kind: 'sources' },
     sourceDeals: { title: 'Referred Deals · by referral source', kind: 'sources' },
@@ -301,7 +301,7 @@ export function ReferralSourceDeals({
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
-                  <TableHead>Referral Source</TableHead>
+                  <TableHead>Source</TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead>Channel</TableHead>
                   <TableHead className="text-right">Deals</TableHead>
@@ -324,7 +324,7 @@ export function ReferralSourceDeals({
             </Table>
           )
         ) : onBoardDeals.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">No referral-source deals found.</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">No deals found.</p>
         ) : (
           <Table>
             <TableHeader>
@@ -332,7 +332,7 @@ export function ReferralSourceDeals({
                 <TableHead>Deal Name</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead>Stage</TableHead>
-                <TableHead>Referral Source</TableHead>
+                <TableHead>Source</TableHead>
                 <TableHead>Referral Date</TableHead>
               </TableRow>
             </TableHeader>
@@ -370,8 +370,8 @@ export function ReferralSourceDeals({
         'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-3'
       }
     >
-        <KpiTile label="Deals on Board from Referral Sources" value={onBoardDeals.length} subtext="entered NDA / Needs List Sent" onClick={() => setDrill('deals')} />
-        <KpiTile label="Dollars on Board from Referral Sources" value={formatCurrencyCompact(totalValue)} subtext="entered NDA / Needs List Sent" onClick={() => setDrill('value')} />
+        <KpiTile label="Deals on the Board" value={onBoardDeals.length} subtext="entered NDA / Needs List Sent" onClick={() => setDrill('deals')} />
+        <KpiTile label="Dollars on the Board" value={formatCurrencyCompact(totalValue)} subtext="entered NDA / Needs List Sent" onClick={() => setDrill('value')} />
 
 
         <TooltipProvider delayDuration={200}>
@@ -423,7 +423,7 @@ export function ReferralSourceDeals({
         </CollapsibleTrigger>
         <CollapsibleContent>
           {matchedDeals.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">No referral-source deals found.</p>
+            <p className="text-sm text-muted-foreground py-4 text-center">No deals found.</p>
           ) : (
             <div className={`${liquidGlassCard} overflow-hidden`}>
               <Table>
