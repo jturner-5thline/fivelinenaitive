@@ -152,7 +152,7 @@ export function BusinessModelOptionsDialog({ open, onOpenChange }: Props) {
                 <p className="p-3 text-sm text-muted-foreground">No options yet — add one above.</p>
               )}
               {draft.map((value, index) => (
-                <div key={`${index}-${value}`} className="flex items-center gap-2">
+                <div key={index} className="flex items-center gap-2">
                   <Input
                     value={value}
                     onChange={e => setDraft(prev => prev.map((v, i) => (i === index ? e.target.value : v)))}
