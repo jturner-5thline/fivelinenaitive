@@ -3389,6 +3389,100 @@ export default function DealDetail() {
     </div>
   );
 
+  const dealTabsRow = (
+            <div className="px-3 pt-1 pb-3 shrink-0">
+              <div className="border-b border-[#3a4760]">
+                    <HintTooltip
+                      hint="Use these tabs to navigate a deal: Deal Space for AI insights, Deal Information for key details, Lenders for tracking, Deal Management for tasks, Deal Write Up for the memo, Data Room for documents, and Emails for correspondence."
+                      visible={isHintVisible('deal-tabs')}
+                      onDismiss={() => dismissHint('deal-tabs')}
+                      side="bottom"
+                    >
+                      <TabsList
+                        className="deal-underline-tabs inline-flex h-auto items-end justify-start gap-6 bg-transparent p-0 rounded-none max-w-full overflow-x-auto scrollbar-none"
+                        style={{ scrollbarWidth: 'none' }}
+                      >
+                        <TabsTrigger
+                          value="deal-info"
+                          className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
+                        >
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Deal Space
+                        </TabsTrigger>
+                        {!isSimplifiedDeal && !isProjectsDeal && (
+                          <TabsTrigger
+                            value="lenders"
+                            className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
+                          >
+                            Funding Sources
+                            {deal.lenders && deal.lenders.length > 0 && (
+                              <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
+                                {deal.lenders.length}
+                              </Badge>
+                            )}
+                          </TabsTrigger>
+                        )}
+                        {canSeeAnalysisTab && !isSimplifiedDeal && !isProjectsDeal && (
+                          <TabsTrigger
+                            value="analysis"
+                            className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
+                          >
+                            Analysis
+                          </TabsTrigger>
+                        )}
+                        {/* Management tab removed per product decision. */}
+                        {false && (
+                          <TabsTrigger
+                            value="deal-management"
+                            className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
+                          >
+                            Management
+                            {infoRequestActionCount > 0 && (
+                              <Badge variant="destructive" className="notif-count">
+                                {infoRequestActionCount}
+                              </Badge>
+                            )}
+                          </TabsTrigger>
+                        )}
+                        {!isSimplifiedDeal && !isProjectsDeal && (
+                          <TabsTrigger
+                            value="deal-writeup"
+                            className="relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
+                          >
+                            Write Up
+                            <Badge variant="outline" className="ml-1.5 h-4 px-1 text-[9px] font-medium uppercase tracking-wide border-amber-400/40 text-amber-300 bg-amber-400/10">
+                              Beta
+                            </Badge>
+                          </TabsTrigger>
+                        )}
+                        {(!isSimplifiedDeal || isFinServDeal) && (
+                          <TabsTrigger
+                            value="data-room"
+                            className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
+                          >
+                            Data Room
+                            {attachments.length > 0 && (
+                              <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
+                                {attachments.length}
+                              </Badge>
+                            )}
+                          </TabsTrigger>
+                        )}
+                        {false && !isProjectsDeal && (
+                        <TabsTrigger
+                          value="activity-log"
+                          className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
+                        >
+                          <History className="h-3.5 w-3.5" />
+                          Activity
+                        </TabsTrigger>
+                        )}
+                      </TabsList>
+                    </HintTooltip>
+              </div>
+            </div>
+  );
+
   return (
     <>
       <Helmet>
@@ -3734,6 +3828,7 @@ export default function DealDetail() {
               {statusNoteColumn}
             </div>
           )}
+          {useContextRailLayout && <div className="mt-3">{dealTabsRow}</div>}
 
           <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
             <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
@@ -4134,97 +4229,7 @@ export default function DealDetail() {
                 </div>
               </div>
             </CardHeader>
-            <div className="px-3 pt-1 pb-3 shrink-0">
-              <div className="border-b border-[#3a4760]">
-                    <HintTooltip
-                      hint="Use these tabs to navigate a deal: Deal Space for AI insights, Deal Information for key details, Lenders for tracking, Deal Management for tasks, Deal Write Up for the memo, Data Room for documents, and Emails for correspondence."
-                      visible={isHintVisible('deal-tabs')}
-                      onDismiss={() => dismissHint('deal-tabs')}
-                      side="bottom"
-                    >
-                      <TabsList
-                        className="deal-underline-tabs inline-flex h-auto items-end justify-start gap-6 bg-transparent p-0 rounded-none max-w-full overflow-x-auto scrollbar-none"
-                        style={{ scrollbarWidth: 'none' }}
-                      >
-                        <TabsTrigger
-                          value="deal-info"
-                          className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
-                        >
-                          <Sparkles className="h-3.5 w-3.5" />
-                          Deal Space
-                        </TabsTrigger>
-                        {!isSimplifiedDeal && !isProjectsDeal && (
-                          <TabsTrigger
-                            value="lenders"
-                            className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
-                          >
-                            Funding Sources
-                            {deal.lenders && deal.lenders.length > 0 && (
-                              <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
-                                {deal.lenders.length}
-                              </Badge>
-                            )}
-                          </TabsTrigger>
-                        )}
-                        {canSeeAnalysisTab && !isSimplifiedDeal && !isProjectsDeal && (
-                          <TabsTrigger
-                            value="analysis"
-                            className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
-                          >
-                            Analysis
-                          </TabsTrigger>
-                        )}
-                        {/* Management tab removed per product decision. */}
-                        {false && (
-                          <TabsTrigger
-                            value="deal-management"
-                            className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
-                          >
-                            Management
-                            {infoRequestActionCount > 0 && (
-                              <Badge variant="destructive" className="notif-count">
-                                {infoRequestActionCount}
-                              </Badge>
-                            )}
-                          </TabsTrigger>
-                        )}
-                        {!isSimplifiedDeal && !isProjectsDeal && (
-                          <TabsTrigger
-                            value="deal-writeup"
-                            className="relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
-                          >
-                            Write Up
-                            <Badge variant="outline" className="ml-1.5 h-4 px-1 text-[9px] font-medium uppercase tracking-wide border-amber-400/40 text-amber-300 bg-amber-400/10">
-                              Beta
-                            </Badge>
-                          </TabsTrigger>
-                        )}
-                        {(!isSimplifiedDeal || isFinServDeal) && (
-                          <TabsTrigger
-                            value="data-room"
-                            className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
-                          >
-                            Data Room
-                            {attachments.length > 0 && (
-                              <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
-                                {attachments.length}
-                              </Badge>
-                            )}
-                          </TabsTrigger>
-                        )}
-                        {false && !isProjectsDeal && (
-                        <TabsTrigger
-                          value="activity-log"
-                          className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
-                        >
-                          <History className="h-3.5 w-3.5" />
-                          Activity
-                        </TabsTrigger>
-                        )}
-                      </TabsList>
-                    </HintTooltip>
-              </div>
-            </div>
+            {!useContextRailLayout && dealTabsRow}
             {useContextRailLayout && !isSimplifiedDeal && dealInfoTab === 'deal-info' && (
               <CardContent className="-mt-2 pt-0 pb-1 px-3 shrink-0 deal-milestones-surface">
                 <DealMilestones
