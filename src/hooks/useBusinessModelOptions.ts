@@ -68,3 +68,22 @@ export async function countFundingSourcesUsingIndustries(values: string[]): Prom
   }
   return result;
 }
+
+/** Removes the given industry values from every funding source the user can edit. */
+export async function removeIndustriesFromFundingSources(values: string[]): Promise<number> {
+  if (values.length === 0) return 0;
+  const wanted = new Set(values.map(v => v.trim().toLowerCase()));
+  const { data, error } = await supabase
+    .from('master_lenders')
+    .select('id, industries')
+    .overlaps('industries', values);
+  if (error) throw error;
+  let updated = 0;
+  for (const row of (data ?? []) as Array<{ id: string; industries: string[] | null }>) {
+    const next = (row.industries ?? []).filter(v => !wanted.has(String(v || '').trim().toLowerCase()));
+    if (next.length === (row.industries ?? []).length) continue;
+    const { error: upErr } = await supabase.from('master_lenders').update({ industries: next }).eq('id', row.id);
+    if (!upErr) updated++;
+  }
+  return updated;
+}

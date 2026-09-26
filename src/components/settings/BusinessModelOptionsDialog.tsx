@@ -11,6 +11,7 @@ import {
   getDefaultBusinessModelOptions,
   countDealsUsingBusinessModels,
   countFundingSourcesUsingIndustries,
+  removeIndustriesFromFundingSources,
 } from '@/hooks/useBusinessModelOptions';
 
 interface Props {
@@ -69,6 +70,13 @@ export function BusinessModelOptionsDialog({ open, onOpenChange }: Props) {
     setSaving(true);
     try {
       await saveOptions(cleanedDraft);
+      if (removed.length > 0) {
+        try {
+          await removeIndustriesFromFundingSources(removed);
+        } catch (err) {
+          console.error('Failed to prune removed industries from funding sources', err);
+        }
+      }
       toast({
         title: 'Options saved',
         description: 'Updated for Business Model on deals and Industries on funding sources.',
@@ -222,7 +230,7 @@ export function BusinessModelOptionsDialog({ open, onOpenChange }: Props) {
                         </li>
                       ))}
                     </ul>
-                    <p>Existing records keep their saved value, but the option can no longer be picked.</p>
+                    <p>Removed options will be taken off those funding sources' Industries. Deals keep their saved Business Model value.</p>
                   </div>
                 )}
               </div>
