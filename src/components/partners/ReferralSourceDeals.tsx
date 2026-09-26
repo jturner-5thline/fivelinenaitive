@@ -88,7 +88,7 @@ export function ReferralSourceDeals({
   // (earliest stage-history event, else created_at) — same basis as
   // useDealReferralSources.
   const { data: dealsRaw = [] } = useQuery({
-    queryKey: ['referral_source_deals', company?.id],
+    queryKey: ['firm_pipeline_deals', company?.id],
     enabled: !!company?.id,
     queryFn: async () => {
       const { getNaitivePipelineId } = await import('@/utils/naitivePipelineExclusion');
@@ -96,7 +96,7 @@ export function ReferralSourceDeals({
       let query = supabase
         .from('deals')
         .select('id, company, value, stage, referred_by, sourced_via, created_at, closing_date, pipeline_id')
-        .eq('company_id', company!.id)
+        .eq('company_id', company!.id);
       if (naitivePipelineId) query = query.neq('pipeline_id', naitivePipelineId);
       const { data, error } = await query;
       if (error) throw error;
