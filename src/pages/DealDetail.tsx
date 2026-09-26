@@ -651,6 +651,8 @@ export default function DealDetail() {
   const [pendingMirror, setPendingMirror] = useState<null | { direction: 'status->stage' | 'stage->status' }>(null);
   const { hasPageAccess } = usePageAccessFlags();
   const hasDealSpaceAccess = hasPageAccess('deal_space');
+  // Unset flag keeps today's behavior (visible to everyone with Deal Space).
+  const { hasAccess: canAccessDealAskAi } = useFeatureAccess('deal_ask_ai', 'deployed');
   const hasDealManagementAccess = hasPageAccess('deal_management');
   const { canPushFlex: demoCanPushFlex } = useDemoCapabilities();
   const canPushToFlex = hasPageAccess('flex_push') && demoCanPushFlex;
