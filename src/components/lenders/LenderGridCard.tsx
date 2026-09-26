@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react';
+import { useActiveIndustries } from '@/lib/industryOptions';
 import { Pencil, Trash2, Upload, Loader2, FileCheck, Megaphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -86,9 +87,10 @@ export const LenderGridCard = memo(function LenderGridCard({
   }, [lender.min_deal, lender.max_deal]);
 
   const maxIndustries = tileDisplaySettings.maxIndustriesToShow;
-  const topIndustries = useMemo(() => 
-    lender.industries?.slice(0, maxIndustries) || [], 
-    [lender.industries, maxIndustries]
+  const activeIndustries = useActiveIndustries(lender.industries);
+  const topIndustries = useMemo(() =>
+    activeIndustries.slice(0, maxIndustries),
+    [activeIndustries, maxIndustries]
   );
   const topLoanTypes = useMemo(() => 
     lender.loan_types?.slice(0, 2) || [], 

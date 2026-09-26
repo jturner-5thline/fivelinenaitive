@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
+import { filterToActiveIndustries } from '@/lib/industryOptions';
 import { Virtuoso } from 'react-virtuoso';
 import { Building2, Loader2, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -162,8 +163,10 @@ type ColumnDef = typeof COLUMNS[number];
 function LenderCell({ lender, col }: { lender: MasterLender; col: ColumnDef }) {
   const isCurrency = CURRENCY_COLUMNS.has(col.key);
   const isIndustries = col.key === 'industries';
-  const rawValue = lender[col.key as keyof MasterLender];
-  const formatted = formatCellValue(lender, col.key);
+  const rawValue = isIndustries
+    ? filterToActiveIndustries(lender.industries as string[] | null)
+    : lender[col.key as keyof MasterLender];
+  const formatted = isIndustries ? (rawValue as string[]).join(', ') : formatCellValue(lender, col.key);
 
   // Tag/chip rendering for Deal Industries
   if (isIndustries && Array.isArray(rawValue) && rawValue.length > 0) {

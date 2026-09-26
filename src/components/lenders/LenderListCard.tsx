@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react';
+import { useActiveIndustries } from '@/lib/industryOptions';
 import { Pencil, Trash2, Upload, Loader2, FileCheck, Megaphone, Building2 } from 'lucide-react';
 import { LenderNotesPopover, LenderFlagIndicator } from '@/components/lenders/LenderNotesPopover';
 import { Button } from '@/components/ui/button';
@@ -83,10 +84,11 @@ export const LenderListCard = memo(function LenderListCard({
     return `${formatCurrency(lender.min_deal)} - ${formatCurrency(lender.max_deal)}`;
   }, [lender.min_deal, lender.max_deal]);
 
+  const activeIndustries = useActiveIndustries(lender.industries);
   const displayTags = useMemo(() => [
     ...(lender.loan_types || []),
-    ...(lender.industries || []),
-  ], [lender.loan_types, lender.industries]);
+    ...activeIndustries,
+  ], [lender.loan_types, activeIndustries]);
 
   const isUploading = isQuickUploading && quickUploadLenderName === lender.name;
 

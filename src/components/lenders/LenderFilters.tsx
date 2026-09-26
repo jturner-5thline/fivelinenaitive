@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { filterToActiveIndustries, useIndustryOptionsList } from '@/lib/industryOptions';
 import { Filter, X, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -133,10 +134,11 @@ function SimpleFilters({
     [lenders]
   );
 
+  const liveIndustryOptions = useIndustryOptionsList();
   const industryOptions = useMemo(() =>
-    dedupeByLowercase(lenders.flatMap(l => l.industries || []))
+    filterToActiveIndustries(lenders.flatMap(l => l.industries || []), liveIndustryOptions)
       .map(v => ({ value: v, label: v })),
-    [lenders]
+    [lenders, liveIndustryOptions]
   );
 
   const geoOptions = useMemo(() => {

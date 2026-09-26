@@ -45,7 +45,7 @@ import { LenderSectionReorderDialog } from './LenderSectionReorderDialog';
 import { AddLenderContactDialog } from './AddLenderContactDialog';
 import { LenderContactsList } from './LenderContactsList';
 import { cn } from '@/lib/utils';
-import { getIndustryOptions, useIndustryOptionsList } from '@/lib/industryOptions';
+import { getIndustryOptions, useIndustryOptionsList, filterToActiveIndustries } from '@/lib/industryOptions';
 import { BusinessModelOptionsDialog } from '@/components/settings/BusinessModelOptionsDialog';
 import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
