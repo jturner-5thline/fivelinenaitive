@@ -264,7 +264,7 @@ function buildEditForm(lender: LenderInfo): LenderEditData {
     cashBurn: lender.cashBurn || '',
     subDebt: lender.subDebt || '',
     refinancing: lender.refinancing || '',
-    industriesToAvoid: lender.industriesToAvoid?.join(', ') || '',
+    industriesToAvoid: filterToActiveIndustries(lender.industriesToAvoid).join(', '),
     nda: lender.nda || '',
     referralLender: lender.referralLender || '',
     referralFeeOffered: lender.referralFeeOffered || '',
@@ -505,6 +505,10 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   const activeIndustries = useMemo(
     () => filterToActiveIndustries(lender?.industries, liveIndustryOptions),
     [lender?.industries, liveIndustryOptions],
+  );
+  const activeIndustriesToAvoid = useMemo(
+    () => filterToActiveIndustries(lender?.industriesToAvoid, liveIndustryOptions),
+    [lender?.industriesToAvoid, liveIndustryOptions],
   );
   const geoOptions = useGeoOptionsList();
   const [industrySearchEdit, setIndustrySearchEdit] = useState('');
@@ -2035,13 +2039,13 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                   </div>
                                 </div>
                               ))}
-                              {lender.industriesToAvoid && lender.industriesToAvoid.length > 0 && (
+                              {activeIndustriesToAvoid.length > 0 && (
                                 <div className="flex items-start gap-3">
                                   <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
                                   <div>
                                     <span className="text-sm font-medium block mb-1.5">Industries to Avoid:</span>
                                     <div className="flex flex-wrap gap-1.5">
-                                      {lender.industriesToAvoid.map((industry, idx) => (
+                                      {activeIndustriesToAvoid.map((industry, idx) => (
                                         <Badge key={idx} variant="destructive" className="text-xs">
                                           {industry}
                                         </Badge>
@@ -2074,7 +2078,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 lender.referralLender,
                                 lender.referralFeeOffered,
                                 lender.referralAgreement,
-                                lender.industriesToAvoid?.length,
+                                activeIndustriesToAvoid.length,
                               ].some((v) => (typeof v === 'string' ? v.trim().length > 0 : v != null && v !== 0)) && (
                                 <p className="text-muted-foreground text-sm">No lending criteria specified</p>
                               )}

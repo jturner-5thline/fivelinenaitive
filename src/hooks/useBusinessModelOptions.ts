@@ -69,20 +69,29 @@ export async function countFundingSourcesUsingIndustries(values: string[]): Prom
   return result;
 }
 
-/** Removes the given industry values from every funding source the user can edit. */
+/** Removes the given industry values from Industries and Industries to Avoid on every editable funding source. */
 export async function removeIndustriesFromFundingSources(values: string[]): Promise<number> {
   if (values.length === 0) return 0;
   const wanted = new Set(values.map(v => v.trim().toLowerCase()));
-  const { data, error } = await supabase
-    .from('master_lenders')
-    .select('id, industries')
-    .overlaps('industries', values);
-  if (error) throw error;
+  const keep = (arr: string[] | null) => (arr ?? []).filter(v => !wanted.has(String(v || '').trim().toLowerCase()));
+  const rows = new Map<string, { id: string; industries: string[] | null; industries_to_avoid: string[] | null }>();
+  for (const col of ['industries', 'industries_to_avoid'] as const) {
+    const { data, error } = await supabase
+      .from('master_lenders')
+      .select('id, industries, industries_to_avoid')
+      .overlaps(col, values);
+    if (error) throw error;
+    for (const r of (data ?? []) as any[]) rows.set(r.id, r);
+  }
   let updated = 0;
-  for (const row of (data ?? []) as Array<{ id: string; industries: string[] | null }>) {
-    const next = (row.industries ?? []).filter(v => !wanted.has(String(v || '').trim().toLowerCase()));
-    if (next.length === (row.industries ?? []).length) continue;
-    const { error: upErr } = await supabase.from('master_lenders').update({ industries: next }).eq('id', row.id);
+  for (const row of rows.values()) {
+    const ind = keep(row.industries);
+    const avoid = keep(row.industries_to_avoid);
+    if (ind.length === (row.industries ?? []).length && avoid.length === (row.industries_to_avoid ?? []).length) continue;
+    const { error: upErr } = await supabase
+      .from('master_lenders')
+      .update({ industries: ind, industries_to_avoid: avoid })
+      .eq('id', row.id);
     if (!upErr) updated++;
   }
   return updated;
