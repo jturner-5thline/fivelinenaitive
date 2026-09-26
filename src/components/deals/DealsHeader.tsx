@@ -591,13 +591,13 @@ export function DealsHeader() {
                     onMouseEnter={() => prefetchOverlay(label)}
                     onFocus={() => prefetchOverlay(label)}
                     onPointerDown={() => prefetchOverlay(label)}
-                    className={`relative inline-flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors ${
+                    className={`relative inline-flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full transition-colors ${
                       isOpen
                         ? 'bg-blue-400/15 text-blue-400'
                         : 'text-blue-400/80 hover:text-blue-400 hover:bg-blue-400/10'
                     }`}
                   >
-                    <Icon className="h-5 w-5 sm:h-[27px] sm:w-[27px]" />
+                    <Icon className="h-5 w-5 sm:h-[29px] sm:w-[29px]" />
                     {badgeCount > 0 ? (
                       <span
                         aria-label={`${label} has ${badgeCount} pending`}
