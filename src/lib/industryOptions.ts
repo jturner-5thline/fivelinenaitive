@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { INDUSTRY_OPTIONS } from '@/constants/industries';
+import { INDUSTRY_OPTIONS, LEGACY_INDUSTRY_OPTIONS } from '@/constants/industries';
 
 /**
  * Single source of truth for the industry dropdown options.
@@ -14,22 +14,8 @@ export const INDUSTRY_OPTIONS_EVENT = 'industry-options-changed';
 
 const norm = (v: string) => v.trim().toLowerCase();
 
-/** Industry values retired platform-wide (folded into canonical tags). */
-export const RETIRED_INDUSTRIES = new Set([
-  'business services',
-  'oil and gas',
-  'technology & software',
-  'hardware',
-  'other hardware',
-  'media & telecommunication',
-  'software',
-  'biotechnology',
-  'pharmaceuticals',
-  'pharmaceuticals and biotechnology',
-  'other pharmaceuticals and biotechnology',
-  'drug discovery',
-  'drug delivery',
-]);
+/** Industry values retired platform-wide (folded into the 28 canonical tags). */
+export const RETIRED_INDUSTRIES = new Set(LEGACY_INDUSTRY_OPTIONS.map(v => v.trim().toLowerCase()));
 
 export function getRemovedIndustries(): Set<string> {
   try {
