@@ -5108,7 +5108,7 @@ export default function DealDetail() {
                 }).sort((a, b) => b.step - a.step);
                 if (rows.length === 0) return null;
                 return (
-                  <div className="flex h-[220px] w-full min-w-0 flex-col rounded-xl border border-border/60 bg-card px-4 pt-0 pb-2">
+                  <div className="fs-tab-widget flex h-[220px] w-full min-w-0 flex-col rounded-lg px-4 pt-0 pb-2">
                     <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
                       {rows.map(r => (
                         <div key={r.id} className="grid grid-cols-[minmax(120px,1fr)_2fr_auto] items-center gap-3">
@@ -5135,7 +5135,7 @@ export default function DealDetail() {
               })()}
               </div>
               {/* Lenders Card */}
-                 <Card className={cn("flex flex-col min-h-0", useContextRailLayout && "border-border/60")}>
+                 <Card className="fs-tab-widget flex flex-col min-h-0">
                    <CardHeader className="pb-3 pt-3">
                        <div className="flex items-center gap-2 flex-wrap">
                           <div className="flex-1 shrink basis-[180px] min-w-[120px] max-w-[260px]">
