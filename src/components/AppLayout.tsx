@@ -227,7 +227,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
         <AppSidebar />
         <MainContent
           className={mainClassName}
-          showCopilotBar={true}
+          showCopilotBar={canAccessCopilot}
           showWorkspaceLogo={showWorkspaceLogo}
         >
           {content}

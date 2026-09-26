@@ -4306,7 +4306,7 @@ export default function DealDetail() {
                   </div>
                   )}
 
-                  {hasDealSpaceAccess && id && (
+                  {hasDealSpaceAccess && canAccessDealAskAi && id && (
                     <div className="-mx-2 -mt-2 px-2 pb-2 pt-0">
                       <DealAskAiQuickBar
                         dealId={id}

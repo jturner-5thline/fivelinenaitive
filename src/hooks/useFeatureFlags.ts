@@ -118,11 +118,13 @@ export const useDeleteFeatureFlag = () => {
 };
 
 // Hook to check if user has access to a feature
-export const useFeatureAccess = (featureName: string) => {
+export const useFeatureAccess = (featureName: string, defaultStatus?: FeatureStatus) => {
   const { user } = useAuth();
   const { data: flags, isLoading } = useFeatureFlags();
 
-  const flag = flags?.find((f) => f.name === featureName);
+  const found = flags?.find((f) => f.name === featureName);
+  // When the flag has never been configured, fall back to the provided default.
+  const flag = found ?? (defaultStatus && flags ? ({ status: defaultStatus } as { status: FeatureStatus }) : undefined);
   
   // Check if user is a 5thline.co user
   const is5thLineUser = user?.email?.endsWith('@5thline.co') ?? false;

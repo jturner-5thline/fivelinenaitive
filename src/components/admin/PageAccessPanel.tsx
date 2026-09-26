@@ -141,8 +141,14 @@ const pageConfigs: PageConfig[] = [
   },
   { 
     featureKey: "copilot_widget", 
-    label: "naitive AI", 
-    description: "Floating AI copilot drawer accessible from every page",
+    label: "Ask naitive AI Copilot", 
+    description: "Floating Ask naitive AI copilot bar shown in the middle of every page",
+    icon: <Sparkles className="h-5 w-5" />
+  },
+  { 
+    featureKey: "deal_ask_ai", 
+    label: "Deal Ask AI", 
+    description: "Ask AI bar inside the deal details pop-up",
     icon: <Sparkles className="h-5 w-5" />
   },
   { 
