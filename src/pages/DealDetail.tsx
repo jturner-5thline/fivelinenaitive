@@ -4136,6 +4136,97 @@ export default function DealDetail() {
                 </div>
               </div>
             </CardHeader>
+            <div className="px-3 pt-1 pb-3 shrink-0">
+              <div className="border-b border-[#3a4760]">
+                    <HintTooltip
+                      hint="Use these tabs to navigate a deal: Deal Space for AI insights, Deal Information for key details, Lenders for tracking, Deal Management for tasks, Deal Write Up for the memo, Data Room for documents, and Emails for correspondence."
+                      visible={isHintVisible('deal-tabs')}
+                      onDismiss={() => dismissHint('deal-tabs')}
+                      side="bottom"
+                    >
+                      <TabsList
+                        className="inline-flex h-auto items-end justify-start gap-6 bg-transparent p-0 rounded-none max-w-full overflow-x-auto scrollbar-none"
+                        style={{ scrollbarWidth: 'none' }}
+                      >
+                        <TabsTrigger
+                          value="deal-info"
+                          className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
+                        >
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Deal Space
+                        </TabsTrigger>
+                        {!isSimplifiedDeal && !isProjectsDeal && (
+                          <TabsTrigger
+                            value="lenders"
+                            className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
+                          >
+                            Funding Sources
+                            {deal.lenders && deal.lenders.length > 0 && (
+                              <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
+                                {deal.lenders.length}
+                              </Badge>
+                            )}
+                          </TabsTrigger>
+                        )}
+                        {canSeeAnalysisTab && !isSimplifiedDeal && !isProjectsDeal && (
+                          <TabsTrigger
+                            value="analysis"
+                            className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
+                          >
+                            Analysis
+                          </TabsTrigger>
+                        )}
+                        {/* Management tab removed per product decision. */}
+                        {false && (
+                          <TabsTrigger
+                            value="deal-management"
+                            className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
+                          >
+                            Management
+                            {infoRequestActionCount > 0 && (
+                              <Badge variant="destructive" className="notif-count">
+                                {infoRequestActionCount}
+                              </Badge>
+                            )}
+                          </TabsTrigger>
+                        )}
+                        {!isSimplifiedDeal && !isProjectsDeal && (
+                          <TabsTrigger
+                            value="deal-writeup"
+                            className="relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
+                          >
+                            Write Up
+                            <Badge variant="outline" className="ml-1.5 h-4 px-1 text-[9px] font-medium uppercase tracking-wide border-amber-400/40 text-amber-300 bg-amber-400/10">
+                              Beta
+                            </Badge>
+                          </TabsTrigger>
+                        )}
+                        {(!isSimplifiedDeal || isFinServDeal) && (
+                          <TabsTrigger
+                            value="data-room"
+                            className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
+                          >
+                            Data Room
+                            {attachments.length > 0 && (
+                              <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
+                                {attachments.length}
+                              </Badge>
+                            )}
+                          </TabsTrigger>
+                        )}
+                        {false && !isProjectsDeal && (
+                        <TabsTrigger
+                          value="activity-log"
+                          className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
+                        >
+                          <History className="h-3.5 w-3.5" />
+                          Activity
+                        </TabsTrigger>
+                        )}
+                      </TabsList>
+                    </HintTooltip>
+              </div>
+            </div>
             {useContextRailLayout && !isSimplifiedDeal && (
               <CardContent className="-mt-2 pt-0 pb-1 px-3 shrink-0 deal-milestones-surface">
                 <DealMilestones
@@ -6350,108 +6441,6 @@ export default function DealDetail() {
               </div>{/* close context-rail row */}
             </div>{/* close scroll wrapper div */}
 
-                {/* Floating tab rail — pinned to the bottom of the modal
-                    shell. In the embedded overlay we use mt-auto + sticky
-                    bottom-0 so the rail always sits flush against the
-                    modal's bottom edge regardless of tab content length,
-                    and stays pinned there while the inner content scrolls.
-                    On the standalone /deal/:id route it falls back to a
-                    viewport-fixed bar. */}
-                <div className={cn(
-                  "relative z-40 shrink-0 pointer-events-none flex justify-start px-0",
-                   "before:content-[''] before:absolute before:inset-x-0 before:top-0 before:z-[1] before:h-px before:bg-white/30",
-                  isEmbedded
-                    ? "mt-auto pt-0 pb-2 bg-gradient-to-t from-background/80 via-background/70 to-transparent backdrop-blur-sm"
-                    : "fixed bottom-0 inset-x-0"
-                )}>
-                  <HintTooltip
-                    hint="Use these tabs to navigate a deal: Deal Space for AI insights, Deal Information for key details, Lenders for tracking, Deal Management for tasks, Deal Write Up for the memo, Data Room for documents, and Emails for correspondence."
-                    visible={isHintVisible('deal-tabs')}
-                    onDismiss={() => dismissHint('deal-tabs')}
-                    side="top"
-                  >
-                    <TabsList
-                      className="pointer-events-auto inline-flex h-auto items-center justify-start rounded-sm bg-gradient-to-t from-slate-800/95 to-slate-950 backdrop-blur-xl p-0 gap-0 border border-white/10 border-l-0 shadow-[0_-10px_30px_-10px_rgba(0,0,0,0.75),inset_0_-1px_0_0_rgba(255,255,255,0.07)] max-w-full overflow-x-visible overflow-y-visible scrollbar-none [&>button+button]:border-l [&>button+button]:border-white/10 [&>button[data-state=active]]:border-l-transparent [&>button[data-state=active]+button]:border-l-transparent [&>button:hover]:border-l-transparent [&>button:hover+button]:border-l-transparent [&>button]:transition-[background-color,color,border-color] [&>button]:duration-150"
-                      style={{ scrollbarWidth: 'none' }}
-                    >
-                      <TabsTrigger
-                        value="deal-info"
-                        className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-slate-900 shadow-none hover:text-white hover:bg-slate-800 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mb-2 data-[state=active]:rounded-b-sm data-[state=active]:rounded-t-none data-[state=active]:bg-gradient-to-t data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_8px_18px_-8px_rgba(0,0,0,0.7)] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-top-px data-[state=active]:after:z-20 data-[state=active]:after:h-[2px] data-[state=active]:after:bg-slate-900"
-                      >
-                        <Sparkles className="h-3.5 w-3.5" />
-                        Deal Space
-                      </TabsTrigger>
-                      {!isSimplifiedDeal && !isProjectsDeal && (
-                        <TabsTrigger
-                          value="lenders"
-                          className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-slate-900 shadow-none hover:text-white hover:bg-slate-800 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mb-2 data-[state=active]:rounded-b-sm data-[state=active]:rounded-t-none data-[state=active]:bg-gradient-to-t data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_8px_18px_-8px_rgba(0,0,0,0.7)] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-top-px data-[state=active]:after:z-20 data-[state=active]:after:h-[2px] data-[state=active]:after:bg-slate-900"
-                        >
-                          Funding Sources
-                          {deal.lenders && deal.lenders.length > 0 && (
-                            <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
-                              {deal.lenders.length}
-                            </Badge>
-                          )}
-                        </TabsTrigger>
-                      )}
-                      {canSeeAnalysisTab && !isSimplifiedDeal && !isProjectsDeal && (
-                        <TabsTrigger
-                          value="analysis"
-                          className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-slate-900 shadow-none hover:text-white hover:bg-slate-800 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mb-2 data-[state=active]:rounded-b-sm data-[state=active]:rounded-t-none data-[state=active]:bg-gradient-to-t data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_8px_18px_-8px_rgba(0,0,0,0.7)] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-top-px data-[state=active]:after:z-20 data-[state=active]:after:h-[2px] data-[state=active]:after:bg-slate-900"
-                        >
-                          Analysis
-                        </TabsTrigger>
-                      )}
-                      {/* Management tab removed per product decision. */}
-                      {false && (
-                        <TabsTrigger
-                          value="deal-management"
-                          className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-slate-900 shadow-none hover:text-white hover:bg-slate-800 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mb-2 data-[state=active]:rounded-b-sm data-[state=active]:rounded-t-none data-[state=active]:bg-gradient-to-t data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_8px_18px_-8px_rgba(0,0,0,0.7)] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-top-px data-[state=active]:after:z-20 data-[state=active]:after:h-[2px] data-[state=active]:after:bg-slate-900"
-                        >
-                          Management
-                          {infoRequestActionCount > 0 && (
-                            <Badge variant="destructive" className="notif-count">
-                              {infoRequestActionCount}
-                            </Badge>
-                          )}
-                        </TabsTrigger>
-                      )}
-                      {!isSimplifiedDeal && !isProjectsDeal && (
-                        <TabsTrigger
-                          value="deal-writeup"
-                          className="relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-slate-900 shadow-none hover:text-white hover:bg-slate-800 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mb-2 data-[state=active]:rounded-b-sm data-[state=active]:rounded-t-none data-[state=active]:bg-gradient-to-t data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_8px_18px_-8px_rgba(0,0,0,0.7)] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-top-px data-[state=active]:after:z-20 data-[state=active]:after:h-[2px] data-[state=active]:after:bg-slate-900"
-                        >
-                          Write Up
-                          <Badge variant="outline" className="ml-1.5 h-4 px-1 text-[9px] font-medium uppercase tracking-wide border-amber-400/40 text-amber-300 bg-amber-400/10">
-                            Beta
-                          </Badge>
-                        </TabsTrigger>
-                      )}
-                      {(!isSimplifiedDeal || isFinServDeal) && (
-                        <TabsTrigger
-                          value="data-room"
-                          className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-slate-900 shadow-none hover:text-white hover:bg-slate-800 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mb-2 data-[state=active]:rounded-b-sm data-[state=active]:rounded-t-none data-[state=active]:bg-gradient-to-t data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_8px_18px_-8px_rgba(0,0,0,0.7)] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-top-px data-[state=active]:after:z-20 data-[state=active]:after:h-[2px] data-[state=active]:after:bg-slate-900"
-                        >
-                          Data Room
-                          {attachments.length > 0 && (
-                            <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
-                              {attachments.length}
-                            </Badge>
-                          )}
-                        </TabsTrigger>
-                      )}
-                      {false && !isProjectsDeal && (
-                      <TabsTrigger
-                        value="activity-log"
-                        className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-slate-900 shadow-none hover:text-white hover:bg-slate-800 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mb-2 data-[state=active]:rounded-b-sm data-[state=active]:rounded-t-none data-[state=active]:bg-gradient-to-t data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_8px_18px_-8px_rgba(0,0,0,0.7)] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-top-px data-[state=active]:after:z-20 data-[state=active]:after:h-[2px] data-[state=active]:after:bg-slate-900"
-                      >
-                        <History className="h-3.5 w-3.5" />
-                        Activity
-                      </TabsTrigger>
-                      )}
-                    </TabsList>
-                  </HintTooltip>
-                </div>
 
           </Tabs>
         </main>
