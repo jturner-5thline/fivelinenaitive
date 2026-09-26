@@ -3729,7 +3729,7 @@ export default function DealDetail() {
           )}
 
           {/* Status note sits directly under the deal name, half-width. */}
-          {useContextRailLayout && dealInfoTab === 'deal-info' && (
+          {useContextRailLayout && (
             <div className="w-full sm:w-[85%] mt-2 ml-3">
               {statusNoteColumn}
             </div>
@@ -3875,9 +3875,6 @@ export default function DealDetail() {
           )}
           <div className={cn(
             useContextRailLayout && "flex-1 min-w-0 w-full",
-            // Tabs without the context rail retain the same readable content
-            // width, centered within the full popup rather than left-aligned.
-            useContextRailLayout && dealInfoTab !== 'deal-info' && "lg:max-w-[calc(100%-92px)] mx-auto",
           )}>
           {/* Header Card */}
           <Card className={cn(
@@ -3885,12 +3882,11 @@ export default function DealDetail() {
             useContextRailLayout
               ? "border-0 bg-transparent shadow-none"
               : "border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]",
-            useContextRailLayout && "-mt-2 lg:-mt-14 mb-1",
+            useContextRailLayout && dealInfoTab === 'deal-info' && "-mt-2 lg:-mt-14 mb-1",
+            useContextRailLayout && dealInfoTab !== 'deal-info' && "mt-2 mb-1",
             useContextRailLayout && "flex flex-col overflow-visible",
-            // Header widget (status + milestones) is scoped to the Deal Space tab
-            // only. Keep this last so `hidden` wins over the `flex` display
-            // class above when tailwind-merge resolves the display group.
-            dealInfoTab !== 'deal-info' && "hidden",
+            // Legacy (non-rail) layout keeps the header card on Deal Space only.
+            !useContextRailLayout && dealInfoTab !== 'deal-info' && "hidden",
           )}
           >
             <CardHeader className={cn("pb-4", useContextRailLayout && "hidden")}>
@@ -4229,7 +4225,7 @@ export default function DealDetail() {
                     </HintTooltip>
               </div>
             </div>
-            {useContextRailLayout && !isSimplifiedDeal && (
+            {useContextRailLayout && !isSimplifiedDeal && dealInfoTab === 'deal-info' && (
               <CardContent className="-mt-2 pt-0 pb-1 px-3 shrink-0 deal-milestones-surface">
                 <DealMilestones
                   milestones={dbMilestones}
