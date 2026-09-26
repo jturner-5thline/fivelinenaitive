@@ -70,7 +70,7 @@ function MainContent({
       <DealsHeader />
       {showWorkspaceLogo && (
         <div
-          className="fixed left-[2px] -top-[22px] z-40 pointer-events-none"
+          className="workspace-logo fixed left-[2px] -top-[22px] z-40 pointer-events-none"
           aria-hidden="true"
         >
           <Logo className="h-32" />
