@@ -91,6 +91,8 @@ export function getIndustryOptions(): string[] {
   return base.filter(v => {
     const k = norm(v);
     if (!k || removed.has(k) || RETIRED_INDUSTRIES.has(k) || seen.has(k)) return false;
+    // Energy variants and Gas Utilities are folded into "Energy".
+    if ((k.includes('energy') && k !== 'energy') || k === 'gas utilities') return false;
     seen.add(k);
     return true;
   });
