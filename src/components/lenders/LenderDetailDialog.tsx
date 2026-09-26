@@ -45,7 +45,7 @@ import { LenderSectionReorderDialog } from './LenderSectionReorderDialog';
 import { AddLenderContactDialog } from './AddLenderContactDialog';
 import { LenderContactsList } from './LenderContactsList';
 import { cn } from '@/lib/utils';
-import { getIndustryOptions, useIndustryOptionsList } from '@/lib/industryOptions';
+import { getIndustryOptions, useIndustryOptionsList, filterToActiveIndustries } from '@/lib/industryOptions';
 import { BusinessModelOptionsDialog } from '@/components/settings/BusinessModelOptionsDialog';
 import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
@@ -242,7 +242,7 @@ function buildEditForm(lender: LenderInfo): LenderEditData {
      sponsorRequirement: lender.sponsorRequirement || '',
      appetiteStatus: lender.appetiteStatus || 'active',
      geo: lender.geo || '',
-    industries: lender.industries?.join(', ') || '',
+    industries: filterToActiveIndustries(lender.industries).join(','),
     loanTypes: lender.loanTypes?.join(', ') || '',
     description: lender.description || '',
     minRevenue: lender.minRevenue?.toString() || '',
@@ -502,6 +502,10 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   const [geoOptionsOpen, setGeoOptionsOpen] = useState(false);
   const [industryOptionsOpen, setIndustryOptionsOpen] = useState(false);
   const liveIndustryOptions = useIndustryOptionsList();
+  const activeIndustries = useMemo(
+    () => filterToActiveIndustries(lender?.industries, liveIndustryOptions),
+    [lender?.industries, liveIndustryOptions],
+  );
   const geoOptions = useGeoOptionsList();
   const [industrySearchEdit, setIndustrySearchEdit] = useState('');
   const [industryAvoidSearchEdit, setIndustryAvoidSearchEdit] = useState('');
@@ -621,7 +625,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
        checkField('sponsorRequirement', 'Sponsor Requirement', lender.sponsorRequirement || '');
        checkField('appetiteStatus', 'Appetite Status', lender.appetiteStatus || 'active');
        checkField('geo', 'Geography', lender.geo || '');
-      checkField('industries', 'Industries', lender.industries?.join(', ') || '');
+      checkField('industries', 'Industries', filterToActiveIndustries(lender.industries).join(','));
       checkField('loanTypes', 'Loan Types', lender.loanTypes?.join(', ') || '');
       checkField('description', 'Description', lender.description || '');
       checkField('minRevenue', 'Min Revenue', lender.minRevenue?.toString() || '');
@@ -1939,13 +1943,13 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                   </div>
                                 </div>
                               )}
-                              {lender.industries && lender.industries.length > 0 && (
+                              {activeIndustries.length > 0 && (
                                 <div className="flex items-start gap-3">
                                   <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
                                   <div>
                                     <span className="text-sm font-medium block mb-1.5">Industries:</span>
                                     <div className="flex flex-wrap gap-1.5">
-                                      {lender.industries.map((industry, idx) => (
+                                      {activeIndustries.map((industry, idx) => (
                                         <Badge key={idx} variant="blue" className="text-xs">
                                           {industry}
                                         </Badge>
@@ -2056,7 +2060,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 lender.sponsorRequirement,
                                 lender.appetiteStatus,
                                 lender.geo,
-                                lender.industries?.length,
+                                activeIndustries.length,
                                 lender.loanTypes?.length,
                                 lender.minRevenue,
                                 lender.ebitdaMin,
