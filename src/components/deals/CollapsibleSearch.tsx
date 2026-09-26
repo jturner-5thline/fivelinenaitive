@@ -107,9 +107,9 @@ export function CollapsibleSearch({ value, onChange, debounceMs = 350 }: Collaps
       style={{
         width: boxWidth,
         backgroundColor: 'var(--bg-card)',
-        border: '1px solid var(--border-subtle)',
+        border: '1px solid #52617e',
         borderRadius: 'var(--radius-card)',
-        boxShadow: 'var(--elevation-card)',
+        boxShadow: 'none',
       }}
     >
       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
