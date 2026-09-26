@@ -76,7 +76,7 @@ export function useDollarsSignedByMonth(yearOrYears: number | number[]): Dollars
           )
         `)
         .eq('event_type', 'stage_enter')
-        .in('pipeline_id', DEBT_STAGE_PIPELINES)
+        .eq('pipeline_id', ACTIVE_PIPELINE_ID)
         .in('to_stage', FINAL_CREDIT_ITEMS_STAGE_LABELS)
         .gte('changed_at', start)
         .lte('changed_at', end + 'T23:59:59.999Z')
