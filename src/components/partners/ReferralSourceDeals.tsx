@@ -1,3 +1,4 @@
+import { isExcludedDealName } from '@/utils/excludedDeals';
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -87,7 +88,7 @@ export function ReferralSourceDeals({
   // (earliest stage-history event, else created_at) — same basis as
   // useDealReferralSources.
   const { data: dealsRaw = [] } = useQuery({
-    queryKey: ['referral_source_deals', company?.id],
+    queryKey: ['firm_pipeline_deals', company?.id],
     enabled: !!company?.id,
     queryFn: async () => {
       const { getNaitivePipelineId } = await import('@/utils/naitivePipelineExclusion');
@@ -95,8 +96,7 @@ export function ReferralSourceDeals({
       let query = supabase
         .from('deals')
         .select('id, company, value, stage, referred_by, sourced_via, created_at, closing_date, pipeline_id')
-        .eq('company_id', company!.id)
-        .ilike('sourced_via', 'referral%');
+        .eq('company_id', company!.id);
       if (naitivePipelineId) query = query.neq('pipeline_id', naitivePipelineId);
       const { data, error } = await query;
       if (error) throw error;
@@ -144,53 +144,52 @@ export function ReferralSourceDeals({
     'closed-won',
   ];
 
+  // Firm-wide "Deals on the Board" — mirrors the Debt Advisory Metrics
+  // calculation: distinct deals with a stage_enter into NDA / Needs List Sent
+  // on the Active Pipeline within the timeframe, excluding John Moffitt-owned
+  // or -authored entries and de-duped by company name. All acquisition
+  // channels are included (not referral-only).
+  const NDA_EXCLUDED_OWNERS = ['john moffitt'];
+  const NDA_EXCLUDED_CHANGED_BY = ['2e65a4b1-bd94-46ef-87c6-9afe697b3180'];
+  void REACHED_NDA_STAGES;
+
   const { data: onBoardDeals = [] } = useQuery({
     queryKey: [
-      'referral_on_board_deals',
+      'firm_on_board_deals',
       company?.id,
       rangeStart?.toISOString() ?? null,
       rangeEnd?.toISOString() ?? null,
     ],
     enabled: !!company?.id,
     queryFn: async () => {
-      const select = 'id, company, value, stage, referred_by, sourced_via, created_at';
-
-      // 1) Explicit stage-enter events into the NDA stage within the timeframe.
+      const select = 'id, company, value, stage, referred_by, sourced_via, created_at, deal_owner';
       let hq = supabase
         .from('deal_stage_history')
-        .select(`deal_id, changed_at, deals!inner(${select}, company_id, pipeline_id)`)
+        .select(`deal_id, changed_at, changed_by, pipeline_id, deals!inner(${select}, company_id, pipeline_id)`)
         .eq('event_type', 'stage_enter')
         .or(`to_stage_id.eq.${NDA_STAGE_ID},to_stage.eq.${NDA_STAGE_ID}`)
         .eq('deals.company_id', company!.id)
-        .eq('deals.pipeline_id', ACTIVE_PIPELINE_ID)
-        .ilike('deals.sourced_via', 'referral%');
+        .order('changed_at', { ascending: true });
       if (rangeStart) hq = hq.gte('changed_at', rangeStart.toISOString());
       if (rangeEnd) hq = hq.lte('changed_at', rangeEnd.toISOString());
+      const { data, error } = await hq;
+      if (error) throw error;
 
-      // 2) Deals with no explicit NDA stage-enter event: fall back to the best
-      //    available evidence of when they actually reached the stage. NOTE:
-      //    `deals.created_at` is the CRM *import* timestamp, so it can only be
-      //    trusted when nothing else proves earlier activity (an earlier
-      //    stage-history event or a closing date before the range).
-      let dq = supabase
-        .from('deals')
-        .select(`${select}, closing_date`)
-        .eq('company_id', company!.id)
-        .eq('pipeline_id', ACTIVE_PIPELINE_ID)
-        .ilike('sourced_via', 'referral%')
-        .in('stage', REACHED_NDA_STAGES);
-      if (rangeStart) dq = dq.gte('created_at', rangeStart.toISOString());
-      if (rangeEnd) dq = dq.lte('created_at', rangeEnd.toISOString());
-
-      const [hist, created] = await Promise.all([hq, dq]);
-      if (hist.error) throw hist.error;
-      if (created.error) throw created.error;
-
-      const seen = new Set<string>();
+      const seenIds = new Set<string>();
+      const seenNames = new Set<string>();
       const rows: DealRow[] = [];
-      const push = (d: any, enteredAt: string) => {
-        if (!d?.id || seen.has(d.id)) return;
-        seen.add(d.id);
+      for (const r of (data || []) as any[]) {
+        const d = r.deals;
+        if (!d?.id) continue;
+        if (r.pipeline_id && r.pipeline_id !== ACTIVE_PIPELINE_ID) continue;
+        if (!r.pipeline_id && d.pipeline_id !== ACTIVE_PIPELINE_ID) continue;
+        if (r.changed_by && NDA_EXCLUDED_CHANGED_BY.includes(r.changed_by)) continue;
+        if (NDA_EXCLUDED_OWNERS.includes(String(d.deal_owner || '').toLowerCase().trim())) continue;
+        if (isExcludedDealName(d.company)) continue;
+        const nameKey = String(d.company || '').toLowerCase().trim();
+        if (seenIds.has(d.id) || (nameKey && seenNames.has(nameKey))) continue;
+        seenIds.add(d.id);
+        if (nameKey) seenNames.add(nameKey);
         rows.push({
           id: d.id,
           company: d.company,
@@ -198,42 +197,9 @@ export function ReferralSourceDeals({
           stage: d.stage,
           referred_by: d.referred_by,
           sourced_via: d.sourced_via,
-          created_at: enteredAt,
+          created_at: r.changed_at,
           closing_date: null,
         });
-      };
-      for (const r of (hist.data || []) as any[]) push(r.deals, r.changed_at);
-
-      // Earliest recorded stage activity for the fallback candidates.
-      const candidates = ((created.data || []) as any[]).filter(d => !seen.has(d.id));
-      const earliestActivity = new Map<string, string>();
-      for (let i = 0; i < candidates.length; i += 200) {
-        const chunk = candidates.slice(i, i + 200).map(d => d.id);
-        if (!chunk.length) continue;
-        const { data: hRows, error: hErr } = await supabase
-          .from('deal_stage_history')
-          .select('deal_id, changed_at')
-          .in('deal_id', chunk);
-        if (hErr) throw hErr;
-        for (const r of (hRows || []) as { deal_id: string; changed_at: string | null }[]) {
-          if (!r.changed_at) continue;
-          const prev = earliestActivity.get(r.deal_id);
-          if (!prev || r.changed_at < prev) earliestActivity.set(r.deal_id, r.changed_at);
-        }
-      }
-
-      const startMs = rangeStart ? rangeStart.getTime() : -Infinity;
-      const endMs = rangeEnd ? rangeEnd.getTime() : Infinity;
-      for (const d of candidates) {
-        // Effective NDA-entry date = earliest credible activity signal.
-        const signals = [d.created_at, earliestActivity.get(d.id), d.closing_date]
-          .filter(Boolean)
-          .map((s: string) => new Date(s).getTime())
-          .filter(t => Number.isFinite(t));
-        if (!signals.length) continue;
-        const effective = Math.min(...signals);
-        if (effective < startMs || effective > endMs) continue;
-        push(d, new Date(effective).toISOString());
       }
       rows.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
       return rows;
@@ -291,8 +257,8 @@ export function ReferralSourceDeals({
   );
 
   const drillMeta: Record<string, { title: string; kind: 'deals' | 'sources' | 'conversion' }> = {
-    deals: { title: 'Deals on Board from Referral Sources · entered NDA / Needs List Sent', kind: 'deals' },
-    value: { title: 'Dollars on Board from Referral Sources · entered NDA / Needs List Sent', kind: 'deals' },
+    deals: { title: 'Deals on the Board · entered NDA / Needs List Sent', kind: 'deals' },
+    value: { title: 'Dollars on the Board · entered NDA / Needs List Sent', kind: 'deals' },
     conversion: { title: 'Conversion Rate · trailing 12 months', kind: 'conversion' },
     sources: { title: 'Referral Sources · linked CRM records', kind: 'sources' },
     sourceDeals: { title: 'Referred Deals · by referral source', kind: 'sources' },
@@ -335,7 +301,7 @@ export function ReferralSourceDeals({
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
-                  <TableHead>Referral Source</TableHead>
+                  <TableHead>Source</TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead>Channel</TableHead>
                   <TableHead className="text-right">Deals</TableHead>
@@ -358,7 +324,7 @@ export function ReferralSourceDeals({
             </Table>
           )
         ) : onBoardDeals.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">No referral-source deals found.</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">No deals found.</p>
         ) : (
           <Table>
             <TableHeader>
@@ -366,7 +332,7 @@ export function ReferralSourceDeals({
                 <TableHead>Deal Name</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead>Stage</TableHead>
-                <TableHead>Referral Source</TableHead>
+                <TableHead>Source</TableHead>
                 <TableHead>Referral Date</TableHead>
               </TableRow>
             </TableHeader>
@@ -404,8 +370,8 @@ export function ReferralSourceDeals({
         'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-3'
       }
     >
-        <KpiTile label="Deals on Board from Referral Sources" value={onBoardDeals.length} subtext="entered NDA / Needs List Sent" onClick={() => setDrill('deals')} />
-        <KpiTile label="Dollars on Board from Referral Sources" value={formatCurrencyCompact(totalValue)} subtext="entered NDA / Needs List Sent" onClick={() => setDrill('value')} />
+        <KpiTile label="Deals on the Board" value={onBoardDeals.length} subtext="entered NDA / Needs List Sent" onClick={() => setDrill('deals')} />
+        <KpiTile label="Dollars on the Board" value={formatCurrencyCompact(totalValue)} subtext="entered NDA / Needs List Sent" onClick={() => setDrill('value')} />
 
 
         <TooltipProvider delayDuration={200}>
@@ -457,7 +423,7 @@ export function ReferralSourceDeals({
         </CollapsibleTrigger>
         <CollapsibleContent>
           {matchedDeals.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">No referral-source deals found.</p>
+            <p className="text-sm text-muted-foreground py-4 text-center">No deals found.</p>
           ) : (
             <div className={`${liquidGlassCard} overflow-hidden`}>
               <Table>
