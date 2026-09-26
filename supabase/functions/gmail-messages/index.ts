@@ -35,16 +35,21 @@ async function forwardNylasError(resp: Response, fallbackMessage: string): Promi
   }
 
   const isTransient = upstreamStatus === 429 || (upstreamStatus >= 500 && upstreamStatus <= 599);
+  // Expired / revoked mailbox grant — signal reconnect instead of throwing.
+  const isAuth =
+    upstreamStatus === 401 ||
+    /invalid[_ ]?grant|expired or revoked|grant.*expired|reauth|invalid_token/i.test(providerMessage || "");
   const retryAfter = resp.headers.get("retry-after");
-  // Return 200 for transient upstream failures so the client never blank-screens.
-  // The body carries `retryable: true` + `fallback: true` so callers can decide
+  // Return 200 for transient and auth failures so the client never blank-screens.
+  // The body carries `fallback: true` so callers can decide
   // whether to retry, surface a toast, or render cached data.
-  const status = isTransient ? 200 : upstreamStatus;
+  const status = isTransient || isAuth ? 200 : upstreamStatus;
   const body = {
-    error: providerMessage || fallbackMessage,
+    error: isAuth ? "Mailbox connection expired. Please reconnect your email." : (providerMessage || fallbackMessage),
     upstream_status: upstreamStatus,
     retryable: isTransient,
-    ...(isTransient ? { fallback: true } : {}),
+    ...(isTransient || isAuth ? { fallback: true } : {}),
+    ...(isAuth ? { error_code: "reauth_required", action: "reauth_required", needs_reconnect: true } : {}),
     ...(retryAfter ? { retry_after: retryAfter } : {}),
   };
   console.error(`[gmail-messages] upstream error ${upstreamStatus}: ${body.error}`);

@@ -10003,63 +10003,6 @@ export type Database = {
           },
         ]
       }
-      deal_email_backfill_jobs: {
-        Row: {
-          attempts: number
-          created_at: string
-          deal_id: string
-          grant_id: string
-          id: string
-          last_error: string | null
-          linked_count: number
-          next_attempt_at: string
-          status: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          attempts?: number
-          created_at?: string
-          deal_id: string
-          grant_id: string
-          id?: string
-          last_error?: string | null
-          linked_count?: number
-          next_attempt_at?: string
-          status?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          attempts?: number
-          created_at?: string
-          deal_id?: string
-          grant_id?: string
-          id?: string
-          last_error?: string | null
-          linked_count?: number
-          next_attempt_at?: string
-          status?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "deal_email_backfill_jobs_deal_id_fkey"
-            columns: ["deal_id"]
-            isOneToOne: false
-            referencedRelation: "deals"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "deal_email_backfill_jobs_deal_id_fkey"
-            columns: ["deal_id"]
-            isOneToOne: false
-            referencedRelation: "v_deal_owner_resolution"
-            referencedColumns: ["deal_id"]
-          },
-        ]
-      }
       deal_email_prompts: {
         Row: {
           cc_json: Json
@@ -20460,33 +20403,6 @@ export type Database = {
           },
         ]
       }
-      nylas_webhook_config: {
-        Row: {
-          callback_url: string | null
-          created_at: string
-          id: string
-          updated_at: string
-          webhook_id: string | null
-          webhook_secret: string | null
-        }
-        Insert: {
-          callback_url?: string | null
-          created_at?: string
-          id?: string
-          updated_at?: string
-          webhook_id?: string | null
-          webhook_secret?: string | null
-        }
-        Update: {
-          callback_url?: string | null
-          created_at?: string
-          id?: string
-          updated_at?: string
-          webhook_id?: string | null
-          webhook_secret?: string | null
-        }
-        Relationships: []
-      }
       org_notification_defaults: {
         Row: {
           company_id: string
@@ -29991,28 +29907,6 @@ export type Database = {
           source: string
         }[]
       }
-      claim_deal_email_backfill_jobs: {
-        Args: { _limit: number }
-        Returns: {
-          attempts: number
-          created_at: string
-          deal_id: string
-          grant_id: string
-          id: string
-          last_error: string | null
-          linked_count: number
-          next_attempt_at: string
-          status: string
-          updated_at: string
-          user_id: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "deal_email_backfill_jobs"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
       claude_usage_daily_by_feature: {
         Args: { _days?: number }
         Returns: {
@@ -30094,7 +29988,6 @@ export type Database = {
         Args: { p_meeting_id: string }
         Returns: Json
       }
-      enqueue_deal_email_backfill: { Args: never; Returns: number }
       ensure_user_workspace: {
         Args: {
           _company_name?: string
@@ -30508,13 +30401,6 @@ export type Database = {
               transcript_id: string
             }[]
           }
-      match_deals_for_email: {
-        Args: { _domains: string[]; _emails: string[]; _user_id: string }
-        Returns: {
-          deal_id: string
-          reason: string
-        }[]
-      }
       match_lenders_by_narrative: {
         Args: {
           caller_company_id?: string
