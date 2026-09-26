@@ -23,6 +23,12 @@ export const RETIRED_INDUSTRIES = new Set([
   'other hardware',
   'media & telecommunication',
   'software',
+  'biotechnology',
+  'pharmaceuticals',
+  'pharmaceuticals and biotechnology',
+  'other pharmaceuticals and biotechnology',
+  'drug discovery',
+  'drug delivery',
 ]);
 
 export function getRemovedIndustries(): Set<string> {
