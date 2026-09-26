@@ -530,13 +530,10 @@ export function DealsHeader() {
         className="pt-4 px-2 sm:px-4 pointer-events-none"
       >
         <div
-          className="floating-header pointer-events-auto mx-auto relative flex h-10 sm:h-11 items-center gap-1 sm:gap-2 px-2 sm:px-4 min-w-0 rounded-[5px] overflow-hidden text-foreground shadow-glass hover:shadow-glass-hover"
+          className="floating-header pointer-events-auto mx-auto relative flex h-11 sm:h-[50px] items-center gap-1 sm:gap-2 px-2 sm:px-4 min-w-0 rounded-[5px] overflow-hidden text-foreground shadow-glass hover:shadow-glass-hover"
           style={{
-            // Size the bar to fit the visible icon cluster: each icon is
-            // ~40px wide (sm:w-10) with a 6px gap (gap-1.5), plus 16px of
-            // horizontal padding on each side. Stay responsive on narrow
-            // viewports so the cluster never clips.
-            width: `min(${overlayRegistry.length * 40 + Math.max(0, overlayRegistry.length - 1) * 6 + 48}px, calc(100vw - 16px))`,
+            // Icon cluster width: 44px buttons + 6px gaps + padding.
+            width: `min(${overlayRegistry.length * 44 + Math.max(0, overlayRegistry.length - 1) * 6 + 48}px, calc(100vw - 16px))`,
             borderRadius: 8,
             background: '#1c2437',
             backgroundColor: '#1c2437',
@@ -594,13 +591,13 @@ export function DealsHeader() {
                     onMouseEnter={() => prefetchOverlay(label)}
                     onFocus={() => prefetchOverlay(label)}
                     onPointerDown={() => prefetchOverlay(label)}
-                    className={`relative inline-flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors ${
+                    className={`relative inline-flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full transition-colors ${
                       isOpen
                         ? 'bg-blue-400/15 text-blue-400'
                         : 'text-blue-400/80 hover:text-blue-400 hover:bg-blue-400/10'
                     }`}
                   >
-                    <Icon className="h-5 w-5 sm:h-[27px] sm:w-[27px]" />
+                    <Icon className="h-5 w-5 sm:h-[29px] sm:w-[29px]" />
                     {badgeCount > 0 ? (
                       <span
                         aria-label={`${label} has ${badgeCount} pending`}
