@@ -4,6 +4,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Opt out of browser auto-dark / forced darkening (e.g. Comet dark theme)
+   so our author-defined dark palette renders identically everywhere. */
+:root,
+html,
+body {
+  color-scheme: only dark !important;
+  forced-color-adjust: none;
+}
+
 /* naitive — Liquid Glass Design System */
 
 @layer base {
