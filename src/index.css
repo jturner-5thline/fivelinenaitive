@@ -4643,3 +4643,9 @@ div.deal-tile.deal-glass:hover,
   border-color: #6b7c9c !important;
   box-shadow: none !important;
 }
+
+/* Floating left sidebar: same crisp 1px tile border */
+[data-tour="sidebar"] [data-sidebar="sidebar"] {
+  border: 1px solid #52617e !important;
+  box-shadow: none !important;
+}
