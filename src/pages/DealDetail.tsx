@@ -5108,25 +5108,27 @@ export default function DealDetail() {
                 }).sort((a, b) => b.step - a.step);
                 if (rows.length === 0) return null;
                 return (
-                  <div className="fs-tab-widget flex h-[220px] w-full min-w-0 flex-col rounded-lg px-4 pt-0 pb-2">
-                    <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+                  <div className="fs-tab-widget flex h-[220px] w-full min-w-0 flex-col rounded-lg px-4 pt-3 pb-3">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Stage Progress</span>
+                      <span className="text-[11px] tabular-nums text-muted-foreground">{rows.length} active</span>
+                    </div>
+                    <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1">
                       {rows.map(r => (
-                        <div key={r.id} className="grid grid-cols-[minmax(120px,1fr)_2fr_auto] items-center gap-3">
-                          <span className="truncate text-sm text-foreground" title={r.name}>{r.name}</span>
-                          <div className="h-2.5 w-full rounded-full bg-muted/40">
+                        <div key={r.id} className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto] items-center gap-3">
+                          <span className="truncate text-[13px] text-foreground" title={r.name}>{r.name}</span>
+                          <div className="h-1 w-full rounded-full bg-muted/30">
                             <div
-                              className="h-2.5 rounded-full bg-primary/70"
+                              className="h-1 rounded-full bg-primary/70"
                               style={{ width: `${Math.max(4, r.pct)}%` }}
                             />
                           </div>
-                          <div className="w-44 shrink-0 flex justify-end">
-                            <span
-                              className="max-w-full truncate rounded-full border border-primary/40 bg-primary/15 px-2.5 py-0.5 text-[11px] font-semibold text-foreground backdrop-blur-sm"
-                              title={r.stageLabel}
-                            >
-                              {r.stageLabel}
-                            </span>
-                          </div>
+                          <span
+                            className="max-w-[140px] truncate text-right text-[11px] text-muted-foreground"
+                            title={r.stageLabel}
+                          >
+                            {r.stageLabel}
+                          </span>
                         </div>
                       ))}
                     </div>
