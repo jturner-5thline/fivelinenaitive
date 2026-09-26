@@ -151,7 +151,12 @@ export function BusinessModelOptionsDialog({ open, onOpenChange }: Props) {
               {draft.length === 0 && (
                 <p className="p-3 text-sm text-muted-foreground">No options yet — add one above.</p>
               )}
+              {draft.length > 0 && newValue.trim() &&
+                !draft.some(v => v.toLowerCase().includes(newValue.trim().toLowerCase())) && (
+                <p className="p-3 text-sm text-muted-foreground">No existing options match — press Enter or click Add to create it.</p>
+              )}
               {draft.map((value, index) => (
+                !newValue.trim() || value.toLowerCase().includes(newValue.trim().toLowerCase()) ? (
                 <div key={index} className="flex items-center gap-2">
                   <Input
                     value={value}
@@ -167,6 +172,7 @@ export function BusinessModelOptionsDialog({ open, onOpenChange }: Props) {
                     <X className="h-4 w-4" />
                   </button>
                 </div>
+                ) : null
               ))}
             </div>
           </ScrollArea>
