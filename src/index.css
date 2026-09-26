@@ -4625,3 +4625,21 @@ html body .flat-tile-dialog .fs-tab[data-state="on"] {
   box-shadow: inset 0 0 0 1px var(--border-subtle) !important;
 }
 html body .flat-tile-dialog .fs-tab:hover { background-color: var(--bg-card-hover) !important; }
+
+/* Deal tiles: crisp, thin, sharp 1px border (no soft blur) */
+main:has(.deals-surface) .deal-tile,
+.deal-tile.deal-glass,
+.deal-glass.deal-tile,
+div.deal-tile.deal-glass,
+.deal-tile[class*="deal-glass"] {
+  border: 1px solid #52617e !important;
+  box-shadow: none !important;
+}
+main:has(.deals-surface) .deal-tile:hover,
+.deal-tile.deal-glass:hover,
+.deal-glass.deal-tile:hover,
+div.deal-tile.deal-glass:hover,
+.deal-tile[class*="deal-glass"]:hover {
+  border-color: #6b7c9c !important;
+  box-shadow: none !important;
+}
