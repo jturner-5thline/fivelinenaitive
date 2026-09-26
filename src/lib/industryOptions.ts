@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { INDUSTRY_OPTIONS, LEGACY_INDUSTRY_OPTIONS } from '@/constants/industries';
 
 /**
