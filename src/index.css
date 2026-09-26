@@ -4658,3 +4658,20 @@ div.deal-tile.deal-glass:hover,
   border: 1px solid #52617e !important;
   box-shadow: none !important;
 }
+
+/* Deal details pop-up tabs: no pill/hover fill — active tab gets a white underline only. */
+html body .deal-underline-tabs > span[aria-hidden], html body .deal-underline-tabs > span.absolute { display: none !important; }
+html body .deal-underline-tabs [role="tab"],
+html body .deal-underline-tabs [role="tab"]:hover,
+html body .deal-underline-tabs [role="tab"][data-state="active"] {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border-top: 0 !important; border-left: 0 !important; border-right: 0 !important;
+  border-radius: 0 !important;
+}
+html body .deal-underline-tabs [role="tab"] { border-bottom: 2px solid transparent !important; }
+html body .deal-underline-tabs [role="tab"][data-state="active"] {
+  border-bottom: 2px solid #ffffff !important;
+  color: #ffffff !important;
+}

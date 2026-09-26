@@ -4147,7 +4147,7 @@ export default function DealDetail() {
                       side="bottom"
                     >
                       <TabsList
-                        className="inline-flex h-auto items-end justify-start gap-6 bg-transparent p-0 rounded-none max-w-full overflow-x-auto scrollbar-none"
+                        className="deal-underline-tabs inline-flex h-auto items-end justify-start gap-6 bg-transparent p-0 rounded-none max-w-full overflow-x-auto scrollbar-none"
                         style={{ scrollbarWidth: 'none' }}
                       >
                         <TabsTrigger
