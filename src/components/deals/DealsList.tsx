@@ -671,7 +671,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-4">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 pt-3 pb-2 px-2 overflow-visible">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 pt-3 pb-2 px-2 overflow-visible lg:auto-rows-[minmax(clamp(250px,19vw,400px),auto)]">
                 {renderGroupDeals.map((deal, index) => {
                   const isFirstDealOverall = groupIdx === 0 && index === 0;
                   
