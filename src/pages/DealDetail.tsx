@@ -5117,10 +5117,13 @@ export default function DealDetail() {
                       {rows.map(r => (
                         <div key={r.id} className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto] items-center gap-3">
                           <span className="truncate text-[13px] text-foreground" title={r.name}>{r.name}</span>
-                          <div className="h-1 w-full rounded-full bg-muted/30">
+                          <div
+                            className="w-full overflow-hidden rounded-full"
+                            style={{ height: 6, backgroundColor: 'rgba(148, 163, 184, 0.22)' }}
+                          >
                             <div
-                              className="h-1 rounded-full bg-primary/70"
-                              style={{ width: `${Math.max(4, r.pct)}%` }}
+                              className="rounded-full"
+                              style={{ height: 6, width: `${Math.max(4, r.pct)}%`, backgroundColor: '#7EB8F7' }}
                             />
                           </div>
                           <span
