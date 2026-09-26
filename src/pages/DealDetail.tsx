@@ -3288,15 +3288,6 @@ export default function DealDetail() {
                       )}
                     </div>
                     </div>
-                    <div className="flex flex-col items-start gap-1 pt-1">
-                      <EditableDealStatusTag dealId={deal.id} status={deal.status} className="deal-rail-control" />
-                      <EditableDealStageTag
-                        dealId={deal.id}
-                        stage={deal.stage}
-                        pipelineId={deal.pipelineId ?? null}
-                        className="deal-rail-control"
-                      />
-                    </div>
                     </div>
                   </div>
                 </div>
@@ -3819,6 +3810,15 @@ export default function DealDetail() {
                 displayClassName="text-[2rem] md:text-[2.7rem] font-bold leading-none text-primary"
                 inputClassName="w-auto [field-sizing:content] deal-header-field !border-0 !outline-none !ring-0 !shadow-none !bg-transparent hover:!border-0 focus:!border-0 focus-visible:!border-0 focus-visible:!ring-0 focus-visible:!shadow-none"
               />
+              <div className="flex items-center gap-2 self-center ml-1">
+                <EditableDealStatusTag dealId={deal.id} status={deal.status} className="deal-rail-control" />
+                <EditableDealStageTag
+                  dealId={deal.id}
+                  stage={deal.stage}
+                  pipelineId={deal.pipelineId ?? null}
+                  className="deal-rail-control"
+                />
+              </div>
             </div>
           )}
 
