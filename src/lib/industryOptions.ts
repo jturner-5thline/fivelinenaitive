@@ -100,3 +100,31 @@ export function useIndustryOptionsList(): string[] {
 
   return options;
 }
+
+/**
+ * Keeps only industries that are still in the active option list (case-insensitive),
+ * returning the canonical label and dropping duplicates. Removed options never display.
+ */
+export function filterToActiveIndustries(
+  values: readonly (string | null | undefined)[] | null | undefined,
+  options: readonly string[] = getIndustryOptions(),
+): string[] {
+  if (!values || values.length === 0) return [];
+  const byKey = new Map(options.map(o => [o.trim().toLowerCase(), o]));
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of values) {
+    const match = byKey.get(String(raw ?? '').trim().toLowerCase());
+    if (match && !seen.has(match)) {
+      seen.add(match);
+      out.push(match);
+    }
+  }
+  return out;
+}
+
+/** Hook: active-only industries for a record, re-computed when options change. */
+export function useActiveIndustries(values: readonly (string | null | undefined)[] | null | undefined): string[] {
+  const options = useIndustryOptionsList();
+  return useMemo(() => filterToActiveIndustries(values, options), [values, options]);
+}
