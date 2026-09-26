@@ -10,6 +10,7 @@ import { CommandBar } from "@/components/CommandBar";
 import { DealsHeader } from "@/components/deals/DealsHeader";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
+import { useFeatureAccess } from "@/hooks/useFeatureFlags";
 import { logActivity } from "@/lib/activityLogger";
 import { useDailyRundownNotification } from "@/hooks/useDailyRundownNotification";
 import { useEndOfDayRundownNotification } from "@/hooks/useEndOfDayRundownNotification";
@@ -176,6 +177,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
     (r) => location.pathname === r || location.pathname.startsWith(`${r}/`),
   );
   const isDealsRoute = location.pathname === '/deals' || location.pathname.startsWith('/deals/');
+  const { hasAccess: canAccessCopilot } = useFeatureAccess('copilot_widget', 'deployed');
 
   if (isEmbedded) {
     return (
@@ -227,7 +229,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
         <AppSidebar />
         <MainContent
           className={mainClassName}
-          showCopilotBar={true}
+          showCopilotBar={canAccessCopilot}
           showWorkspaceLogo={showWorkspaceLogo}
         >
           {content}
