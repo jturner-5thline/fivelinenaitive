@@ -4691,3 +4691,12 @@ html body .deal-detail-surface .fs-tab-widget {
 }
 html body .fs-tab-widget::before,
 html body .fs-tab-widget::after { content: none !important; }
+html body .fs-tab-widget:hover,
+html body .dark .fs-tab-widget:hover,
+html body .deal-detail-surface .fs-tab-widget:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: #52617e !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
