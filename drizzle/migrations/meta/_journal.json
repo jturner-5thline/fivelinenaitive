@@ -162,6 +162,13 @@
       "when": 1790464783179,
       "tag": "0022_backup_indev_cleanup_20260926",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790474986621,
+      "tag": "0023_create_nylas_webhook_config",
+      "breakpoints": true
     }
   ]
 }

@@ -20403,6 +20403,33 @@ export type Database = {
           },
         ]
       }
+      nylas_webhook_config: {
+        Row: {
+          callback_url: string | null
+          created_at: string
+          id: string
+          updated_at: string
+          webhook_id: string | null
+          webhook_secret: string | null
+        }
+        Insert: {
+          callback_url?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          webhook_id?: string | null
+          webhook_secret?: string | null
+        }
+        Update: {
+          callback_url?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          webhook_id?: string | null
+          webhook_secret?: string | null
+        }
+        Relationships: []
+      }
       org_notification_defaults: {
         Row: {
           company_id: string
