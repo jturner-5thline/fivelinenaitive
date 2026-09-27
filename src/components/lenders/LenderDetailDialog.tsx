@@ -638,7 +638,19 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
       checkField('lenderNotes', 'Funding Source Notes', lender.lenderNotes || '');
       checkField('relationshipOwners', 'Relationship Owners', lender.relationshipOwners || '');
 
-      await onSave(lender.id, editForm);
+      // Keep stored tags that aren't in the current option list (hidden in the
+      // editor) so saving never silently erases them.
+      const keepHidden = (edited: string | undefined, stored: string[] | null | undefined) => {
+        const current = (edited || '').split(',').map(t => t.trim()).filter(Boolean);
+        const active = new Set(filterToActiveIndustries(stored).map(v => v.toLowerCase()));
+        const hidden = (stored || []).filter(v => v && !active.has(String(v).trim().toLowerCase()) && !getIndustryOptions().some(o => o.toLowerCase() === String(v).trim().toLowerCase()));
+        return [...current, ...hidden].join(', ');
+      };
+      await onSave(lender.id, {
+        ...editForm,
+        industries: keepHidden(editForm.industries, lender.industries),
+        industriesToAvoid: keepHidden(editForm.industriesToAvoid, lender.industriesToAvoid),
+      });
 
       // Log each changed field
       const changedKeys = Object.keys(fieldMap);
