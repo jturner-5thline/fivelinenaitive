@@ -169,10 +169,11 @@ export function EditableDealStageTag({
               value={viewPipeline?.id ?? ''}
               onChange={(e) => setViewPipelineId(e.target.value)}
               onClick={(e) => e.stopPropagation()}
-              className="w-full h-7 rounded-md bg-background border border-border text-xs px-1.5 focus:outline-none focus:ring-1 focus:ring-ring"
+              style={{ colorScheme: 'dark' }}
+              className="w-full h-7 rounded-md bg-popover text-popover-foreground border border-border text-xs px-1.5 focus:outline-none focus:ring-1 focus:ring-ring"
             >
               {pipelines.map((p) => (
-                <option key={p.id} value={p.id}>
+                <option key={p.id} value={p.id} className="bg-popover text-popover-foreground">
                   {p.name}{p.id === pipelineId ? ' (current)' : ''}{p.isDefault ? ' • default' : ''}
                 </option>
               ))}
