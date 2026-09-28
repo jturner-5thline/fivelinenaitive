@@ -194,7 +194,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
               </div>
             ) : (
               <ScrollArea className="flex-1 min-h-0">
-                <div className="space-y-2 pr-2">
+                <div className="space-y-1 pr-2">
                   {displayedTasks.map(task => {
                     const assignee = memberMap.get(task.assigned_to);
                     const isCompleted = isTaskCompleted(task);
