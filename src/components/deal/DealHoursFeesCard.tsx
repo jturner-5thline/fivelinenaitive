@@ -303,6 +303,5 @@ function HoursFeesInputs({ deal, updateDeal, onChanged }: { deal: any; updateDea
             </div>
           </div>
         </div>
-      </Card>
   );
 }
