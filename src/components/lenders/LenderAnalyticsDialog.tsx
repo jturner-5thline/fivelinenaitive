@@ -155,28 +155,18 @@ const BUCKET_COLOR: Record<Bucket, string> = {
 // Shared dark-gradient surfaces — matches the deal pop-up's tonal language
 // (radial highlight + soft vertical fade + faint inner sheen).
 const MODAL_SHELL_STYLE: CSSProperties = {
-  background:
-    'radial-gradient(120% 80% at 0% 0%, hsl(220 55% 22% / 0.55) 0%, transparent 55%),' +
-    'radial-gradient(120% 80% at 100% 100%, hsl(220 60% 14% / 0.55) 0%, transparent 60%),' +
-    'linear-gradient(180deg, hsl(220 40% 11% / 0.96) 0%, hsl(220 45% 7% / 0.98) 100%)',
-  borderColor: 'hsl(220 50% 40% / 0.28)',
-  boxShadow:
-    'inset 0 1px 0 hsl(220 60% 85% / 0.06), 0 24px 60px hsl(220 60% 3% / 0.6)',
+  background: 'hsl(var(--background))',
+  borderColor: 'var(--border-subtle)',
 };
 
 const PANEL_STYLE: CSSProperties = {
-  background:
-    'radial-gradient(110% 70% at 0% 0%, hsl(220 60% 30% / 0.18) 0%, transparent 60%),' +
-    'linear-gradient(180deg, hsl(220 38% 16% / 0.85) 0%, hsl(220 42% 11% / 0.9) 100%)',
-  borderColor: 'hsl(220 45% 45% / 0.22)',
-  boxShadow:
-    'inset 0 1px 0 hsl(220 60% 85% / 0.05), 0 4px 14px hsl(220 60% 3% / 0.35)',
+  background: 'var(--bg-card)',
+  borderColor: 'var(--border-subtle)',
 };
 
 const HEADER_STYLE: CSSProperties = {
-  background:
-    'linear-gradient(180deg, hsl(220 45% 14% / 0.85) 0%, hsl(220 45% 10% / 0.6) 100%)',
-  borderBottom: '1px solid hsl(220 45% 40% / 0.22)',
+  background: 'transparent',
+  borderBottom: '1px solid var(--border-subtle)',
 };
 
 function normalizeLabel(s: string | null | undefined): string {
@@ -246,7 +236,7 @@ function StageTag({ label }: { label: string | null | undefined }) {
   const styles: Record<StageTagTone, CSSProperties> = {
     red: { background: 'rgba(248, 113, 113, 0.14)', color: '#f87171', borderColor: 'rgba(248, 113, 113, 0.35)' },
     blue: { background: 'rgba(96, 165, 250, 0.14)', color: '#60a5fa', borderColor: 'rgba(96, 165, 250, 0.35)' },
-    green: { background: 'rgba(77, 217, 172, 0.14)', color: '#4dd9ac', borderColor: 'rgba(77, 217, 172, 0.35)' },
+    green: { background: 'rgba(126, 184, 247, 0.14)', color: '#7EB8F7', borderColor: 'rgba(126, 184, 247, 0.35)' },
     neutral: { background: 'rgba(148, 163, 184, 0.12)', color: '#cbd5e1', borderColor: 'rgba(148, 163, 184, 0.3)' },
   };
   return (
@@ -983,7 +973,7 @@ export function LenderAnalyticsDialog({
         name: s.name,
         short: s.name.length > 10 ? s.name.slice(0, 10) + '…' : s.name,
         pct: +(s.conv * 100).toFixed(1),
-        color: s.tier === 'T1' || s.tier === 'T2' ? '#4dd9ac' : '#60a5fa',
+        color: s.tier === 'T1' || s.tier === 'T2' ? '#7EB8F7' : '#60a5fa',
       }));
   }, [lenderStats]);
 
@@ -998,7 +988,7 @@ export function LenderAnalyticsDialog({
             <div className="min-w-0">
               <div className="text-[16px] font-semibold tracking-tight text-slate-100 flex items-baseline gap-2">
                 <span>naitive</span>
-                <span className="text-[13px] font-medium" style={{ color: '#4dd9ac' }}>Lender Intelligence Dashboard</span>
+                <span className="text-[13px] font-medium" style={{ color: '#7EB8F7' }}>Lender Intelligence Dashboard</span>
               </div>
               <div className="text-[12px] text-slate-400 mt-1">
                 {subtitleParts.join(' · ')}
@@ -1010,8 +1000,8 @@ export function LenderAnalyticsDialog({
                 <SelectTrigger
                   className="h-8 w-[168px] text-[12px] text-slate-200 hover:brightness-110"
                   style={{
-                    background: 'hsl(220 45% 12%)',
-                    borderColor: 'hsl(220 45% 40% / 0.28)',
+                    background: 'var(--bg-card)',
+                    borderColor: 'var(--border-subtle)',
                   }}
                 >
                   <SelectValue />
@@ -1019,8 +1009,8 @@ export function LenderAnalyticsDialog({
                 <SelectContent
                   className="text-slate-100"
                   style={{
-                    background: 'hsl(220 45% 12%)',
-                    borderColor: 'hsl(220 45% 40% / 0.28)',
+                    background: 'var(--bg-card)',
+                    borderColor: 'var(--border-subtle)',
                   }}
                 >
                   <SelectItem value="ytd">YTD</SelectItem>
@@ -1037,14 +1027,14 @@ export function LenderAnalyticsDialog({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 text-[12px] gap-1.5 bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70"
+                  className="h-8 text-[12px] gap-1.5 bg-transparent border-[var(--border-subtle)] text-foreground hover:bg-white/[0.04]"
                   onClick={() => setPlanOpen(true)}
                   title="Set acquisition targets for new qualified lenders"
                 >
                   <Target className="h-3.5 w-3.5" /> Plan
                 </Button>
               )}
-              <Button variant="outline" size="sm" className="h-8 text-[12px] gap-1.5 bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70" disabled title="Export coming soon">
+              <Button variant="outline" size="sm" className="h-8 text-[12px] gap-1.5 bg-transparent border-[var(--border-subtle)] text-foreground hover:bg-white/[0.04]" disabled title="Export coming soon">
                 <Download className="h-3.5 w-3.5" /> Export
               </Button>
             </div>
@@ -1053,7 +1043,7 @@ export function LenderAnalyticsDialog({
 
   const bodyContent = (
     <>
-    <div className="flex-1 min-h-0 overflow-auto px-6 py-5 space-y-4" style={{ background: '#0f1117' }}>
+    <div className="flex-1 min-h-0 overflow-auto px-6 py-5 space-y-4" style={{ background: 'transparent' }}>
           {/* KPI Row — big teal numbers */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <IntelKpi
@@ -1088,7 +1078,7 @@ export function LenderAnalyticsDialog({
           </div>
 
           {error && (
-            <div className="rounded-lg border border-red-500/30 bg-red-950/40 p-3 text-[12px] text-red-300">
+            <div className="rounded-md border border-red-500/30 bg-red-950/40 p-3 text-[12px] text-red-300">
               Failed to load analytics: {error}
             </div>
           )}
@@ -1128,7 +1118,7 @@ export function LenderAnalyticsDialog({
                     {lenderStats.length === 0 ? (
                       <div className="py-6 text-center text-[12px] text-slate-500">No lender activity</div>
                     ) : (
-                      <ul className="divide-y" style={{ borderColor: '#2a2f3d' }}>
+                      <ul className="divide-y" style={{ borderColor: 'hsl(var(--border) / 0.5)' }}>
                         {lenderStats.slice(0, 12).map((s) => {
                           const highlighted = hoverLender === s.key;
                           return (
@@ -1196,9 +1186,9 @@ export function LenderAnalyticsDialog({
                             <ReTooltip
                               cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                               contentStyle={{
-                                background: '#1a1d27',
-                                border: '1px solid #2a2f3d',
-                                borderRadius: 6,
+                                background: 'hsl(var(--card))',
+                                border: '1px solid hsl(var(--border))',
+                                borderRadius: 8,
                                 fontSize: 12,
                                 color: '#e2e8f0',
                               }}
@@ -1239,7 +1229,7 @@ export function LenderAnalyticsDialog({
                                   className="group w-full flex items-baseline justify-between gap-3 rounded-md px-2 py-1.5 text-left text-[12.5px] text-slate-100 hover:bg-slate-800/60 hover:text-white transition-colors"
                                 >
                                   <span className="flex items-center gap-1.5 flex-1 min-w-0">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-[#4dd9ac] shrink-0" />
+                                    <span className="h-1.5 w-1.5 rounded-full bg-[#7EB8F7] shrink-0" />
                                     <span className="truncate">{p.reason}</span>
                                   </span>
                                   <span className="flex items-center gap-1 shrink-0">
@@ -1304,7 +1294,7 @@ export function LenderAnalyticsDialog({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 text-[11px] bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70 gap-1.5"
+                className="h-7 text-[11px] bg-transparent border-[var(--border-subtle)] text-foreground hover:bg-white/[0.04] gap-1.5"
                 onClick={() => downloadCsv('new-funding-sources', [
                   ['name', 'type', 'owner', 'created_at'],
                   ...newLenders.current.map(l => [l.name, l.lender_type || '', l.relationship_owners || '', l.created_at]),
@@ -1362,7 +1352,7 @@ export function LenderAnalyticsDialog({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 text-[11px] bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70 gap-1.5"
+                className="h-8 text-[11px] bg-transparent border-[var(--border-subtle)] text-foreground hover:bg-white/[0.04] gap-1.5"
                 onClick={() => {
                   if (!activeLenderRows) return;
                   downloadCsv(`funding-source-${activeLenderRows.name}`, [
@@ -1462,7 +1452,7 @@ export function LenderAnalyticsDialog({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8 text-[11px] bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70 gap-1.5"
+                      className="h-8 text-[11px] bg-transparent border-[var(--border-subtle)] text-foreground hover:bg-white/[0.04] gap-1.5"
                       onClick={() => downloadCsv(`pass-reason-${activePassReason.reason.slice(0, 40)}`, [
                         ['section', 'lender', 'deal', 'amount', 'owner', 'date'],
                         ...lenderList.map(l => ['by_lender', l.name, '', '', '', '']),
@@ -1473,7 +1463,7 @@ export function LenderAnalyticsDialog({
                     </Button>
                   </div>
                   <div className="mt-3 grid grid-cols-1 gap-3 max-h-[calc(100vh-220px)] overflow-auto">
-                    <div className="rounded-lg border border-slate-700/40 p-2">
+                    <div className="rounded-md border border-slate-700/40 p-2">
                       <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-1.5 px-1">
                         By Funding Source · {filteredLenders.length}
                       </div>
@@ -1492,7 +1482,7 @@ export function LenderAnalyticsDialog({
                         </tbody>
                       </table>
                     </div>
-                    <div className="rounded-lg border border-slate-700/40 p-2">
+                    <div className="rounded-md border border-slate-700/40 p-2">
                       <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-1.5 px-1">
                         By Deal · {filteredDeals.length}
                       </div>
@@ -1577,7 +1567,7 @@ export function LenderAnalyticsDialog({
               deal within 2 weeks.
             </SheetDescription>
           </SheetHeader>
-          <div className="mt-4 max-h-[calc(100vh-160px)] overflow-auto rounded-lg border border-slate-700/60">
+          <div className="mt-4 max-h-[calc(100vh-160px)] overflow-auto rounded-md border border-slate-700/60">
             <table className="w-full text-[12px]">
               <thead className="sticky top-0 bg-slate-900/95 text-slate-400">
                 <tr>
@@ -1769,7 +1759,7 @@ export function LenderAnalyticsDialog({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 text-[11px] bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70 gap-1.5"
+                    className="h-8 text-[11px] bg-transparent border-[var(--border-subtle)] text-foreground hover:bg-white/[0.04] gap-1.5"
                     onClick={csvExport}
                     disabled={mode === 'lenders' ? filteredLenders.length === 0 : filteredDeals.length === 0}
                   >
@@ -1992,7 +1982,7 @@ export function LenderAnalyticsDialog({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 text-[11px] bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70 gap-1.5"
+                    className="h-8 text-[11px] bg-transparent border-[var(--border-subtle)] text-foreground hover:bg-white/[0.04] gap-1.5"
                     onClick={() => downloadCsv(`lender-${lenderDrill.key}-${lenderDrill.filter}`, [
                       ['deal', 'stage', 'amount', 'owner', 'updated'],
                       ...sortedFiltered.map((r) => [
@@ -2124,7 +2114,7 @@ function KpiCard({
       <button
         type="button"
         onClick={onClick}
-        className="rounded-lg border p-3 text-left transition-colors hover:border-sky-500/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
+        className="rounded-md border p-3 text-left transition-colors hover:border-sky-500/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
         style={PANEL_STYLE}
       >
         {Inner}
@@ -2132,7 +2122,7 @@ function KpiCard({
     );
   }
   return (
-    <div className="rounded-lg border p-3" style={PANEL_STYLE}>
+    <div className="rounded-md border p-3" style={PANEL_STYLE}>
       {Inner}
     </div>
   );
@@ -2141,7 +2131,7 @@ function KpiCard({
 function SegmentChart({ title, data }: { title: string; data: Array<{ name: string; submitted: number; terms: number; conv: number }> }) {
   const chartData = data.map(d => ({ ...d, convPct: +(d.conv * 100).toFixed(1) }));
   return (
-    <div className="rounded-lg border p-3 flex flex-col" style={PANEL_STYLE}>
+    <div className="rounded-md border p-3 flex flex-col" style={PANEL_STYLE}>
       <div className="text-[11px] uppercase tracking-wider text-white mb-2">{title}</div>
       <div className="h-[240px]">
         {chartData.length === 0 ? (
@@ -2149,12 +2139,12 @@ function SegmentChart({ title, data }: { title: string; data: Array<{ name: stri
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 32, left: 4, bottom: 4 }}>
-              <CartesianGrid stroke="hsl(220 30% 60%)" strokeOpacity={0.12} horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(220 20% 70%)' }} stroke="hsl(220 25% 45%)" domain={[0, 100]} unit="%" />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: 'hsl(220 20% 80%)' }} stroke="hsl(220 25% 45%)" width={120} />
+              <CartesianGrid stroke="hsl(var(--border))" strokeOpacity={0.12} horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" domain={[0, 100]} unit="%" />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" width={120} />
               <ReTooltip
-                cursor={{ fill: 'hsl(220 40% 30% / 0.25)' }}
-                contentStyle={{ background: 'hsl(220 45% 10%)', border: '1px solid hsl(220 45% 35% / 0.4)', borderRadius: 8, fontSize: 12, color: 'hsl(220 30% 92%)' }}
+                cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }}
                 formatter={(v: number, _n: string, p: any) => [`${v}% (${p.payload.terms}/${p.payload.submitted})`, 'Conversion']}
               />
               <Bar dataKey="convPct" fill="hsl(210 90% 60%)" radius={[0, 3, 3, 0]} />
@@ -2182,8 +2172,8 @@ function SegRow({ row, bold }: { row: { name: string; submitted: number; terms: 
 
 // ─── Lender Intelligence Dashboard primitives ─────────────────────────────
 const INTEL_CARD_STYLE: CSSProperties = {
-  background: '#1a1d27',
-  borderColor: '#2a2f3d',
+  background: 'var(--bg-card)',
+  borderColor: 'var(--border-subtle)',
 };
 
 function IntelKpi({
@@ -2201,7 +2191,7 @@ function IntelKpi({
   loading?: boolean;
   onClick?: () => void;
 }) {
-  const hintColor = hintTone === 'good' ? '#4dd9ac' : hintTone === 'bad' ? '#f87171' : '#94a3b8';
+  const hintColor = hintTone === 'good' ? '#7EB8F7' : hintTone === 'bad' ? '#f87171' : '#94a3b8';
   const Inner = (
     <>
       <div className="flex items-center justify-between gap-2">
@@ -2210,8 +2200,8 @@ function IntelKpi({
           <span className="text-[10px] text-slate-500 group-hover:text-sky-300 transition-colors">Drill →</span>
         )}
       </div>
-      <div className="text-[38px] leading-none font-semibold tabular-nums" style={{ color: '#4dd9ac' }}>
-        {loading ? <span className="inline-block h-9 w-16 rounded animate-pulse" style={{ background: '#2a2f3d' }} /> : value}
+      <div className="text-[34px] leading-none font-semibold font-mono tabular-nums tracking-tight" style={{ color: '#7EB8F7' }}>
+        {loading ? <span className="inline-block h-9 w-16 rounded animate-pulse" style={{ background: 'hsl(var(--border) / 0.5)' }} /> : value}
       </div>
       {hint && <div className="text-[11px] leading-snug mt-0.5" style={{ color: hintColor }}>{hint}</div>}
     </>
@@ -2221,7 +2211,7 @@ function IntelKpi({
       <button
         type="button"
         onClick={onClick}
-        className="group rounded-lg border p-4 flex flex-col gap-1.5 text-left transition-colors hover:border-sky-500/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
+        className="group rounded-md border p-4 flex flex-col gap-1.5 text-left transition-colors hover:border-[var(--border-control)] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
         style={INTEL_CARD_STYLE}
       >
         {Inner}
@@ -2229,7 +2219,7 @@ function IntelKpi({
     );
   }
   return (
-    <div className="rounded-lg border p-4 flex flex-col gap-1.5" style={INTEL_CARD_STYLE}>
+    <div className="rounded-md border p-4 flex flex-col gap-1.5" style={INTEL_CARD_STYLE}>
       {Inner}
     </div>
   );
@@ -2251,11 +2241,11 @@ function IntelPanel({
   const badgeStyle =
     badge === 'auto-filled'
       ? { background: 'rgba(96, 165, 250, 0.15)', color: '#60a5fa', border: '1px solid rgba(96, 165, 250, 0.4)' }
-      : { background: 'rgba(77, 217, 172, 0.15)', color: '#4dd9ac', border: '1px solid rgba(77, 217, 172, 0.4)' };
+      : { background: 'rgba(126, 184, 247, 0.15)', color: '#7EB8F7', border: '1px solid rgba(126, 184, 247, 0.4)' };
   const badgeLabel = badge === 'auto-filled' ? 'AUTO-FILLED' : 'LIVE';
-  const subtitleColor = subtitleTone === 'accent' ? '#4dd9ac' : '#64748b';
+  const subtitleColor = subtitleTone === 'accent' ? '#7EB8F7' : '#64748b';
   return (
-    <div className="rounded-lg border overflow-hidden" style={INTEL_CARD_STYLE}>
+    <div className="rounded-md border overflow-hidden" style={INTEL_CARD_STYLE}>
       <div className="flex items-start justify-between gap-2 px-4 pt-3 pb-2">
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-[0.14em] font-medium text-white truncate">
@@ -2292,8 +2282,8 @@ function PhaseCard({
 }) {
   return (
     <div
-      className="rounded-lg border p-4 flex flex-col gap-2 opacity-70"
-      style={{ background: '#151822', borderColor: '#242835' }}
+      className="rounded-md border p-4 flex flex-col gap-2 opacity-70"
+      style={{ background: 'var(--bg-card)', borderColor: 'var(--border-subtle)' }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="text-[10px] uppercase tracking-[0.14em] font-medium text-slate-400">
@@ -2301,7 +2291,7 @@ function PhaseCard({
         </div>
         <span
           className="text-[10px] font-medium rounded px-1.5 py-0.5 shrink-0"
-          style={{ background: '#242835', color: '#94a3b8', border: '1px solid #2a2f3d' }}
+          style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))', border: '1px solid var(--border-subtle)' }}
         >
           Phase {phase}
         </span>

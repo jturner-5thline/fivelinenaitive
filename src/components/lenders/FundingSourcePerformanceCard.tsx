@@ -41,12 +41,8 @@ type Cadence = 'monthly' | 'quarterly';
 type ViewMode = 'plan' | 'added';
 
 const PANEL_STYLE: CSSProperties = {
-  background:
-    'radial-gradient(110% 70% at 0% 0%, hsl(220 60% 30% / 0.18) 0%, transparent 60%),' +
-    'linear-gradient(180deg, hsl(220 38% 16% / 0.85) 0%, hsl(220 42% 11% / 0.9) 100%)',
-  borderColor: 'hsl(220 45% 45% / 0.22)',
-  boxShadow:
-    'inset 0 1px 0 hsl(220 60% 85% / 0.05), 0 4px 14px hsl(220 60% 3% / 0.35)',
+  background: 'var(--bg-card)',
+  borderColor: 'var(--border-subtle)',
 };
 
 const MONTH_LABELS = [
@@ -335,7 +331,7 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan, ye
 
   return (
     <>
-      <div className="rounded-lg border overflow-hidden" style={PANEL_STYLE}>
+      <div className="rounded-md border overflow-hidden" style={PANEL_STYLE}>
         <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-b border-slate-700/40">
           <div className="flex items-center gap-2 min-w-0">
             <Target className="h-3.5 w-3.5 text-sky-400 shrink-0" />
@@ -436,17 +432,17 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan, ye
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
-                  <CartesianGrid stroke="hsl(220 30% 60%)" strokeOpacity={0.12} vertical={false} />
-                  <XAxis dataKey="period" tick={{ fontSize: 11, fill: 'hsl(220 20% 75%)' }} stroke="hsl(220 25% 45%)" />
-                  <YAxis tick={{ fontSize: 10, fill: 'hsl(220 20% 70%)' }} stroke="hsl(220 25% 45%)" allowDecimals={false} />
+                  <CartesianGrid stroke="hsl(var(--border))" strokeOpacity={0.12} vertical={false} />
+                  <XAxis dataKey="period" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" />
+                  <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" allowDecimals={false} />
                   <ReTooltip
-                    cursor={{ fill: 'hsl(220 40% 30% / 0.18)' }}
+                    cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                     contentStyle={{
-                      background: 'hsl(220 45% 10%)',
-                      border: '1px solid hsl(220 45% 35% / 0.4)',
+                      background: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
                       borderRadius: 8,
                       fontSize: 12,
-                      color: 'hsl(220 30% 92%)',
+                      color: 'hsl(var(--foreground))',
                     }}
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
@@ -457,12 +453,12 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan, ye
                       return (
                         <div
                           style={{
-                            background: 'hsl(220 45% 10%)',
-                            border: '1px solid hsl(220 45% 35% / 0.4)',
+                            background: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
                             borderRadius: 8,
                             padding: '8px 10px',
                             fontSize: 12,
-                            color: 'hsl(220 30% 92%)',
+                            color: 'hsl(var(--foreground))',
                           }}
                         >
                           <div className="font-semibold mb-1">{label} {year}</div>
@@ -589,23 +585,23 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan, ye
                     });
                   }}
                 >
-                  <CartesianGrid stroke="hsl(220 30% 60%)" strokeOpacity={0.12} vertical={false} />
-                  <XAxis dataKey="period" tick={{ fontSize: 11, fill: 'hsl(220 20% 75%)' }} stroke="hsl(220 25% 45%)" />
-                  <YAxis tick={{ fontSize: 10, fill: 'hsl(220 20% 70%)' }} stroke="hsl(220 25% 45%)" allowDecimals={false} />
+                  <CartesianGrid stroke="hsl(var(--border))" strokeOpacity={0.12} vertical={false} />
+                  <XAxis dataKey="period" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" />
+                  <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" allowDecimals={false} />
                   <ReTooltip
-                    cursor={{ fill: 'hsl(220 40% 30% / 0.18)', style: { cursor: 'pointer' } }}
+                    cursor={{ fill: 'rgba(255,255,255,0.04)', style: { cursor: 'pointer' } }}
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
                       const p = payload[0].payload as { added: number };
                       return (
                         <div
                           style={{
-                            background: 'hsl(220 45% 10%)',
-                            border: '1px solid hsl(220 45% 35% / 0.4)',
+                            background: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
                             borderRadius: 8,
                             padding: '8px 10px',
                             fontSize: 12,
-                            color: 'hsl(220 30% 92%)',
+                            color: 'hsl(var(--foreground))',
                           }}
                         >
                           <div className="font-semibold mb-1">{label} {year}</div>
