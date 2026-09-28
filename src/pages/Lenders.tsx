@@ -365,7 +365,8 @@ export default function Lenders() {
 
   // FLEx sync features only for ppina@5thline.co and 5th Line admins
   const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
-  const { canSeeFlexSync } = useCanSeeFlexSync();
+  // FLEx API connection severed — all sync UI and calls disabled.
+  const canSeeFlexSync = false;
 
   // Get pending sync requests count (only for authorized users)
   const { pendingCount: syncPendingCount, refetch: refetchSyncRequests } = useLenderSyncRequests();
