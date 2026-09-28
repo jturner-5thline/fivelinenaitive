@@ -1692,27 +1692,15 @@ export default function Lenders() {
                   <DropdownMenuContent align="end" className="bg-popover w-56">
                     <DropdownMenuItem onClick={() => setCsvImportOpen(true)}>
                       <Upload className="h-4 w-4 mr-2" />
-                      Import CSV
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={downloadLenderTemplate}>
-                      <FileDown className="h-4 w-4 mr-2" />
-                      Download template CSV
+                      Import (CSV / Excel)
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleExport}>
                       <Download className="h-4 w-4 mr-2" />
-                      Export CSV
+                      Export Database (CSV)
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setIsImportDialogOpen(true)}>
-                      <Database className="h-4 w-4 mr-2" />
-                      Import Master Database
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setShowBankImportConfirm(true)}>
-                      <Building2 className="h-4 w-4 mr-2" />
-                      Import Banks
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setShowNonBankImportConfirm(true)}>
-                      <Users className="h-4 w-4 mr-2" />
-                      Import Non-Banks
+                    <DropdownMenuItem onClick={downloadLenderTemplate} className="text-muted-foreground">
+                      <FileDown className="h-4 w-4 mr-2" />
+                      Download Import Template
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => setIsSideBySideMergeOpen(true)}>
