@@ -432,17 +432,17 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan, ye
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
-                  <CartesianGrid stroke="hsl(220 30% 60%)" strokeOpacity={0.12} vertical={false} />
-                  <XAxis dataKey="period" tick={{ fontSize: 11, fill: 'hsl(220 20% 75%)' }} stroke="hsl(220 25% 45%)" />
-                  <YAxis tick={{ fontSize: 10, fill: 'hsl(220 20% 70%)' }} stroke="hsl(220 25% 45%)" allowDecimals={false} />
+                  <CartesianGrid stroke="hsl(var(--border))" strokeOpacity={0.12} vertical={false} />
+                  <XAxis dataKey="period" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" />
+                  <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" allowDecimals={false} />
                   <ReTooltip
-                    cursor={{ fill: 'hsl(220 40% 30% / 0.18)' }}
+                    cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                     contentStyle={{
-                      background: 'hsl(220 45% 10%)',
-                      border: '1px solid hsl(220 45% 35% / 0.4)',
+                      background: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
                       borderRadius: 8,
                       fontSize: 12,
-                      color: 'hsl(220 30% 92%)',
+                      color: 'hsl(var(--foreground))',
                     }}
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
@@ -453,12 +453,12 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan, ye
                       return (
                         <div
                           style={{
-                            background: 'hsl(220 45% 10%)',
-                            border: '1px solid hsl(220 45% 35% / 0.4)',
+                            background: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
                             borderRadius: 8,
                             padding: '8px 10px',
                             fontSize: 12,
-                            color: 'hsl(220 30% 92%)',
+                            color: 'hsl(var(--foreground))',
                           }}
                         >
                           <div className="font-semibold mb-1">{label} {year}</div>
@@ -585,23 +585,23 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan, ye
                     });
                   }}
                 >
-                  <CartesianGrid stroke="hsl(220 30% 60%)" strokeOpacity={0.12} vertical={false} />
-                  <XAxis dataKey="period" tick={{ fontSize: 11, fill: 'hsl(220 20% 75%)' }} stroke="hsl(220 25% 45%)" />
-                  <YAxis tick={{ fontSize: 10, fill: 'hsl(220 20% 70%)' }} stroke="hsl(220 25% 45%)" allowDecimals={false} />
+                  <CartesianGrid stroke="hsl(var(--border))" strokeOpacity={0.12} vertical={false} />
+                  <XAxis dataKey="period" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" />
+                  <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" allowDecimals={false} />
                   <ReTooltip
-                    cursor={{ fill: 'hsl(220 40% 30% / 0.18)', style: { cursor: 'pointer' } }}
+                    cursor={{ fill: 'rgba(255,255,255,0.04)', style: { cursor: 'pointer' } }}
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
                       const p = payload[0].payload as { added: number };
                       return (
                         <div
                           style={{
-                            background: 'hsl(220 45% 10%)',
-                            border: '1px solid hsl(220 45% 35% / 0.4)',
+                            background: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
                             borderRadius: 8,
                             padding: '8px 10px',
                             fontSize: 12,
-                            color: 'hsl(220 30% 92%)',
+                            color: 'hsl(var(--foreground))',
                           }}
                         >
                           <div className="font-semibold mb-1">{label} {year}</div>
