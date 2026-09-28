@@ -472,7 +472,35 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
             <div className="flex items-center gap-3 border-b border-white/10 bg-white/[0.03] px-[15px] py-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               <span className="h-4 w-4 shrink-0" aria-hidden />
               <div className={cn(DEAL_LIST_GRID, 'flex-1 min-w-0')}>
-                <span>Deal</span>
+                <div className="flex items-center gap-3 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => onToggleSort?.('company')}
+                    className={cn('inline-flex items-center gap-0.5 uppercase hover:text-foreground', sortField === 'company' && 'text-foreground')}
+                  >
+                    Deal
+                    {sortField === 'company' ? (sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                  </button>
+                  <span className="inline-flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => onToggleSort?.('value')}
+                      className={cn('inline-flex items-center gap-0.5 uppercase hover:text-foreground', sortField === 'value' && 'text-foreground')}
+                    >
+                      Size
+                      {sortField === 'value' ? (sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                    </button>
+                    {filters && onFiltersChange && (
+                      <DealsHeaderFilterPopover
+                        column="value"
+                        deals={deals}
+                        filters={filters}
+                        setFilters={onFiltersChange}
+                        active={isColumnFilterActive('value', filters)}
+                      />
+                    )}
+                  </span>
+                </div>
                 <span className="text-center">Status</span>
                 <span className="text-center">Stage</span>
                 <span>Status Note</span>
