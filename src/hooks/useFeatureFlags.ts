@@ -8,10 +8,8 @@ import { isDemoCompanyId, DEMO_PRIMARY_EMAIL } from "@/lib/demoAccount";
 // must work on every demo session regardless of the global feature-flag
 // status or any company override, so the storyline workflows are
 // demonstrable end-to-end.
-const DEMO_ALWAYS_ON_FEATURES = new Set([
-  "chat_widget",
-  "copilot_widget",
-]);
+// Emptied: demo tenant now follows the global Page Access toggles.
+const DEMO_ALWAYS_ON_FEATURES = new Set<string>([]);
 const isDemoEmail = (email?: string | null) =>
   email === DEMO_PRIMARY_EMAIL || email === "demo@example.com";
 
