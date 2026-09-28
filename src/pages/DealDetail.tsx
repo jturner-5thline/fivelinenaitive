@@ -4388,6 +4388,13 @@ export default function DealDetail() {
                                   </div>
                                 </Card>
                               )}
+                              <div className="shrink-0">
+                                <FundingSourceMixPie
+                                  lenders={deal.lenders || []}
+                                  configuredStages={configuredStages as any}
+                                  className="w-full min-w-0 text-center"
+                                />
+                              </div>
                             </div>
                           );
                         case 'ai-research':
