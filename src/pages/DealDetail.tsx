@@ -1257,7 +1257,7 @@ export default function DealDetail() {
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
-  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'analysis' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication'>(initialTab === 'deal-space' ? 'deal-info' : (initialTab || 'deal-info'));
+  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'analysis' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication' | 'activity-log'>(initialTab === 'deal-space' ? 'deal-info' : (initialTab || 'deal-info'));
   // Activity tab now hosts both the audit/activity log and communications.
   const [activityView, setActivityView] = useState<'activity' | 'communications'>('activity');
   const [activityFilter, setActivityFilter] = useState('all');
@@ -1285,7 +1285,7 @@ export default function DealDetail() {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   
   // Track tab direction for swipe animation
-  const DEAL_TABS = ['deal-info', 'lenders', 'analysis', 'deal-management', 'deal-writeup', 'data-room', 'deal-space', 'communication'] as const;
+  const DEAL_TABS = ['deal-info', 'lenders', 'analysis', 'deal-management', 'deal-writeup', 'data-room', 'deal-space', 'communication', 'activity-log'] as const;
   
   const handleTabChange = useCallback((newTab: typeof dealInfoTab) => {
     const prevIndex = DEAL_TABS.indexOf(prevTabRef.current);
@@ -1348,9 +1348,9 @@ export default function DealDetail() {
     if (urlTab === 'deal-space') return;
     const allowed: string[] = [...DEAL_TABS];
     if (urlTab === 'communications' || urlTab === 'activity-log') {
-      // Activity tab is hidden — open the Activity pop-up instead.
       setActivityView(urlTab === 'communications' ? 'communications' : 'activity');
-      setActivityPopupOpen(true);
+      prevTabRef.current = 'activity-log';
+      setDealInfoTab('activity-log');
       return;
     }
     if (!allowed.includes(urlTab)) return;
@@ -3362,21 +3362,6 @@ export default function DealDetail() {
         </TooltipTrigger>
         <TooltipContent side="bottom">Notes</TooltipContent>
       </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            aria-label="Open activity"
-            onClick={() => setActivityPopupOpen(true)}
-            className="relative h-8 w-8 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
-          >
-            <History className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">Activity</TooltipContent>
-      </Tooltip>
     </div>
   );
 
@@ -3459,7 +3444,7 @@ export default function DealDetail() {
                             )}
                           </TabsTrigger>
                         )}
-                        {false && !isProjectsDeal && (
+                        {!isProjectsDeal && (
                         <TabsTrigger
                           value="activity-log"
                           className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
@@ -5254,49 +5239,6 @@ export default function DealDetail() {
                         </ToggleGroup>
                         </div>
                       )}
-                           <Dialog open={isActivityDialogOpen} onOpenChange={setIsActivityDialogOpen}>
-                             <DialogTrigger asChild>
-                               <Button
-                                 type="button"
-                                 variant="outline"
-                                 size="sm"
-                                 className="gap-2 h-8"
-                                 aria-label="Activity"
-                                 title="Activity"
-                               >
-                                 <History className="h-4 w-4" />
-                                 Activity
-                               </Button>
-                             </DialogTrigger>
-                             <DialogContent
-                               className="z-[120] w-[960px] max-w-[94vw] h-[80vh] flex flex-col p-4 gap-3 bg-background border border-border shadow-2xl"
-                               onEscapeKeyDown={(e) => {
-                                 e.preventDefault();
-                                 e.stopPropagation();
-                                 setIsActivityDialogOpen(false);
-                               }}
-                               onPointerDownOutside={(e) => {
-                                 e.preventDefault();
-                                 e.stopPropagation();
-                                 setIsActivityDialogOpen(false);
-                               }}
-                               onInteractOutside={(e) => {
-                                 e.preventDefault();
-                                 e.stopPropagation();
-                                 setIsActivityDialogOpen(false);
-                               }}
-                             >
-                               <DialogHeader className="space-y-0">
-                                 <DialogTitle className="text-sm font-semibold flex items-center gap-2">
-                                   <History className="h-4 w-4" />
-                                   Activity
-                                 </DialogTitle>
-                               </DialogHeader>
-                               <div className="max-h-[55vh] overflow-y-auto pr-1">
-                                 <ActivityTimeline activities={activities} />
-                               </div>
-                             </DialogContent>
-                           </Dialog>
                           <div className="flex items-center gap-1 ml-2 pl-2 border-l border-white/10 shrink-0">
                           <Popover>
                             <PopoverTrigger asChild>
