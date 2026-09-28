@@ -4388,6 +4388,16 @@ export default function DealDetail() {
                                   </div>
                                 </Card>
                               )}
+                              {/* Mirror of the Hours & Fees widget (same data + editor) */}
+                              {!isSimplifiedDeal && widgetVis.hoursFees && (
+                                <div className="deal-calendar-panel shrink-0 min-h-[280px] overflow-hidden">
+                                  <DealHoursFeesCard
+                                    deal={deal}
+                                    updateDeal={(field, value) => updateDeal(field as any, value)}
+                                    onHoursChanged={() => { void refreshDeals?.(); }}
+                                  />
+                                </div>
+                              )}
                             </div>
                           );
                         case 'ai-research':
