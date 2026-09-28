@@ -1220,7 +1220,7 @@ function useStageEntryMetric(
       isLoading: loading,
       mrr,
     };
-  }, [data, isLoading, isFetching, pipelineIds?.join(','), targetStages, excludeOwnersKey]);
+  }, [data, isLoading, isFetching, pipelineIds?.join(','), targetStages, excludeOwnersKey, calendarYearDedupe]);
 }
 
 /**
@@ -1638,8 +1638,8 @@ export function useConsolidatedDebtPipelineMetrics(
     excludeChangedByUserIds: NDA_EXCLUDED_CHANGED_BY,
     historyPipelineIds: [ACTIVE_PIPELINE_ID],
   });
-  const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, DEBT_STAGE_PIPELINES);
-  const proposalsIssuedPrior = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, priorQuarter, DEBT_STAGE_PIPELINES);
+  const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, DEBT_STAGE_PIPELINES, SALES_PARITY_PROPOSAL_OPTS);
+  const proposalsIssuedPrior = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, priorQuarter, DEBT_STAGE_PIPELINES, SALES_PARITY_PROPOSAL_OPTS);
   const finalCreditItems = useStageEntryMetric(SIGNED_STAGES, quarter, DEBT_STAGE_PIPELINES, { firstEverInWindow: true, historyPipelineIds: [ACTIVE_PIPELINE_ID] });
   const finalCreditItemsPrior = useStageEntryMetric(SIGNED_STAGES, priorQuarter, DEBT_STAGE_PIPELINES, { firstEverInWindow: true, historyPipelineIds: [ACTIVE_PIPELINE_ID] });
   // Closed metrics aggregate BOTH "funded-invoiced" and "closed-won" stage
