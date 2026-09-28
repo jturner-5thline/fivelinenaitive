@@ -76,9 +76,8 @@ export function EmailPromptCenterButton({ dealId, dealName, contactEmail }: Emai
         <TooltipTrigger asChild>
           <Button
             variant="outline"
-            size="icon"
-            aria-label="Email Prompt Center"
-            className="relative h-8 w-8 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
+            aria-label="Email to Client"
+            className="relative h-8 gap-2 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
             onClick={handleClick}
             onContextMenu={(e) => {
               // Right-click → always open the prompt-center list, even when
@@ -88,6 +87,7 @@ export function EmailPromptCenterButton({ dealId, dealName, contactEmail }: Emai
             }}
           >
         <Mail className="h-4 w-4" />
+        <span className="text-sm">Email to Client</span>
         {pendingCount > 0 && (
           <span className="absolute -top-1.5 -right-1.5 h-[18px] min-w-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center ring-2 ring-background z-10 pointer-events-none">
             {pendingCount}

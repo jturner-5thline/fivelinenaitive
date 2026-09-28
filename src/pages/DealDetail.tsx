@@ -3301,12 +3301,12 @@ export default function DealDetail() {
         <TooltipTrigger asChild>
           <Button
             variant="outline"
-            size="icon"
             aria-label="Status Report"
             onClick={() => setShowStatusReportPreview(true)}
-            className="relative h-8 w-8 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
+            className="relative h-8 gap-2 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
           >
             <FileText className="h-4 w-4" />
+            <span className="text-sm">Status Report</span>
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom">Status Report</TooltipContent>
@@ -3315,8 +3315,9 @@ export default function DealDetail() {
         <Tooltip>
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" aria-label="Export" className="relative h-8 w-8 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60">
+              <Button variant="outline" aria-label="Export" className="relative h-8 gap-2 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60">
                 <Download className="h-4 w-4" />
+                <span className="text-sm">Export</span>
               </Button>
             </DropdownMenuTrigger>
           </TooltipTrigger>
@@ -3351,12 +3352,12 @@ export default function DealDetail() {
           <Button
             type="button"
             variant="outline"
-            size="icon"
             aria-label="Open notes"
             onClick={() => setNotesDialogOpen(true)}
-            className="relative h-8 w-8 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
+            className="relative h-8 gap-2 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
           >
             <StickyNote className="h-4 w-4" />
+            <span className="text-sm">Notes</span>
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom">Notes</TooltipContent>
