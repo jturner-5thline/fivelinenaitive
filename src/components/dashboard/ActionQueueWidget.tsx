@@ -47,9 +47,9 @@ export function ActionQueueWidget() {
           }
         }}
         className={cn(
-          'group mb-3 w-full rounded-xl border border-border/40 bg-card/60 backdrop-blur cursor-pointer',
-          'supports-[backdrop-filter]:bg-card/40 px-3 py-2.5 flex items-center justify-between gap-3',
-          'transition-colors hover:bg-card/80 hover:border-border/60 text-left',
+          'glass-module glass-module-interactive group mb-3 w-full rounded-xl cursor-pointer',
+          'px-3 py-2.5 flex items-center justify-between gap-3',
+          'transition-colors text-left',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         )}
         aria-label={`Open Today${count > 0 ? `, ${count} pending` : ''}`}

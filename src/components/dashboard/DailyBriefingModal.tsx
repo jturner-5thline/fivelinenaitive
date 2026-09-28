@@ -2208,7 +2208,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
             <TooltipProvider delayDuration={150}>
               <TabsPrimitive.List
                 aria-orientation="vertical"
-                className="shrink-0 flex flex-col items-center gap-2 w-14 sm:w-16 py-3 border-r border-border/40 bg-white/[0.02]"
+                className="shrink-0 flex flex-col items-center gap-2 w-14 sm:w-16 py-3 border-r border-white/[0.06] bg-transparent"
               >
                 {TABS.map(tab => {
                   const Icon = tab.icon;
@@ -2228,7 +2228,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                             'relative h-10 w-10 inline-flex items-center justify-center rounded-lg',
                             'text-muted-foreground/70 hover:text-foreground hover:bg-white/[0.06]',
                             'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                            'data-[state=active]:bg-primary/15 data-[state=active]:text-primary',
+                            'border border-transparent data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20',
                           )}
                         >
                           <Icon className="h-5 w-5" />
