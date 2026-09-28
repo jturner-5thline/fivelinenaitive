@@ -1018,7 +1018,20 @@ function useStageEntryMetric(
   targetStage: string | string[],
   quarter: QuarterOption,
   pipelineId?: string | string[],
-  options?: { excludeDealOwners?: string[]; excludeChangedByUserIds?: string[]; firstEverInWindow?: boolean; historyPipelineIds?: string[] },
+  options?: {
+    excludeDealOwners?: string[];
+    excludeChangedByUserIds?: string[];
+    firstEverInWindow?: boolean;
+    historyPipelineIds?: string[];
+    /** Match only these exact `to_stage` values (no case/label expansion). */
+    exactStageLabels?: string[];
+    /**
+     * Sales Dashboard parity: dedupe by deal and company across each
+     * calendar year, keeping the earliest entry, then count only survivors
+     * whose earliest entry falls inside the window.
+     */
+    calendarYearDedupe?: boolean;
+  },
 ): StageMetricResult {
   const { user } = useAuth();
   const targetStages = Array.isArray(targetStage) ? targetStage : [targetStage];
@@ -1026,10 +1039,12 @@ function useStageEntryMetric(
   const pipelineIds = pipelineId
     ? (Array.isArray(pipelineId) ? pipelineId : [pipelineId])
     : undefined;
-  const queryStages = expandMetricStageLabels(targetStages, primaryPipelineId);
+  const queryStages = options?.exactStageLabels ?? expandMetricStageLabels(targetStages, primaryPipelineId);
   const excludeOwnersKey = (options?.excludeDealOwners ?? []).map((s) => s.toLowerCase()).sort().join('|');
   const excludeChangedByKey = (options?.excludeChangedByUserIds ?? []).slice().sort().join('|');
   const firstEverInWindow = !!options?.firstEverInWindow;
+  const calendarYearDedupe = !!options?.calendarYearDedupe;
+  const exactKey = options?.exactStageLabels ? options.exactStageLabels.join('|') : null;
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: [
@@ -1040,9 +1055,11 @@ function useStageEntryMetric(
       excludeOwnersKey || null,
       excludeChangedByKey || null,
       firstEverInWindow ? 'first-ever' : null,
+      calendarYearDedupe ? 'cal-year' : null,
+      exactKey,
     ],
     queryFn: async () => {
-      const startDate = quarter.startDate;
+      const startDate = calendarYearDedupe ? `${quarter.startDate.slice(0, 4)}-01-01` : quarter.startDate;
       const endDate = quarter.endDate;
 
       // Source of truth: deal_stage_history (stage_enter events).
@@ -1180,14 +1197,21 @@ function useStageEntryMetric(
     // keeping the earliest stage entry so counts don't double-book the same deal.
     const byName = new Map<string, StageEntryDeal>();
     for (const d of rawDeals) {
-      const key = (d.company ?? '').toLowerCase().trim();
+      const name = (d.company ?? '').toLowerCase().trim();
+      const key = calendarYearDedupe && name ? `${String(d.entered_at).slice(0, 4)}|${name}` : name;
       if (!key) { byName.set(d.deal_id, d); continue; }
       const existing = byName.get(key);
       if (!existing || new Date(d.entered_at).getTime() < new Date(existing.entered_at).getTime()) {
         byName.set(key, d);
       }
     }
-    const deals: StageEntryDeal[] = Array.from(byName.values());
+    let deals: StageEntryDeal[] = Array.from(byName.values());
+    if (calendarYearDedupe) {
+      deals = deals.filter((d) => {
+        const t = new Date(d.entered_at).getTime();
+        return t >= windowStartMs && t <= windowEndMs;
+      });
+    }
     const mrr = deals.reduce((s, d) => s + (d.mrr ?? 0), 0);
     return {
       count: deals.length,
@@ -1196,7 +1220,7 @@ function useStageEntryMetric(
       isLoading: loading,
       mrr,
     };
-  }, [data, isLoading, isFetching, pipelineIds?.join(','), targetStages, excludeOwnersKey]);
+  }, [data, isLoading, isFetching, pipelineIds?.join(','), targetStages, excludeOwnersKey, calendarYearDedupe]);
 }
 
 /**
@@ -1346,6 +1370,13 @@ const DEBT_STAGE_PIPELINES = [
   'b78ad452-b489-4c89-8a91-789347c05f79',
   '40b17dfb-9122-49e0-bf7c-5aa993d5d615',
 ];
+
+// Proposals Issued mirrors the Sales Dashboard (useProposalsIssuedByMonth):
+// exact stage labels + earliest-entry-per-company dedupe per calendar year.
+const SALES_PARITY_PROPOSAL_OPTS = {
+  exactStageLabels: ['proposal-issued', 'Proposal Issued'],
+  calendarYearDedupe: true,
+};
 
 // Stage IDs
 const NDA_NEEDS_LIST_STAGE = 'ndaneeds-list-sent';
@@ -1614,8 +1645,8 @@ export function useConsolidatedDebtPipelineMetrics(
     excludeChangedByUserIds: NDA_EXCLUDED_CHANGED_BY,
     historyPipelineIds: [ACTIVE_PIPELINE_ID],
   });
-  const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, DEBT_STAGE_PIPELINES);
-  const proposalsIssuedPrior = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, priorQuarter, DEBT_STAGE_PIPELINES);
+  const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, DEBT_STAGE_PIPELINES, SALES_PARITY_PROPOSAL_OPTS);
+  const proposalsIssuedPrior = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, priorQuarter, DEBT_STAGE_PIPELINES, SALES_PARITY_PROPOSAL_OPTS);
   const finalCreditItems = useStageEntryMetric(SIGNED_STAGES, quarter, DEBT_STAGE_PIPELINES, { firstEverInWindow: true, historyPipelineIds: [ACTIVE_PIPELINE_ID] });
   const finalCreditItemsPrior = useStageEntryMetric(SIGNED_STAGES, priorQuarter, DEBT_STAGE_PIPELINES, { firstEverInWindow: true, historyPipelineIds: [ACTIVE_PIPELINE_ID] });
   // Closed metrics aggregate BOTH "funded-invoiced" and "closed-won" stage
