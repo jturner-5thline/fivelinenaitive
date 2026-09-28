@@ -4303,7 +4303,7 @@ export default function DealDetail() {
                     </div>
                   )}
 
-                  {useContextRailLayout && dealActionCluster}
+                  {useContextRailLayout && <div className="px-3">{dealActionCluster}</div>}
 
                   {/* Panels rendered in custom order - only visible panels.
                       In the context-rail layout the Deal Information panel is
