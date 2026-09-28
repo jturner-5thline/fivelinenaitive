@@ -225,7 +225,7 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
 
   if (isLoading) {
     return (
-      <Card className="h-full">
+      <Card className="glass-module h-full">
         <CardHeader className="pb-3"><Skeleton className="h-5 w-32" /></CardHeader>
         <CardContent className="space-y-3">
           {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
@@ -236,10 +236,10 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="h-full">
-      <Card className="h-full flex flex-col">
+      <Card className="glass-module h-full flex flex-col">
         <CollapsibleTrigger asChild>
-          <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardTitle className="text-base font-medium flex items-center justify-between">
+          <CardHeader className="pb-2 cursor-pointer hover:bg-white/[0.04] transition-colors">
+            <CardTitle className="text-base font-semibold tracking-tight text-foreground flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ListTodo className="h-4 w-4 text-primary" />
                 {effectiveScope === 'mine' ? 'My Tasks' : 'All Tasks'}
