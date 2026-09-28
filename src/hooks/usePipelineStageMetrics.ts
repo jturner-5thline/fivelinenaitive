@@ -1371,6 +1371,13 @@ const DEBT_STAGE_PIPELINES = [
   '40b17dfb-9122-49e0-bf7c-5aa993d5d615',
 ];
 
+// Proposals Issued mirrors the Sales Dashboard (useProposalsIssuedByMonth):
+// exact stage labels + earliest-entry-per-company dedupe per calendar year.
+const SALES_PARITY_PROPOSAL_OPTS = {
+  exactStageLabels: ['proposal-issued', 'Proposal Issued'],
+  calendarYearDedupe: true,
+};
+
 // Stage IDs
 const NDA_NEEDS_LIST_STAGE = 'ndaneeds-list-sent';
 const FINAL_CREDIT_ITEMS_STAGE = 'final-credit-items';
