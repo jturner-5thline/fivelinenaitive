@@ -245,6 +245,8 @@ const Sidebar = React.forwardRef<
           background: '#1c2437',
           opacity: 1,
           borderRadius: 12,
+          border: '1px solid rgba(255,255,255,0.16)',
+          boxSizing: 'border-box',
           overflow: 'hidden',
           boxShadow:
             effectiveState === "expanded"
@@ -263,8 +265,7 @@ const Sidebar = React.forwardRef<
           data-sidebar="sidebar"
           data-effective-state={effectiveState}
           className={cn(
-            "flex h-full w-full flex-col rounded-xl transition-colors duration-100 relative opacity-100 backdrop-blur-none",
-            "border border-[rgba(255,255,255,0.16)]",
+            "flex h-full w-full flex-col rounded-[11px] transition-colors duration-100 relative opacity-100 backdrop-blur-none",
             className,
           )}
           style={{
