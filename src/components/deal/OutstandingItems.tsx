@@ -596,7 +596,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
         data-outstanding-tile="true"
         data-selected={isSelected ? "true" : undefined}
         className={cn(
-          "outstanding-item-tile flex items-center gap-3 p-3 rounded-lg border bg-card transition-colors cursor-pointer min-h-[62px] overflow-hidden",
+          "outstanding-item-tile flex items-center gap-3 px-3 py-1.5 rounded-lg border bg-card transition-colors cursor-pointer min-h-[50px] overflow-hidden",
           isCompletedRow && "opacity-60",
           "border-border hover:border-primary/50",
           isSelected && "border-primary/50 bg-primary/5"
@@ -1087,7 +1087,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
           </div>
         )}
         
-        <CardContent className="space-y-2 flex-1 min-h-0 overflow-y-auto">
+        <CardContent className="space-y-1 flex-1 min-h-0 overflow-y-auto">
           {readOnly && (
             <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-100">
               <span aria-hidden>🔒</span>
@@ -1145,7 +1145,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
           {/* Grouped or flat active items */}
           {groupBy !== 'none' && groupedActiveItems ? (
             Object.entries(groupedActiveItems).map(([group, groupItems]) => (
-              <div key={group} className="space-y-2">
+              <div key={group} className="space-y-1">
                 <div className="flex items-center gap-2 pt-2">
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{group}</span>
                   <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">{groupItems.length}</span>
