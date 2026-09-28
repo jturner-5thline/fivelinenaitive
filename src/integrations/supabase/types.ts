@@ -30428,6 +30428,13 @@ export type Database = {
               transcript_id: string
             }[]
           }
+      match_deals_for_email: {
+        Args: { _domains: string[]; _emails: string[]; _user_id: string }
+        Returns: {
+          deal_id: string
+          reason: string
+        }[]
+      }
       match_lenders_by_narrative: {
         Args: {
           caller_company_id?: string
