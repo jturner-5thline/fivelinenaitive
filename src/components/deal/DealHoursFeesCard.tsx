@@ -1,10 +1,13 @@
-import { Clock } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Clock, Pencil } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AddHoursButton } from '@/components/deal/DealHoursEntriesEditor';
-import { DealWeeklyHoursChart } from '@/components/deal/DealWeeklyHoursChart';
 import { useCompanyFeesVisibility, formatComputedTotal } from '@/hooks/useCompanyFeesVisibility';
+import { supabase } from '@/integrations/supabase/client';
+import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip as RTooltip } from 'recharts';
 
 interface DealHoursFeesCardProps {
   deal: any;
@@ -12,23 +15,141 @@ interface DealHoursFeesCardProps {
   onHoursChanged?: () => void;
 }
 
+interface WeekRow { week_start_date: string; hours: number; phase: string }
+
 /**
- * Hours & Fees block. Extracted out of the Deal Information card so it can
- * live in the main content column next to Outstanding Items.
+ * KPI-style Hours & Fees widget: current Revenue / Hour + weekly hours chart.
+ * Clicking opens a dialog with the full hours & fees inputs.
  */
 export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged }: DealHoursFeesCardProps) {
-  const feesVisibility = useCompanyFeesVisibility();
-  const refreshDeals = onHoursChanged;
+  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState<WeekRow[]>([]);
+
+  const loadWeeks = useCallback(async () => {
+    const { data } = await supabase
+      .from('weekly_time_entries')
+      .select('week_start_date, hours, phase')
+      .eq('deal_id', deal.id)
+      .order('week_start_date', { ascending: true });
+    setRows((data ?? []) as WeekRow[]);
+  }, [deal.id]);
+
+  useEffect(() => { void loadWeeks(); }, [loadWeeks]);
+
+  const pre = deal.preSigningHours ?? 0;
+  const post = deal.postSigningHours ?? 0;
+  const totalHours = pre + post;
+  const totalFee = deal.totalFee ?? 0;
+  const hasHours = totalHours > 0;
+  const hasFees = totalFee > 0 || (deal.retainerFee ?? 0) > 0 || (deal.milestoneFee ?? 0) > 0 || (deal.successFeePercent ?? 0) > 0;
+
+  const emptyMsg = !hasHours && !hasFees
+    ? 'No Hours or Fees Logged Yet'
+    : !hasHours ? 'No Hours Logged Yet'
+    : !hasFees ? 'No Fees Logged Yet'
+    : null;
+
+  const byWeek = new Map<string, { week: string; pre: number; post: number }>();
+  rows.forEach((r) => {
+    const cur = byWeek.get(r.week_start_date) ?? { week: r.week_start_date, pre: 0, post: 0 };
+    if (r.phase === 'pre_signing') cur.pre += Number(r.hours) || 0; else cur.post += Number(r.hours) || 0;
+    byWeek.set(r.week_start_date, cur);
+  });
+  const chartData = Array.from(byWeek.values()).slice(-12).map((d) => ({
+    ...d,
+    label: new Date(d.week + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+  }));
+  const latestWeek = chartData.length ? chartData[chartData.length - 1] : null;
+
+  const fmtMoney = (n: number) => `$${Math.round(n).toLocaleString()}`;
+  const rph = hasHours && totalFee > 0 ? totalFee / totalHours : null;
+
+  const handleChanged = () => { void onHoursChanged?.(); void loadWeeks(); };
+
   return (
-      <Card className="deal-hours-fees-panel space-y-3 p-4 h-full overflow-y-auto">
-        <h4
-          className="text-[13px] font-medium flex items-center gap-2 tracking-[0.01em]"
-          style={{ color: 'rgba(148, 163, 184, 0.88)' }}
-        >
-          <Clock className="h-3.5 w-3.5" />
-          Hours & Fees
-          <DealWeeklyHoursChart dealId={deal.id} />
-        </h4>
+    <>
+      <Card
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen(true)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(true); } }}
+        className="deal-hours-fees-panel group p-4 h-full flex flex-col gap-3 cursor-pointer transition-colors hover:bg-muted/20"
+      >
+        <div className="flex items-center justify-between">
+          <h4 className="text-[13px] font-medium flex items-center gap-2 tracking-[0.01em] text-muted-foreground">
+            <Clock className="h-3.5 w-3.5" />
+            Hours & Fees
+          </h4>
+          <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Revenue / Hour</p>
+            <p className="text-2xl font-semibold tabular-nums font-mono text-foreground truncate">
+              {rph !== null ? fmtMoney(rph) : '—'}
+            </p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total Hours</p>
+            <p className="text-lg font-medium tabular-nums font-mono text-foreground">{totalHours.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+            <p className="text-[11px] text-muted-foreground tabular-nums">Pre {pre.toLocaleString()} · Post {post.toLocaleString()}</p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total Fee</p>
+            <p className="text-lg font-medium tabular-nums font-mono text-foreground truncate">{hasFees ? fmtMoney(totalFee) : '—'}</p>
+            {latestWeek && (
+              <p className="text-[11px] text-muted-foreground tabular-nums">Last week {(latestWeek.pre + latestWeek.post).toLocaleString()}h</p>
+            )}
+          </div>
+        </div>
+
+        {emptyMsg && (
+          <p className="text-xs text-muted-foreground">{emptyMsg} — click to add.</p>
+        )}
+
+        <div className="flex-1 min-h-[110px]">
+          {chartData.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-xs text-muted-foreground rounded-md border border-dashed border-border/50">
+              Weekly hours will appear here
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                <RTooltip
+                  cursor={{ fill: 'hsl(var(--muted) / 0.3)' }}
+                  contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                  labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  formatter={(v: number, name: string) => [`${v}h`, name === 'pre' ? 'Pre-Signing' : 'Post-Signing']}
+                  labelFormatter={(l) => `Week of ${l}`}
+                />
+                <Bar dataKey="pre" stackId="a" fill="hsl(var(--chart-2))" />
+                <Bar dataKey="post" stackId="a" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </Card>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-[720px]" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle className="text-sm font-medium flex items-center gap-2">
+              <Clock className="h-4 w-4" /> Hours & Fees
+            </DialogTitle>
+          </DialogHeader>
+          <HoursFeesInputs deal={deal} updateDeal={updateDeal} onChanged={handleChanged} />
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function HoursFeesInputs({ deal, updateDeal, onChanged }: { deal: any; updateDeal: (f: string, v: any) => void; onChanged: () => void }) {
+  const feesVisibility = useCompanyFeesVisibility();
+  const refreshDeals = onChanged;
+  return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Hours */}
           <div className="space-y-3 min-w-0">
@@ -182,6 +303,5 @@ export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged }: DealHour
             </div>
           </div>
         </div>
-      </Card>
   );
 }
