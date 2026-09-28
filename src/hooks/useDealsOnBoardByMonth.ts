@@ -12,7 +12,13 @@ import { isExcludedDealName } from '@/utils/excludedDeals';
  * `created_at` on each entry holds that NDA entry timestamp.
  */
 const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
-const NDA_STAGE_VALUES = ['ndaneeds-list-sent', 'NDA/Needs List Sent', 'NDA / Needs List Sent'];
+const NDA_STAGE_VALUES = [
+  'ndaneeds-list-sent',
+  'NDA/Needs List Sent',
+  'NDA / Needs List Sent',
+  'NDA/NEEDS LIST SENT',
+  'NDA / NEEDS LIST SENT',
+];
 const EXCLUDED_OWNERS = new Set(['john moffitt']);
 const EXCLUDED_CHANGED_BY = new Set(['2e65a4b1-bd94-46ef-87c6-9afe697b3180']);
 
