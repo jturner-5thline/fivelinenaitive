@@ -41,12 +41,8 @@ type Cadence = 'monthly' | 'quarterly';
 type ViewMode = 'plan' | 'added';
 
 const PANEL_STYLE: CSSProperties = {
-  background:
-    'radial-gradient(110% 70% at 0% 0%, hsl(220 60% 30% / 0.18) 0%, transparent 60%),' +
-    'linear-gradient(180deg, hsl(220 38% 16% / 0.85) 0%, hsl(220 42% 11% / 0.9) 100%)',
-  borderColor: 'hsl(220 45% 45% / 0.22)',
-  boxShadow:
-    'inset 0 1px 0 hsl(220 60% 85% / 0.05), 0 4px 14px hsl(220 60% 3% / 0.35)',
+  background: 'var(--bg-card)',
+  borderColor: 'var(--border-subtle)',
 };
 
 const MONTH_LABELS = [
@@ -335,7 +331,7 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan, ye
 
   return (
     <>
-      <div className="rounded-lg border overflow-hidden" style={PANEL_STYLE}>
+      <div className="rounded-md border overflow-hidden" style={PANEL_STYLE}>
         <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-b border-slate-700/40">
           <div className="flex items-center gap-2 min-w-0">
             <Target className="h-3.5 w-3.5 text-sky-400 shrink-0" />
