@@ -4,6 +4,7 @@ import { StickyNote } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { DealSpaceAskAITab } from './DealSpaceAskAITab';
 import { DealSpaceNotesTab } from './DealSpaceNotesTab';
+import { useFeatureAccess } from '@/hooks/useFeatureFlags';
 
 interface DealSpaceTabProps {
   dealId: string;
@@ -24,7 +25,9 @@ export function DealSpaceTab({ dealId, dealData }: DealSpaceTabProps) {
   // Controlled value lets React batch the tab-switch render correctly
   // and avoids the synchronous re-mount cost we get with `defaultValue`
   // when the panel contents are heavy.
+  const { hasAccess: canAskAi, isLoading: askAiLoading } = useFeatureAccess('deal_ask_ai', 'deployed');
   const [activeTab, setActiveTab] = useState<string>('ask-ai');
+  useEffect(() => { if (!askAiLoading && !canAskAi) setActiveTab('notes'); }, [askAiLoading, canAskAi]);
   // The quick "Ask AI" bar above the deal panels asks us to focus this tab.
   useEffect(() => {
     const handler = (e: Event) => {
@@ -41,19 +44,23 @@ export function DealSpaceTab({ dealId, dealData }: DealSpaceTabProps) {
       <TabsList
         className="mb-3 inline-flex h-auto items-center justify-start rounded-sm bg-gradient-to-b from-slate-800/95 to-slate-950 backdrop-blur-xl p-0 gap-0 border border-white/10 border-l-0 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.75),inset_0_1px_0_0_rgba(255,255,255,0.07)] max-w-full overflow-x-visible overflow-y-visible scrollbar-none [&>button+button]:border-l [&>button+button]:border-white/10"
       >
+        {canAskAi && (
         <TabsTrigger value="ask-ai" className={triggerCls}>
           <Sparkles className="h-3.5 w-3.5" />
           Ask AI
         </TabsTrigger>
+        )}
         <TabsTrigger value="notes" className={triggerCls}>
           <StickyNote className="h-3.5 w-3.5" />
           Notes
         </TabsTrigger>
       </TabsList>
 
+      {canAskAi && (
       <TabsContent value="ask-ai">
         <DealSpaceAskAITab dealId={dealId} />
       </TabsContent>
+      )}
 
       <TabsContent value="notes">
         <DealSpaceNotesTab dealId={dealId} />
