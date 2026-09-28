@@ -1197,14 +1197,21 @@ function useStageEntryMetric(
     // keeping the earliest stage entry so counts don't double-book the same deal.
     const byName = new Map<string, StageEntryDeal>();
     for (const d of rawDeals) {
-      const key = (d.company ?? '').toLowerCase().trim();
+      const name = (d.company ?? '').toLowerCase().trim();
+      const key = calendarYearDedupe && name ? `${String(d.entered_at).slice(0, 4)}|${name}` : name;
       if (!key) { byName.set(d.deal_id, d); continue; }
       const existing = byName.get(key);
       if (!existing || new Date(d.entered_at).getTime() < new Date(existing.entered_at).getTime()) {
         byName.set(key, d);
       }
     }
-    const deals: StageEntryDeal[] = Array.from(byName.values());
+    let deals: StageEntryDeal[] = Array.from(byName.values());
+    if (calendarYearDedupe) {
+      deals = deals.filter((d) => {
+        const t = new Date(d.entered_at).getTime();
+        return t >= windowStartMs && t <= windowEndMs;
+      });
+    }
     const mrr = deals.reduce((s, d) => s + (d.mrr ?? 0), 0);
     return {
       count: deals.length,
