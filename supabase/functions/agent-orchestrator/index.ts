@@ -257,20 +257,20 @@ async function execDealLookup(supabaseUser: SupabaseClient, args: any): Promise<
 
   let q = supabaseUser
     .from("deals")
-    .select("id, deal_name, stage_id, deal_class, deal_size, deal_manager, lender_name, contact_name, last_activity_date, status, archived")
-    .order("last_activity_date", { ascending: false, nullsFirst: false })
+    .select("id, company, stage, deal_class, value, manager, status, pipeline_id, updated_at")
+    .order("updated_at", { ascending: false, nullsFirst: false })
     .limit(25);
 
   if (dealId) q = q.eq("id", dealId);
-  else if (name) q = q.ilike("deal_name", `%${name}%`);
-  if (onlyActive) q = q.eq("archived", false);
+  else if (name) q = q.ilike("company", `%${name}%`);
+  if (onlyActive) q = q.or("status.is.null,status.neq.archived");
 
   const { data, error } = await q;
   if (error) throw new Error(`Deal lookup failed: ${error.message}`);
 
   // Apply global exclusions per project memory.
   const filtered = (data || []).filter((d: any) => {
-    const n = (d.deal_name || "").toLowerCase();
+    const n = (d.company || "").toLowerCase();
     if (n === "test-niki's store" || n === "example deal") return false;
     if (n.startsWith("test ")) return false;
     return true;

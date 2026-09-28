@@ -169,6 +169,13 @@
       "when": 1790474986621,
       "tag": "0023_create_nylas_webhook_config",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790598941838,
+      "tag": "0024_add_match_deals_for_email",
+      "breakpoints": true
     }
   ]
 }
