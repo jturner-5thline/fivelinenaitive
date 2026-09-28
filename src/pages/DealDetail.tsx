@@ -5005,6 +5005,7 @@ export default function DealDetail() {
                           }
                           return (
                             <div key={id} className="h-full flex flex-col gap-2">
+                              {widgetVis.openItems && (
                                <div className="shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]">
                               <OutstandingItems
                                 items={outstandingItems}
@@ -5060,6 +5061,7 @@ export default function DealDetail() {
                                 phaseControls={checklistPhaseControls}
                               />
                               </div>
+                              )}
                               {isFinServDeal && (
                                 <div className="shrink-0">
                                   <FinServProjectsCard
@@ -5072,7 +5074,7 @@ export default function DealDetail() {
                                   />
                                 </div>
                               )}
-                              {!isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && (
+                              {!isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees && (
                                 <div className="deal-calendar-panel flex-1 min-h-[280px] overflow-hidden">
                                   <DealHoursFeesCard
                                     deal={deal}
