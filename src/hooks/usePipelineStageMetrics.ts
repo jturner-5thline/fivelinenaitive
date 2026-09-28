@@ -1380,6 +1380,14 @@ const SALES_PARITY_PROPOSAL_OPTS = {
 
 // Stage IDs
 const NDA_NEEDS_LIST_STAGE = 'ndaneeds-list-sent';
+/** Shared with Sales Dashboard "Deals on Board" so both count the same entries. */
+export const NDA_STAGE_LABELS = [
+  'ndaneeds-list-sent',
+  'NDA/Needs List Sent',
+  'NDA / Needs List Sent',
+  'NDA/NEEDS LIST SENT',
+  'NDA / NEEDS LIST SENT',
+];
 const FINAL_CREDIT_ITEMS_STAGE = 'final-credit-items';
 // "Debt Deals Signed" fires when a deal enters Final Credit Items OR any
 // downstream stage. Some deals skip FCI and jump straight to Terms Issued
@@ -1635,16 +1643,17 @@ export function useConsolidatedDebtPipelineMetrics(
   // that were reassigned after Moffitt logged the NDA entry, e.g.
   // Mason Dixie Foods).
   const NDA_EXCLUDED_CHANGED_BY = ['2e65a4b1-bd94-46ef-87c6-9afe697b3180'];
-  const ndaNeedsList = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, quarter, NDA_PIPELINES, {
+  // Sales Dashboard parity (useDealsOnBoardByMonth): same exact labels and
+  // earliest-entry-per-company dedupe per calendar year.
+  const NDA_OPTS = {
     excludeDealOwners: NDA_EXCLUDED_OWNERS,
     excludeChangedByUserIds: NDA_EXCLUDED_CHANGED_BY,
     historyPipelineIds: [ACTIVE_PIPELINE_ID],
-  });
-  const ndaNeedsListPrior = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, priorQuarter, NDA_PIPELINES, {
-    excludeDealOwners: NDA_EXCLUDED_OWNERS,
-    excludeChangedByUserIds: NDA_EXCLUDED_CHANGED_BY,
-    historyPipelineIds: [ACTIVE_PIPELINE_ID],
-  });
+    exactStageLabels: NDA_STAGE_LABELS,
+    calendarYearDedupe: true,
+  };
+  const ndaNeedsList = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, quarter, NDA_PIPELINES, NDA_OPTS);
+  const ndaNeedsListPrior = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, priorQuarter, NDA_PIPELINES, NDA_OPTS);
   const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, DEBT_STAGE_PIPELINES, SALES_PARITY_PROPOSAL_OPTS);
   const proposalsIssuedPrior = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, priorQuarter, DEBT_STAGE_PIPELINES, SALES_PARITY_PROPOSAL_OPTS);
   const finalCreditItems = useStageEntryMetric(SIGNED_STAGES, quarter, DEBT_STAGE_PIPELINES, { firstEverInWindow: true, historyPipelineIds: [ACTIVE_PIPELINE_ID] });
