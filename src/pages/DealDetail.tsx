@@ -237,6 +237,9 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { useDealWidgetVisibility, DEAL_WIDGET_LABELS } from '@/hooks/useDealWidgetVisibility';
+import { Switch as WidgetSwitch } from '@/components/ui/switch';
+import { Settings as GearIcon } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -685,7 +688,8 @@ export default function DealDetail() {
   const { user } = useAuth();
   // 5th Line-only surfaces (Analysis tab).
   const canSeeAnalysisTab = canUse5thLineProprietaryActions(user);
-  const { company, members } = useCompany();
+  const { company, members, isAdmin: isCompanyAdmin } = useCompany();
+  const { visibility: widgetVis, setWidgetVisible } = useDealWidgetVisibility();
   const { features: companyFeatures } = useCompanyFeatures();
   const requestStatusChange = useRequestStatusChange();
   const { scoreConfig } = useLenderScoreConfig();
@@ -3294,9 +3298,10 @@ export default function DealDetail() {
   );
 
   const dealActionCluster = (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2 w-full">
       {dealMemoButton}
       {hasNaitivePipelineAccess && <EmailPromptCenterButton dealId={id!} dealName={deal?.company} contactEmail={(deal as any)?.contactEmail ?? null} />}
+      {widgetVis.statusReport && (
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -3311,6 +3316,7 @@ export default function DealDetail() {
         </TooltipTrigger>
         <TooltipContent side="bottom">Status Report</TooltipContent>
       </Tooltip>
+      )}
       <DropdownMenu>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -3362,6 +3368,35 @@ export default function DealDetail() {
         </TooltipTrigger>
         <TooltipContent side="bottom">Notes</TooltipContent>
       </Tooltip>
+      {(isAdmin || isCompanyAdmin) && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              aria-label="Widget visibility settings"
+              className="ml-auto h-8 w-8 p-0 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
+            >
+              <GearIcon className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-64 bg-popover p-3">
+            <div className="text-sm font-medium mb-1">Show on deals</div>
+            <p className="text-xs text-muted-foreground mb-3">Applies to everyone in your account.</p>
+            <div className="space-y-2.5">
+              {DEAL_WIDGET_LABELS.map(({ key, label }) => (
+                <label key={key} className="flex items-center justify-between gap-3 text-sm cursor-pointer">
+                  <span>{label}</span>
+                  <WidgetSwitch
+                    checked={widgetVis[key]}
+                    onCheckedChange={(v) => { void setWidgetVisible(key, v); }}
+                  />
+                </label>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
     </div>
   );
 
