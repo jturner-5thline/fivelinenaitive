@@ -1018,7 +1018,20 @@ function useStageEntryMetric(
   targetStage: string | string[],
   quarter: QuarterOption,
   pipelineId?: string | string[],
-  options?: { excludeDealOwners?: string[]; excludeChangedByUserIds?: string[]; firstEverInWindow?: boolean; historyPipelineIds?: string[] },
+  options?: {
+    excludeDealOwners?: string[];
+    excludeChangedByUserIds?: string[];
+    firstEverInWindow?: boolean;
+    historyPipelineIds?: string[];
+    /** Match only these exact `to_stage` values (no case/label expansion). */
+    exactStageLabels?: string[];
+    /**
+     * Sales Dashboard parity: dedupe by deal and company across each
+     * calendar year, keeping the earliest entry, then count only survivors
+     * whose earliest entry falls inside the window.
+     */
+    calendarYearDedupe?: boolean;
+  },
 ): StageMetricResult {
   const { user } = useAuth();
   const targetStages = Array.isArray(targetStage) ? targetStage : [targetStage];
@@ -1026,10 +1039,12 @@ function useStageEntryMetric(
   const pipelineIds = pipelineId
     ? (Array.isArray(pipelineId) ? pipelineId : [pipelineId])
     : undefined;
-  const queryStages = expandMetricStageLabels(targetStages, primaryPipelineId);
+  const queryStages = options?.exactStageLabels ?? expandMetricStageLabels(targetStages, primaryPipelineId);
   const excludeOwnersKey = (options?.excludeDealOwners ?? []).map((s) => s.toLowerCase()).sort().join('|');
   const excludeChangedByKey = (options?.excludeChangedByUserIds ?? []).slice().sort().join('|');
   const firstEverInWindow = !!options?.firstEverInWindow;
+  const calendarYearDedupe = !!options?.calendarYearDedupe;
+  const exactKey = options?.exactStageLabels ? options.exactStageLabels.join('|') : null;
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: [
@@ -1040,9 +1055,11 @@ function useStageEntryMetric(
       excludeOwnersKey || null,
       excludeChangedByKey || null,
       firstEverInWindow ? 'first-ever' : null,
+      calendarYearDedupe ? 'cal-year' : null,
+      exactKey,
     ],
     queryFn: async () => {
-      const startDate = quarter.startDate;
+      const startDate = calendarYearDedupe ? `${quarter.startDate.slice(0, 4)}-01-01` : quarter.startDate;
       const endDate = quarter.endDate;
 
       // Source of truth: deal_stage_history (stage_enter events).
