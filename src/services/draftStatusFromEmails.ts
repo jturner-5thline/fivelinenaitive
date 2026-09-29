@@ -25,7 +25,7 @@ export interface DraftFromEmailsResult {
   text: string;
   emailCount: number;
   callCount?: number;
-  reason?: 'no_domains' | 'no_emails' | 'llm_error';
+  reason?: 'no_domains' | 'no_emails' | 'mailbox_expired' | 'llm_error';
 }
 
 const SYSTEM_PROMPT =
@@ -109,11 +109,20 @@ export async function draftStatusFromEmails(dealId: string): Promise<DraftFromEm
   const liveQuery = liveTerms.length
     ? `(${liveTerms.map((t) => `from:${t} OR to:${t} OR cc:${t}`).join(' OR ')}) after:${gDate}`
     : '';
+  let mailboxExpired = false;
+  const isReauth = (b: any) => !!b && (b.needs_reconnect || b.action === 'reauth_required' || b.error_code === 'reauth_required');
   const live = liveQuery
     ? supabase.functions
         .invoke('gmail-messages', { body: { action: 'list', max_results: 30, query: liveQuery, search_all_mail: true } })
-        .then(({ data, error }: any) =>
-          error || data?.fallback
+        .then(async ({ data, error }: any) => {
+          if (isReauth(data)) mailboxExpired = true;
+          if (error) {
+            try {
+              const body = await error.context?.json?.();
+              if (isReauth(body) || error.context?.status === 401) mailboxExpired = true;
+            } catch { /* ignore */ }
+          }
+          return error || data?.fallback
             ? []
             : (data?.messages || []).map((m: any) => ({
                 gmail_message_id: m.id,
@@ -125,16 +134,28 @@ export async function draftStatusFromEmails(dealId: string): Promise<DraftFromEm
                 received_at: m.received_at,
                 _src: 'live',
                 _body: m.body_text || stripHtml(m.body_html || '') || m.snippet || '',
-              })),
-        )
+              }));
+        })
         .catch(() => [])
     : Promise.resolve([]);
+  // Outbound mail: client address appears in To or CC.
+  const rcptOr = Array.from(emails)
+    .slice(0, 20)
+    .map((e) => e.replace(/[,(){}"]/g, ''))
+    .flatMap((e) => [`to_emails.cs.{"${e}"}`, `cc_emails.cs.{"${e}"}`])
+    .join(',');
+  const qr = (table: 'gmail_messages' | 'email_cache') =>
+    (supabase.from(table as any) as any).select(cols).or(rcptOr)
+      .gte('received_at', since).order('received_at', { ascending: false }).limit(30)
+      .then((r: any) => (r.data || []).map((m: any) => ({ ...m, _src: table })));
   const lists = await Promise.all([
     live,
     fromOr ? q('gmail_messages', true) : Promise.resolve([]),
     q('gmail_messages', false),
     fromOr ? q('email_cache', true) : Promise.resolve([]),
     q('email_cache', false),
+    rcptOr ? qr('gmail_messages') : Promise.resolve([]),
+    rcptOr ? qr('email_cache') : Promise.resolve([]),
   ]);
   const seen = new Map<string, any>();
   for (const m of lists.flat() as any[]) {
@@ -144,7 +165,7 @@ export async function draftStatusFromEmails(dealId: string): Promise<DraftFromEm
   const top = Array.from(seen.values())
     .sort((a, b) => String(b.received_at).localeCompare(String(a.received_at)))
     .slice(0, calls.length ? 5 : 8);
-  if (!top.length && !calls.length) return { ok: false, text: '', emailCount: 0, reason: 'no_emails' };
+  if (!top.length && !calls.length) return { ok: false, text: '', emailCount: 0, reason: mailboxExpired ? 'mailbox_expired' : 'no_emails' };
 
   const ids = top.map((m) => m.gmail_message_id);
   const [b1, b2] = await Promise.all([
