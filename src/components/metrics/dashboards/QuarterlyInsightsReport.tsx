@@ -3944,6 +3944,9 @@ export function QuarterlyReportPrintStyles() {
       .qir-unified-report .qir-unified-section .glass-module > div {
         padding: 24px 24px !important;
       }
+      .qir-unified-report #qir-section-summary .glass-module > div {
+        padding-top: 8px !important;
+      }
       .qir-unified-report .qir-unified-section [class*="glass-module"],
       .qir-unified-report .qir-unified-section .glass-module {
         background: transparent !important;
