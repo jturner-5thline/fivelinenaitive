@@ -3814,10 +3814,10 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
       )}
       <Card className="popup-shell-surface qir-unified-report">
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div id="qir-section-header" className="qir-unified-section qir-unified-section--header">
+          <div id="qir-section-header" className="qir-unified-section qir-unified-section--header" style={{ position: 'relative' }}>
             <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} titlePrefix={titlePrefix} />
             {activeCompositeKey && hdrCompany?.id && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 12px 0' }}>
+              <div className="print:hidden" style={{ position: 'absolute', top: 12, right: 12, zIndex: 5 }}>
                 <QirVersionHistoryButton
                   companyId={hdrCompany.id}
                   configKey={activeCompositeKey}
