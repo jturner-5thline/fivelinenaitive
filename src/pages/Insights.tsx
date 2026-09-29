@@ -2244,7 +2244,7 @@ function MetricsInner() {
                   <DropdownMenuContent
                     align="start"
                     sideOffset={8}
-                    className="w-[22rem] max-h-[72vh] overflow-y-auto p-2 rounded-xl border border-white/[0.06] bg-[rgba(14,18,28,0.92)] backdrop-blur-xl shadow-[0_24px_48px_-24px_rgba(0,0,0,0.7)] z-50"
+                    className="w-[22rem] max-h-[72vh] overflow-y-auto p-2 rounded-lg border border-border dark:border-[var(--border-subtle)] bg-popover dark:bg-[var(--bg-card)] shadow-lg z-50"
                   >
                     {/* Default code-defined folders (Management Insights, Financial, Sales & BD) */}
                     {DEFAULT_FOLDER_GROUPS.map((group, groupIdx) => {
@@ -2525,8 +2525,8 @@ function MetricsInner() {
                           variant="outline"
                           size="sm"
                           className={cn(
-                            'h-8 gap-1.5 rounded-lg border-white/[0.08] bg-white/[0.03] text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/[0.06]',
-                            containsActive && 'border-primary/40 bg-primary/10 text-foreground',
+                            'h-8 gap-1.5 rounded-lg border-border dark:border-[var(--border-control)] bg-card dark:bg-[var(--bg-card)] text-sm font-medium text-muted-foreground hover:text-foreground dark:hover:bg-[var(--bg-card-hover)]',
+                            containsActive && "border-[var(--selected-border)] bg-[var(--selected-tint)] text-foreground",
                           )}
                         >
                           <Folder className="h-3.5 w-3.5" />
@@ -2537,7 +2537,7 @@ function MetricsInner() {
                       <DropdownMenuContent
                         align="start"
                         sideOffset={6}
-                        className="w-64 p-1.5 rounded-xl border border-white/[0.06] bg-[rgba(14,18,28,0.92)] backdrop-blur-xl shadow-[0_24px_48px_-24px_rgba(0,0,0,0.7)] z-50"
+                        className="w-64 p-1.5 rounded-lg border border-border dark:border-[var(--border-subtle)] bg-popover dark:bg-[var(--bg-card)] shadow-lg z-50"
                       >
                         {groupDashboards.map((dashboard) => (
                           <DropdownMenuItem
