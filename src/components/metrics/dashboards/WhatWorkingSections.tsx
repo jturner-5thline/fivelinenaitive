@@ -220,7 +220,7 @@ function WhatWorkingSections({ reportKey, periodLabel, subsection }: { reportKey
           helper={`Scoped to ${periodLabel || 'this period'}. Save/Reset act on this period only.`}
         />
       </section>
-      <section className="qir-ww-section" style={{ borderTop: '1px solid rgba(120,170,255,0.10)', paddingTop: 24 }}>
+      <section className="qir-ww-section" style={subsection ? undefined : { borderTop: '1px solid rgba(120,170,255,0.10)', paddingTop: 24 }}>
         <CommentaryBlock
           heading={`What's not Working${suffix}`}
           reportKey={reportKey}
