@@ -923,10 +923,10 @@ export function AgendaEditor() {
       </div>
       <div ref={editorWrapRef} style={{
         position: 'relative',
-        background: 'rgba(10,20,40,0.55)',
-        border: '0.5px solid rgba(80,140,255,0.18)',
-        borderRadius: 14,
-        boxShadow: '0 4px 22px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.03)',
+        background: 'transparent',
+        border: 'none',
+        borderRadius: 0,
+        boxShadow: 'none',
         minHeight: '60vh',
       }}>
         <EditorContent editor={editor} />
