@@ -82,8 +82,8 @@ serve(async (req) => {
       if (!refreshResponse.ok) {
         const err = await refreshResponse.text();
         console.error("[qbo-balance-history] refresh failed:", err);
-        return new Response(JSON.stringify({ error: "QuickBooks token refresh failed" }), {
-          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        return new Response(JSON.stringify({ results: [], needs_reconnect: true, error: "QuickBooks connection expired. Reconnect QuickBooks in Integrations." }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const newTokens = await refreshResponse.json();
