@@ -182,6 +182,10 @@ export interface LiveMetricResolution {
  * surfaces, so a Sync/Refresh on Controller Dashboard or Weekly Rundown
  * propagates here automatically.
  */
+const FINSERV_PNL_IDS = new Set([
+  'finserv-total-revenue', 'finserv-gross-profit', 'finserv-gross-margin', 'finserv-total-opex',
+]);
+
 export function useInsightsLiveMetricValue(
   metricSourceId: string | null | undefined,
   period: LiveMetricPeriod | null,
@@ -197,7 +201,8 @@ export function useInsightsLiveMetricValue(
   const perHourEnabled =
     metricSourceId === 'finserv-revenue-per-hour' ||
     metricSourceId === 'finserv-profit-per-hour' ||
-    metricSourceId === 'finserv-avg-revenue-per-client';
+    metricSourceId === 'finserv-avg-revenue-per-client' ||
+    FINSERV_PNL_IDS.has(metricSourceId ?? '');
   const perHourPeriod = useMemo(
     () => perHourEnabled && period
       ? { start_date: period.start, end_date: period.end, label: period.label }
@@ -653,6 +658,18 @@ export function useInsightsLiveMetricValue(
       return { supported: true, status: 'ready', value: v, sourceSurface: 'FinServ Financial Metrics' };
     }
 
+    // ---- FinServ Financial Metrics (QBO P&L: revenue / GP / GM% / OPEX) ----
+    if (FINSERV_PNL_IDS.has(metricSourceId)) {
+      if (!period || finservRev.isLoading) {
+        return { supported: true, status: 'loading', sourceSurface: 'FinServ Financial Metrics' };
+      }
+      const v = metricSourceId === 'finserv-total-revenue' ? finservRev.total
+        : metricSourceId === 'finserv-gross-profit' ? finservRev.grossProfit
+        : metricSourceId === 'finserv-gross-margin' ? (finservRev.grossMargin ?? 0)
+        : finservRev.operatingExpenses;
+      return { supported: true, status: 'ready', value: v, sourceSurface: 'FinServ Financial Metrics' };
+    }
+
     // ---- FinServ Financial Metrics (Utilization %) ----
     if (metricSourceId === 'finserv-utilization') {
       if (!period) {
@@ -742,6 +759,9 @@ export function useInsightsLiveMetricValue(
     finservRev.isLoading,
     finservRev.total,
     finservRev.operatingProfit,
+    finservRev.grossProfit,
+    finservRev.grossMargin,
+    finservRev.operatingExpenses,
     perHourHours.isLoading,
     perHourHours.data,
     brandAwareness.isLoading,

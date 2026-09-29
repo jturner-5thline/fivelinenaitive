@@ -52,6 +52,7 @@ const SUPPORTED_LIVE_METRIC_IDS = new Set<string>([
   'finserv-utilization',
   // FinServ Financial Metrics (avg revenue / client)
   'finserv-avg-revenue-per-client',
+  'finserv-total-revenue', 'finserv-gross-profit', 'finserv-gross-margin', 'finserv-total-opex',
   // Debt Advisory (period-aware stage-entry tiles)
   'da-deals-on-board-count', 'da-deals-on-board-dollars',
   'da-proposals-issued-count', 'da-proposals-issued-dollars',
@@ -67,6 +68,7 @@ const ALWAYS_KEPT_METRIC_IDS = new Set<string>([
   'finserv-active-client-count',
   'finserv-total-mrr',
   'finserv-avg-revenue-per-client',
+  'finserv-total-revenue', 'finserv-gross-profit', 'finserv-gross-margin', 'finserv-total-opex',
   // Brand Awareness placeholder tiles — no live resolver yet.
   'ba-website-users',
   'ba-seo-clicks',

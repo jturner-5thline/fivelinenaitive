@@ -358,6 +358,48 @@ export interface ReportState {
   asanaGoalOverride?: { quarterLabel?: string; halfLabel?: string } | null;
   /** When true, match Asana time_period by exact label (case-insensitive) instead of substring. */
   asanaGoalExactMatch?: boolean;
+  /** True once the SW FinServ default KPIs were applied to this period's report. */
+  swDefaultKpisApplied?: boolean;
+}
+
+/** Scott Williams (report-3) staple KPIs — default from Sept 2026 / Q3 2026 onward. */
+const SW_DEFAULT_KPI_DEFS: Array<{ id: string; label: string; format: KPIFormat }> = [
+  { id: 'finserv-total-revenue', label: 'Revenue', format: 'currency' },
+  { id: 'finserv-gross-margin', label: 'Gross Margin %', format: 'percent' },
+  { id: 'finserv-gross-profit', label: 'Gross Profit $', format: 'currency' },
+  { id: 'finserv-utilization', label: 'Utilization Rate', format: 'percent' },
+  { id: 'finserv-total-opex', label: 'Total OPEX', format: 'currency' },
+  { id: 'finserv-avg-revenue-per-client', label: 'Avg. Revenue / Client', format: 'currency' },
+];
+
+function isSwDefaultEligible(configKey: string, st: Pick<ReportState, 'period' | 'quarter' | 'month'>): boolean {
+  if (!configKey.startsWith('qir:report-3:')) return false;
+  if (st.period === 'monthly') {
+    const MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+    const [mn, ys] = (st.month || '').toLowerCase().split(' ');
+    const mi = MONTHS.indexOf(mn); const y = parseInt(ys || '', 10);
+    if (mi < 0 || !y) return false;
+    return y > 2026 || (y === 2026 && mi >= 8);
+  }
+  const m = /^Q([1-4])\s+(\d{4})$/.exec(st.quarter || '');
+  if (!m) return false;
+  const q = +m[1], y = +m[2];
+  return y > 2026 || (y === 2026 && q >= 3);
+}
+
+function applySwDefaultKpis(configKey: string, st: ReportState): ReportState {
+  if (st.swDefaultKpisApplied || !isSwDefaultEligible(configKey, st)) return st;
+  const existing = st.kpis ?? [];
+  const have = new Set(existing.map(k => (k.templateConfig as any)?.metricSourceId).filter(Boolean));
+  const defaults: KPI[] = SW_DEFAULT_KPI_DEFS.filter(d => !have.has(d.id)).map(d => ({
+    id: `sw-default-${d.id}`,
+    label: d.label,
+    actual: '0',
+    target: '0',
+    format: d.format,
+    templateConfig: { metricSourceId: d.id, customMetricId: null, sourceArea: 'FinServ Financial Metrics' } as unknown as Record<string, unknown>,
+  }));
+  return { ...st, kpis: [...defaults, ...existing], swDefaultKpisApplied: true };
 }
 
 const SEED: ReportState = {
@@ -565,6 +607,8 @@ export function useQuarterlyReportState(
             next = { ...next, kpis: resolvedSharedKpis };
           }
         }
+
+        next = applySwDefaultKpis(configKey, next);
 
         console.log('[QIR] Fetch result:', {
           activeKey: configKey,
@@ -1215,7 +1259,7 @@ function ReportKpisSection({ s, set, reportLabel, sliceKey = 'kpis', title = 'KP
   const [addOpen, setAddOpen] = useState(false);
   const [drillKpi, setDrillKpi] = useState<KpiLike | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const MAX_KPIS = 5;
+  const MAX_KPIS = 8;
   const listAll = getList(s);
   const visibleKpis = listAll.slice(0, MAX_KPIS);
   const canAdd = listAll.length < MAX_KPIS;

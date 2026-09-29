@@ -126,6 +126,10 @@ export const METRIC_WIDGET_DATA_SOURCES = [
   { id: 'finserv-total-mrr', label: 'FinServ: Total MRR', type: 'stat' },
   { id: 'finserv-utilization', label: 'FinServ: Utilization %', type: 'stat' },
   { id: 'finserv-avg-revenue-per-client', label: 'FinServ: Avg. Revenue / Client', type: 'stat' },
+  { id: 'finserv-total-revenue', label: 'FinServ: Revenue', type: 'stat' },
+  { id: 'finserv-gross-profit', label: 'FinServ: Gross Profit $', type: 'stat' },
+  { id: 'finserv-gross-margin', label: 'FinServ: Gross Margin %', type: 'stat' },
+  { id: 'finserv-total-opex', label: 'FinServ: Total OPEX', type: 'stat' },
 ] as const;
 
 export type MetricDataSource = typeof METRIC_WIDGET_DATA_SOURCES[number]['id'];
