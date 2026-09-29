@@ -102,7 +102,12 @@ serve(async (req: Request): Promise<Response> => {
             isExpired = true;
           }
         } else {
-          await grantResponse.text(); // consume body
+          const body = await grantResponse.json().catch(() => ({}));
+          const grantStatus = body?.data?.grant_status ?? body?.grant_status;
+          if (grantStatus && grantStatus !== "valid") {
+            console.warn("Nylas grant not valid:", grantStatus);
+            isExpired = true;
+          }
         }
       } catch (e) {
         console.error("Failed to verify Nylas grant:", e);

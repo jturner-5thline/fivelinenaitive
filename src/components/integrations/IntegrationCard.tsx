@@ -43,6 +43,7 @@ export interface IntegrationCardProps {
   onTestConnection?: () => Promise<void>;
   onDisconnect?: () => Promise<void>;
   onConnect?: () => void;
+  onReconnect?: () => void;
   isConnected: boolean;
   statusDetail?: string;
   children?: React.ReactNode;
@@ -64,7 +65,7 @@ export interface ComingSoonCardProps {
 export function StatusPill({ status }: { status: IntegrationStatus }) {
   const map: Record<IntegrationStatus, { label: string; dot: string; text: string }> = {
     connected:        { label: 'Connected',  dot: 'bg-emerald-400/80',  text: 'text-emerald-300/90' },
-    requires_reauth:  { label: 'Attention',  dot: 'bg-amber-400/80',    text: 'text-amber-300/90' },
+    requires_reauth:  { label: 'Attention · Needs Reconnect',  dot: 'bg-amber-400/80',    text: 'text-amber-300/90' },
     error:            { label: 'Error',      dot: 'bg-rose-400/80',     text: 'text-rose-300/90' },
     disconnected:     { label: 'Inactive',   dot: 'bg-muted-foreground/60', text: 'text-muted-foreground' },
   };
@@ -106,6 +107,7 @@ export function IntegrationCard({
   onTestConnection,
   onDisconnect,
   onConnect,
+  onReconnect,
   isConnected,
   statusDetail,
   children,
@@ -197,6 +199,11 @@ export function IntegrationCard({
         {/* Action row: at most one primary, one secondary, plus overflow */}
         {(onSyncSettings || externalUrl || hasOverflow) && (
           <div className="flex items-center gap-1.5 mt-3">
+            {status === 'requires_reauth' && onReconnect && (
+              <Button size="sm" className="h-7 text-xs bg-amber-500/90 hover:bg-amber-500 text-background" onClick={onReconnect}>
+                Reconnect
+              </Button>
+            )}
             {onSyncSettings && (
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onSyncSettings}>
                 <Settings2 className="h-3 w-3 mr-1.5" />
