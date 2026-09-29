@@ -112,9 +112,9 @@ export function InsightsReportingBar({ tabsSlot }: Props) {
           // Match the sticky header's dark card surface (see StickyDashboardHeader
           // surface="module") so this row reads as the same container. No top
           // border, no top radius — flush against the header above.
-          'bg-card dark:bg-[hsl(240,20%,8%)] dark:bg-[image:radial-gradient(circle_at_bottom_right,_hsl(280,60%,45%,0.25)_0%,_transparent_50%)]',
-          'border-x border-b border-border/50 dark:border-[hsl(263,45%,40%,0.5)]',
-          'rounded-b-xl px-5',
+          'bg-card dark:bg-[var(--bg-card)]',
+          'border-x border-b border-border/70 dark:border-[var(--border-subtle)]',
+          'rounded-b-lg px-5 text-muted-foreground',
         )}
       >
         <div

@@ -333,12 +333,9 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
         flexWrap: 'wrap',
         gap: 4,
         padding: 4,
-        background: 'rgba(16,28,52,0.55)',
-        border: '0.5px solid rgba(80,140,255,0.18)',
+        background: 'var(--bg-page)',
+        border: '1px solid var(--border-subtle)',
         borderRadius: 8,
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        boxShadow: '0 4px 18px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.04)',
       }}
     >
       {PAGE_META.map((p, i) => {
@@ -351,17 +348,13 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
             onClick={() => attemptSetActiveIndex(i)}
             style={{
               fontSize: 12,
-              fontWeight: active ? 700 : 600,
-              letterSpacing: '0.03em',
+              fontWeight: active ? 600 : 500,
               padding: '6px 14px',
-            borderRadius: 6,
-              border: 'none',
+              borderRadius: 6,
+              border: active ? '1px solid var(--selected-border)' : '1px solid transparent',
               cursor: 'pointer',
-              color: active ? '#0a2540' : 'rgba(200,225,255,0.72)',
-              background: active
-                ? 'linear-gradient(180deg, #9bdcff, #4db8ff)'
-                : 'transparent',
-              boxShadow: active ? '0 2px 8px rgba(77,184,255,0.35)' : 'none',
+              color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+              background: active ? 'var(--selected-tint)' : 'transparent',
               transition: 'background .15s, color .15s',
             }}
           >
@@ -503,19 +496,14 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              fontSize: 11,
-              fontWeight: 600,
-              letterSpacing: '0.04em',
+              fontSize: 12,
+              fontWeight: 500,
               padding: '6px 14px',
-              borderRadius: 999,
-              border: '0.5px solid rgba(80,140,255,0.18)',
+              borderRadius: 8,
+              border: justSaved ? '1px solid var(--selected-border)' : '1px solid var(--border-control)',
               cursor: reportSave.fn && reportSave.canEdit ? 'pointer' : 'not-allowed',
-              color: justSaved ? '#0a2540' : 'rgba(200,225,255,0.92)',
-              background: justSaved
-                ? 'linear-gradient(180deg, #7ed0ff, #4db8ff)'
-                : 'rgba(16,28,52,0.55)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
+              color: 'var(--text-primary)',
+              background: justSaved ? 'var(--selected-tint)' : 'var(--bg-card)',
               opacity: reportSave.fn && reportSave.canEdit ? 1 : 0.5,
               transition: 'background .15s, color .15s',
             }}
@@ -537,21 +525,16 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: '0.04em',
+              fontSize: 12,
+              fontWeight: 600,
               padding: '6px 14px',
-              borderRadius: 999,
+              borderRadius: 8,
               border: isLocked
-                ? '0.5px solid rgba(245,158,11,0.55)'
-                : '0.5px solid rgba(80,140,255,0.55)',
+                ? '1px solid hsl(var(--warning) / 0.45)'
+                : '1px solid hsl(var(--primary))',
               cursor: submitting ? 'wait' : 'pointer',
-              color: '#0a2540',
-              background: isLocked
-                ? 'linear-gradient(180deg, #fcd34d, #f59e0b)'
-                : 'linear-gradient(180deg, #7ed0ff, #4db8ff)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
+              color: isLocked ? 'hsl(var(--warning))' : 'hsl(var(--primary-foreground))',
+              background: isLocked ? 'hsl(var(--warning) / 0.12)' : 'hsl(var(--primary))',
               opacity: submitting ? 0.7 : 1,
               transition: 'opacity .15s',
             }}

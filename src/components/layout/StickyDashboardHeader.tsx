@@ -89,10 +89,10 @@ export function StickyDashboardHeader({
               // with the same radial purple sheen, border, and shadow used by
               // <DealEditDrawer> so the dashboard header reads as part of the
               // same modal/card system instead of a flat grey strip.
-              "rounded-xl px-5 py-4 bg-card",
-              "dark:bg-[hsl(240,20%,8%)] dark:bg-[image:radial-gradient(circle_at_bottom_right,_hsl(280,60%,45%,0.25)_0%,_transparent_50%)]",
-              "border border-border/50 dark:border-[hsl(263,45%,40%,0.5)]",
-              "shadow-xl dark:shadow-none",
+              "rounded-lg px-5 py-4 bg-card",
+              "dark:bg-[var(--bg-card)]",
+              "border border-border/70 dark:border-[var(--border-subtle)]",
+              "shadow-sm dark:shadow-none",
             )
           : cn(
               "py-3 border-b border-white/5",

@@ -90,11 +90,11 @@ export function ReportingPeriodPicker() {
   // (current quarter / latest month) without committing it. We commit on
   // first user interaction so the URL stays clean until they actually pick.
   return (
-    <div className="flex items-center gap-1.5 rounded-md border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent px-1.5 py-1">
-      <CalendarRange className="h-3.5 w-3.5 text-primary/70 ml-1" aria-hidden />
+    <div className="flex items-center gap-1.5 rounded-lg border border-border dark:border-[var(--border-control)] bg-card dark:bg-[var(--bg-card)] px-1.5 py-1">
+      <CalendarRange className="h-3.5 w-3.5 text-muted-foreground ml-1" aria-hidden />
 
       {/* Month / Quarter segmented toggle */}
-      <div role="group" aria-label="Reporting granularity" className="inline-flex rounded-sm bg-muted/30 p-0.5">
+      <div role="group" aria-label="Reporting granularity" className="inline-flex rounded-md bg-muted/30 dark:bg-[var(--bg-page)] p-0.5">
         {(['month', 'quarter'] as ReportingView[]).map((v) => (
           <Button
             key={v}
