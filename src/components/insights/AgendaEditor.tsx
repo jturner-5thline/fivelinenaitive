@@ -126,6 +126,52 @@ const SEED_CONTENT = {
   }),
 };
 
+/** Streamlined seed (Sep 2026 / Q3 2026 onward): no Key Items, no Prep. */
+export const STREAMLINED_SEED_SECTIONS = ['Presentation', 'New Items'] as const;
+const STREAMLINED_SEED_CONTENT = {
+  type: 'doc',
+  content: [
+    headingNode('Presentation'), subtitleNode(), { type: 'paragraph' },
+    headingNode('New Items'), { type: 'paragraph' },
+  ],
+};
+
+/** True for month >= 2026-09 or quarter >= 2026-Q3. */
+export function isStreamlinedAgendaPeriod(type: string, key: string): boolean {
+  if (type === 'month') {
+    const m = /^(\d{4})-(\d{2})$/.exec(key);
+    if (!m) return false;
+    const y = +m[1], mo = +m[2];
+    return y > 2026 || (y === 2026 && mo >= 9);
+  }
+  const q = /^(\d{4})-Q([1-4])$/.exec(key);
+  if (!q) return false;
+  const y = +q[1], n = +q[2];
+  return y > 2026 || (y === 2026 && n >= 3);
+}
+
+export function getSeedContent(type: string, key: string) {
+  return isStreamlinedAgendaPeriod(type, key) ? STREAMLINED_SEED_CONTENT : SEED_CONTENT;
+}
+
+/** Strip Key Items (+subtitle/scaffold) and Prep sections from a saved doc. */
+function stripRemovedSections(doc: any): any {
+  if (!doc || doc.type !== 'doc' || !Array.isArray(doc.content)) return doc;
+  const removed = new Set(['Key Items', 'Looking Forward', 'Prep']);
+  const out: any[] = [];
+  let skipping = false;
+  for (const n of doc.content) {
+    if (n?.type === 'heading') {
+      const t = (n.content ?? []).map((c: any) => c?.text ?? '').join('').trim();
+      skipping = removed.has(t);
+      if (skipping) continue;
+    }
+    if (!skipping) out.push(n);
+  }
+  return { ...doc, content: out };
+}
+
+
 // Zod schema mirroring the DB CHECK constraint on insights_agenda.
 const monthKeyRe = /^\d{4}-(0[1-9]|1[0-2])$/;
 const quarterKeyRe = /^\d{4}-Q[1-4]$/;
