@@ -324,6 +324,7 @@ export interface KPI {
 export interface Goal { id: string; title: string; owner: string; status: string; due: string; }
 export interface Initiative { id: string; title: string; status: string; progress: number; owner: string; }
 export interface Risk { id: string; description: string; mitigation: string; }
+export interface GoalPriority { id: string; description: string; targetPeriod: string; }
 
 export interface ReportState {
   period: 'monthly' | 'quarterly';
@@ -341,6 +342,8 @@ export interface ReportState {
   initiatives: Initiative[];
   initiativeOwnerFilter: string;
   risks: Risk[];
+  /** Goals & Priorities (JT/JM/SW reports) — replaces hidden Goals/Initiatives. */
+  goalsPriorities?: GoalPriority[];
   /** Legacy single cover title (kept for backward compatibility — migrated into coverTitlesByPeriod on first edit). */
   coverTitle?: string;
   /** Legacy single subtitle (kept for backward compatibility). */
@@ -3109,6 +3112,147 @@ function RiskProseBlock({ risk, onChange, onRemove, onDrill }: {
   );
 }
 
+/** Same period options as the header: months + quarters, 2025–2027. */
+function buildGoalPeriodOptions(): string[] {
+  const opts: string[] = [];
+  for (const y of [2025, 2026, 2027]) {
+    for (let q = 1; q <= 4; q++) {
+      opts.push(`Q${q} ${y}`);
+      for (let m = (q - 1) * 3; m < q * 3; m++) opts.push(`${MONTH_NAMES[m]} ${y}`);
+    }
+  }
+  return opts;
+}
+const GOAL_PERIOD_OPTIONS = buildGoalPeriodOptions();
+
+function ReportGoalsPrioritiesSection({ s, set }: { s: ReportState; set: ReportSetState }) {
+  const items = s.goalsPriorities ?? [];
+  const defaultPeriod = s.period === 'monthly' ? s.month : s.quarter;
+  const update = (id: string, patch: Partial<GoalPriority>) => set(prev => ({ ...prev, goalsPriorities: (prev.goalsPriorities ?? []).map(g => g.id === id ? { ...g, ...patch } : g) }));
+  const remove = (id: string) => set(prev => ({ ...prev, goalsPriorities: (prev.goalsPriorities ?? []).filter(g => g.id !== id) }));
+  const add = () => set(prev => ({ ...prev, goalsPriorities: [...(prev.goalsPriorities ?? []), { id: uid(), description: '', targetPeriod: defaultPeriod || '' }] }));
+  const [drill, setDrill] = useState<DrilldownContext | null>(null);
+  const drillRows = useMemo<GoalPriority[]>(() => {
+    if (!drill) return [];
+    if (drill.sourceId.startsWith('gp:')) return items.filter(g => g.id === drill.sourceId.slice(3));
+    return items;
+  }, [drill, items]);
+  const columns: DrilldownColumn<GoalPriority>[] = [
+    { key: 'description', label: 'Goal / Priority', render: (g) => g.description || <span style={{ color: TEXT_LABEL }}>—</span> },
+    { key: 'targetPeriod', label: 'Target Period', width: 140, render: (g) => g.targetPeriod || '—' },
+  ];
+  return (
+    <Card className="glass-module">
+      <div style={{ padding: '16px 18px' }}>
+        <SectionTitle prominent right={(
+          <Btn icon={ExternalLink} variant="ghost" onClick={() => setDrill({ sourceId: 'gp:all', sourceLabel: 'Goals & Priorities · All', selection: `${items.length} item${items.length === 1 ? '' : 's'}` })}>View All</Btn>
+        )}>
+          Goals &amp; Priorities
+        </SectionTitle>
+        {items.length === 0 ? (
+          <div className="qir-doc-list-empty">No goals or priorities recorded for this period.</div>
+        ) : (
+          <div>
+            {items.map(g => (
+              <GoalPriorityBlock
+                key={g.id}
+                item={g}
+                onChange={(patch) => update(g.id, patch)}
+                onRemove={() => remove(g.id)}
+                onDrill={() => setDrill({ sourceId: `gp:${g.id}`, sourceLabel: `Goal · ${g.description?.slice(0, 60) || 'Untitled'}` })}
+              />
+            ))}
+          </div>
+        )}
+        <button type="button" className="qir-doc-add-link qir-no-print" onClick={add}>
+          + Add goal / priority
+        </button>
+      </div>
+      <InsightsDrilldownDrawer
+        open={!!drill}
+        context={drill}
+        onClose={() => setDrill(null)}
+        columns={columns}
+        rows={drillRows}
+        emptyHint="No goals or priorities recorded for this report."
+      />
+    </Card>
+  );
+}
+
+function GoalPriorityBlock({ item, onChange, onRemove, onDrill }: {
+  item: GoalPriority;
+  onChange: (patch: Partial<GoalPriority>) => void;
+  onRemove: () => void;
+  onDrill: () => void;
+}) {
+  const [editing, setEditing] = useState(!item.description);
+  const descRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    if (editing && descRef.current) { try { descRef.current.focus(); } catch {} }
+  }, [editing]);
+  const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    const next = e.relatedTarget as Node | null;
+    if (next && e.currentTarget.contains(next)) return;
+    setEditing(false);
+  };
+  const ta: React.CSSProperties = {
+    width: '100%', minHeight: 48, padding: '8px 10px', borderRadius: 8,
+    background: 'rgba(10,18,36,0.5)', color: TEXT_PRIMARY,
+    border: '1px solid rgba(120,170,255,0.18)', outline: 'none',
+    fontSize: 13.5, lineHeight: 1.55, resize: 'vertical', fontFamily: 'inherit',
+  };
+  const options = item.targetPeriod && !GOAL_PERIOD_OPTIONS.includes(item.targetPeriod)
+    ? [item.targetPeriod, ...GOAL_PERIOD_OPTIONS] : GOAL_PERIOD_OPTIONS;
+  return (
+    <div
+      className="qir-doc-risk qir-doc-editable-block"
+      data-comment-source="goal-priority"
+      data-comment-source-id={item.id}
+      data-comment-source-label={`Goal · ${item.description?.slice(0, 40) || 'Untitled'}`}
+      onBlur={handleBlur}
+    >
+      {editing ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <textarea
+            ref={descRef}
+            value={item.description}
+            onChange={(e) => onChange({ description: e.target.value })}
+            placeholder="What do you want to accomplish?"
+            style={ta}
+          />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: TEXT_MUTED }}>
+            Target period
+            <select
+              value={item.targetPeriod}
+              onChange={(e) => onChange({ targetPeriod: e.target.value })}
+              style={{ ...selectStyle, width: 'auto', minWidth: 160, height: 28, padding: '2px 8px' }}
+            >
+              <option value="">Select period…</option>
+              {options.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </label>
+        </div>
+      ) : (
+        <div role="button" tabIndex={0} onClick={() => setEditing(true)} onFocus={() => setEditing(true)} style={{ cursor: 'text' }}>
+          <div className="qir-doc-risk-statement">
+            {item.description || <span style={{ color: TEXT_MUTED, fontStyle: 'italic', fontWeight: 400 }}>What do you want to accomplish?</span>}
+          </div>
+          <div className="qir-doc-risk-mitigation">
+            {item.targetPeriod
+              ? <><strong>Target:</strong>{item.targetPeriod}</>
+              : <span style={{ fontStyle: 'italic' }}>Set a target period…</span>}
+          </div>
+        </div>
+      )}
+      <div className="qir-doc-risk-actions qir-no-print">
+        <button type="button" className="qir-doc-risk-link" onClick={onDrill}>Open</button>
+        <button type="button" className="qir-doc-risk-link qir-doc-risk-link-danger" onClick={onRemove}>Remove</button>
+      </div>
+    </div>
+  );
+}
+
 function _ReportFooterSectionImpl({ s, print }: { s: ReportState; print: () => void }) {
   return (
     <Card className="glass-module">
@@ -3477,6 +3621,9 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   }, [set]);
   // Collapse Goals / Initiatives for JM, JT, SW reports covering June 2026+
   // (monthly) or Q2 2026+ (quarterly). Users can still expand to view.
+  // JT / JM / SW: hide Goals & Initiatives (data preserved) and show Goals & Priorities.
+  const isGoalsPrioritiesOwner = ['john moffitt', 'james turner', 'scott williams']
+    .some((n) => (ownerName || '').toLowerCase().includes(n));
   const shouldCollapseGoalsInitiatives = useMemo(() => {
     const name = (ownerName || '').toLowerCase();
     const isTargetOwner = ['john moffitt', 'james turner', 'scott williams']
@@ -3607,24 +3754,32 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
           <div id="qir-section-financials" className="qir-unified-section">
             <ReportKpisSection s={s} set={set} reportLabel={reportLabel} />
           </div>
-          <div id="qir-section-pipeline" className="qir-unified-section">
-            {shouldCollapseGoalsInitiatives ? (
-              <CollapsibleReportSection title="Goals">
-                <ReportGoalsSection s={s} set={set} ownerName={ownerName} />
-              </CollapsibleReportSection>
-            ) : (
-              <ReportGoalsSection s={s} set={set} ownerName={ownerName} />
-            )}
-          </div>
-          <div id="qir-section-metrics" className="qir-unified-section">
-            {shouldCollapseGoalsInitiatives ? (
-              <CollapsibleReportSection title="Initiatives">
-                <ReportInitiativesSection s={s} set={set} />
-              </CollapsibleReportSection>
-            ) : (
-              <ReportInitiativesSection s={s} set={set} />
-            )}
-          </div>
+          {isGoalsPrioritiesOwner ? (
+            <div id="qir-section-pipeline" className="qir-unified-section">
+              <ReportGoalsPrioritiesSection s={s} set={set} />
+            </div>
+          ) : (
+            <>
+              <div id="qir-section-pipeline" className="qir-unified-section">
+                {shouldCollapseGoalsInitiatives ? (
+                  <CollapsibleReportSection title="Goals">
+                    <ReportGoalsSection s={s} set={set} ownerName={ownerName} />
+                  </CollapsibleReportSection>
+                ) : (
+                  <ReportGoalsSection s={s} set={set} ownerName={ownerName} />
+                )}
+              </div>
+              <div id="qir-section-metrics" className="qir-unified-section">
+                {shouldCollapseGoalsInitiatives ? (
+                  <CollapsibleReportSection title="Initiatives">
+                    <ReportInitiativesSection s={s} set={set} />
+                  </CollapsibleReportSection>
+                ) : (
+                  <ReportInitiativesSection s={s} set={set} />
+                )}
+              </div>
+            </>
+          )}
           <div id="qir-section-goals" className="qir-unified-section">
             <ReportRisksSection s={s} set={set} print={print} />
           </div>
