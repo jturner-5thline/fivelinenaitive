@@ -207,10 +207,10 @@ function CommentaryBlock({
  * Each section is rendered as a first-class report card matching the
  * surrounding sections (Narrative, Goals, Initiatives, Open Risks).
  */
-function WhatWorkingSections({ reportKey, periodLabel }: { reportKey: string; periodLabel?: string }) {
-  const suffix = periodLabel ? ` — ${periodLabel}` : '';
+function WhatWorkingSections({ reportKey, periodLabel, subsection }: { reportKey: string; periodLabel?: string; subsection?: boolean }) {
+  const suffix = periodLabel && !subsection ? ` — ${periodLabel}` : '';
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 28, marginTop: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: subsection ? 20 : 28, marginTop: subsection ? 0 : 8 }} className={subsection ? 'qir-ww-subsections' : undefined}>
       <section className="qir-ww-section">
         <CommentaryBlock
           heading={`What's Working${suffix}`}

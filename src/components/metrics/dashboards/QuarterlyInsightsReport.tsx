@@ -1566,6 +1566,13 @@ function ReportNarrativeSection({ s, set, scopeKey, save, isSaving, reportLabel 
             scheduleSave();
           }}
         />
+        <div id="qir-section-whats-working" style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(120,170,255,0.10)' }}>
+          <WhatWorkingSections
+            subsection
+            reportKey={`qir:${scopeKey}`}
+            periodLabel={s.period === 'monthly' ? s.month : s.quarter}
+          />
+        </div>
         <AddKpiDialog
           open={addKpiOpen}
           onClose={() => setAddKpiOpen(false)}
@@ -3782,12 +3789,6 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
           )}
           <div id="qir-section-goals" className="qir-unified-section">
             <ReportRisksSection s={s} set={set} print={print} />
-          </div>
-          <div id="qir-section-whats-working" className="qir-unified-section">
-            <WhatWorkingSections
-              reportKey={`qir:${activeCompositeKey || rk}`}
-              periodLabel={s.period === 'monthly' ? s.month : s.quarter}
-            />
           </div>
         </div>
       </Card>
