@@ -80,7 +80,7 @@ export const AGENT_NODE_REGISTRY: AgentNodePaletteItem[] = [
         label: 'Model',
         required: true,
         options: [
-          { value: 'anthropic/claude-sonnet-5-5', label: 'Claude Sonnet 4.5 (Recommended)' },
+          { value: 'anthropic/claude-sonnet-5-5', label: 'Claude Sonnet 5.5 (Recommended)' },
           { value: 'anthropic/claude-opus-4', label: 'Claude Opus 4 (Best Reasoning)' },
           { value: 'anthropic/claude-haiku-4-5', label: 'Claude Haiku 4.5 (Fast)' },
         ],
@@ -133,7 +133,7 @@ export const AGENT_NODE_REGISTRY: AgentNodePaletteItem[] = [
         required: true,
         options: [
           { value: 'anthropic/claude-opus-4', label: 'Claude Opus 4 (Recommended)' },
-          { value: 'anthropic/claude-sonnet-5-5', label: 'Claude Sonnet 4.5' },
+          { value: 'anthropic/claude-sonnet-5-5', label: 'Claude Sonnet 5.5' },
         ],
         hint: 'Planners use Claude for deep reasoning',
       },
@@ -166,7 +166,7 @@ export const AGENT_NODE_REGISTRY: AgentNodePaletteItem[] = [
         label: 'Model',
         required: true,
         options: [
-          { value: 'anthropic/claude-sonnet-5-5', label: 'Claude Sonnet 4.5' },
+          { value: 'anthropic/claude-sonnet-5-5', label: 'Claude Sonnet 5.5' },
           { value: 'anthropic/claude-haiku-4-5', label: 'Claude Haiku 4.5' },
         ],
       },

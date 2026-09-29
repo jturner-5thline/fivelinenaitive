@@ -23,7 +23,7 @@ import {
 } from '@/lib/copilotInstructions';
 
 const AI_MODELS = [
-  { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4 (Latest)' },
+  { value: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5 (Latest)' },
   { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
   { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku (Fast)' },
 ];
@@ -49,7 +49,7 @@ export function AIConfigurationSettings({ isAdmin }: { isAdmin: boolean }) {
   const { company } = useCompany();
   const queryClient = useQueryClient();
   const [localConfig, setLocalConfig] = useState<Partial<AIConfig>>({
-    default_model: 'claude-sonnet-4-20250514',
+    default_model: 'claude-sonnet-5-5',
     default_temperature: 0.7,
     max_tokens: 4096,
     features_enabled: { chat: true, financial_analysis: true, agents: true, workflows: true },
@@ -110,7 +110,7 @@ export function AIConfigurationSettings({ isAdmin }: { isAdmin: boolean }) {
       if (!company?.id) throw new Error('No company');
       const payload = {
         company_id: company.id,
-        default_model: localConfig.default_model || 'claude-sonnet-4-20250514',
+        default_model: localConfig.default_model || 'claude-sonnet-5-5',
         default_temperature: localConfig.default_temperature ?? 0.7,
         max_tokens: localConfig.max_tokens ?? 4096,
         features_enabled: localConfig.features_enabled || { chat: true, financial_analysis: true, agents: true, workflows: true },
@@ -180,7 +180,7 @@ export function AIConfigurationSettings({ isAdmin }: { isAdmin: boolean }) {
           <div className="space-y-2">
             <Label>Default Model</Label>
             <Select
-              value={localConfig.default_model || 'claude-sonnet-4-20250514'}
+              value={localConfig.default_model || 'claude-sonnet-5-5'}
               onValueChange={(v) => setLocalConfig(prev => ({ ...prev, default_model: v }))}
               disabled={!isAdmin}
             >
