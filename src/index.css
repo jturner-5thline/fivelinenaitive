@@ -4700,3 +4700,12 @@ html body .deal-detail-surface .fs-tab-widget:hover {
   box-shadow: none !important;
   transform: none !important;
 }
+
+/* Flat dashboard headers: neutralize global gradient sheen on sticky header and its controls. */
+[data-sticky-dashboard-header],
+[data-sticky-dashboard-header] .bg-card,
+[data-sticky-dashboard-header] .bg-popover,
+[data-sticky-dashboard-header] .bg-muted,
+[data-sticky-dashboard-header] .bg-secondary {
+  background-image: none !important;
+}
