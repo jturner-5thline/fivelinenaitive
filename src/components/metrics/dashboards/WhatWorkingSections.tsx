@@ -216,6 +216,16 @@ function WhatWorkingSections({ reportKey, periodLabel, subsection }: { reportKey
       <section className="qir-ww-section">
         <CommentaryBlock
           sub={subsection}
+          heading={`Since we last met${suffix}`}
+          reportKey={reportKey}
+          sectionKey="since-we-last-met"
+          placeholder={`What's changed${periodLabel ? ` since the last ${periodLabel} review` : ' since we last met'}? Key updates, decisions, or shifts worth flagging…`}
+          helper={`Scoped to ${periodLabel || 'this period'}. Save/Reset act on this period only.`}
+        />
+      </section>
+      <section className="qir-ww-section" style={subsection ? undefined : { borderTop: '1px solid rgba(120,170,255,0.10)', paddingTop: 24 }}>
+        <CommentaryBlock
+          sub={subsection}
           heading={`What's Working${suffix}`}
           reportKey={reportKey}
           sectionKey="whats-working"
