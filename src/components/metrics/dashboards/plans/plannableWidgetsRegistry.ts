@@ -78,6 +78,7 @@ const PLANNABLE_WIDGETS: Record<PlannableDashboardKey, PlannableWidget[]> = {
       { key: 'total-mrr', label: 'Total MRR', format: 'currency' },
       { key: 'active-clients', label: 'Active Client Count', format: 'number' },
       { key: 'gross-profit', label: 'Gross Profit', format: 'currency' },
+      { key: 'total-opex', label: 'Total OPEX', format: 'currency' },
       { key: 'net-profit', label: 'Net Profit', format: 'currency' },
       { key: 'gross-margin', label: 'Gross Margin', format: 'percent' },
       { key: 'net-margin', label: 'Net Margin', format: 'percent' },
