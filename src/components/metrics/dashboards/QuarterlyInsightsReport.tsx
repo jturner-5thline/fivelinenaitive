@@ -999,6 +999,26 @@ function LiveMetricKpiCard({
         <span style={{ fontSize: 10, color: TEXT_MUTED, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
           {targetFromPlan ? 'Plan' : 'Target'} {formatKPI(effectiveTarget, effectiveFormat)}
         </span>
+        {(() => {
+          const a = Number(liveActual);
+          const t = Number(effectiveTarget);
+          if (resolution.status !== 'ready' || liveActual === '' || !Number.isFinite(a) || !Number.isFinite(t) || t === 0) return null;
+          const diff = a - t;
+          const pct = (diff / Math.abs(t)) * 100;
+          const good = lowerIsBetter ? diff <= 0 : diff >= 0;
+          const sign = diff >= 0 ? '+' : '−';
+          const absTxt = effectiveFormat === 'percent'
+            ? `${Math.abs(diff).toFixed(1)} pts`
+            : formatKPI(String(Math.abs(diff)), effectiveFormat);
+          return (
+            <span
+              title={`${diff >= 0 ? 'Above' : 'Below'} plan`}
+              style={{ fontSize: 9.5, fontVariantNumeric: 'tabular-nums', color: good ? '#10b981' : '#f43f5e', whiteSpace: 'nowrap' }}
+            >
+              {sign}{absTxt} · {sign}{Math.abs(pct).toFixed(1)}% vs plan
+            </span>
+          );
+        })()}
         <Pill tone={tone}>{statusLabel}</Pill>
         {resolution.status === 'ready' && resolution.changeAbsolute !== undefined && (
           <span
