@@ -32,6 +32,9 @@ import { SalesClientsKpiCard } from './qir/SalesClientsKpiCard';
 import { TtmRevenuePerHourKpiCard } from './qir/TtmRevenuePerHourKpiCard';
 import {
   deriveReportPeriod,
+} from './qir/useInsightsLiveMetricValue';
+import { useFinServPlanTarget, FINSERV_LOWER_IS_BETTER } from './qir/useFinServPlanTarget';
+import {
   getMonthlyBreakdownPeriods,
   type LiveMetricPeriod,
   useInsightsLiveMetricValue,
@@ -873,6 +876,13 @@ function LiveMetricKpiCard({
     [reportState.period, reportState.quarter, reportState.month],
   );
   const resolution = useInsightsLiveMetricValue(cfg.metricSourceId ?? null, period);
+  const { planTarget } = useFinServPlanTarget(cfg.metricSourceId ?? null, period);
+  // A manually typed target wins; otherwise fall back to the Master Plan.
+  const manualTarget = Number(kpi.target);
+  const hasManualTarget = kpi.target !== '' && Number.isFinite(manualTarget) && manualTarget !== 0;
+  const effectiveTarget = hasManualTarget ? kpi.target : planTarget != null ? String(planTarget) : kpi.target;
+  const targetFromPlan = !hasManualTarget && planTarget != null;
+  const lowerIsBetter = FINSERV_LOWER_IS_BETTER.has(cfg.metricSourceId ?? '');
   const isAvgRevenuePerClient = cfg.metricSourceId === 'finserv-avg-revenue-per-client';
   const monthlyPeriods = isAvgRevenuePerClient ? getMonthlyBreakdownPeriods(period) : null;
   const showMonthlyValues = isAvgRevenuePerClient && !!monthlyPeriods?.length;
@@ -891,7 +901,11 @@ function LiveMetricKpiCard({
       : resolution.status === 'loading'
         ? '…'
         : '—';
-  const status = resolution.status === 'ready' ? deriveStatus(liveActual, kpi.target) : 'On Plan';
+  const status = resolution.status !== 'ready'
+    ? 'On Plan'
+    : lowerIsBetter
+      ? deriveStatus(effectiveTarget, liveActual)
+      : deriveStatus(liveActual, effectiveTarget);
   const tone = !resolution.supported
     ? 'neu'
     : status === 'Above Plan' ? 'pos' : status === 'On Plan' ? 'neu' : 'neg';
@@ -983,7 +997,7 @@ function LiveMetricKpiCard({
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
         <span style={{ fontSize: 10, color: TEXT_MUTED, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
-          Target {formatKPI(kpi.target, effectiveFormat)}
+          {targetFromPlan ? 'Plan' : 'Target'} {formatKPI(effectiveTarget, effectiveFormat)}
         </span>
         <Pill tone={tone}>{statusLabel}</Pill>
         {resolution.status === 'ready' && resolution.changeAbsolute !== undefined && (
