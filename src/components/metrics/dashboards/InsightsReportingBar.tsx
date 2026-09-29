@@ -105,7 +105,7 @@ export function InsightsReportingBar({ tabsSlot, actionsSlot }: Props) {
         // sticky header so the tabs row visually attaches as a continuation
         // of the header instead of reading as a separate card.
         marginTop: -24,
-        marginBottom: 5,
+        marginBottom: 2,
       }}
     >
       <div
@@ -117,7 +117,7 @@ export function InsightsReportingBar({ tabsSlot, actionsSlot }: Props) {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            padding: '8px 0',
+            padding: '8px 0 4px',
             flexWrap: 'wrap',
             gap: 8,
           }}
