@@ -35,7 +35,7 @@ import { MicrosoftUpcomingEvents } from "@/components/integrations/MicrosoftUpco
 
 // Components
 import { IntegrationCard, ComingSoonCard, type IntegrationStatus } from "@/components/integrations/IntegrationCard";
-import { ClaapSummaryCard, ZapierSummaryCard, FlexAutomationCard } from "@/components/integrations/IntegrationSummaryCards";
+import { ClaapSummaryCard, ZapierSummaryCard } from "@/components/integrations/IntegrationSummaryCards";
 import { HubSpotSyncSettingsModal } from "@/components/integrations/HubSpotSyncSettingsModal";
 import { NaitiveApiAccessCard } from "@/components/integrations/NaitiveApiAccessCard";
 import { QuickBooksSyncSettingsModal } from "@/components/integrations/QuickBooksSyncSettingsModal";
@@ -639,9 +639,6 @@ export default function Integrations() {
             </h2>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               <ZapierSummaryCard />
-              {canSeeFlexSync && (
-                <FlexAutomationCard companyId={company?.id ?? null} canEdit={!!isCompanyAdmin} />
-              )}
             </div>
         </section>
 
