@@ -363,6 +363,8 @@ export interface ReportState {
   asanaGoalExactMatch?: boolean;
   /** True once the SW FinServ default KPIs were applied to this period's report. */
   swDefaultKpisApplied?: boolean;
+  /** True once the JM Brand Awareness default KPIs were applied to this period's report. */
+  jmDefaultKpisApplied?: boolean;
 }
 
 /** Scott Williams (report-3) staple KPIs — default from Sept 2026 / Q3 2026 onward. */
@@ -391,6 +393,7 @@ function isSwDefaultEligible(configKey: string, st: Pick<ReportState, 'period' |
 }
 
 function applySwDefaultKpis(configKey: string, st: ReportState): ReportState {
+  st = applyJmDefaultKpis(configKey, st);
   if (st.swDefaultKpisApplied || !isSwDefaultEligible(configKey, st)) return st;
   const existing = st.kpis ?? [];
   const have = new Set(existing.map(k => (k.templateConfig as any)?.metricSourceId).filter(Boolean));
@@ -403,6 +406,46 @@ function applySwDefaultKpis(configKey: string, st: ReportState): ReportState {
     templateConfig: { metricSourceId: d.id, customMetricId: null, sourceArea: 'FinServ Financial Metrics' } as unknown as Record<string, unknown>,
   }));
   return { ...st, kpis: [...defaults, ...existing], swDefaultKpisApplied: true };
+}
+
+/** John Moffitt (report-2) staple KPIs — default from Aug 2026 / Q3 2026 onward. */
+const JM_DEFAULT_KPI_DEFS: Array<{ id: string; label: string; format: KPIFormat }> = [
+  { id: 'ba-ai-search-readiness-score', label: 'AI Search Readiness Score', format: 'number' },
+  { id: 'ba-linkedin-impressions', label: 'LinkedIn Impressions', format: 'number' },
+  { id: 'ba-linkedin-interactions', label: 'LinkedIn Interactions', format: 'number' },
+  { id: 'ba-website-users', label: 'Website Users', format: 'number' },
+  { id: 'ba-seo-impressions', label: 'SEO Impressions', format: 'number' },
+  { id: 'ba-seo-clicks', label: 'SEO Clicks', format: 'number' },
+];
+
+function isJmDefaultEligible(configKey: string, st: Pick<ReportState, 'period' | 'quarter' | 'month'>): boolean {
+  if (!configKey.startsWith('qir:report-2:')) return false;
+  if (st.period === 'monthly') {
+    const MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+    const [mn, ys] = (st.month || '').toLowerCase().split(' ');
+    const mi = MONTHS.indexOf(mn); const y = parseInt(ys || '', 10);
+    if (mi < 0 || !y) return false;
+    return y > 2026 || (y === 2026 && mi >= 7);
+  }
+  const m = /^Q([1-4])\s+(\d{4})$/.exec(st.quarter || '');
+  if (!m) return false;
+  const q = +m[1], y = +m[2];
+  return y > 2026 || (y === 2026 && q >= 3);
+}
+
+function applyJmDefaultKpis(configKey: string, st: ReportState): ReportState {
+  if (st.jmDefaultKpisApplied || !isJmDefaultEligible(configKey, st)) return st;
+  const existing = st.kpis ?? [];
+  const have = new Set(existing.map(k => (k.templateConfig as any)?.metricSourceId).filter(Boolean));
+  const defaults: KPI[] = JM_DEFAULT_KPI_DEFS.filter(d => !have.has(d.id)).map(d => ({
+    id: `jm-default-${d.id}`,
+    label: d.label,
+    actual: '0',
+    target: '0',
+    format: d.format,
+    templateConfig: { metricSourceId: d.id, customMetricId: null, sourceArea: 'Brand Awareness' } as unknown as Record<string, unknown>,
+  }));
+  return { ...st, kpis: [...defaults, ...existing], jmDefaultKpisApplied: true };
 }
 
 const SEED: ReportState = {
