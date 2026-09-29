@@ -323,9 +323,10 @@ export default function Integrations() {
           externalUrl="https://mail.google.com"
           externalLabel="Open Gmail"
           onSyncSettings={() => setGmailModalOpen(true)}
+          onReconnect={() => gmail.connect()}
           onTestConnection={async () => {
             await gmail.checkStatus();
-            toast.success("Gmail connection healthy!");
+            toast.success("Gmail connection checked");
           }}
           onDisconnect={async () => {
             await gmail.disconnect();
