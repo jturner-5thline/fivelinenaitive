@@ -2219,7 +2219,7 @@ function MetricsInner() {
           {/* Header (sticky to top of scrollable <main>) */}
           <StickyDashboardHeader
             surface="module"
-            className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+            className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 !py-2"
           >
             <div>
               <div className="flex items-center gap-3">
