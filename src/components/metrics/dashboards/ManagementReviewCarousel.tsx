@@ -483,9 +483,8 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
       onTouchEnd={onTouchEnd}
     >
       {/* Unified reporting bar with tabs on every Insights tab */}
-      <InsightsReportingBar tabsSlot={tabsBarWithActions} />
-      {isReportTab && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, margin: '0 auto 12px', maxWidth: 1200, padding: '0 16px', flexWrap: 'wrap' }}>
+      <InsightsReportingBar tabsSlot={tabsBarWithActions} actionsSlot={isReportTab ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, flexWrap: 'wrap', marginLeft: 'auto' }}>
           {!isLocked && (
           <button
             type="button"
@@ -549,7 +548,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
               : (isLocked ? 'Unsubmit' : ((submission.row?.submit_count ?? 0) > 0 ? 'Resubmit' : 'Submit'))}
           </button>
         </div>
-      )}
+      ) : null} />
       <div style={{ position: 'relative' }}>
         <QuarterlyReportPrintStyles />
         {activePage.render()}
