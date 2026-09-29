@@ -22,7 +22,7 @@ const DEFAULT_CONTEXT: GlobalContext = {
     company_id: '',
     user_id: '',
     environment: 'development',
-    default_llm: 'anthropic/claude-sonnet-4-5',
+    default_llm: 'anthropic/claude-sonnet-5-5',
     default_temperature: 0.7,
   },
   authBindings: [
@@ -128,7 +128,7 @@ export function GlobalContextPanel({ context, onChange, onClose }: GlobalContext
               >
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="anthropic/claude-sonnet-4-5" className="text-xs">Claude Sonnet 4.5</SelectItem>
+                  <SelectItem value="anthropic/claude-sonnet-5-5" className="text-xs">Claude Sonnet 5.5</SelectItem>
                   <SelectItem value="anthropic/claude-opus-4" className="text-xs">Claude Opus 4</SelectItem>
                   <SelectItem value="anthropic/claude-haiku-4-5" className="text-xs">Claude Haiku 4.5</SelectItem>
                 </SelectContent>

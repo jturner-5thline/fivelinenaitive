@@ -404,7 +404,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5",
+        model: "claude-sonnet-5-5",
         max_tokens: 4096,
         temperature: 0.2,
         system: `You are a senior associate at a private credit / debt advisory firm summarizing a recorded call for the deal team. Be concise, factual, and use the lender/sponsor's exact terms (rates, advance rates, sizes, dates) when present. Never invent numbers.`,

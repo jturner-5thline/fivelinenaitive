@@ -36,7 +36,7 @@ interface AIConfig {
 }
 
 const MODEL_OPTIONS = [
-  "claude-sonnet-4-20250514",
+  "claude-sonnet-5-5",
   "google/gemini-2.5-pro",
   "google/gemini-3-flash-preview",
   "openai/gpt-5",

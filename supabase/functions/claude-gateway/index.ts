@@ -22,6 +22,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildSystemBlocks, getModeTemplate } from "./prompts.ts";
+import { normalizeForSonnet55 } from "../_shared/anthropicUsage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -355,7 +356,7 @@ serve(async (req) => {
   let userId: string | undefined;
   let companyId: string | undefined;
   let feature = "chat";
-  let model = "claude-sonnet-4-5-20250929";
+  let model = "claude-sonnet-5-5";
   let promptMode: string | undefined;
   let cacheModeOuter: string | undefined;
   let signatureOuter: string | null = null;
@@ -531,7 +532,7 @@ serve(async (req) => {
     }
 
     // ── Resolve model & params ───────────────────────────
-    model = aiConfig?.default_model || "claude-sonnet-4-5-20250929";
+    model = "claude-sonnet-5-5";
     const temperature = body.temperature ?? aiConfig?.default_temperature ?? 0.7;
     const maxTokens = Math.min(body.max_tokens ?? aiConfig?.max_tokens ?? 4096, 8192);
 
@@ -595,7 +596,7 @@ serve(async (req) => {
           "anthropic-beta": "prompt-caching-2024-07-31",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(anthropicBody),
+        body: JSON.stringify(normalizeForSonnet55(anthropicBody)),
         signal: controller.signal,
       });
     } catch (fetchErr) {

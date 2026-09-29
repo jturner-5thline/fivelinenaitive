@@ -154,7 +154,7 @@ async function callClaude(opts: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-5-5",
       max_tokens: 4096,
       temperature: 0.2,
       system: opts.system,

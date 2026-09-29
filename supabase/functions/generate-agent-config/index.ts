@@ -107,7 +107,7 @@ The system prompt should be written in expert prompt engineering style - specifi
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5",
+        model: "claude-sonnet-5-5",
         max_tokens: 2048,
         system: "You are an expert AI agent designer for a commercial lending platform.",
         messages: [{ role: "user", content: prompt }],

@@ -159,7 +159,7 @@ async function handleIncomingMessage(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-5-5",
       max_tokens: 4096,
       temperature: agent.temperature || 0.7,
       system: `${agent.system_prompt}\n\nYou are responding in a Slack channel. Keep messages concise and use Slack formatting (bold with *text*, code with \`code\`, lists with •).${memoryContext}\n\nIMPORTANT: If the user shares a preference, fact, or important context that should be remembered for future conversations, include it at the END of your response in this exact format:\n[MEMORY:type:key:value]\nFor example: [MEMORY:preference:timezone:EST]\nDo NOT mention this to the user.`,
@@ -427,7 +427,7 @@ Recent Activity: ${(activities || []).map((a: { activity_type: string; descripti
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-5-5",
       max_tokens: 4096,
       temperature: 0.7,
       system: "You are a deal follow-up assistant. Draft a concise, professional follow-up action plan based on the deal context. Use Slack formatting. Include specific next steps and suggested email/call scripts where appropriate.",
