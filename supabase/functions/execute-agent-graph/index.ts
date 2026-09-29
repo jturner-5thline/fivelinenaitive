@@ -66,12 +66,12 @@ async function executeAgentNode(node: GraphNode, inputs: Record<string, any>, ct
   const { config } = node.data;
   // All agents are powered by Claude (Anthropic). Map any legacy/saved model
   // selection onto a Claude model so old graphs keep working.
-  const rawModel: string = config.model || 'anthropic/claude-sonnet-4-5';
+  const rawModel: string = config.model || 'anthropic/claude-sonnet-5-5';
   const lower = rawModel.toLowerCase();
-  let claudeModel = 'claude-sonnet-4-5';
+  let claudeModel = 'claude-sonnet-5-5';
   if (lower.includes('opus')) claudeModel = 'claude-opus-4-20250514';
   else if (lower.includes('haiku') || lower.includes('flash') || lower.includes('mini') || lower.includes('nano')) claudeModel = 'claude-haiku-4-5';
-  else if (lower.includes('sonnet') || lower.includes('pro') || lower.includes('gpt-5') || lower.includes('gemini')) claudeModel = 'claude-sonnet-4-5';
+  else if (lower.includes('sonnet') || lower.includes('pro') || lower.includes('gpt-5') || lower.includes('gemini')) claudeModel = 'claude-sonnet-5-5';
 
   const systemPrompt = config.system_prompt || 'You are a helpful AI assistant.';
   const temperature = config.temperature ?? 0.7;

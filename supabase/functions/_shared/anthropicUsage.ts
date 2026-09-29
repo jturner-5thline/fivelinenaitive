@@ -13,6 +13,36 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
 export const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
 
+/** Canonical Sonnet model for every Claude workload. */
+export const CLAUDE_SONNET_MODEL = "claude-sonnet-5-5";
+
+/**
+ * Upgrades any legacy Sonnet id (incl. values stored in DB configs) to
+ * Sonnet 5.5 and strips request options Sonnet 5.5 rejects with a 400:
+ * sampling params (temperature/top_p/top_k), disabled thinking, and forced
+ * tool choice (converted to `auto` with the tool list narrowed to the one
+ * tool, which keeps the same behavior).
+ */
+export function normalizeForSonnet55(body: any): any {
+  if (!body || typeof body !== "object") return body;
+  const m = typeof body.model === "string" ? body.model : "";
+  if (!m || /claude-sonnet|sonnet/i.test(m)) body.model = CLAUDE_SONNET_MODEL;
+  if (body.model !== CLAUDE_SONNET_MODEL) return body;
+  delete body.temperature;
+  delete body.top_p;
+  delete body.top_k;
+  if (body.thinking?.type === "disabled") delete body.thinking;
+  const tc = body.tool_choice;
+  if (tc && (tc.type === "tool" || tc.type === "any")) {
+    if (tc.type === "tool" && Array.isArray(body.tools)) {
+      const only = body.tools.filter((t: any) => t?.name === tc.name);
+      if (only.length) body.tools = only;
+    }
+    body.tool_choice = { type: "auto" };
+  }
+  return body;
+}
+
 /** Beta header that enables prompt caching. Harmless when no markers exist. */
 export const PROMPT_CACHING_BETA = "prompt-caching-2024-07-31";
 
@@ -165,16 +195,14 @@ export async function anthropicFetch(
   let cacheEnabled = false;
   try {
     if (typeof init.body === "string") {
-      const parsed = JSON.parse(init.body);
+      const parsed = normalizeForSonnet55(JSON.parse(init.body));
       model = parsed?.model ?? model;
       streaming = parsed?.stream === true;
       const { body: nextBody, cached } = applyPromptCaching(parsed);
       cacheEnabled = cached;
-      if (cached) {
-        const headers = new Headers(init.headers as HeadersInit | undefined);
-        if (!headers.has("anthropic-beta")) headers.set("anthropic-beta", PROMPT_CACHING_BETA);
-        requestInit = { ...init, headers, body: JSON.stringify(nextBody) };
-      }
+      const headers = new Headers(init.headers as HeadersInit | undefined);
+      if (cached && !headers.has("anthropic-beta")) headers.set("anthropic-beta", PROMPT_CACHING_BETA);
+      requestInit = { ...init, headers, body: JSON.stringify(nextBody) };
     }
   } catch { /* body not JSON — fine */ }
 

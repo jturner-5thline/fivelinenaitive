@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const DASHBOARD_CHAT_MODEL = "claude-sonnet-4-5-20250929";
+const DASHBOARD_CHAT_MODEL = "claude-sonnet-5-5";
 
 async function logDashboardChatFailure(
   supabase: any,

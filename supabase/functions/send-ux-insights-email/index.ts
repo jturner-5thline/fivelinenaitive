@@ -191,7 +191,7 @@ serve(async (req) => {
     if (ANTHROPIC_API_KEY) {
       try {
         const claudeReq = {
-          model: "claude-sonnet-4-5-20250929",
+          model: "claude-sonnet-5-5",
           max_tokens: 1500,
           system:
             "You are a senior product analytics expert for a B2B deal management platform called naitive. " +

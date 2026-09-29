@@ -26,7 +26,7 @@ async function callClaude(
   const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
   if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
 
-  const model = options.model || "claude-sonnet-4-5-20250929";
+  const model = options.model || "claude-sonnet-5-5";
   const maxTokens = options.maxTokens || 4096;
   const temperature = options.temperature ?? 0.7;
 
@@ -78,7 +78,7 @@ async function streamClaude(
   const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
   if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
 
-  const model = options.model || "claude-sonnet-4-5-20250929";
+  const model = options.model || "claude-sonnet-5-5";
   const maxTokens = options.maxTokens || 4096;
   const temperature = options.temperature ?? 0.3;
 

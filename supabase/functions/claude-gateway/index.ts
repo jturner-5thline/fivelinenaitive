@@ -595,7 +595,7 @@ serve(async (req) => {
           "anthropic-beta": "prompt-caching-2024-07-31",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(anthropicBody),
+        body: JSON.stringify(normalizeForSonnet55(anthropicBody)),
         signal: controller.signal,
       });
     } catch (fetchErr) {

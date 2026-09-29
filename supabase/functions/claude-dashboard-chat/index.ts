@@ -8,7 +8,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const CLAUDE_MODEL = "claude-sonnet-4-5-20250929";
+const CLAUDE_MODEL = "claude-sonnet-5-5";
 const CLAUDE_TIMEOUT_MS = 55_000;
 
 // Compile firm-level Copilot Instructions (set in Settings → AI) into a system-prompt prefix.

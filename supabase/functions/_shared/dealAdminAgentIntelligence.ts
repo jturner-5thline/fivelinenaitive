@@ -29,7 +29,7 @@ import { cachedDealAdminAgentCall } from "./dealAdminAgentModelCache.ts";
 import { triageDealSignals } from "./dealAdminAgentTriage.ts";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-sonnet-4-5-20250929";
+const MODEL = "claude-sonnet-5-5";
 
 // Knowledge-base retrieval (RAG) — uses Lovable AI Gateway embeddings so we
 // only pull the chunks relevant to the deal we're evaluating instead of

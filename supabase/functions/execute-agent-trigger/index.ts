@@ -178,7 +178,7 @@ Provide a concise, actionable response based on this event. Focus on insights th
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "claude-sonnet-4-5",
+            model: "claude-sonnet-5-5",
             max_tokens: 4096,
             temperature: agent.temperature || 0.7,
             system: fullSystemPrompt,

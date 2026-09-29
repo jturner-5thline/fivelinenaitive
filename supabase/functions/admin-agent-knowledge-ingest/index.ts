@@ -127,7 +127,7 @@ async function extractViaClaude(base64: string, mime: string, filename: string):
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-5-20250929',
+      model: 'claude-sonnet-5-5',
       max_tokens: 16000,
       system:
         'You extract the full plain-text content of documents so an AI agent can use them as reference knowledge. Return ONLY the extracted text — no commentary, no markdown fences, no preamble. Preserve headings, lists, and tables as readable plain text.',

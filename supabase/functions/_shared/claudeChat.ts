@@ -5,7 +5,7 @@
 import { anthropicFetch } from "./anthropicUsage.ts";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const DEFAULT_MODEL = "claude-sonnet-4-5-20250929";
+const DEFAULT_MODEL = "claude-sonnet-5-5";
 
 export interface ClaudeMessage {
   role: "user" | "assistant";
