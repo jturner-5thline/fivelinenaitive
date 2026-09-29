@@ -27,6 +27,13 @@ export function DraftAiStatusButton({ dealId, onApply }: Props) {
       setCount(r.emailCount);
       setCalls(r.callCount || 0);
       if (r.reason === 'no_domains') { toast.error('No client contact emails on this deal to search by.'); setOpen(false); return; }
+      if (r.reason === 'mailbox_expired') {
+        toast.error('Your email connection has expired, so recent emails could not be read.', {
+          action: { label: 'Reconnect', onClick: () => { window.location.href = '/settings?tab=integrations'; } },
+          duration: 10000,
+        });
+        setOpen(false); return;
+      }
       if (r.reason === 'no_emails') { toast.info('No recent emails or recorded calls with this client found.'); setOpen(false); return; }
       if (!r.text) { toast.error('Could not draft an update. Try again.'); return; }
       setText(r.text);
