@@ -773,8 +773,17 @@ export function AgendaEditor() {
         /* Vertical offset of the rail's sticky top. The Insights tab strip is
            ~96px tall on desktop; this var lets the page override if needed. */
         .agenda-editor-shell { --agenda-toolbar-offset: 96px; }
-        .agenda-editor-shell { display: flex; gap: 16px; align-items: flex-start; max-width: 1360px; margin: 0 auto; padding: 0 16px 32px; }
-        .agenda-editor-col { flex: 1 1 auto; min-width: 0; }
+        .agenda-editor-shell { display: flex; gap: 16px; align-items: flex-start; max-width: 1200px; margin: 0 auto; padding: 20px 16px 32px; }
+        .agenda-editor-col {
+          flex: 1 1 auto; min-width: 0;
+          background: var(--bg-card, #0f1626);
+          border: 1px solid var(--border-subtle, rgba(120,170,255,0.18));
+          border-radius: 6px;
+          padding: 20px 24px 24px;
+          color: #dde8f8;
+        }
+        .agenda-editor-col .agenda-prose { color: #dde8f8; font-size: 13.5px; line-height: 1.65; }
+        .agenda-prose h2 { letter-spacing: -0.01em; }
         @media (max-width: 768px) {
           .agenda-editor-shell { display: block; padding: 0 12px 32px; }
           .agenda-comments-rail {
@@ -914,10 +923,10 @@ export function AgendaEditor() {
       </div>
       <div ref={editorWrapRef} style={{
         position: 'relative',
-        background: 'rgba(10,20,40,0.55)',
-        border: '0.5px solid rgba(80,140,255,0.18)',
-        borderRadius: 14,
-        boxShadow: '0 4px 22px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.03)',
+        background: 'transparent',
+        border: 'none',
+        borderRadius: 0,
+        boxShadow: 'none',
         minHeight: '60vh',
       }}>
         <EditorContent editor={editor} />
