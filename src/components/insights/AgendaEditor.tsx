@@ -126,6 +126,52 @@ const SEED_CONTENT = {
   }),
 };
 
+/** Streamlined seed (Sep 2026 / Q3 2026 onward): no Key Items, no Prep. */
+export const STREAMLINED_SEED_SECTIONS = ['Presentation', 'New Items'] as const;
+const STREAMLINED_SEED_CONTENT = {
+  type: 'doc',
+  content: [
+    headingNode('Presentation'), subtitleNode(), { type: 'paragraph' },
+    headingNode('New Items'), { type: 'paragraph' },
+  ],
+};
+
+/** True for month >= 2026-09 or quarter >= 2026-Q3. */
+export function isStreamlinedAgendaPeriod(type: string, key: string): boolean {
+  if (type === 'month') {
+    const m = /^(\d{4})-(\d{2})$/.exec(key);
+    if (!m) return false;
+    const y = +m[1], mo = +m[2];
+    return y > 2026 || (y === 2026 && mo >= 9);
+  }
+  const q = /^(\d{4})-Q([1-4])$/.exec(key);
+  if (!q) return false;
+  const y = +q[1], n = +q[2];
+  return y > 2026 || (y === 2026 && n >= 3);
+}
+
+export function getSeedContent(type: string, key: string) {
+  return isStreamlinedAgendaPeriod(type, key) ? STREAMLINED_SEED_CONTENT : SEED_CONTENT;
+}
+
+/** Strip Key Items (+subtitle/scaffold) and Prep sections from a saved doc. */
+function stripRemovedSections(doc: any): any {
+  if (!doc || doc.type !== 'doc' || !Array.isArray(doc.content)) return doc;
+  const removed = new Set(['Key Items', 'Looking Forward', 'Prep']);
+  const out: any[] = [];
+  let skipping = false;
+  for (const n of doc.content) {
+    if (n?.type === 'heading') {
+      const t = (n.content ?? []).map((c: any) => c?.text ?? '').join('').trim();
+      skipping = removed.has(t);
+      if (skipping) continue;
+    }
+    if (!skipping) out.push(n);
+  }
+  return { ...doc, content: out };
+}
+
+
 // Zod schema mirroring the DB CHECK constraint on insights_agenda.
 const monthKeyRe = /^\d{4}-(0[1-9]|1[0-2])$/;
 const quarterKeyRe = /^\d{4}-Q[1-4]$/;
@@ -155,10 +201,11 @@ export function isSeedContent(doc: any): boolean {
       return LEGACY_SECTION_ALIASES[t] ?? t;
     });
   const required = [...SEED_SECTIONS];
-  const headingsMatch =
-    headings.length === required.length &&
-    required.every((h, i) => headings[i] === h);
+  const streamlined = [...STREAMLINED_SEED_SECTIONS];
+  const matches = (arr: string[]) => headings.length === arr.length && arr.every((h, i) => headings[i] === h);
+  const headingsMatch = matches(required) || matches(streamlined);
   if (!headingsMatch) return false;
+
   // Non-heading nodes must be either empty paragraphs, one of the auto-seeded
   // subtitle paragraphs, or the default Key Items bullet scaffold with no
   // user-entered text. Anything else means the user added content.
@@ -612,15 +659,17 @@ export function AgendaEditor() {
       if (!error && data) {
         setRowId(data.id);
         const hasContent = data.content_json && Object.keys(data.content_json as any).length > 0;
-        editor.commands.setContent(
-          hasContent ? (data.content_json as any) : SEED_CONTENT,
-          { emitUpdate: false },
-        );
-        setIsEmpty(!hasContent || isSeedContent(data.content_json));
+        const streamlined = isStreamlinedAgendaPeriod(periodType, periodKey);
+        const content = hasContent
+          ? (streamlined ? stripRemovedSections(data.content_json) : (data.content_json as any))
+          : getSeedContent(periodType, periodKey);
+        editor.commands.setContent(content, { emitUpdate: false });
+        setIsEmpty(!hasContent || isSeedContent(content));
         if (data.updated_at) setSavedAt(new Date(data.updated_at));
         lastAppliedAtRef.current = data.updated_at ? new Date(data.updated_at).getTime() : 0;
       } else {
-        editor.commands.setContent(SEED_CONTENT, { emitUpdate: false });
+        editor.commands.setContent(getSeedContent(periodType, periodKey), { emitUpdate: false });
+
         setIsEmpty(true);
         lastAppliedAtRef.current = 0;
       }
@@ -741,6 +790,7 @@ export function AgendaEditor() {
       }
       // Apply the copied content. setContent lands on the TipTap undo stack
       // (Ctrl/Cmd+Z) and the toast also exposes an explicit Undo action.
+      if (isStreamlinedAgendaPeriod(periodType, periodKey)) prev = stripRemovedSections(prev);
       editor.chain().focus().setContent(prev, { emitUpdate: true }).run();
       const doc = editor.getJSON();
       latestDocRef.current = doc;
