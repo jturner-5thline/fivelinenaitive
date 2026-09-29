@@ -790,6 +790,7 @@ export function AgendaEditor() {
       }
       // Apply the copied content. setContent lands on the TipTap undo stack
       // (Ctrl/Cmd+Z) and the toast also exposes an explicit Undo action.
+      if (isStreamlinedAgendaPeriod(periodType, periodKey)) prev = stripRemovedSections(prev);
       editor.chain().focus().setContent(prev, { emitUpdate: true }).run();
       const doc = editor.getJSON();
       latestDocRef.current = doc;
