@@ -201,10 +201,11 @@ export function isSeedContent(doc: any): boolean {
       return LEGACY_SECTION_ALIASES[t] ?? t;
     });
   const required = [...SEED_SECTIONS];
-  const headingsMatch =
-    headings.length === required.length &&
-    required.every((h, i) => headings[i] === h);
+  const streamlined = [...STREAMLINED_SEED_SECTIONS];
+  const matches = (arr: string[]) => headings.length === arr.length && arr.every((h, i) => headings[i] === h);
+  const headingsMatch = matches(required) || matches(streamlined);
   if (!headingsMatch) return false;
+
   // Non-heading nodes must be either empty paragraphs, one of the auto-seeded
   // subtitle paragraphs, or the default Key Items bullet scaffold with no
   // user-entered text. Anything else means the user added content.
