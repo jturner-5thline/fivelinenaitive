@@ -202,7 +202,7 @@ export function InsightsNarrativeEditor({
       Underline,
       Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } }),
       Image.configure({ inline: false, allowBase64: false, HTMLAttributes: { class: 'insights-narrative-image' } }),
-      Placeholder.configure({ placeholder: 'Write the executive summary…' }),
+      Placeholder.configure({ placeholder: chromeless ? '' : 'Write the executive summary…' }),
       KpiEmbedNode,
       DashboardWidgetEmbedNode,
     ],

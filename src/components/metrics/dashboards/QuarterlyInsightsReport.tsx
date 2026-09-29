@@ -1566,7 +1566,7 @@ function ReportNarrativeSection({ s, set, scopeKey, save, isSaving, reportLabel 
             scheduleSave();
           }}
         />
-        <div id="qir-section-whats-working" style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(120,170,255,0.10)' }}>
+        <div id="qir-section-whats-working" style={{ marginTop: 20 }}>
           <WhatWorkingSections
             subsection
             reportKey={`qir:${scopeKey}`}
