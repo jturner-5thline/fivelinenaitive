@@ -108,14 +108,8 @@ export function InsightsReportingBar({ tabsSlot }: Props) {
       }}
     >
       <div
-        className={cn(
-          // Match the sticky header's dark card surface (see StickyDashboardHeader
-          // surface="module") so this row reads as the same container. No top
-          // border, no top radius — flush against the header above.
-          'bg-card dark:bg-[var(--bg-card)]',
-          'border-x border-b border-border/70 dark:border-[var(--border-subtle)]',
-          'rounded-b-lg px-5 text-muted-foreground',
-        )}
+        className={cn('bg-transparent border-0 px-5 text-muted-foreground')}
+        style={{ backgroundImage: 'none' }}
       >
         <div
           style={{
@@ -129,12 +123,6 @@ export function InsightsReportingBar({ tabsSlot }: Props) {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', minWidth: 0 }}>
             {tabsSlot}
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
-              Reporting period {periodLabel}
-            </span>
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
-              Last updated {format(lastUpdated, 'MMM d, yyyy h:mm a')}
-            </span>
           </div>
           <div style={{ display: 'none', alignItems: 'center', gap: 12, fontSize: 11, flexWrap: 'wrap' }}>
             <span style={{ color: 'rgba(255,255,255,0.5)' }}>Period Rev</span>
