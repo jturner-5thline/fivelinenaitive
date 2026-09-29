@@ -465,12 +465,18 @@ serve(async (req: Request): Promise<Response> => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
+      // Return 200 with a soft flag so clients render a "connect calendar"
+      // prompt instead of treating this as a hard runtime error.
       return new Response(
         JSON.stringify({
-          error: "Calendar not connected. Connect Google or Microsoft in Integrations.",
+          events: [],
+          calendars: [],
+          not_connected: true,
+          needs_reconnect: true,
+          warning: "Calendar not connected. Connect Google or Microsoft in Integrations.",
           error_code: "calendar_not_connected",
         }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
