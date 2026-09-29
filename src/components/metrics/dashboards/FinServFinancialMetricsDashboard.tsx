@@ -1368,6 +1368,13 @@ function FinServFinancialMetricsDashboardInner() {
           isLoading={pipelineSnapshot.isLoading || totalRev.isLoading}
         />
         <FinServSnapshotCard
+          label="Total OPEX"
+          value={totalRev.operatingExpenses ?? 0}
+          format="currency"
+          subtitle={`Total operating expenses · QBO 5th Line Financial Services · ${periodBadge}`}
+          isLoading={totalRev.isLoading}
+        />
+        <FinServSnapshotCard
           label="Current Pipeline"
           value={pipelineSnapshot.data?.currentPipeline ?? 0}
           subtitle="Qualification → Negotiation"
