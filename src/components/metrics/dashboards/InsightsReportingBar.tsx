@@ -39,9 +39,10 @@ const sumInRange = <T,>(items: T[], range: { start: Date; end: Date }, getDate: 
 
 interface Props {
   tabsSlot?: React.ReactNode;
+  actionsSlot?: React.ReactNode;
 }
 
-export function InsightsReportingBar({ tabsSlot }: Props) {
+export function InsightsReportingBar({ tabsSlot, actionsSlot }: Props) {
   const queryClient = useQueryClient();
   const qb = useQuickBooksMetrics();
   const metrics = useMetricsData();
@@ -104,7 +105,7 @@ export function InsightsReportingBar({ tabsSlot }: Props) {
         // sticky header so the tabs row visually attaches as a continuation
         // of the header instead of reading as a separate card.
         marginTop: -24,
-        marginBottom: 12,
+        marginBottom: 5,
       }}
     >
       <div
@@ -124,6 +125,7 @@ export function InsightsReportingBar({ tabsSlot }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', minWidth: 0 }}>
             {tabsSlot}
           </div>
+          {actionsSlot}
           <div style={{ display: 'none', alignItems: 'center', gap: 12, fontSize: 11, flexWrap: 'wrap' }}>
             <span style={{ color: 'rgba(255,255,255,0.5)' }}>Period Rev</span>
             <span style={{ fontWeight: 700, color: '#e8f6ff' }}>{fmtUSD(totalRevCurr)}</span>
