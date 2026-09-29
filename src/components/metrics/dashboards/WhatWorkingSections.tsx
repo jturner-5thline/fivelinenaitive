@@ -5,10 +5,10 @@ import { useQirSectionNote } from '@/hooks/useQirComments';
 const TEXT_PRIMARY = '#dde8f8';
 const TEXT_MUTED = 'rgba(200,225,255,0.55)';
 
-function DocHeading({ children, onEdit, editing }: { children: React.ReactNode; onEdit?: () => void; editing?: boolean }) {
+function DocHeading({ children, onEdit, editing, sub }: { children: React.ReactNode; onEdit?: () => void; editing?: boolean; sub?: boolean }) {
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-      <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.01em', color: TEXT_PRIMARY, margin: 0, lineHeight: 1.2 }}>
+      <h2 style={{ fontSize: sub ? 15 : 20, fontWeight: sub ? 600 : 700, letterSpacing: '-0.01em', color: sub ? 'rgba(200,215,235,0.62)' : TEXT_PRIMARY, margin: 0, lineHeight: 1.2 }}>
         {children}
       </h2>
       {onEdit && !editing && (
@@ -37,7 +37,9 @@ function CommentaryBlock({
   placeholder,
   helper,
   heading,
+  sub,
 }: {
+  sub?: boolean;
   reportKey: string;
   sectionKey: string;
   placeholder: string;
@@ -140,7 +142,7 @@ function CommentaryBlock({
 
   return (
     <div className="qir-ww-block" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <DocHeading onEdit={() => setEditing(true)} editing={editing}>{heading}</DocHeading>
+      <DocHeading sub={sub} onEdit={() => setEditing(true)} editing={editing}>{heading}</DocHeading>
       {editing ? (
         <>
           <textarea
@@ -213,6 +215,7 @@ function WhatWorkingSections({ reportKey, periodLabel, subsection }: { reportKey
     <div style={{ display: 'flex', flexDirection: 'column', gap: subsection ? 20 : 28, marginTop: subsection ? 0 : 8 }} className={subsection ? 'qir-ww-subsections' : undefined}>
       <section className="qir-ww-section">
         <CommentaryBlock
+          sub={subsection}
           heading={`What's Working${suffix}`}
           reportKey={reportKey}
           sectionKey="whats-working"
@@ -222,6 +225,7 @@ function WhatWorkingSections({ reportKey, periodLabel, subsection }: { reportKey
       </section>
       <section className="qir-ww-section" style={subsection ? undefined : { borderTop: '1px solid rgba(120,170,255,0.10)', paddingTop: 24 }}>
         <CommentaryBlock
+          sub={subsection}
           heading={`What's not Working${suffix}`}
           reportKey={reportKey}
           sectionKey="whats-not-working"
