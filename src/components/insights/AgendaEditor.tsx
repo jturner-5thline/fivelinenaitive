@@ -659,15 +659,17 @@ export function AgendaEditor() {
       if (!error && data) {
         setRowId(data.id);
         const hasContent = data.content_json && Object.keys(data.content_json as any).length > 0;
-        editor.commands.setContent(
-          hasContent ? (data.content_json as any) : SEED_CONTENT,
-          { emitUpdate: false },
-        );
-        setIsEmpty(!hasContent || isSeedContent(data.content_json));
+        const streamlined = isStreamlinedAgendaPeriod(periodType, periodKey);
+        const content = hasContent
+          ? (streamlined ? stripRemovedSections(data.content_json) : (data.content_json as any))
+          : getSeedContent(periodType, periodKey);
+        editor.commands.setContent(content, { emitUpdate: false });
+        setIsEmpty(!hasContent || isSeedContent(content));
         if (data.updated_at) setSavedAt(new Date(data.updated_at));
         lastAppliedAtRef.current = data.updated_at ? new Date(data.updated_at).getTime() : 0;
       } else {
-        editor.commands.setContent(SEED_CONTENT, { emitUpdate: false });
+        editor.commands.setContent(getSeedContent(periodType, periodKey), { emitUpdate: false });
+
         setIsEmpty(true);
         lastAppliedAtRef.current = 0;
       }
