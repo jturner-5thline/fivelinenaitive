@@ -18,6 +18,7 @@ import {
 } from '@/hooks/useCrmContactAttachments';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { CrmAttachmentPreviewDialog, downloadAttachment } from './CrmAttachmentPreviewDialog';
 
 function formatBytes(n: number) {
   if (!n) return '0 B';
@@ -51,9 +52,8 @@ export function ContactAttachmentsTable({ contactId, contactName }: Props) {
     }
   };
 
-  const preview = (a: CrmContactAttachment) => {
-    if (a.url) window.open(a.url, '_blank', 'noopener,noreferrer');
-  };
+  const [previewTarget, setPreviewTarget] = useState<CrmContactAttachment | null>(null);
+  const preview = (a: CrmContactAttachment) => setPreviewTarget(a);
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -145,7 +145,7 @@ export function ContactAttachmentsTable({ contactId, contactName }: Props) {
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => preview(a)} disabled={!a.url} title="Preview">
                         <Eye className="h-3.5 w-3.5" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => preview(a)} disabled={!a.url} title="Download">
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => downloadAttachment(a)} disabled={!a.url} title="Download">
                         <Download className="h-3.5 w-3.5" />
                       </Button>
                       <Button
@@ -167,6 +167,7 @@ export function ContactAttachmentsTable({ contactId, contactName }: Props) {
         )}
       </div>
 
+      <CrmAttachmentPreviewDialog attachment={previewTarget} onClose={() => setPreviewTarget(null)} />
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && !deleting && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

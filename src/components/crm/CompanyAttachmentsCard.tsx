@@ -17,6 +17,7 @@ import {
   type CrmCompanyAttachment,
 } from '@/hooks/useCrmCompanyAttachments';
 import { format } from 'date-fns';
+import { CrmAttachmentPreviewDialog, downloadAttachment } from './CrmAttachmentPreviewDialog';
 
 function formatBytes(n: number): string {
   if (!n) return '0 B';
@@ -53,10 +54,8 @@ export function CompanyAttachmentsCard({ crmCompanyId }: Props) {
     }
   };
 
-  const handleDownload = (a: CrmCompanyAttachment) => {
-    if (!a.url) return;
-    window.open(a.url, '_blank', 'noopener,noreferrer');
-  };
+  const [previewTarget, setPreviewTarget] = useState<CrmCompanyAttachment | null>(null);
+  const handleDownload = (a: CrmCompanyAttachment) => downloadAttachment(a);
 
   return (
     <Card>
@@ -122,7 +121,7 @@ export function CompanyAttachmentsCard({ crmCompanyId }: Props) {
                 <div className="min-w-0 flex-1">
                   <button
                     type="button"
-                    onClick={() => handleDownload(a)}
+                    onClick={() => setPreviewTarget(a)}
                     className="block text-sm text-left truncate hover:underline"
                     title={a.name}
                   >
@@ -161,6 +160,7 @@ export function CompanyAttachmentsCard({ crmCompanyId }: Props) {
           </ul>
         )}
       </CardContent>
+      <CrmAttachmentPreviewDialog attachment={previewTarget} onClose={() => setPreviewTarget(null)} />
     </Card>
   );
 }
