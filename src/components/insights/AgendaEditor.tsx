@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import { useVisibilityAwareInterval } from '@/hooks/useVisibilityAwareInterval';
 import StarterKit from '@tiptap/starter-kit';
