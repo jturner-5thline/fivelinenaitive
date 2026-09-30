@@ -169,12 +169,18 @@ function stripRemovedSections(doc: any): any {
     }
     if (!skipping) out.push(n);
   }
-  // Ensure a "Finance & KPI's" section exists above "New Items".
+  // Rename legacy "New Items" heading to the new label.
   const headingText = (n: any) =>
     n?.type === 'heading' ? (n.content ?? []).map((c: any) => c?.text ?? '').join('').trim() : null;
+  for (const n of out) {
+    if (headingText(n) === 'New Items') {
+      n.content = [{ type: 'text', text: 'New Business, Challenges & Concerns' }];
+    }
+  }
+  // Ensure a "Finance & KPI's" section exists above the new-business heading.
   const hasFinance = out.some((n) => headingText(n) === "Finance & KPI's");
   if (!hasFinance) {
-    const newItemsIdx = out.findIndex((n) => headingText(n) === 'New Items');
+    const newItemsIdx = out.findIndex((n) => headingText(n) === 'New Business, Challenges & Concerns');
     const insertion = [headingNode("Finance & KPI's"), { type: 'paragraph' }];
     if (newItemsIdx >= 0) out.splice(newItemsIdx, 0, ...insertion);
     else out.push(...insertion);
