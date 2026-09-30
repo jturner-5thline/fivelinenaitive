@@ -106,6 +106,9 @@ export function useLenderAttachmentsSummary() {
 
   useEffect(() => {
     fetchSummaries();
+    const onChange = () => fetchSummaries();
+    window.addEventListener('lender-attachments-changed', onChange);
+    return () => window.removeEventListener('lender-attachments-changed', onChange);
   }, [fetchSummaries]);
 
   const getLenderSummary = useCallback((lenderName: string): LenderAttachmentSummary => {
