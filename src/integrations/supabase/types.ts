@@ -8378,6 +8378,41 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_table_layouts: {
+        Row: {
+          column_order: string[]
+          company_id: string
+          hidden_columns: string[]
+          table_key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          column_order?: string[]
+          company_id: string
+          hidden_columns?: string[]
+          table_key: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          column_order?: string[]
+          company_id?: string
+          hidden_columns?: string[]
+          table_key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_table_layouts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custom_metrics: {
         Row: {
           company_id: string | null

@@ -27,6 +27,8 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useTriStateSort } from '@/hooks/useTriStateSort';
 import { SortableHeader } from '@/components/ui/sortable-header';
+import { useCrmTableColumns, type CrmColumnDef } from '@/hooks/useCrmTableColumns';
+import { ColumnSettingsButton, SortableHeaderContext, SortableTh } from '@/components/crm/CrmColumnControls';
 
 interface CrmCompaniesTableProps {
   companies: CrmCompany[];
@@ -53,8 +55,27 @@ const statusColors: Record<string, string> = {
   churned: 'bg-red-500/10 text-red-500',
 };
 
+const COMPANY_HEADERS: Record<string, { label: string; field: string; sortable?: boolean }> = {
+  name: { label: 'Company', field: 'name' },
+  domain: { label: 'Domain', field: 'domain' },
+  industry: { label: 'Industry', field: 'industry' },
+  company_type: { label: 'Type', field: 'company_type' },
+  owner: { label: 'Owner', field: 'owner_user_id' },
+  linkedin: { label: 'LinkedIn', field: 'linkedin_url', sortable: false },
+  phone: { label: 'Phone', field: 'phone' },
+  lifecycle: { label: 'Stage', field: 'lifecycle_stage' },
+  status: { label: 'Status', field: 'status' },
+  segment: { label: 'Segment', field: 'segment' },
+  arr: { label: 'ARR', field: 'arr' },
+  size: { label: 'Size', field: 'employee_range' },
+  location: { label: 'Location', field: 'hq_country' },
+  last_activity: { label: 'Last Activity', field: 'last_activity_date' },
+};
+const COMPANY_COLUMNS: CrmColumnDef[] = Object.entries(COMPANY_HEADERS).map(([id, h]) => ({ id, label: h.label }));
+
 export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, toolbarActions, onEndReached }: CrmCompaniesTableProps) {
   const navigate = useNavigate();
+  const cols = useCrmTableColumns('crm_companies', COMPANY_COLUMNS);
   const [search, setSearch] = useState('');
   const [lifecycleFilter, setLifecycleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -437,7 +458,18 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        {toolbarActions && <div className="ml-auto flex items-center gap-2 shrink-0">{toolbarActions}</div>}
+        <div className="ml-auto flex items-center gap-2 shrink-0">
+          <ColumnSettingsButton
+            columns={COMPANY_COLUMNS}
+            order={cols.order}
+            hidden={cols.hidden}
+            onReorder={cols.setColumnOrder}
+            onToggle={cols.toggleColumn}
+            onShowAll={cols.showAll}
+            onReset={cols.reset}
+          />
+          {toolbarActions}
+        </div>
       </div>
 
       <div
@@ -472,73 +504,83 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
             fixedHeaderContent={() => (
               <TableRow className="border-0 hover:bg-transparent">
                 <TableHead className="w-10"><Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={toggleAll} /></TableHead>
-                <TableHead><ColHeader field="name">Company</ColHeader></TableHead>
-                <TableHead><ColHeader field="domain">Domain</ColHeader></TableHead>
-                <TableHead><ColHeader field="industry">Industry</ColHeader></TableHead>
-                <TableHead><ColHeader field="company_type">Type</ColHeader></TableHead>
-                <TableHead><ColHeader field="owner_user_id">Owner</ColHeader></TableHead>
-                <TableHead><ColHeader field="linkedin_url" sortable={false}>LinkedIn</ColHeader></TableHead>
-                <TableHead><ColHeader field="phone">Phone</ColHeader></TableHead>
-                <TableHead><ColHeader field="lifecycle_stage">Stage</ColHeader></TableHead>
-                <TableHead><ColHeader field="status">Status</ColHeader></TableHead>
-                <TableHead><ColHeader field="segment">Segment</ColHeader></TableHead>
-                <TableHead><ColHeader field="arr">ARR</ColHeader></TableHead>
-                <TableHead><ColHeader field="employee_range">Size</ColHeader></TableHead>
-                <TableHead><ColHeader field="hq_country">Location</ColHeader></TableHead>
-                <TableHead><ColHeader field="last_activity_date">Last Activity</ColHeader></TableHead>
+                <SortableHeaderContext visibleIds={cols.visibleOrder} fullOrder={cols.order} onReorder={cols.setColumnOrder}>
+                  {cols.visibleOrder.map(id => {
+                    const h = COMPANY_HEADERS[id];
+                    return (
+                      <SortableTh key={id} id={id}>
+                        <ColHeader field={h.field} sortable={h.sortable !== false}>{h.label}</ColHeader>
+                      </SortableTh>
+                    );
+                  })}
+                </SortableHeaderContext>
                 <TableHead className="w-10" />
               </TableRow>
             )}
-            itemContent={(_i, co) => (
+            itemContent={(_i, co) => {
+              const cells: Record<string, React.ReactNode> = {
+                name: (
+                  <TableCell key="name">
+                    <div className="flex items-center gap-2">
+                      {co.logo_url ? (
+                        <img src={co.logo_url} alt="" className="h-6 w-6 rounded object-contain" />
+                      ) : (
+                        <div className="h-6 w-6 rounded bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">{co.name[0]}</div>
+                      )}
+                      <span className="font-medium text-sm">{co.name}</span>
+                    </div>
+                  </TableCell>
+                ),
+                domain: (
+                  <TableCell key="domain" className="text-sm">
+                    {co.domain ? (
+                      <a
+                        href={co.domain.startsWith('http') ? co.domain : `https://${co.domain}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={co.domain}
+                        className="text-primary hover:underline"
+                      >
+                        {co.domain}
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                ),
+                industry: (
+                  <TableCell key="industry" className="text-sm text-muted-foreground">
+                    {co.industry ? (
+                      <span title={co.industry} className="block max-w-[160px] truncate">{co.industry}</span>
+                    ) : '—'}
+                  </TableCell>
+                ),
+                company_type: <TableCell key="company_type" className="text-sm text-muted-foreground">{CRM_COMPANY_TYPES.find(t => t.value === co.company_type)?.label || co.company_type || '—'}</TableCell>,
+                owner: <TableCell key="owner" className="text-sm text-muted-foreground">{co.owner_user_id ? (ownerNameById.get(co.owner_user_id) || 'Unknown') : '—'}</TableCell>,
+                linkedin: <TableCell key="linkedin" className="text-sm"><LinkCell href={co.linkedin_url} label="Profile" /></TableCell>,
+                phone: <TableCell key="phone" className="text-sm text-muted-foreground">{co.phone || '—'}</TableCell>,
+                lifecycle: (
+                  <TableCell key="lifecycle">
+                    <Badge variant="secondary" className={cn('text-[10px]', lifecycleColors[co.lifecycle_stage] || '')}>{CRM_COMPANY_LIFECYCLES.find(l => l.value === co.lifecycle_stage)?.label || co.lifecycle_stage}</Badge>
+                  </TableCell>
+                ),
+                status: (
+                  <TableCell key="status">
+                    <Badge variant="secondary" className={cn('text-[10px]', statusColors[co.status] || '')}>{CRM_COMPANY_STATUSES.find(s => s.value === co.status)?.label || co.status}</Badge>
+                  </TableCell>
+                ),
+                segment: <TableCell key="segment" className="text-sm text-muted-foreground">{co.segment || '—'}</TableCell>,
+                arr: <TableCell key="arr" className="text-sm">{formatCurrency(co.arr)}</TableCell>,
+                size: <TableCell key="size" className="text-sm text-muted-foreground">{co.employee_range || '—'}</TableCell>,
+                location: <TableCell key="location" className="text-sm text-muted-foreground">{[co.hq_city, co.hq_country].filter(Boolean).join(', ') || '—'}</TableCell>,
+                last_activity: <TableCell key="last_activity" className="text-sm text-muted-foreground">{co.last_activity_date ? format(new Date(co.last_activity_date), 'MMM d') : '—'}</TableCell>,
+              };
+              return (
               <>
                 <TableCell>
                   <Checkbox checked={selectedIds.has(co.id)} onCheckedChange={() => toggleOne(co.id)} />
                 </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    {co.logo_url ? (
-                      <img src={co.logo_url} alt="" className="h-6 w-6 rounded object-contain" />
-                    ) : (
-                      <div className="h-6 w-6 rounded bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">{co.name[0]}</div>
-                    )}
-                    <span className="font-medium text-sm">{co.name}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-sm">
-                  {co.domain ? (
-                    <a
-                      href={co.domain.startsWith('http') ? co.domain : `https://${co.domain}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title={co.domain}
-                      className="text-primary hover:underline"
-                    >
-                      {co.domain}
-                    </a>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {co.industry ? (
-                    <span title={co.industry} className="block max-w-[160px] truncate">{co.industry}</span>
-                  ) : '—'}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">{CRM_COMPANY_TYPES.find(t => t.value === co.company_type)?.label || co.company_type || '—'}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{co.owner_user_id ? (ownerNameById.get(co.owner_user_id) || 'Unknown') : '—'}</TableCell>
-                <TableCell className="text-sm"><LinkCell href={co.linkedin_url} label="Profile" /></TableCell>
-                <TableCell className="text-sm text-muted-foreground">{co.phone || '—'}</TableCell>
-                <TableCell>
-                  <Badge variant="secondary" className={cn('text-[10px]', lifecycleColors[co.lifecycle_stage] || '')}>{CRM_COMPANY_LIFECYCLES.find(l => l.value === co.lifecycle_stage)?.label || co.lifecycle_stage}</Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="secondary" className={cn('text-[10px]', statusColors[co.status] || '')}>{CRM_COMPANY_STATUSES.find(s => s.value === co.status)?.label || co.status}</Badge>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">{co.segment || '—'}</TableCell>
-                <TableCell className="text-sm">{formatCurrency(co.arr)}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{co.employee_range || '—'}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{[co.hq_city, co.hq_country].filter(Boolean).join(', ') || '—'}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{co.last_activity_date ? format(new Date(co.last_activity_date), 'MMM d') : '—'}</TableCell>
+                {cols.visibleOrder.map(id => cells[id])}
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -562,7 +604,8 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
                   </DropdownMenu>
                 </TableCell>
               </>
-            )}
+              );
+            }}
           />
         )}
         </div>
