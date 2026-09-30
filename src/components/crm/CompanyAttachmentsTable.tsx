@@ -21,6 +21,7 @@ import {
 } from '@/hooks/useCrmCompanyAttachments';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { CrmAttachmentPreviewDialog, downloadAttachment } from './CrmAttachmentPreviewDialog';
 
 function formatBytes(n: number) {
   if (!n) return '0 B';
@@ -54,9 +55,8 @@ export function CompanyAttachmentsTable({ crmCompanyId, companyName }: Props) {
     }
   };
 
-  const preview = (a: CrmCompanyAttachment) => {
-    if (a.url) window.open(a.url, '_blank', 'noopener,noreferrer');
-  };
+  const [previewTarget, setPreviewTarget] = useState<CrmCompanyAttachment | null>(null);
+  const preview = (a: CrmCompanyAttachment) => setPreviewTarget(a);
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -164,7 +164,7 @@ export function CompanyAttachmentsTable({ crmCompanyId, companyName }: Props) {
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => preview(a)} disabled={!a.url} title="Preview">
                         <Eye className="h-3.5 w-3.5" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => preview(a)} disabled={!a.url} title="Download">
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => downloadAttachment(a)} disabled={!a.url} title="Download">
                         <Download className="h-3.5 w-3.5" />
                       </Button>
                       <Button
@@ -185,6 +185,7 @@ export function CompanyAttachmentsTable({ crmCompanyId, companyName }: Props) {
           </div>
         )}
       </CardContent>
+      <CrmAttachmentPreviewDialog attachment={previewTarget} onClose={() => setPreviewTarget(null)} />
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && !deleting && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
