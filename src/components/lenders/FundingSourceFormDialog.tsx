@@ -187,8 +187,8 @@ export function FundingSourceFormDialog({
     (async () => {
       const { data, error } = await supabase.functions.invoke('extract-funding-source-from-claap', {
         body: {
-          summary: claapContext.summary || null,
-          keyTakeaways: claapContext.keyTakeaways || [],
+          summary: claapContext.summary ? claapContext.summary.slice(0, 20000) : null,
+          keyTakeaways: (claapContext.keyTakeaways || []).slice(0, 50).map((t) => String(t).slice(0, 2000)),
           meetingRowId: claapContext.meetingRowId || null,
           meetingTitle: claapContext.meetingTitle || null,
           attendeeName: initialContact?.name || null,
