@@ -1678,6 +1678,7 @@ function ReportNarrativeSection({ s, set, scopeKey, save, isSaving, reportLabel 
           isSaving={isSaving}
           savedAt={savedAt}
           chromeless
+          readOnly={readOnly}
           onEditorReady={(ed) => { editorRef.current = ed; }}
           onRequestInsertKpi={() => setAddKpiOpen(true)}
           onChange={(html) => {

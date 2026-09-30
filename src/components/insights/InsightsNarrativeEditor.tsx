@@ -335,7 +335,7 @@ export function InsightsNarrativeEditor({
   // Track text selection inside the narrative editor and surface a small
   // "Comment → Queue" action above the selection.
   useEffect(() => {
-    if (!editor || readOnly) return;
+    if (!editor) return;
     const onSelChange = () => {
       const sel = window.getSelection();
       if (!sel || sel.rangeCount === 0 || sel.isCollapsed) { setSelAction(null); return; }
@@ -435,7 +435,7 @@ export function InsightsNarrativeEditor({
 
   const showToolbar = !readOnly && (!chromeless || focused);
   const isEmpty = editor.isEmpty;
-  const selectionBubble = selAction && !readOnly && typeof document !== 'undefined'
+  const selectionBubble = selAction && typeof document !== 'undefined'
     ? createPortal(
       <button
         type="button"

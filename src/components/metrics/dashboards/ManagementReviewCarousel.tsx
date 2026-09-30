@@ -129,9 +129,19 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady, l
   return (
     <>
       {lockBanner}
+      {locked && (
+        <style>{`
+          .qir-locked .qir-ww-edit-trigger,
+          .qir-locked .qir-doc-editable-block [role="button"],
+          .qir-locked input:not([data-qir-comments-ui] input),
+          .qir-locked textarea:not([data-qir-comments-ui] textarea),
+          .qir-locked select:not([data-qir-comments-ui] select) { pointer-events: none !important; }
+          .qir-locked .qir-no-print { display: none !important; }
+        `}</style>
+      )}
       <div
-        style={locked ? { pointerEvents: 'none', opacity: 0.85, filter: 'saturate(0.85)' } : undefined}
-        aria-disabled={locked || undefined}
+        className={locked ? 'qir-locked' : undefined}
+        aria-readonly={locked || undefined}
       >
       <QuarterlyInsightsReportPage
         s={state}
