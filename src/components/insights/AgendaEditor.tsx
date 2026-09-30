@@ -948,7 +948,7 @@ export function AgendaEditor() {
         }
       `}</style>
       <div className="agenda-editor-col">
-      <Toolbar editor={editor} />
+      <Toolbar ref={toolbarRef} editor={editor} visible={toolbarVisible} />
       <div style={{
         display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6,
         height: 18, marginBottom: 4, fontSize: 11, color: 'rgba(180,210,245,0.7)',
