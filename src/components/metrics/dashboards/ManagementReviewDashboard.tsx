@@ -41,7 +41,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ensureFinServPnlSnapshots } from '@/hooks/useFinServFinancialMetrics';
 import { buildBuckets, type Granularity } from '@/lib/insightsTimeRange';
 import { QBO_ENTITIES } from '@/config/qboEntities';
-import { formatUSD } from '@/lib/formatters/currency';
+import { formatUSD, formatUSDFromDollars } from '@/lib/formatters/currency';
 import { useMasterPlanMonthly } from '@/hooks/useMasterPlanMonthly';
 import { DashboardPlansGear } from './plans/DashboardPlansGear';
 
@@ -3392,13 +3392,20 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       { id: 'liq-5lt', l: '5LT' },
       { id: 'liq-5lca', l: '5LCA' },
       { id: 'liq-5lfs', l: '5LFS' },
-    ].map(({ id, l }) => ({
-      id,
-      l,
-      live: false,
-      v: '—',
-      sub: <span style={{ color: NA_COLOR }}>—</span>,
-    }))),
+    ].map(({ id, l }) => {
+      const bal = liquidity?.[id] ?? null;
+      const live = isCurrentReportingPeriod && bal != null;
+      return {
+        id,
+        l,
+        live,
+        v: live ? fmtUSD(bal) : '—',
+        sub: <span style={{ color: NA_COLOR }}>{live ? 'Current balance' : '—'}</span>,
+        emptyHint: !isCurrentReportingPeriod
+          ? 'Bank balances are live snapshots — only shown for the current period.'
+          : 'No matching QuickBooks bank account found.',
+      };
+    })),
     {
       id: 'debt-solutions-revenue',
       l: 'Debt Solutions Revenue',
@@ -3990,18 +3997,16 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               <div style={{ height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {(() => {
                   const leftMetrics: { label: string; value: string }[] = [
-                    { label: "Next 3 Months' Revenue", value: next3Months.revenueSum > 0 ? formatUSD(next3Months.revenueSum / 1000) : '—' },
-                    { label: "Next 3 Months' Profit", value: '—' },
-                    { label: 'Client Signings', value: '—' },
-                    { label: 'Deals Closing', value: '—' },
-                    { label: 'Dollars Funding', value: '—' },
+                    { label: "Next 3 Months' Revenue", value: formatUSDFromDollars(debtPipelineStats.closingRevenue) },
+                    { label: 'Deals Closing', value: String(debtPipelineStats.closingCount) },
+                    { label: 'Dollars Funding', value: formatUSDFromDollars(debtPipelineStats.closingDollars) },
                   ];
-                  const rightMetrics = [
-                    'Deal Count',
-                    'Dollar Volume',
-                    'Potential Revenue',
-                    'Active Revenue',
+                  const rightMetricsData: { label: string; value: string }[] = [
+                    { label: 'Deal Count', value: String(debtPipelineStats.dealCount) },
+                    { label: 'Dollar Volume', value: formatUSDFromDollars(debtPipelineStats.dollarVolume) },
+                    { label: 'Potential Revenue', value: formatUSDFromDollars(debtPipelineStats.potentialRevenue) },
                   ];
+                  const rightMetrics = rightMetricsData.map(m => m.label);
                   const rows = Math.max(leftMetrics.length, rightMetrics.length);
                   const labelStyle: React.CSSProperties = { padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', whiteSpace: 'nowrap' };
                   const valueStyle: React.CSSProperties = { padding: '6px 8px', color: 'hsl(0,0%,100%)', fontWeight: 600, textAlign: 'right' };
@@ -4013,7 +4018,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                             <td style={labelStyle}>{leftMetrics[i]?.label ?? ''}</td>
                             <td style={valueStyle}>{leftMetrics[i]?.value ?? ''}</td>
                             <td style={{ ...labelStyle, borderLeft: '1px solid rgba(255,255,255,0.08)' }}>{rightMetrics[i] ?? ''}</td>
-                            <td style={valueStyle}>{rightMetrics[i] ? '—' : ''}</td>
+                            <td style={valueStyle}>{rightMetricsData[i]?.value ?? ''}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -4154,11 +4159,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <div className="flex h-full flex-col">
               <div className="flex flex-col divide-y divide-border">
                 {[
-                  { label: "Next 3 Months' Revenue", value: '—' },
-                  { label: "Next 3 Months' Profit", value: '—' },
-                  { label: 'Operating Cashflow', value: '—' },
-                  { label: 'Client Signings', value: '—' },
-                  { label: 'Current Run Rate', value: '—' },
+                  { label: "Next 3 Months' Revenue (proj.)", value: formatUSDFromDollars(finservTrailing.next3Rev) },
+                  { label: "Next 3 Months' Profit (proj.)", value: formatUSDFromDollars(finservTrailing.next3Profit) },
+                  { label: 'Current Run Rate (annualized)', value: formatUSDFromDollars(finservTrailing.runRate) },
                 ].map((row) => (
                   <div key={row.label} className="flex items-center justify-between py-2 text-sm">
                     <span className="text-muted-foreground">{row.label}</span>
