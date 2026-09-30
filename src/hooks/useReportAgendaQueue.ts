@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { useInsightsTimeframeOptional, reportingPeriodHelpers } from '@/contexts/InsightsTimeframeContext';
+import { removePresentationBullet } from '@/components/insights/appendPresentationBullet';
 
 export type ReportQueueSourceType =
   | 'selected_text' | 'narrative' | 'kpi' | 'chart'
@@ -174,13 +175,28 @@ export function useReportAgendaQueue() {
    * qir_comment / agenda_comment.
    */
   const removeItem = useCallback(async (id: string) => {
+    const item = items.find(i => i.id === id);
     setItems(prev => prev.filter(i => i.id !== id));
     const { error } = await supabase
       .from('report_agenda_queue' as any)
       .delete()
       .eq('id', id);
-    if (error) console.error('[removeQueueItem]', error);
-  }, []);
+    if (error) { console.error('[removeQueueItem]', error); return; }
+    // Removing your own report comment from the queue also removes it from the Agenda.
+    if (item && item.comment_source === 'qir' && item.created_by === user?.id) {
+      try {
+        await removePresentationBullet({
+          companyId: item.company_id,
+          periodType: item.period_type,
+          periodKey: item.period_key,
+          comment: item.comment_text_snapshot,
+          author: item.created_by_name,
+        });
+      } catch (e) {
+        console.error('[removePresentationBullet]', e);
+      }
+    }
+  }, [items, user?.id]);
 
   const counts = useMemo(() => {
     let queued = 0, added = 0, dismissed = 0, archived = 0;
