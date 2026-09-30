@@ -4,18 +4,50 @@ import { getSeedContent } from './AgendaEditor';
 const headingText = (n: any) =>
   n?.type === 'heading' ? (n.content ?? []).map((c: any) => c?.text ?? '').join('').trim() : null;
 
+const nodeText = (n: any): string =>
+  !n ? '' : n.type === 'text' ? n.text ?? '' : (n.content ?? []).map(nodeText).join('');
+
+export const REPORT_ORDER = ['JM', 'JT', 'SW'] as const;
+export const SECTION_ORDER = ['Narrative/Executive Summary', 'KPIs', 'Goals & Priorities', 'Open Risks'] as const;
+export type AgendaSection = typeof SECTION_ORDER[number];
+
+/** Map a report comment source to its canonical Agenda section. */
+export function classifySection(sourceType: string, sourceId: string): AgendaSection {
+  const t = (sourceType || '').toLowerCase();
+  const id = (sourceId || '').toLowerCase();
+  if (t === 'kpi' || t === 'chart' || id.includes('kpi')) return 'KPIs';
+  if (t === 'risk' || id === 'goals' || id.includes('risk')) return 'Open Risks';
+  if (t === 'goal' || t === 'goal-priority' || t === 'initiative' || id === 'metrics' || id.includes('initiative') || id.includes('priorit')) return 'Goals & Priorities';
+  return 'Narrative/Executive Summary';
+}
+
+const parentLabel = (persona: string, section: string) => `${persona} - ${section}`;
+
+function parseParent(text: string): { r: number; s: number } | null {
+  const m = /^(JM|JT|SW) - (.+)$/.exec(text.trim());
+  if (!m) return null;
+  const s = SECTION_ORDER.indexOf(m[2] as AgendaSection);
+  if (s === -1) return null;
+  return { r: REPORT_ORDER.indexOf(m[1] as any), s };
+}
+
 /**
- * Appends a bullet under the "Presentation" section of the Agenda for the
- * given period. Used when a comment is made on a JT/JM/SW report.
+ * Adds a report comment under the Agenda "Presentation" section as a
+ * sub-bullet of a "{Report} - {Section}" parent bullet. Parent bullets are
+ * kept sorted by report (JM, JT, SW) then section order.
  */
 export async function appendPresentationBullet(opts: {
   companyId: string;
   userId: string;
   periodType: string;
   periodKey: string;
-  text: string;
+  persona: string;
+  section: AgendaSection;
+  comment: string;
+  snippet?: string | null;
+  author?: string | null;
 }) {
-  const { companyId, userId, periodType, periodKey, text } = opts;
+  const { companyId, userId, periodType, periodKey, persona, section, comment, snippet, author } = opts;
   const { data } = await supabase
     .from('insights_agenda')
     .select('content_json')
@@ -28,7 +60,14 @@ export async function appendPresentationBullet(opts: {
     ? structuredClone(existing)
     : structuredClone(getSeedContent(periodType, periodKey));
 
-  const item = { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] };
+  const childContent: any[] = [{ type: 'text', text: comment }];
+  const snip = (snippet || '').replace(/\s+/g, ' ').trim();
+  if (snip) {
+    childContent.push({ type: 'text', marks: [{ type: 'italic' }], text: ` — on: “${snip.length > 220 ? snip.slice(0, 220) + '…' : snip}”` });
+  }
+  if (author) childContent.push({ type: 'text', marks: [{ type: 'bold' }], text: ` (${author})` });
+  const child = { type: 'listItem', content: [{ type: 'paragraph', content: childContent }] };
+
   const nodes: any[] = doc.content;
   let hIdx = nodes.findIndex((n) => headingText(n) === 'Presentation');
   if (hIdx === -1) {
@@ -38,16 +77,34 @@ export async function appendPresentationBullet(opts: {
   let end = nodes.length;
   for (let i = hIdx + 1; i < nodes.length; i++) if (nodes[i]?.type === 'heading') { end = i; break; }
   let listIdx = -1;
-  for (let i = end - 1; i > hIdx; i--) if (nodes[i]?.type === 'bulletList') { listIdx = i; break; }
-  if (listIdx !== -1) {
-    nodes[listIdx].content = [...(nodes[listIdx].content ?? []), item];
-  } else {
-    // Insert after the subtitle paragraph (if present), replacing a trailing empty paragraph.
+  for (let i = hIdx + 1; i < end; i++) if (nodes[i]?.type === 'bulletList') { listIdx = i; break; }
+  if (listIdx === -1) {
     let at = hIdx + 1;
     if (nodes[at]?.type === 'paragraph' && nodes[at]?.content?.length) at++;
-    const emptyPara = nodes[at]?.type === 'paragraph' && !(nodes[at]?.content?.length) && at < end;
-    nodes.splice(at, emptyPara ? 1 : 0, { type: 'bulletList', content: [item] });
+    const emptyPara = at < end && nodes[at]?.type === 'paragraph' && !(nodes[at]?.content?.length);
+    nodes.splice(at, emptyPara ? 1 : 0, { type: 'bulletList', content: [] });
+    listIdx = at;
   }
+  const list = nodes[listIdx];
+  const items: any[] = list.content ?? [];
+  const label = parentLabel(persona, section);
+  let parent = items.find((li) => nodeText(li?.content?.[0]).trim() === label);
+  if (!parent) {
+    parent = { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', marks: [{ type: 'bold' }], text: label }] }] };
+    items.push(parent);
+  }
+  let sub = parent.content.find((c: any) => c?.type === 'bulletList');
+  if (!sub) { sub = { type: 'bulletList', content: [] }; parent.content.push(sub); }
+  sub.content.push(child);
+
+  // Sort: managed parents by (report, section); other items keep order after them.
+  const managed = items.filter((li) => parseParent(nodeText(li?.content?.[0])));
+  const other = items.filter((li) => !parseParent(nodeText(li?.content?.[0])));
+  managed.sort((a, b) => {
+    const pa = parseParent(nodeText(a.content[0]))!, pb = parseParent(nodeText(b.content[0]))!;
+    return pa.r - pb.r || pa.s - pb.s;
+  });
+  list.content = [...managed, ...other];
 
   const { error } = await supabase
     .from('insights_agenda')
