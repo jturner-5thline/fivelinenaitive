@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
       `loanTypes MUST only use values from: ${JSON.stringify(b.loanTypeOptions)}. ` +
       `Describe the FUNDING SOURCE's criteria, not the borrower being discussed. Use null / [] / "" when not clearly stated. Never invent numbers.`;
     const input =
-      `Meeting: ${b.meetingTitle ?? ""}\nCounterparty: ${b.attendeeName ?? ""} <${b.attendeeEmail ?? ""}>\n\n` +
+      `Return the result as a JSON object.\nMeeting: ${b.meetingTitle ?? ""}\nCounterparty: ${b.attendeeName ?? ""} <${b.attendeeEmail ?? ""}>\n\n` +
       (b.summary ? `Summary:\n${b.summary}\n\n` : "") +
       (takeaways.length ? `Key takeaways:\n- ${takeaways.join("\n- ")}\n\n` : "") +
       (transcript ? `Transcript excerpt:\n${transcript}` : "");
