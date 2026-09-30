@@ -1014,6 +1014,7 @@ export function AgendaEditor() {
         </button>
         <button
           type="button"
+          hidden
           onClick={() => {
             if (!editor) return;
             const { items } = generateAgendaRecap(editor);
