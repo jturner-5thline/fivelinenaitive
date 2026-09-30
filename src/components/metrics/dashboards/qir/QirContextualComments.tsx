@@ -10,7 +10,7 @@ import { MentionText } from '@/components/insights/comments/MentionText';
 import { CommentTypePicker, type CommentType } from '@/components/insights/comments/CommentTypePicker';
 import { useInsertAgendaFootnote } from '@/components/insights/footnotes/useInsertAgendaFootnote';
 import { toast } from 'sonner';
-import { appendPresentationBullet } from '@/components/insights/appendPresentationBullet';
+import { appendPresentationBullet, classifySection } from '@/components/insights/appendPresentationBullet';
 
 const REPORT_PERSONA: Record<string, string> = { 'report-1': 'JT', 'report-2': 'JM', 'report-3': 'SW' };
 
