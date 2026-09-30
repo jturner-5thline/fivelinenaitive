@@ -937,6 +937,7 @@ export function AgendaEditor() {
         /* Separator sits under the heading itself so the paragraph below it
            is a normal, clickable typing line with breathing room. */
         .agenda-prose h2 { font-size: 22px; font-weight: 700; margin: 22px 0 12px; color: rgba(230,240,255,0.95); padding-bottom: 8px; border-bottom: 1px solid rgba(80,140,255,0.15); }
+        .agenda-prose > h2:first-child, .agenda-prose .ProseMirror > h2:first-child { margin-top: 0; }
         .agenda-prose h2 + p { margin-top: 12px; min-height: 1.65em; }
         .agenda-prose h3 { font-size: 17px; font-weight: 600; margin: 18px 0 8px; color: rgba(225,235,255,0.9); }
         .agenda-prose p { margin: 6px 0; }
@@ -979,7 +980,7 @@ export function AgendaEditor() {
         }
       `}</style>
       <div className="agenda-editor-col">
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, margin: '0 0 12px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, margin: '0 0 6px' }}>
       <h1 style={{
         fontSize: 22, fontWeight: 700, color: 'rgba(235,245,255,0.97)',
         letterSpacing: '-0.015em', lineHeight: 1.2, margin: 0,
