@@ -405,7 +405,7 @@ Deno.serve(async (req) => {
 
     const { data: emails, error: emailErr } = await admin
       .from("email_cache")
-      .select("gmail_message_id, thread_id, subject, from_email, from_name, to_emails, cc_emails, body_text, snippet, received_at, labels, headers")
+      .select("gmail_message_id, thread_id, subject, from_email, from_name, to_emails, cc_emails, body_text, snippet, received_at, labels")
       .eq("user_id", userId)
       .gte("received_at", since)
       .order("received_at", { ascending: false })
