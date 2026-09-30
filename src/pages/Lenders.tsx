@@ -1606,6 +1606,18 @@ export default function Lenders() {
                     </Badge>
                   )}
                 </Button>
+                {countActiveLenderFilters(advancedFilters) > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => setAdvancedFilters({ ...emptyFilters, filterMode: advancedFilters.filterMode || 'simple' })}
+                    aria-label="Clear all filters"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Clear filters
+                  </Button>
+                )}
 
                 {/* Active Deals quick-toggle */}
                 <Button
