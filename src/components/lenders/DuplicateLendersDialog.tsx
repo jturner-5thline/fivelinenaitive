@@ -1141,6 +1141,26 @@ function GroupQueue({
 export function DuplicateLendersDialog({
   open, onOpenChange, lenders, onMergeLenders, onDeleteLender,
 }: DuplicateLendersDialogProps) {
+  // Radix locks body scroll/pointer-events when a Dialog opens. If a nested
+  // AlertDialog closes at nearly the same time as the parent Dialog (or an
+  // async merge is in flight when the user hits X), the lock can survive and
+  // freeze the whole app. Clear it defensively whenever this dialog closes
+  // or unmounts.
+  useEffect(() => {
+    if (!open) {
+      const t = setTimeout(() => {
+        if (document.body.style.pointerEvents === 'none') {
+          document.body.style.pointerEvents = '';
+        }
+      }, 300);
+      return () => clearTimeout(t);
+    }
+  }, [open]);
+  useEffect(() => () => {
+    if (document.body.style.pointerEvents === 'none') {
+      document.body.style.pointerEvents = '';
+    }
+  }, []);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
