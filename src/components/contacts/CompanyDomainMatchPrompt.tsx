@@ -86,37 +86,42 @@ export function CompanyDomainMatchPrompt({ contactId, contactName, email, curren
 
   return (
     <AlertDialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <AlertDialogContent>
+      <AlertDialogContent className="max-w-lg overflow-hidden">
         {matchedCompany ? (
           <>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Link to {matchedCompany.name}?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Link <strong>{contactName}</strong> to <strong>{matchedCompany.name}</strong>? (matched by email domain <code>{domain}</code>)
+            <AlertDialogHeader className="min-w-0">
+              <AlertDialogTitle className="break-words">Link to {matchedCompany.name}?</AlertDialogTitle>
+              <AlertDialogDescription className="break-words">
+                Link <strong>{contactName}</strong> to <strong>{matchedCompany.name}</strong>? (matched by email domain <code className="break-all">{domain}</code>)
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={handleClose}>Not now</AlertDialogCancel>
-              <AlertDialogAction onClick={handleConfirmLink} disabled={linkToCompany.isPending}>
-                {linkToCompany.isPending ? 'Linking…' : 'Link company'}
+            <AlertDialogFooter className="flex-wrap gap-2 sm:gap-2">
+              <AlertDialogCancel onClick={handleClose} className="mt-0">Not now</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmLink} disabled={linkToCompany.isPending} className="max-w-full min-w-0">
+                <span className="truncate">{linkToCompany.isPending ? 'Linking…' : 'Link company'}</span>
               </AlertDialogAction>
             </AlertDialogFooter>
           </>
         ) : (
           <>
-            <AlertDialogHeader>
-              <AlertDialogTitle>No company found for {domain}</AlertDialogTitle>
-              <AlertDialogDescription>
-                Create <strong>{companyNameFromDomain(domain)}</strong> as a new company, or link this contact to an existing company manually.
+            <AlertDialogHeader className="min-w-0">
+              <AlertDialogTitle className="break-all">No company found for {domain}</AlertDialogTitle>
+              <AlertDialogDescription className="break-words">
+                Create <strong className="break-all">{companyNameFromDomain(domain)}</strong> as a new company, or link this contact to an existing company manually.
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter className="gap-2 sm:gap-2">
+            <AlertDialogFooter className="flex-wrap gap-2 sm:gap-2">
               <Button variant="ghost" onClick={handleClose}>Dismiss</Button>
               <Button variant="outline" onClick={() => { handleClose(); onLinkRequested?.(); }}>
                 Link manually
               </Button>
-              <Button onClick={handleCreate} disabled={createCompany.isPending || linkToCompany.isPending}>
-                {createCompany.isPending ? 'Creating…' : `Create ${companyNameFromDomain(domain)}`}
+              <Button
+                onClick={handleCreate}
+                disabled={createCompany.isPending || linkToCompany.isPending}
+                className="max-w-full min-w-0"
+                title={`Create ${companyNameFromDomain(domain)}`}
+              >
+                <span className="truncate">{createCompany.isPending ? 'Creating…' : 'Create company'}</span>
               </Button>
             </AlertDialogFooter>
           </>
