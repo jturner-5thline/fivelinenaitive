@@ -663,6 +663,7 @@ export function MeetingClaapInlineAction(props: Props) {
         initialQuery={fundingSourceInitialQuery}
         organizerEmail={organizerEmail}
         attendees={attendees}
+        claapContext={fundingSourceClaapContext}
       />
     </>
   );

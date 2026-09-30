@@ -537,7 +537,7 @@ export function FundingSourceMatchDialog({
           if (!nextOpen) setSelectedSource(null);
         }}
         onSave={handleSave}
-        initialEditMode={false}
+        initialEditMode={editMode}
         nested
       />
       {saving && <span className="sr-only" role="status">Saving funding source</span>}
