@@ -224,6 +224,29 @@ export function useLenderAttachments(lenderName: string | null) {
 
       if (dbError) throw dbError;
 
+      // If that was the last NDA / marketing file, clear the "on file" flag so
+      // the lender no longer shows as having that document.
+      const cat = attachment.category;
+      if (!fromCompany && company?.id && lenderName && (cat === 'nda' || cat === 'marketing_materials')) {
+        const { count } = await supabase
+          .from('lender_attachments')
+          .select('id', { count: 'exact', head: true })
+          .eq('company_id', company.id)
+          .eq('lender_name', lenderName)
+          .eq('category', cat);
+        if (!count) {
+          await supabase
+            .from('lender_doc_flags' as any)
+            .update(cat === 'nda' ? { has_nda: false } : { has_marketing: false })
+            .eq('company_id', company.id)
+            .eq('lender_name', lenderName);
+          window.dispatchEvent(new CustomEvent('lender-doc-removed', {
+            detail: { lenderName, category: cat },
+          }));
+        }
+      }
+      window.dispatchEvent(new Event('lender-attachments-changed'));
+
       toast.success('Attachment deleted');
       await fetchAttachments();
       return true;

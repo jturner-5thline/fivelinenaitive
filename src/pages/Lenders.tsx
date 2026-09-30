@@ -929,6 +929,22 @@ export default function Lenders() {
     });
   }, [setManualFlag, masterLenders, updateMasterLender]);
 
+  // When the last NDA file is deleted, clear the record's "NDA: Yes" so the
+  // checkbox stops showing it as on file.
+  useEffect(() => {
+    const onRemoved = (e: Event) => {
+      const { lenderName, category } = (e as CustomEvent).detail || {};
+      if (category !== 'nda') return;
+      const match = masterLenders.find(l => l.name === lenderName);
+      if (!match || ndaFieldState((match as any).nda) !== true) return;
+      updateMasterLender(match.id, { nda: null } as any).catch((err: any) => {
+        console.error('Failed to clear NDA field', err);
+      });
+    };
+    window.addEventListener('lender-doc-removed', onRemoved);
+    return () => window.removeEventListener('lender-doc-removed', onRemoved);
+  }, [masterLenders, updateMasterLender]);
+
 
   // Selection handlers
   const toggleLenderSelection = useCallback((lenderId: string) => {
