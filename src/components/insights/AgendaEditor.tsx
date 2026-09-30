@@ -1014,6 +1014,7 @@ export function AgendaEditor() {
         </button>
         <button
           type="button"
+          hidden
           onClick={() => {
             if (!editor) return;
             const { items } = generateAgendaRecap(editor);
@@ -1029,7 +1030,7 @@ export function AgendaEditor() {
           }}
           title="Scan the agenda for [Action]/[Decision]/[Topic] tags and rebuild the Meeting Recap at the top"
           style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
+            display: 'none', alignItems: 'center', gap: 4,
             padding: '2px 8px', borderRadius: 999, marginRight: 6,
             border: '0.5px solid rgba(80,140,255,0.28)',
             background: 'rgba(16,28,52,0.55)',
