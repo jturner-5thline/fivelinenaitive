@@ -17,6 +17,7 @@ import {
   AdvancedFilterBuilder, 
   FilterCondition, 
   applyAdvancedFilters,
+  parseTypeTags,
   generateId 
 } from './AdvancedFilterBuilder';
 
@@ -32,6 +33,7 @@ export interface LenderFilters {
   cashBurn: string;
   industries: string[];
   geographies: string[];
+  lenderTypes?: string[];
   tiers: string[];
   // New advanced conditions
   advancedConditions: FilterCondition[];
@@ -50,6 +52,7 @@ const emptyFilters: LenderFilters = {
   cashBurn: '',
   industries: [],
   geographies: [],
+  lenderTypes: [],
   tiers: [],
   advancedConditions: [],
   filterMode: 'simple',
@@ -131,6 +134,11 @@ function SimpleFilters({
   const loanTypeOptions = useMemo(() =>
     dedupeByLowercase(lenders.flatMap(l => l.loan_types || []))
       .map(v => ({ value: v, label: v })),
+    [lenders]
+  );
+
+  const lenderTypeOptions = useMemo(() =>
+    dedupeByLowercase(lenders.flatMap(l => parseTypeTags(l.lender_type))).map(v => ({ value: v, label: v })),
     [lenders]
   );
 
@@ -283,6 +291,7 @@ function SimpleFilters({
       <section className="space-y-3">
         <div className={sectionCls}>Coverage</div>
         {[
+          { label: 'Funding source type', options: lenderTypeOptions, key: 'lenderTypes' as const },
           { label: 'Loan types', options: loanTypeOptions, key: 'loanTypes' as const },
           { label: 'Industries', options: industryOptions, key: 'industries' as const },
           { label: 'Geography', options: geoOptions, key: 'geographies' as const },
@@ -292,7 +301,7 @@ function SimpleFilters({
             <MultiSelectFilter
               label="Any"
               options={f.options}
-              selected={filters[f.key]}
+              selected={filters[f.key] || []}
               onChange={(selected) => onFiltersChange({ ...filters, [f.key]: selected })}
               className="w-full h-9 text-sm justify-between"
             />
@@ -355,6 +364,7 @@ export function countActiveLenderFilters(filters: LenderFilters): number {
     if (filters.loanTypes?.length) count++;
     if (filters.industries?.length) count++;
     if (filters.geographies?.length) count++;
+    if (filters.lenderTypes?.length) count++;
     if (filters.sponsorship) count++;
     if (filters.cashBurn) count++;
   }
@@ -382,6 +392,8 @@ function LenderFiltersPanelInner({ filters, onFiltersChange, lenders, isOpen, se
       if (filters.loanTypes?.length) count++;
       if (filters.industries?.length) count++;
       if (filters.geographies?.length) count++;
+      if (filters.lenderTypes?.length) count++;
+    if (filters.lenderTypes?.length) count++;
       if (filters.sponsorship) count++;
       if (filters.cashBurn) count++;
     }
@@ -641,6 +653,11 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
     }
 
     // Geographies (match any selected tag against lender's geo string)
+    if (safeFilters.lenderTypes && safeFilters.lenderTypes.length > 0) {
+      const sel = new Set(safeFilters.lenderTypes.map(t => t.toLowerCase()));
+      result = result.filter((l) => parseTypeTags(l.lender_type).some(t => sel.has(t.toLowerCase())));
+    }
+
     if (safeFilters.geographies && safeFilters.geographies.length > 0) {
       const selected = safeFilters.geographies.map(g => g.toLowerCase());
       result = result.filter((lender) => {
