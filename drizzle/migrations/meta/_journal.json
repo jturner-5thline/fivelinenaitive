@@ -176,6 +176,13 @@
       "when": 1790598941838,
       "tag": "0024_add_match_deals_for_email",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790783510796,
+      "tag": "0025_idx_master_lenders_company_name",
+      "breakpoints": true
     }
   ]
 }
