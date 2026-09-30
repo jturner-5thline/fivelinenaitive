@@ -127,11 +127,12 @@ const SEED_CONTENT = {
 };
 
 /** Streamlined seed (Sep 2026 / Q3 2026 onward): no Key Items, no Prep. */
-export const STREAMLINED_SEED_SECTIONS = ['Presentation', 'New Items'] as const;
+export const STREAMLINED_SEED_SECTIONS = ['Presentation', "Finance & KPI's", 'New Items'] as const;
 const STREAMLINED_SEED_CONTENT = {
   type: 'doc',
   content: [
     headingNode('Presentation'), subtitleNode(), { type: 'paragraph' },
+    headingNode("Finance & KPI's"), { type: 'paragraph' },
     headingNode('New Items'), { type: 'paragraph' },
   ],
 };
@@ -167,6 +168,16 @@ function stripRemovedSections(doc: any): any {
       if (skipping) continue;
     }
     if (!skipping) out.push(n);
+  }
+  // Ensure a "Finance & KPI's" section exists above "New Items".
+  const headingText = (n: any) =>
+    n?.type === 'heading' ? (n.content ?? []).map((c: any) => c?.text ?? '').join('').trim() : null;
+  const hasFinance = out.some((n) => headingText(n) === "Finance & KPI's");
+  if (!hasFinance) {
+    const newItemsIdx = out.findIndex((n) => headingText(n) === 'New Items');
+    const insertion = [headingNode("Finance & KPI's"), { type: 'paragraph' }];
+    if (newItemsIdx >= 0) out.splice(newItemsIdx, 0, ...insertion);
+    else out.push(...insertion);
   }
   return { ...doc, content: out };
 }
