@@ -179,11 +179,16 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
     onClose();
   };
 
+  // Defer the list render until after the dialog has painted so opening feels instant.
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     if (open) {
       setQuery(''); setActiveSource(null); setSelectedIds([]);
       setSelectedWidgetIds([]); setMode('kpi');
+      const id = requestAnimationFrame(() => setTimeout(() => setReady(true), 0));
+      return () => cancelAnimationFrame(id);
     }
+    setReady(false);
   }, [open]);
 
   // ── Dashboard Widgets mode ───────────────────────────────────────────
@@ -232,7 +237,7 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
             <div className="min-w-0">
               <DialogTitle>Add Widgets</DialogTitle>
               <DialogDescription className="mt-1">
-                Pick one or more widgets to add. Each tile previews the live datapoint — KPI cards, mini charts, and templates from every Insights dashboard.
+                Search or filter by dashboard, then tick the KPIs to add. Selected KPIs preview their live value.
               </DialogDescription>
             </div>
             <div className="shrink-0 hidden sm:flex items-center gap-2">
@@ -354,14 +359,17 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
                   </Button>
                 </div>
               )}
-              {filtered.map(group => (
+              {!ready ? (
+                <div className="text-center text-xs text-muted-foreground py-16 animate-pulse">Loading KPIs…</div>
+              ) : filtered.map(group => (
                 <div key={group.source}>
-                  <div className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+                  <div className="sticky top-0 z-[1] -mx-1 px-1 py-1.5 bg-background/95 backdrop-blur text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-2">
                     {group.source}
+                    <span className="opacity-60 font-normal">{group.options.length}</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  <div className="divide-y divide-border/40 rounded-lg border border-border/50 overflow-hidden">
                     {group.options.map(opt => (
-                      <WidgetTile
+                      <KpiRow
                         key={opt.id}
                         option={opt}
                         selected={selectedIds.includes(opt.id)}
@@ -444,7 +452,60 @@ function formatLiveValue(value: number, format: InsightsMetricOption['format']):
   return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
 }
 
-function WidgetTile({
+/**
+ * Compact, hook-free row for browsing. The live value is only resolved
+ * once the user selects the row, so opening the picker stays fast.
+ */
+function KpiRow({
+  option, selected, onToggle, reportPeriod,
+}: { option: InsightsMetricOption; selected: boolean; onToggle: () => void; reportPeriod?: LiveMetricPeriod | null }) {
+  const isTemplate = option.kind === 'template';
+  const isChart = !!option.derivedFromChart;
+  const TypeIcon = isTemplate ? Sparkles : isChart ? BarChart3 : Gauge;
+  const typeLabel = isTemplate ? 'Template' : isChart ? 'From chart' : option.kind === 'custom-metric' ? 'Custom' : 'KPI';
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={selected}
+      className={cn(
+        'w-full flex items-center gap-3 px-3 py-2.5 text-left transition',
+        selected ? 'bg-primary/10' : 'hover:bg-muted/30',
+      )}
+    >
+      <div
+        className={cn(
+          'h-4 w-4 shrink-0 rounded border flex items-center justify-center',
+          selected ? 'border-primary bg-primary text-primary-foreground' : 'border-border/70 text-transparent',
+        )}
+      >
+        <Check className="h-3 w-3" strokeWidth={3} />
+      </div>
+      <TypeIcon className={cn('h-3.5 w-3.5 shrink-0', isTemplate ? 'text-primary' : 'text-muted-foreground')} />
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium truncate">{option.label}</div>
+        {option.description && (
+          <div className="text-[11px] text-muted-foreground truncate">{option.description}</div>
+        )}
+      </div>
+      {selected && option.metricSourceId && !isTemplate && (
+        <SelectedLiveValue option={option} reportPeriod={reportPeriod} />
+      )}
+      <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground/70 w-20 text-right">{typeLabel}</span>
+    </button>
+  );
+}
+
+function SelectedLiveValue({ option, reportPeriod }: { option: InsightsMetricOption; reportPeriod?: LiveMetricPeriod | null }) {
+  const live = useInsightsLiveMetricValue(option.metricSourceId ?? null, reportPeriod ?? null);
+  if (!live.supported) return <span className="shrink-0 text-[11px] text-muted-foreground">Live on add</span>;
+  if (live.status === 'loading' || live.value === undefined) {
+    return <span className="shrink-0 text-[11px] text-muted-foreground animate-pulse">…</span>;
+  }
+  return <span className="shrink-0 font-mono text-sm tabular-nums">{formatLiveValue(live.value, option.format)}</span>;
+}
+
+export function WidgetTile({
   option, selected, onToggle, reportPeriod,
 }: { option: InsightsMetricOption; selected: boolean; onToggle: () => void; reportPeriod?: LiveMetricPeriod | null }) {
   const isTemplate = option.kind === 'template';
