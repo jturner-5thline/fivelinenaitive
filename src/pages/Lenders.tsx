@@ -2082,7 +2082,7 @@ export default function Lenders() {
                     endReached={() => loadMore()}
                     computeItemKey={(index) => sortedLenders[index]?.id ?? index}
                     increaseViewportBy={{ top: 600, bottom: 600 }}
-                    listClassName="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
+                    listClassName="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-[5px]"
                     itemContent={(index) => {
                       const lender = sortedLenders[index];
                       return (
