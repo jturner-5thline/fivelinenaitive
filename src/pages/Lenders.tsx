@@ -2049,7 +2049,7 @@ export default function Lenders() {
                     itemContent={(index) => {
                       const lender = sortedLenders[index];
                       return (
-                        <div className={index === sortedLenders.length - 1 ? '' : 'pb-3'} data-lender-row={lender.id}>
+                        <div className={index === sortedLenders.length - 1 ? '' : 'pb-[5px]'} data-lender-row={lender.id}>
                           <LenderListCard
                             lender={lender}
                             activeDealCount={activeDealCounts[lender.name] || 0}
