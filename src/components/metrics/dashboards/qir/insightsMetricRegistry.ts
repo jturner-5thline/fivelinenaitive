@@ -82,12 +82,12 @@ const DASHBOARD_BY_METRIC_ID: Record<string, string> = {
   'qtd-value': 'Insights Dashboard',
   'fees-pop': 'Insights Dashboard',
   // Consolidated Debt Pipeline Board (pipeline shape)
-  'pipeline-by-stage': 'Consolidated Debt Pipeline Board',
-  'pipeline-by-type': 'Consolidated Debt Pipeline Board',
-  'pipeline-gauge': 'Consolidated Debt Pipeline Board',
-  'pipeline-treemap': 'Consolidated Debt Pipeline Board',
-  'stage-breakdown': 'Consolidated Debt Pipeline Board',
-  'conversion-funnel': 'Consolidated Debt Pipeline Board',
+  'pipeline-by-stage': 'Debt Advisory',
+  'pipeline-by-type': 'Debt Advisory',
+  'pipeline-gauge': 'Debt Advisory',
+  'pipeline-treemap': 'Debt Advisory',
+  'stage-breakdown': 'Debt Advisory',
+  'conversion-funnel': 'Debt Advisory',
   // Sales Team Board / Rep Scorecard
   'manager-performance': 'Sales Team Board',
   'performance-radar': 'Rep Scorecard',
@@ -150,7 +150,25 @@ function sourceForDataSourceId(id: string): string {
 }
 
 /** Human description of how a chart widget's scalar is resolved. */
+const CHART_KPI_RESOLUTION: Record<string, string> = {
+  'closed-value-12m': 'Closed-won value in period', 'closed-value-pop': 'Closed-won value in period',
+  'ytd-cumulative': 'Closed-won value in period', 'qtd-value': 'Closed-won value in period',
+  'fees-pop': 'Fees earned in period', 'revenue-waterfall': 'Fees earned in period',
+  'pipeline-by-stage': 'Total active pipeline value', 'pipeline-by-type': 'Total active pipeline value',
+  'pipeline-gauge': 'Total active pipeline value', 'pipeline-treemap': 'Total active pipeline value',
+  'stage-breakdown': 'Total active pipeline value', 'conversion-funnel': 'Win rate (won / decided)',
+  'deal-activity-12m': 'Deals active in period', 'activity-heatmap': 'Deals active in period',
+  'manager-performance': 'Deals won in period', 'performance-radar': 'Deals won in period',
+  'kpi-bullet': 'Deals won in period', 'revenue-forecast': 'Pipeline value x win rate',
+  'qb-revenue-trend': 'Revenue in period', 'qb-ar-aging': 'Total open receivables',
+  'qb-ap-aging': 'Total open payables', 'qb-top-customers': 'Top customer revenue',
+  'qb-top-vendors': 'Top vendor spend', 'qb-expense-by-category': 'Largest expense category',
+  'qb-invoice-status': 'Total invoiced', 'qb-payment-methods': 'Total payments received',
+  'qb-revenue-vs-payments': 'Revenue minus payments', 'qb-revenue-vs-expenses': 'Net (revenue minus expenses)',
+};
+
 function chartResolutionFor(id: string): string {
+  if (CHART_KPI_RESOLUTION[id]) return CHART_KPI_RESOLUTION[id];
   if (/12m|trend|rolling/.test(id)) return 'Period total of trend series';
   if (/cumulative|ytd|qtd/.test(id)) return 'Latest cumulative point';
   if (/forecast/.test(id)) return 'Next-period projection';

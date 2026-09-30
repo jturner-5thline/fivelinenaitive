@@ -60,6 +60,14 @@ const SUPPORTED_LIVE_METRIC_IDS = new Set<string>([
   'da-terms-issued-count', 'da-terms-issued-dollars',
   'da-terms-signed-count', 'da-terms-signed-dollars',
   'da-deals-closed-count', 'da-deals-closed-dollars',
+  // Chart widgets from every Insights dashboard, shown as a single KPI value
+  'closed-value-12m', 'closed-value-pop', 'ytd-cumulative', 'qtd-value', 'fees-pop',
+  'pipeline-by-stage', 'pipeline-by-type', 'pipeline-gauge', 'pipeline-treemap', 'stage-breakdown',
+  'conversion-funnel', 'deal-activity-12m', 'activity-heatmap', 'manager-performance',
+  'performance-radar', 'kpi-bullet', 'revenue-waterfall', 'revenue-forecast',
+  'qb-revenue-trend', 'qb-ar-aging', 'qb-ap-aging', 'qb-top-customers', 'qb-top-vendors',
+  'qb-expense-by-category', 'qb-invoice-status', 'qb-payment-methods',
+  'qb-revenue-vs-payments', 'qb-revenue-vs-expenses',
 ]);
 
 const ALWAYS_KEPT_METRIC_IDS = new Set<string>([

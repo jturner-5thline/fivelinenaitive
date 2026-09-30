@@ -572,6 +572,21 @@ export function useInsightsLiveMetricValue(
         return { supported: true, status: 'loading', sourceSurface: 'Weekly Rundown' };
     }
 
+      const scoped = period ? filterDealsByPeriod(dealMetrics.rawDeals, period) : (dealMetrics.rawDeals ?? []);
+      const active = scoped.filter(d => d.status !== 'archived');
+      const closedWon = scoped.filter(d => d.status === 'archived' && d.stage === 'closed-won');
+      const totalPipelineValue = active.reduce((s, d) => s + Number(d.value || 0), 0);
+      const totalClosedWonValue = closedWon.reduce((s, d) => s + Number(d.value || 0), 0);
+      const totalFees = closedWon.reduce((s, d) => s + Number(d.total_fee || 0), 0);
+      const avg = closedWon.length > 0 ? totalClosedWonValue / closedWon.length : 0;
+      const v =
+        metricSourceId === 'active-pipeline' ? totalPipelineValue :
+        metricSourceId === 'closed-won'      ? totalClosedWonValue :
+        metricSourceId === 'total-fees'      ? totalFees :
+        /* avg-deal-size */                    avg;
+      return { supported: true, status: 'ready', value: v, sourceSurface: 'Weekly Rundown' };
+    }
+
     // ---- Chart-backed deal widgets → single KPI value ----
     // Each chart reduces to one explicit, period-scoped scalar (see
     // CHART_KPI_RESOLUTION in insightsMetricRegistry for the labels).
@@ -614,20 +629,6 @@ export function useInsightsLiveMetricValue(
           v = pipelineValue * (winRate / 100); break;
       }
       return { supported: true, status: 'ready', value: v, sourceSurface: surface };
-    }
-      const scoped = period ? filterDealsByPeriod(dealMetrics.rawDeals, period) : (dealMetrics.rawDeals ?? []);
-      const active = scoped.filter(d => d.status !== 'archived');
-      const closedWon = scoped.filter(d => d.status === 'archived' && d.stage === 'closed-won');
-      const totalPipelineValue = active.reduce((s, d) => s + Number(d.value || 0), 0);
-      const totalClosedWonValue = closedWon.reduce((s, d) => s + Number(d.value || 0), 0);
-      const totalFees = closedWon.reduce((s, d) => s + Number(d.total_fee || 0), 0);
-      const avg = closedWon.length > 0 ? totalClosedWonValue / closedWon.length : 0;
-      const v =
-        metricSourceId === 'active-pipeline' ? totalPipelineValue :
-        metricSourceId === 'closed-won'      ? totalClosedWonValue :
-        metricSourceId === 'total-fees'      ? totalFees :
-        /* avg-deal-size */                    avg;
-      return { supported: true, status: 'ready', value: v, sourceSurface: 'Weekly Rundown' };
     }
 
     // ---- QuickBooks metrics (Controller Dashboard) ----
