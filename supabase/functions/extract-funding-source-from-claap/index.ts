@@ -9,7 +9,7 @@ import { z } from "npm:zod@3";
 const Body = z.object({
   summary: z.string().max(20000).optional().nullable(),
   keyTakeaways: z.array(z.string().max(2000)).max(50).optional().nullable(),
-  recordingRowId: z.string().uuid().optional().nullable(),
+  meetingRowId: z.string().uuid().optional().nullable(),
   meetingTitle: z.string().max(300).optional().nullable(),
   attendeeName: z.string().max(200).optional().nullable(),
   attendeeEmail: z.string().max(320).optional().nullable(),
@@ -35,13 +35,14 @@ Deno.serve(async (req) => {
     const b = parsed.data;
 
     let transcript = "";
-    if (b.recordingRowId) {
+    if (b.meetingRowId) {
       const { data: chunks } = await userClient
         .from("claap_transcript_chunks")
-        .select("content")
-        .eq("recording_id", b.recordingRowId)
+        .select("chunk_text")
+        .eq("claap_meeting_id", b.meetingRowId)
+        .order("chunk_index")
         .limit(40);
-      if (chunks?.length) transcript = chunks.map((c: any) => c.content).join("\n").slice(0, 14000);
+      if (chunks?.length) transcript = chunks.map((c: any) => c.chunk_text).join("\n").slice(0, 14000);
     }
     const takeaways = (b.keyTakeaways ?? []).filter(Boolean);
     if (!b.summary && !takeaways.length && !transcript) return json({ ok: false, reason: "no_call_content" });

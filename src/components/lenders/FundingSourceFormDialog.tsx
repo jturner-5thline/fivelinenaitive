@@ -87,7 +87,7 @@ interface Props {
 export interface FundingSourceClaapContext {
   summary?: string | null;
   keyTakeaways?: string[] | null;
-  recordingRowId?: string | null;
+  meetingRowId?: string | null;
   meetingTitle?: string | null;
 }
 
@@ -180,7 +180,7 @@ export function FundingSourceFormDialog({
   // user hasn't typed into yet; nothing is saved until they click Add.
   useEffect(() => {
     if (!open || !claapContext) { setClaapState('idle'); return; }
-    const hasContent = !!claapContext.summary || (claapContext.keyTakeaways?.length ?? 0) > 0 || !!claapContext.recordingRowId;
+    const hasContent = !!claapContext.summary || (claapContext.keyTakeaways?.length ?? 0) > 0 || !!claapContext.meetingRowId;
     if (!hasContent) { setClaapState('idle'); return; }
     let cancelled = false;
     setClaapState('loading');
@@ -189,7 +189,7 @@ export function FundingSourceFormDialog({
         body: {
           summary: claapContext.summary || null,
           keyTakeaways: claapContext.keyTakeaways || [],
-          recordingRowId: claapContext.recordingRowId || null,
+          meetingRowId: claapContext.meetingRowId || null,
           meetingTitle: claapContext.meetingTitle || null,
           attendeeName: initialContact?.name || null,
           attendeeEmail: initialContact?.email || null,

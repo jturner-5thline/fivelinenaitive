@@ -626,15 +626,15 @@ export function MeetingClaapInlineAction(props: Props) {
   // Prefill only the likely funding-source name (e.g. "Libertas"), not the whole event title.
   const fundingSourceInitialQuery = extractFundingSourceName(eventTitle, organizerEmail, attendees);
   const fundingSourceClaapContext = useMemo(() => (
-    canonical.source === 'claap' && (canonical.summary || canonical.keyTakeaways.length || canonical.recording?.rowId)
+    canonical.source === 'claap' && (canonical.summary || canonical.keyTakeaways.length || canonical.recording?.meetingRowId)
       ? {
           summary: canonical.summary,
           keyTakeaways: canonical.keyTakeaways,
-          recordingRowId: canonical.recording?.rowId ?? null,
+          meetingRowId: canonical.recording?.meetingRowId ?? null,
           meetingTitle: eventTitle ?? null,
         }
       : null
-  ), [canonical.source, canonical.summary, canonical.keyTakeaways, canonical.recording?.rowId, eventTitle]);
+  ), [canonical.source, canonical.summary, canonical.keyTakeaways, canonical.recording?.meetingRowId, eventTitle]);
 
 
   const updateContactCell = (
