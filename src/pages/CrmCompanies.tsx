@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Plus, Upload, Building2, Loader2, RefreshCw, Download, Search, X, ChevronDown, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -181,6 +181,7 @@ export default function CrmCompanies() {
               <div>
                 <CrmCompaniesTable
                   companies={companies}
+                  onEndReached={handleEndReached}
                   toolbarActions={
                     <>
                       <DropdownMenu>
@@ -241,7 +242,7 @@ export default function CrmCompanies() {
                   }
                 />
               </div>
-              <div ref={sentinelRef} className="py-6 flex items-center justify-center text-sm text-muted-foreground">
+              <div className="py-6 flex items-center justify-center text-sm text-muted-foreground">
                 {isFetchingNextPage ? (
                   <span className="flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-xs shadow-sm backdrop-blur">
                     <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
