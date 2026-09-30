@@ -362,13 +362,16 @@ export function QirContextualComments({
         const row = inserted as any;
         if (persona && companyApi.company?.id && row.period_type && row.period_key) {
           try {
-            const who = row.author_name ? ` (${row.author_name})` : '';
             await appendPresentationBullet({
               companyId: companyApi.company.id,
               userId: row.author_user_id,
               periodType: row.period_type,
               periodKey: row.period_key,
-              text: `${persona} · ${composer.source.label}: ${body.trim()}${who}`,
+              persona,
+              section: classifySection(composer.source.type, composer.source.id),
+              comment: body.trim(),
+              snippet: composer.snippet || composer.source.label,
+              author: row.author_name,
             });
           } catch (aErr) {
             console.error('[agenda-presentation-bullet]', aErr);
