@@ -447,25 +447,17 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Detect automation / bulk headers on a message to skip it entirely.
+    // Detect automated / bulk mail via Gmail labels + body hints.
     function messageIsAutomated(e: any): boolean {
-      const headers = e.headers && typeof e.headers === "object" ? e.headers : {};
-      const flatKeys = Object.keys(headers).map((k) => k.toLowerCase());
-      if (flatKeys.includes("list-unsubscribe")) return true;
-      if (flatKeys.includes("list-id")) return true;
-      if (flatKeys.includes("auto-submitted")) {
-        const v = String(headers["Auto-Submitted"] || headers["auto-submitted"] || "").toLowerCase();
-        if (v && v !== "no") return true;
-      }
-      if (flatKeys.includes("precedence")) {
-        const v = String(headers["Precedence"] || headers["precedence"] || "").toLowerCase();
-        if (["bulk", "list", "junk", "auto_reply"].includes(v)) return true;
-      }
-      if (flatKeys.includes("x-auto-response-suppress")) return true;
-      if (flatKeys.includes("feedback-id")) return true; // ESP campaign tag
-      if (flatKeys.includes("x-campaign") || flatKeys.includes("x-mailer-id")) return true;
       const labels: string[] = Array.isArray(e.labels) ? e.labels : [];
-      if (labels.includes("CATEGORY_PROMOTIONS") || labels.includes("CATEGORY_UPDATES")) return true;
+      if (labels.includes("CATEGORY_PROMOTIONS")) return true;
+      if (labels.includes("CATEGORY_UPDATES")) return true;
+      if (labels.includes("CATEGORY_FORUMS")) return true;
+      if (labels.includes("CATEGORY_SOCIAL")) return true;
+      const body = (e.body_text || e.snippet || "").toLowerCase();
+      if (body.includes("unsubscribe") && body.includes("http")) return true;
+      if (/view (this )?(email|message) in (your )?browser/i.test(body)) return true;
+      if (/you (are )?received this (email|message) because/i.test(body)) return true;
       return false;
     }
 
