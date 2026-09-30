@@ -570,8 +570,7 @@ export function useInsightsLiveMetricValue(
     if (DEAL_SCALAR_IDS.has(metricSourceId)) {
       if (dealMetrics.isLoading || !dealMetrics.rawDeals) {
         return { supported: true, status: 'loading', sourceSurface: 'Weekly Rundown' };
-    }
-
+      }
       const scoped = period ? filterDealsByPeriod(dealMetrics.rawDeals, period) : (dealMetrics.rawDeals ?? []);
       const active = scoped.filter(d => d.status !== 'archived');
       const closedWon = scoped.filter(d => d.status === 'archived' && d.stage === 'closed-won');
