@@ -530,6 +530,14 @@ export function AgendaEditor() {
 
   const commentsApi = useAgendaComments(rowId, company?.id ?? null);
 
+  // Text styler visibility: only reveal while the user is actively editing
+  // or interacting with the toolbar (e.g. opening the font-size dropdown).
+  const toolbarRef = useRef<HTMLDivElement | null>(null);
+  const editorShellRef = useRef<HTMLDivElement | null>(null);
+  const [editorFocused, setEditorFocused] = useState(false);
+  const [toolbarPinned, setToolbarPinned] = useState(false);
+  const toolbarVisible = editorFocused || toolbarPinned;
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: false }),
