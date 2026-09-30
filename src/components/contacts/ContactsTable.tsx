@@ -25,6 +25,8 @@ import { format } from 'date-fns';
 import { useTriStateSort } from '@/hooks/useTriStateSort';
 import { SortableHeader } from '@/components/ui/sortable-header';
 import { TOOLBAR_CONTROL_CLASS } from '@/lib/toolbarControlClass';
+import { useCrmTableColumns, type CrmColumnDef } from '@/hooks/useCrmTableColumns';
+import { ColumnSettingsButton, SortableHeaderContext, SortableTh } from '@/components/crm/CrmColumnControls';
 
 interface ContactsTableProps {
   contacts: Contact[];
@@ -52,8 +54,31 @@ const statusColors: Record<string, string> = Object.fromEntries(
   CONTACT_STATUSES.map((s) => [s.value, s.badge]),
 );
 
+const CONTACT_HEADERS: Record<string, { label: string; field?: string }> = {
+  first_name: { label: 'First Name', field: 'first_name' },
+  last_name: { label: 'Last Name', field: 'last_name' },
+  email: { label: 'Email', field: 'email' },
+  city: { label: 'City', field: 'hs_city' },
+  lead_status: { label: 'Lead Status', field: 'hs_contact_status' },
+  contact_type: { label: 'Contact Type', field: 'hs_contact_type' },
+  created_at: { label: 'Create Date', field: 'created_at' },
+  last_contact: { label: 'Last Contact', field: 'last_contact_at' },
+  hs_last_contacted: { label: 'HubSpot Last Contacted', field: 'hs_notes_last_contacted' },
+  industry: { label: 'Industry', field: 'hs_industry' },
+  job_title: { label: 'Job Title', field: 'job_title' },
+  opt_out: { label: 'Opted out: One to One', field: 'hs_hs_email_optout' },
+  email_domain: { label: 'Email Domain', field: 'email_domain_normalized' },
+  state: { label: 'State/Region', field: 'hs_state' },
+  company: { label: 'Company Name' },
+  linkedin: { label: 'LinkedIn' },
+  phone: { label: 'Phone', field: 'phone_work' },
+  mobile: { label: 'Mobile', field: 'phone_mobile' },
+};
+const CONTACT_COLUMNS: CrmColumnDef[] = Object.entries(CONTACT_HEADERS).map(([id, h]) => ({ id, label: h.label }));
+
 export function ContactsTable({ contacts, onBulkAction, search: controlledSearch, onSearchChange, toolbarExtras, toolbarActions, footer, isFetching }: ContactsTableProps) {
   const navigate = useNavigate();
+  const cols = useCrmTableColumns('contacts', CONTACT_COLUMNS);
   const [localSearch, setLocalSearch] = useState('');
   const search = controlledSearch ?? localSearch;
   const setSearch = onSearchChange ?? setLocalSearch;
@@ -247,9 +272,18 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        {toolbarActions && (
-          <div className="flex items-center gap-2 shrink-0">{toolbarActions}</div>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          <ColumnSettingsButton
+            columns={CONTACT_COLUMNS}
+            order={cols.order}
+            hidden={cols.hidden}
+            onReorder={cols.setColumnOrder}
+            onToggle={cols.toggleColumn}
+            onShowAll={cols.showAll}
+            onReset={cols.reset}
+          />
+          {toolbarActions}
+        </div>
       </div>
 
       {/* Table — fixed height to always show ~25 rows */}
@@ -294,24 +328,16 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
                 <TableHead className="w-10">
                   <Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={toggleAll} />
                 </TableHead>
-                <TableHead><SortHeader field="first_name">First Name</SortHeader></TableHead>
-                <TableHead><SortHeader field="last_name">Last Name</SortHeader></TableHead>
-                <TableHead><SortHeader field="email">Email</SortHeader></TableHead>
-                <TableHead><SortHeader field="hs_city">City</SortHeader></TableHead>
-                <TableHead><SortHeader field="hs_contact_status">Lead Status</SortHeader></TableHead>
-                <TableHead><SortHeader field="hs_contact_type">Contact Type</SortHeader></TableHead>
-                <TableHead><SortHeader field="created_at">Create Date</SortHeader></TableHead>
-                <TableHead><SortHeader field="last_contact_at">Last Contact</SortHeader></TableHead>
-                <TableHead><SortHeader field="hs_notes_last_contacted">HubSpot Last Contacted</SortHeader></TableHead>
-                <TableHead><SortHeader field="hs_industry">Industry</SortHeader></TableHead>
-                <TableHead><SortHeader field="job_title">Job Title</SortHeader></TableHead>
-                <TableHead><SortHeader field="hs_hs_email_optout">Opted out: One to One</SortHeader></TableHead>
-                <TableHead><SortHeader field="email_domain_normalized">Email Domain</SortHeader></TableHead>
-                <TableHead><SortHeader field="hs_state">State/Region</SortHeader></TableHead>
-                <TableHead>Company Name</TableHead>
-                <TableHead>LinkedIn</TableHead>
-                <TableHead><SortHeader field="phone_work">Phone</SortHeader></TableHead>
-                <TableHead><SortHeader field="phone_mobile">Mobile</SortHeader></TableHead>
+                <SortableHeaderContext visibleIds={cols.visibleOrder} fullOrder={cols.order} onReorder={cols.setColumnOrder}>
+                  {cols.visibleOrder.map(id => {
+                    const h = CONTACT_HEADERS[id];
+                    return (
+                      <SortableTh key={id} id={id}>
+                        {h.field ? <SortHeader field={h.field}>{h.label}</SortHeader> : <span>{h.label}</span>}
+                      </SortableTh>
+                    );
+                  })}
+                </SortableHeaderContext>
                 <TableHead className="w-10" />
               </TableRow>
             )}
@@ -326,25 +352,26 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
                 : optOut === false || optOut === 'false' || optOut === 0 || optOut === '0'
                   ? 'No'
                   : '—';
-              return (
-                <>
-                  <TableCell onClick={e => e.stopPropagation()}>
-                    <Checkbox checked={selectedIds.has(contact.id)} onCheckedChange={() => toggleOne(contact.id)} />
-                  </TableCell>
-                  <TableCell className="text-sm font-medium">{contact.first_name || '—'}</TableCell>
-                  <TableCell className="text-sm font-medium">{contact.last_name || '—'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+              const cells: Record<string, React.ReactNode> = {
+                first_name: <TableCell key="first_name" className="text-sm font-medium">{contact.first_name || '—'}</TableCell>,
+                last_name: <TableCell key="last_name" className="text-sm font-medium">{contact.last_name || '—'}</TableCell>,
+                email: (
+                  <TableCell key="email" className="text-sm text-muted-foreground">
                     {contact.email ? (
                       <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} className="hover:underline">{contact.email}</a>
                     ) : '—'}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{c.hs_city || '—'}</TableCell>
-                  <TableCell className="text-sm">
+                ),
+                city: <TableCell key="city" className="text-sm text-muted-foreground">{c.hs_city || '—'}</TableCell>,
+                lead_status: (
+                  <TableCell key="lead_status" className="text-sm">
                     {c.hs_contact_status ? (
                       <Badge variant="outline" className="text-[10px]">{c.hs_contact_status}</Badge>
                     ) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
-                  <TableCell className="text-sm">
+                ),
+                contact_type: (
+                  <TableCell key="contact_type" className="text-sm">
                     {(() => {
                       const tags = splitContactTypes((c.hs_contact_type || c.contact_type) as string | null);
                       if (!tags.length) return <span className="text-muted-foreground">—</span>;
@@ -357,10 +384,14 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
                       );
                     })()}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                ),
+                created_at: (
+                  <TableCell key="created_at" className="text-sm text-muted-foreground whitespace-nowrap">
                     {contact.created_at ? format(new Date(contact.created_at), 'MMM d, yyyy') : '—'}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                ),
+                last_contact: (
+                  <TableCell key="last_contact" className="text-sm text-muted-foreground whitespace-nowrap">
                     {c.last_contact_at
                       ? (
                           <span title={format(new Date(c.last_contact_at), 'PPpp')}>
@@ -369,15 +400,19 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
                         )
                       : <span className="italic text-muted-foreground/70">No activity</span>}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                ),
+                hs_last_contacted: (
+                  <TableCell key="hs_last_contacted" className="text-sm text-muted-foreground whitespace-nowrap">
                     {c.hs_notes_last_contacted ? format(new Date(c.hs_notes_last_contacted), 'MMM d, yyyy') : '—'}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground max-w-[160px] truncate" title={c.hs_industry || ''}>{c.hs_industry || '—'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate" title={contact.job_title || ''}>{contact.job_title || '—'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{optOutLabel}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{c.email_domain_normalized || '—'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{c.hs_state || '—'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                ),
+                industry: <TableCell key="industry" className="text-sm text-muted-foreground max-w-[160px] truncate" title={c.hs_industry || ''}>{c.hs_industry || '—'}</TableCell>,
+                job_title: <TableCell key="job_title" className="text-sm text-muted-foreground max-w-[200px] truncate" title={contact.job_title || ''}>{contact.job_title || '—'}</TableCell>,
+                opt_out: <TableCell key="opt_out" className="text-sm text-muted-foreground">{optOutLabel}</TableCell>,
+                email_domain: <TableCell key="email_domain" className="text-sm text-muted-foreground">{c.email_domain_normalized || '—'}</TableCell>,
+                state: <TableCell key="state" className="text-sm text-muted-foreground">{c.hs_state || '—'}</TableCell>,
+                company: (
+                  <TableCell key="company" className="text-sm text-muted-foreground">
                     {companyName ? (
                       companyId ? (
                         <span
@@ -389,7 +424,9 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
                       )
                     ) : '—'}
                   </TableCell>
-                  <TableCell onClick={e => e.stopPropagation()}>
+                ),
+                linkedin: (
+                  <TableCell key="linkedin" onClick={e => e.stopPropagation()}>
                     {contact.linkedin_url ? (
                       <a
                         href={contact.linkedin_url}
@@ -402,8 +439,16 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
                       </a>
                     ) : <span className="text-muted-foreground text-sm">—</span>}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{contact.phone_work || '—'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{contact.phone_mobile || '—'}</TableCell>
+                ),
+                phone: <TableCell key="phone" className="text-sm text-muted-foreground whitespace-nowrap">{contact.phone_work || '—'}</TableCell>,
+                mobile: <TableCell key="mobile" className="text-sm text-muted-foreground whitespace-nowrap">{contact.phone_mobile || '—'}</TableCell>,
+              };
+              return (
+                <>
+                  <TableCell onClick={e => e.stopPropagation()}>
+                    <Checkbox checked={selectedIds.has(contact.id)} onCheckedChange={() => toggleOne(contact.id)} />
+                  </TableCell>
+                  {cols.visibleOrder.map(id => cells[id])}
                   <TableCell onClick={e => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
