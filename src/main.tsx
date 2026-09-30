@@ -5,9 +5,13 @@ import "./index.css";
 import { markSessionEnd } from "./lib/usageLogger";
 import { initPerfDiagnostics } from "./lib/perfDiagnostics";
 import { clearHighContrast } from "./hooks/useHighContrast";
+import { installOverlayLockWatchdog } from "./lib/overlayLockWatchdog";
 
 // High contrast mode was retired; clear any previously persisted preference.
 clearHighContrast();
+
+// Recover from stale pop-up locks so closing any dialog never freezes the app.
+installOverlayLockWatchdog();
 
 // Boot lightweight perf instrumentation. No-op until something asks for
 // the snapshot (Admin → Observability → Performance), but the long-task
