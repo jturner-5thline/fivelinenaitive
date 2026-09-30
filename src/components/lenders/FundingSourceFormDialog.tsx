@@ -291,6 +291,19 @@ export function FundingSourceFormDialog({
         <DialogHeader>
           <DialogTitle>Add Funding Source</DialogTitle>
           <DialogDescription>Complete the funding source profile before adding it to the directory.</DialogDescription>
+          {claapState === 'loading' && (
+            <div className="mt-2 inline-flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs text-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading the Claap call to fill in details…
+            </div>
+          )}
+          {claapState === 'done' && (
+            <div className="mt-2 inline-flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs text-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-primary" /> Pre-filled from the Claap recording — review before saving
+            </div>
+          )}
+          {claapState === 'empty' && (
+            <p className="mt-2 text-xs text-muted-foreground">No lending criteria could be pulled from the Claap call.</p>
+          )}
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto pr-4 -mr-2">
