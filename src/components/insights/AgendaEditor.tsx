@@ -127,13 +127,13 @@ const SEED_CONTENT = {
 };
 
 /** Streamlined seed (Sep 2026 / Q3 2026 onward): no Key Items, no Prep. */
-export const STREAMLINED_SEED_SECTIONS = ['Presentation', "Finance & KPI's", 'New Items'] as const;
+export const STREAMLINED_SEED_SECTIONS = ['Presentation', "Finance & KPI's", 'New Business, Challenges & Concerns'] as const;
 const STREAMLINED_SEED_CONTENT = {
   type: 'doc',
   content: [
     headingNode('Presentation'), subtitleNode(), { type: 'paragraph' },
     headingNode("Finance & KPI's"), { type: 'paragraph' },
-    headingNode('New Items'), { type: 'paragraph' },
+    headingNode('New Business, Challenges & Concerns'), { type: 'paragraph' },
   ],
 };
 
@@ -169,12 +169,18 @@ function stripRemovedSections(doc: any): any {
     }
     if (!skipping) out.push(n);
   }
-  // Ensure a "Finance & KPI's" section exists above "New Items".
+  // Rename legacy "New Items" heading to the new label.
   const headingText = (n: any) =>
     n?.type === 'heading' ? (n.content ?? []).map((c: any) => c?.text ?? '').join('').trim() : null;
+  for (const n of out) {
+    if (headingText(n) === 'New Items') {
+      n.content = [{ type: 'text', text: 'New Business, Challenges & Concerns' }];
+    }
+  }
+  // Ensure a "Finance & KPI's" section exists above the new-business heading.
   const hasFinance = out.some((n) => headingText(n) === "Finance & KPI's");
   if (!hasFinance) {
-    const newItemsIdx = out.findIndex((n) => headingText(n) === 'New Items');
+    const newItemsIdx = out.findIndex((n) => headingText(n) === 'New Business, Challenges & Concerns');
     const insertion = [headingNode("Finance & KPI's"), { type: 'paragraph' }];
     if (newItemsIdx >= 0) out.splice(newItemsIdx, 0, ...insertion);
     else out.push(...insertion);
