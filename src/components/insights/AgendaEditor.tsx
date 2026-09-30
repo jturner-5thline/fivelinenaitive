@@ -126,13 +126,32 @@ const SEED_CONTENT = {
   }),
 };
 
+/** Default body under the Finance & KPI's heading. */
+const FINANCE_QUESTIONS = [
+  'Is revenue hitting the target?',
+  'Is gross margin holding or rising?',
+  'Is liquidity stable?',
+];
+const financeBody = () => [
+  { type: 'paragraph', content: [{ type: 'text', text: 'Address these 3 questions:' }] },
+  {
+    type: 'orderedList',
+    attrs: { start: 1 },
+    content: FINANCE_QUESTIONS.map((q) => ({
+      type: 'listItem',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: q }] }],
+    })),
+  },
+  { type: 'paragraph' },
+];
+
 /** Streamlined seed (Sep 2026 / Q3 2026 onward): no Key Items, no Prep. */
 export const STREAMLINED_SEED_SECTIONS = ['Presentation', "Finance & KPI's", 'New Business, Challenges & Concerns'] as const;
 const STREAMLINED_SEED_CONTENT = {
   type: 'doc',
   content: [
     headingNode('Presentation'), subtitleNode(), { type: 'paragraph' },
-    headingNode("Finance & KPI's"), { type: 'paragraph' },
+    headingNode("Finance & KPI's"), ...financeBody(),
     headingNode('New Business, Challenges & Concerns'), { type: 'paragraph' },
   ],
 };
