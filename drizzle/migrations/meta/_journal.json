@@ -190,6 +190,13 @@
       "when": 1790785097421,
       "tag": "0026_fix_paro_and_normalize_company_domains",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1790794356327,
+      "tag": "0027_crm_companies_name_trgm",
+      "breakpoints": true
     }
   ]
 }

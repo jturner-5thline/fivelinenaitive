@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useCompany } from '@/hooks/useCompany';
 import { Check, ChevronsUpDown, Mail, MapPin, Phone, Pencil, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,9 +54,7 @@ interface Props {
 export function LenderContactPicker({ value, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const debounced = useDebouncedValue(query, 200);
-  const [results, setResults] = useState<CrmContactRow[]>([]);
-  const [loading, setLoading] = useState(false);
+  const debounced = useDebouncedValue(query, 100);
   const [creating, setCreating] = useState(false);
   const [newForm, setNewForm] = useState({
     first_name: '',
@@ -130,40 +130,45 @@ export function LenderContactPicker({ value, onChange }: Props) {
   );
   const createContact = useCreateContact();
 
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const q = debounced.trim();
-        // Empty query → show the first 50 contacts alphabetically.
-        // With a query → server-side search across ALL contacts, capped at 50 matches.
-        let req = supabase
-          .from('contacts')
-          .select('id, full_name, first_name, last_name, email, job_title, phone_work, phone_mobile')
-          .order('full_name', { ascending: true })
-          .limit(50);
-        if (q) {
-          const safe = q.replace(/[%,]/g, ' ').trim();
-          req = req.or(
-            `full_name.ilike.%${safe}%,first_name.ilike.%${safe}%,last_name.ilike.%${safe}%,email.ilike.%${safe}%`,
-          );
-        }
-        const { data, error } = await req;
-        if (cancelled) return;
+  const { company } = useCompany();
+  const orgId = company?.id ?? null;
+  const q = debounced.trim();
+  const { data: queryData, isFetching } = useQuery({
+    queryKey: ['lender-contact-picker', orgId, q],
+    enabled: open,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+    placeholderData: keepPreviousData,
+    queryFn: async ({ signal }) => {
+      if (q) {
+        // Indexed, org-scoped search (full-text / trigram) — fast on 100k+ rows.
+        const { data, error } = await (supabase.rpc as any)('search_contacts_fast', {
+          _search: q,
+          _limit: 50,
+          _offset: 0,
+        }).abortSignal(signal);
         if (error) {
           console.warn('[LenderContactPicker] search failed', error);
-          setResults([]);
-        } else {
-          setResults((data ?? []) as CrmContactRow[]);
+          return [] as CrmContactRow[];
         }
-      } finally {
-        if (!cancelled) setLoading(false);
+        return (data ?? []) as CrmContactRow[];
       }
-    })();
-    return () => { cancelled = true; };
-  }, [debounced, open]);
+      let req = supabase
+        .from('contacts')
+        .select('id, full_name, first_name, last_name, email, job_title, phone_work, phone_mobile')
+        .order('updated_at', { ascending: false, nullsFirst: false })
+        .limit(50);
+      if (orgId) req = req.eq('org_company_id', orgId);
+      const { data, error } = await req.abortSignal(signal);
+      if (error) {
+        console.warn('[LenderContactPicker] search failed', error);
+        return [] as CrmContactRow[];
+      }
+      return (data ?? []) as CrmContactRow[];
+    },
+  });
+  const results = queryData ?? [];
+  const loading = isFetching && !queryData;
 
   const pickExisting = (c: CrmContactRow) => {
     onChange({

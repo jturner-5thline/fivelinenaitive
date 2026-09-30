@@ -5,6 +5,9 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { normalizeCompanyName } from '@/lib/funding-sources/companyMatch';
 import { diceCoefficient } from '@/utils/stringSimilarity';
+import { useCompany } from '@/hooks/useCompany';
+
+const nameSearchCache = new Map<string, LinkedCrmCompany[]>();
 
 export interface LinkedCrmCompany {
   id: string;
@@ -39,6 +42,8 @@ export function FundingSourceNameField({
   const [results, setResults] = useState<LinkedCrmCompany[]>([]);
   const [loading, setLoading] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const { company } = useCompany();
+  const orgId = company?.id ?? null;
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -52,6 +57,14 @@ export function FundingSourceNameField({
     const term = value.trim();
     if (!open || term.length < 2) {
       setResults([]);
+      setLoading(false);
+      return;
+    }
+    const cacheKey = `${orgId ?? ''}|${term.toLowerCase()}`;
+    const cached = nameSearchCache.get(cacheKey);
+    if (cached) {
+      setResults(cached);
+      setLoading(false);
       return;
     }
     let cancelled = false;
@@ -59,11 +72,15 @@ export function FundingSourceNameField({
     const t = setTimeout(async () => {
       const norm = normalizeCompanyName(term);
       const token = norm.split(' ')[0] || term;
-      const { data } = await supabase
+      const safeTerm = term.replace(/[%,()]/g, ' ').trim();
+      const safeToken = token.replace(/[%,()]/g, ' ').trim() || safeTerm;
+      let req = supabase
         .from('crm_companies')
         .select('id,name,domain,website_url')
-        .or(`name.ilike.%${term}%,name.ilike.%${token}%`)
+        .or(`name.ilike.%${safeTerm}%,name.ilike.%${safeToken}%`)
         .limit(30);
+      if (orgId) req = req.eq('org_company_id', orgId);
+      const { data } = await req;
       if (cancelled) return;
       const rows = (data ?? []) as LinkedCrmCompany[];
       rows.sort(
@@ -71,14 +88,17 @@ export function FundingSourceNameField({
           diceCoefficient(norm, normalizeCompanyName(b.name)) -
           diceCoefficient(norm, normalizeCompanyName(a.name)),
       );
-      setResults(rows.slice(0, 8));
+      const top = rows.slice(0, 8);
+      nameSearchCache.set(cacheKey, top);
+      if (nameSearchCache.size > 200) nameSearchCache.delete(nameSearchCache.keys().next().value as string);
+      setResults(top);
       setLoading(false);
-    }, 250);
+    }, 80);
     return () => {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [value, open]);
+  }, [value, open, orgId]);
 
   const exactExists = results.some(
     (r) => r.name.trim().toLowerCase() === value.trim().toLowerCase(),
