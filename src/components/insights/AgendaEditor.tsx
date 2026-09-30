@@ -126,13 +126,32 @@ const SEED_CONTENT = {
   }),
 };
 
+/** Default body under the Finance & KPI's heading. */
+const FINANCE_QUESTIONS = [
+  'Is revenue hitting the target?',
+  'Is gross margin holding or rising?',
+  'Is liquidity stable?',
+];
+const financeBody = () => [
+  { type: 'paragraph', content: [{ type: 'text', text: 'Address these 3 questions:' }] },
+  {
+    type: 'orderedList',
+    attrs: { start: 1 },
+    content: FINANCE_QUESTIONS.map((q) => ({
+      type: 'listItem',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: q }] }],
+    })),
+  },
+  { type: 'paragraph' },
+];
+
 /** Streamlined seed (Sep 2026 / Q3 2026 onward): no Key Items, no Prep. */
 export const STREAMLINED_SEED_SECTIONS = ['Presentation', "Finance & KPI's", 'New Business, Challenges & Concerns'] as const;
 const STREAMLINED_SEED_CONTENT = {
   type: 'doc',
   content: [
     headingNode('Presentation'), subtitleNode(), { type: 'paragraph' },
-    headingNode("Finance & KPI's"), { type: 'paragraph' },
+    headingNode("Finance & KPI's"), ...financeBody(),
     headingNode('New Business, Challenges & Concerns'), { type: 'paragraph' },
   ],
 };
@@ -178,12 +197,19 @@ function stripRemovedSections(doc: any): any {
     }
   }
   // Ensure a "Finance & KPI's" section exists above the new-business heading.
-  const hasFinance = out.some((n) => headingText(n) === "Finance & KPI's");
-  if (!hasFinance) {
+  const financeIdx = out.findIndex((n) => headingText(n) === "Finance & KPI's");
+  if (financeIdx < 0) {
     const newItemsIdx = out.findIndex((n) => headingText(n) === 'New Business, Challenges & Concerns');
-    const insertion = [headingNode("Finance & KPI's"), { type: 'paragraph' }];
+    const insertion = [headingNode("Finance & KPI's"), ...financeBody()];
     if (newItemsIdx >= 0) out.splice(newItemsIdx, 0, ...insertion);
     else out.push(...insertion);
+  } else {
+    // If the section body is still empty, fill in the default questions.
+    let end = financeIdx + 1;
+    while (end < out.length && out[end]?.type !== 'heading') end++;
+    const body = out.slice(financeIdx + 1, end);
+    const isEmpty = body.every((n) => n?.type === 'paragraph' && !(n.content ?? []).length);
+    if (isEmpty) out.splice(financeIdx + 1, body.length, ...financeBody());
   }
   return { ...doc, content: out };
 }
