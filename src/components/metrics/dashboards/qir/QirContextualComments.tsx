@@ -10,6 +10,9 @@ import { MentionText } from '@/components/insights/comments/MentionText';
 import { CommentTypePicker, type CommentType } from '@/components/insights/comments/CommentTypePicker';
 import { useInsertAgendaFootnote } from '@/components/insights/footnotes/useInsertAgendaFootnote';
 import { toast } from 'sonner';
+import { appendPresentationBullet } from '@/components/insights/appendPresentationBullet';
+
+const REPORT_PERSONA: Record<string, string> = { 'report-1': 'JT', 'report-2': 'JM', 'report-3': 'SW' };
 
 /**
  * Resolves a contextual "source" from the right-click target by walking up
@@ -355,7 +358,23 @@ export function QirContextualComments({
         } catch (qErr) {
           console.error('[promote-to-queue]', qErr);
         }
-        toast.success('Added to Queue', { description: composer.source.label });
+        const persona = REPORT_PERSONA[reportKey];
+        const row = inserted as any;
+        if (persona && companyApi.company?.id && row.period_type && row.period_key) {
+          try {
+            const who = row.author_name ? ` (${row.author_name})` : '';
+            await appendPresentationBullet({
+              companyId: companyApi.company.id,
+              userId: row.author_user_id,
+              periodType: row.period_type,
+              periodKey: row.period_key,
+              text: `${persona} · ${composer.source.label}: ${body.trim()}${who}`,
+            });
+          } catch (aErr) {
+            console.error('[agenda-presentation-bullet]', aErr);
+          }
+        }
+        toast.success(persona ? 'Comment added to report & Agenda' : 'Added to Queue', { description: composer.source.label });
       } else {
         toast.error("Couldn't add to queue");
       }
