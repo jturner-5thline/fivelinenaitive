@@ -68,8 +68,7 @@ import { useLenderDuplicateDismissals } from '@/hooks/useLenderDuplicateDismissa
 import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
 import { formatCurrencyInput } from '@/utils/formatLenderCurrency';
 import { ImportLendersDialog } from '@/components/lenders/ImportLendersDialog';
-import { DuplicateLendersDialog } from '@/components/lenders/DuplicateLendersDialog';
-import { SideBySideMergeDialog } from '@/components/lenders/SideBySideMergeDialog';
+import { MergeLendersDialog } from '@/components/lenders/MergeLendersDialog';
 import { NonBankLendersImportButton } from '@/components/lenders/NonBankLendersImportButton';
 import { BankLendersImportButton } from '@/components/lenders/BankLendersImportButton';
 import { LenderFiltersPanel, LenderFiltersBody, countActiveLenderFilters, applyLenderFilters, emptyFilters, LenderFilters } from '@/components/lenders/LenderFilters';
@@ -1732,15 +1731,9 @@ export default function Lenders() {
                       Download Import Template
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setIsSideBySideMergeOpen(true)}>
-                      <Columns className="h-4 w-4 mr-2" />
-                      {advancedFilters.tiers.length > 0
-                        ? `Merge ${advancedFilters.tiers.join(', ')} (${sortedLenders.length})`
-                        : 'Merge Side-by-Side'}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setIsDuplicatesDialogOpen(true)}>
+                    <DropdownMenuItem onClick={() => { clearSelection(); setIsSideBySideMergeOpen(true); }}>
                       <GitMerge className="h-4 w-4 mr-2" />
-                      Quick Merge
+                      Merge Duplicates
                     </DropdownMenuItem>
                     {canSeeFlexSync && (
                       <>
@@ -2620,15 +2613,7 @@ export default function Lenders() {
         originClassName={analyticsOrigin.contentClassName}
       />
 
-      <DuplicateLendersDialog
-        open={isDuplicatesDialogOpen}
-        onOpenChange={setIsDuplicatesDialogOpen}
-        lenders={masterLenders}
-        onMergeLenders={async (keepId, mergeIds, mergedData) => { await mergeLenders(keepId, mergeIds, mergedData); }}
-        onDeleteLender={async (id) => { await deleteMasterLender(id); }}
-      />
-
-      <SideBySideMergeDialog
+      <MergeLendersDialog
         open={isSideBySideMergeOpen}
         onOpenChange={(open) => {
           setIsSideBySideMergeOpen(open);
@@ -2636,7 +2621,7 @@ export default function Lenders() {
             clearSelection();
           }
         }}
-        lenders={sortedLenders}
+        lenders={masterLenders}
         onMergeLenders={async (keepId, mergeIds, mergedData) => { await mergeLenders(keepId, mergeIds, mergedData); }}
         selectedLenderIds={selectedLenderIds.size >= 2 ? Array.from(selectedLenderIds) : undefined}
       />
