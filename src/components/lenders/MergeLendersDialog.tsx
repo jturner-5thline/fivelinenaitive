@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, ChevronLeft, ChevronRight, Merge, Star, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, LayoutGrid, List, Merge, Star, X } from 'lucide-react';
+import { useLenderDuplicateDismissals } from '@/hooks/useLenderDuplicateDismissals';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
@@ -196,6 +197,9 @@ export function MergeLendersDialog({ open, onOpenChange, lenders, onMergeLenders
   const [busy, setBusy] = useState(false);
   const [idx, setIdx] = useState(0);
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
+  const [view, setView] = useState<'detail' | 'overview'>('detail');
+  const [layout, setLayout] = useState<'grid' | 'list'>('grid');
+  const { isDismissed, dismissGroup } = useLenderDuplicateDismissals(open);
 
   useEffect(() => {
     if (open) return;
@@ -220,11 +224,11 @@ export function MergeLendersDialog({ open, onOpenChange, lenders, onMergeLenders
     const { groups } = detectDuplicateLenders(lenders.map(l => ({ id: l.id, name: l.name || '', website: (l as any).website ?? null, email: (l as any).email ?? null })));
     return groups
       .map(g => ({ id: g.groupId, lenders: (g.memberIds.map(id => byId.get(id)).filter(Boolean) as MasterLender[]).sort((a, b) => filled(b) - filled(a)) }))
-      .filter(g => g.lenders.length > 1 && !skipped.has(g.id));
-  }, [open, lenders, selectionMode, selectedLenderIds, skipped]);
+      .filter(g => g.lenders.length > 1 && !skipped.has(g.id) && !isDismissed(g.lenders.map(l => l.id)));
+  }, [open, lenders, selectionMode, selectedLenderIds, skipped, isDismissed]);
 
   useEffect(() => { if (idx >= groups.length) setIdx(Math.max(0, groups.length - 1)); }, [groups.length, idx]);
-  useEffect(() => { if (!open) { setIdx(0); setSkipped(new Set()); } }, [open]);
+  useEffect(() => { if (!open) { setIdx(0); setSkipped(new Set()); setView('detail'); } }, [open]);
 
   const group = groups[idx];
 
@@ -242,6 +246,15 @@ export function MergeLendersDialog({ open, onOpenChange, lenders, onMergeLenders
   };
 
   const skip = () => group && setSkipped(s => new Set(s).add(group.id));
+  const dismiss = async (g: { id: string; lenders: MasterLender[] }) => {
+    setSkipped(s => new Set(s).add(g.id));
+    try {
+      await dismissGroup(g.lenders.map(l => l.id));
+      toast({ title: 'Marked as not duplicates' });
+    } catch {
+      toast({ title: 'Could not save dismissal', variant: 'destructive' });
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -249,8 +262,20 @@ export function MergeLendersDialog({ open, onOpenChange, lenders, onMergeLenders
         <div className="flex items-center gap-3 px-5 py-3 border-b border-border/60 pr-12">
           <Merge className="h-4 w-4 text-primary" />
           <DialogTitle className="text-base font-semibold">Merge funding sources</DialogTitle>
-          {!selectionMode && groups.length > 0 && (
+          {!selectionMode && groups.length > 0 && view === 'overview' && (
+            <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+              <span>{groups.length} possible duplicate{groups.length === 1 ? '' : 's'}</span>
+              <div className="flex rounded-md border border-border/60 p-0.5">
+                <Button variant={layout === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-6 w-6" onClick={() => setLayout('grid')} aria-label="Grid view"><LayoutGrid className="h-3.5 w-3.5" /></Button>
+                <Button variant={layout === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-6 w-6" onClick={() => setLayout('list')} aria-label="List view"><List className="h-3.5 w-3.5" /></Button>
+              </div>
+            </div>
+          )}
+          {!selectionMode && groups.length > 0 && view === 'detail' && (
             <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+              <Button variant="outline" size="sm" className="h-7 mr-2 gap-1.5" onClick={() => setView('overview')}>
+                <LayoutGrid className="h-3.5 w-3.5" /> View all
+              </Button>
               <Button variant="ghost" size="icon" className="h-7 w-7" disabled={idx === 0} onClick={() => setIdx(i => i - 1)} aria-label="Previous group">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -261,14 +286,46 @@ export function MergeLendersDialog({ open, onOpenChange, lenders, onMergeLenders
             </div>
           )}
         </div>
-        {group ? (
+        {!selectionMode && view === 'overview' && groups.length > 0 ? (
+          <div className="flex-1 min-h-0 overflow-y-auto p-5">
+            <div className={layout === 'grid' ? 'grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-2'}>
+              {groups.map((g, i) => (
+                <div key={g.id} role="button" tabIndex={0}
+                  onClick={() => { setIdx(i); setView('detail'); }}
+                  onKeyDown={e => { if (e.key === 'Enter') { setIdx(i); setView('detail'); } }}
+                  className={cn('group relative rounded-lg border border-border/60 hover:border-primary/60 cursor-pointer transition-colors min-w-0',
+                    layout === 'grid' ? 'p-3' : 'px-3 py-2 flex items-center gap-3')}>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium truncate pr-8">{g.lenders[0].name}</div>
+                    <div className={cn('text-xs text-muted-foreground', layout === 'grid' ? 'mt-1 space-y-0.5' : 'truncate')}>
+                      {layout === 'grid'
+                        ? g.lenders.slice(1, 4).map(l => <div key={l.id} className="truncate">+ {l.name}</div>)
+                        : g.lenders.slice(1).map(l => l.name).join(', ')}
+                      {layout === 'grid' && g.lenders.length > 4 && <div>+{g.lenders.length - 4} more</div>}
+                    </div>
+                  </div>
+                  <span className={cn('text-[11px] text-muted-foreground shrink-0', layout === 'grid' && 'block mt-2')}>{g.lenders.length} records</span>
+                  <Button variant="ghost" size="sm"
+                    className={cn('h-7 text-xs shrink-0', layout === 'grid' && 'absolute top-2 right-2 h-6 w-6 p-0')}
+                    onClick={e => { e.stopPropagation(); void dismiss(g); }}
+                    aria-label="Dismiss — not duplicates" title="Not duplicates">
+                    {layout === 'grid' ? <X className="h-3.5 w-3.5" /> : 'Dismiss'}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : group ? (
           <MergeGroup
             key={group.id + group.lenders.map(l => l.id).join()}
             lenders={group.lenders}
             onMerge={handleMerge}
             busy={busy}
             footerLeft={!selectionMode && (
-              <Button variant="ghost" size="sm" onClick={skip}>Not duplicates / skip</Button>
+              <>
+                <Button variant="ghost" size="sm" onClick={() => void dismiss(group)}>Not duplicates</Button>
+                <Button variant="ghost" size="sm" onClick={skip}>Skip</Button>
+              </>
             )}
           />
         ) : (
