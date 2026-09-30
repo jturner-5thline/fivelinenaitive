@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Plus, Upload, Building2, Loader2, RefreshCw, Download, Search, X, ChevronDown, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -62,39 +62,12 @@ export default function CrmCompanies() {
   const companies = useMemo(() => data?.pages.flatMap((p) => p.rows) ?? [], [data]);
   const totalCount = data?.pages[0]?.totalCount ?? companies.length;
 
-  // Infinite-scroll sentinel
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      },
-      { rootMargin: '1800px 0px' },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage, companies.length]);
-
-  // Always keep one page pre-fetched ahead of the user. As soon as the
-  // current page settles, schedule the next one during idle time so the
-  // sentinel never has to wait — scrolling feels seamless.
-  useEffect(() => {
-    if (!hasNextPage || isFetchingNextPage || isFetching || companies.length === 0) return;
-    const idleWindow = window as Window & typeof globalThis & {
-      requestIdleCallback?: (callback: IdleRequestCallback) => number;
-      cancelIdleCallback?: (handle: number) => void;
-    };
-    if (idleWindow.requestIdleCallback) {
-      const id = idleWindow.requestIdleCallback(() => void fetchNextPage(), { timeout: 1500 });
-      return () => idleWindow.cancelIdleCallback?.(id);
-    }
-    const id = globalThis.setTimeout(() => void fetchNextPage(), 200);
-    return () => globalThis.clearTimeout(id);
-  }, [companies.length, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage]);
+  // Load more only when the user scrolls to the bottom of the table itself.
+  // (A page-level sentinel + idle prefetch kept swapping data under the
+  // scroller, which made the table jump while the user was scrolling.)
+  const handleEndReached = () => {
+    if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+  };
 
   const showSyncBanner = !isLoading && totalCount === 0;
 
@@ -208,6 +181,7 @@ export default function CrmCompanies() {
               <div>
                 <CrmCompaniesTable
                   companies={companies}
+                  onEndReached={handleEndReached}
                   toolbarActions={
                     <>
                       <DropdownMenu>
@@ -268,7 +242,7 @@ export default function CrmCompanies() {
                   }
                 />
               </div>
-              <div ref={sentinelRef} className="py-6 flex items-center justify-center text-sm text-muted-foreground">
+              <div className="py-6 flex items-center justify-center text-sm text-muted-foreground">
                 {isFetchingNextPage ? (
                   <span className="flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-xs shadow-sm backdrop-blur">
                     <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
