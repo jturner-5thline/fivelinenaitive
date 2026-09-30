@@ -414,6 +414,10 @@ export function InsightsNarrativeEditor({
       window.removeEventListener('scroll', reflow, true);
       window.removeEventListener('resize', reflow);
     };
+  }, [editor]);
+
+  useEffect(() => {
+    if (editor && editor.isEditable === !!readOnly) editor.setEditable(!readOnly);
   }, [editor, readOnly]);
 
   if (!editor) {

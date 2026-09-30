@@ -1625,13 +1625,14 @@ function ReportKpisSection({ s, set, reportLabel, sliceKey = 'kpis', title = 'KP
   );
 }
 
-function ReportNarrativeSection({ s, set, scopeKey, save, isSaving, reportLabel }: {
+function ReportNarrativeSection({ s, set, scopeKey, save, isSaving, reportLabel, readOnly }: {
   s: ReportState;
   set: ReportSetState;
   scopeKey: string;
   save?: () => Promise<boolean>;
   isSaving?: boolean;
   reportLabel: string;
+  readOnly?: boolean;
 }) {
   const attachments = s.narrativeAttachments ?? [];
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -3880,6 +3881,7 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
               save={save}
               isSaving={isSaving}
               reportLabel={reportLabel}
+              readOnly={canEdit === false}
             />
           </div>
           <div id="qir-section-financials" className="qir-unified-section">
