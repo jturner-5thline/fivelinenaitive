@@ -127,13 +127,13 @@ const SEED_CONTENT = {
 };
 
 /** Streamlined seed (Sep 2026 / Q3 2026 onward): no Key Items, no Prep. */
-export const STREAMLINED_SEED_SECTIONS = ['Presentation', "Finance & KPI's", 'New Items'] as const;
+export const STREAMLINED_SEED_SECTIONS = ['Presentation', "Finance & KPI's", 'New Business, Challenges & Concerns'] as const;
 const STREAMLINED_SEED_CONTENT = {
   type: 'doc',
   content: [
     headingNode('Presentation'), subtitleNode(), { type: 'paragraph' },
     headingNode("Finance & KPI's"), { type: 'paragraph' },
-    headingNode('New Items'), { type: 'paragraph' },
+    headingNode('New Business, Challenges & Concerns'), { type: 'paragraph' },
   ],
 };
 
