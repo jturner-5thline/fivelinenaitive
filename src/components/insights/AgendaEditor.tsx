@@ -197,12 +197,19 @@ function stripRemovedSections(doc: any): any {
     }
   }
   // Ensure a "Finance & KPI's" section exists above the new-business heading.
-  const hasFinance = out.some((n) => headingText(n) === "Finance & KPI's");
-  if (!hasFinance) {
+  const financeIdx = out.findIndex((n) => headingText(n) === "Finance & KPI's");
+  if (financeIdx < 0) {
     const newItemsIdx = out.findIndex((n) => headingText(n) === 'New Business, Challenges & Concerns');
-    const insertion = [headingNode("Finance & KPI's"), { type: 'paragraph' }];
+    const insertion = [headingNode("Finance & KPI's"), ...financeBody()];
     if (newItemsIdx >= 0) out.splice(newItemsIdx, 0, ...insertion);
     else out.push(...insertion);
+  } else {
+    // If the section body is still empty, fill in the default questions.
+    let end = financeIdx + 1;
+    while (end < out.length && out[end]?.type !== 'heading') end++;
+    const body = out.slice(financeIdx + 1, end);
+    const isEmpty = body.every((n) => n?.type === 'paragraph' && !(n.content ?? []).length);
+    if (isEmpty) out.splice(financeIdx + 1, body.length, ...financeBody());
   }
   return { ...doc, content: out };
 }
