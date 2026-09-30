@@ -485,7 +485,7 @@ const Toolbar = React.forwardRef<HTMLDivElement, { editor: Editor | null; visibl
       </Group>
     </div>
   );
-}
+});
 
 function formatJustNow(ts: Date | null) {
   if (!ts) return '';
