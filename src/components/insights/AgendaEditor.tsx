@@ -979,6 +979,19 @@ export function AgendaEditor() {
         }
       `}</style>
       <div className="agenda-editor-col">
+      <h1 style={{
+        fontSize: 22, fontWeight: 700, color: 'rgba(235,245,255,0.97)',
+        letterSpacing: '-0.015em', lineHeight: 1.2, margin: '0 0 12px',
+      }}>
+        {(() => {
+          let label = periodLabel;
+          const m = /^(\d{4})-(\d{2})$/.exec(periodKey);
+          if (periodType === 'month' && m && !activePeriod.periodEnd) {
+            label = new Date(+m[1], +m[2] - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+          }
+          return `${label} ${periodType === 'month' ? 'Monthly' : 'Quarterly'} Insights`;
+        })()}
+      </h1>
       <Toolbar ref={toolbarRef} editor={editor} visible={toolbarVisible} />
       <div style={{
         display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6,
