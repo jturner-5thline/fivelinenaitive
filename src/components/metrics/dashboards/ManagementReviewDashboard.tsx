@@ -3982,7 +3982,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 );
               })()}
               {trendMode === 'quarterly-yoy' ? (
-                <div style={{ flex: 1, minHeight: 180, display: 'flex' }}><QuarterlyRevenueGrowthCard bare /></div>
+                <div style={{ flex: 1, minHeight: 180, display: 'flex' }}><QuarterlyRevenueGrowthCard bare anchorDate={String(reportingPeriod?.end ?? timeframe.end)} /></div>
               ) : qbConnected && (trendMode === 'ttm' ? ttmLabels.length > 0 : monthlyTrendLabels.length > 0)
                 ? <div style={{ position: 'relative', flex: 1, minHeight: 180 }}><canvas ref={ncRef} /></div>
                 : <NaPlaceholder height={200} label={isLoading ? 'Loading…' : 'Revenue unavailable — connect QuickBooks to populate finance data.'} />}
@@ -4171,11 +4171,11 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               </div>
               <div className="mt-3 flex-1 min-h-[160px]">
                 <div className="mb-1 text-xs font-medium text-muted-foreground">
-                  Next 3 Months' Revenue & Profit
+                  Projected Revenue & Profit (FinServ trailing 3-mo avg)
                 </div>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={next3Months.rows}
+                    data={finservTrailing.rows}
                     margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />

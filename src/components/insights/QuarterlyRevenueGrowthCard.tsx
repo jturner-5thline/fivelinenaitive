@@ -70,8 +70,12 @@ function makeQuarter(year: number, q: number): QKey {
   };
 }
 
-function rollingQuarters(): QKey[] {
-  const now = new Date();
+function rollingQuarters(anchor?: string): QKey[] {
+  let now = new Date();
+  if (anchor) {
+    const [y, m, d] = anchor.split('-').map(Number);
+    if (y && m) now = new Date(y, m - 1, d || 1);
+  }
   const curY = now.getFullYear();
   const curQ = Math.floor(now.getMonth() / 3);
   const out: QKey[] = [];
@@ -103,12 +107,12 @@ interface ChartRow {
 
 /* =============================================================== */
 
-export function QuarterlyRevenueGrowthCard({ bare = false }: { bare?: boolean } = {}) {
+export function QuarterlyRevenueGrowthCard({ bare = false, anchorDate }: { bare?: boolean; anchorDate?: string } = {}) {
   const { user } = useAuth();
   const [selectedRealms, setSelectedRealms] = useState<string[]>([]); // [] = all
   const [drillRow, setDrillRow] = useState<ChartRow | null>(null);
 
-  const quarters = useMemo(rollingQuarters, []);
+  const quarters = useMemo(() => rollingQuarters(anchorDate), [anchorDate]);
   // priorYear counterparts of each displayed quarter
   const priorQuarters = useMemo(
     () => quarters.map(q => makeQuarter(q.year - 1, q.q)),
