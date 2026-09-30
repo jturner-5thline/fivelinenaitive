@@ -169,14 +169,11 @@ export function AgendaFootnotesSection({ editor, companyId, periodType, periodKe
         .agenda-footnotes-link { color: rgba(200,225,255,0.6); display: inline-flex; align-items: center; gap: 4px; text-decoration: none; }
         .agenda-footnotes-link:hover { color: #7ed0ff; }
       `}</style>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: 10, gap: 8, flexWrap: 'wrap',
-      }}>
-        <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em', color: '#ffffff' }}>
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em', color: '#ffffff', marginBottom: 8 }}>
           Action Items and Key Decisions {ordered.length > 0 && <span style={{ marginLeft: 4, opacity: 0.55, fontWeight: 400 }}>· {ordered.length}</span>}
         </div>
-        <div style={{ display: 'inline-flex', gap: 6 }}>
+        <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
           {(['decision', 'note', 'action_item'] as FootnoteType[]).map((t) => (
             <button
               key={t}
