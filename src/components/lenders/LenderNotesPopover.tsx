@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -66,26 +66,28 @@ export function LenderNotesPopover({
   );
 }
 
-// Small icon button that shows flag indicator
-export function LenderNotesIcon({
-  lenderName,
-  className,
-  showCount = false,
-}: {
-  lenderName: string;
-  className?: string;
-  showCount?: boolean;
-}) {
+// Small icon button that shows flag indicator. Forwards ref + props so it
+// works as a Radix `asChild` trigger (otherwise the popover never opens).
+export const LenderNotesIcon = forwardRef<
+  HTMLButtonElement,
+  { lenderName: string; className?: string; showCount?: boolean } & React.ButtonHTMLAttributes<HTMLButtonElement>
+>(function LenderNotesIcon({ lenderName, className, showCount: _showCount, onClick, ...rest }, ref) {
   const { data: hasFlags } = useLenderHasFlags(lenderName);
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
+          ref={ref}
           variant="ghost"
           size="sm"
+          {...rest}
           className={cn('h-7 w-7 p-0 relative', className)}
-          onClick={(e) => e.stopPropagation()}
+          aria-label={hasFlags ? 'Flagged – view internal notes' : 'Internal lender notes'}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick?.(e);
+          }}
         >
           {hasFlags ? (
             <Flag className="h-3.5 w-3.5 text-amber-500" />
@@ -102,7 +104,7 @@ export function LenderNotesIcon({
       </TooltipContent>
     </Tooltip>
   );
-}
+});
 
 // Flag indicator badge (non-interactive, for inline display)
 export function LenderFlagIndicator({
