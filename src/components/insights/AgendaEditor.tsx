@@ -1038,25 +1038,6 @@ export function AgendaEditor() {
         >
           <Sparkles size={11} /> Generate Recap
         </button>
-        {isEmpty && loaded && (
-          <button
-            type="button"
-            onClick={handleCopyFromPrevious}
-            disabled={copying}
-            title="Copy from previous period (undoable)"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              padding: '2px 8px', borderRadius: 999,
-              border: '0.5px solid rgba(80,140,255,0.28)',
-              background: 'rgba(16,28,52,0.55)',
-              color: 'rgba(200,225,255,0.85)',
-              fontSize: 11, cursor: copying ? 'wait' : 'pointer',
-              marginRight: 6,
-            }}
-          >
-            <Copy size={11} /> Copy from previous period
-          </button>
-        )}
         <span
           title={`Agenda for ${periodLabel}`}
           style={{
