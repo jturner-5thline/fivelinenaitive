@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
-import { FundingSourceFormDialog } from '@/components/lenders/FundingSourceFormDialog';
+import { FundingSourceFormDialog, type FundingSourceClaapContext } from '@/components/lenders/FundingSourceFormDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { diceCoefficient } from '@/utils/stringSimilarity';
@@ -24,6 +24,7 @@ interface Props {
   initialQuery?: string;
   organizerEmail?: string | null;
   attendees?: MeetingAttendee[];
+  claapContext?: FundingSourceClaapContext | null;
 }
 
 interface FundingSourceRow {
@@ -180,12 +181,18 @@ function toLenderDetail(source: FundingSourceRow) {
   };
 }
 
+const CONSUMER_DOMAINS = new Set([
+  'gmail.com', 'googlemail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'live.com',
+  'icloud.com', 'me.com', 'aol.com', 'msn.com', 'proton.me', 'protonmail.com',
+]);
+
 export function FundingSourceMatchDialog({
   open,
   onOpenChange,
   initialQuery = '',
   organizerEmail,
   attendees = [],
+  claapContext = null,
 }: Props) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -255,14 +262,74 @@ export function FundingSourceMatchDialog({
     },
   });
 
+  // Exact matches from the meeting's external attendees: their email or company
+  // domain on a funding-source contact, the source's email, or its website.
+  const attendeeKeys = useMemo(() => {
+    const internal = ['naitive.co', '5thline.co'];
+    const emails = new Set<string>();
+    const domains = new Set<string>();
+    for (const a of [...attendees, ...(organizerEmail ? [{ email: organizerEmail }] : [])] as MeetingAttendee[]) {
+      const email = a.email?.trim().toLowerCase() || '';
+      const domain = email.split('@')[1] || '';
+      if (!email || a.self || internal.some((d) => domain === d || domain.endsWith(`.${d}`))) continue;
+      emails.add(email);
+      if (!CONSUMER_DOMAINS.has(domain)) domains.add(domain);
+    }
+    return { emails: [...emails].slice(0, 20), domains: [...domains].slice(0, 10) };
+  }, [attendees, organizerEmail]);
+
+  const { data: pinned = [] } = useQuery({
+    queryKey: ['funding-source-attendee-match', attendeeKeys],
+    enabled: open && (attendeeKeys.emails.length > 0 || attendeeKeys.domains.length > 0),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const reasons = new Map<string, string>();
+      const contactFilters = [
+        ...attendeeKeys.emails.map((e) => `email.ilike.${e}`),
+        ...attendeeKeys.domains.map((d) => `email.ilike.%@${d}`),
+      ];
+      if (contactFilters.length) {
+        const { data } = await (supabase.from('lender_contacts') as any)
+          .select('lender_id, email')
+          .or(contactFilters.join(','))
+          .limit(50);
+        for (const row of (data || []) as { lender_id: string; email: string | null }[]) {
+          const exact = attendeeKeys.emails.includes((row.email || '').toLowerCase());
+          if (!reasons.has(row.lender_id) || exact) {
+            reasons.set(row.lender_id, exact ? `Contact match · ${row.email}` : `Contact domain match · ${row.email?.split('@')[1]}`);
+          }
+        }
+      }
+      const lenderFilters = [
+        ...attendeeKeys.emails.map((e) => `email.ilike.${e}`),
+        ...attendeeKeys.domains.flatMap((d) => [`email.ilike.%@${d}`, `website.ilike.%${d}%`]),
+      ];
+      const ids = [...reasons.keys()];
+      const orParts = [...lenderFilters, ...(ids.length ? [`id.in.(${ids.join(',')})`] : [])];
+      if (!orParts.length) return [];
+      const { data, error } = await supabase.from('master_lenders').select('*').or(orParts.join(',')).limit(20);
+      if (error) throw error;
+      return ((data || []) as FundingSourceRow[]).map((row) => {
+        let reason = reasons.get(row.id);
+        if (!reason) {
+          const email = (row.email || '').toLowerCase();
+          if (attendeeKeys.emails.includes(email)) reason = `Email match · ${email}`;
+          else reason = `Domain match · ${attendeeKeys.domains.find((d) => email.endsWith(`@${d}`) || (row.website || '').toLowerCase().includes(d)) || ''}`;
+        }
+        return { ...row, score: 1, reasons: [reason] } as RankedFundingSource;
+      });
+    },
+  });
+
   const ranked = useMemo(() => {
-    if (!query) return [];
-    return sources
+    const pinnedIds = new Set(pinned.map((p) => p.id));
+    const searched = !query ? [] : sources
       .map((source) => rankFundingSource(source, query))
-      .filter((source) => source.score >= 0.3)
+      .filter((source) => source.score >= 0.3 && !pinnedIds.has(source.id))
       .sort((a, b) => b.score - a.score || (a.name || '').localeCompare(b.name || ''))
       .slice(0, 50);
-  }, [query, sources]);
+    return searched;
+  }, [query, sources, pinned]);
 
   const openCreate = () => setCreateOpen(true);
 
