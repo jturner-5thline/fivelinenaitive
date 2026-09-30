@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Plus, Settings2, X } from 'lucide-react';
+import { Loader2, Plus, Settings2, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -79,7 +79,16 @@ interface Props {
     email?: string | null;
     website?: string | null;
   } | null;
+  /** Linked Claap call used to suggest criteria (never auto-saved). */
+  claapContext?: FundingSourceClaapContext | null;
   onCreated?: (lender: MasterLender) => void;
+}
+
+export interface FundingSourceClaapContext {
+  summary?: string | null;
+  keyTakeaways?: string[] | null;
+  meetingRowId?: string | null;
+  meetingTitle?: string | null;
 }
 
 const emptyContact = (isPrimary = false): FundingSourceContact => ({
@@ -145,6 +154,7 @@ export function FundingSourceFormDialog({
   onOpenChange,
   initialName = '',
   initialContact,
+  claapContext,
   onCreated,
 }: Props) {
   const { user } = useAuth();
@@ -158,11 +168,89 @@ export function FundingSourceFormDialog({
   const [industryOptionsOpen, setIndustryOptionsOpen] = useState(false);
   const industryOptions = useIndustryOptionsList();
 
+  const [claapState, setClaapState] = useState<'idle' | 'loading' | 'done' | 'empty'>('idle');
+
   useEffect(() => {
     if (!open) return;
     setForm(formWithInvitePrefill(initialName, initialContact));
     setLinkedCrmCompany(null);
   }, [open, initialName, initialContact]);
+
+  // Pull suggested criteria from the linked Claap call. Only fills fields the
+  // user hasn't typed into yet; nothing is saved until they click Add.
+  useEffect(() => {
+    if (!open || !claapContext) { setClaapState('idle'); return; }
+    const hasContent = !!claapContext.summary || (claapContext.keyTakeaways?.length ?? 0) > 0 || !!claapContext.meetingRowId;
+    if (!hasContent) { setClaapState('idle'); return; }
+    let cancelled = false;
+    setClaapState('loading');
+    (async () => {
+      const { data, error } = await supabase.functions.invoke('extract-funding-source-from-claap', {
+        body: {
+          summary: claapContext.summary || null,
+          keyTakeaways: claapContext.keyTakeaways || [],
+          meetingRowId: claapContext.meetingRowId || null,
+          meetingTitle: claapContext.meetingTitle || null,
+          attendeeName: initialContact?.name || null,
+          attendeeEmail: initialContact?.email || null,
+          geoOptions,
+          industryOptions,
+          loanTypeOptions: [...LOAN_TYPE_OPTIONS],
+        },
+      });
+      if (cancelled) return;
+      const f = (data as any)?.fields;
+      if (error || !f) {
+        setClaapState('empty');
+        if (error) toast.error('Could not read the Claap call for funding source details');
+        return;
+      }
+      const num = (v: unknown) => (typeof v === 'number' && isFinite(v) && v > 0 ? String(Math.round(v)) : '');
+      const dec = (v: unknown) => (typeof v === 'number' && isFinite(v) && v > 0 ? String(v) : '');
+      const list = (v: unknown) => (Array.isArray(v) ? v.filter(Boolean).join(',') : '');
+      const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+      let filled = 0;
+      setForm((cur) => {
+        const pick = (current: string, next: string) => {
+          if (current.trim() || !next) return current;
+          filled += 1;
+          return next;
+        };
+        const c0 = cur.contacts[0] || emptyContact(true);
+        return {
+          ...cur,
+          name: pick(cur.name, str(f.name)),
+          lenderType: pick(cur.lenderType, str(f.lenderType)),
+          minDeal: pick(cur.minDeal, num(f.minDeal)),
+          maxDeal: pick(cur.maxDeal, num(f.maxDeal)),
+          sweetSpotMin: pick(cur.sweetSpotMin, num(f.sweetSpotMin)),
+          sweetSpotMax: pick(cur.sweetSpotMax, num(f.sweetSpotMax)),
+          minRevenue: pick(cur.minRevenue, num(f.minRevenue)),
+          ebitdaMin: pick(cur.ebitdaMin, num(f.ebitdaMin)),
+          minGrossMarginPct: pick(cur.minGrossMarginPct, dec(f.minGrossMarginPct)),
+          maxLeverage: pick(cur.maxLeverage, dec(f.maxLeverage)),
+          geo: pick(cur.geo, list(f.geo)),
+          industries: pick(cur.industries, list(f.industries)),
+          loanTypes: pick(cur.loanTypes, list(f.loanTypes)),
+          excludedGeographies: pick(cur.excludedGeographies, Array.isArray(f.excludedGeographies) ? f.excludedGeographies.join(', ') : ''),
+          sponsorRequirement: pick(cur.sponsorRequirement, str(f.sponsorRequirement)),
+          description: pick(cur.description, str(f.notes)),
+          contacts: [
+            {
+              ...c0,
+              name: pick(c0.name, str(f.contactName)),
+              title: pick(c0.title, str(f.contactTitle)),
+              phone: pick(c0.phone, str(f.contactPhone)),
+            },
+            ...cur.contacts.slice(1),
+          ],
+        };
+      });
+      setClaapState(filled > 0 ? 'done' : 'empty');
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, claapContext]);
 
   const updateForm = <K extends keyof FundingSourceForm>(field: K, value: FundingSourceForm[K]) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -291,6 +379,19 @@ export function FundingSourceFormDialog({
         <DialogHeader>
           <DialogTitle>Add Funding Source</DialogTitle>
           <DialogDescription>Complete the funding source profile before adding it to the directory.</DialogDescription>
+          {claapState === 'loading' && (
+            <div className="mt-2 inline-flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs text-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading the Claap call to fill in details…
+            </div>
+          )}
+          {claapState === 'done' && (
+            <div className="mt-2 inline-flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs text-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-primary" /> Pre-filled from the Claap recording — review before saving
+            </div>
+          )}
+          {claapState === 'empty' && (
+            <p className="mt-2 text-xs text-muted-foreground">No lending criteria could be pulled from the Claap call.</p>
+          )}
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto pr-4 -mr-2">

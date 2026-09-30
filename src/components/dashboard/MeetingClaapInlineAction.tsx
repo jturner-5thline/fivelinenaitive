@@ -625,6 +625,16 @@ export function MeetingClaapInlineAction(props: Props) {
   // Opens contact and funding-source reconciliation dialogs above the current popup.
   // Prefill only the likely funding-source name (e.g. "Libertas"), not the whole event title.
   const fundingSourceInitialQuery = extractFundingSourceName(eventTitle, organizerEmail, attendees);
+  const fundingSourceClaapContext = useMemo(() => (
+    canonical.source === 'claap' && (canonical.summary || canonical.keyTakeaways.length || canonical.recording?.meetingRowId)
+      ? {
+          summary: canonical.summary,
+          keyTakeaways: canonical.keyTakeaways,
+          meetingRowId: canonical.recording?.meetingRowId ?? null,
+          meetingTitle: eventTitle ?? null,
+        }
+      : null
+  ), [canonical.source, canonical.summary, canonical.keyTakeaways, canonical.recording?.meetingRowId, eventTitle]);
 
 
   const updateContactCell = (
@@ -663,6 +673,7 @@ export function MeetingClaapInlineAction(props: Props) {
         initialQuery={fundingSourceInitialQuery}
         organizerEmail={organizerEmail}
         attendees={attendees}
+        claapContext={fundingSourceClaapContext}
       />
     </>
   );

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
-import { FundingSourceFormDialog } from '@/components/lenders/FundingSourceFormDialog';
+import { FundingSourceFormDialog, type FundingSourceClaapContext } from '@/components/lenders/FundingSourceFormDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { diceCoefficient } from '@/utils/stringSimilarity';
@@ -24,6 +24,7 @@ interface Props {
   initialQuery?: string;
   organizerEmail?: string | null;
   attendees?: MeetingAttendee[];
+  claapContext?: FundingSourceClaapContext | null;
 }
 
 interface FundingSourceRow {
@@ -180,12 +181,18 @@ function toLenderDetail(source: FundingSourceRow) {
   };
 }
 
+const CONSUMER_DOMAINS = new Set([
+  'gmail.com', 'googlemail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'live.com',
+  'icloud.com', 'me.com', 'aol.com', 'msn.com', 'proton.me', 'protonmail.com',
+]);
+
 export function FundingSourceMatchDialog({
   open,
   onOpenChange,
   initialQuery = '',
   organizerEmail,
   attendees = [],
+  claapContext = null,
 }: Props) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -255,16 +262,116 @@ export function FundingSourceMatchDialog({
     },
   });
 
+  // Exact matches from the meeting's external attendees: their email or company
+  // domain on a funding-source contact, the source's email, or its website.
+  const attendeeKeys = useMemo(() => {
+    const internal = ['naitive.co', '5thline.co'];
+    const emails = new Set<string>();
+    const domains = new Set<string>();
+    for (const a of [...attendees, ...(organizerEmail ? [{ email: organizerEmail }] : [])] as MeetingAttendee[]) {
+      const email = a.email?.trim().toLowerCase() || '';
+      const domain = email.split('@')[1] || '';
+      if (!email || a.self || internal.some((d) => domain === d || domain.endsWith(`.${d}`))) continue;
+      emails.add(email);
+      if (!CONSUMER_DOMAINS.has(domain)) domains.add(domain);
+    }
+    return { emails: [...emails].slice(0, 20), domains: [...domains].slice(0, 10) };
+  }, [attendees, organizerEmail]);
+
+  const { data: pinned = [] } = useQuery({
+    queryKey: ['funding-source-attendee-match', attendeeKeys],
+    enabled: open && (attendeeKeys.emails.length > 0 || attendeeKeys.domains.length > 0),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const reasons = new Map<string, string>();
+      const contactFilters = [
+        ...attendeeKeys.emails.map((e) => `email.ilike.${e}`),
+        ...attendeeKeys.domains.map((d) => `email.ilike.%@${d}`),
+      ];
+      if (contactFilters.length) {
+        const { data } = await (supabase.from('lender_contacts') as any)
+          .select('lender_id, email')
+          .or(contactFilters.join(','))
+          .limit(50);
+        for (const row of (data || []) as { lender_id: string; email: string | null }[]) {
+          const exact = attendeeKeys.emails.includes((row.email || '').toLowerCase());
+          if (!reasons.has(row.lender_id) || exact) {
+            reasons.set(row.lender_id, exact ? `Contact match · ${row.email}` : `Contact domain match · ${row.email?.split('@')[1]}`);
+          }
+        }
+      }
+      const lenderFilters = [
+        ...attendeeKeys.emails.map((e) => `email.ilike.${e}`),
+        ...attendeeKeys.domains.flatMap((d) => [`email.ilike.%@${d}`, `website.ilike.%${d}%`]),
+      ];
+      const ids = [...reasons.keys()];
+      const orParts = [...lenderFilters, ...(ids.length ? [`id.in.(${ids.join(',')})`] : [])];
+      if (!orParts.length) return [];
+      const { data, error } = await supabase.from('master_lenders').select('*').or(orParts.join(',')).limit(20);
+      if (error) throw error;
+      return ((data || []) as FundingSourceRow[]).map((row) => {
+        let reason = reasons.get(row.id);
+        if (!reason) {
+          const email = (row.email || '').toLowerCase();
+          if (attendeeKeys.emails.includes(email)) reason = `Email match · ${email}`;
+          else reason = `Domain match · ${attendeeKeys.domains.find((d) => email.endsWith(`@${d}`) || (row.website || '').toLowerCase().includes(d)) || ''}`;
+        }
+        return { ...row, score: 1, reasons: [reason] } as RankedFundingSource;
+      });
+    },
+  });
+
   const ranked = useMemo(() => {
-    if (!query) return [];
-    return sources
+    const pinnedIds = new Set(pinned.map((p) => p.id));
+    const searched = !query ? [] : sources
       .map((source) => rankFundingSource(source, query))
-      .filter((source) => source.score >= 0.3)
+      .filter((source) => source.score >= 0.3 && !pinnedIds.has(source.id))
       .sort((a, b) => b.score - a.score || (a.name || '').localeCompare(b.name || ''))
       .slice(0, 50);
-  }, [query, sources]);
+    return searched;
+  }, [query, sources, pinned]);
 
   const openCreate = () => setCreateOpen(true);
+  const [editMode, setEditMode] = useState(false);
+
+  const renderRow = (source: RankedFundingSource, isPinned: boolean) => (
+    <Button
+      key={source.id}
+      type="button"
+      variant="ghost"
+      aria-label={`${isPinned ? 'Edit' : 'Open'} ${source.name || 'unnamed funding source'}`}
+      className={`h-auto w-full justify-start whitespace-normal rounded-md border p-3 text-left text-white hover:bg-white/[0.09] ${isPinned ? 'border-primary/40 bg-primary/10' : 'border-white/10 bg-white/[0.04]'}`}
+      onClick={() => {
+        setSelectedSource(source);
+        setEditMode(isPinned);
+        setDetailOpen(true);
+      }}
+    >
+      <div className="w-full min-w-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 shrink-0 text-primary" />
+              <span className="truncate text-sm font-medium">{source.name || 'Unnamed funding source'}</span>
+            </div>
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/55">
+              {source.email && <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{source.email}</span>}
+              {source.website && <span className="inline-flex items-center gap-1"><Globe2 className="h-3 w-3" />{source.website}</span>}
+            </div>
+          </div>
+          <Badge className="shrink-0 bg-primary/20 text-primary-foreground">
+            {isPinned ? 'Edit' : `${Math.round(source.score * 100)}% match`}
+          </Badge>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {source.reasons.map((reason) => <Badge key={reason} variant="outline" className="border-white/15 text-[11px] text-white/65">{reason}</Badge>)}
+          {source.contact_name && <span className="text-[11px] text-white/45">Contact: {source.contact_name}{source.contact_title ? ` · ${source.contact_title}` : ''}</span>}
+          {source.lender_type && <span className="text-[11px] text-white/45">{source.lender_type}</span>}
+          {source.tier && <span className="text-[11px] text-white/45">Tier {source.tier}</span>}
+        </div>
+      </div>
+    </Button>
+  );
 
   const handleSave = async (sourceId: string, data: LenderEditData) => {
     setSaving(true);
@@ -382,6 +489,12 @@ export function FundingSourceMatchDialog({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            {pinned.length > 0 && (
+              <div className="space-y-2 pb-3">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-primary">Matches a meeting attendee</p>
+                {pinned.map((source) => renderRow(source, true))}
+              </div>
+            )}
             {isLoading ? (
               <div className="flex items-center justify-center gap-2 py-12 text-sm text-white/60">
                 <Loader2 className="h-4 w-4 animate-spin" /> Searching funding sources…
@@ -389,46 +502,13 @@ export function FundingSourceMatchDialog({
             ) : isError ? (
               <p className="py-10 text-center text-sm text-white/60">Funding sources could not be loaded.</p>
             ) : !cleanSearch(search) ? (
-              <p className="py-10 text-center text-sm text-white/60">Enter a name, email, URL, or domain to search.</p>
+              pinned.length ? null : <p className="py-10 text-center text-sm text-white/60">Enter a name, email, URL, or domain to search.</p>
             ) : ranked.length === 0 ? (
-              <p className="py-10 text-center text-sm text-white/60">No likely funding source matches found.</p>
+              pinned.length ? null : <p className="py-10 text-center text-sm text-white/60">No likely funding source matches found.</p>
             ) : (
               <div className="space-y-2 py-2">
-                {ranked.map((source) => (
-                  <Button
-                    key={source.id}
-                    type="button"
-                    variant="ghost"
-                    aria-label={`Open ${source.name || 'unnamed funding source'}`}
-                    className="h-auto w-full justify-start whitespace-normal rounded-md border border-white/10 bg-white/[0.04] p-3 text-left text-white hover:bg-white/[0.09]"
-                    onClick={() => {
-                      setSelectedSource(source);
-                      setDetailOpen(true);
-                    }}
-                  >
-                    <div className="w-full min-w-0">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4 shrink-0 text-primary" />
-                            <span className="truncate text-sm font-medium">{source.name || 'Unnamed funding source'}</span>
-                          </div>
-                          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/55">
-                            {source.email && <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{source.email}</span>}
-                            {source.website && <span className="inline-flex items-center gap-1"><Globe2 className="h-3 w-3" />{source.website}</span>}
-                          </div>
-                        </div>
-                        <Badge className="shrink-0 bg-primary/20 text-primary-foreground">{Math.round(source.score * 100)}% match</Badge>
-                      </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        {source.reasons.map((reason) => <Badge key={reason} variant="outline" className="border-white/15 text-[11px] text-white/65">{reason}</Badge>)}
-                        {source.contact_name && <span className="text-[11px] text-white/45">Contact: {source.contact_name}{source.contact_title ? ` · ${source.contact_title}` : ''}</span>}
-                        {source.lender_type && <span className="text-[11px] text-white/45">{source.lender_type}</span>}
-                        {source.tier && <span className="text-[11px] text-white/45">Tier {source.tier}</span>}
-                      </div>
-                    </div>
-                  </Button>
-                ))}
+                {pinned.length > 0 && <p className="text-[11px] font-medium uppercase tracking-wide text-white/45">Other search results</p>}
+                {ranked.map((source) => renderRow(source, false))}
               </div>
             )}
           </div>
@@ -440,9 +520,11 @@ export function FundingSourceMatchDialog({
         onOpenChange={setCreateOpen}
         initialName={search.trim() || initialQuery.trim()}
         initialContact={inviteContact}
+        claapContext={claapContext}
         onCreated={(created) => {
           setSearch(created.name || search);
           setSelectedSource(created as unknown as FundingSourceRow);
+          setEditMode(false);
           setDetailOpen(true);
         }}
       />
@@ -455,7 +537,7 @@ export function FundingSourceMatchDialog({
           if (!nextOpen) setSelectedSource(null);
         }}
         onSave={handleSave}
-        initialEditMode={false}
+        initialEditMode={editMode}
         nested
       />
       {saving && <span className="sr-only" role="status">Saving funding source</span>}
