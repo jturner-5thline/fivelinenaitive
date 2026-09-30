@@ -1,4 +1,4 @@
-import { useState, useMemo, useDeferredValue } from 'react';
+import { useState, useMemo, useDeferredValue, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -340,6 +340,46 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
     ) : <span className="text-muted-foreground">—</span>
   );
 
+  // Stable component identities — defining these inline recreated the row
+  // component on every render, which remounted rows and caused hover flicker.
+  const filteredRef = useRef(filtered);
+  filteredRef.current = filtered;
+  const virtuosoComponents = useMemo(() => ({
+    Table: (props: any) => <Table {...props} style={{ ...props.style, width: '100%' }} />,
+    TableHead: TableHeader as any,
+    TableRow: (rowProps: any) => {
+      const rawIdx = rowProps['data-index'] ?? rowProps['data-item-index'];
+      const idx = typeof rawIdx === 'string' ? Number(rawIdx) : rawIdx;
+      const { item: rowItem, ...domProps } = rowProps;
+      const item = rowItem ?? (Number.isFinite(idx) ? filteredRef.current[idx as number] : null);
+      if (!item) return <TableRow {...domProps} />;
+      const go = () => navigate(`/crm-companies/${item.id}`);
+      return (
+        <TableRow
+          {...domProps}
+          role="link"
+          tabIndex={0}
+          aria-label={`Open ${item.name}`}
+          onClick={(e: React.MouseEvent) => {
+            const t = e.target as HTMLElement;
+            if (t.closest('a,button,input,[role="menuitem"],[role="checkbox"],[data-radix-collection-item],[data-no-row-nav]')) return;
+            go();
+          }}
+          onKeyDown={(e: React.KeyboardEvent) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              const t = e.target as HTMLElement;
+              if (t.closest('a,button,input,[role="menuitem"],[role="checkbox"]')) return;
+              e.preventDefault();
+              go();
+            }
+          }}
+          className={cn(rowProps.className, 'cursor-pointer border-0 hover:bg-foreground/[0.025] focus-visible:bg-foreground/[0.03] focus:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors')}
+        />
+      );
+    },
+    TableBody: TableBody as any,
+  }), [navigate]);
+
   return (
     <div className="space-y-3 crm-companies-surface">
       <div className="flex items-center gap-2 flex-nowrap w-full min-w-0">
@@ -422,45 +462,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
             data={filtered}
             computeItemKey={(_index, co) => co.id}
             increaseViewportBy={{ top: 600, bottom: 1400 }}
-            components={{
-              Table: (props) => <Table {...props} style={{ ...props.style, width: '100%' }} />,
-              TableHead: TableHeader as any,
-              TableRow: (rowProps: any) => {
-                const rawIdx = rowProps['data-index'] ?? rowProps['data-item-index'];
-                const idx = typeof rawIdx === 'string' ? Number(rawIdx) : rawIdx;
-                const row = Number.isFinite(idx) ? filtered[idx as number] : null;
-                const { item: rowItem, ...domProps } = rowProps as any;
-                const item = rowItem ?? row;
-                if (!item) return <TableRow {...rowProps} />;
-                const go = () => navigate(`/crm-companies/${item.id}`);
-                return (
-                  <TableRow
-                    {...domProps}
-                    role="link"
-                    tabIndex={0}
-                    aria-label={`Open ${item.name}`}
-                    onClick={(e: React.MouseEvent) => {
-                      // Ignore clicks on intentionally interactive children.
-                      const t = e.target as HTMLElement;
-                      if (t.closest('a,button,input,[role="menuitem"],[role="checkbox"],[data-radix-collection-item],[data-no-row-nav]')) {
-                        return;
-                      }
-                      go();
-                    }}
-                    onKeyDown={(e: React.KeyboardEvent) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        const t = e.target as HTMLElement;
-                        if (t.closest('a,button,input,[role="menuitem"],[role="checkbox"]')) return;
-                        e.preventDefault();
-                        go();
-                      }
-                    }}
-                    className={cn(rowProps.className, 'cursor-pointer border-0 hover:bg-foreground/[0.025] focus-visible:bg-foreground/[0.03] focus:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors')}
-                  />
-                );
-              },
-              TableBody: TableBody as any,
-            }}
+            components={virtuosoComponents}
             fixedHeaderContent={() => (
               <TableRow className="border-0 hover:bg-transparent">
                 <TableHead className="w-10"><Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={toggleAll} /></TableHead>
