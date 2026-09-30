@@ -186,6 +186,15 @@ const FINSERV_PNL_IDS = new Set([
   'finserv-total-revenue', 'finserv-gross-profit', 'finserv-gross-margin', 'finserv-total-opex',
 ]);
 
+const DEAL_CHART_SURFACE: Record<string, string> = {
+  'pipeline-by-stage': 'Debt Advisory Metrics', 'pipeline-by-type': 'Debt Advisory Metrics',
+  'pipeline-gauge': 'Debt Advisory Metrics', 'pipeline-treemap': 'Debt Advisory Metrics',
+  'stage-breakdown': 'Debt Advisory Metrics', 'conversion-funnel': 'Debt Advisory Metrics',
+  'manager-performance': 'Sales Team Board', 'performance-radar': 'Rep Scorecard',
+  'deal-activity-12m': 'Sales & BD ROI', 'activity-heatmap': 'Sales & BD ROI',
+  'kpi-bullet': 'Sales & BD ROI', 'revenue-waterfall': 'Sales & BD ROI', 'revenue-forecast': 'Sales & BD ROI',
+};
+
 export function useInsightsLiveMetricValue(
   metricSourceId: string | null | undefined,
   period: LiveMetricPeriod | null,
@@ -577,6 +586,50 @@ export function useInsightsLiveMetricValue(
       return { supported: true, status: 'ready', value: v, sourceSurface: 'Weekly Rundown' };
     }
 
+    // ---- Chart-backed deal widgets → single KPI value ----
+    // Each chart reduces to one explicit, period-scoped scalar (see
+    // CHART_KPI_RESOLUTION in insightsMetricRegistry for the labels).
+    const DEAL_CHART_IDS = new Set([
+      'closed-value-12m', 'closed-value-pop', 'ytd-cumulative', 'qtd-value', 'fees-pop',
+      'pipeline-by-stage', 'pipeline-by-type', 'pipeline-gauge', 'pipeline-treemap', 'stage-breakdown',
+      'conversion-funnel', 'deal-activity-12m', 'activity-heatmap', 'manager-performance',
+      'performance-radar', 'kpi-bullet', 'revenue-waterfall', 'revenue-forecast',
+    ]);
+    if (DEAL_CHART_IDS.has(metricSourceId)) {
+      const surface = DEAL_CHART_SURFACE[metricSourceId] ?? 'Insights Dashboard';
+      if (dealMetrics.isLoading || !dealMetrics.rawDeals) {
+        return { supported: true, status: 'loading', sourceSurface: surface };
+      }
+      const scoped = period ? filterDealsByPeriod(dealMetrics.rawDeals, period) : (dealMetrics.rawDeals ?? []);
+      const active = scoped.filter(d => d.status !== 'archived');
+      const closedWon = scoped.filter(d => d.status === 'archived' && d.stage === 'closed-won');
+      const closedLost = scoped.filter(d => d.status === 'archived' && d.stage === 'closed-lost');
+      const pipelineValue = active.reduce((s, d) => s + Number(d.value || 0), 0);
+      const wonValue = closedWon.reduce((s, d) => s + Number(d.value || 0), 0);
+      const fees = closedWon.reduce((s, d) => s + Number(d.total_fee || 0), 0);
+      const decided = closedWon.length + closedLost.length;
+      const winRate = decided > 0 ? (closedWon.length / decided) * 100 : 0;
+      let v = 0;
+      switch (metricSourceId) {
+        case 'closed-value-12m': case 'closed-value-pop': case 'ytd-cumulative': case 'qtd-value':
+          v = wonValue; break;
+        case 'fees-pop': case 'revenue-waterfall':
+          v = fees; break;
+        case 'pipeline-by-stage': case 'pipeline-by-type': case 'pipeline-gauge':
+        case 'pipeline-treemap': case 'stage-breakdown':
+          v = pipelineValue; break;
+        case 'conversion-funnel':
+          v = winRate; break;
+        case 'deal-activity-12m': case 'activity-heatmap':
+          v = scoped.length; break;
+        case 'manager-performance': case 'performance-radar': case 'kpi-bullet':
+          v = closedWon.length; break;
+        case 'revenue-forecast':
+          v = pipelineValue * (winRate / 100); break;
+      }
+      return { supported: true, status: 'ready', value: v, sourceSurface: surface };
+    }
+
     // ---- QuickBooks metrics (Controller Dashboard) ----
     if (metricSourceId.startsWith('qb-')) {
       if (qb.isLoading || !qb.data) {
@@ -600,10 +653,30 @@ export function useInsightsLiveMetricValue(
       if (metricSourceId in map) {
         return { supported: true, status: 'ready', value: map[metricSourceId] ?? 0, sourceSurface: 'Controller Dashboard' };
       }
-      // Chart-backed QB widgets (revenue trend, AR/AP aging buckets,
-      // top customers/vendors, expense by category, etc.) don't reduce
-      // to a single canonical number on the source dashboard, so they
-      // are reported unmapped instead of fabricating an aggregate.
+      // Chart-backed QB widgets → one explicit scalar each.
+      const anyM = m as any;
+      const sumField = (arr: any[] | undefined, keys: string[]) =>
+        (arr ?? []).reduce((s, r) => {
+          for (const k of keys) if (typeof r?.[k] === 'number') return s + r[k];
+          return s;
+        }, 0);
+      const chartMap: Record<string, number> = {
+        'qb-revenue-trend': m.totalRevenue ?? 0,
+        'qb-ar-aging': sumField(anyM.arAgingData, ['amount', 'value', 'balance']),
+        'qb-ap-aging': sumField(anyM.apAgingData, ['amount', 'value', 'balance']),
+        'qb-top-customers': anyM.topCustomers?.[0]?.revenue ?? 0,
+        'qb-top-vendors': anyM.topVendors?.[0]?.spend ?? 0,
+        'qb-expense-by-category': anyM.expenseByCategoryData?.[0]?.amount ?? 0,
+        'qb-invoice-status': sumField(anyM.invoiceStatusBreakdown, ['value']),
+        'qb-payment-methods': sumField(anyM.paymentMethodsBreakdown, ['value']),
+        'qb-revenue-vs-payments': (m.totalRevenue ?? 0) - (m.totalPayments ?? 0),
+        'qb-revenue-vs-expenses': (m.totalRevenue ?? 0) - (m.totalExpenses ?? 0),
+      };
+      if (metricSourceId in chartMap) {
+        const surface = metricSourceId === 'qb-top-customers' || metricSourceId.startsWith('qb-revenue-')
+          ? 'Revenue & Customers' : 'Controller Dashboard';
+        return { supported: true, status: 'ready', value: chartMap[metricSourceId], sourceSurface: surface };
+      }
       return { supported: false, status: 'unmapped', sourceSurface: 'Controller Dashboard' };
     }
 
