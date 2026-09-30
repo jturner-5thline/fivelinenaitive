@@ -75,7 +75,7 @@ export function LendersListSkeleton({
 
   // List + spreadsheet both fall back to row-shaped skeletons.
   return (
-    <div className="space-y-3">
+    <div className="space-y-[5px]">
       {Array.from({ length: count }).map((_, i) => (
         <LenderListCardSkeleton key={i} />
       ))}
