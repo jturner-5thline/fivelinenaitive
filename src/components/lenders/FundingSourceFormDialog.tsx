@@ -255,7 +255,10 @@ export function FundingSourceFormDialog({
         };
       });
       setClaapState(filled > 0 ? 'done' : 'empty');
-    })();
+    })().catch((err) => {
+      console.warn('Claap extraction threw', err);
+      if (!cancelled) setClaapState('empty');
+    });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, claapContext]);
