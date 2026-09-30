@@ -173,8 +173,8 @@ export function AgendaFootnotesSection({ editor, companyId, periodType, periodKe
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         marginBottom: 10, gap: 8, flexWrap: 'wrap',
       }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(200,225,255,0.55)' }}>
-          Footnotes {ordered.length > 0 && <span style={{ marginLeft: 4, opacity: 0.6 }}>· {ordered.length}</span>}
+        <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em', color: '#ffffff' }}>
+          Action Items and Key Decisions {ordered.length > 0 && <span style={{ marginLeft: 4, opacity: 0.55, fontWeight: 400 }}>· {ordered.length}</span>}
         </div>
         <div style={{ display: 'inline-flex', gap: 6 }}>
           {(['decision', 'note', 'action_item'] as FootnoteType[]).map((t) => (
