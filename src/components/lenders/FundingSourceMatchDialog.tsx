@@ -332,6 +332,46 @@ export function FundingSourceMatchDialog({
   }, [query, sources, pinned]);
 
   const openCreate = () => setCreateOpen(true);
+  const [editMode, setEditMode] = useState(false);
+
+  const renderRow = (source: RankedFundingSource, isPinned: boolean) => (
+    <Button
+      key={source.id}
+      type="button"
+      variant="ghost"
+      aria-label={`${isPinned ? 'Edit' : 'Open'} ${source.name || 'unnamed funding source'}`}
+      className={`h-auto w-full justify-start whitespace-normal rounded-md border p-3 text-left text-white hover:bg-white/[0.09] ${isPinned ? 'border-primary/40 bg-primary/10' : 'border-white/10 bg-white/[0.04]'}`}
+      onClick={() => {
+        setSelectedSource(source);
+        setEditMode(isPinned);
+        setDetailOpen(true);
+      }}
+    >
+      <div className="w-full min-w-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 shrink-0 text-primary" />
+              <span className="truncate text-sm font-medium">{source.name || 'Unnamed funding source'}</span>
+            </div>
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/55">
+              {source.email && <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{source.email}</span>}
+              {source.website && <span className="inline-flex items-center gap-1"><Globe2 className="h-3 w-3" />{source.website}</span>}
+            </div>
+          </div>
+          <Badge className="shrink-0 bg-primary/20 text-primary-foreground">
+            {isPinned ? 'Edit' : `${Math.round(source.score * 100)}% match`}
+          </Badge>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {source.reasons.map((reason) => <Badge key={reason} variant="outline" className="border-white/15 text-[11px] text-white/65">{reason}</Badge>)}
+          {source.contact_name && <span className="text-[11px] text-white/45">Contact: {source.contact_name}{source.contact_title ? ` · ${source.contact_title}` : ''}</span>}
+          {source.lender_type && <span className="text-[11px] text-white/45">{source.lender_type}</span>}
+          {source.tier && <span className="text-[11px] text-white/45">Tier {source.tier}</span>}
+        </div>
+      </div>
+    </Button>
+  );
 
   const handleSave = async (sourceId: string, data: LenderEditData) => {
     setSaving(true);
@@ -449,6 +489,12 @@ export function FundingSourceMatchDialog({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            {pinned.length > 0 && (
+              <div className="space-y-2 pb-3">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-primary">Matches a meeting attendee</p>
+                {pinned.map((source) => renderRow(source, true))}
+              </div>
+            )}
             {isLoading ? (
               <div className="flex items-center justify-center gap-2 py-12 text-sm text-white/60">
                 <Loader2 className="h-4 w-4 animate-spin" /> Searching funding sources…
@@ -456,46 +502,13 @@ export function FundingSourceMatchDialog({
             ) : isError ? (
               <p className="py-10 text-center text-sm text-white/60">Funding sources could not be loaded.</p>
             ) : !cleanSearch(search) ? (
-              <p className="py-10 text-center text-sm text-white/60">Enter a name, email, URL, or domain to search.</p>
+              pinned.length ? null : <p className="py-10 text-center text-sm text-white/60">Enter a name, email, URL, or domain to search.</p>
             ) : ranked.length === 0 ? (
-              <p className="py-10 text-center text-sm text-white/60">No likely funding source matches found.</p>
+              pinned.length ? null : <p className="py-10 text-center text-sm text-white/60">No likely funding source matches found.</p>
             ) : (
               <div className="space-y-2 py-2">
-                {ranked.map((source) => (
-                  <Button
-                    key={source.id}
-                    type="button"
-                    variant="ghost"
-                    aria-label={`Open ${source.name || 'unnamed funding source'}`}
-                    className="h-auto w-full justify-start whitespace-normal rounded-md border border-white/10 bg-white/[0.04] p-3 text-left text-white hover:bg-white/[0.09]"
-                    onClick={() => {
-                      setSelectedSource(source);
-                      setDetailOpen(true);
-                    }}
-                  >
-                    <div className="w-full min-w-0">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4 shrink-0 text-primary" />
-                            <span className="truncate text-sm font-medium">{source.name || 'Unnamed funding source'}</span>
-                          </div>
-                          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/55">
-                            {source.email && <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{source.email}</span>}
-                            {source.website && <span className="inline-flex items-center gap-1"><Globe2 className="h-3 w-3" />{source.website}</span>}
-                          </div>
-                        </div>
-                        <Badge className="shrink-0 bg-primary/20 text-primary-foreground">{Math.round(source.score * 100)}% match</Badge>
-                      </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        {source.reasons.map((reason) => <Badge key={reason} variant="outline" className="border-white/15 text-[11px] text-white/65">{reason}</Badge>)}
-                        {source.contact_name && <span className="text-[11px] text-white/45">Contact: {source.contact_name}{source.contact_title ? ` · ${source.contact_title}` : ''}</span>}
-                        {source.lender_type && <span className="text-[11px] text-white/45">{source.lender_type}</span>}
-                        {source.tier && <span className="text-[11px] text-white/45">Tier {source.tier}</span>}
-                      </div>
-                    </div>
-                  </Button>
-                ))}
+                {pinned.length > 0 && <p className="text-[11px] font-medium uppercase tracking-wide text-white/45">Other search results</p>}
+                {ranked.map((source) => renderRow(source, false))}
               </div>
             )}
           </div>
@@ -507,9 +520,11 @@ export function FundingSourceMatchDialog({
         onOpenChange={setCreateOpen}
         initialName={search.trim() || initialQuery.trim()}
         initialContact={inviteContact}
+        claapContext={claapContext}
         onCreated={(created) => {
           setSearch(created.name || search);
           setSelectedSource(created as unknown as FundingSourceRow);
+          setEditMode(false);
           setDetailOpen(true);
         }}
       />
