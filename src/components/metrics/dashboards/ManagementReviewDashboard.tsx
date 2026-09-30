@@ -2465,6 +2465,68 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const finservRevPrev = qbConnected ? sumByRealm(qbInvoices, previousRange, KEY_STATS_FINSERV_REALM_ID) : null;
   const finservProfitCurr = pnlConnected ? getPnlSnapshotTotal(periodRange, KEY_STATS_FINSERV_REALM_ID) : null;
   const finservProfitPrev = pnlConnected ? getPnlSnapshotTotal(previousRange, KEY_STATS_FINSERV_REALM_ID) : null;
+
+  // FinServ trailing-3-month window ending at the selected period's end.
+  // Drives Current Run Rate and the Next-3-Months projection (flat trailing avg).
+  const finservTrailing = useMemo(() => {
+    const end = endOfMonth(periodRange.end);
+    const start = startOfMonth(new Date(end.getFullYear(), end.getMonth() - 2, 1));
+    const range = { start, end };
+    const rev = qbConnected ? sumByRealm(qbInvoices, range, KEY_STATS_FINSERV_REALM_ID) : null;
+    const profit = pnlConnected ? getPnlSnapshotTotal(range, KEY_STATS_FINSERV_REALM_ID) : null;
+    const avgRev = rev != null ? rev / 3 : null;
+    const avgProfit = profit != null ? profit / 3 : null;
+    const rows = Array.from({ length: 3 }, (_, i) => {
+      const d = new Date(end.getFullYear(), end.getMonth() + i + 1, 1);
+      return {
+        month: d.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
+        revenue: avgRev ?? 0,
+        profit: avgProfit ?? 0,
+      };
+    });
+    return {
+      avgRev,
+      avgProfit,
+      runRate: avgRev != null ? avgRev * 12 : null,
+      next3Rev: avgRev != null ? avgRev * 3 : null,
+      next3Profit: avgProfit != null ? avgProfit * 3 : null,
+      rows,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qbConnected, pnlConnected, qbInvoices, periodRange.end, pnlSnapshots]);
+
+  // Live bank balances (current snapshot) for Key Stats liquidity rows —
+  // same source as the Controller dashboard (quickbooks_accounts, Bank type).
+  const { data: bankAccounts } = useQuery({
+    queryKey: ['mr-liquidity-bank-accounts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('quickbooks_accounts')
+        .select('name, current_balance, realm_id')
+        .eq('account_type', 'Bank');
+      if (error) throw error;
+      return (data ?? []) as { name: string; current_balance: number | null; realm_id: string }[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const liquidity = useMemo(() => {
+    if (!bankAccounts) return null;
+    const sum = (pred: (a: { name: string; realm_id: string }) => boolean) => {
+      const rows = bankAccounts.filter(pred);
+      return rows.length ? rows.reduce((s, a) => s + (Number(a.current_balance) || 0), 0) : null;
+    };
+    const n = (a: { name: string }) => (a.name || '').toLowerCase();
+    const isTax = (a: { name: string }) => n(a).includes('tax');
+    const isMT = (a: { name: string }) => /m\s*&\s*t/.test(n(a));
+    return {
+      'liq-operating': sum(a => !isTax(a) && !isMT(a) && (n(a).includes('operating') || n(a).includes('chase'))),
+      'liq-mt': sum(a => isMT(a) && !isTax(a)),
+      'liq-tax-reserves': sum(isTax),
+      'liq-5lt': sum(a => a.realm_id === '9130350272677286'),
+      'liq-5lca': sum(a => a.realm_id === KEY_STATS_DEBT_REALM_ID),
+      'liq-5lfs': sum(a => a.realm_id === KEY_STATS_FINSERV_REALM_ID),
+    } as Record<string, number | null>;
+  }, [bankAccounts]);
   const ytdRevenue = qbConnected ? ytdSeries.reduce((sum, row) => sum + row.revenue, 0) : null;
   const ttmSeries = useMemo(() => {
     const buckets = buildMonthBuckets(ttmRange.start, ttmRange.end);
