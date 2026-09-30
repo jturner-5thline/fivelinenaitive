@@ -2791,6 +2791,29 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
   const activeDealsList = debtPipelineDebug.included;
 
+  // Debt Pipeline header metrics — all derived from the same deal list shown below.
+  const debtPipelineStats = useMemo(() => {
+    const end = endOfMonth(periodRange.end);
+    const winStart = startOfMonth(new Date(end.getFullYear(), end.getMonth() + 1, 1));
+    const winEnd = endOfMonth(new Date(end.getFullYear(), end.getMonth() + 3, 1));
+    let dollarVolume = 0, potentialRevenue = 0, closingCount = 0, closingDollars = 0, closingRevenue = 0;
+    for (const d of activeDealsList as any[]) {
+      const value = Number(d.value || 0);
+      const fee = computeClosingFee(d.value, d.success_fee_percent, d.milestone_fee) || Number(d.total_fee || 0);
+      dollarVolume += value;
+      potentialRevenue += fee;
+      if (d.projected_close_date) {
+        const dt = new Date(d.projected_close_date);
+        if (!Number.isNaN(dt.getTime()) && dt >= winStart && dt <= winEnd) {
+          closingCount += 1;
+          closingDollars += value;
+          closingRevenue += fee;
+        }
+      }
+    }
+    return { dealCount: activeDealsList.length, dollarVolume, potentialRevenue, closingCount, closingDollars, closingRevenue };
+  }, [activeDealsList, periodRange.end]);
+
   // Latest status note per deal (for hover tooltips on Deal Name + Status)
   const [debtPipelineStatusNotes, setDebtPipelineStatusNotes] = useState<Record<string, string>>({});
   const debtPipelineDealIds = useMemo(
