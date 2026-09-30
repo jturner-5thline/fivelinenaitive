@@ -1147,14 +1147,23 @@ export function DuplicateLendersDialog({
   // freeze the whole app. Clear it defensively whenever this dialog closes
   // or unmounts.
   useEffect(() => {
-    if (!open) {
-      const t = setTimeout(() => {
-        if (document.body.style.pointerEvents === 'none') {
-          document.body.style.pointerEvents = '';
-        }
-      }, 300);
-      return () => clearTimeout(t);
-    }
+    if (open) return;
+    // Poll for 2s after close and clear any lingering body pointer-events lock
+    // as long as no Radix dialog/alertdialog is actually open. A single 300ms
+    // timeout is not enough — a closing nested AlertDialog can re-apply the
+    // lock after our first cleanup fires.
+    let elapsed = 0;
+    const interval = window.setInterval(() => {
+      elapsed += 100;
+      const anyOpen = document.querySelector(
+        '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]',
+      );
+      if (!anyOpen && document.body.style.pointerEvents === 'none') {
+        document.body.style.pointerEvents = '';
+      }
+      if (elapsed >= 2000) window.clearInterval(interval);
+    }, 100);
+    return () => window.clearInterval(interval);
   }, [open]);
   useEffect(() => () => {
     if (document.body.style.pointerEvents === 'none') {
