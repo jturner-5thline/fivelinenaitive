@@ -1038,18 +1038,6 @@ export function AgendaEditor() {
         >
           <Sparkles size={11} /> Generate Recap
         </button>
-        <span
-          title={`Agenda for ${periodLabel}`}
-          style={{
-            display: 'inline-flex', alignItems: 'center', padding: '1px 8px',
-            borderRadius: 999, marginRight: 6,
-            border: '0.5px solid rgba(80,140,255,0.35)',
-            background: 'rgba(80,140,255,0.12)',
-            color: 'rgba(200,225,255,0.95)', fontWeight: 600,
-          }}
-        >
-          {periodLabel}
-        </span>
         {saveState === 'saving' && (<><Loader2 size={12} className="animate-spin" /> Saving…</>)}
         {saveState === 'saved' && savedAt && (<><Check size={12} /> Saved · {formatJustNow(savedAt)}</>)}
         {saveState === 'error' && (<span style={{ color: '#f87171' }}>Save failed — will retry</span>)}
