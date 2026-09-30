@@ -41,7 +41,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ensureFinServPnlSnapshots } from '@/hooks/useFinServFinancialMetrics';
 import { buildBuckets, type Granularity } from '@/lib/insightsTimeRange';
 import { QBO_ENTITIES } from '@/config/qboEntities';
-import { formatUSD } from '@/lib/formatters/currency';
+import { formatUSD, formatUSDFromDollars } from '@/lib/formatters/currency';
 import { useMasterPlanMonthly } from '@/hooks/useMasterPlanMonthly';
 import { DashboardPlansGear } from './plans/DashboardPlansGear';
 
@@ -2465,6 +2465,68 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const finservRevPrev = qbConnected ? sumByRealm(qbInvoices, previousRange, KEY_STATS_FINSERV_REALM_ID) : null;
   const finservProfitCurr = pnlConnected ? getPnlSnapshotTotal(periodRange, KEY_STATS_FINSERV_REALM_ID) : null;
   const finservProfitPrev = pnlConnected ? getPnlSnapshotTotal(previousRange, KEY_STATS_FINSERV_REALM_ID) : null;
+
+  // FinServ trailing-3-month window ending at the selected period's end.
+  // Drives Current Run Rate and the Next-3-Months projection (flat trailing avg).
+  const finservTrailing = useMemo(() => {
+    const end = endOfMonth(periodRange.end);
+    const start = startOfMonth(new Date(end.getFullYear(), end.getMonth() - 2, 1));
+    const range = { start, end };
+    const rev = qbConnected ? sumByRealm(qbInvoices, range, KEY_STATS_FINSERV_REALM_ID) : null;
+    const profit = pnlConnected ? getPnlSnapshotTotal(range, KEY_STATS_FINSERV_REALM_ID) : null;
+    const avgRev = rev != null ? rev / 3 : null;
+    const avgProfit = profit != null ? profit / 3 : null;
+    const rows = Array.from({ length: 3 }, (_, i) => {
+      const d = new Date(end.getFullYear(), end.getMonth() + i + 1, 1);
+      return {
+        month: d.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
+        revenue: avgRev ?? 0,
+        profit: avgProfit ?? 0,
+      };
+    });
+    return {
+      avgRev,
+      avgProfit,
+      runRate: avgRev != null ? avgRev * 12 : null,
+      next3Rev: avgRev != null ? avgRev * 3 : null,
+      next3Profit: avgProfit != null ? avgProfit * 3 : null,
+      rows,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qbConnected, pnlConnected, qbInvoices, periodRange.end, pnlSnapshots]);
+
+  // Live bank balances (current snapshot) for Key Stats liquidity rows —
+  // same source as the Controller dashboard (quickbooks_accounts, Bank type).
+  const { data: bankAccounts } = useQuery({
+    queryKey: ['mr-liquidity-bank-accounts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('quickbooks_accounts')
+        .select('name, current_balance, realm_id')
+        .eq('account_type', 'Bank');
+      if (error) throw error;
+      return (data ?? []) as { name: string; current_balance: number | null; realm_id: string }[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const liquidity = useMemo(() => {
+    if (!bankAccounts) return null;
+    const sum = (pred: (a: { name: string; realm_id: string }) => boolean) => {
+      const rows = bankAccounts.filter(pred);
+      return rows.length ? rows.reduce((s, a) => s + (Number(a.current_balance) || 0), 0) : null;
+    };
+    const n = (a: { name: string }) => (a.name || '').toLowerCase();
+    const isTax = (a: { name: string }) => n(a).includes('tax');
+    const isMT = (a: { name: string }) => /m\s*&\s*t/.test(n(a));
+    return {
+      'liq-operating': sum(a => !isTax(a) && !isMT(a) && (n(a).includes('operating') || n(a).includes('chase'))),
+      'liq-mt': sum(a => isMT(a) && !isTax(a)),
+      'liq-tax-reserves': sum(isTax),
+      'liq-5lt': sum(a => a.realm_id === '9130350272677286'),
+      'liq-5lca': sum(a => a.realm_id === KEY_STATS_DEBT_REALM_ID),
+      'liq-5lfs': sum(a => a.realm_id === KEY_STATS_FINSERV_REALM_ID),
+    } as Record<string, number | null>;
+  }, [bankAccounts]);
   const ytdRevenue = qbConnected ? ytdSeries.reduce((sum, row) => sum + row.revenue, 0) : null;
   const ttmSeries = useMemo(() => {
     const buckets = buildMonthBuckets(ttmRange.start, ttmRange.end);
@@ -2728,6 +2790,29 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   }, [allDeals, activePipelineId, ACTIVE_DEAL_LIST_STAGES, DEBT_PIPELINE_EXCLUDED_STATUSES]);
 
   const activeDealsList = debtPipelineDebug.included;
+
+  // Debt Pipeline header metrics — all derived from the same deal list shown below.
+  const debtPipelineStats = useMemo(() => {
+    const end = endOfMonth(periodRange.end);
+    const winStart = startOfMonth(new Date(end.getFullYear(), end.getMonth() + 1, 1));
+    const winEnd = endOfMonth(new Date(end.getFullYear(), end.getMonth() + 3, 1));
+    let dollarVolume = 0, potentialRevenue = 0, closingCount = 0, closingDollars = 0, closingRevenue = 0;
+    for (const d of activeDealsList as any[]) {
+      const value = Number(d.value || 0);
+      const fee = computeClosingFee(d.value, d.success_fee_percent, d.milestone_fee) || Number(d.total_fee || 0);
+      dollarVolume += value;
+      potentialRevenue += fee;
+      if (d.projected_close_date) {
+        const dt = new Date(d.projected_close_date);
+        if (!Number.isNaN(dt.getTime()) && dt >= winStart && dt <= winEnd) {
+          closingCount += 1;
+          closingDollars += value;
+          closingRevenue += fee;
+        }
+      }
+    }
+    return { dealCount: activeDealsList.length, dollarVolume, potentialRevenue, closingCount, closingDollars, closingRevenue };
+  }, [activeDealsList, periodRange.end]);
 
   // Latest status note per deal (for hover tooltips on Deal Name + Status)
   const [debtPipelineStatusNotes, setDebtPipelineStatusNotes] = useState<Record<string, string>>({});
@@ -3307,13 +3392,20 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       { id: 'liq-5lt', l: '5LT' },
       { id: 'liq-5lca', l: '5LCA' },
       { id: 'liq-5lfs', l: '5LFS' },
-    ].map(({ id, l }) => ({
-      id,
-      l,
-      live: false,
-      v: '—',
-      sub: <span style={{ color: NA_COLOR }}>—</span>,
-    }))),
+    ].map(({ id, l }) => {
+      const bal = liquidity?.[id] ?? null;
+      const live = isCurrentReportingPeriod && bal != null;
+      return {
+        id,
+        l,
+        live,
+        v: live ? fmtUSD(bal) : '—',
+        sub: <span style={{ color: NA_COLOR }}>{live ? 'Current balance' : '—'}</span>,
+        emptyHint: !isCurrentReportingPeriod
+          ? 'Bank balances are live snapshots — only shown for the current period.'
+          : 'No matching QuickBooks bank account found.',
+      };
+    })),
     {
       id: 'debt-solutions-revenue',
       l: 'Debt Solutions Revenue',
@@ -3890,7 +3982,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 );
               })()}
               {trendMode === 'quarterly-yoy' ? (
-                <div style={{ flex: 1, minHeight: 180, display: 'flex' }}><QuarterlyRevenueGrowthCard bare /></div>
+                <div style={{ flex: 1, minHeight: 180, display: 'flex' }}><QuarterlyRevenueGrowthCard bare anchorDate={String(reportingPeriod?.end ?? timeframe.end)} /></div>
               ) : qbConnected && (trendMode === 'ttm' ? ttmLabels.length > 0 : monthlyTrendLabels.length > 0)
                 ? <div style={{ position: 'relative', flex: 1, minHeight: 180 }}><canvas ref={ncRef} /></div>
                 : <NaPlaceholder height={200} label={isLoading ? 'Loading…' : 'Revenue unavailable — connect QuickBooks to populate finance data.'} />}
@@ -3905,18 +3997,16 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               <div style={{ height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {(() => {
                   const leftMetrics: { label: string; value: string }[] = [
-                    { label: "Next 3 Months' Revenue", value: next3Months.revenueSum > 0 ? formatUSD(next3Months.revenueSum / 1000) : '—' },
-                    { label: "Next 3 Months' Profit", value: '—' },
-                    { label: 'Client Signings', value: '—' },
-                    { label: 'Deals Closing', value: '—' },
-                    { label: 'Dollars Funding', value: '—' },
+                    { label: "Next 3 Months' Revenue", value: formatUSDFromDollars(debtPipelineStats.closingRevenue) },
+                    { label: 'Deals Closing', value: String(debtPipelineStats.closingCount) },
+                    { label: 'Dollars Funding', value: formatUSDFromDollars(debtPipelineStats.closingDollars) },
                   ];
-                  const rightMetrics = [
-                    'Deal Count',
-                    'Dollar Volume',
-                    'Potential Revenue',
-                    'Active Revenue',
+                  const rightMetricsData: { label: string; value: string }[] = [
+                    { label: 'Deal Count', value: String(debtPipelineStats.dealCount) },
+                    { label: 'Dollar Volume', value: formatUSDFromDollars(debtPipelineStats.dollarVolume) },
+                    { label: 'Potential Revenue', value: formatUSDFromDollars(debtPipelineStats.potentialRevenue) },
                   ];
+                  const rightMetrics = rightMetricsData.map(m => m.label);
                   const rows = Math.max(leftMetrics.length, rightMetrics.length);
                   const labelStyle: React.CSSProperties = { padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', whiteSpace: 'nowrap' };
                   const valueStyle: React.CSSProperties = { padding: '6px 8px', color: 'hsl(0,0%,100%)', fontWeight: 600, textAlign: 'right' };
@@ -3928,7 +4018,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                             <td style={labelStyle}>{leftMetrics[i]?.label ?? ''}</td>
                             <td style={valueStyle}>{leftMetrics[i]?.value ?? ''}</td>
                             <td style={{ ...labelStyle, borderLeft: '1px solid rgba(255,255,255,0.08)' }}>{rightMetrics[i] ?? ''}</td>
-                            <td style={valueStyle}>{rightMetrics[i] ? '—' : ''}</td>
+                            <td style={valueStyle}>{rightMetricsData[i]?.value ?? ''}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -4069,11 +4159,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <div className="flex h-full flex-col">
               <div className="flex flex-col divide-y divide-border">
                 {[
-                  { label: "Next 3 Months' Revenue", value: '—' },
-                  { label: "Next 3 Months' Profit", value: '—' },
-                  { label: 'Operating Cashflow', value: '—' },
-                  { label: 'Client Signings', value: '—' },
-                  { label: 'Current Run Rate', value: '—' },
+                  { label: "Next 3 Months' Revenue (proj.)", value: formatUSDFromDollars(finservTrailing.next3Rev) },
+                  { label: "Next 3 Months' Profit (proj.)", value: formatUSDFromDollars(finservTrailing.next3Profit) },
+                  { label: 'Current Run Rate (annualized)', value: formatUSDFromDollars(finservTrailing.runRate) },
                 ].map((row) => (
                   <div key={row.label} className="flex items-center justify-between py-2 text-sm">
                     <span className="text-muted-foreground">{row.label}</span>
@@ -4083,11 +4171,11 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               </div>
               <div className="mt-3 flex-1 min-h-[160px]">
                 <div className="mb-1 text-xs font-medium text-muted-foreground">
-                  Next 3 Months' Revenue & Profit
+                  Projected Revenue & Profit (FinServ trailing 3-mo avg)
                 </div>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={next3Months.rows}
+                    data={finservTrailing.rows}
                     margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
