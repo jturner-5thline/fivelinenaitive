@@ -62,39 +62,12 @@ export default function CrmCompanies() {
   const companies = useMemo(() => data?.pages.flatMap((p) => p.rows) ?? [], [data]);
   const totalCount = data?.pages[0]?.totalCount ?? companies.length;
 
-  // Infinite-scroll sentinel
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      },
-      { rootMargin: '1800px 0px' },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage, companies.length]);
-
-  // Always keep one page pre-fetched ahead of the user. As soon as the
-  // current page settles, schedule the next one during idle time so the
-  // sentinel never has to wait — scrolling feels seamless.
-  useEffect(() => {
-    if (!hasNextPage || isFetchingNextPage || isFetching || companies.length === 0) return;
-    const idleWindow = window as Window & typeof globalThis & {
-      requestIdleCallback?: (callback: IdleRequestCallback) => number;
-      cancelIdleCallback?: (handle: number) => void;
-    };
-    if (idleWindow.requestIdleCallback) {
-      const id = idleWindow.requestIdleCallback(() => void fetchNextPage(), { timeout: 1500 });
-      return () => idleWindow.cancelIdleCallback?.(id);
-    }
-    const id = globalThis.setTimeout(() => void fetchNextPage(), 200);
-    return () => globalThis.clearTimeout(id);
-  }, [companies.length, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage]);
+  // Load more only when the user scrolls to the bottom of the table itself.
+  // (A page-level sentinel + idle prefetch kept swapping data under the
+  // scroller, which made the table jump while the user was scrolling.)
+  const handleEndReached = () => {
+    if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+  };
 
   const showSyncBanner = !isLoading && totalCount === 0;
 

@@ -33,6 +33,8 @@ interface CrmCompaniesTableProps {
   onBulkAction?: (action: string, ids: string[]) => void;
   leadingFilterSlot?: React.ReactNode;
   toolbarActions?: React.ReactNode;
+  /** Called when the user scrolls to the bottom of the table. */
+  onEndReached?: () => void;
 }
 
 const lifecycleColors: Record<string, string> = {
@@ -51,7 +53,7 @@ const statusColors: Record<string, string> = {
   churned: 'bg-red-500/10 text-red-500',
 };
 
-export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, toolbarActions }: CrmCompaniesTableProps) {
+export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, toolbarActions, onEndReached }: CrmCompaniesTableProps) {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [lifecycleFilter, setLifecycleFilter] = useState('all');
@@ -345,7 +347,9 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
   const filteredRef = useRef(filtered);
   filteredRef.current = filtered;
   const virtuosoComponents = useMemo(() => ({
-    Table: (props: any) => <Table {...props} style={{ ...props.style, width: '100%' }} />,
+    // Plain <table> — the shared Table wraps itself in an overflow:auto div,
+    // which nested a second scroller inside Virtuoso's and caused scroll jumps.
+    Table: (props: any) => <table {...props} className="w-full caption-bottom text-sm" style={{ ...props.style, width: '100%' }} />,
     TableHead: TableHeader as any,
     TableRow: (rowProps: any) => {
       const rawIdx = rowProps['data-index'] ?? rowProps['data-item-index'];
@@ -461,7 +465,9 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
             style={{ height: '100%' }}
             data={filtered}
             computeItemKey={(_index, co) => co.id}
-            increaseViewportBy={{ top: 600, bottom: 1400 }}
+            fixedItemHeight={44}
+            increaseViewportBy={{ top: 400, bottom: 800 }}
+            endReached={() => onEndReached?.()}
             components={virtuosoComponents}
             fixedHeaderContent={() => (
               <TableRow className="border-0 hover:bg-transparent">
