@@ -349,7 +349,8 @@ function Group({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Toolbar({ editor }: { editor: Editor | null }) {
+const Toolbar = React.forwardRef<HTMLDivElement, { editor: Editor | null; visible: boolean }>(
+  function Toolbar({ editor, visible }, ref) {
   if (!editor) return null;
   const setLink = () => {
     const prev = editor.getAttributes('link').href ?? '';
@@ -362,14 +363,29 @@ function Toolbar({ editor }: { editor: Editor | null }) {
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   };
   return (
-    <div style={{
+    <div
+      ref={ref}
+      aria-hidden={!visible}
+      onMouseDown={(e) => {
+        // Preserve editor focus when clicking toolbar buttons so formatting
+        // applies to the current selection. Native selects/inputs keep default.
+        const tag = (e.target as HTMLElement).tagName;
+        if (tag !== 'SELECT' && tag !== 'INPUT' && tag !== 'OPTION') e.preventDefault();
+      }}
+      style={{
       position: 'sticky', top: 'var(--agenda-toolbar-offset, 96px)', zIndex: 20,
       display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4,
-      padding: '8px 10px', marginBottom: 12,
+      padding: visible ? '8px 10px' : '0 10px', marginBottom: visible ? 12 : 0,
+      maxHeight: visible ? 200 : 0,
+      opacity: visible ? 1 : 0,
+      overflow: 'hidden',
+      pointerEvents: visible ? 'auto' : 'none',
+      transition: 'opacity 160ms ease, max-height 200ms ease, padding 160ms ease, margin-bottom 160ms ease',
       background: 'rgba(16,28,52,0.85)',
       backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
-      border: '0.5px solid rgba(80,140,255,0.22)', borderRadius: 12,
-      boxShadow: '0 4px 18px rgba(0,0,0,0.25)',
+      border: visible ? '0.5px solid rgba(80,140,255,0.22)' : '0.5px solid transparent',
+      borderRadius: 12,
+      boxShadow: visible ? '0 4px 18px rgba(0,0,0,0.25)' : 'none',
     }}>
       <Group>
         <ToolbarBtn title="Bold" active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}><Bold size={14} /></ToolbarBtn>
