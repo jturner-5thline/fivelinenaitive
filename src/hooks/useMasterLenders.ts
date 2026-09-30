@@ -339,12 +339,50 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
         setLoadingMore(true);
 
         const loadRemaining = async (): Promise<MasterLender[]> => {
-          // Smaller background pages so the directory list grows visibly and
-          // the UI thread gets to flush rows/handlers between fetches.
-          const backgroundPageSize = 500;
+          // Max PostgREST page size — fewer round trips.
+          const backgroundPageSize = 1000;
           let offset = firstPage.length;
           let keepGoing = true;
           let accumulated: MasterLender[] = firstPage;
+
+          // Fast path: when we know the (estimated) total, fetch all remaining
+          // pages in parallel instead of one after another.
+          if (count != null && count > firstPage.length) {
+            const starts: number[] = [];
+            // Overshoot by one page in case the estimate is low.
+            for (let s = firstPage.length; s < count + backgroundPageSize; s += backgroundPageSize) starts.push(s);
+            const results = await Promise.all(
+              starts.map((s) =>
+                supabase
+                  .from('master_lenders')
+                  .select('*')
+                  .order(orderColumn, { ascending: orderAscending })
+                  .order('id', { ascending: true })
+                  .range(s, s + backgroundPageSize - 1),
+              ),
+            );
+            if (loadId !== backgroundLoadIdRef.current) return accumulated;
+            const failed = results.find((r) => r.error);
+            if (!failed) {
+              const seen = new Set(firstPage.map((l) => l.id));
+              const rest: MasterLender[] = [];
+              for (const r of results) {
+                for (const row of ((r.data as MasterLender[] | null) ?? [])) {
+                  if (seen.has(row.id)) continue;
+                  seen.add(row.id);
+                  rest.push(withDemoLenderContact(row, isDemo));
+                }
+              }
+              const lastFull = (results[results.length - 1].data?.length ?? 0) === backgroundPageSize;
+              accumulated = [...firstPage, ...rest];
+              offset = firstPage.length + rest.length;
+              keepGoing = lastFull; // estimate was very low — continue sequentially
+              cachedLenders = accumulated;
+              cacheUserId = user.id;
+              cacheTimestamp = Date.now();
+              setLenders(accumulated);
+            }
+          }
 
           while (keepGoing) {
             // Check if this background load has been superseded
