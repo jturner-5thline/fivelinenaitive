@@ -141,7 +141,7 @@ export function AgendaFootnotesSection({ editor, companyId, periodType, periodKe
 
   return (
     <section
-      aria-label="Agenda footnotes"
+      aria-label="Action items and key decisions"
       style={{
         marginTop: 24,
         padding: '16px 40px 24px',

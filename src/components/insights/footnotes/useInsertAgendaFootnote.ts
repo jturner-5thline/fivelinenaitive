@@ -83,7 +83,7 @@ export function useInsertAgendaFootnote() {
       }
 
       if (mode === 'footnote_only') {
-        toast.success('Added to Agenda footnotes');
+        toast.success('Added to Action Items and Key Decisions');
         return true;
       }
 
