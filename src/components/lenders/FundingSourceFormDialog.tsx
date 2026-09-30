@@ -204,7 +204,11 @@ export function FundingSourceFormDialog({
         setClaapState('empty');
         if (error) {
           let msg = '';
-          try { msg = (await (error as any).context?.json?.())?.error || ''; } catch { /* ignore */ }
+          try {
+            const raw = (await (error as any).context?.json?.())?.error;
+            msg = typeof raw === 'string' ? raw : '';
+          } catch { /* ignore */ }
+          console.warn('Claap extraction failed', error);
           toast.error(msg ? `Could not read the Claap call: ${msg}` : 'Could not read the Claap call for funding source details');
         }
         return;
