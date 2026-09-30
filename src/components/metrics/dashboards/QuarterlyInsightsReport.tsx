@@ -405,7 +405,8 @@ function applySwDefaultKpis(configKey: string, st: ReportState): ReportState {
     format: d.format,
     templateConfig: { metricSourceId: d.id, customMetricId: null, sourceArea: 'FinServ Financial Metrics' } as unknown as Record<string, unknown>,
   }));
-  return { ...st, kpis: [...defaults, ...existing], swDefaultKpisApplied: true };
+  const merged = [...existing, ...defaults].slice(0, 8);
+  return { ...st, kpis: merged, swDefaultKpisApplied: true };
 }
 
 /** John Moffitt (report-2) staple KPIs — default from Aug 2026 / Q3 2026 onward. */
@@ -445,7 +446,8 @@ function applyJmDefaultKpis(configKey: string, st: ReportState): ReportState {
     format: d.format,
     templateConfig: { metricSourceId: d.id, customMetricId: null, sourceArea: 'Brand Awareness' } as unknown as Record<string, unknown>,
   }));
-  return { ...st, kpis: [...defaults, ...existing], jmDefaultKpisApplied: true };
+  const merged = [...existing, ...defaults].slice(0, 8);
+  return { ...st, kpis: merged, jmDefaultKpisApplied: true };
 }
 
 const SEED: ReportState = {
