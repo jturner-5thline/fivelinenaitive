@@ -202,7 +202,11 @@ export function FundingSourceFormDialog({
       const f = (data as any)?.fields;
       if (error || !f) {
         setClaapState('empty');
-        if (error) toast.error('Could not read the Claap call for funding source details');
+        if (error) {
+          let msg = '';
+          try { msg = (await (error as any).context?.json?.())?.error || ''; } catch { /* ignore */ }
+          toast.error(msg ? `Could not read the Claap call: ${msg}` : 'Could not read the Claap call for funding source details');
+        }
         return;
       }
       const num = (v: unknown) => (typeof v === 'number' && isFinite(v) && v > 0 ? String(Math.round(v)) : '');
