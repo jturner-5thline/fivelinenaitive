@@ -7,8 +7,13 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 
 const Body = z.object({
-  summary: z.string().max(20000).optional().nullable(),
-  keyTakeaways: z.array(z.string().max(2000)).max(50).optional().nullable(),
+  summary: z.string().max(200000).transform((s) => s.slice(0, 20000)).optional().nullable(),
+  keyTakeaways: z
+    .array(z.string().max(50000).transform((s) => s.slice(0, 2000)))
+    .max(500)
+    .transform((a) => a.slice(0, 50))
+    .optional()
+    .nullable(),
   meetingRowId: z.string().uuid().optional().nullable(),
   meetingTitle: z.string().max(300).optional().nullable(),
   attendeeName: z.string().max(200).optional().nullable(),

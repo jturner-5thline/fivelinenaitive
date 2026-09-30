@@ -187,8 +187,8 @@ export function FundingSourceFormDialog({
     (async () => {
       const { data, error } = await supabase.functions.invoke('extract-funding-source-from-claap', {
         body: {
-          summary: claapContext.summary || null,
-          keyTakeaways: claapContext.keyTakeaways || [],
+          summary: claapContext.summary ? claapContext.summary.slice(0, 20000) : null,
+          keyTakeaways: (claapContext.keyTakeaways || []).slice(0, 50).map((t) => String(t).slice(0, 2000)),
           meetingRowId: claapContext.meetingRowId || null,
           meetingTitle: claapContext.meetingTitle || null,
           attendeeName: initialContact?.name || null,
@@ -204,7 +204,11 @@ export function FundingSourceFormDialog({
         setClaapState('empty');
         if (error) {
           let msg = '';
-          try { msg = (await (error as any).context?.json?.())?.error || ''; } catch { /* ignore */ }
+          try {
+            const raw = (await (error as any).context?.json?.())?.error;
+            msg = typeof raw === 'string' ? raw : '';
+          } catch { /* ignore */ }
+          console.warn('Claap extraction failed', error);
           toast.error(msg ? `Could not read the Claap call: ${msg}` : 'Could not read the Claap call for funding source details');
         }
         return;
@@ -251,7 +255,10 @@ export function FundingSourceFormDialog({
         };
       });
       setClaapState(filled > 0 ? 'done' : 'empty');
-    })();
+    })().catch((err) => {
+      console.warn('Claap extraction threw', err);
+      if (!cancelled) setClaapState('empty');
+    });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, claapContext]);
