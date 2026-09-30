@@ -979,9 +979,10 @@ export function AgendaEditor() {
         }
       `}</style>
       <div className="agenda-editor-col">
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, margin: '0 0 12px' }}>
       <h1 style={{
         fontSize: 22, fontWeight: 700, color: 'rgba(235,245,255,0.97)',
-        letterSpacing: '-0.015em', lineHeight: 1.2, margin: '0 0 12px',
+        letterSpacing: '-0.015em', lineHeight: 1.2, margin: 0,
       }}>
         {(() => {
           let label = periodLabel;
@@ -992,18 +993,13 @@ export function AgendaEditor() {
           return `${label} ${periodType === 'month' ? 'Monthly' : 'Quarterly'} Insights`;
         })()}
       </h1>
-      <Toolbar ref={toolbarRef} editor={editor} visible={toolbarVisible} />
-      <div style={{
-        display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6,
-        height: 18, marginBottom: 4, fontSize: 11, color: 'rgba(180,210,245,0.7)',
-      }}>
         <button
           type="button"
           onClick={() => setRailOpen((v) => !v)}
           title="Open comments"
           style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            padding: '2px 8px', borderRadius: 999, marginRight: 6,
+            display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0,
+            padding: '2px 8px', borderRadius: 999,
             border: '0.5px solid rgba(80,140,255,0.28)',
             background: railOpen ? 'rgba(80,140,255,0.18)' : 'rgba(16,28,52,0.55)',
             color: 'rgba(200,225,255,0.95)', fontSize: 11, cursor: 'pointer',
@@ -1012,6 +1008,12 @@ export function AgendaEditor() {
           <MessageSquare size={11} />
           {commentsApi.threads.filter((t) => !t.resolved).length}
         </button>
+      </div>
+      <Toolbar ref={toolbarRef} editor={editor} visible={toolbarVisible} />
+      <div style={{
+        display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6,
+        height: 18, marginBottom: 4, fontSize: 11, color: 'rgba(180,210,245,0.7)',
+      }}>
         <button
           type="button"
           hidden
