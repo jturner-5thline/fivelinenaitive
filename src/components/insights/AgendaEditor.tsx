@@ -563,6 +563,30 @@ export function AgendaEditor() {
     },
   });
 
+  // Track editor focus to reveal/collapse the text styler.
+  useEffect(() => {
+    if (!editor) return;
+    const onFocus = () => setEditorFocused(true);
+    const onBlur = () => setEditorFocused(false);
+    editor.on('focus', onFocus);
+    editor.on('blur', onBlur);
+    return () => { editor.off('focus', onFocus); editor.off('blur', onBlur); };
+  }, [editor]);
+
+  // Keep the styler open while interacting with it (dropdowns, color
+  // pickers steal focus); collapse on any click outside editor + toolbar.
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (toolbarRef.current?.contains(t)) { setToolbarPinned(true); return; }
+      if (editorWrapRef.current?.contains(t)) return;
+      setToolbarPinned(false);
+    };
+    document.addEventListener('pointerdown', onDown, true);
+    return () => document.removeEventListener('pointerdown', onDown, true);
+  }, []);
+
+
   // Click a highlighted comment span in the editor → open the rail and
   // scroll the matching thread card into view.
   useEffect(() => {
