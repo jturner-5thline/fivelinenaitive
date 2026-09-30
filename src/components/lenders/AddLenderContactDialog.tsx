@@ -49,24 +49,36 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
   const [searching, setSearching] = useState(false);
   const pickedRef = useRef(false);
 
+  const cacheRef = useRef<Map<string, any[]>>(new Map());
+
   useEffect(() => {
     const q = form.name.trim();
     if (pickedRef.current) { pickedRef.current = false; return; }
-    if (q.length < 2) { setSuggestions([]); return; }
+    if (q.length < 2) { setSuggestions([]); setSearching(false); return; }
+    const key = q.toLowerCase();
+    const cached = cacheRef.current.get(key);
+    if (cached) {
+      setSuggestions(cached);
+      setShowSuggestions(true);
+      setSearching(false);
+      return;
+    }
     let cancelled = false;
     setSearching(true);
     const t = setTimeout(async () => {
-      const esc = q.replace(/[%,()]/g, ' ').trim();
-      const { data } = await supabase
-        .from('contacts')
-        .select('id, full_name, first_name, last_name, email, job_title, phone_mobile, phone_work')
-        .or(`full_name.ilike.%${esc}%,first_name.ilike.%${esc}%,last_name.ilike.%${esc}%,email.ilike.%${esc}%`)
-        .limit(8);
+      const { data, error } = await (supabase.rpc as any)('search_contacts_fast', {
+        _search: q,
+        _limit: 8,
+        _offset: 0,
+      });
       if (cancelled) return;
-      setSuggestions(data || []);
+      if (error) console.warn('[AddLenderContactDialog] search failed', error);
+      const rows = (data || []).slice(0, 8);
+      cacheRef.current.set(key, rows);
+      setSuggestions(rows);
       setShowSuggestions(true);
       setSearching(false);
-    }, 250);
+    }, 80);
     return () => { cancelled = true; clearTimeout(t); };
   }, [form.name]);
 
