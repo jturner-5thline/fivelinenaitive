@@ -2200,16 +2200,35 @@ export default function Lenders() {
 
       {/* Filters — off-canvas sheet */}
       <Sheet open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Filters</SheetTitle>
+        <SheetContent side="right" className="w-full sm:max-w-lg p-0 flex flex-col">
+          <SheetHeader className="px-6 pt-6 pb-2">
+            <SheetTitle className="flex items-center gap-2">
+              Filters
+              {countActiveLenderFilters(advancedFilters) > 0 && (
+                <span className="text-xs font-normal text-muted-foreground">
+                  ({countActiveLenderFilters(advancedFilters)} active)
+                </span>
+              )}
+            </SheetTitle>
           </SheetHeader>
-          <div className="mt-4">
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-3">
             <LenderFiltersBody
               filters={advancedFilters}
               onFiltersChange={setAdvancedFilters}
               lenders={masterLenders}
             />
+          </div>
+          <div className="border-t border-border px-6 py-4 flex items-center justify-between gap-3 bg-background/80">
+            <Button
+              variant="ghost"
+              onClick={() => setAdvancedFilters({ ...emptyFilters, filterMode: advancedFilters.filterMode || 'simple' })}
+              disabled={countActiveLenderFilters(advancedFilters) === 0}
+            >
+              Reset all
+            </Button>
+            <Button onClick={() => setIsFiltersOpen(false)}>
+              Show {filteredLenders.length.toLocaleString()} funding sources
+            </Button>
           </div>
         </SheetContent>
       </Sheet>
