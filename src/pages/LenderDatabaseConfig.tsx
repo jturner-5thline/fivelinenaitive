@@ -39,7 +39,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { DuplicateLendersDialog } from '@/components/lenders/DuplicateLendersDialog';
+import { MergeLendersDialog } from '@/components/lenders/MergeLendersDialog';
 import { useMasterLenders } from '@/hooks/useMasterLenders';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -865,15 +865,12 @@ export default function LenderDatabaseConfig() {
         </main>
       </div>
 
-      <DuplicateLendersDialog
+      <MergeLendersDialog
         open={isDuplicatesDialogOpen}
         onOpenChange={setIsDuplicatesDialogOpen}
         lenders={masterLenders}
         onMergeLenders={async (keepId, mergeIds, mergedData) => {
           await mergeLenders(keepId, mergeIds, mergedData);
-        }}
-        onDeleteLender={async (id) => {
-          await deleteMasterLender(id);
         }}
       />
     </>
