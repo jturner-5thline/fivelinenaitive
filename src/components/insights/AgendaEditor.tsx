@@ -169,6 +169,16 @@ function stripRemovedSections(doc: any): any {
     }
     if (!skipping) out.push(n);
   }
+  // Ensure a "Finance & KPI's" section exists above "New Items".
+  const headingText = (n: any) =>
+    n?.type === 'heading' ? (n.content ?? []).map((c: any) => c?.text ?? '').join('').trim() : null;
+  const hasFinance = out.some((n) => headingText(n) === "Finance & KPI's");
+  if (!hasFinance) {
+    const newItemsIdx = out.findIndex((n) => headingText(n) === 'New Items');
+    const insertion = [headingNode("Finance & KPI's"), { type: 'paragraph' }];
+    if (newItemsIdx >= 0) out.splice(newItemsIdx, 0, ...insertion);
+    else out.push(...insertion);
+  }
   return { ...doc, content: out };
 }
 
