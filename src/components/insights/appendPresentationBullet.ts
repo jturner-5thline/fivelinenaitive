@@ -112,3 +112,62 @@ export async function appendPresentationBullet(opts: {
       { onConflict: 'company_id,period_type,period_key' });
   if (error) throw error;
 }
+
+/**
+ * Removes a comment's sub-bullet from the Agenda Presentation section.
+ * Drops the "{Report} - {Section}" parent if it no longer has comments.
+ */
+export async function removePresentationBullet(opts: {
+  companyId: string;
+  periodType: string;
+  periodKey: string;
+  comment: string;
+  author?: string | null;
+}) {
+  const { companyId, periodType, periodKey, author } = opts;
+  const comment = (opts.comment || '').trim();
+  if (!comment) return;
+  const { data } = await supabase
+    .from('insights_agenda')
+    .select('content_json')
+    .eq('company_id', companyId)
+    .eq('period_type', periodType)
+    .eq('period_key', periodKey)
+    .maybeSingle();
+  const existing = data?.content_json as any;
+  if (!existing || existing.type !== 'doc' || !Array.isArray(existing.content)) return;
+  const doc = structuredClone(existing);
+  const nodes: any[] = doc.content;
+  const hIdx = nodes.findIndex((n) => headingText(n) === 'Presentation');
+  if (hIdx === -1) return;
+  let changed = false;
+  const matches = (li: any) => {
+    const para = li?.content?.[0];
+    const first = (para?.content?.[0]?.text ?? '').trim();
+    if (first !== comment) return false;
+    if (!author) return true;
+    return nodeText(para).includes(`(${author})`);
+  };
+  for (let i = hIdx + 1; i < nodes.length && nodes[i]?.type !== 'heading'; i++) {
+    const list = nodes[i];
+    if (list?.type !== 'bulletList') continue;
+    list.content = (list.content ?? []).filter((parent: any) => {
+      if (!parseParent(nodeText(parent?.content?.[0]))) return true;
+      const sub = parent.content?.find((c: any) => c?.type === 'bulletList');
+      if (!sub || changed) return true;
+      const idx = (sub.content ?? []).findIndex(matches);
+      if (idx === -1) return true;
+      sub.content.splice(idx, 1);
+      changed = true;
+      return sub.content.length > 0;
+    });
+  }
+  if (!changed) return;
+  const { error } = await supabase
+    .from('insights_agenda')
+    .update({ content_json: doc } as any)
+    .eq('company_id', companyId)
+    .eq('period_type', periodType)
+    .eq('period_key', periodKey);
+  if (error) throw error;
+}
