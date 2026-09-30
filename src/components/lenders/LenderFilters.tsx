@@ -192,116 +192,113 @@ function SimpleFilters({
       .map(v => ({ value: v, label: v }));
   }, [lenders]);
 
-  const labelCls = "text-[11px] font-normal text-muted-foreground/80";
-  return (
-    <div className="space-y-3">
-      {/* Compact responsive grid: 2 cols on narrow, 3 on md, 5 on xl */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-x-3 gap-y-3">
-        <div className="space-y-1">
-          <Label className={labelCls}>Deal Size ($)</Label>
-          <Input
-            type="text"
-            inputMode="numeric"
-            placeholder="e.g. $5,000,000"
-            value={filters.dealSize ? `$${Number(filters.dealSize.replace(/[^0-9]/g, '') || 0).toLocaleString('en-US')}` : ''}
-            onChange={(e) => onFiltersChange({ ...filters, dealSize: e.target.value.replace(/[^0-9]/g, '') })}
-            className="h-8 text-xs transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className={labelCls}>Min Deal Size ($)</Label>
-          <Input
-            type="text"
-            inputMode="numeric"
-            placeholder="e.g. $1,000,000"
-            value={filters.minDealSize ? `$${Number(filters.minDealSize.replace(/[^0-9]/g, '') || 0).toLocaleString('en-US')}` : ''}
-            onChange={(e) => onFiltersChange({ ...filters, minDealSize: e.target.value.replace(/[^0-9]/g, '') })}
-            className="h-8 text-xs transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className={labelCls}>Max Deal Size ($)</Label>
-          <Input
-            type="text"
-            inputMode="numeric"
-            placeholder="e.g. $50,000,000"
-            value={filters.maxDealSize ? `$${Number(filters.maxDealSize.replace(/[^0-9]/g, '') || 0).toLocaleString('en-US')}` : ''}
-            onChange={(e) => onFiltersChange({ ...filters, maxDealSize: e.target.value.replace(/[^0-9]/g, '') })}
-            className="h-8 text-xs transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className={labelCls}>Your Revenue ($)</Label>
-          <Input
-            type="text"
-            inputMode="numeric"
-            placeholder="e.g. $5,000,000"
-            value={filters.minRevenue ? `$${Number(filters.minRevenue.replace(/[^0-9]/g, '') || 0).toLocaleString('en-US')}` : ''}
-            onChange={(e) => onFiltersChange({ ...filters, minRevenue: e.target.value.replace(/[^0-9]/g, '') })}
-            className="h-8 text-xs transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className={labelCls}>Sponsorship Required?</Label>
-          <MultiSelectFilter
-            label="Any"
-            options={sponsorshipOptions}
-            selected={filters.sponsorship ? [filters.sponsorship] : []}
-            onChange={(selected) => onFiltersChange({ ...filters, sponsorship: selected[0] || '' })}
-            className="w-full h-8 text-xs"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className={labelCls}>Loan Type</Label>
-          <MultiSelectFilter
-            label="Any"
-            options={loanTypeOptions}
-            selected={filters.loanTypes}
-            onChange={(selected) => onFiltersChange({ ...filters, loanTypes: selected })}
-            className="w-full h-8 text-xs"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className={labelCls}>Cash Burn OK</Label>
-          <MultiSelectFilter
-            label="Any"
-            options={cashBurnOptions}
-            selected={filters.cashBurn ? [filters.cashBurn] : []}
-            onChange={(selected) => onFiltersChange({ ...filters, cashBurn: selected[0] || '' })}
-            className="w-full h-8 text-xs"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className={labelCls}>Industry</Label>
-          <MultiSelectFilter
-            label="Any"
-            options={industryOptions}
-            selected={filters.industries}
-            onChange={(selected) => onFiltersChange({ ...filters, industries: selected })}
-            className="w-full h-8 text-xs"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className={labelCls}>Geography</Label>
-          <MultiSelectFilter
-            label="Any"
-            options={geoOptions}
-            selected={filters.geographies}
-            onChange={(selected) => onFiltersChange({ ...filters, geographies: selected })}
-            className="w-full h-8 text-xs"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className={labelCls}>Tier</Label>
-          <MultiSelectFilter
-            label="Any"
-            options={tierOptions}
-            selected={filters.tiers}
-            onChange={(selected) => onFiltersChange({ ...filters, tiers: selected })}
-            className="w-full h-8 text-xs"
-          />
-        </div>
+  const sectionCls = "text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
+  const fieldLabelCls = "text-xs text-muted-foreground";
+  const money = (v: string) => v ? `$${Number(v.replace(/[^0-9]/g, '') || 0).toLocaleString('en-US')}` : '';
+  const digits = (v: string) => v.replace(/[^0-9]/g, '');
+
+  const Pill = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`h-8 px-3.5 rounded-md border text-xs font-medium transition-colors ${
+        active
+          ? 'bg-primary text-primary-foreground border-primary'
+          : 'border-border bg-transparent text-foreground/80 hover:bg-muted/40'
+      }`}
+    >
+      {children}
+    </button>
+  );
+
+  const ChoiceRow = ({ label, value, options, onChange }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (v: string) => void }) => (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-sm text-foreground/90">{label}</span>
+      <div className="flex gap-1.5">
+        <Pill active={!value} onClick={() => onChange('')}>Any</Pill>
+        {options.map((o) => (
+          <Pill key={o.value} active={value === o.value} onClick={() => onChange(value === o.value ? '' : o.value)}>{o.label}</Pill>
+        ))}
       </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <section className="space-y-2.5">
+        <div className={sectionCls}>Tier</div>
+        <div className="flex gap-1.5">
+          {tierOptions.map((t) => {
+            const active = filters.tiers.includes(t.value);
+            return (
+              <Pill
+                key={t.value}
+                active={active}
+                onClick={() => onFiltersChange({
+                  ...filters,
+                  tiers: active ? filters.tiers.filter((x) => x !== t.value) : [...filters.tiers, t.value],
+                })}
+              >
+                {t.label}
+              </Pill>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="space-y-2.5">
+        <div className={sectionCls}>Deal size range</div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className={fieldLabelCls}>Min</Label>
+            <Input inputMode="numeric" placeholder="e.g. $1,000,000" value={money(filters.minDealSize)}
+              onChange={(e) => onFiltersChange({ ...filters, minDealSize: digits(e.target.value), dealSize: '' })}
+              className="h-9 text-sm" />
+          </div>
+          <div className="space-y-1">
+            <Label className={fieldLabelCls}>Max</Label>
+            <Input inputMode="numeric" placeholder="e.g. $50,000,000" value={money(filters.maxDealSize)}
+              onChange={(e) => onFiltersChange({ ...filters, maxDealSize: digits(e.target.value), dealSize: '' })}
+              className="h-9 text-sm" />
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-2.5">
+        <div className={sectionCls}>Revenue</div>
+        <Input inputMode="numeric" placeholder="Company revenue, e.g. $5,000,000" value={money(filters.minRevenue)}
+          onChange={(e) => onFiltersChange({ ...filters, minRevenue: digits(e.target.value) })}
+          className="h-9 text-sm" />
+      </section>
+
+      <section className="space-y-3">
+        <div className={sectionCls}>Criteria</div>
+        <ChoiceRow label="Sponsorship required" value={filters.sponsorship} options={sponsorshipOptions}
+          onChange={(v) => onFiltersChange({ ...filters, sponsorship: v })} />
+        <ChoiceRow label="Cash burn OK" value={filters.cashBurn} options={cashBurnOptions}
+          onChange={(v) => onFiltersChange({ ...filters, cashBurn: v })} />
+      </section>
+
+      <section className="space-y-3">
+        <div className={sectionCls}>Coverage</div>
+        {[
+          { label: 'Loan types', options: loanTypeOptions, key: 'loanTypes' as const },
+          { label: 'Industries', options: industryOptions, key: 'industries' as const },
+          { label: 'Geography', options: geoOptions, key: 'geographies' as const },
+        ].map((f) => (
+          <div key={f.key} className="space-y-1">
+            <Label className={fieldLabelCls}>{f.label}</Label>
+            <MultiSelectFilter
+              label="Any"
+              options={f.options}
+              selected={filters[f.key]}
+              onChange={(selected) => onFiltersChange({ ...filters, [f.key]: selected })}
+              className="w-full h-9 text-sm justify-between"
+            />
+          </div>
+        ))}
+      </section>
     </div>
   );
 }
@@ -448,14 +445,10 @@ function LenderFiltersPanelInner({ filters, onFiltersChange, lenders, isOpen, se
   const body = (
     <div className={bodyOnly ? '' : 'px-3 pb-3 space-y-3'}>
       {bodyOnly && (
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-sm font-medium flex items-center gap-2">
-            <Filter className="h-4 w-4" />
-            Filters
-            {activeFilterCount > 0 && (
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{activeFilterCount}</Badge>
-            )}
-          </div>
+        <div className="flex items-center justify-between mb-5">
+          <span className="text-xs text-muted-foreground">
+            {filterMode === 'simple' ? 'Quick filters' : 'Custom rule builder'}
+          </span>
           <Tabs value={filterMode} onValueChange={handleModeChange}>
             <TabsList className="h-7">
               <TabsTrigger value="simple" className="text-[11px] px-2.5 h-6">Simple</TabsTrigger>
