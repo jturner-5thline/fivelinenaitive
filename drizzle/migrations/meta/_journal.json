@@ -183,6 +183,13 @@
       "when": 1790783510796,
       "tag": "0025_idx_master_lenders_company_name",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790785097421,
+      "tag": "0026_fix_paro_and_normalize_company_domains",
+      "breakpoints": true
     }
   ]
 }

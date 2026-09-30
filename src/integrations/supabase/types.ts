@@ -30460,6 +30460,10 @@ export type Database = {
           udt_name: string
         }[]
       }
+      merge_crm_companies: {
+        Args: { p_source: string; p_target: string }
+        Returns: undefined
+      }
       merge_master_lenders: {
         Args: { _keep_id: string; _merge_ids: string[] }
         Returns: undefined
