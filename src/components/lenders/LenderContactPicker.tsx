@@ -20,6 +20,7 @@ import { useCreateContact } from '@/hooks/useContacts';
 import { toast } from '@/hooks/use-toast';
 import { LOCATION_OPTIONS } from '@/constants/locations';
 import { cn } from '@/lib/utils';
+import { ContactTypeMultiSelect } from '@/components/contacts/ContactTypeMultiSelect';
 
 export interface PickedContact {
   contact_id: string | null;
@@ -63,6 +64,7 @@ export function LenderContactPicker({ value, onChange }: Props) {
     job_title: '',
     phone_work: '',
     geography: '',
+    contact_type: 'Lender',
   });
   const [geographyOpen, setGeographyOpen] = useState(false);
   const [geographySearch, setGeographySearch] = useState('');
@@ -193,13 +195,14 @@ export function LenderContactPicker({ value, onChange }: Props) {
       job_title: '',
       phone_work: '',
       geography: '',
+      contact_type: 'Lender',
     });
     setOpen(false);
     setCreating(true);
   };
 
   const submitNew = async () => {
-    const { first_name, last_name, email, job_title, phone_work, geography } = newForm;
+    const { first_name, last_name, email, job_title, phone_work, geography, contact_type } = newForm;
     if (!first_name.trim() && !last_name.trim() && !email.trim()) {
       toast({ title: 'Add a name or email to create a contact', variant: 'destructive' });
       return;
@@ -211,6 +214,7 @@ export function LenderContactPicker({ value, onChange }: Props) {
         email: email.trim(),
         job_title: job_title.trim(),
         phone_work: phone_work.trim(),
+        contact_type: contact_type.trim() || null,
       } as any);
       const fullName =
         created?.full_name ||
@@ -225,7 +229,7 @@ export function LenderContactPicker({ value, onChange }: Props) {
         geography: geography.trim(),
       });
       setCreating(false);
-      setNewForm({ first_name: '', last_name: '', email: '', job_title: '', phone_work: '', geography: '' });
+      setNewForm({ first_name: '', last_name: '', email: '', job_title: '', phone_work: '', geography: '', contact_type: 'Lender' });
       toast({ title: 'Contact created' });
     } catch (err: any) {
       toast({ title: 'Could not create contact', description: err?.message, variant: 'destructive' });
@@ -323,6 +327,10 @@ export function LenderContactPicker({ value, onChange }: Props) {
         <GeographySelect
           current={newForm.geography}
           onPick={(v) => setNewForm({ ...newForm, geography: v })}
+        />
+        <ContactTypeMultiSelect
+          value={newForm.contact_type}
+          onChange={(v) => setNewForm({ ...newForm, contact_type: v || '' })}
         />
         <div className="flex justify-end gap-2 pt-1">
           <Button
