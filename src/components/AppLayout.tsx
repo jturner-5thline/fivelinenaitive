@@ -68,6 +68,7 @@ function MainContent({
       onClick={handleMainClick}
     >
       {/* Noise overlay removed — intermediate shell is fully transparent. */}
+      <ScrollHeaderBackdrop />
       <DealsHeader />
       {showWorkspaceLogo && (
         <div

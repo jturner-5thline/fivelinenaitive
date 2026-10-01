@@ -4709,3 +4709,16 @@ html body .deal-detail-surface .fs-tab-widget:hover {
 [data-sticky-dashboard-header] .bg-secondary {
   background-image: none !important;
 }
+
+/* Natural scroll blur behind the fixed top chrome — no hard edge. */
+.scroll-header-backdrop {
+  height: 96px;
+  opacity: 0;
+  transition: opacity 260ms ease;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-app) 82%, transparent) 0%, color-mix(in srgb, var(--bg-app) 55%, transparent) 55%, transparent 100%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%);
+}
+.scroll-header-backdrop[data-scrolled="true"] { opacity: 1; }
