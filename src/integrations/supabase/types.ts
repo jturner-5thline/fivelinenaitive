@@ -12565,6 +12565,7 @@ export type Database = {
           services_offered: string[] | null
           sourced_via: string | null
           stage: string
+          stage_entered_at: string | null
           status: string | null
           success_fee_percent: number | null
           tags: string[]
@@ -12660,6 +12661,7 @@ export type Database = {
           services_offered?: string[] | null
           sourced_via?: string | null
           stage?: string
+          stage_entered_at?: string | null
           status?: string | null
           success_fee_percent?: number | null
           tags?: string[]
@@ -12755,6 +12757,7 @@ export type Database = {
           services_offered?: string[] | null
           sourced_via?: string | null
           stage?: string
+          stage_entered_at?: string | null
           status?: string | null
           success_fee_percent?: number | null
           tags?: string[]

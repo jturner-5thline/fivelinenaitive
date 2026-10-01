@@ -366,6 +366,7 @@ export function useDealsDatabase() {
       businessModel: (dbDeal as any).business_model || undefined,
       sourcedVia: (dbDeal as any).sourced_via || undefined,
       createdAt: dbDeal.created_at,
+      stageEnteredAt: (dbDeal as any).stage_entered_at || dbDeal.created_at,
       updatedAt: dbDeal.updated_at,
       lenders: dedupedDealLenders,
       migratedFromPersonal: dbDeal.migrated_from_personal || false,
@@ -822,6 +823,9 @@ export function useDealsDatabase() {
       } else if (updates.stage === 'closed-lost') {
         updates = { ...updates, status: 'archived' as DealStatus };
       }
+    }
+    if (updates.stage && updates.stage !== previousDeal?.stage) {
+      updates = { ...updates, stageEnteredAt: new Date().toISOString() };
     }
 
     // Mark as pending to prevent realtime refetch from overwriting optimistic update
