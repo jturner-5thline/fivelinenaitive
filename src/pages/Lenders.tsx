@@ -2622,7 +2622,10 @@ export default function Lenders() {
           }
         }}
         lenders={masterLenders}
-        onMergeLenders={async (keepId, mergeIds, mergedData) => { await mergeLenders(keepId, mergeIds, mergedData); }}
+        onMergeLenders={async (keepId, mergeIds, mergedData) => {
+          const ok = await mergeLenders(keepId, mergeIds, mergedData);
+          if (!ok) throw new Error('Merge failed');
+        }}
         selectedLenderIds={selectedLenderIds.size >= 2 ? Array.from(selectedLenderIds) : undefined}
       />
 
