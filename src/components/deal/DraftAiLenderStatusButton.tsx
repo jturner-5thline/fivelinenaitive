@@ -6,21 +6,31 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Textarea } from '@/components/ui/textarea';
 import { draftLenderStatusFromEmails } from '@/services/draftLenderStatusFromEmails';
 
+const PASS_RE = /\b(pass(?:ed|ing)?|declin(?:e|ed|es|ing)|not (?:a )?(?:good )?fit|won['’]?t (?:be )?(?:mov|proceed)|not (?:moving|proceed)|too (?:tough|early))\b/i;
+
 interface Props {
   lenderId: string;
   onApply: (text: string) => void;
+  /** When provided and the draft reads as a pass, offers a combined note + Passed stage approval. */
+  onApprovePass?: (text: string) => Promise<void> | void;
+  alreadyPassed?: boolean;
 }
 
 /** Drafts a one-sentence funding source update from emails with the lender that reference the deal. */
-export function DraftAiLenderStatusButton({ lenderId, onApply }: Props) {
+export function DraftAiLenderStatusButton({ lenderId, onApply, onApprovePass, alreadyPassed }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState('');
   const [meta, setMeta] = useState({ count: 0, calls: 0, lender: '', deal: '' });
+  const [isPass, setIsPass] = useState(false);
+  const [movePassed, setMovePassed] = useState(true);
+  const [applying, setApplying] = useState(false);
 
   const run = async () => {
     setLoading(true);
     setText('');
+    setIsPass(false);
+    setMovePassed(true);
     try {
       const r = await draftLenderStatusFromEmails(lenderId);
       setMeta({ count: r.emailCount, calls: r.callCount || 0, lender: r.lenderName, deal: r.dealName });
@@ -28,12 +38,15 @@ export function DraftAiLenderStatusButton({ lenderId, onApply }: Props) {
       if (r.reason === 'no_emails') { toast.info(`No recent emails or calls with ${r.lenderName} mentioning ${r.dealName || 'this deal'}.`); setOpen(false); return; }
       if (!r.text) { toast.error('Could not draft an update. Try again.'); return; }
       setText(r.text);
+      setIsPass(PASS_RE.test(r.text));
     } catch (e: any) {
       toast.error(e?.message || 'Could not draft an update');
     } finally {
       setLoading(false);
     }
   };
+
+  const showPass = isPass && !!onApprovePass && !alreadyPassed;
 
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (o && !text && !loading) run(); }}>
@@ -51,15 +64,36 @@ export function DraftAiLenderStatusButton({ lenderId, onApply }: Props) {
         ) : (
           <>
             <Textarea value={text} onChange={(e) => setText(e.target.value)} className="min-h-[70px] text-sm" />
+            {showPass && (
+              <label className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs cursor-pointer">
+                <input type="checkbox" className="mt-0.5" checked={movePassed} onChange={(e) => setMovePassed(e.target.checked)} />
+                <span>AI detected a pass. Also move this funding source's stage to <strong>Passed</strong>.</span>
+              </label>
+            )}
             {(meta.count > 0 || meta.calls > 0) && (
               <p className="text-[11px] text-muted-foreground">
                 Based on {[meta.count > 0 && `${meta.count} email${meta.count === 1 ? '' : 's'}`, meta.calls > 0 && `${meta.calls} recorded call${meta.calls === 1 ? '' : 's'}`].filter(Boolean).join(' and ')} with {meta.lender}{meta.deal ? ` referencing ${meta.deal}` : ''}.
               </p>
             )}
             <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={run}>Regenerate</Button>
-              <Button size="sm" disabled={!text.trim()} onClick={() => { onApply(text.trim()); setOpen(false); setText(''); }}>
-                Use update
+              <Button variant="ghost" size="sm" disabled={applying} onClick={run}>Regenerate</Button>
+              <Button
+                size="sm"
+                disabled={!text.trim() || applying}
+                onClick={async () => {
+                  const t = text.trim();
+                  setApplying(true);
+                  try {
+                    if (showPass && movePassed) await onApprovePass!(t);
+                    else onApply(t);
+                    setOpen(false); setText(''); setIsPass(false);
+                  } catch (e: any) {
+                    toast.error(e?.message || 'Could not apply update');
+                  } finally { setApplying(false); }
+                }}
+              >
+                {applying && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                {showPass && movePassed ? 'Approve update & mark Passed' : 'Use update'}
               </Button>
             </div>
           </>
