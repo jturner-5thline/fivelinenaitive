@@ -36,6 +36,8 @@ export interface LenderContactInsert {
   country?: string | null;
   /** Existing contacts-database record chosen from the name dropdown (not stored on lender_contacts). */
   crmContactId?: string | null;
+  /** Contact type(s) for the contacts-database record (not stored on lender_contacts). */
+  contactType?: string | null;
 }
 
 export function useLenderContacts(lenderId: string | null) {
@@ -83,7 +85,7 @@ export function useLenderContacts(lenderId: string | null) {
   const addContact = async (contact: LenderContactInsert): Promise<LenderContact | null> => {
     if (!lenderId || !user) return null;
 
-    const { crmContactId, ...contactRow } = contact;
+    const { crmContactId, contactType, ...contactRow } = contact;
 
     try {
       const { data, error: insertError } = await supabase
@@ -113,6 +115,7 @@ export function useLenderContacts(lenderId: string | null) {
           city: contact.city,
           state: contact.state,
           country: contact.country,
+          contactType: contactType ?? null,
         },
         { userId: user.id, orgCompanyId: company?.id ?? null, existingContactId: crmContactId ?? null },
       ).then((res) => {

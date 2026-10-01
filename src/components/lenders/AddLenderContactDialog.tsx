@@ -19,6 +19,7 @@ import { LenderContactInsert } from '@/hooks/useLenderContacts';
 import { LOCATION_OPTIONS } from '@/constants/locations';
 import { US_STATE_OPTIONS } from '@/constants/usStates';
 import { COUNTRY_OPTIONS } from '@/lib/countries';
+import { ContactTypeMultiSelect } from '@/components/contacts/ContactTypeMultiSelect';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface AddLenderContactDialogProps {
@@ -44,6 +45,7 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
   });
 
   // Live contact suggestions from the contacts database as the user types.
+  const [contactType, setContactType] = useState<string>('Lender');
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -92,6 +94,7 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
       email: c.email || prev.email,
       phone: c.phone_mobile || c.phone_work || prev.phone,
     }));
+    if (c.contact_type) setContactType(c.contact_type);
     setShowSuggestions(false);
     setSuggestions([]);
   };
@@ -120,10 +123,12 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
         state: form.state?.trim() || null,
         country: form.country?.trim() || null,
         crmContactId: form.crmContactId ?? null,
+        contactType: contactType.trim() || null,
       });
       
       if (result) {
         setForm({ name: '', title: '', email: '', phone: '', notes: '', geography: '', city: '', state: '', country: '', crmContactId: null });
+        setContactType('Lender');
         setOpen(false);
       }
     } finally {
@@ -341,6 +346,11 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Contact Type</Label>
+            <ContactTypeMultiSelect value={contactType} onChange={(v) => setContactType(v || '')} />
           </div>
 
           <div className="space-y-1">

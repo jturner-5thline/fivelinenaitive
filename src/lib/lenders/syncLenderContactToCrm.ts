@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { splitContactTypes, joinContactTypes } from '@/components/contacts/ContactTypeMultiSelect';
 
 export interface LenderContactCrmInput {
   name: string;
@@ -8,6 +9,7 @@ export interface LenderContactCrmInput {
   city?: string | null;
   state?: string | null;
   country?: string | null;
+  contactType?: string | null;
 }
 
 const hostOf = (url?: string | null) =>
@@ -67,19 +69,19 @@ export async function syncLenderContactToCrm(
     const lastName = parts.length > 1 ? parts.slice(1).join(' ') : null;
 
     // Resolve an existing contacts row: explicit pick first, then exact email, then exact full name.
-    let existing: { id: string; crm_company_id: string | null; job_title: string | null } | null = null;
+    let existing: { id: string; crm_company_id: string | null; job_title: string | null; contact_type?: string | null } | null = null;
 
     if (opts.existingContactId) {
       const { data: picked } = await supabase
         .from('contacts')
-        .select('id, crm_company_id, job_title')
+        .select('id, crm_company_id, job_title, contact_type')
         .eq('id', opts.existingContactId)
         .maybeSingle();
       if (picked) existing = picked as any;
     }
 
     if (!existing && email) {
-      let q = supabase.from('contacts').select('id, crm_company_id, job_title').ilike('email', escapeLike(email)).limit(1);
+      let q = supabase.from('contacts').select('id, crm_company_id, job_title, contact_type').ilike('email', escapeLike(email)).limit(1);
       if (opts.orgCompanyId) q = q.eq('org_company_id', opts.orgCompanyId);
       const { data: found } = await q;
       if (found && found.length) existing = found[0] as any;
@@ -88,7 +90,7 @@ export async function syncLenderContactToCrm(
     if (!existing && !email && contact.name.trim()) {
       let q = supabase
         .from('contacts')
-        .select('id, crm_company_id, job_title')
+        .select('id, crm_company_id, job_title, contact_type')
         .ilike('full_name', escapeLike(contact.name.trim()))
         .limit(2);
       if (opts.orgCompanyId) q = q.eq('org_company_id', opts.orgCompanyId);
@@ -107,6 +109,9 @@ export async function syncLenderContactToCrm(
           updates.state_region = contact.state.trim();
         }
         if (contact.country?.trim()) updates.country = contact.country.trim();
+        if (contact.contactType?.trim()) {
+          updates.contact_type = joinContactTypes([...splitContactTypes(existing.contact_type), ...splitContactTypes(contact.contactType)]);
+        }
         await supabase.from('contacts').update(updates as any).eq('id', existing.id);
         return { contactId: existing.id, crmCompanyId };
       }
@@ -125,6 +130,7 @@ export async function syncLenderContactToCrm(
         state: contact.state?.trim() || null,
         state_region: contact.state?.trim() || null,
         country: contact.country?.trim() || null,
+        contact_type: contact.contactType?.trim() || null,
         crm_company_id: crmCompanyId,
         email_domain_normalized: email ? email.split('@')[1] || null : hostOf((lender as any).website) || null,
         created_by: opts.userId || null,
