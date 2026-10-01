@@ -243,3 +243,23 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   );
 }
 
+
+/** Soft, borderless blur behind the fixed top chrome once `.main-scrollable` scrolls. */
+function ScrollHeaderBackdrop() {
+  const [scrolled, setScrolled] = React.useState(false);
+  React.useEffect(() => {
+    const el = document.querySelector<HTMLElement>(".main-scrollable");
+    if (!el) return;
+    const onScroll = () => setScrolled(el.scrollTop > 6);
+    onScroll();
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+  return (
+    <div
+      aria-hidden="true"
+      className="scroll-header-backdrop fixed top-0 left-0 right-0 z-30 pointer-events-none"
+      data-scrolled={scrolled ? "true" : "false"}
+    />
+  );
+}
