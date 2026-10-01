@@ -63,6 +63,7 @@ const featureConfigs: FeatureConfig[] = [
   { featureKey: 'page_deal_detail', label: 'Deal Detail Page', description: 'Individual deal detail view', icon: <Briefcase className="h-4 w-4" /> },
   { featureKey: 'page_deal_space', label: 'Deal Space', description: 'AI-powered deal workspace', icon: <Sparkles className="h-4 w-4" /> },
   { featureKey: 'page_deal_management', label: 'Deal Management Tab', description: 'Management tab in deal detail', icon: <Cog className="h-4 w-4" /> },
+  { featureKey: 'page_deal_writeup', label: 'Write Up Tab', description: 'Write Up tab in deal detail', icon: <FileSignature className="h-4 w-4" /> },
   { featureKey: 'page_lenders', label: 'Directory', description: 'Master funding source directory', icon: <Building2 className="h-4 w-4" /> },
   { featureKey: 'page_analytics', label: 'Analytics', description: 'Charts, metrics, and performance insights', icon: <BarChart3 className="h-4 w-4" /> },
   { featureKey: 'page_reports', label: 'Reports', description: 'Custom and scheduled reporting', icon: <FileSignature className="h-4 w-4" /> },
