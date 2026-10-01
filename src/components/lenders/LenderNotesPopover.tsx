@@ -372,9 +372,11 @@ function NoteEntry({
               <Flag className="h-2.5 w-2.5 text-amber-500 shrink-0" />
             )}
           </div>
-          <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
-            {note.body}
-          </p>
+          {note.body && (
+            <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
+              {note.body}
+            </p>
+          )}
           {note.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
               {note.tags.map((tag) => (
