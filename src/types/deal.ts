@@ -90,6 +90,8 @@ export interface Deal {
   businessModel?: string;
   contactInfo?: string;
   stage: DealStage;
+  /** When the deal entered its current stage (ISO). */
+  stageEnteredAt?: string;
   status: DealStatus | null;
   engagementType: EngagementType;
   exclusivity?: ExclusivityType;
