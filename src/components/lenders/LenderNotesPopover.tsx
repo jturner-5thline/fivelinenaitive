@@ -56,7 +56,13 @@ export function LenderNotesPopover({
       <PopoverTrigger asChild>
         {children || <LenderNotesIcon lenderName={lenderName} />}
       </PopoverTrigger>
-      <PopoverContent side={side} align={align} className="w-[380px] p-0">
+      <PopoverContent
+        side={side}
+        align={align}
+        collisionPadding={12}
+        avoidCollisions
+        className="w-[380px] max-w-[calc(100vw-24px)] p-0"
+      >
         <LenderNotesPanel
           lenderName={lenderName}
           masterLenderId={masterLenderId}
@@ -153,8 +159,10 @@ function LenderNotesPanel({
     ? (notes || []).filter((n) => n.is_flag)
     : notes || [];
 
+  const canSubmit = !!body.trim() || isFlag || selectedTags.length > 0;
+
   const handleSubmit = async () => {
-    if (!body.trim()) return;
+    if (!canSubmit) return;
     await addNote.mutateAsync({
       lenderName,
       masterLenderId,
@@ -303,7 +311,7 @@ function LenderNotesPanel({
                   size="sm"
                   className="h-7 text-xs gap-1"
                   onClick={handleSubmit}
-                  disabled={!body.trim() || addNote.isPending}
+                  disabled={!canSubmit || addNote.isPending}
                 >
                   {addNote.isPending ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -364,9 +372,11 @@ function NoteEntry({
               <Flag className="h-2.5 w-2.5 text-amber-500 shrink-0" />
             )}
           </div>
-          <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
-            {note.body}
-          </p>
+          {note.body && (
+            <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
+              {note.body}
+            </p>
+          )}
           {note.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
               {note.tags.map((tag) => (
