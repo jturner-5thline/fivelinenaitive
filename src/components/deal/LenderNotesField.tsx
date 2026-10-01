@@ -14,7 +14,8 @@ interface LenderNotesFieldProps {
   placeholder?: string;
   className?: string;
   rows?: number;
-  onApprovePass?: (lenderId: string, notes: string) => Promise<void> | void;
+  onApprovePass?: (lenderId: string, notes: string, passReasonLabels: string[]) => Promise<void> | void;
+  passReasons?: { id: string; label: string }[];
   alreadyPassed?: boolean;
 }
 
@@ -35,6 +36,7 @@ export function LenderNotesField({
   rows = 2,
   onApprovePass,
   alreadyPassed,
+  passReasons,
 }: LenderNotesFieldProps) {
   const [localValue, setLocalValue] = useState(initialValue);
   const [isFocused, setIsFocused] = useState(false);
@@ -99,7 +101,8 @@ export function LenderNotesField({
             lenderId={lenderId}
             onApply={(text) => { setLocalValue(text); onSave(lenderId, text); }}
             alreadyPassed={alreadyPassed}
-            onApprovePass={onApprovePass ? async (text) => { await onApprovePass(lenderId, text); setLocalValue(text); } : undefined}
+            passReasons={passReasons}
+            onApprovePass={onApprovePass ? async (text, labels) => { await onApprovePass(lenderId, text, labels); setLocalValue(text); } : undefined}
           />
         )}
       </div>
