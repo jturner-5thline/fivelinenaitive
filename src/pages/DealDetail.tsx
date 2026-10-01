@@ -5767,8 +5767,6 @@ export default function DealDetail() {
                                             onSave={commitLenderNotes}
                                             onApprovePass={approveAiPass}
                                             alreadyPassed={lender.trackingStatus === 'passed'}
-                                      onApprovePass={approveAiPass}
-                                      alreadyPassed={lender.trackingStatus === 'passed'}
                                             isSaving={isSaving(`lender-notes-${lender.id}`)}
                                             showSuccess={savedNotesFlash.has(lender.id)}
                                             onFocusChange={handleNotesFocusChange}
@@ -6144,10 +6142,6 @@ export default function DealDetail() {
                                               onSave={commitLenderNotes}
                                               onApprovePass={approveAiPass}
                                               alreadyPassed={lender.trackingStatus === 'passed'}
-                                            onApprovePass={approveAiPass}
-                                            alreadyPassed={lender.trackingStatus === 'passed'}
-                                      onApprovePass={approveAiPass}
-                                      alreadyPassed={lender.trackingStatus === 'passed'}
                                               isSaving={isSaving(`lender-notes-${lender.id}`)}
                                               showSuccess={savedNotesFlash.has(lender.id)}
                                               onFocusChange={handleNotesFocusChange}
