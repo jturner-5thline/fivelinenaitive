@@ -336,13 +336,86 @@ function nameLooksNonPersonal(name: string | null): boolean {
   return NON_PERSONAL_NAME_PATTERNS.some((rx) => rx.test(trimmed));
 }
 
-function splitName(full: string | null): { first: string; last: string } {
-  if (!full) return { first: "", last: "" };
-  const cleaned = full.replace(/\s+/g, " ").trim();
-  if (!cleaned) return { first: "", last: "" };
-  const parts = cleaned.split(" ");
-  if (parts.length === 1) return { first: parts[0], last: "" };
-  return { first: parts[0], last: parts.slice(1).join(" ") };
+const NAME_ROLE_LOCALS = new Set([
+  "info", "hello", "contact", "support", "billing", "accounts", "accounting", "marketing",
+  "sales", "team", "admin", "help", "office", "operations", "payables", "receivables",
+  "ap", "ar", "hr", "legal", "press", "news", "noreply", "no-reply", "service", "services",
+]);
+
+function capName(word: string): string {
+  const w = word.replace(/\d+$/, "").trim();
+  if (!w) return "";
+  const lower = w.toLowerCase();
+  if (lower.startsWith("mc") && lower.length > 2) return "Mc" + lower[2].toUpperCase() + lower.slice(3);
+  if (lower.startsWith("o'") && lower.length > 2) return "O'" + lower[2].toUpperCase() + lower.slice(3);
+  return lower
+    .split("-")
+    .map((p) => (p ? p[0].toUpperCase() + p.slice(1) : p))
+    .join("-");
+}
+
+function nameFromDisplay(raw: string | null, email: string): { first: string; last: string } | null {
+  if (!raw) return null;
+  let s = raw
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/,\s*(CFA|CPA|MBA|MD|PhD|Ph\.D\.|Esq\.?|Jr\.?|Sr\.?|CAIA|JD|III|II|IV)\b\.?/gi, "")
+    .replace(/["'`]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!s || s.includes("@") || s.toLowerCase() === email.split("@")[0]) return null;
+  if (/\b(llc|inc|corp|group|bank|capital|partners|team|solutions|holdings)\b/i.test(s)) return null;
+  const comma = s.match(/^([^,]+),\s*([^,]+)$/);
+  if (comma) {
+    const after = comma[2].trim().split(" ").filter(Boolean);
+    // "Title, First Last" (e.g. "CFO, Jane Doe") → use the part after the comma.
+    if (after.length >= 2) return { first: capName(after[0]), last: after.slice(1).map(capName).join(" ") };
+    const last = comma[1].trim().split(" ").map(capName).join(" ");
+    return { first: capName(after[0] || ""), last };
+  }
+  const parts = s.split(" ").filter(Boolean);
+  if (parts.length === 1) return { first: capName(parts[0]), last: "" };
+  const isUpperOrLower = s === s.toUpperCase() || s === s.toLowerCase();
+  const fmt = (w: string) => (isUpperOrLower ? capName(w) : w);
+  return { first: fmt(parts[0]), last: parts.slice(1).map(fmt).join(" ") };
+}
+
+function nameFromEmailHandle(email: string): { first: string; last: string } | null {
+  const local = email.split("@")[0].toLowerCase().split("+")[0];
+  if (NAME_ROLE_LOCALS.has(local)) return null;
+  const tokens = local.split(/[._-]+/).map((t) => t.replace(/\d+$/, "")).filter(Boolean);
+  if (tokens.length === 2 && tokens.every((t) => t.length >= 2 && /^[a-z']+$/.test(t))) {
+    return { first: capName(tokens[0]), last: capName(tokens[1]) };
+  }
+  if (tokens.length === 3 && tokens[1].length === 1 && tokens[0].length >= 2 && tokens[2].length >= 2) {
+    return { first: capName(tokens[0]), last: capName(tokens[2]) };
+  }
+  return null;
+}
+
+function nameFromSignature(body: string | null): { first: string; last: string } | null {
+  if (!body) return null;
+  const m = body.match(
+    /(?:best regards|kind regards|warm regards|regards|best|thanks|thank you|sincerely|cheers)[,!.]?\s*\n+\s*([A-Z][a-z'’-]+)\s+([A-Z][a-z'’-]+(?:\s+[A-Z][a-z'’-]+)?)\s*(?:\n|$)/i,
+  );
+  if (!m) return null;
+  return { first: capName(m[1]), last: m[2].split(" ").map(capName).join(" ") };
+}
+
+/** Resolve first/last using display name → signature → email handle. */
+function resolveName(
+  display: string | null,
+  email: string,
+  body: string | null,
+): { first: string; last: string } {
+  const d = nameFromDisplay(display, email);
+  if (d && d.first && d.last) return d;
+  const sig = body ? nameFromSignature(body) : null;
+  const handle = nameFromEmailHandle(email);
+  // Accept signature only if it agrees with the handle/display first name.
+  if (sig && d?.first && sig.first.toLowerCase() === d.first.toLowerCase()) return sig;
+  if (handle) return handle;
+  if (sig && email.split("@")[0].toLowerCase().includes(sig.last.toLowerCase().split(" ")[0])) return sig;
+  return d || { first: "", last: "" };
 }
 
 function json(body: unknown, status = 200) {
@@ -540,7 +613,11 @@ Deno.serve(async (req) => {
       if (knownEmails.has(cand.email)) continue;
       if (dryRun) { created.push({ email: cand.email, dry_run: true, name: cand.name }); continue; }
 
-      const { first, last } = splitName(cand.name);
+      const { first, last } = resolveName(
+        cand.name,
+        cand.email,
+        cand.sourceFrom === cand.email ? cand.sourceBody : null,
+      );
       const { data: inserted, error: insErr } = await admin
         .from("contacts")
         .insert({
