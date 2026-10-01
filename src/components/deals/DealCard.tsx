@@ -1,3 +1,4 @@
+import { TimeInStageBadge } from './TimeInStageBadge';
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { Search, User, Clock, AlertTriangle, CheckCircle2, Flag, UserPlus, Flame, Thermometer, Snowflake, Pencil, Bell, Check, MoreVertical } from 'lucide-react';
 import DOMPurify from 'dompurify';

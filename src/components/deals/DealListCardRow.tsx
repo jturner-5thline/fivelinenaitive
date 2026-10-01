@@ -1,3 +1,4 @@
+import { TimeInStageBadge } from './TimeInStageBadge';
 import { memo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -292,7 +293,7 @@ function DealListCardRowImpl({
           )}
           {!compact && (
             <div
-              className="min-w-0 flex items-center justify-self-center w-[112px] [&_button]:w-full [&_button]:min-w-0 [&_button>*]:flex [&_button>*]:w-full [&_button>*]:min-w-0 [&_button>*]:justify-center [&_button>*]:items-center [&_button>*]:min-h-[22px] [&_button>*]:text-[10px] [&_button_span]:truncate"
+              className="relative min-w-0 flex items-center justify-self-center w-[112px] [&_button]:w-full [&_button]:min-w-0 [&_button>*]:flex [&_button>*]:w-full [&_button>*]:min-w-0 [&_button>*]:justify-center [&_button>*]:items-center [&_button>*]:min-h-[22px] [&_button>*]:text-[10px] [&_button_span]:truncate"
               onClick={(e) => e.stopPropagation()}
             >
               <InlineStageDropdown
