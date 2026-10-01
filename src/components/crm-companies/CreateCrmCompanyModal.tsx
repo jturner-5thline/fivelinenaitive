@@ -11,6 +11,7 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useIndustryOptions } from '@/hooks/useIndustryOptions';
 import { ManageIndustryOptionsDialog } from '@/components/crm/ManageIndustryOptionsDialog';
 import { EMPLOYEE_RANGE_OPTIONS } from '@/constants/employeeRanges';
+import { COUNTRY_OPTIONS } from '@/lib/countries';
 import { useCompanySnapshotFieldConfig } from '@/hooks/useCompanySnapshotFieldConfig';
 
 interface CreateCrmCompanyModalProps {
@@ -186,7 +187,13 @@ export function CreateCrmCompanyModal({ open, onClose, initialName, onCreated }:
           {shown('hq_country') && (
             <div className="space-y-1.5">
               <Label htmlFor="hq_country" className="text-xs">Country</Label>
-              <Input id="hq_country" value={form.hq_country} onChange={(e) => set('hq_country', e.target.value)} />
+              <Select value={form.hq_country || 'unset'} onValueChange={v => set('hq_country', v === 'unset' ? '' : v)}>
+                <SelectTrigger id="hq_country"><SelectValue placeholder="Select country" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unset">—</SelectItem>
+                  {COUNTRY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
