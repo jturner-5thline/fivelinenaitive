@@ -303,6 +303,7 @@ function DealListCardRowImpl({
                   onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))
                 }
               />
+              <TimeInStageBadge enteredAt={deal.stageEnteredAt || deal.createdAt} className="absolute -bottom-3 left-1/2 -translate-x-1/2 px-1 py-0 text-[9px]" />
             </div>
           )}
           {!compact && (

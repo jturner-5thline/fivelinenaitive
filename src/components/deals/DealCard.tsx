@@ -469,6 +469,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                   onStageChange={onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))}
                 />
               )}
+              <TimeInStageBadge enteredAt={deal.stageEnteredAt || deal.createdAt} />
             </div>
           )}
 
