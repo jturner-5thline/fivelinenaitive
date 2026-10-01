@@ -523,9 +523,9 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
 
           {/* ── MIDDLE: Notes snippet (inset panel with leading dot) ── */}
           {!compact && (
-            <div className="flex-1">
+            <div className="flex-1 flex flex-col min-h-0">
               {isEditingStatus ? (
-                <div className="min-h-[2.5rem]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} onMouseDown={(e) => e.stopPropagation()}>
+                <div className="flex-1 flex flex-col min-h-[2.5rem]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} onMouseDown={(e) => e.stopPropagation()}>
                   <MentionTextarea
                     value={statusText}
                     onChange={(html) => { statusTextRef.current = html; setStatusText(html); }}
@@ -561,21 +561,21 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                   </div>
                 </div>
               ) : notesPlainText ? (
-                <div className="relative group/status rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-3 min-h-[5.5rem]">
+                <div className="relative group/status flex-1 flex flex-col rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-3 xl:px-4 xl:py-3.5 min-h-[5.5rem] xl:min-h-[7rem] 2xl:min-h-[8rem]">
                   <HoverCard openDelay={300}>
                     <HoverCardTrigger asChild>
-                      <div className="cursor-pointer pr-6">
+                      <div className="cursor-pointer pr-6 flex-1">
                         {(() => {
                           const lines = notesPlainText.split('\n').filter(l => l.trim());
                           const headline = lines[0] || notesPlainText;
                           const rest = lines.slice(1).join(' ').trim();
                           return (
                             <>
-                              <p className="text-[14px] font-semibold leading-snug line-clamp-2 text-left" style={{ color: '#ffffff' }}>
+                              <p className="text-[14px] xl:text-[15px] font-semibold leading-snug line-clamp-2 xl:line-clamp-3 text-left" style={{ color: '#ffffff' }}>
                                 {headline}
                               </p>
                               {rest && (
-                                <p className="text-[13px] leading-snug mt-1 line-clamp-3 text-left" style={{ color: '#ffffff' }}>
+                                <p className="text-[13px] xl:text-[14px] leading-snug mt-1 line-clamp-3 xl:line-clamp-6 2xl:line-clamp-7 text-left" style={{ color: '#ffffff' }}>
                                   {rest}
                                 </p>
                               )}
@@ -599,8 +599,8 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                   </button>
                 </div>
               ) : (
-                <div className="relative group/status rounded-lg bg-white/[0.02] border border-dashed border-white/[0.08] px-3 py-3 min-h-[5.5rem]">
-                  <p className="text-[12px] leading-snug italic pr-6" style={{ color: 'rgba(200, 215, 238, 0.65)' }}>
+                <div className="relative group/status flex-1 flex flex-col rounded-lg bg-white/[0.02] border border-dashed border-white/[0.08] px-3 py-3 xl:px-4 xl:py-3.5 min-h-[5.5rem] xl:min-h-[7rem] 2xl:min-h-[8rem]">
+                  <p className="text-[12px] xl:text-[13px] leading-snug italic pr-6" style={{ color: 'rgba(200, 215, 238, 0.65)' }}>
                     No status update yet
                   </p>
                   <button
