@@ -14,6 +14,8 @@ interface LenderNotesFieldProps {
   placeholder?: string;
   className?: string;
   rows?: number;
+  onApprovePass?: (lenderId: string, notes: string) => Promise<void> | void;
+  alreadyPassed?: boolean;
 }
 
 /**
@@ -31,6 +33,8 @@ export function LenderNotesField({
   placeholder = 'Add notes... (Press Enter to save)',
   className,
   rows = 2,
+  onApprovePass,
+  alreadyPassed,
 }: LenderNotesFieldProps) {
   const [localValue, setLocalValue] = useState(initialValue);
   const [isFocused, setIsFocused] = useState(false);
@@ -94,6 +98,8 @@ export function LenderNotesField({
           <DraftAiLenderStatusButton
             lenderId={lenderId}
             onApply={(text) => { setLocalValue(text); onSave(lenderId, text); }}
+            alreadyPassed={alreadyPassed}
+            onApprovePass={onApprovePass ? async (text) => { await onApprovePass(lenderId, text); setLocalValue(text); } : undefined}
           />
         )}
       </div>

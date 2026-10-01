@@ -2478,6 +2478,23 @@ export default function DealDetail() {
     });
   }, [deal?.lenders, updateLenderInDb, logActivity, withSavingAsync]);
 
+  /** One-click approval of an AI-drafted pass: saves the note AND moves the funding source to Passed. */
+  const approveAiPass = useCallback(async (lenderId: string, notes: string) => {
+    const lender = deal?.lenders?.find(l => l.id === lenderId);
+    const passedStage = configuredStages.find(s => s.id === 'passed') || configuredStages.find(s => s.group === 'passed');
+    if (!lender || !passedStage) throw new Error('No Passed stage configured');
+    const oldStage = configuredStages.find(s => s.id === lender.stage);
+    setLastLenderChange({ lenderId, previousStage: lender.stage, previousTrackingStatus: lender.trackingStatus || 'active', previousPassReason: lender.passReason, lenderName: lender.name });
+    await updateLenderInDb(lenderId, { stage: passedStage.id, trackingStatus: 'passed', notes });
+    setDeal(prev => prev ? { ...prev, lenders: prev.lenders?.map(l => l.id === lenderId ? { ...l, stage: passedStage.id as any, trackingStatus: 'passed' as DealLender['trackingStatus'], notes, updatedAt: new Date().toISOString() } : l) } : prev);
+    logActivity('lender_stage_change', `${lender.name} stage changed`, { lender_id: lender.id, lender_name: lender.name, from: oldStage?.label || lender.stage, to: passedStage.label, status_note: notes, source: 'ai_draft_approval' });
+    toast({
+      title: 'Marked as Passed',
+      description: `${lender.name} note saved and moved to ${passedStage.label}`,
+      action: (<Button variant="outline" size="sm" onClick={() => undoLenderChange(lenderId, lender.stage, lender.trackingStatus || 'active', lender.passReason)}>Undo</Button>),
+    });
+  }, [deal?.lenders, configuredStages, updateLenderInDb, logActivity]);
+
   const updateLenderGroup = useCallback((lenderId: string, newGroup: StageGroup, passReason?: string) => {
     // Find the first stage in the target group (may not exist for groups like 'excluded')
     const targetStage = configuredStages.find(s => s.group === newGroup);
@@ -5712,6 +5729,8 @@ export default function DealDetail() {
                                       lenderId={lender.id}
                                       initialValue={lender.notes || ''}
                                       onSave={commitLenderNotes}
+                                      onApprovePass={approveAiPass}
+                                      alreadyPassed={lender.trackingStatus === 'passed'}
                                       isSaving={isSaving(`lender-notes-${lender.id}`)}
                                       showSuccess={savedNotesFlash.has(lender.id)}
                                       onFocusChange={handleNotesFocusChange}
@@ -5746,6 +5765,8 @@ export default function DealDetail() {
                                             lenderId={lender.id}
                                             initialValue={lender.notes || ''}
                                             onSave={commitLenderNotes}
+                                            onApprovePass={approveAiPass}
+                                            alreadyPassed={lender.trackingStatus === 'passed'}
                                             isSaving={isSaving(`lender-notes-${lender.id}`)}
                                             showSuccess={savedNotesFlash.has(lender.id)}
                                             onFocusChange={handleNotesFocusChange}
@@ -6119,6 +6140,8 @@ export default function DealDetail() {
                                               lenderId={lender.id}
                                               initialValue={lender.notes || ''}
                                               onSave={commitLenderNotes}
+                                              onApprovePass={approveAiPass}
+                                              alreadyPassed={lender.trackingStatus === 'passed'}
                                               isSaving={isSaving(`lender-notes-${lender.id}`)}
                                               showSuccess={savedNotesFlash.has(lender.id)}
                                               onFocusChange={handleNotesFocusChange}
