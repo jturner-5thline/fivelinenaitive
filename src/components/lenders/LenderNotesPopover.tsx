@@ -56,7 +56,13 @@ export function LenderNotesPopover({
       <PopoverTrigger asChild>
         {children || <LenderNotesIcon lenderName={lenderName} />}
       </PopoverTrigger>
-      <PopoverContent side={side} align={align} className="w-[380px] p-0">
+      <PopoverContent
+        side={side}
+        align={align}
+        collisionPadding={12}
+        avoidCollisions
+        className="w-[380px] max-w-[calc(100vw-24px)] p-0"
+      >
         <LenderNotesPanel
           lenderName={lenderName}
           masterLenderId={masterLenderId}
@@ -153,8 +159,10 @@ function LenderNotesPanel({
     ? (notes || []).filter((n) => n.is_flag)
     : notes || [];
 
+  const canSubmit = !!body.trim() || isFlag || selectedTags.length > 0;
+
   const handleSubmit = async () => {
-    if (!body.trim()) return;
+    if (!canSubmit) return;
     await addNote.mutateAsync({
       lenderName,
       masterLenderId,
@@ -303,7 +311,7 @@ function LenderNotesPanel({
                   size="sm"
                   className="h-7 text-xs gap-1"
                   onClick={handleSubmit}
-                  disabled={!body.trim() || addNote.isPending}
+                  disabled={!canSubmit || addNote.isPending}
                 >
                   {addNote.isPending ? (
                     <Loader2 className="h-3 w-3 animate-spin" />

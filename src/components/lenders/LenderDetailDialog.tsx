@@ -903,7 +903,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                     <History className="h-4 w-4" />
                     Deal history
                   </Button>
-                  <LenderNotesPopover lenderName={lender.name} masterLenderId={lender.id} side="bottom" />
+                  <LenderNotesPopover lenderName={lender.name} masterLenderId={lender.id} side="bottom" align="end" />
                 </>
               )}
               {isEditMode ? (
