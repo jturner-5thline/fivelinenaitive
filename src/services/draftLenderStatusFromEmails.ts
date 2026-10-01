@@ -29,6 +29,8 @@ export interface DraftLenderResult {
   lenderName: string;
   dealName: string;
   reason?: 'no_contacts' | 'no_emails' | 'llm_error';
+  /** Source emails/calls text used for the draft (for follow-up pass-reason classification). */
+  context?: string;
 }
 
 const SYSTEM_PROMPT =
@@ -140,5 +142,29 @@ export async function draftLenderStatusFromEmails(dealLenderId: string): Promise
   const raw: string = data?.result?.text || '';
   if (error || data?.error_kind || !raw) return { ...base, emailCount: top.length, callCount: calls.length, reason: 'llm_error' };
   const s = sanitizeStatusSuggestion(raw);
-  return { ...base, ok: true, text: s.text || raw.trim(), emailCount: top.length, callCount: calls.length };
+  return { ...base, ok: true, text: s.text || raw.trim(), emailCount: top.length, callCount: calls.length, context: userPrompt.slice(0, 6000) };
+}
+
+/** Uses AI to pick up to 3 primary pass reasons (from the configured list) given the approved update + source emails. */
+export async function classifyPassReasons(update: string, context: string | undefined, reasons: { id: string; label: string }[]): Promise<string[]> {
+  if (!reasons.length) return [];
+  const list = reasons.map((r) => `${r.id}: ${r.label}`).join('\n');
+  const systemPrompt =
+    'You classify why a lender/funding source passed on a deal. Choose the 1-3 PRIMARY reasons from the allowed list that best match what the funding source actually said. ' +
+    'Use "no-reason" only if no reason is stated. Output ONLY the reason ids, comma-separated, no other text.';
+  const userPrompt = `Allowed reasons (id: label):\n${list}\n\nApproved status update:\n${update}\n\nSource emails/calls:\n${(context || '').slice(0, 6000)}`;
+  const { data, error } = await supabase.functions.invoke('smart-email-ai', {
+    body: { action: 'suggest_status_update', systemPrompt, userPrompt, fastModel: false },
+  });
+  const raw: string = data?.result?.text || '';
+  if (error || data?.error_kind || !raw) return [];
+  const valid = new Set(reasons.map((r) => r.id));
+  const byLabel = new Map(reasons.map((r) => [r.label.toLowerCase(), r.id]));
+  const out: string[] = [];
+  for (const tok of raw.split(/[,\n]/).map((t) => t.trim().replace(/^[-*"'\s]+|["'.\s]+$/g, ''))) {
+    const id = valid.has(tok) ? tok : byLabel.get(tok.toLowerCase());
+    if (id && !out.includes(id)) out.push(id);
+    if (out.length >= 3) break;
+  }
+  return out;
 }

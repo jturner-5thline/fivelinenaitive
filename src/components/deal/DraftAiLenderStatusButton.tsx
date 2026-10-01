@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
-import { draftLenderStatusFromEmails } from '@/services/draftLenderStatusFromEmails';
+import { draftLenderStatusFromEmails, classifyPassReasons } from '@/services/draftLenderStatusFromEmails';
 
 const PASS_RE = /\b(pass(?:ed|ing)?|declin(?:e|ed|es|ing)|not (?:a )?(?:good )?fit|won['’]?t (?:be )?(?:mov|proceed)|not (?:moving|proceed)|too (?:tough|early))\b/i;
 
@@ -12,12 +12,13 @@ interface Props {
   lenderId: string;
   onApply: (text: string) => void;
   /** When provided and the draft reads as a pass, offers a combined note + Passed stage approval. */
-  onApprovePass?: (text: string) => Promise<void> | void;
+  onApprovePass?: (text: string, passReasonLabels: string[]) => Promise<void> | void;
+  passReasons?: { id: string; label: string }[];
   alreadyPassed?: boolean;
 }
 
 /** Drafts a one-sentence funding source update from emails with the lender that reference the deal. */
-export function DraftAiLenderStatusButton({ lenderId, onApply, onApprovePass, alreadyPassed }: Props) {
+export function DraftAiLenderStatusButton({ lenderId, onApply, onApprovePass, alreadyPassed, passReasons = [] }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState('');
@@ -25,12 +26,24 @@ export function DraftAiLenderStatusButton({ lenderId, onApply, onApprovePass, al
   const [isPass, setIsPass] = useState(false);
   const [movePassed, setMovePassed] = useState(true);
   const [applying, setApplying] = useState(false);
+  const [context, setContext] = useState<string | undefined>();
+  const [reasonIds, setReasonIds] = useState<string[]>([]);
+  const [reasonsLoading, setReasonsLoading] = useState(false);
+
+  const loadReasons = async (draft: string, ctx?: string) => {
+    if (!passReasons.length) return;
+    setReasonsLoading(true);
+    try { setReasonIds(await classifyPassReasons(draft, ctx, passReasons)); }
+    catch { setReasonIds([]); }
+    finally { setReasonsLoading(false); }
+  };
 
   const run = async () => {
     setLoading(true);
     setText('');
     setIsPass(false);
     setMovePassed(true);
+    setReasonIds([]);
     try {
       const r = await draftLenderStatusFromEmails(lenderId);
       setMeta({ count: r.emailCount, calls: r.callCount || 0, lender: r.lenderName, deal: r.dealName });
@@ -38,7 +51,10 @@ export function DraftAiLenderStatusButton({ lenderId, onApply, onApprovePass, al
       if (r.reason === 'no_emails') { toast.info(`No recent emails or calls with ${r.lenderName} mentioning ${r.dealName || 'this deal'}.`); setOpen(false); return; }
       if (!r.text) { toast.error('Could not draft an update. Try again.'); return; }
       setText(r.text);
-      setIsPass(PASS_RE.test(r.text));
+      setContext(r.context);
+      const pass = PASS_RE.test(r.text);
+      setIsPass(pass);
+      if (pass && onApprovePass && !alreadyPassed) loadReasons(r.text, r.context);
     } catch (e: any) {
       toast.error(e?.message || 'Could not draft an update');
     } finally {
@@ -70,6 +86,30 @@ export function DraftAiLenderStatusButton({ lenderId, onApply, onApprovePass, al
                 <span>AI detected a pass. Also move this funding source's stage to <strong>Passed</strong>.</span>
               </label>
             )}
+            {showPass && movePassed && passReasons.length > 0 && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span>Pass reasons {reasonsLoading ? '(AI analyzing…)' : `(${reasonIds.length}/3)`}</span>
+                  {!reasonsLoading && <button type="button" className="underline" onClick={() => loadReasons(text, context)}>Re-analyze</button>}
+                </div>
+                <div className="flex max-h-32 flex-wrap gap-1 overflow-auto">
+                  {passReasons.map((r) => {
+                    const on = reasonIds.includes(r.id);
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        disabled={!on && reasonIds.length >= 3}
+                        onClick={() => setReasonIds((p) => (on ? p.filter((x) => x !== r.id) : [...p, r.id]))}
+                        className={`rounded border px-1.5 py-0.5 text-[10px] leading-tight text-left disabled:opacity-40 ${on ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground hover:text-foreground'}`}
+                      >
+                        {r.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             {(meta.count > 0 || meta.calls > 0) && (
               <p className="text-[11px] text-muted-foreground">
                 Based on {[meta.count > 0 && `${meta.count} email${meta.count === 1 ? '' : 's'}`, meta.calls > 0 && `${meta.calls} recorded call${meta.calls === 1 ? '' : 's'}`].filter(Boolean).join(' and ')} with {meta.lender}{meta.deal ? ` referencing ${meta.deal}` : ''}.
@@ -79,12 +119,12 @@ export function DraftAiLenderStatusButton({ lenderId, onApply, onApprovePass, al
               <Button variant="ghost" size="sm" disabled={applying} onClick={run}>Regenerate</Button>
               <Button
                 size="sm"
-                disabled={!text.trim() || applying}
+                disabled={!text.trim() || applying || (showPass && movePassed && reasonsLoading)}
                 onClick={async () => {
                   const t = text.trim();
                   setApplying(true);
                   try {
-                    if (showPass && movePassed) await onApprovePass!(t);
+                    if (showPass && movePassed) await onApprovePass!(t, reasonIds.map((id) => passReasons.find((r) => r.id === id)?.label || id));
                     else onApply(t);
                     setOpen(false); setText(''); setIsPass(false);
                   } catch (e: any) {
