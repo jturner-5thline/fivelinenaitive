@@ -133,8 +133,8 @@ export default function CrmCompanies() {
       </Helmet>
 
       <div className="bg-transparent">
-        <main className="w-full px-4 pt-2 pb-3 sm:px-6 space-y-3">
-          <div className="flex items-center justify-between">
+        <main className="w-full px-4 pt-2 pb-3 sm:px-6 flex flex-col gap-3 overflow-hidden h-[calc(100dvh-76px)]">
+          <div className="shrink-0 flex items-center justify-between">
             <h1 className="text-2xl font-bold text-foreground">Companies</h1>
           </div>
 
@@ -178,10 +178,24 @@ export default function CrmCompanies() {
             </div>
           ) : (
             <>
-              <div>
+              <div className="flex-1 min-h-0">
                 <CrmCompaniesTable
                   companies={companies}
                   onEndReached={handleEndReached}
+                  footer={
+              <div className="flex items-center text-xs text-muted-foreground">
+                {isFetchingNextPage ? (
+                  <span className="flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-xs shadow-sm backdrop-blur">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                    More companies loading…
+                  </span>
+                ) : hasNextPage ? (
+                  <span className="text-xs">Scroll to load more</span>
+                ) : companies.length > 0 ? (
+                  <span className="text-xs">Showing all {companies.length.toLocaleString()} companies</span>
+                ) : null}
+              </div>
+                  }
                   toolbarActions={
                     <>
                       <DropdownMenu>
@@ -241,18 +255,6 @@ export default function CrmCompanies() {
                     </>
                   }
                 />
-              </div>
-              <div className="py-6 flex items-center justify-center text-sm text-muted-foreground">
-                {isFetchingNextPage ? (
-                  <span className="flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-xs shadow-sm backdrop-blur">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                    More companies loading…
-                  </span>
-                ) : hasNextPage ? (
-                  <span className="text-xs">Scroll to load more</span>
-                ) : companies.length > 0 ? (
-                  <span className="text-xs">Showing all {companies.length.toLocaleString()} companies</span>
-                ) : null}
               </div>
             </>
           )}

@@ -223,9 +223,9 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
   const deleteTarget = contacts.find(c => c.id === deleteContactId);
 
   return (
-    <div className="space-y-3 crm-companies-surface">
+    <div className="h-full min-h-0 flex flex-col gap-3 crm-companies-surface">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 flex-nowrap">
+      <div className="shrink-0 flex items-center gap-2 flex-nowrap">
         <div className="relative flex-1 min-w-[140px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search contacts..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9" />
@@ -289,7 +289,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
       {/* Table — fixed height to always show ~25 rows */}
       <div
         className={cn(
-          'crm-companies-table rounded-xl overflow-hidden',
+          'crm-companies-table flex-1 min-h-0 flex flex-col rounded-xl overflow-hidden',
           'ring-1 ring-border/40 shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
           '[&_table]:border-separate [&_table]:border-spacing-0',
           '[&_th]:h-10 [&_th]:px-3 [&_th]:py-0 [&_th]:bg-transparent [&_th]:font-medium [&_th]:text-[11px] [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground/80 [&_th]:whitespace-nowrap',
@@ -298,7 +298,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
           '[&_tbody_tr:last-child_td]:border-b-0',
         )}
       >
-        <div style={{ height: 56 + 25 * 31 }}>
+        <div className="flex-1 min-h-0">
         {filtered.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
             {isFetching && search.trim() ? (
@@ -481,11 +481,10 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
         )}
         </div>
         {footer && (
-          <div className="border-t border-border/40 bg-muted/20 px-3 py-2">{footer}</div>
+          <div className="shrink-0 border-t border-border/40 bg-muted/20 px-3 py-2">{footer}</div>
         )}
       </div>
 
-      <p className="text-xs text-muted-foreground">{filtered.length} contact{filtered.length !== 1 ? 's' : ''}</p>
 
       {/* Link to Company Modal */}
       <EntitySearchModal

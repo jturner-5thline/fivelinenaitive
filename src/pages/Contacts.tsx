@@ -203,9 +203,9 @@ export default function Contacts() {
       </Helmet>
 
       <div className="bg-transparent">
-        <main className="w-full px-4 pt-2 pb-3 sm:px-6 space-y-3">
+        <main className="w-full px-4 pt-2 pb-3 sm:px-6 flex flex-col gap-3 overflow-hidden h-[calc(100dvh-76px)]">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="shrink-0 flex items-center justify-between">
             <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
           </div>
 
@@ -238,7 +238,7 @@ export default function Contacts() {
             <>
               {/* Never block pointer events during background fetches —
                   doing so freezes the search input mid-keystroke. */}
-              <div>
+              <div className="flex-1 min-h-0">
                 <ContactsTable
                   contacts={contacts}
                   search={search}
