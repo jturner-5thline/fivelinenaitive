@@ -805,9 +805,14 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                     <Users className="h-4 w-4 text-muted-foreground" /> Contacts
                     <Badge variant="secondary" className="text-[10px] font-normal ml-1">{contacts.length}</Badge>
                   </CardTitle>
-                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setShowCreateContact(true)}>
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
+                  <div className="flex items-center gap-0.5">
+                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1" onClick={() => setShowLinkContact(true)} title="Search existing contacts">
+                      <LinkIcon className="h-3.5 w-3.5" /> Search
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1" onClick={() => setShowCreateContact(true)} title="Create new contact">
+                      <Plus className="h-3.5 w-3.5" /> New
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="pt-3">
                   {contacts.length === 0 ? (
