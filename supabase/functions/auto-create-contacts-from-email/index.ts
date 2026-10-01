@@ -366,9 +366,11 @@ function nameFromDisplay(raw: string | null, email: string): { first: string; la
   if (/\b(llc|inc|corp|group|bank|capital|partners|team|solutions|holdings)\b/i.test(s)) return null;
   const comma = s.match(/^([^,]+),\s*([^,]+)$/);
   if (comma) {
+    const after = comma[2].trim().split(" ").filter(Boolean);
+    // "Title, First Last" (e.g. "CFO, Jane Doe") → use the part after the comma.
+    if (after.length >= 2) return { first: capName(after[0]), last: after.slice(1).map(capName).join(" ") };
     const last = comma[1].trim().split(" ").map(capName).join(" ");
-    const first = comma[2].trim().split(" ")[0];
-    return { first: capName(first), last };
+    return { first: capName(after[0] || ""), last };
   }
   const parts = s.split(" ").filter(Boolean);
   if (parts.length === 1) return { first: capName(parts[0]), last: "" };
