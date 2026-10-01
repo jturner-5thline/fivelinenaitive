@@ -35,6 +35,7 @@ export interface LenderFilters {
   geographies: string[];
   lenderTypes?: string[];
   tiers: string[];
+  ndaOnFile?: boolean;
   // New advanced conditions
   advancedConditions: FilterCondition[];
   // Filter mode
@@ -286,6 +287,12 @@ function SimpleFilters({
           onChange={(v) => onFiltersChange({ ...filters, sponsorship: v })} />
         <ChoiceRow label="Cash burn OK" value={filters.cashBurn} options={cashBurnOptions}
           onChange={(v) => onFiltersChange({ ...filters, cashBurn: v })} />
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm text-foreground/90">NDA on file</span>
+          <Pill active={!!filters.ndaOnFile} onClick={() => onFiltersChange({ ...filters, ndaOnFile: !filters.ndaOnFile })}>
+            {filters.ndaOnFile ? 'On' : 'Off'}
+          </Pill>
+        </div>
       </section>
 
       <section className="space-y-3">
@@ -367,6 +374,7 @@ export function countActiveLenderFilters(filters: LenderFilters): number {
     if (filters.lenderTypes?.length) count++;
     if (filters.sponsorship) count++;
     if (filters.cashBurn) count++;
+    if (filters.ndaOnFile) count++;
   }
   return count;
 }
@@ -393,9 +401,9 @@ function LenderFiltersPanelInner({ filters, onFiltersChange, lenders, isOpen, se
       if (filters.industries?.length) count++;
       if (filters.geographies?.length) count++;
       if (filters.lenderTypes?.length) count++;
-    if (filters.lenderTypes?.length) count++;
       if (filters.sponsorship) count++;
       if (filters.cashBurn) count++;
+      if (filters.ndaOnFile) count++;
     }
     return count;
   }, [filters, filterMode]);
@@ -451,6 +459,7 @@ function LenderFiltersPanelInner({ filters, onFiltersChange, lenders, isOpen, se
     if (filters.geographies?.length) summaries.push({ key: 'geo', label: `Geo: ${filters.geographies.length > 2 ? `${filters.geographies.length} selected` : filters.geographies.join(', ')}` });
     if (filters.sponsorship) summaries.push({ key: 'sponsor', label: `Sponsorship Required?: ${filters.sponsorship}` });
     if (filters.cashBurn) summaries.push({ key: 'cashBurn', label: `Cash Burn: ${filters.cashBurn}` });
+    if (filters.ndaOnFile) summaries.push({ key: 'nda', label: 'NDA on file' });
     return summaries;
   }, [filters]);
 
@@ -681,6 +690,15 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
       result = result.filter((lender) => 
         lender.cash_burn === safeFilters.cashBurn
       );
+    }
+
+    // NDA on file — free-text NDA field set to anything other than an explicit "no"
+    if (safeFilters.ndaOnFile) {
+      const NO = ['no', 'n', 'false', 'none', 'not signed', 'no nda'];
+      result = result.filter((lender) => {
+        const v = String((lender as any).nda || '').trim().toLowerCase();
+        return !!v && !NO.includes(v);
+      });
     }
   }
 
