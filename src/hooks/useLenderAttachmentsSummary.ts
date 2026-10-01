@@ -63,7 +63,7 @@ export function useLenderAttachmentsSummary() {
       const PAGE = 1000;
       for (let from = 0; ; from += PAGE) {
         const { data: rows, error: lErr } = await (supabase as any)
-          .from('lenders')
+          .from('master_lenders')
           .select('name, nda')
           .eq('company_id', company.id)
           .not('nda', 'is', null)
