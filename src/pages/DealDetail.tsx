@@ -647,6 +647,7 @@ export default function DealDetail() {
   const { getStageConfigForDeal } = usePipelineStageConfig();
   const { pipelines } = usePipelineContext();
   const { hasAccess: hasLenderMatchingAccess } = useFeatureAccess('lender_matching');
+  const { hasAccess: hasWriteUpTabAccess } = useFeatureAccess('page_deal_writeup', 'staging');
   const { is5thLineUser } = useFeatureAccess('deal_status_stage_mirror');
   // Human-in-the-loop sync between Deal Status (on-hold) and Deal Stage (on-hold).
   // Restricted to 5th Line tenant only. The mirrored update only happens after
@@ -3473,7 +3474,7 @@ export default function DealDetail() {
                             )}
                           </TabsTrigger>
                         )}
-                        {!isSimplifiedDeal && !isProjectsDeal && (
+                        {!isSimplifiedDeal && !isProjectsDeal && hasWriteUpTabAccess && (
                           <TabsTrigger
                             value="deal-writeup"
                             className="relative whitespace-nowrap flex-shrink-0 px-0 pb-2.5 pt-1 h-auto text-[13px] leading-none rounded-none font-medium text-muted-foreground bg-transparent border-0 border-b-2 border-transparent shadow-none -mb-px hover:text-white transition-colors duration-150 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white"
