@@ -58,6 +58,26 @@ export function useLenderAttachmentsSummary() {
         if (f.has_marketing) s.hasMarketingMaterials = true;
       });
 
+      // The funding source's own "NDA" field is authoritative when set, so the
+      // deal view matches the Funding Sources page.
+      const PAGE = 1000;
+      for (let from = 0; ; from += PAGE) {
+        const { data: rows, error: lErr } = await supabase
+          .from('lenders')
+          .select('name, nda')
+          .eq('company_id', company.id)
+          .not('nda', 'is', null)
+          .neq('nda', '')
+          .range(from, from + PAGE - 1);
+        if (lErr) { console.warn('NDA field lookup failed', lErr); break; }
+        ((rows as any[]) || []).forEach((r) => {
+          const v = String(r.nda || '').trim().toLowerCase();
+          if (!v || !r.name) return;
+          ensure(r.name).hasNda = !['no', 'n', 'false', 'none', 'not signed', 'no nda'].includes(v);
+        });
+        if (!rows || rows.length < PAGE) break;
+      }
+
       setSummaries(summaryMap);
     } catch (error) {
       console.error('Error fetching lender attachment summaries:', error);
