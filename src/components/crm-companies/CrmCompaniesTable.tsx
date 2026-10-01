@@ -37,6 +37,7 @@ interface CrmCompaniesTableProps {
   toolbarActions?: React.ReactNode;
   /** Called when the user scrolls to the bottom of the table. */
   onEndReached?: () => void;
+  footer?: React.ReactNode;
 }
 
 const lifecycleColors: Record<string, string> = {
@@ -73,7 +74,7 @@ const COMPANY_HEADERS: Record<string, { label: string; field: string; sortable?:
 };
 const COMPANY_COLUMNS: CrmColumnDef[] = Object.entries(COMPANY_HEADERS).map(([id, h]) => ({ id, label: h.label }));
 
-export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, toolbarActions, onEndReached }: CrmCompaniesTableProps) {
+export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, toolbarActions, onEndReached, footer }: CrmCompaniesTableProps) {
   const navigate = useNavigate();
   const cols = useCrmTableColumns('crm_companies', COMPANY_COLUMNS);
   const [search, setSearch] = useState('');
@@ -406,8 +407,8 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
   }), [navigate]);
 
   return (
-    <div className="space-y-3 crm-companies-surface">
-      <div className="flex items-center gap-2 flex-nowrap w-full min-w-0">
+    <div className="h-full min-h-0 flex flex-col gap-3 crm-companies-surface">
+      <div className="shrink-0 flex items-center gap-2 flex-nowrap w-full min-w-0">
         {leadingFilterSlot}
         <Select value={companyTypeFilter} onValueChange={setCompanyTypeFilter}>
           <SelectTrigger className={cn('w-[125px]', TOOLBAR_CONTROL_CLASS)}><SelectValue placeholder="Type" /></SelectTrigger>
@@ -474,7 +475,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
 
       <div
         className={cn(
-          'crm-companies-table rounded-xl overflow-hidden',
+          'crm-companies-table flex-1 min-h-0 flex flex-col rounded-xl overflow-hidden',
           'ring-1 ring-border/40 shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
           // Lighter, more refined table internals
           '[&_table]:border-separate [&_table]:border-spacing-0',
@@ -484,7 +485,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
           '[&_tbody_tr:last-child_td]:border-b-0',
         )}
       >
-        <div style={{ height: 56 + 25 * 44 }}>
+        <div className="flex-1 min-h-0">
         {filtered.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
             <Building2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
@@ -609,8 +610,10 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
           />
         )}
         </div>
+        {footer && (
+          <div className="shrink-0 border-t border-border/40 bg-muted/20 px-3 py-2">{footer}</div>
+        )}
       </div>
-      <p className="text-xs text-muted-foreground">{filtered.length} compan{filtered.length !== 1 ? 'ies' : 'y'}</p>
 
       {/* Link Contact Modal */}
       <EntitySearchModal
