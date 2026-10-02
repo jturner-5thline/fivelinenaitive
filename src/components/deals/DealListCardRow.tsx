@@ -1,4 +1,4 @@
-import { TimeInStageBadge } from './TimeInStageBadge';
+import { TimeInStageText } from './TimeInStageBadge';
 import { memo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -304,7 +304,6 @@ function DealListCardRowImpl({
                   onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))
                 }
               />
-              <TimeInStageBadge enteredAt={deal.stageEnteredAt || deal.createdAt} className="absolute -bottom-3 left-1/2 -translate-x-1/2 px-1 py-0 text-[9px]" />
             </div>
           )}
           {!compact && (
@@ -316,15 +315,8 @@ function DealListCardRowImpl({
             </span>
           )}
           {!compact && (
-            <span
-              className={cn(
-                'inline-flex items-center justify-center gap-0.5 whitespace-nowrap px-0 text-[11px] text-muted-foreground justify-self-center text-center',
-                timeAgoData.tone === 'critical' && 'text-destructive',
-                timeAgoData.tone === 'warning' && 'text-warning',
-              )}
-            >
-              <Clock className="h-3 w-3" />
-              {timeAgoData.text}
+            <span className="inline-flex items-center justify-center px-0 text-[11px] text-muted-foreground justify-self-center text-center">
+              <TimeInStageText enteredAt={deal.stageEnteredAt || deal.createdAt} />
             </span>
           )}
           {!compact && (
