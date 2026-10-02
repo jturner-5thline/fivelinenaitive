@@ -233,7 +233,7 @@ export const usePageAccessFlags = () => {
     'mkaleniecki@5thline.co',
   ];
 
-  const hasPageAccess = (pageName: string): boolean => {
+  const hasPageAccess = (pageName: string, defaultStatus?: FeatureStatus): boolean => {
     // Demo account cannot access certain pages
     if (isDemoAccount && (pageName === 'finance' || pageName === 'workflows' || pageName === 'sales_bd')) return false;
 
@@ -280,7 +280,12 @@ export const usePageAccessFlags = () => {
     if (!flag) {
       // For non-page features (chat_widget, copilot_widget, etc.), check directly
       const directFlag = flags?.find(f => f.name === pageName);
-      if (!directFlag) return true;
+      if (!directFlag) {
+        if (!defaultStatus) return true;
+        if (defaultStatus === 'james_only') return isJames;
+        if (is5thLineUser) return defaultStatus === 'deployed' || defaultStatus === 'staging';
+        return defaultStatus === 'deployed';
+      }
       
       if (directFlag.status === 'james_only') return isJames;
       if (is5thLineUser) return directFlag.status === 'deployed' || directFlag.status === 'staging';
