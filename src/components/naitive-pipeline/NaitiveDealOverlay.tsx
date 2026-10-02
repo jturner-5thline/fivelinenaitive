@@ -441,7 +441,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           reduceMotion ? '' : !originTransform && lastAnimatedDealId.current !== deal.id ? 'animate-scale-in' : '',
         )}
         style={{
-          transformOrigin: 'top left',
+          transformOrigin: isClosing ? 'top left' : 'center center',
           transform: originTransform ?? undefined,
           borderRadius: originBorderRadius != null ? `${originBorderRadius}px` : undefined,
           transition: reduceMotion
