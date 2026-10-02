@@ -33,6 +33,7 @@ import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 import type { Deal } from '@/types/deal';
 import { DashboardPlansGear } from './plans/DashboardPlansGear';
+import { PipelineVelocityWidget } from './PipelineVelocityWidget';
 import { useDebtAdvisoryComparisonMode } from '@/hooks/useDebtAdvisoryComparisonMode';
 import {
   ComparisonModeContext,
@@ -3192,6 +3193,8 @@ export function ConsolidatedDebtPipelineDashboard({
           />
         );
       })()}
+
+      <PipelineVelocityWidget onOpenDeal={(id) => setOpenDealId(id)} />
 
       <div className="pt-2 text-[10px] text-muted-foreground/70 font-mono">
         data source: deal_stage_history · source: all · last refresh: {lastRefresh.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'medium' })}
