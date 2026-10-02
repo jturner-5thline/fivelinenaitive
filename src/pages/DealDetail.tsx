@@ -4408,13 +4408,6 @@ export default function DealDetail() {
                                   </div>
                                 </Card>
                               )}
-                              <div className="shrink-0">
-                                <FundingSourceMixPie
-                                  lenders={deal.lenders || []}
-                                  configuredStages={configuredStages as any}
-                                  className="w-full min-w-0 text-center"
-                                />
-                              </div>
                             </div>
                           );
                         case 'ai-research':
@@ -5023,15 +5016,26 @@ export default function DealDetail() {
 
                           return isRailed ? createPortal(dealInfoCard, railPanelSlot!) : dealInfoCard;
                         }
-                        case 'outstanding-items':
+                        case 'outstanding-items': {
+                          const fundingMixWidget = widgetVis.fundingMix ? (
+                            <div className="shrink-0">
+                              <FundingSourceMixPie
+                                lenders={deal.lenders || []}
+                                configuredStages={configuredStages as any}
+                                className="w-full min-w-0 text-center"
+                                title="Funding Source Mix"
+                              />
+                            </div>
+                          ) : null;
                           // Outstanding Items is a debt-pipeline concept —
-                          // skip it entirely for Naitive and Projects pipeline deals.
-                          if (isNaitiveDeal || isProjectsDeal) return null;
-                          {
-                          // computed below; isolated block to keep variable scoped
+                          // skip it for Naitive and Projects pipeline deals,
+                          // but still show the Funding Source Mix widget.
+                          if (isNaitiveDeal || isProjectsDeal) {
+                            return fundingMixWidget ? <div key={id} className="h-full flex flex-col gap-2">{fundingMixWidget}</div> : null;
                           }
                           return (
                             <div key={id} className="h-full flex flex-col gap-2">
+                              {fundingMixWidget}
                               {widgetVis.openItems && (
                                <div className="shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]">
                               <OutstandingItems
