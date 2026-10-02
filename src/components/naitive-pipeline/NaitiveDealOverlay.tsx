@@ -365,8 +365,8 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
     reduceMotion || !navDir
       ? undefined
       : navDir === 'next'
-        ? 'slideInFromRight 320ms cubic-bezier(0.16, 1, 0.3, 1) both'
-        : 'slideInFromLeft 320ms cubic-bezier(0.16, 1, 0.3, 1) both';
+        ? 'slideInFromRight 180ms cubic-bezier(0.16, 1, 0.3, 1) both'
+        : 'slideInFromLeft 180ms cubic-bezier(0.16, 1, 0.3, 1) both';
 
   const overlay = (
     <div
@@ -403,7 +403,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           backdropFilter: 'blur(8px) saturate(80%) brightness(0.72)',
           WebkitBackdropFilter: 'blur(8px) saturate(80%) brightness(0.72)',
           opacity: reduceMotion ? 1 : isClosing ? 0 : 1,
-          transition: reduceMotion ? undefined : 'opacity 220ms ease-out',
+          transition: reduceMotion ? undefined : 'opacity 160ms ease-out',
         }}
         onClick={(e) => {
           e.stopPropagation();
@@ -446,8 +446,8 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           transition: reduceMotion
             ? undefined
             : isClosing
-              ? 'transform 240ms cubic-bezier(0.4, 0, 0.2, 1), border-radius 240ms cubic-bezier(0.4, 0, 0.2, 1), opacity 220ms ease-out'
-              : 'transform 240ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 240ms cubic-bezier(0.22, 1, 0.36, 1)',
+              ? 'transform 150ms cubic-bezier(0.4, 0, 0.2, 1), border-radius 150ms cubic-bezier(0.4, 0, 0.2, 1), opacity 140ms ease-out'
+              : 'transform 200ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 200ms cubic-bezier(0.22, 1, 0.36, 1)',
           opacity: isClosing ? 0.92 : 1,
           willChange: 'transform',
           animation: 'none',
