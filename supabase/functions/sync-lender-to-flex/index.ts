@@ -260,13 +260,21 @@ serve(async (req) => {
          );
        }
 
+      // Upstream FLEx failure (e.g. 5xx "Unknown error"): the lender was saved
+      // in Naitive fine, so report a non-fatal sync failure instead of a 502.
       return new Response(
-        JSON.stringify({ 
-          error: "Failed to sync lender to FLEx", 
+        JSON.stringify({
+          success: false,
+          skipped: true,
+          code: "FLEX_SYNC_FAILED",
+          error: "Failed to sync lender to FLEx",
+          message: "Your changes were saved, but FLEx couldn't accept the update right now. Try syncing again later.",
           details: responseText,
-          status: flexResponse.status 
+          status: flexResponse.status,
+          lender_name: l.name,
+          lender_id: l.id,
         }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

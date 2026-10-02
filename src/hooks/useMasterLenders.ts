@@ -551,6 +551,15 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
         return;
       }
 
+      if (payload?.code === 'FLEX_SYNC_FAILED' || payload?.code === 'MISSING_IDENTIFIERS') {
+        toast.warning(`${payload.lender_name || 'This lender'} wasn't synced to FLEx`, {
+          description: payload.message || 'Your changes were saved in Naitive.',
+        });
+        console.warn('FLEx sync not completed:', payload);
+        return;
+      }
+
+
       if (error) {
         console.error('Failed to sync lender to Flex:', error);
         return;
