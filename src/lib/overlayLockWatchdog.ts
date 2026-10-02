@@ -35,7 +35,7 @@ let timer: number | undefined;
 function schedule() {
   window.clearTimeout(timer);
   // Wait for Radix close animations (~200ms) before judging the lock stale.
-  timer = window.setTimeout(clearIfStale, 350);
+  timer = window.setTimeout(clearIfStale, 220);
 }
 
 export function installOverlayLockWatchdog() {

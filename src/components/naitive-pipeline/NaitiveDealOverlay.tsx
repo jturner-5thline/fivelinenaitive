@@ -82,7 +82,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
   // Snappier than open (220ms vs 360ms) so dismissal feels crisp.
   const animateClose = () => {
     if (isClosing) return;
-    markOverlayJustClosed(450);
+    markOverlayJustClosed(260);
     const id = deal?.id ?? null;
     closingDealIdRef.current = id;
     if (reduceMotion || !id) {
@@ -139,7 +139,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
       document.removeEventListener('mousedown', swallow, opts);
       document.removeEventListener('click', swallow, opts);
       onClose();
-    }, 240);
+    }, 150);
   };
 
   // Install the global click-rect capture once. Cheap: a single window

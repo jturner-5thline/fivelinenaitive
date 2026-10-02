@@ -4724,3 +4724,8 @@ html body .deal-detail-surface .fs-tab-widget:hover {
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%);
 }
 .scroll-header-backdrop[data-scrolled="true"] { opacity: 1; }
+
+/* Deal detail tabs: GPU-only micro fade (no layout-thrashing slides) */
+@keyframes deal-tab-fade { from { opacity: 0; } to { opacity: 1; } }
+.deal-tab-fade[data-state="active"] { animation: deal-tab-fade 120ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .deal-tab-fade[data-state="active"] { animation: none; } }
