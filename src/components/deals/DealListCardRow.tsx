@@ -316,7 +316,7 @@ function DealListCardRowImpl({
           )}
           {!compact && (
             <span className="inline-flex items-center justify-center px-0 text-[11px] text-muted-foreground justify-self-center text-center">
-              <TimeInStageText enteredAt={deal.stageEnteredAt || deal.createdAt} />
+              <TimeInStageText enteredAt={deal.stageEnteredAt || deal.createdAt} stage={deal.stage} />
             </span>
           )}
           {!compact && (

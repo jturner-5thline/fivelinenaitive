@@ -634,7 +634,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                 </span>
               </div>
               <div className="flex items-center text-[11px] shrink-0" style={{ color: 'rgba(190, 206, 232, 0.78)' }}>
-                <TimeInStageText enteredAt={deal.stageEnteredAt || deal.createdAt} />
+                <TimeInStageText enteredAt={deal.stageEnteredAt || deal.createdAt} stage={deal.stage} />
               </div>
             </div>
           )}
