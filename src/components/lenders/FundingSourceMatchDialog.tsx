@@ -1,3 +1,4 @@
+import { parseMoney, toList } from '@/lib/lenders/parseLenderForm';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, Globe2, Loader2, Mail, Plus, Search, X } from 'lucide-react';
@@ -125,8 +126,8 @@ function rankFundingSource(row: FundingSourceRow, query: string): RankedFundingS
   };
 }
 
-const splitValues = (value: string) => value.split(',').map((part) => part.trim()).filter(Boolean);
-const numberOrNull = (value: string) => value.trim() ? Number(value) : null;
+const splitValues = (value: unknown) => toList(value);
+const numberOrNull = (value: unknown) => parseMoney(value);
 
 function toLenderDetail(source: FundingSourceRow) {
   return {
@@ -376,48 +377,48 @@ export function FundingSourceMatchDialog({
   const handleSave = async (sourceId: string, data: LenderEditData) => {
     setSaving(true);
     const updates = {
-      name: data.name.trim(),
-      contact_name: data.contactName.trim() || null,
-      contact_phone: data.contactPhone.trim() || null,
-      contact_title: data.contactTitle?.trim() || null,
-      email: data.email.trim() || null,
-      lender_type: data.lenderType.trim() || null,
+      name: String(data.name ?? "").trim(),
+      contact_name: String(data.contactName ?? "").trim() || null,
+      contact_phone: String(data.contactPhone ?? "").trim() || null,
+      contact_title: String(data.contactTitle ?? "").trim() || null,
+      email: String(data.email ?? "").trim() || null,
+      lender_type: String(data.lenderType ?? "").trim() || null,
        min_deal: numberOrNull(data.minDeal),
        max_deal: numberOrNull(data.maxDeal),
        sweet_spot_min: numberOrNull(data.sweetSpotMin),
        sweet_spot_max: numberOrNull(data.sweetSpotMax),
        min_gross_margin_pct: numberOrNull(data.minGrossMarginPct),
        max_leverage: numberOrNull(data.maxLeverage),
-       sponsor_requirement: data.sponsorRequirement?.trim() || null,
+       sponsor_requirement: String(data.sponsorRequirement ?? "").trim() || null,
        appetite_status: data.appetiteStatus || 'active',
-       geo: data.geo.trim() || null,
+       geo: String(data.geo ?? "").trim() || null,
       industries: splitValues(data.industries),
       loan_types: splitValues(data.loanTypes),
-      company_requirements: data.companyRequirements.trim() || null,
-      deal_structure_notes: data.lenderNotes.trim() || null,
+      company_requirements: String(data.companyRequirements ?? "").trim() || null,
+      deal_structure_notes: String(data.lenderNotes ?? "").trim() || null,
       min_revenue: numberOrNull(data.minRevenue),
       ebitda_min: numberOrNull(data.ebitdaMin),
-      tier: data.tier.trim() ? `T${data.tier.trim().replace(/^T/i, '')}` : null,
-      relationship_owners: data.relationshipOwners.trim() || null,
-      website: data.websiteUrl?.trim() || null,
-      linkedin_url: data.linkedinUrl?.trim() || null,
-      address: data.address?.trim() || null,
-      phone: data.phoneMain?.trim() || null,
-      b2b_b2c: data.b2bB2c?.trim() || null,
-      sponsorship: data.sponsorship?.trim() || null,
-      cash_burn: data.cashBurn?.trim() || null,
-      sub_debt: data.subDebt?.trim() || null,
-      refinancing: data.refinancing?.trim() || null,
+      tier: String(data.tier ?? "").trim() ? `T${String(data.tier ?? "").trim().replace(/^T/i, '')}` : null,
+      relationship_owners: String(data.relationshipOwners ?? "").trim() || null,
+      website: String(data.websiteUrl ?? "").trim() || null,
+      linkedin_url: String(data.linkedinUrl ?? "").trim() || null,
+      address: String(data.address ?? "").trim() || null,
+      phone: String(data.phoneMain ?? "").trim() || null,
+      b2b_b2c: String(data.b2bB2c ?? "").trim() || null,
+      sponsorship: String(data.sponsorship ?? "").trim() || null,
+      cash_burn: String(data.cashBurn ?? "").trim() || null,
+      sub_debt: String(data.subDebt ?? "").trim() || null,
+      refinancing: String(data.refinancing ?? "").trim() || null,
       industries_to_avoid: splitValues(data.industriesToAvoid || ''),
-      nda: data.nda?.trim() || null,
-      referral_lender: data.referralLender?.trim() || null,
-      referral_fee_offered: data.referralFeeOffered?.trim() || null,
-      referral_agreement: data.referralAgreement?.trim() || null,
-      about_notes: data.aboutNotes?.trim() || null,
-      funding_source_notes: data.fundingSourceNotes?.trim() || null,
-      lender_one_pager_url: data.lenderOnePagerUrl?.trim() || null,
-      upfront_checklist: data.upfrontChecklist?.trim() || null,
-      post_term_sheet_checklist: data.postTermSheetChecklist?.trim() || null,
+      nda: String(data.nda ?? "").trim() || null,
+      referral_lender: String(data.referralLender ?? "").trim() || null,
+      referral_fee_offered: String(data.referralFeeOffered ?? "").trim() || null,
+      referral_agreement: String(data.referralAgreement ?? "").trim() || null,
+      about_notes: String(data.aboutNotes ?? "").trim() || null,
+      funding_source_notes: String(data.fundingSourceNotes ?? "").trim() || null,
+      lender_one_pager_url: String(data.lenderOnePagerUrl ?? "").trim() || null,
+      upfront_checklist: String(data.upfrontChecklist ?? "").trim() || null,
+      post_term_sheet_checklist: String(data.postTermSheetChecklist ?? "").trim() || null,
     };
 
     try {

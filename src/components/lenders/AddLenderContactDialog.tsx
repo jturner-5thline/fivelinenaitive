@@ -145,8 +145,8 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
         </Button>
       </DialogTrigger>
       <DialogContent
-        className="sm:max-w-lg max-w-[95vw] max-h-[88vh] overflow-hidden flex flex-col !z-[1410]"
-        overlayClassName="!z-[1400]"
+        className="sm:max-w-lg max-w-[95vw] max-h-[88vh] overflow-hidden flex flex-col !z-[1810]"
+        overlayClassName="!z-[1800]"
       >
         <DialogHeader className="pb-1">
           <DialogTitle className="text-base">Add Contact</DialogTitle>
