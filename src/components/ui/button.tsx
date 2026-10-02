@@ -14,15 +14,15 @@ const buttonVariants = cva(
           "bg-primary text-primary-foreground border border-transparent hover:bg-primary/90",
         /* SECONDARY / OUTLINE — hairlined, transparent */
         outline:
-          "border border-[hsl(var(--ds-sky)/0.30)] bg-transparent text-foreground hover:bg-[hsl(var(--ds-sky)/0.10)] hover:border-[hsl(var(--ds-sky)/0.45)]",
+          "border border-[#798dae] bg-transparent text-foreground hover:bg-[hsl(var(--ds-sky)/0.10)] hover:border-[#a3b4d1]",
         secondary:
-          "border border-[hsl(var(--ds-sky)/0.30)] bg-transparent text-foreground hover:bg-[hsl(var(--ds-sky)/0.10)] hover:border-[hsl(var(--ds-sky)/0.45)]",
+          "border border-[#798dae] bg-transparent text-foreground hover:bg-[hsl(var(--ds-sky)/0.10)] hover:border-[#a3b4d1]",
         /* TERTIARY — ghost */
         ghost:
           "bg-transparent border border-transparent text-muted-foreground hover:text-foreground hover:bg-white/[0.04]",
         /* DROPDOWN — hairlined surface */
         dropdown:
-          "bg-transparent border border-border/60 hover:border-[hsl(var(--ds-sky)/0.35)]",
+          "bg-transparent border border-[#798dae] hover:border-[#a3b4d1]",
         /* Destructive — violet, the spectrum's urgency end */
         destructive:
           "bg-[hsl(var(--status-critical))] text-white border border-transparent hover:bg-[hsl(var(--status-critical)/0.88)]",
