@@ -1,0 +1,1 @@
+- FLEx integration is permanently disconnected: FLEx edge functions are inert stubs and DB sync triggers are dropped — never re-add outbound/inbound FLEx calls (user decision).
