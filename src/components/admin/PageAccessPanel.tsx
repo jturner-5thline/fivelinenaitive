@@ -268,7 +268,7 @@ export function PageAccessPanel() {
 
   const getStatus = (featureKey: string): FeatureStatus => {
     const flag = getPageFlag(featureKey);
-    return (flag?.status || 'deployed') as FeatureStatus;
+    return (flag?.status || (featureKey === 'page_deal_writeup' ? 'staging' : 'deployed')) as FeatureStatus;
   };
 
   const filteredAndSorted = useMemo(() => {
@@ -472,7 +472,7 @@ export function PageAccessPanel() {
       <div className="grid gap-4">
         {filteredAndSorted.map((config) => {
           const flag = getPageFlag(config.featureKey);
-          const status = (flag?.status || 'deployed') as FeatureStatus;
+          const status = (flag?.status || (config.featureKey === 'page_deal_writeup' ? 'staging' : 'deployed')) as FeatureStatus;
           const statusInfo = statusConfig[status];
           const isBeta = flag?.is_beta ?? false;
 
