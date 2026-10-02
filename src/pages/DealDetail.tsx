@@ -1553,7 +1553,7 @@ export default function DealDetail() {
   const { isSaving, withSavingAsync, isAnySaving } = useSaveOperation();
   
   // Outstanding items persistence
-  const { items: outstandingItems, addItem: addOutstandingItemDb, updateItem: updateOutstandingItemDb, deleteItem: deleteOutstandingItemDb, bulkAddItems: bulkAddOutstandingItemsDb, reorderItems: reorderOutstandingItemsDb, refreshItems: refreshOutstandingItems } = useOutstandingItems(id);
+  const { items: outstandingItems, addItem: addOutstandingItemDb, updateItem: updateOutstandingItemDb, deleteItem: deleteOutstandingItemDb, bulkAddItems: bulkAddOutstandingItemsDb, reorderItems: reorderOutstandingItemsDb, refreshItems: refreshOutstandingItems, isLoading: isLoadingOutstandingItems } = useOutstandingItems(id);
 
   // FinServ Projects — only loaded for FinServ deals. The DB trigger keeps
   // deals.one_time_revenue = SUM(projects.value); we mirror that locally
@@ -5036,6 +5036,7 @@ export default function DealDetail() {
                                <div className="shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]">
                               <OutstandingItems
                                 items={outstandingItems}
+                                isLoading={isLoadingOutstandingItems}
                                 lenderNames={deal.lenders?.filter(l => {
                                   const stageConfig = configuredStages.find(s => s.id === l.stage);
                                   return stageConfig?.group !== 'passed';

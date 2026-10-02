@@ -104,7 +104,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
       const sy = Math.max(rect.height / finalHeight, 0.05);
       const tx = rect.left - finalLeft;
       const ty = rect.top - finalTop;
-      setOriginTransform(`translate3d(${tx}px, ${ty}px, 0) scale(${sx}, ${sy})`);
+      setOriginTransform(`translate3d(${tx * 0.35}px, ${ty * 0.35}px, 0) scale(${s})`);
       setOriginBorderRadius(16);
     } else {
       // No tile to land on — gently shrink in place toward the panel center.
@@ -258,14 +258,15 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
     const finalWidth = vw - inset * 2;
     const finalHeight = vh - inset * 2;
 
-    const sx = Math.max(rect.width / finalWidth, 0.05);
-    const sy = Math.max(rect.height / finalHeight, 0.05);
-    const tx = rect.left - finalLeft;
-    const ty = rect.top - finalTop;
+    // Uniform scale anchored on the tile's centre so the panel grows
+    // cleanly instead of squashing/stretching between aspect ratios.
+    const s = Math.min(Math.max(Math.max(rect.width / finalWidth, rect.height / finalHeight), 0.6), 1);
+    const tx = rect.left + rect.width / 2 - (finalLeft + finalWidth / 2);
+    const ty = rect.top + rect.height / 2 - (finalTop + finalHeight / 2);
 
     // Apply the starting transform synchronously, then release on the
     // next frame so the CSS transition interpolates back to identity.
-    setOriginTransform(`translate3d(${tx}px, ${ty}px, 0) scale(${sx}, ${sy})`);
+    setOriginTransform(`translate3d(${tx * 0.35}px, ${ty * 0.35}px, 0) scale(${s})`);
     setOriginBorderRadius(16);
     // Mirror the close animation: content is visible inside the shell
     // from the very first frame, so the shell expands from the tile
@@ -447,7 +448,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             ? undefined
             : isClosing
               ? 'transform 150ms cubic-bezier(0.4, 0, 0.2, 1), border-radius 150ms cubic-bezier(0.4, 0, 0.2, 1), opacity 140ms ease-out'
-              : 'transform 200ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 200ms cubic-bezier(0.22, 1, 0.36, 1)',
+              : 'transform 220ms cubic-bezier(0.16, 1, 0.3, 1), border-radius 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 140ms ease-out',
           opacity: isClosing ? 0.92 : 1,
           willChange: 'transform',
           animation: 'none',
@@ -608,11 +609,6 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             'deal-popup-scroll relative flex-1 min-h-0 w-full bg-transparent overflow-hidden flex flex-col',
           )}
           style={{
-            opacity: reduceMotion ? 1 : contentVisible ? 1 : 0,
-            transform: reduceMotion || contentVisible ? undefined : 'translateY(6px)',
-            transition: reduceMotion
-              ? undefined
-              : 'opacity 160ms ease-out, transform 180ms cubic-bezier(0.22, 1, 0.36, 1)',
             // Isolate DealDetail's layout/paint from the animated shell
             // so reconciliation inside the deal page can't invalidate the
             // outer transform animation (eliminates open-time shudder).
@@ -624,14 +620,14 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             className="w-full flex-1 flex flex-col min-h-0"
             style={{ animation: carouselAnimation, willChange: carouselAnimation ? 'transform, opacity' : undefined }}
           >
-          <Suspense fallback={<DealOverlayHydrating />}>
+          <Suspense fallback={<DealOverlaySummary deal={deal} />}>
             {/* Defer mounting DealDetail until the shell expansion has
                 finished. Mounting it during the transform animation
                 causes visible jitter as heavy subtrees hydrate and lay
                 out. While we wait we render a lightweight placeholder
                 so the shell stays visually stable. */}
             {!contentVisible ? (
-              <DealOverlayHydrating />
+              <DealOverlaySummary deal={deal} />
             ) : (
             <>
             {/* Render DealDetail using a synthetic location so `useParams`
