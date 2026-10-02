@@ -104,7 +104,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
       const sy = Math.max(rect.height / finalHeight, 0.05);
       const tx = rect.left - finalLeft;
       const ty = rect.top - finalTop;
-      setOriginTransform(`translate3d(${tx * 0.35}px, ${ty * 0.35}px, 0) scale(${s})`);
+      setOriginTransform(`translate3d(${tx}px, ${ty}px, 0) scale(${sx}, ${sy})`);
       setOriginBorderRadius(16);
     } else {
       // No tile to land on — gently shrink in place toward the panel center.
