@@ -4299,7 +4299,7 @@ export default function DealDetail() {
                   so the header scrolls with the body. Only the TabsList
                   footer below remains a frozen sibling. */}
 
-                <TabsContent value="deal-info" className={cn("mt-0 space-y-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-info-${tabDirection}`}>
+                <TabsContent value="deal-info" className={cn("mt-0 space-y-3", "deal-tab-fade")}>
                   {/* Naitive pipeline deals get a fully Naitive-specific layout —
                       no debt panels (research, AI assistant, outstanding items,
                       activity timeline, benchmarks). */}
@@ -5134,7 +5134,7 @@ export default function DealDetail() {
                   )}
                 </TabsContent>
 
-                <TabsContent value="lenders" className={cn(useContextRailLayout ? "mt-1" : "mt-2", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`lenders-${tabDirection}`}>
+                <TabsContent value="lenders" className={cn(useContextRailLayout ? "mt-1" : "mt-2", "deal-tab-fade")}>
               <div className="w-full max-w-full min-w-0 min-h-0 space-y-6 mx-auto overflow-x-hidden [&>*]:w-full [&>*]:min-w-0">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 items-start">
               {/* Funding source mix pie (with drilldown) */}
@@ -6284,7 +6284,7 @@ export default function DealDetail() {
 
                 </TabsContent>
 
-                <TabsContent value="analysis" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`analysis-${tabDirection}`}>
+                <TabsContent value="analysis" className={cn("mt-6", "deal-tab-fade")}>
                   {canSeeAnalysisTab && hasNaitivePipelineAccess ? (
                     <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
                       <SaaSModelTab dealId={id!} dealData={{ company: deal.company, value: deal.value, stage: deal.stage }} />
@@ -6298,14 +6298,14 @@ export default function DealDetail() {
                 </TabsContent>
 
                 {hasDealManagementAccess && (
-                <TabsContent value="deal-management" className={cn("mt-6 overflow-hidden", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-management-${tabDirection}`}>
+                <TabsContent value="deal-management" className={cn("mt-6 overflow-hidden", "deal-tab-fade")}>
                   <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
                     <DealManagementTab dealId={id!} dealName={deal.company} dealValue={deal.value} dealStage={deal.stage} dealType={deal.dealTypes?.[0]} dealStatus={deal.status} lenderCount={deal.lenders?.length} />
                   </Suspense>
                 </TabsContent>
                 )}
 
-                <TabsContent value="deal-writeup" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-writeup-${tabDirection}`}>
+                <TabsContent value="deal-writeup" className={cn("mt-6 min-w-0", "deal-tab-fade")}>
                   <DealWriteUp
                     key={id}
                     dealId={id!}
@@ -6323,7 +6323,7 @@ export default function DealDetail() {
                   />
                 </TabsContent>
 
-                <TabsContent value="data-room" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`data-room-${tabDirection}`}>
+                <TabsContent value="data-room" className={cn("mt-6 min-w-0", "deal-tab-fade")}>
                   <Card className="w-full max-w-full overflow-hidden p-0" style={{ height: 'calc(100vh - 190px)' }}>
                     <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading data room…</div>}>
                       <VdrErrorBoundary>
@@ -6333,7 +6333,7 @@ export default function DealDetail() {
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="activity-log" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`activity-log-${tabDirection}`}>
+                <TabsContent value="activity-log" className={cn("mt-6 min-w-0", "deal-tab-fade")}>
                   <div className="flex min-w-0 gap-4" style={{ height: 'calc(100vh - 200px)' }}>
                     {/* Left rail: Activity / Communications are the primary menu,
                         their filters render as sub-items but keep toggle behaviour. */}
@@ -6441,7 +6441,7 @@ export default function DealDetail() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="crm-search" className={cn("mt-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`crm-search-${tabDirection}`}>
+                <TabsContent value="crm-search" className={cn("mt-3", "deal-tab-fade")}>
                   <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
                     <DealCrmSearch
                       dealId={id!}
