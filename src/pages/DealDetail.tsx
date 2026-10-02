@@ -5117,6 +5117,7 @@ export default function DealDetail() {
                               )}
                             </div>
                           );
+                        }
                         default:
                           return null;
                       }
