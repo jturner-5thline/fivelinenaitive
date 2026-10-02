@@ -531,6 +531,8 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
   };
 
   const syncLenderToFlex = async (lenderId: string): Promise<void> => {
+    // FLEx integration fully disconnected — no sync is ever performed.
+    if (FLEX_DISCONNECTED) return;
     try {
       const { data, error } = await supabase.functions.invoke('sync-lender-to-flex', {
         body: { lender_id: lenderId },
