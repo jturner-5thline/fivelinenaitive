@@ -1370,11 +1370,11 @@ div.deal-tile.deal-glass,
   background: #1c2437 !important;
   background-color: #1c2437 !important;
   background-image: none !important;
-  border-color: rgba(47, 238, 251, 0.18) !important;
+  border: 1px solid #798dae !important;
   border-radius: 8px !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  box-shadow: none !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55) !important;
   color: #ffffff !important;
 }
 .deal-tile.deal-glass:hover,
@@ -1384,8 +1384,8 @@ div.deal-tile.deal-glass:hover,
   background: #232d43 !important;
   background-color: #232d43 !important;
   background-image: none !important;
-  border-color: rgba(47, 238, 251, 0.34) !important;
-  box-shadow: none !important;
+  border-color: #a3b4d1 !important;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6) !important;
 }
 
 
@@ -1469,7 +1469,7 @@ button[role="combobox"] {
      ──────────────────────────────────────────────────────────────────── */
   /* Matches the Deals grid tiles exactly (flat fill, hairline border). */
   --insights-widget-bg: var(--bg-card);
-  --insights-widget-border: 1px solid var(--border-subtle);
+  --insights-widget-border: 1px solid #798dae;
   --insights-widget-radius: var(--radius-card, 8px);
   --insights-widget-shadow: var(--elevation-card, none);
 }
@@ -4654,6 +4654,7 @@ div.deal-tile.deal-glass:hover,
 }
 
 /* Floating left sidebar: same crisp 1px tile border */
+[data-tour="sidebar"] { box-shadow: 0 2px 6px rgba(0,0,0,0.55); border-radius: 8px; }
 [data-tour="sidebar"] [data-sidebar="sidebar"] {
   border: 0 !important;
   border-radius: 7px !important;

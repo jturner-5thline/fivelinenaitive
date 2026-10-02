@@ -539,7 +539,7 @@ export function DealsHeader() {
             backgroundColor: '#1c2437',
             backdropFilter: 'none',
             WebkitBackdropFilter: 'none',
-            border: '1px solid rgba(190, 220, 255, 0.34)',
+            border: '1px solid #798dae',
             boxShadow:
               '0 10px 28px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
           }}
