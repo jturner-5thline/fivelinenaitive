@@ -41,29 +41,36 @@ export function useVelocity() {
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<StageRow[]> => {
       const { data: pipes } = await supabase.from('deal_pipelines').select('id').eq('is_default', true);
-      const pipeIds = (pipes ?? []).map((p: any) => p.id);
-      if (!pipeIds.length) return [];
+      const pipeIds = new Set((pipes ?? []).map((p: any) => p.id));
+      const since12m = new Date(Date.now() - 365 * DAY).toISOString();
 
+      // Benchmarks: trailing 12 months, ALL deals across every pipeline.
       const hist: any[] = [];
       for (let from = 0; ; from += 1000) {
         const { data, error } = await supabase
           .from('deal_stage_history')
           .select('deal_id,to_stage,to_stage_id,to_stage_label_raw,changed_at,exited_at')
-          .in('pipeline_id', pipeIds)
           .not('exited_at', 'is', null)
+          .gte('exited_at', since12m)
           .range(from, from + 999);
         if (error) throw error;
         hist.push(...(data ?? []));
         if (!data || data.length < 1000) break;
       }
 
-      const { data: deals, error: dErr } = await (supabase as any)
-        .from('deals')
-        .select('id,company,stage,stage_entered_at,created_at,status')
-        .in('pipeline_id', pipeIds)
-        .neq('status', 'archived');
-      if (dErr) throw dErr;
-      const dealNames = new Map<string, string>((deals ?? []).map((d: any) => [d.id, d.company]));
+      const allDeals: any[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await (supabase as any)
+          .from('deals')
+          .select('id,company,stage,stage_entered_at,created_at,status,pipeline_id')
+          .range(from, from + 999);
+        if (error) throw error;
+        allDeals.push(...(data ?? []));
+        if (!data || data.length < 1000) break;
+      }
+      const dealNames = new Map<string, string>(allDeals.map((d: any) => [d.id, d.company]));
+      // Open deals listed in the widget remain the Active Pipeline.
+      const deals = allDeals.filter((d: any) => pipeIds.has(d.pipeline_id) && d.status !== 'archived');
 
       const buckets = new Map<string, { label: string; durs: number[] }>();
       for (const h of hist) {
@@ -126,7 +133,7 @@ export function PipelineVelocityWidget({ onOpenDeal }: { onOpenDeal?: (id: strin
           </div>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Historical average time per stage (completed stage stays, Active Pipeline) vs. current time in stage for open deals.
+          Average time per stage (completed stage stays, trailing 12 months, all deals) vs. current time in stage for open deals.
         </p>
       </CardHeader>
       <CardContent>
