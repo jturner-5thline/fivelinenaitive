@@ -564,6 +564,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   });
   
   const { sectionOrder, setSectionOrderDirect, resetToDefault } = useLenderSectionOrder();
+  const orderOf = (id: string) => { const i = sectionOrder.indexOf(id as never); return i < 0 ? 200 : i * 2; };
   
   const { attachments, isLoading: isLoadingAttachments, uploadMultipleAttachments, deleteAttachment } = useLenderAttachments(
     open ? lender?.name ?? null : null
@@ -997,8 +998,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
           <div className="space-y-6">
             {/* Edit Mode: Description/Notes */}
             {isEditMode ? (
-              <>
-                <section>
+              <div className="flex flex-col gap-6 [&>[data-orientation]]:hidden">
+                <section style={{ order: orderOf('about') }}>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                     About / Notes
                   </h3>
@@ -1013,7 +1014,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                 <Separator />
 
                 {/* Edit Mode: Funding Source Type */}
-                <section>
+                <section style={{ order: -1 }}>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                     Funding Source Type
                   </h3>
@@ -1082,7 +1083,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                 <Separator />
 
                 {/* Edit Mode: Contact Information */}
-                <section>
+                <section style={{ order: orderOf('contact-info') }}>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                       Contact
@@ -1222,7 +1223,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                 <Separator />
 
                 {/* Edit Mode: Business Info */}
-                <section>
+                <section style={{ order: orderOf('contact-info') + 1 }}>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                     Business Info
                   </h3>
@@ -1314,11 +1315,35 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                 <Separator />
 
                 {/* Edit Mode: Lending Criteria */}
-                <section>
+                <section style={{ order: orderOf('lending-criteria') }}>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                     Lending Criteria
                   </h3>
                   <div className="grid gap-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Min Deal Size</Label>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={formatCurrencyInput(editForm.minDeal)}
+                          onChange={(e) => setEditForm({ ...editForm, minDeal: e.target.value.replace(/[^0-9]/g, '') })}
+                          placeholder="e.g., $500,000"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Max Deal Size</Label>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={formatCurrencyInput(editForm.maxDeal)}
+                          onChange={(e) => setEditForm({ ...editForm, maxDeal: e.target.value.replace(/[^0-9]/g, '') })}
+                          placeholder="e.g., $25,000,000"
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Sweet Spot Min</Label>
@@ -1350,30 +1375,6 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                             <SelectItem value="unknown">Unknown</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">Min Deal Size</Label>
-                        <Input
-                          type="text"
-                          inputMode="numeric"
-                          value={formatCurrencyInput(editForm.minDeal)}
-                          onChange={(e) => setEditForm({ ...editForm, minDeal: e.target.value.replace(/[^0-9]/g, '') })}
-                          placeholder="e.g., $500,000"
-                          className="text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">Max Deal Size</Label>
-                        <Input
-                          type="text"
-                          inputMode="numeric"
-                          value={formatCurrencyInput(editForm.maxDeal)}
-                          onChange={(e) => setEditForm({ ...editForm, maxDeal: e.target.value.replace(/[^0-9]/g, '') })}
-                          placeholder="e.g., $25,000,000"
-                          className="text-sm"
-                        />
                       </div>
                     </div>
                     <div className="space-y-1.5">
@@ -1778,7 +1779,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                 <Separator />
 
                 {/* Edit Mode: Referral & Checklists */}
-                <section>
+                <section style={{ order: orderOf('upfront-checklist') }}>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                     Referral & Checklists
                   </h3>
@@ -1850,7 +1851,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                 <Separator />
 
                 {/* Edit Mode: Funding Source Notes */}
-                <section>
+                <section style={{ order: orderOf('lender-notes') }}>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                     Funding Source Notes
                   </h3>
@@ -1863,7 +1864,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                   />
                 </section>
                 <Separator />
-              </>
+              </div>
             ) : (
               <>
                 {sectionOrder.map((sectionId, index) => {
