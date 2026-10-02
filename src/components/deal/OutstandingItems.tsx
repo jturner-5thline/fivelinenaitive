@@ -73,6 +73,7 @@ const PRIORITY_CONFIG: Record<ItemPriority, { label: string; color: string; dotC
 
 interface OutstandingItemsProps {
   items: OutstandingItem[];
+  isLoading?: boolean;
   lenderNames: string[];
   companyName?: string;
   onAdd: (text: string, requestedBy: string[]) => void;
@@ -330,7 +331,7 @@ function KanbanBoard({
   );
 }
 
-export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOnAdd, onUpdate: rawOnUpdate, onDelete: rawOnDelete, onBulkAdd: rawOnBulkAdd, onReorder: rawOnReorder, teamMembers, onApplyDefaultChecklist, phaseControls, readOnly = false, readOnlyReason }: OutstandingItemsProps) {
+export function OutstandingItems({ items, isLoading = false, lenderNames, companyName, onAdd: rawOnAdd, onUpdate: rawOnUpdate, onDelete: rawOnDelete, onBulkAdd: rawOnBulkAdd, onReorder: rawOnReorder, teamMembers, onApplyDefaultChecklist, phaseControls, readOnly = false, readOnlyReason }: OutstandingItemsProps) {
   // When readOnly, neuter all mutators so any leftover handler (kanban
   // drag, checkbox toggles, etc.) cannot mutate items. Also disable the
   // top-level add/bulk handlers so banner/empty-state CTAs no-op.
@@ -1112,7 +1113,15 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
             </div>
           )}
 
-          {filteredItems.length === 0 && (
+          {filteredItems.length === 0 && isLoading && (
+            <div className="space-y-2 py-2" aria-busy="true">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="h-9 rounded-md bg-muted/30 animate-pulse" />
+              ))}
+            </div>
+          )}
+
+          {filteredItems.length === 0 && !isLoading && (
             <div className="text-center py-8">
               <div className="text-4xl mb-2">📋</div>
               <p className="text-sm text-muted-foreground">
