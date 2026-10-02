@@ -1,3 +1,4 @@
+import { parseMoney, toList } from '@/lib/lenders/parseLenderForm';
 import { useState, useMemo, useCallback, useRef, memo } from 'react';
 import {
   Dialog,
@@ -278,20 +279,20 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
 
   const handleDetailSave = useCallback(async (lenderId: string, data: LenderEditData) => {
     const lenderData: MasterLenderInsert = {
-      name: data.name.trim(),
-      contact_name: data.contactName.trim() || null,
+      name: String(data.name ?? "").trim(),
+      contact_name: String(data.contactName ?? "").trim() || null,
       contact_phone: data.contactPhone?.trim() || null,
-      email: data.email.trim() || null,
-      lender_type: data.lenderType.trim() || null,
-      loan_types: data.loanTypes.split(',').map(p => p.trim()).filter(p => p) || null,
-      min_deal: data.minDeal ? parseFloat(data.minDeal) : null,
-      max_deal: data.maxDeal ? parseFloat(data.maxDeal) : null,
-      industries: data.industries.split(',').map(p => p.trim()).filter(p => p) || null,
-      geo: data.geo.trim() || null,
+      email: String(data.email ?? "").trim() || null,
+      lender_type: String(data.lenderType ?? "").trim() || null,
+      loan_types: toList(data.loanTypes),
+      min_deal: parseMoney(data.minDeal),
+      max_deal: parseMoney(data.maxDeal),
+      industries: toList(data.industries),
+      geo: String(data.geo ?? "").trim() || null,
       company_requirements: data.description?.trim() || null,
       deal_structure_notes: data.lenderNotes?.trim() || null,
-      min_revenue: data.minRevenue ? parseFloat(data.minRevenue) : null,
-      ebitda_min: data.ebitdaMin ? parseFloat(data.ebitdaMin) : null,
+      min_revenue: parseMoney(data.minRevenue),
+      ebitda_min: parseMoney(data.ebitdaMin),
       tier: data.tier ? `T${data.tier}` : null,
       relationship_owners: data.relationshipOwners?.trim() || null,
       b2b_b2c: data.b2bB2c?.trim() || null,
@@ -299,9 +300,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
       cash_burn: data.cashBurn?.trim() || null,
       sub_debt: data.subDebt?.trim() || null,
       refinancing: data.refinancing?.trim() || null,
-      industries_to_avoid: data.industriesToAvoid
-        ? data.industriesToAvoid.split(',').map(p => p.trim()).filter(Boolean)
-        : null,
+      industries_to_avoid: toList(data.industriesToAvoid),
       nda: data.nda?.trim() || null,
       referral_lender: data.referralLender?.trim() || null,
       referral_fee_offered: data.referralFeeOffered?.trim() || null,
