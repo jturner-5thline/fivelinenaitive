@@ -1,4 +1,4 @@
-import { TimeInStageBadge } from './TimeInStageBadge';
+import { TimeInStageText } from './TimeInStageBadge';
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { Search, User, Clock, AlertTriangle, CheckCircle2, Flag, UserPlus, Flame, Thermometer, Snowflake, Pencil, Bell, Check, MoreVertical } from 'lucide-react';
 import DOMPurify from 'dompurify';
@@ -470,7 +470,6 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                   onStageChange={onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))}
                 />
               )}
-              <TimeInStageBadge enteredAt={deal.stageEnteredAt || deal.createdAt} />
             </div>
           )}
 
@@ -634,9 +633,8 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                   {deal.manager || 'No manager'}
                 </span>
               </div>
-              <div className={`flex items-center gap-1 text-[11px] shrink-0 ${timeAgoData.highlightClass}`} style={timeAgoData.highlightClass ? undefined : { color: 'rgba(190, 206, 232, 0.78)' }}>
-                <Clock className="h-3 w-3" />
-                <span>{timeAgoData.text}</span>
+              <div className="flex items-center text-[11px] shrink-0" style={{ color: 'rgba(190, 206, 232, 0.78)' }}>
+                <TimeInStageText enteredAt={deal.stageEnteredAt || deal.createdAt} />
               </div>
             </div>
           )}

@@ -8,10 +8,24 @@ export function formatTimeInStage(iso?: string | null): string | null {
   const ms = Date.now() - new Date(iso).getTime();
   if (!Number.isFinite(ms)) return null;
   const days = Math.max(0, Math.floor(ms / 86400000));
-  if (days < 1) return '<1d';
-  if (days < 14) return `${days}d`;
-  if (days < 60) return `${Math.floor(days / 7)}w`;
-  return `${Math.floor(days / 30)}mo`;
+  if (days < 28) return `Time in Stage: ${days} ${days === 1 ? 'Day' : 'Days'}`;
+  return `Time in Stage: ${Math.floor(days / 7)} Weeks`;
+}
+
+export function TimeInStageText({ enteredAt, className }: { enteredAt?: string | null; className?: string }) {
+  const label = formatTimeInStage(enteredAt);
+  if (!label || !enteredAt) return null;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className={cn('inline-flex items-center gap-1 whitespace-nowrap', className)}>
+          <Clock className="h-3 w-3" />
+          {label}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>In current stage since {format(new Date(enteredAt), 'MMM d, yyyy')}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 export function TimeInStageBadge({ enteredAt, className }: { enteredAt?: string | null; className?: string }) {
