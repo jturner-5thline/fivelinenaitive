@@ -47,9 +47,10 @@ interface Props {
   configuredStages?: ConfiguredStage[];
   className?: string;
   onSelectLender?: (lenderId: string) => void;
+  title?: string;
 }
 
-export function FundingSourceMixPie({ lenders, configuredStages = [], className, onSelectLender }: Props) {
+export function FundingSourceMixPie({ lenders, configuredStages = [], className, onSelectLender, title }: Props) {
   const [drilldown, setDrilldown] = useState<BucketId | null>(null);
   const [hovered, setHovered] = useState<BucketId | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -66,7 +67,15 @@ export function FundingSourceMixPie({ lenders, configuredStages = [], className,
   const data = BUCKETS.map((b) => ({ ...b, value: grouped[b.id].length })).filter((d) => d.value > 0);
   const total = data.reduce((s, d) => s + d.value, 0);
 
-  if (total === 0) return null;
+  if (total === 0) {
+    if (!title) return null;
+    return (
+      <div className={cn('fs-tab-widget rounded-lg px-4 py-3', className)}>
+        <div className="text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{title}</div>
+        <div className="py-8 text-sm text-muted-foreground">No funding sources on this deal yet</div>
+      </div>
+    );
+  }
 
   const active = drilldown ? BUCKETS.find((b) => b.id === drilldown)! : null;
   const baseRows = drilldown ? grouped[drilldown] : [];
@@ -77,7 +86,8 @@ export function FundingSourceMixPie({ lenders, configuredStages = [], className,
   const rows = [...baseRows].sort((a, b) => (sortDir === 'desc' ? ts(b) - ts(a) : ts(a) - ts(b)));
 
   return (
-    <div className={cn('fs-tab-widget rounded-lg px-4 py-0', className)}>
+    <div className={cn('fs-tab-widget rounded-lg px-4 py-0', title && 'pt-3', className)}>
+      {title && <div className="text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{title}</div>}
       <div className="h-[220px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
