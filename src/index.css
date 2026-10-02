@@ -166,8 +166,8 @@ body {
     --table-header: #3b4659;
     --table-row: #1e2634;
     --table-row-hover: #232d3d;
-    --border-subtle: #3a4760;
-    --border-control: #485267;
+    --border-subtle: #798dae;
+    --border-control: #a3b4d1;
     --border-strong: #566277;
     --divider: #2b3546;
     --chart-gridline: #283241;
@@ -3691,7 +3691,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 
     /* ── Hairline surfaces ────────────────────────────── */
     --hairline: rgba(255, 255, 255, 0.08);
-    --hairline-strong: rgba(255, 255, 255, 0.14);
+    --hairline-strong: #798dae;
     --hairline-accent: hsl(var(--ds-sky) / 0.35);
   }
 
