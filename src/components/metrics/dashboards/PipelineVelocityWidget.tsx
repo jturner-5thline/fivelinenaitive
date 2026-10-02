@@ -17,14 +17,14 @@ export function velocityTone(days: number, avg: number): Tone {
   if (days <= avg * 1.15) return 'orange';
   return 'red';
 }
-const toneClass: Record<Tone, string> = {
+export const toneClass: Record<Tone, string> = {
   green: 'bg-emerald-500/10 text-emerald-300',
   orange: 'bg-amber-500/15 text-amber-300',
   red: 'bg-rose-500/15 text-rose-300',
 };
 
 const fmtDays = (d: number) => (d < 28 ? `${Math.round(d)}d` : `${Math.floor(d / 7)}w`);
-const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
+export const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
 
 interface StageRow {
   key: string;
@@ -35,7 +35,7 @@ interface StageRow {
   deals: { id: string; company: string; days: number }[];
 }
 
-function useVelocity() {
+export function useVelocity() {
   return useQuery({
     queryKey: ['pipeline-velocity'],
     staleTime: 5 * 60_000,

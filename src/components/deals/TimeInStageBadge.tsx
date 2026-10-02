@@ -2,6 +2,7 @@ import { Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useVelocity, velocityTone, toneClass, norm } from '@/components/metrics/dashboards/PipelineVelocityWidget';
 
 export function formatTimeInStage(iso?: string | null): string | null {
   if (!iso) return null;
@@ -12,18 +13,25 @@ export function formatTimeInStage(iso?: string | null): string | null {
   return `Time in Stage: ${Math.floor(days / 7)} Weeks`;
 }
 
-export function TimeInStageText({ enteredAt, className }: { enteredAt?: string | null; className?: string }) {
+export function TimeInStageText({ enteredAt, stage, className }: { enteredAt?: string | null; stage?: string | null; className?: string }) {
+  const { data } = useVelocity();
   const label = formatTimeInStage(enteredAt);
   if (!label || !enteredAt) return null;
+  const row = stage ? data?.find((r) => r.key === norm(stage)) : undefined;
+  const days = Math.max(0, (Date.now() - new Date(enteredAt).getTime()) / 86400000);
+  const tone = row ? velocityTone(days, row.avg) : null;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className={cn('inline-flex items-center gap-1 whitespace-nowrap', className)}>
+        <span className={cn('inline-flex items-center gap-1 whitespace-nowrap', tone && cn('rounded px-1.5 py-0.5', toneClass[tone]), className)}>
           <Clock className="h-3 w-3" />
           {label}
         </span>
       </TooltipTrigger>
-      <TooltipContent>In current stage since {format(new Date(enteredAt), 'MMM d, yyyy')}</TooltipContent>
+      <TooltipContent>
+        In current stage since {format(new Date(enteredAt), 'MMM d, yyyy')}
+        {row && <> · stage average {row.avg.toFixed(1)} days</>}
+      </TooltipContent>
     </Tooltip>
   );
 }
