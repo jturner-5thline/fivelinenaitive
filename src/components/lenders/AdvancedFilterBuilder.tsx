@@ -241,6 +241,20 @@ const FIELD_DEFINITIONS: FieldDefinition[] = [
         .map(v => ({ value: v!, label: v! })),
   },
   {
+    key: 'appetite_status',
+    label: 'Appetite',
+    type: 'multiselect',
+    operators: [
+      { value: 'is_any_of', label: 'is any of' },
+      { value: 'has_none_of', label: 'has none of' },
+    ],
+    getOptions: () => [
+      { value: 'active', label: 'Active' },
+      { value: 'paused', label: 'Paused' },
+      { value: 'unknown', label: 'Unknown' },
+    ],
+  },
+  {
     key: 'company_requirements',
     label: 'Company Req.',
     type: 'text',
@@ -560,7 +574,11 @@ export function applyAdvancedFilters(
 
 function evaluateCondition(lender: MasterLender, condition: FilterCondition): boolean {
   const { field, operator, value } = condition;
-  const lenderValue = (lender as unknown as Record<string, unknown>)[field];
+  const rawValue = (lender as unknown as Record<string, unknown>)[field];
+  // Blank appetite is shown as "Active" in the funding source editor, so filter it the same way.
+  const lenderValue = field === 'appetite_status'
+    ? (String(rawValue ?? '').trim().toLowerCase() || 'active')
+    : rawValue;
 
   // Special-case: lender_type is stored as a comma-delimited string but
   // should be matched against parsed atomic tags.
