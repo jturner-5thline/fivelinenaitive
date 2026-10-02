@@ -225,6 +225,13 @@
       "when": 1790947511075,
       "tag": "0031_disconnect_flex",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790951361116,
+      "tag": "0032_tighten_company_memo_storage_policies",
+      "breakpoints": true
     }
   ]
 }
