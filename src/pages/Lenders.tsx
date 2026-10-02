@@ -1406,15 +1406,19 @@ export default function Lenders() {
       throw new Error('Duplicate lender name');
     }
 
-    await updateMasterLender(lenderId, lenderData);
-    
+    const ok = await updateMasterLender(lenderId, lenderData);
+    if (ok === false) {
+      toast({ title: "Save failed", description: "Your changes were not saved. Please try again.", variant: "destructive" });
+      throw new Error("Failed to save funding source");
+    }
+
     // Update the selected lender to reflect changes immediately
-    setSelectedLender(masterLenderToLenderInfo({
-      ...existingLender!,
+    setSelectedLender(prev => masterLenderToLenderInfo({
+      ...((existingLender ?? {}) as MasterLender),
       ...lenderData,
       id: lenderId,
-      user_id: existingLender!.user_id,
-      created_at: existingLender!.created_at,
+      user_id: existingLender?.user_id ?? "",
+      created_at: existingLender?.created_at ?? new Date().toISOString(),
       updated_at: new Date().toISOString(),
     } as MasterLender));
     

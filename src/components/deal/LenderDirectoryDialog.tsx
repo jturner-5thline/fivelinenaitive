@@ -310,7 +310,8 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
       upfront_checklist: data.upfrontChecklist?.trim() || null,
       post_term_sheet_checklist: data.postTermSheetChecklist?.trim() || null,
     };
-    await updateLender(lenderId, lenderData);
+    const ok = await updateLender(lenderId, lenderData);
+    if (ok === false) throw new Error("Failed to save funding source");
     // Update detail lender in place
     const updated = masterLenders.find(l => l.id === lenderId);
     if (updated) setDetailLender({ ...updated, ...lenderData, id: lenderId } as MasterLender);
