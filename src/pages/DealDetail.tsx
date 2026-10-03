@@ -4407,11 +4407,13 @@ export default function DealDetail() {
                               )}
                               {/* Calendar panel is hidden on FinServ deal detail by request */}
                               {!isFinServDeal && widgetVis.calendar && (
-                                <Card className="deal-calendar-panel overflow-hidden flex-1 flex flex-col min-h-[280px]">
-                                  <div className="flex-1 flex flex-col">
+                                <div className="shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]">
+                                <Card className="deal-calendar-panel overflow-hidden h-full flex flex-col">
+                                  <div className="flex-1 min-h-0 flex flex-col">
                                     <CalendarPanel deal={deal} />
                                   </div>
                                 </Card>
+                                </div>
                               )}
                             </div>
                           );

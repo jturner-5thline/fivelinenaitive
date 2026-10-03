@@ -350,7 +350,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
 
   return (
     <TooltipProvider>
-      <div className="px-5 pt-2 pb-4 min-w-0 border-t border-white/[0.06]">
+      <div className="px-5 pt-2 pb-4 min-w-0 h-full min-h-0 flex flex-col border-t border-white/[0.06]">
         {/* Header */}
         <div className="flex items-center justify-between mb-2 gap-2">
           <button
@@ -508,7 +508,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
         </div>
 
         {/* Selected day detail */}
-        <div className="mt-2 pt-2 border-t border-white/[0.05]">
+        <div className="mt-2 pt-2 border-t border-white/[0.05] flex-1 min-h-0 flex flex-col">
           <div className="flex items-center justify-between mb-1">
             <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/70">
               {format(parseISO(selectedKey), 'EEE, MMM d')}
@@ -525,7 +525,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
           {selectedItems.length === 0 && !formOpen ? (
             <p className="text-[11px] text-muted-foreground/70">No items scheduled.</p>
           ) : (
-            <ul className="space-y-1 max-h-[8rem] overflow-y-auto pr-1">
+            <ul className="space-y-1 flex-1 min-h-0 overflow-y-auto pr-1">
               {selectedItems.map((it) => (
                 <li key={it.id} className="flex items-start gap-2 group">
                   <span className={cn('mt-1 h-2 w-0.5 rounded-sm shrink-0', KIND_COLORS[it.kind].bar)} />
