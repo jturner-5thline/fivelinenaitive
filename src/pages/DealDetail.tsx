@@ -3982,7 +3982,7 @@ export default function DealDetail() {
               carry the content. Everything below is unchanged. */}
           <div className={cn(useContextRailLayout && "flex flex-col lg:flex-row gap-2.5 items-start mt-0")}>
           {useContextRailLayout && dealInfoTab === 'deal-info' && (
-            <div className="w-full lg:w-[210px] shrink-0 lg:sticky lg:top-4 self-start space-y-2">
+            <div className="w-full lg:w-[236px] shrink-0 lg:sticky lg:top-4 self-start space-y-2">
               <DealContextRail
                 deal={deal}
                 compact={dealInfoTab !== 'deal-info'}
