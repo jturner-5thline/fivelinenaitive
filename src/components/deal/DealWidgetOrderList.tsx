@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import {
   DndContext, DragOverlay, PointerSensor, KeyboardSensor, closestCenter, useSensor, useSensors,
   type DragEndEvent, type DragStartEvent,
@@ -93,14 +94,19 @@ export function DealWidgetOrderList({ order, onReorder, renderToggle }: Props) {
           ))}
         </div>
       </SortableContext>
-      <DragOverlay>
-        {active ? (
-          <div className="flex items-center gap-1.5 text-sm rounded-md px-1 py-1 bg-popover border border-primary/70 shadow-lg ring-1 ring-primary/30 cursor-grabbing">
-            <GripVertical className="h-3.5 w-3.5 text-primary" />
-            <span className="flex-1 truncate font-medium">{labelOf(active)}</span>
-          </div>
-        ) : null}
-      </DragOverlay>
+      {/* Portal to body: the popover wrapper is transformed, which breaks the
+          overlay's fixed positioning and makes collisions land on the last row. */}
+      {typeof document !== 'undefined' && createPortal(
+        <DragOverlay zIndex={2000}>
+          {active ? (
+            <div className="flex items-center gap-1.5 text-sm rounded-md px-1 py-1 bg-popover border border-primary/70 shadow-lg ring-1 ring-primary/30 cursor-grabbing">
+              <GripVertical className="h-3.5 w-3.5 text-primary" />
+              <span className="flex-1 truncate font-medium">{labelOf(active)}</span>
+            </div>
+          ) : null}
+        </DragOverlay>,
+        document.body,
+      )}
     </DndContext>
   );
 }
