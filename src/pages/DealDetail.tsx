@@ -5023,16 +5023,8 @@ export default function DealDetail() {
                         }
                         case 'outstanding-items': {
                           const milestonesWidget = (widgetVis.milestones && !isSimplifiedDeal) ? (
-                            <Card className="shrink-0 deal-milestones-widget">
-                              <CardHeader className="py-2 px-3">
-                                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                                  Deal Milestones
-                                  <span className="text-xs font-mono text-muted-foreground">
-                                    {dbMilestones.filter((m) => m.completed).length}/{dbMilestones.length}
-                                  </span>
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent className="pt-0 pb-2 px-3">
+                            <Card className="shrink-0 deal-milestones-widget !bg-transparent !bg-none">
+                              <CardContent className="pt-2 pb-2 px-3">
                                 <DealMilestones
                                   milestones={dbMilestones}
                                   onAdd={addMilestone}
