@@ -238,6 +238,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useDealWidgetVisibility, DEAL_WIDGET_LABELS } from '@/hooks/useDealWidgetVisibility';
+import { DealWidgetOrderList } from '@/components/deal/DealWidgetOrderList';
 import { Switch as WidgetSwitch } from '@/components/ui/switch';
 import { Settings as GearIcon } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -3402,50 +3403,17 @@ export default function DealDetail() {
           </PopoverTrigger>
           <PopoverContent align="end" className="w-64 bg-popover p-3">
             <div className="text-sm font-medium mb-1">Show on deals</div>
-            <p className="text-xs text-muted-foreground mb-3">Drag or use arrows to reorder. Applies to everyone in your account.</p>
-            <div className="space-y-1.5">
-              {widgetOrder.map((key, idx) => {
-                const label = DEAL_WIDGET_LABELS.find((w) => w.key === key)?.label ?? key;
-                const move = (to: number) => {
-                  if (to < 0 || to >= widgetOrder.length || to === idx) return;
-                  const next = [...widgetOrder];
-                  const [m] = next.splice(idx, 1);
-                  next.splice(to, 0, m);
-                  void setWidgetOrder(next);
-                };
-                return (
-                  <div
-                    key={key}
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(idx)); e.dataTransfer.effectAllowed = 'move'; }}
-                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const from = Number(e.dataTransfer.getData('text/plain'));
-                      if (Number.isNaN(from) || from === idx) return;
-                      const next = [...widgetOrder];
-                      const [m] = next.splice(from, 1);
-                      next.splice(idx, 0, m);
-                      void setWidgetOrder(next);
-                    }}
-                    className="flex items-center gap-1.5 text-sm rounded-md px-1 py-0.5 hover:bg-muted/40"
-                  >
-                    <GripVertical className="h-3.5 w-3.5 text-muted-foreground cursor-grab shrink-0" />
-                    <span className="flex-1 truncate">{label}</span>
-                    <button type="button" aria-label={`Move ${label} up`} disabled={idx === 0} onClick={() => move(idx - 1)} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30">
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    </button>
-                    <button type="button" aria-label={`Move ${label} down`} disabled={idx === widgetOrder.length - 1} onClick={() => move(idx + 1)} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30">
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    </button>
-                    <WidgetSwitch
-                      checked={widgetVis[key]}
-                      onCheckedChange={(v) => { void setWidgetVisible(key, v); }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
+            <p className="text-xs text-muted-foreground mb-3">Drag or use arrows to reorder. Widgets fill the left and right columns in this order. Applies to everyone in your account.</p>
+            <DealWidgetOrderList
+              order={widgetOrder}
+              onReorder={(next) => { void setWidgetOrder(next); }}
+              renderToggle={(key) => (
+                <WidgetSwitch
+                  checked={widgetVis[key]}
+                  onCheckedChange={(v) => { void setWidgetVisible(key, v); }}
+                />
+              )}
+            />
           </PopoverContent>
         </Popover>
       )}
