@@ -212,7 +212,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                   >
                     <span
                       className={cn(
-                        "block w-full h-2.5 rounded-full border transition-all",
+                        "milestone-pill-marker block w-full h-2.5 rounded-full border transition-all",
                         milestone.completed
                           ? "border-transparent bg-brand-gradient shadow-[0_2px_10px_hsl(272,100%,60%,0.35)]"
                           : isOverdue(milestone)

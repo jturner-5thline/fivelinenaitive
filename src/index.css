@@ -4729,3 +4729,11 @@ html body .deal-detail-surface .fs-tab-widget:hover {
 @keyframes deal-tab-fade { from { opacity: 0; } to { opacity: 1; } }
 .deal-tab-fade[data-state="active"] { animation: deal-tab-fade 120ms ease-out; }
 @media (prefers-reduced-motion: reduce) { .deal-tab-fade[data-state="active"] { animation: none; } }
+
+/* Milestone pills: keep 1px outline visible (overrides deal-surface rounded-full border reset). */
+.milestone-pill-marker,
+.deal-detail-surface .milestone-pill-marker,
+.deal-detail-surface :is(.rounded-full, [class*="rounded-full"]).milestone-pill-marker {
+  border-width: 1px !important;
+  border-style: solid !important;
+}
