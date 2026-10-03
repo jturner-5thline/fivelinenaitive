@@ -4397,26 +4397,8 @@ export default function DealDetail() {
                         case ('__spacer__' as DealPanelId):
                           return <div key={id} />;
                         case ('tasks-hours' as DealPanelId):
-                          if (isNaitiveDeal || isProjectsDeal) return null;
-                          return (
-                            <div key={id} className="h-full flex flex-col gap-2">
-                              {widgetVis.tasks && (
-                               <div className="shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]">
-                                <DealTasksPanel dealId={deal.id} />
-                              </div>
-                              )}
-                              {/* Calendar panel is hidden on FinServ deal detail by request */}
-                              {!isFinServDeal && widgetVis.calendar && (
-                                <div className="shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]">
-                                <Card className="deal-calendar-panel overflow-hidden h-full flex flex-col">
-                                  <div className="flex-1 min-h-0 flex flex-col">
-                                    <CalendarPanel deal={deal} />
-                                  </div>
-                                </Card>
-                                </div>
-                              )}
-                            </div>
-                          );
+                          // Tasks/Calendar are rendered with the ordered widget columns below.
+                          return null;
                         case 'ai-research':
                           return (
                             <Collapsible key={id} open={isResearchPanelOpen} onOpenChange={setIsResearchPanelOpen} className="h-full">
@@ -5038,10 +5020,7 @@ export default function DealDetail() {
                               </CardContent>
                             </Card>
                           ) : null;
-                          const fundingMixWidget = (widgetVis.fundingMix || milestonesWidget) ? (
-                            <>
-                            {milestonesWidget}
-                            {widgetVis.fundingMix && (
+                          const fundingMixWidget = widgetVis.fundingMix ? (
                             <div className="shrink-0">
                               <FundingSourceMixPie
                                 lenders={deal.lenders || []}
@@ -5050,19 +5029,9 @@ export default function DealDetail() {
                                 title="Funding Source Mix"
                               />
                             </div>
-                            )}
-                            </>
                           ) : null;
-                          // Outstanding Items is a debt-pipeline concept —
-                          // skip it for Naitive and Projects pipeline deals,
-                          // but still show the Funding Source Mix widget.
-                          if (isNaitiveDeal || isProjectsDeal) {
-                            return fundingMixWidget ? <div key={id} className="h-full flex flex-col gap-2">{fundingMixWidget}</div> : null;
-                          }
-                          return (
-                            <div key={id} className="h-full flex flex-col gap-2">
-                              {fundingMixWidget}
-                              {widgetVis.openItems && (
+                          // Outstanding Items is a debt-pipeline concept — skip for Naitive/Projects.
+                          const openItemsWidget = (!isNaitiveDeal && !isProjectsDeal && widgetVis.openItems) ? (
                                <div className="shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]">
                               <OutstandingItems
                                 items={outstandingItems}
@@ -5119,29 +5088,66 @@ export default function DealDetail() {
                                 phaseControls={checklistPhaseControls}
                               />
                               </div>
-                              )}
-                              {isFinServDeal && (
-                                <div className="shrink-0">
-                                  <FinServProjectsCard
-                                    projects={finservProjects}
-                                    total={finservProjectsTotal}
-                                    loading={finservProjectsLoading}
-                                    onAdd={addFinservProject}
-                                    onUpdate={updateFinservProject}
-                                    onDelete={deleteFinservProject}
-                                  />
-                                </div>
-                              )}
-                              {!isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees && (
-                                <div className="deal-calendar-panel shrink-0 h-[280px] overflow-hidden">
-                                  <DealHoursFeesCard
-                                    deal={deal}
-                                    updateDeal={(field, value) => updateDeal(field as any, value)}
-                                    onHoursChanged={() => { void refreshDeals?.(); }}
-                                  />
-                                </div>
-                              )}
+                          ) : null;
+                          const finservWidget = isFinServDeal ? (
+                            <div className="shrink-0">
+                              <FinServProjectsCard
+                                projects={finservProjects}
+                                total={finservProjectsTotal}
+                                loading={finservProjectsLoading}
+                                onAdd={addFinservProject}
+                                onUpdate={updateFinservProject}
+                                onDelete={deleteFinservProject}
+                              />
                             </div>
+                          ) : null;
+                          const hoursFeesWidget = (!isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees) ? (
+                            <div className="deal-calendar-panel shrink-0 h-[280px] overflow-hidden">
+                              <DealHoursFeesCard
+                                deal={deal}
+                                updateDeal={(field, value) => updateDeal(field as any, value)}
+                                onHoursChanged={() => { void refreshDeals?.(); }}
+                              />
+                            </div>
+                          ) : null;
+                          const tasksWidget = (!isNaitiveDeal && !isProjectsDeal && widgetVis.tasks) ? (
+                            <div className="shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]">
+                              <DealTasksPanel dealId={deal.id} />
+                            </div>
+                          ) : null;
+                          // Calendar panel is hidden on FinServ deal detail by request
+                          const calendarWidget = (!isNaitiveDeal && !isProjectsDeal && !isFinServDeal && widgetVis.calendar) ? (
+                            <div className="shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]">
+                              <Card className="deal-calendar-panel overflow-hidden h-full flex flex-col">
+                                <div className="flex-1 min-h-0 flex flex-col">
+                                  <CalendarPanel deal={deal} />
+                                </div>
+                              </Card>
+                            </div>
+                          ) : null;
+                          // Widgets follow the account-wide order from the
+                          // "Show on deals" menu, filling left/right columns alternately.
+                          const nodes: Partial<Record<string, React.ReactNode>> = {
+                            tasks: tasksWidget,
+                            calendar: calendarWidget,
+                            milestones: milestonesWidget,
+                            fundingMix: fundingMixWidget,
+                            openItems: openItemsWidget,
+                            hoursFees: hoursFeesWidget,
+                          };
+                          const ordered = widgetOrder.filter((k) => nodes[k]);
+                          const left = ordered.filter((_, i) => i % 2 === 0);
+                          const right = ordered.filter((_, i) => i % 2 === 1);
+                          return (
+                            <React.Fragment key={id}>
+                              <div className="flex flex-col gap-2 min-w-0">
+                                {left.map((k) => <React.Fragment key={k}>{nodes[k]}</React.Fragment>)}
+                              </div>
+                              <div className="flex flex-col gap-2 min-w-0">
+                                {right.map((k) => <React.Fragment key={k}>{nodes[k]}</React.Fragment>)}
+                                {finservWidget}
+                              </div>
+                            </React.Fragment>
                           );
                         }
                         default:
