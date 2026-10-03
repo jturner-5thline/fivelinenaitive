@@ -81,15 +81,15 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
     <aside
       className={cn(
         'shrink-0 w-full lg:w-[260px] lg:sticky lg:top-4 self-start',
-        'rounded-lg border-0 bg-transparent',
+        'rounded-lg border border-border/40 bg-card/30',
         'shadow-none px-3 pb-3 pt-0',
         className,
       )}
       aria-label="Deal context"
     >
-      <div ref={measureRef} className="space-y-2">
+      <div ref={measureRef} className="space-y-3">
       {!hideIdentity && (
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 pt-3">
         <InlineEditField
           value={deal.company}
           manualCommit
@@ -123,12 +123,12 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
 
       {!compact && (
       <>
-      <div className="space-y-0.5">
-        <RailLabel>Last activity</RailLabel>
+      <div className="flex items-center justify-between gap-2 h-10 -mx-3 px-3 border-b border-border/40">
+        <span className="text-sm font-semibold text-foreground whitespace-nowrap">Last activity</span>
         {lastActivityNode ? (
-          <div className="flex items-center">{lastActivityNode}</div>
+          <div className="flex items-center min-w-0">{lastActivityNode}</div>
         ) : (
-          <div className="text-sm text-foreground">
+          <div className="text-xs text-muted-foreground truncate">
             {lastActivity
               ? formatDistanceToNow(new Date(lastActivity), { addSuffix: true })
               : '—'}
@@ -178,7 +178,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
       </div>
 
       {!hideOwner && (
-      <div className="space-y-0.5">
+      <div className="flex flex-col gap-1">
         <RailLabel>Deal owner</RailLabel>
         {ownerOptions && ownerOptions.length > 0 && onUpdateField ? (
           <div className="flex items-center gap-2">
@@ -189,7 +189,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
               value={deal.dealOwner || ''}
               onValueChange={(value) => onUpdateField('dealOwner', value)}
             >
-              <SelectTrigger className="h-7 flex-1 min-w-0 text-sm">
+              <SelectTrigger className="h-8 flex-1 min-w-0 text-sm">
                 <SelectValue placeholder="Unassigned" />
               </SelectTrigger>
               <SelectContent>
