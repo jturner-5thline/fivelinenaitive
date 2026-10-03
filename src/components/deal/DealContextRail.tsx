@@ -82,12 +82,12 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
       className={cn(
         'shrink-0 w-full lg:w-[260px] lg:sticky lg:top-4 self-start',
         'rounded-lg border-0 bg-transparent',
-        'shadow-none p-3',
+        'shadow-none px-3 pb-3 pt-0',
         className,
       )}
       aria-label="Deal context"
     >
-      <div ref={measureRef} className="space-y-2.5">
+      <div ref={measureRef} className="space-y-2">
       {!hideIdentity && (
       <div className="space-y-1.5">
         <InlineEditField
@@ -123,7 +123,20 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
 
       {!compact && (
       <>
-      <div className="flex flex-col gap-1 !mt-1">
+      <div className="space-y-0.5">
+        <RailLabel>Last activity</RailLabel>
+        {lastActivityNode ? (
+          <div className="flex items-center">{lastActivityNode}</div>
+        ) : (
+          <div className="text-sm text-foreground">
+            {lastActivity
+              ? formatDistanceToNow(new Date(lastActivity), { addSuffix: true })
+              : '—'}
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-1">
         <RailLabel>Close date</RailLabel>
         <NaitiveDatePicker
           value={pendingCloseDate}
@@ -160,19 +173,6 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
             >
               <X className="h-3 w-3 mr-1" /> Cancel
             </Button>
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-0.5">
-        <RailLabel>Last activity</RailLabel>
-        {lastActivityNode ? (
-          <div className="flex items-center">{lastActivityNode}</div>
-        ) : (
-          <div className="text-sm text-foreground">
-            {lastActivity
-              ? formatDistanceToNow(new Date(lastActivity), { addSuffix: true })
-              : '—'}
           </div>
         )}
       </div>
