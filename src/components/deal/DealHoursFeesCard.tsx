@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Clock, Pencil } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -146,6 +146,39 @@ export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged }: DealHour
   );
 }
 
+/**
+ * Local-draft numeric input: typing only updates local state, the deal is
+ * updated once on blur/Enter. Committing per keystroke re-rendered the whole
+ * deal page and froze typing.
+ */
+function DraftNumberInput({ value, onCommit, money, ...rest }: { value: number | null | undefined; onCommit: (n: number) => void; money?: boolean } & Omit<React.ComponentProps<typeof Input>, 'value' | 'onChange'>) {
+  const fmt = (n: number | null | undefined) => (n ? (money ? Math.round(n).toLocaleString() : String(n)) : '');
+  const [draft, setDraft] = useState(fmt(value));
+  const [focused, setFocused] = useState(false);
+  useEffect(() => { if (!focused) setDraft(fmt(value)); }, [value, focused]);
+  const commit = () => {
+    const raw = draft.replace(/,/g, '').trim();
+    const n = raw ? Number(raw) : 0;
+    if (!Number.isFinite(n)) { setDraft(fmt(value)); return; }
+    if (n !== (value ?? 0)) onCommit(n);
+  };
+  return (
+    <Input
+      {...rest}
+      type="text"
+      inputMode="decimal"
+      value={draft}
+      onFocus={() => setFocused(true)}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/,/g, '');
+        if (raw === '' || (money ? /^\d+$/ : /^\d*\.?\d*$/).test(raw)) setDraft(e.target.value);
+      }}
+      onBlur={() => { setFocused(false); commit(); }}
+      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+    />
+  );
+}
+
 function HoursFeesInputs({ deal, updateDeal, onChanged }: { deal: any; updateDeal: (f: string, v: any) => void; onChanged: () => void }) {
   const feesVisibility = useCompanyFeesVisibility();
   const refreshDeals = onChanged;
@@ -206,13 +239,10 @@ function HoursFeesInputs({ deal, updateDeal, onChanged }: { deal: any; updateDea
               <span className="text-muted-foreground text-sm">Retainer Fee</span>
               <div className="relative w-full">
                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                <Input
-                  type="text"
-                  value={deal.retainerFee ? Math.round(deal.retainerFee).toLocaleString() : ''}
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/,/g, '');
-                    if (raw === '' || /^\d+$/.test(raw)) updateDeal('retainerFee', raw ? Number(raw) : 0);
-                  }}
+                <DraftNumberInput
+                  money
+                  value={deal.retainerFee}
+                  onCommit={(n) => updateDeal('retainerFee', n)}
                   placeholder="0"
                   className="pl-5 h-8 text-sm w-full"
                 />
@@ -224,13 +254,10 @@ function HoursFeesInputs({ deal, updateDeal, onChanged }: { deal: any; updateDea
               <span className="text-muted-foreground text-sm">Milestone Fee</span>
               <div className="relative w-full">
                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                <Input
-                  type="text"
-                  value={deal.milestoneFee ? Math.round(deal.milestoneFee).toLocaleString() : ''}
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/,/g, '');
-                    if (raw === '' || /^\d+$/.test(raw)) updateDeal('milestoneFee', raw ? Number(raw) : 0);
-                  }}
+                <DraftNumberInput
+                  money
+                  value={deal.milestoneFee}
+                  onCommit={(n) => updateDeal('milestoneFee', n)}
                   placeholder="0"
                   className="pl-5 h-8 text-sm w-full"
                 />
@@ -241,15 +268,11 @@ function HoursFeesInputs({ deal, updateDeal, onChanged }: { deal: any; updateDea
               <span className="text-muted-foreground text-sm">Success Fee %</span>
               <div className="flex items-center gap-2">
                 <div className="relative w-16 shrink-0">
-                  <Input
-                    type="number"
-                    value={deal.successFeePercent ?? ''}
-                    onChange={(e) => updateDeal('successFeePercent', e.target.value ? Number(e.target.value) : 0)}
+                  <DraftNumberInput
+                    value={deal.successFeePercent}
+                    onCommit={(n) => updateDeal('successFeePercent', Math.min(100, Math.max(0, n)))}
                     placeholder="0"
-                    className="pr-6 h-8 text-sm w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    min={0}
-                    max={100}
-                    step={0.1}
+                    className="pr-6 h-8 text-sm w-full"
                   />
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
                 </div>
