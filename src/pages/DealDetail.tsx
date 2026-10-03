@@ -1,3 +1,4 @@
+import { Fragment, type ReactNode } from "react";
 import { useState, useCallback, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
@@ -5107,15 +5108,15 @@ export default function DealDetail() {
                           const left = ordered.filter((_, i) => i % 2 === 0);
                           const right = ordered.filter((_, i) => i % 2 === 1);
                           return (
-                            <React.Fragment key={id}>
+                            <Fragment key={id}>
                               <div className="flex flex-col gap-2 min-w-0">
-                                {left.map((k) => <React.Fragment key={k}>{nodes[k]}</React.Fragment>)}
+                                {left.map((k) => <Fragment key={k}>{nodes[k]}</Fragment>)}
                               </div>
                               <div className="flex flex-col gap-2 min-w-0">
-                                {right.map((k) => <React.Fragment key={k}>{nodes[k]}</React.Fragment>)}
+                                {right.map((k) => <Fragment key={k}>{nodes[k]}</Fragment>)}
                                 {finservWidget}
                               </div>
-                            </React.Fragment>
+                            </Fragment>
                           );
                         }
                         default:
