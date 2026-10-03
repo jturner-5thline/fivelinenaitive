@@ -81,7 +81,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
     <aside
       className={cn(
         'shrink-0 w-full lg:w-[260px] lg:sticky lg:top-4 self-start',
-        'rounded-lg border border-border/40 bg-card/30',
+        'rounded-lg border border-border/40 bg-transparent',
         'shadow-none px-3 pb-3 pt-0',
         className,
       )}
