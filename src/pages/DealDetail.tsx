@@ -691,7 +691,7 @@ export default function DealDetail() {
   // 5th Line-only surfaces (Analysis tab).
   const canSeeAnalysisTab = canUse5thLineProprietaryActions(user);
   const { company, members, isAdmin: isCompanyAdmin } = useCompany();
-  const { visibility: widgetVis, setWidgetVisible } = useDealWidgetVisibility();
+  const { visibility: widgetVis, setWidgetVisible, order: widgetOrder, setOrder: setWidgetOrder, orderIndex: wOrd } = useDealWidgetVisibility();
   const { features: companyFeatures } = useCompanyFeatures();
   const requestStatusChange = useRequestStatusChange();
   const { scoreConfig } = useLenderScoreConfig();
