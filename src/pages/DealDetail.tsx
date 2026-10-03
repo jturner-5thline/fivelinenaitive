@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef, lazy, Suspense } fro
 import { createPortal } from 'react-dom';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, ArrowUp, ArrowDown, Filter, TrendingUp, CalendarIcon, GitBranch, ListChecks, Video, Activity } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, ArrowUp, ArrowDown, Filter, TrendingUp, CalendarIcon, GitBranch, ListChecks, Video, Activity, GripVertical } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { HubSpotDealBadge } from '@/components/integrations/hubspot/HubSpotDealBadge';
@@ -691,7 +691,7 @@ export default function DealDetail() {
   // 5th Line-only surfaces (Analysis tab).
   const canSeeAnalysisTab = canUse5thLineProprietaryActions(user);
   const { company, members, isAdmin: isCompanyAdmin } = useCompany();
-  const { visibility: widgetVis, setWidgetVisible } = useDealWidgetVisibility();
+  const { visibility: widgetVis, setWidgetVisible, order: widgetOrder, setOrder: setWidgetOrder, orderIndex: wOrd } = useDealWidgetVisibility();
   const { features: companyFeatures } = useCompanyFeatures();
   const requestStatusChange = useRequestStatusChange();
   const { scoreConfig } = useLenderScoreConfig();
@@ -3402,17 +3402,49 @@ export default function DealDetail() {
           </PopoverTrigger>
           <PopoverContent align="end" className="w-64 bg-popover p-3">
             <div className="text-sm font-medium mb-1">Show on deals</div>
-            <p className="text-xs text-muted-foreground mb-3">Applies to everyone in your account.</p>
-            <div className="space-y-2.5">
-              {DEAL_WIDGET_LABELS.map(({ key, label }) => (
-                <label key={key} className="flex items-center justify-between gap-3 text-sm cursor-pointer">
-                  <span>{label}</span>
-                  <WidgetSwitch
-                    checked={widgetVis[key]}
-                    onCheckedChange={(v) => { void setWidgetVisible(key, v); }}
-                  />
-                </label>
-              ))}
+            <p className="text-xs text-muted-foreground mb-3">Drag or use arrows to reorder. Applies to everyone in your account.</p>
+            <div className="space-y-1.5">
+              {widgetOrder.map((key, idx) => {
+                const label = DEAL_WIDGET_LABELS.find((w) => w.key === key)?.label ?? key;
+                const move = (to: number) => {
+                  if (to < 0 || to >= widgetOrder.length || to === idx) return;
+                  const next = [...widgetOrder];
+                  const [m] = next.splice(idx, 1);
+                  next.splice(to, 0, m);
+                  void setWidgetOrder(next);
+                };
+                return (
+                  <div
+                    key={key}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(idx)); e.dataTransfer.effectAllowed = 'move'; }}
+                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const from = Number(e.dataTransfer.getData('text/plain'));
+                      if (Number.isNaN(from) || from === idx) return;
+                      const next = [...widgetOrder];
+                      const [m] = next.splice(from, 1);
+                      next.splice(idx, 0, m);
+                      void setWidgetOrder(next);
+                    }}
+                    className="flex items-center gap-1.5 text-sm rounded-md px-1 py-0.5 hover:bg-muted/40"
+                  >
+                    <GripVertical className="h-3.5 w-3.5 text-muted-foreground cursor-grab shrink-0" />
+                    <span className="flex-1 truncate">{label}</span>
+                    <button type="button" aria-label={`Move ${label} up`} disabled={idx === 0} onClick={() => move(idx - 1)} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30">
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    </button>
+                    <button type="button" aria-label={`Move ${label} down`} disabled={idx === widgetOrder.length - 1} onClick={() => move(idx + 1)} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30">
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </button>
+                    <WidgetSwitch
+                      checked={widgetVis[key]}
+                      onCheckedChange={(v) => { void setWidgetVisible(key, v); }}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </PopoverContent>
         </Popover>
