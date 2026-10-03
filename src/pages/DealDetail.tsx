@@ -4269,18 +4269,6 @@ export default function DealDetail() {
               </div>
             </CardHeader>
             {!useContextRailLayout && dealTabsRow}
-            {useContextRailLayout && !isSimplifiedDeal && dealInfoTab === 'deal-info' && (
-              <CardContent className="-mt-2 pt-0 pb-1 px-3 shrink-0 deal-milestones-surface">
-                <DealMilestones
-                  milestones={dbMilestones}
-                  onAdd={addMilestone}
-                  onUpdate={updateMilestone}
-                  onDelete={deleteMilestone}
-                  onReorder={reorderMilestones}
-                  markerVariant="pill"
-                />
-              </CardContent>
-            )}
           </Card>
 
           {/* Main Content Grid */}
@@ -4313,21 +4301,6 @@ export default function DealDetail() {
                     </div>
                   ) : (
                   <>
-                  {/* Milestones Card - hidden for naitive pipeline deals */}
-                  {!isSimplifiedDeal && !useContextRailLayout && (
-                  <Card>
-                    <CardContent className="pt-2 pb-2">
-                      <DealMilestones
-                        milestones={dbMilestones}
-                        onAdd={addMilestone}
-                        onUpdate={updateMilestone}
-                        onDelete={deleteMilestone}
-                        onReorder={reorderMilestones}
-                        markerVariant={useContextRailLayout ? 'pill' : 'diamond'}
-                      />
-                    </CardContent>
-                  </Card>
-                  )}
 
                   {!useContextRailLayout && (
                   <div className="flex justify-end">
@@ -5017,7 +4990,32 @@ export default function DealDetail() {
                           return isRailed ? createPortal(dealInfoCard, railPanelSlot!) : dealInfoCard;
                         }
                         case 'outstanding-items': {
-                          const fundingMixWidget = widgetVis.fundingMix ? (
+                          const milestonesWidget = (widgetVis.milestones && !isSimplifiedDeal) ? (
+                            <Card className="shrink-0 deal-milestones-widget">
+                              <CardHeader className="py-2 px-3">
+                                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                                  Deal Milestones
+                                  <span className="text-xs font-mono text-muted-foreground">
+                                    {dbMilestones.filter((m: any) => m.status === 'completed').length}/{dbMilestones.length}
+                                  </span>
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="pt-0 pb-2 px-3">
+                                <DealMilestones
+                                  milestones={dbMilestones}
+                                  onAdd={addMilestone}
+                                  onUpdate={updateMilestone}
+                                  onDelete={deleteMilestone}
+                                  onReorder={reorderMilestones}
+                                  markerVariant="pill"
+                                />
+                              </CardContent>
+                            </Card>
+                          ) : null;
+                          const fundingMixWidget = (widgetVis.fundingMix || milestonesWidget) ? (
+                            <>
+                            {milestonesWidget}
+                            {widgetVis.fundingMix && (
                             <div className="shrink-0">
                               <FundingSourceMixPie
                                 lenders={deal.lenders || []}
@@ -5026,6 +5024,8 @@ export default function DealDetail() {
                                 title="Funding Source Mix"
                               />
                             </div>
+                            )}
+                            </>
                           ) : null;
                           // Outstanding Items is a debt-pipeline concept —
                           // skip it for Naitive and Projects pipeline deals,

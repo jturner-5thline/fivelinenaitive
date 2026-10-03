@@ -3,12 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import type { Json } from '@/integrations/supabase/types';
 
-export type DealWidgetKey = 'tasks' | 'openItems' | 'calendar' | 'hoursFees' | 'statusReport' | 'fundingMix';
+export type DealWidgetKey = 'tasks' | 'openItems' | 'calendar' | 'hoursFees' | 'statusReport' | 'fundingMix' | 'milestones';
 
 export type DealWidgetVisibility = Record<DealWidgetKey, boolean>;
 
 export const DEAL_WIDGET_LABELS: { key: DealWidgetKey; label: string }[] = [
   { key: 'tasks', label: 'Tasks' },
+  { key: 'milestones', label: 'Deal Milestones' },
   { key: 'fundingMix', label: 'Funding Source Mix' },
   { key: 'openItems', label: 'Open Items' },
   { key: 'calendar', label: 'Calendar' },
@@ -17,7 +18,7 @@ export const DEAL_WIDGET_LABELS: { key: DealWidgetKey; label: string }[] = [
 ];
 
 const DEFAULTS: DealWidgetVisibility = {
-  tasks: true, openItems: true, calendar: true, hoursFees: true, statusReport: true, fundingMix: true,
+  tasks: true, openItems: true, calendar: true, hoursFees: true, statusReport: true, fundingMix: true, milestones: true,
 };
 
 const CONFIG_KEY = 'dealDetailVisibility';
