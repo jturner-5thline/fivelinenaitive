@@ -4996,7 +4996,7 @@ export default function DealDetail() {
                                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                                   Deal Milestones
                                   <span className="text-xs font-mono text-muted-foreground">
-                                    {dbMilestones.filter((m: any) => m.status === 'completed').length}/{dbMilestones.length}
+                                    {dbMilestones.filter((m) => m.completed).length}/{dbMilestones.length}
                                   </span>
                                 </CardTitle>
                               </CardHeader>
