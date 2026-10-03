@@ -56,7 +56,7 @@ import { cn } from '@/lib/utils';
 
 /** Shared column template so the header row in DealsList stays aligned. */
 export const DEAL_LIST_GRID =
-  'grid grid-cols-[minmax(160px,240px)_84px_116px_minmax(120px,1.4fr)_76px_72px] items-center gap-1.5';
+  'grid grid-cols-[minmax(180px,230px)_90px_120px_minmax(140px,1fr)_150px_68px] items-center gap-2';
 
 /** Strip HTML/markup from status note text and normalize whitespace. */
 function cleanStatusNote(raw?: string): string {
@@ -169,7 +169,7 @@ function DealListCardRowImpl({
   return (
     <div
       className={cn(
-        'group flex items-center gap-3 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-3 cursor-pointer transition-colors hover:bg-muted/30',
+        'deal-glass deal-tile group flex items-center gap-3 rounded-lg px-2 py-3 cursor-pointer transition-colors',
         isSelected && 'bg-primary/5',
       )}
       data-deal-open-id={deal.id}
