@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
     await Promise.all(chunks.slice(i, i + CONCURRENCY).map(runChunk));
   }
 
-  return json({ inserted, failed, errors });
+  return json({ inserted, failed, skipped_duplicates: skippedDuplicates, errors });
 });
 
 function json(body: unknown, status = 200) {
