@@ -1,3 +1,4 @@
+import { FundingSourceTypeSelect } from '@/components/lenders/FundingSourceTypeSelect';
 import { parseMoney, toList } from '@/lib/lenders/parseLenderForm';
 import { useState, useMemo, useCallback, useRef, useEffect, useDeferredValue } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';

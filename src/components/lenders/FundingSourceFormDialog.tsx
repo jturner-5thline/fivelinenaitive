@@ -1,3 +1,4 @@
+import { FundingSourceTypeSelect } from '@/components/lenders/FundingSourceTypeSelect';
 import { useEffect, useState } from 'react';
 import { Loader2, Plus, Settings2, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
