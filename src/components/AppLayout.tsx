@@ -164,6 +164,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   // truth so target pages stay visually consistent without per-page edits.
   const WORKSPACE_LOGO_ROUTES = [
     '/deals',
+    '/workspace',
     '/lenders',
     '/contacts',
     '/crm-companies',
