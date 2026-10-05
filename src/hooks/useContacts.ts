@@ -264,7 +264,12 @@ export function useCreateContact() {
         } as any)
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        if ((error as any).code === '23505') {
+          throw new Error(`A contact with the email ${contact.email ?? ''} already exists.`);
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: (data: any) => {
