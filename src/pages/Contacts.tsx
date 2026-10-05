@@ -205,7 +205,7 @@ export default function Contacts() {
       <div className="bg-transparent">
         <main className="w-full px-4 pt-2 pb-3 sm:px-6 flex flex-col gap-3 overflow-hidden h-[calc(100dvh-76px)]">
           {/* Header */}
-          <div className="shrink-0 flex items-center justify-between">
+          <div className="shrink-0 crm-companies-title-bar sticky top-0 z-30 flex items-center justify-between rounded-xl border border-border/60 px-4 py-2.5 shadow-sm">
             <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
           </div>
 
