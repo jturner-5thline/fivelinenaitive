@@ -232,6 +232,13 @@
       "when": 1790951361116,
       "tag": "0032_tighten_company_memo_storage_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791223883744,
+      "tag": "0033_contacts_unique_email_per_org",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS ux_contacts_org_email_norm ON public.contacts (org_company_id, lower(trim(email))) WHERE email IS NOT NULL AND trim(email) <> '';
