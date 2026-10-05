@@ -114,8 +114,22 @@ Deno.serve(async (req) => {
       };
     });
 
+  // Drop in-file duplicates by normalized email (first occurrence wins).
+  {
+    const seen = new Set<string>();
+    const kept: any[] = [];
+    for (const r of prepared) {
+      const k = r.email ? String(r.email).trim().toLowerCase() : "";
+      if (k && seen.has(k)) continue;
+      if (k) seen.add(k);
+      kept.push(r);
+    }
+    prepared.length = 0; prepared.push(...kept);
+  }
+
   let inserted = 0;
   let failed = 0;
+  let skippedDuplicates = 0;
   const errors: string[] = [];
 
   const BATCH = 500;
@@ -129,6 +143,7 @@ Deno.serve(async (req) => {
     if (!error) { inserted += chunk.length; return; }
     // On batch failure, split & retry to isolate bad rows. Avoid per-row spam.
     if (chunk.length === 1) {
+      if ((error as any).code === "23505") { skippedDuplicates++; return; }
       failed++;
       if (errors.length < 10) errors.push(`${chunk[0].email}: ${error.message}`);
       return;
@@ -142,7 +157,7 @@ Deno.serve(async (req) => {
     await Promise.all(chunks.slice(i, i + CONCURRENCY).map(runChunk));
   }
 
-  return json({ inserted, failed, errors });
+  return json({ inserted, failed, skipped_duplicates: skippedDuplicates, errors });
 });
 
 function json(body: unknown, status = 200) {
