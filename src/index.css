@@ -4737,3 +4737,16 @@ html body .deal-detail-surface .fs-tab-widget:hover {
   border-width: 1px !important;
   border-style: solid !important;
 }
+
+/* CRM Companies: opaque sticky headers (override global transparent surfaces) */
+.crm-companies-table thead,
+.crm-companies-table thead tr,
+.crm-companies-table thead th {
+  background-color: #1c2437 !important;
+}
+.crm-companies-table thead th {
+  border-bottom: 1px solid hsl(var(--border) / 0.6) !important;
+}
+.crm-companies-title-bar {
+  background-color: #1c2437 !important;
+}
