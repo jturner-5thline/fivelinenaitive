@@ -636,7 +636,11 @@ Deno.serve(async (req) => {
         .select("id")
         .single();
 
-      if (insErr) { created.push({ email: cand.email, error: insErr.message }); continue; }
+      if (insErr) {
+        // Unique (org, lower(email)) index: another worker or a differently-cased record already exists.
+        if ((insErr as any).code === "23505") { rejected["already_exists"] = (rejected["already_exists"] || 0) + 1; continue; }
+        created.push({ email: cand.email, error: insErr.message }); continue;
+      }
       created.push({ email: cand.email, contact_id: inserted?.id });
 
       try {
