@@ -444,11 +444,10 @@ export function FundingSourceFormDialog({
 
             <div className="space-y-2">
               <Label htmlFor="new-funding-source-type">Funding Source Type</Label>
-              <Input
+              <FundingSourceTypeSelect
                 id="new-funding-source-type"
                 value={form.lenderType}
-                onChange={(event) => updateForm('lenderType', event.target.value)}
-                placeholder="e.g., Bank, Credit Fund"
+                onChange={(v) => updateForm('lenderType', v)}
               />
             </div>
 
