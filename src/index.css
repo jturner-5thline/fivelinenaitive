@@ -4739,14 +4739,27 @@ html body .deal-detail-surface .fs-tab-widget:hover {
 }
 
 /* CRM Companies: opaque sticky headers (override global transparent surfaces) */
-.crm-companies-table thead,
-.crm-companies-table thead tr,
-.crm-companies-table thead th {
+html body .crm-companies-table thead,
+html body .crm-companies-table thead tr,
+html body .crm-companies-table thead th,
+html body .flat-tile-skin .crm-companies-table thead,
+html body .flat-tile-skin .crm-companies-table thead tr,
+html body .flat-tile-skin .crm-companies-table thead th {
+  background: #1c2437 !important;
   background-color: #1c2437 !important;
+  opacity: 1 !important;
 }
-.crm-companies-table thead th {
+html body .crm-companies-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+html body .crm-companies-table thead th,
+html body .flat-tile-skin .crm-companies-table thead th {
   border-bottom: 1px solid hsl(var(--border) / 0.6) !important;
 }
-.crm-companies-title-bar {
+html body .crm-companies-title-bar,
+html body .flat-tile-skin .crm-companies-title-bar {
+  background: #1c2437 !important;
   background-color: #1c2437 !important;
 }
