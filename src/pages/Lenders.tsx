@@ -1,3 +1,4 @@
+import { FundingSourceTypeSelect } from '@/components/lenders/FundingSourceTypeSelect';
 import { parseMoney, toList } from '@/lib/lenders/parseLenderForm';
 import { useState, useMemo, useCallback, useRef, useEffect, useDeferredValue } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -2314,11 +2315,10 @@ export default function Lenders() {
               {/* Funding Source Type */}
               <div className="space-y-2">
                 <Label htmlFor="lenderType">Funding Source Type</Label>
-                <Input
+                <FundingSourceTypeSelect
                   id="lenderType"
                   value={form.lenderType}
-                  onChange={(e) => setForm({ ...form, lenderType: e.target.value })}
-                  placeholder="e.g., Bank, Credit Fund"
+                  onChange={(v) => setForm((prev) => ({ ...prev, lenderType: v }))}
                 />
               </div>
 

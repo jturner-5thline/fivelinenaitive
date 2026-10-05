@@ -1,3 +1,4 @@
+import { FundingSourceTypeSelect } from '@/components/lenders/FundingSourceTypeSelect';
 import { useEffect, useState } from 'react';
 import { Loader2, Plus, Settings2, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -444,11 +445,10 @@ export function FundingSourceFormDialog({
 
             <div className="space-y-2">
               <Label htmlFor="new-funding-source-type">Funding Source Type</Label>
-              <Input
+              <FundingSourceTypeSelect
                 id="new-funding-source-type"
                 value={form.lenderType}
-                onChange={(event) => updateForm('lenderType', event.target.value)}
-                placeholder="e.g., Bank, Credit Fund"
+                onChange={(v) => updateForm('lenderType', v)}
               />
             </div>
 
