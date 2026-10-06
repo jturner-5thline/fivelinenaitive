@@ -171,7 +171,7 @@ export function ImportContactsModal({ open, onClose }: Props) {
   const [rows, setRows] = useState<Record<string, string>[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [progress, setProgress] = useState(0);
-  const [result, setResult] = useState<{ created: number; failed: number; errors: string[] }>({ created: 0, failed: 0, errors: [] });
+  const [result, setResult] = useState<{ created: number; failed: number; skipped: number; errors: string[] }>({ created: 0, failed: 0, skipped: 0, errors: [] });
   const [parsing, setParsing] = useState(false);
 
   const mappedTargets = useMemo(() => new Set(Object.values(mapping).filter(v => v !== SKIP)), [mapping]);
@@ -197,7 +197,7 @@ export function ImportContactsModal({ open, onClose }: Props) {
 
   const reset = () => {
     setStep('upload'); setFileName(''); setHeaders([]); setRows([]); setMapping({});
-    setProgress(0); setResult({ created: 0, failed: 0, errors: [] });
+    setProgress(0); setResult({ created: 0, failed: 0, skipped: 0, errors: [] });
   };
 
   const handleFile = async (file: File) => {
@@ -215,7 +215,7 @@ export function ImportContactsModal({ open, onClose }: Props) {
   const runImport = async () => {
     if (!company?.id) { toast.error('No active workspace'); return; }
     setStep('importing');
-    let created = 0, failed = 0; const errors: string[] = [];
+    let created = 0, failed = 0, skipped = 0; const errors: string[] = [];
 
     // Build all records synchronously and let the bulk-import edge function
     // resolve/create company links server-side. This avoids slow browser-side
@@ -263,7 +263,8 @@ export function ImportContactsModal({ open, onClose }: Props) {
           body: { org_company_id: company.id, rows: chunk },
         });
         if (error) throw error;
-        const res = data as { inserted?: number; failed?: number; errors?: string[] };
+        const res = data as { inserted?: number; failed?: number; skipped_duplicates?: number; errors?: string[] };
+        skipped += res?.skipped_duplicates ?? 0;
         created += res?.inserted ?? 0;
         failed += res?.failed ?? 0;
         if (res?.errors?.length) {
@@ -281,12 +282,13 @@ export function ImportContactsModal({ open, onClose }: Props) {
       await Promise.all(chunks.slice(i, i + concurrency).map(runChunk));
     }
 
-    setResult({ created, failed, errors });
+    setResult({ created, failed, skipped, errors });
     setStep('done');
     queryClient.invalidateQueries({ queryKey: ['contacts'] });
     if (created) toast.success(`Imported ${created} contacts`);
     if (failed) toast.error(`${failed} rows failed`, { description: errors[0] });
-    if (!created && !failed) {
+    if (skipped) toast.info(`${skipped} contact${skipped !== 1 ? 's' : ''} already existed and ${skipped !== 1 ? 'were' : 'was'} skipped`);
+    if (!created && !failed && !skipped) {
       toast.error('No rows imported — map at least one name, email, phone, or LinkedIn column with values');
     }
   };
@@ -388,7 +390,7 @@ export function ImportContactsModal({ open, onClose }: Props) {
           <div className="py-6 space-y-3 text-center">
             <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-500" />
             <div className="text-base font-medium">Import complete</div>
-            <div className="text-sm text-muted-foreground">{result.created} created · {result.failed} failed</div>
+            <div className="text-sm text-muted-foreground">{result.created} created · {result.skipped} already existed · {result.failed} failed</div>
             {result.errors.length > 0 && (
               <div className="text-left text-xs bg-muted/40 rounded p-3 space-y-1">
                 {result.errors.map((e, i) => <div key={i} className="text-destructive">{e}</div>)}
