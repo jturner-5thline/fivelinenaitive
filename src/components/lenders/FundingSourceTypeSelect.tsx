@@ -52,7 +52,7 @@ export function FundingSourceTypeSelect({ id, value, onChange }: Props) {
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
         <div className="space-y-1 max-h-[300px] overflow-y-auto overscroll-contain pr-1" onWheel={(e) => e.stopPropagation()}>
-          {FUNDING_SOURCE_TYPE_OPTIONS.map((type) => {
+          {[...FUNDING_SOURCE_TYPE_OPTIONS, ...current.filter((t) => !FUNDING_SOURCE_TYPE_OPTIONS.includes(t))].map((type) => {
             const isSelected = current.includes(type);
             return (
               <button
@@ -64,6 +64,9 @@ export function FundingSourceTypeSelect({ id, value, onChange }: Props) {
               >
                 <Checkbox checked={isSelected} className="pointer-events-none" />
                 {type}
+                {!FUNDING_SOURCE_TYPE_OPTIONS.includes(type) && (
+                  <span className="ml-auto text-[10px] text-muted-foreground">legacy</span>
+                )}
               </button>
             );
           })}

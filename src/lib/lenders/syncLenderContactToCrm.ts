@@ -138,7 +138,22 @@ export async function syncLenderContactToCrm(
       } as any)
       .select('id')
       .single();
-    if (error) throw error;
+    if (error) {
+      // Unique (org, email) race: another writer created it — link to that row.
+      if ((error as any).code === '23505' && email) {
+        let q = supabase.from('contacts').select('id, crm_company_id').ilike('email', escapeLike(email)).limit(1);
+        if (opts.orgCompanyId) q = q.eq('org_company_id', opts.orgCompanyId);
+        const { data: found } = await q;
+        const row = found?.[0] as any;
+        if (row) {
+          if (!row.crm_company_id && crmCompanyId) {
+            await supabase.from('contacts').update({ crm_company_id: crmCompanyId } as any).eq('id', row.id);
+          }
+          return { contactId: row.id, crmCompanyId };
+        }
+      }
+      throw error;
+    }
     return { contactId: inserted.id, crmCompanyId };
   } catch (e) {
     console.warn('[syncLenderContactToCrm] failed', e);
