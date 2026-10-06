@@ -623,238 +623,133 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
         ) : sorted.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">No funding sources found matching your filters.</div>
         ) : (
-          <div className="h-full overflow-hidden bg-background">
-            <ScrollArea className="w-full h-full">
-              <div style={{ minWidth: totalWidth }}>
-                {/* Header Row - identical style to LenderSpreadsheetView */}
-                <div className="flex sticky top-0 z-10 bg-background/95 backdrop-blur-md border-b border-white/5">
-                  {/* Row number header */}
-                  <div className="flex-shrink-0 w-[84px] px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/60 bg-background/95 sticky left-0 z-20">
-                    #
-                  </div>
-                  {visibleColumns.map((col) => (
+          <div className="h-full flex flex-col overflow-hidden bg-background">
+            {/* Header row */}
+            <div
+              className="grid items-center gap-3 px-6 h-9 shrink-0 border-b border-border/60 bg-card text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70"
+              style={{ gridTemplateColumns: gridTemplate }}
+            >
+              <span />
+              {focusedColumns.map(col => (
+                <button
+                  key={col.key}
+                  type="button"
+                  className={cn('flex items-center text-left uppercase tracking-wider', col.sortable ? 'hover:text-foreground' : 'cursor-default', col.key === 'action' && 'justify-end')}
+                  onClick={() => handleHeaderClick(col.key, col.sortable)}
+                >
+                  <span className="truncate">{col.label}</span>
+                  {renderSortIcon(col.sortKey, col.sortable)}
+                </button>
+              ))}
+            </div>
+            <div className="flex-1 min-h-0">
+              <Virtuoso
+                style={{ height: '100%' }}
+                totalCount={sorted.length}
+                itemContent={(index) => {
+                  const lender = sorted[index];
+                  const isSelected = selectedLenders.has(lender.name);
+                  const match = lender.match;
+                  const loanTypes = (lender.loan_types || []) as string[];
+                  const industries = (lender.industries || []) as string[];
+                  const geo = Array.isArray(lender.geo) ? (lender.geo as string[]).join(', ') : (lender.geo as string | null) || '';
+                  const types = Array.isArray(lender.lender_type) ? (lender.lender_type as string[]) : lender.lender_type ? [String(lender.lender_type)] : [];
+                  return (
                     <div
-                      key={col.key}
                       className={cn(
-                        'flex-shrink-0 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70 bg-background/95 flex items-center',
-                        col.sortable && 'cursor-pointer hover:text-foreground select-none transition-colors',
-                        col.key === 'name' && 'sticky left-[84px] z-20 bg-background/95'
+                        'group grid items-center gap-3 px-6 h-12 border-b border-border/30 hover:bg-muted/30 transition-colors',
+                        lender.isOnDeal && 'shadow-[inset_2px_0_0_hsl(var(--primary))]'
                       )}
-                      style={{ width: col.width }}
-                      title={col.sortable ? `Click to sort by ${col.label}` : col.label}
-                      onClick={() => handleHeaderClick(col.key, col.sortable)}
+                      style={{ gridTemplateColumns: gridTemplate }}
                     >
-                      <span className="truncate">{col.label}</span>
-                      {renderSortIcon(col.key, col.sortable)}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Data Rows - Virtualized */}
-                <Virtuoso
-                  style={{ height: 'calc(85vh - 200px)' }}
-                  totalCount={rows.length}
-                  itemContent={(index) => {
-                    const row = rows[index];
-                    if (row.type === 'tier-header') {
-                      return (
-                        <div
-                          className="flex items-center gap-2.5 px-4 py-2 bg-muted/30 border-y border-white/5 sticky z-[5]"
-                          style={{ minWidth: totalWidth }}
-                        >
-                          <span className={cn(
-                            "inline-flex items-center justify-center min-w-[28px] h-[18px] px-1.5 rounded text-[10px] font-bold tracking-wider",
-                            row.tier === 'T1' && "bg-primary/15 text-primary",
-                            row.tier === 'T2' && "bg-foreground/10 text-foreground/80",
-                            row.tier === 'T3' && "bg-muted text-muted-foreground",
-                            (row.tier === 'None' || !['T1','T2','T3'].includes(row.tier)) && "bg-muted/60 text-muted-foreground"
-                          )}>
-                            {row.tier === 'None' ? 'NT' : row.tier}
-                          </span>
-                          <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground/70">
-                            {row.tier === 'None' ? 'No Tier' : `Tier ${row.tier.replace('T', '')}`}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground/60 tabular-nums">
-                            {row.count} {row.count === 1 ? 'lender' : 'lenders'}
-                          </span>
-                          <div className="flex-1 h-px bg-white/5 ml-2" />
-                        </div>
-                      );
-                    }
-                    const lender = row.lender;
-                    const isSelected = selectedLenders.has(lender.name);
-                    return (
-                      <div
-                        className={cn(
-                          'group flex hover:bg-muted/40 transition-colors',
-                          lender.isOnDeal && 'bg-primary/[0.035]',
-                          isSelected && !lender.isOnDeal && 'bg-primary/[0.06]'
+                      <div className="flex items-center justify-center">
+                        {!lender.isOnDeal && (
+                          <Checkbox checked={isSelected} onCheckedChange={() => toggleLenderSelection(lender.name)} className="h-3.5 w-3.5" aria-label={`Select ${lender.name}`} />
                         )}
-                      >
-                        {/* Row number + checkbox + quick add */}
-                        <div className={cn(
-                          "flex-shrink-0 w-[84px] px-2 py-2 text-[11px] text-muted-foreground/50 tabular-nums sticky left-0 z-10 flex items-center justify-center gap-1.5 transition-colors bg-background",
-                          lender.isOnDeal && "bg-primary/[0.035]",
-                          isSelected && !lender.isOnDeal && "bg-primary/[0.06]",
-                          "group-hover:bg-muted/40"
-                        )}>
-                          {lender.isOnDeal ? (
-                            <span>{index + 1}</span>
+                      </div>
+                      {/* Funding source */}
+                      <div className="min-w-0 flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="truncate text-[13px] font-medium text-foreground hover:text-primary transition-colors text-left"
+                          title={lender.name}
+                          onClick={() => {
+                            const original = masterLenders.find(ml => ml.id === lender.id);
+                            if (original) openLenderDetail(original);
+                          }}
+                        >
+                          {lender.name}
+                        </button>
+                        {lender.tier && (
+                          <span className={cn('shrink-0 rounded px-1.5 text-[10px] font-semibold leading-[18px] font-mono', lender.tier === 'T1' ? 'bg-primary/15 text-primary' : 'bg-muted/60 text-muted-foreground')}>{lender.tier}</span>
+                        )}
+                        {types[0] && <span className="hidden xl:inline shrink-0 truncate max-w-[110px] text-[11px] text-muted-foreground">{types[0]}</span>}
+                      </div>
+                      {matchingEnabled && (
+                        <div className="min-w-0">
+                          {match ? (
+                            <div className="flex items-center gap-1.5 min-w-0" title={match.matchReasons.join(', ')}>
+                              <span className="font-mono text-xs font-semibold tabular-nums text-primary">{Math.round(match.matchPercent)}%</span>
+                              <span className="truncate text-[11px] text-muted-foreground">{match.matchReasons[0] || 'Eligible'}</span>
+                            </div>
                           ) : (
-                            <>
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() => toggleLenderSelection(lender.name)}
-                                className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
-                              />
-                              <button
-                                type="button"
-                                title={`Add ${lender.name} to deal`}
-                                aria-label={`Add ${lender.name} to deal`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onAddLender(lender.name);
-                                }}
-                                className="inline-flex items-center justify-center h-5 w-5 rounded-md border border-primary/40 bg-primary/15 text-primary shadow-sm hover:bg-primary/25 hover:border-primary/60 transition-all"
-                              >
-                                <Plus className="h-3 w-3" />
-                              </button>
-                            </>
+                            <span className="text-[11px] text-muted-foreground/50">—</span>
                           )}
                         </div>
-                        {visibleColumns.map((col) => {
-                          // Deal fit column
-                          if (col.key === 'fit') {
-                            const match = lender.match;
-                            return (
-                              <div key={col.key} className="flex-shrink-0 px-2 py-2" style={{ width: col.width }}>
-                                {match ? (
-                                  <div className="min-w-0"><div className="flex items-center gap-1.5"><span className="text-xs font-semibold tabular-nums text-primary">{Math.round(match.matchPercent)}%</span><CheckCircle2 className="h-3 w-3 text-primary" /></div><span className="block truncate text-[10px] text-muted-foreground" title={match.matchReasons.join(', ')}>{match.matchReasons[0] || 'Eligible match'}</span></div>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 text-[10px] text-warning"><AlertTriangle className="h-3 w-3" />Review criteria</span>
-                                )}
-                              </div>
-                            );
-                          }
-                          // Status column
-                          if (col.key === 'status') {
-                            return (
-                              <div
-                                key={col.key}
-                                className="flex-shrink-0 px-2 py-2 text-xs flex items-center"
-                                style={{ width: col.width }}
-                              >
-                                {lender.isOnDeal ? (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-primary/12 text-primary border border-primary/20">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                                    On Deal
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground/30">—</span>
-                                )}
-                              </div>
-                            );
-                          }
-                          // Action column
-                          if (col.key === 'action') {
-                            return (
-                              <div
-                                key={col.key}
-                                className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center"
-                                style={{ width: col.width }}
-                              >
-                                {lender.isOnDeal ? (
-                                  <button
-                                    className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-destructive transition-all px-2 py-1 rounded-md hover:bg-destructive/10 opacity-0 group-hover:opacity-100"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setRemovingLender({ id: lender.id, name: lender.name });
-                                      setRemoveReason('');
-                                    }}
-                                  >
-                                    <X className="h-3 w-3" />Remove
-                                  </button>
-                                ) : (
-                                  <button
-                                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary transition-all px-2 py-1 rounded-md border border-transparent hover:bg-primary/10 hover:border-primary/20"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onAddLender(lender.name);
-                                    }}
-                                  >
-                                    <Plus className="h-3 w-3" />Add
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          }
-                          // Name column - clickable
-                          if (col.key === 'name') {
-                            return (
-                              <div
-                                key={col.key}
-                                className={cn(
-                                  "flex-shrink-0 px-2 py-2 text-[13px] text-foreground truncate cursor-pointer font-medium sticky left-[84px] z-10 bg-background group-hover:bg-muted/40 hover:text-primary transition-colors",
-                                  lender.isOnDeal && "bg-primary/[0.035] group-hover:bg-muted/40",
-                                  isSelected && !lender.isOnDeal && "bg-primary/[0.06] group-hover:bg-muted/40"
-                                )}
-                                style={{ width: col.width }}
-                                title={lender.name}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const original = masterLenders.find(ml => ml.id === lender.id);
-                                  if (original) openLenderDetail(original);
-                                }}
-                              >
-                                {lender.name}
-                              </div>
-                            );
-                          }
-                          // Regular columns
-                          const rawValue = lender[col.key as keyof MasterLender];
-                          const isArray = Array.isArray(rawValue) && rawValue.length > 0;
-                          return (
-                            <div
-                              key={col.key}
-                              className={cn(
-                                'flex-shrink-0 px-2 py-2 text-[12px] text-foreground/75',
-                                isArray ? 'flex items-center gap-1 overflow-hidden' : 'truncate'
-                              )}
-                              style={{ width: col.width }}
-                              title={formatCellValue(lender, col.key)}
+                      )}
+                      {/* Check size */}
+                      <div className="font-mono text-[12px] tabular-nums text-foreground/90 truncate">
+                        {lender.min_deal || lender.max_deal
+                          ? `${formatCellValue(lender, 'min_deal') || '—'} – ${formatCellValue(lender, 'max_deal') || '—'}`
+                          : <span className="text-muted-foreground/50">—</span>}
+                      </div>
+                      {/* Structure */}
+                      <div className="min-w-0 flex items-center gap-1 overflow-hidden" title={loanTypes.join(', ')}>
+                        {loanTypes.slice(0, 2).map(t => (
+                          <span key={t} className="shrink-0 truncate max-w-[140px] rounded border border-border/40 bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground">{t}</span>
+                        ))}
+                        {loanTypes.length > 2 && <span className="text-[10px] text-muted-foreground/60">+{loanTypes.length - 2}</span>}
+                        {loanTypes.length === 0 && <span className="text-[11px] text-muted-foreground/50">—</span>}
+                      </div>
+                      {/* Geo / industry */}
+                      <div className="min-w-0 truncate text-[12px] text-foreground/75" title={[geo, industries.join(', ')].filter(Boolean).join(' · ')}>
+                        {[geo, industries[0]].filter(Boolean).join(' · ') || <span className="text-muted-foreground/50">—</span>}
+                      </div>
+                      {/* Action */}
+                      <div className="flex items-center justify-end">
+                        {lender.isOnDeal ? (
+                          <>
+                            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-primary group-hover:hidden">
+                              <span className="h-1.5 w-1.5 rounded-full bg-primary" />On Deal
+                            </span>
+                            <button
+                              className="hidden group-hover:inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-destructive px-2 py-1 rounded-md hover:bg-destructive/10"
+                              onClick={() => { setRemovingLender({ id: lender.id, name: lender.name }); setRemoveReason(''); }}
                             >
-                              {isArray ? (
-                                (rawValue as string[]).map((tag, i) => (
-                                  <span
-                                    key={i}
-                                    className="inline-flex shrink-0 items-center rounded bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/90 border border-white/5"
-                                  >
-                                    {tag}
-                                  </span>
-                                ))
-                              ) : (
-                                formatCellValue(lender, col.key)
-                              )}
-                            </div>
-                          );
-                        })}
+                              <X className="h-3 w-3" />Remove
+                            </button>
+                          </>
+                        ) : (
+                          <Button variant="outline" size="sm" className="h-7 gap-1 px-2.5 text-[11px]" onClick={() => onAddLender(lender.name)}>
+                            <Plus className="h-3 w-3" />Add
+                          </Button>
+                        )}
                       </div>
-                    );
-                  }}
-                  components={{
-                    Footer: () => (
-                      <div className="py-5 px-4 text-center text-[11px] text-muted-foreground/50 border-t border-white/5 bg-muted/10">
-                        <span className="inline-flex items-center gap-1.5">
-                          <Building2 className="h-3 w-3" />
-                          End of {sorted.length.toLocaleString()} lenders
-                        </span>
-                      </div>
-                    ),
-                  }}
-                />
-              </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+                    </div>
+                  );
+                }}
+                components={{
+                  Footer: () => (
+                    <div className="py-5 text-center text-[11px] text-muted-foreground/50">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Building2 className="h-3 w-3" />
+                        End of {sorted.length.toLocaleString()} funding sources
+                      </span>
+                    </div>
+                  ),
+                }}
+              />
+            </div>
           </div>
         )}
       </div>
