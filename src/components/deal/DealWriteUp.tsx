@@ -659,6 +659,14 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
         return;
       }
 
+      if (!result || (result as any).success === false) {
+        const disabled = (result as any)?.disabled;
+        toast.error('Failed to push to FLEx', {
+          description: disabled ? 'The FLEx integration is disconnected — nothing was sent.' : ((result as any)?.error || 'Please try again later'),
+        });
+        return;
+      }
+
       // Invalidate sync history cache
       await queryClient.invalidateQueries({ queryKey: ['flex-sync-history', dealId] });
       await queryClient.invalidateQueries({ queryKey: ['flex-sync-latest', dealId] });
@@ -813,6 +821,14 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
         return;
       }
 
+      if (!result || (result as any).success === false) {
+        const disabled = (result as any)?.disabled;
+        toast.error('Failed to unpublish from FLEx', {
+          description: disabled ? 'The FLEx integration is disconnected — nothing was sent.' : ((result as any)?.error || 'Please try again later'),
+        });
+        return;
+      }
+
       // Invalidate sync history cache
       await queryClient.invalidateQueries({ queryKey: ['flex-sync-history', dealId] });
       await queryClient.invalidateQueries({ queryKey: ['flex-sync-latest', dealId] });
@@ -855,6 +871,14 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
         console.error('Re-publish to FLEx error:', error);
         toast.error('Failed to re-publish to FLEx', {
           description: error.message || 'Please try again later',
+        });
+        return;
+      }
+
+      if (!result || (result as any).success === false) {
+        const disabled = (result as any)?.disabled;
+        toast.error('Failed to re-publish to FLEx', {
+          description: disabled ? 'The FLEx integration is disconnected — nothing was sent.' : ((result as any)?.error || 'Please try again later'),
         });
         return;
       }
