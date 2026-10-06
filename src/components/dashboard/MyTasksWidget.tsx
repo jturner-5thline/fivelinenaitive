@@ -366,7 +366,7 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
                         {groupLabel}
                         <Badge variant="outline" className="text-[10px] h-4">{items.length}</Badge>
                       </h5>
-                      <div className="space-y-1">
+                      <div className="border-t border-border/60">
                          {items.map(task => {
                           const dStart = parseDue(task.due_date);
                           const dEnd = parseDueEnd(task.due_date);
@@ -380,8 +380,8 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
                             <div
                               key={task.id}
                               className={cn(
-                                "w-full flex items-center gap-2 p-2.5 rounded-lg hover:bg-muted/50 transition-all duration-300",
-                                isOverdue && "border-l-2 border-destructive",
+                                "w-full flex items-center gap-2 px-2 py-2 border-b border-border/30 hover:bg-muted/30 transition-colors",
+                                isOverdue && "shadow-[inset_2px_0_0_hsl(var(--destructive))]",
                                 optimisticDone && "opacity-50"
                               )}
                             >

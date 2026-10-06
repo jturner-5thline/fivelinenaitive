@@ -86,7 +86,7 @@ function getVisibleColumns(visible: Set<TaskColumnId>) {
 }
 
 /** Locked row height — every data row, header row, and add-row uses this. */
-const TASK_ROW_MIN_H = 'min-h-[62px]';
+const TASK_ROW_MIN_H = 'min-h-[48px]';
 /** Pill column constants (kept as className tokens). */
 const PRIORITY_PILL_MIN_W = 'min-w-[72px]';
 const STATUS_PILL_MIN_W = 'min-w-[96px]';
@@ -289,11 +289,11 @@ export function TaskListView({
         <div
           className={cn(
             'grid',
-            'gap-3 items-center px-4 min-h-[40px]',
-            'text-[11px] font-medium uppercase tracking-wide sticky top-0 z-10',
-            'backdrop-blur-md border-b text-muted-foreground',
+            'gap-3 items-center px-4 h-9',
+            'text-[11px] font-semibold uppercase tracking-wider sticky top-0 z-10',
+            'border-b border-border/60 bg-card text-muted-foreground/70',
           )}
-          style={{ ...gridStyle, backgroundColor: 'rgba(15,23,42,0.34)', borderColor: 'rgba(148,163,184,0.12)' }}
+          style={gridStyle}
         >
           <div aria-hidden />
           <div className="truncate">Task</div>
@@ -389,7 +389,7 @@ export function TaskListView({
                 )}
 
                 {(isFlat || !isCollapsed) && (
-                  <div className="pt-1.5 pb-1 space-y-1 px-2">
+                  <div>
                     {(() => {
                       const isExpanded = expandedGroups.has(group.key);
                       const visibleTasks = isExpanded || group.tasks.length <= GROUP_RENDER_CAP
@@ -766,13 +766,11 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
         // cells regardless of which sub-label / pill content the row holds.
         'grid',
         TASK_ROW_MIN_H,
-        'gap-3 items-center px-4 py-2.5 cursor-pointer group rounded-lg border transition-all duration-150',
-        'bg-white/[0.035] dark:bg-white/[0.035] border-white/[0.07] backdrop-blur-md',
-        'hover:bg-white/[0.06] hover:border-white/[0.12]',
-        'shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset]',
-        isSelected && '!bg-[rgba(99,102,241,0.10)] !border-[rgba(99,102,241,0.35)] !border-l-[3px] !border-l-[#6366f1]',
-        isMultiSelected && '!bg-[rgba(126,184,247,0.06)] !border-[rgba(126,184,247,0.2)]',
-        isFocused && 'ring-1 ring-[rgba(126,184,247,0.35)]',
+        'gap-3 items-center px-4 py-1.5 cursor-pointer group border-b border-border/30 transition-colors',
+        'bg-transparent hover:bg-muted/30',
+        isSelected && 'bg-primary/10 shadow-[inset_2px_0_0_hsl(var(--primary))]',
+        isMultiSelected && 'bg-primary/5',
+        isFocused && 'ring-1 ring-inset ring-primary/35',
         'focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(126,184,247,0.45)]',
         isDragging && 'z-50',
       )}
