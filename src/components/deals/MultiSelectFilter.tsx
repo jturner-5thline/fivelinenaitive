@@ -66,6 +66,26 @@ export function MultiSelectFilter({
         avoidCollisions={true}
         collisionPadding={16}
       >
+        {options.length > 1 && (() => {
+          const allSelected = options.every((o) => selected.includes(o.value));
+          const someSelected = !allSelected && options.some((o) => selected.includes(o.value));
+          const toggleAll = () =>
+            onChange(allSelected ? [] : Array.from(new Set([...selected, ...options.map((o) => o.value)])));
+          return (
+            <div className="border-b border-border p-1 shrink-0">
+              <div
+                className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
+                onClick={toggleAll}
+              >
+                <Checkbox
+                  checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+                  className="pointer-events-none"
+                />
+                <span className="flex-1">Select all</span>
+              </div>
+            </div>
+          );
+        })()}
         <div
           className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-1"
           onWheel={(e) => e.stopPropagation()}
