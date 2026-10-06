@@ -56,7 +56,12 @@ function Row({ id, idx, total, onMove, toggle }: {
   );
 }
 
-export function DealWidgetOrderList({ order, onReorder, renderToggle }: Props) {
+const FIXED: DealWidgetKey[] = ['statusReport'];
+
+export function DealWidgetOrderList({ order: fullOrder, onReorder: saveOrder, renderToggle }: Props) {
+  // Status Report is a header action, not a column widget — it can be toggled but not reordered.
+  const order = fullOrder.filter((k) => !FIXED.includes(k));
+  const onReorder = (next: DealWidgetKey[]) => saveOrder([...next, ...fullOrder.filter((k) => FIXED.includes(k))]);
   const [active, setActive] = useState<DealWidgetKey | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),
@@ -91,6 +96,12 @@ export function DealWidgetOrderList({ order, onReorder, renderToggle }: Props) {
               onMove={(to) => { if (to >= 0 && to < order.length) onReorder(arrayMove(order, idx, to)); }}
               toggle={renderToggle(k)}
             />
+          ))}
+          {fullOrder.filter((k) => FIXED.includes(k)).map((k) => (
+            <div key={k} className="flex items-center gap-1.5 text-sm rounded-md px-1 py-1 pl-6">
+              <span className="flex-1 truncate">{labelOf(k)} <span className="text-[10px] text-muted-foreground">(header button)</span></span>
+              {renderToggle(k)}
+            </div>
           ))}
         </div>
       </SortableContext>
