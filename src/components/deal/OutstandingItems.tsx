@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { SearchableRequesterList } from '@/components/deal/SearchableRequesterList';
-import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, ChevronRight, LayoutGrid, ArrowRight, GripVertical, CheckSquare, Square, Search, AlertTriangle, ArrowUp, ArrowUpRight, ClipboardPaste, UserPlus, Group, Maximize2 } from 'lucide-react';
+import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, ChevronRight, LayoutGrid, ArrowRight, GripVertical, CheckSquare, Square, Search, AlertTriangle, ArrowUp, ArrowUpRight, ClipboardPaste, UserPlus, Group, Maximize2, Layers, CheckCircle2 } from 'lucide-react';
 import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
 
 // Parse YYYY-MM-DD as local date to avoid timezone shift
@@ -102,6 +102,9 @@ interface OutstandingItemsProps {
   readOnly?: boolean;
   /** Human-readable reason shown in the read-only banner (e.g. "Closed Won"). */
   readOnlyReason?: string;
+  /** Controlled collapsed state (defaults to collapsed when uncontrolled). */
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 const getItemStage = (item: OutstandingItem): KanbanStage => {
@@ -331,7 +334,7 @@ function KanbanBoard({
   );
 }
 
-export function OutstandingItems({ items, isLoading = false, lenderNames, companyName, onAdd: rawOnAdd, onUpdate: rawOnUpdate, onDelete: rawOnDelete, onBulkAdd: rawOnBulkAdd, onReorder: rawOnReorder, teamMembers, onApplyDefaultChecklist, phaseControls, readOnly = false, readOnlyReason }: OutstandingItemsProps) {
+export function OutstandingItems({ items, isLoading = false, lenderNames, companyName, onAdd: rawOnAdd, onUpdate: rawOnUpdate, onDelete: rawOnDelete, onBulkAdd: rawOnBulkAdd, onReorder: rawOnReorder, teamMembers, onApplyDefaultChecklist, phaseControls, readOnly = false, readOnlyReason, collapsed: collapsedProp, onCollapsedChange }: OutstandingItemsProps) {
   // When readOnly, neuter all mutators so any leftover handler (kanban
   // drag, checkbox toggles, etc.) cannot mutate items. Also disable the
   // top-level add/bulk handlers so banner/empty-state CTAs no-op.
@@ -348,6 +351,9 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
   const [editingRequestedBy, setEditingRequestedBy] = useState<string[]>([]);
   const [isKanbanOpen, setIsKanbanOpen] = useState(false);
   const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
+  const [internalCollapsed, setInternalCollapsed] = useState(true);
+  const collapsed = collapsedProp ?? internalCollapsed;
+  const setCollapsed = (v: boolean) => { setInternalCollapsed(v); onCollapsedChange?.(v); };
   const [filterByLender, setFilterByLender] = useState<string[]>([]);
   const groupFilterAnchorRef = useRef<HTMLDivElement>(null);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
@@ -822,16 +828,46 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
 
   return (
     <>
-      <Card className="deal-outstanding-panel-card h-full flex flex-col">
-        <CardHeader className="@container flex flex-row flex-nowrap items-center justify-between gap-x-2 min-h-[44px] h-[44px] py-0 px-4 space-y-0 shrink-0 overflow-hidden border-b border-white/15">
+      <Card className={cn("deal-outstanding-panel-card flex flex-col", collapsed ? "h-auto" : "h-full")}>
+        <CardHeader className={cn("@container flex flex-row flex-nowrap items-center justify-between gap-x-2 min-h-[44px] h-[44px] py-0 px-4 space-y-0 shrink-0 overflow-hidden", !collapsed && "border-b border-white/15")}>
           <div className="flex items-center gap-2 min-w-0 shrink-0 order-1">
-            <CardTitle className="text-sm font-medium truncate">Open Items</CardTitle>
+            <button
+              type="button"
+              onClick={() => setCollapsed(!collapsed)}
+              className="flex items-center gap-1.5 min-w-0"
+              aria-expanded={!collapsed}
+              title={collapsed ? 'Expand' : 'Collapse'}
+            >
+              <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform shrink-0", collapsed && "-rotate-90")} />
+              <CardTitle className="text-sm font-medium truncate">Open Items</CardTitle>
+            </button>
+            {collapsed && items.length > 0 && (
+              <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md">
+                {items.length - completedCount} open
+              </span>
+            )}
             {overdueCount > 0 && (
               <span className="text-xs font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-md">
                 {overdueCount} overdue
               </span>
             )}
           </div>
+          {collapsed ? (
+            <button
+              type="button"
+              onClick={() => setCollapsed(false)}
+              className="flex items-center gap-2 ml-auto order-2 min-w-0"
+            >
+              {items.length > 0 && (
+                <>
+                  <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
+                    {completedCount}/{items.length} · {progressPercent}%
+                  </span>
+                  <Progress value={progressPercent} className="h-1 w-16 hidden @[360px]:block" />
+                </>
+              )}
+            </button>
+          ) : (<>
           {/* Search / add combo sits inline beside the title and flexes with width */}
           <div className="flex-1 min-w-0 px-2 order-1">
             <Input
@@ -1026,8 +1062,10 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
               </Popover>
             )}
           </div>
+          </>)}
         </CardHeader>
 
+        {!collapsed && (<>
         {/* Quick-add suggestion row for the inline header search */}
         <div className="px-4 pt-2 pb-1 shrink-0 space-y-2">
           {!readOnly && searchQuery.trim() && (
@@ -1202,7 +1240,7 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
                   </div>
                 </div>
               )}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-1.5">
                 {([2, 3] as ChecklistPhase[]).map((ph) => {
                   const remaining = phaseControls.phases[ph].remaining;
                   if (remaining === 0) return null;
@@ -1214,44 +1252,57 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
                       : phaseControls.phases[2].present + phaseControls.phases[2].archived > 0;
                   if (!priorPresent) return null;
                   return (
-                    <Button
+                    <div
                       key={`add-${ph}`}
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5 border-dashed"
-                      onClick={() => phaseControls.addPhase(ph)}
+                      className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-1.5"
                     >
-                      <Plus className="h-3.5 w-3.5" />
-                      Add Phase {ph} Items ({remaining})
-                    </Button>
+                      <Layers className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <span className="text-xs text-muted-foreground flex-1 min-w-0 truncate">
+                        <span className="text-foreground font-medium">Phase {ph} checklist</span> · {remaining} item{remaining !== 1 ? 's' : ''} ready
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 gap-1 text-xs text-primary hover:text-primary"
+                        onClick={() => phaseControls.addPhase(ph)}
+                      >
+                        <Plus className="h-3 w-3" />
+                        Add
+                      </Button>
+                    </div>
                   );
                 })}
               </div>
             </div>
           )}
 
-          {/* Completed Items Section */}
+          {/* Completed Items — accordion capsule */}
           {completedItems.length > 0 && (
-            <Collapsible open={isCompletedExpanded} onOpenChange={setIsCompletedExpanded}>
+            <Collapsible open={isCompletedExpanded} onOpenChange={setIsCompletedExpanded} className="pt-2">
               <CollapsibleTrigger asChild>
-                <button className="flex items-center gap-2 w-full pt-3 border-t border-border hover:text-primary transition-colors">
-                  {isCompletedExpanded ? (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  )}
-                  <span className="text-sm font-medium text-emerald-600">Completed Items</span>
-                  <span className="text-xs text-muted-foreground">({completedItems.length})</span>
+                <button
+                  type="button"
+                  className="flex items-center justify-between w-full rounded-lg border border-border/40 bg-muted/20 hover:bg-muted/40 transition-colors px-3 py-1.5"
+                >
+                  <span className="flex items-center gap-2">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground">Completed ({completedItems.length})</span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-muted-foreground">{progressPercent}%</span>
+                    <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", isCompletedExpanded && "rotate-180")} />
+                  </span>
                 </button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-3 pt-3">
+              <CollapsibleContent className="mt-1.5 space-y-1 rounded-lg bg-muted/10 p-1.5">
                 {completedItems.map((item) => renderItemRow(item, true))}
               </CollapsibleContent>
             </Collapsible>
           )}
 
         </CardContent>
+        </>)}
       </Card>
 
       {/* Kanban Board Dialog */}
