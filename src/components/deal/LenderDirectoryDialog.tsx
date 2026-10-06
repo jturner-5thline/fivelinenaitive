@@ -639,7 +639,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                   key={col.key}
                   type="button"
                   className={cn('flex items-center text-left uppercase tracking-wider', col.sortable ? 'hover:text-foreground' : 'cursor-default', col.key === 'action' && 'justify-end')}
-                  onClick={() => handleHeaderClick(col.key, col.sortable)}
+                  onClick={() => handleHeaderClick(col.sortKey, col.sortable)}
                 >
                   <span className="truncate">{col.label}</span>
                   {renderSortIcon(col.sortKey, col.sortable)}
