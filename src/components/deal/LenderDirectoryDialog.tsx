@@ -450,15 +450,29 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   const totalOnDeal = useMemo(() => sorted.filter(l => l.isOnDeal).length, [sorted]);
 
   return (
-    <DialogContent className="max-w-[95vw] h-[85vh] flex flex-col p-0 gap-0 border-white/5 bg-background shadow-[0_24px_64px_-20px_rgba(0,0,0,0.55)] overflow-hidden">
-      {/* ── Header: title + KPI metadata ── */}
-      <DialogHeader className="px-6 pt-5 pb-4 shrink-0 space-y-0 bg-gradient-to-b from-muted/20 to-transparent">
-        <div className="flex items-end justify-between gap-6 flex-wrap">
+    <DialogContent
+      className="max-w-[95vw] h-[85vh] flex flex-col p-0 gap-0 border-border/60 bg-background overflow-hidden"
+      style={{ background: "hsl(var(--background))", boxShadow: "0 24px 64px -20px rgba(0,0,0,0.55)" }}
+    >
+      {/* ── Header: view switcher + KPI metadata in one row ── */}
+      <DialogHeader className="px-6 pt-4 pb-3 shrink-0 space-y-0">
+        <DialogTitle className="sr-only">Directory</DialogTitle>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-4">
-            <DialogTitle className="text-[15px] font-semibold tracking-tight text-foreground leading-none">
-              Directory
-            </DialogTitle>
-            <div className="flex items-center gap-4 pl-4 border-l border-white/5">
+            {matchingEnabled ? (
+              <div className="flex items-center gap-1">
+                <Button variant={viewMode === 'directory' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setViewMode('directory')}>
+                  <BookOpen className="h-3.5 w-3.5" /> Directory
+                </Button>
+                <Button variant={viewMode === 'matches' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setViewMode('matches')}>
+                  <Sparkles className="h-3.5 w-3.5 text-primary" /> Best matches
+                  {recommendationData?.recommendations.length ? <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{recommendationData.recommendations.length}</Badge> : null}
+                </Button>
+              </div>
+            ) : (
+              <span className="text-[15px] font-semibold tracking-tight text-foreground leading-none">Directory</span>
+            )}
+            <div className="flex items-center gap-4 pl-4 border-l border-border/40">
               <div className="flex items-baseline gap-1.5">
                 <span className="text-[15px] font-semibold tabular-nums text-foreground leading-none">
                   {sorted.length.toLocaleString()}
@@ -484,19 +498,8 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
         <DialogDescription className="sr-only">Browse and manage lenders for this deal</DialogDescription>
       </DialogHeader>
 
-      {/* ── View switcher + unified filter rail ── */}
-      <div className="px-6 py-3 border-y border-white/5 bg-muted/20 shrink-0">
-        {matchingEnabled && (
-          <div className="flex items-center gap-1 mb-3 border-b border-white/5 pb-2">
-            <Button variant={viewMode === 'directory' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setViewMode('directory')}>
-              <BookOpen className="h-3.5 w-3.5" /> Directory
-            </Button>
-            <Button variant={viewMode === 'matches' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setViewMode('matches')}>
-              <Sparkles className="h-3.5 w-3.5 text-primary" /> Best matches
-              {recommendationData?.recommendations.length ? <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{recommendationData.recommendations.length}</Badge> : null}
-            </Button>
-          </div>
-        )}
+      {/* ── Filter rail ── */}
+      <div className="px-6 pb-3 shrink-0">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[240px] max-w-[320px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
