@@ -188,14 +188,18 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
     enableLearning: false,
   });
   const localMatchById = useMemo(() => new Map(localMatches.map(match => [match.lender.id, match])), [localMatches]);
-  const visibleColumns = useMemo(
-    () => matchingEnabled ? COLUMNS : COLUMNS.filter(column => column.key !== 'fit'),
-    [matchingEnabled],
-  );
-  const totalWidth = useMemo(
-    () => visibleColumns.map(column => Number(column.width)).reduce((sum, width) => sum + width, 0) + 84,
-    [visibleColumns],
-  );
+  const focusedColumns = useMemo(() => {
+    const cols = [
+      { key: 'name', sortKey: 'name', label: 'Funding Source', sortable: true, track: 'minmax(220px,2fr)' },
+      { key: 'fit', sortKey: 'fit', label: 'Deal Fit', sortable: false, track: 'minmax(150px,1.2fr)' },
+      { key: 'min_deal', sortKey: 'min_deal', label: 'Check Size', sortable: true, track: '150px' },
+      { key: 'loan_types', sortKey: 'loan_types', label: 'Structure', sortable: true, track: 'minmax(160px,1.4fr)' },
+      { key: 'geo', sortKey: 'geo', label: 'Geo · Industry', sortable: true, track: 'minmax(160px,1.4fr)' },
+      { key: 'action', sortKey: 'status', label: 'Status', sortable: true, track: '110px' },
+    ];
+    return matchingEnabled ? cols : cols.filter(c => c.key !== 'fit');
+  }, [matchingEnabled]);
+  const gridTemplate = useMemo(() => ['24px', ...focusedColumns.map(c => c.track)].join(' '), [focusedColumns]);
 
   // Multi-select state
   const [selectedLenders, setSelectedLenders] = useState<Set<string>>(new Set());
