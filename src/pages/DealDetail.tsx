@@ -1556,6 +1556,7 @@ export default function DealDetail() {
   
   // Outstanding items persistence
   const { items: outstandingItems, addItem: addOutstandingItemDb, updateItem: updateOutstandingItemDb, deleteItem: deleteOutstandingItemDb, bulkAddItems: bulkAddOutstandingItemsDb, reorderItems: reorderOutstandingItemsDb, refreshItems: refreshOutstandingItems, isLoading: isLoadingOutstandingItems } = useOutstandingItems(id);
+  const [openItemsCollapsed, setOpenItemsCollapsed] = useState(true);
 
   // FinServ Projects — only loaded for FinServ deals. The DB trigger keeps
   // deals.one_time_revenue = SUM(projects.value); we mirror that locally
@@ -5001,8 +5002,10 @@ export default function DealDetail() {
                           ) : null;
                           // Outstanding Items is a debt-pipeline concept — skip for Naitive/Projects.
                           const openItemsWidget = (!isNaitiveDeal && !isProjectsDeal && widgetVis.openItems) ? (
-                               <div className="shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]">
+                               <div className={openItemsCollapsed ? "shrink-0" : "shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]"}>
                               <OutstandingItems
+                                collapsed={openItemsCollapsed}
+                                onCollapsedChange={setOpenItemsCollapsed}
                                 items={outstandingItems}
                                 isLoading={isLoadingOutstandingItems}
                                 lenderNames={deal.lenders?.filter(l => {
