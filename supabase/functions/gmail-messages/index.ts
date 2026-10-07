@@ -776,7 +776,16 @@ serve(async (req: Request): Promise<Response> => {
     // flight), getClaims will fail to verify — fall back to getUser() which
     // validates against the Auth server and works for both token formats.
     let userId: string | null = null;
-    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+    // getClaims can THROW (not just return an error) on expired tokens, so guard it.
+    let claimsData: any = null;
+    let claimsError: any = null;
+    try {
+      const r = await authClient.auth.getClaims(token);
+      claimsData = r.data;
+      claimsError = r.error;
+    } catch (e) {
+      claimsError = e;
+    }
     if (!claimsError && claimsData?.claims?.sub) {
       userId = claimsData.claims.sub as string;
     } else {
@@ -1927,6 +1936,12 @@ serve(async (req: Request): Promise<Response> => {
     }
   } catch (error: any) {
     console.error("Nylas messages error:", error);
+    if (/jwt (has )?expired|invalid jwt|bad_jwt/i.test(String(error?.message || ""))) {
+      return new Response(
+        JSON.stringify({ error: "auth_expired", message: "Session expired. Please refresh and try again.", retryable: true, fallback: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
