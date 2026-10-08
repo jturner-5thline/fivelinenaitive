@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useDealEngagementOptions } from '@/hooks/useDealEngagementOptions';
 import { Filter, X, Pin, PinOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -148,8 +149,9 @@ export function FiltersPopover({
     { value: '__no_status__', label: 'No status' },
   ];
 
-  const engagementTypeOptions = Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, { label }]) => ({
-    value: key,
+  const { options: engagementOpts } = useDealEngagementOptions();
+  const engagementTypeOptions = engagementOpts.map(({ id, label }) => ({
+    value: id,
     label,
   }));
 
@@ -386,8 +388,9 @@ export function useFilterConfigs() {
     { value: '__no_status__', label: 'No status' },
   ];
 
-  const engagementTypeOptions = Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, { label }]) => ({
-    value: key,
+  const { options: engagementOpts } = useDealEngagementOptions();
+  const engagementTypeOptions = engagementOpts.map(({ id, label }) => ({
+    value: id,
     label,
   }));
 

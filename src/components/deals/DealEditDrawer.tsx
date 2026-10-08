@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useDealEngagementOptions } from '@/hooks/useDealEngagementOptions';
 import { createPortal } from 'react-dom';
 import { X, Archive, Trash2, ExternalLink, ArrowRightLeft, Plus, Loader2 } from 'lucide-react';
 import { useStatusNotes } from '@/hooks/useStatusNotes';
@@ -47,6 +48,7 @@ interface DealEditDrawerProps {
 }
 
 export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEditDrawerProps) {
+  const { options: engagementOpts } = useDealEngagementOptions();
   const navigate = useNavigate();
   const { updateDeal, deleteDeal } = useDealsContext();
   const { formatCurrencyValue, preferences } = usePreferences();
@@ -457,7 +459,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, { label }]) => (
+                  {engagementOpts.map(({ id: key, label }) => (
                     <SelectItem key={key} value={key}>
                       {label}
                     </SelectItem>
