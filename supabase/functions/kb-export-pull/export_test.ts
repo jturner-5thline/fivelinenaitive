@@ -86,11 +86,11 @@ t("inventory paginates and verify enforces tenant", async () => {
     assertEquals(p2.status, 200);
     assert(p2.j.ids.every((id: string) => id > p1.j.next_cursor_id));
   }
-  const fake = crypto.randomUUID();
-  const v = await call({ mode: "verify", table: "deals", candidate_ids: [...p1.j.ids, fake] });
+  const fake = crypto.randomUUID(); const other = "673c08e7-03df-4d95-9e7e-9e921956a4b4";
+  const v = await call({ mode: "verify", table: "deals", candidate_ids: [...p1.j.ids, fake, other] });
   assertEquals(v.status, 200);
   assertEquals(v.j.active_count, p1.j.ids.length);
-  assert(!v.j.active_ids.includes(fake));
+  assert(!v.j.active_ids.includes(fake) && !v.j.active_ids.includes(other), "out-of-tenant id rejected");
   // Ask for the tenant row via companies inventory: must be exactly one id (the tenant).
   const c = await call({ mode: "inventory", table: "companies", limit: 5 });
   assertEquals(c.j.ids, [TENANT]);
