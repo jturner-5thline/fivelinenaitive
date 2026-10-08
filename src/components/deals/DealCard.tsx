@@ -1,4 +1,5 @@
 import { TimeInStageText } from './TimeInStageBadge';
+import { useDealEngagementOptions } from '@/hooks/useDealEngagementOptions';
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { Search, User, Clock, AlertTriangle, CheckCircle2, Flag, UserPlus, Flame, Thermometer, Snowflake, Pencil, Bell, Check, MoreVertical } from 'lucide-react';
 import DOMPurify from 'dompurify';
@@ -54,6 +55,7 @@ interface DealCardProps {
 }
 
 function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount = 0, compact = false, hideStatus = false, onStageChange, mentionUsers = [], children }: DealCardProps) {
+  const { labelFor: engagementLabelFor } = useDealEngagementOptions();
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   // `null` = real count not yet loaded from `deal_flag_notes`. While null we
   // fall back to the legacy `deal.isFlagged` boolean as a seed so flagged
@@ -143,10 +145,10 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
 
   const TAG_CLASS = 'text-[11px] font-medium rounded-md px-2 py-0.5 bg-white/[0.03] border-white/10 shrink-0';
   const rowTags: DealTag[] = [
-    ...(deal.engagementType && ENGAGEMENT_TYPE_CONFIG[deal.engagementType]
+    ...(deal.engagementType
       ? [{
           key: 'engagement',
-          label: ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label,
+          label: engagementLabelFor(deal.engagementType),
           className: TAG_CLASS,
           style: { color: 'rgba(222, 234, 250, 0.92)' } as React.CSSProperties,
         }]
