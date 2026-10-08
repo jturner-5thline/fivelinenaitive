@@ -30082,6 +30082,24 @@ export type Database = {
           subtitle: string
         }[]
       }
+      fn_kb_export_id_inventory_page: {
+        Args: { p_cursor_id: string; p_limit: number; p_table: string }
+        Returns: Json
+      }
+      fn_kb_export_table_page: {
+        Args: {
+          p_cursor_id: string
+          p_cursor_ts: string
+          p_limit: number
+          p_scan_upper_bound: string
+          p_table: string
+        }
+        Returns: Json
+      }
+      fn_kb_export_verify_active_ids: {
+        Args: { p_candidate_ids: string[]; p_table: string }
+        Returns: Json
+      }
       get_avg_time_between_stages: {
         Args: {
           p_consecutive_only?: boolean
