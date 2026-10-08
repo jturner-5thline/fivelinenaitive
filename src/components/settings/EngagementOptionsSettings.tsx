@@ -17,6 +17,21 @@ export function EngagementOptionsSettings({ isAdmin = true }: { isAdmin?: boolea
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(options);
 
+  const persist = async (next: EngagementOption[], msg: string) => {
+    const prev = draft;
+    setDraft(next);
+    setSaving(true);
+    try {
+      await saveOptions(next.map(o => ({ ...o, label: o.label.trim() })));
+      toast.success(msg);
+    } catch (e: any) {
+      setDraft(prev);
+      toast.error(e?.message || 'Could not save options');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const add = () => {
     const label = newLabel.trim();
     if (!label) return;
@@ -25,8 +40,8 @@ export function EngagementOptionsSettings({ isAdmin = true }: { isAdmin?: boolea
       toast.error('That option already exists');
       return;
     }
-    setDraft([...draft, { id, label }]);
     setNewLabel('');
+    void persist([...draft, { id, label }], `Added "${label}"`);
   };
 
   const move = (i: number, d: number) => {
@@ -34,21 +49,13 @@ export function EngagementOptionsSettings({ isAdmin = true }: { isAdmin?: boolea
     if (j < 0 || j >= draft.length) return;
     const next = [...draft];
     [next[i], next[j]] = [next[j], next[i]];
-    setDraft(next);
+    void persist(next, 'Order saved');
   };
 
   const save = async () => {
     if (draft.some(o => !o.label.trim())) { toast.error('Option names cannot be empty'); return; }
     if (draft.length === 0) { toast.error('Keep at least one option'); return; }
-    setSaving(true);
-    try {
-      await saveOptions(draft.map(o => ({ ...o, label: o.label.trim() })));
-      toast.success('Engagement options saved');
-    } catch (e: any) {
-      toast.error(e?.message || 'Could not save options');
-    } finally {
-      setSaving(false);
-    }
+    await persist(draft, 'Engagement options saved');
   };
 
   return (
@@ -69,7 +76,7 @@ export function EngagementOptionsSettings({ isAdmin = true }: { isAdmin?: boolea
             className="h-8 text-sm"
           />
           <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" disabled={!isAdmin || draft.length <= 1}
-            onClick={() => setDraft(draft.filter((_, k) => k !== i))} aria-label={`Remove ${o.label}`}>
+            onClick={() => void persist(draft.filter((_, k) => k !== i), `Removed "${o.label}"`)} aria-label={`Remove ${o.label}`}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -82,11 +89,11 @@ export function EngagementOptionsSettings({ isAdmin = true }: { isAdmin?: boolea
             <Button type="button" variant="outline" size="sm" onClick={add} className="gap-1.5 shrink-0"><Plus className="h-3.5 w-3.5" />Add</Button>
           </div>
           <div className="flex items-center justify-end gap-2 pt-1">
-            <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => setDraft(DEFAULT_ENGAGEMENT_OPTIONS)}>
+            <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => void persist(DEFAULT_ENGAGEMENT_OPTIONS, "Restored defaults")}>
               <RotateCcw className="h-3.5 w-3.5" />Defaults
             </Button>
             <Button type="button" size="sm" className="gap-1.5" disabled={!dirty || saving} onClick={save}>
-              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}Save
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}Save renames
             </Button>
           </div>
         </>
