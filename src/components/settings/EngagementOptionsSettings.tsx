@@ -89,11 +89,11 @@ export function EngagementOptionsSettings({ isAdmin = true }: { isAdmin?: boolea
             <Button type="button" variant="outline" size="sm" onClick={add} className="gap-1.5 shrink-0"><Plus className="h-3.5 w-3.5" />Add</Button>
           </div>
           <div className="flex items-center justify-end gap-2 pt-1">
-            <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => setDraft(DEFAULT_ENGAGEMENT_OPTIONS)}>
+            <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => void persist(DEFAULT_ENGAGEMENT_OPTIONS, "Restored defaults")}>
               <RotateCcw className="h-3.5 w-3.5" />Defaults
             </Button>
             <Button type="button" size="sm" className="gap-1.5" disabled={!dirty || saving} onClick={save}>
-              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}Save
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}Save renames
             </Button>
           </div>
         </>

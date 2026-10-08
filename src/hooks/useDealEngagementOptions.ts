@@ -35,7 +35,8 @@ async function resolveCompanyId(override: string | null): Promise<string | null>
   if (override) return override;
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  const { data } = await supabase.from('company_members').select('company_id').eq('user_id', user.id).maybeSingle();
+  const { data: rows } = await supabase.from('company_members').select('company_id').eq('user_id', user.id).limit(1);
+  const data = rows?.[0];
   return data?.company_id ?? null;
 }
 
