@@ -53,6 +53,7 @@ import { usePipelineContext } from '@/contexts/PipelineContext';
 import { formatAmountWithCommas, parseAmountToNumber } from '@/utils/currencyFormat';
 import { addDays, format } from 'date-fns';
 import { useDealSourcedViaOptions } from '@/hooks/useDealSourcedViaOptions';
+import { useDealEngagementOptions } from '@/hooks/useDealEngagementOptions';
 import { isOverlayClickSuppressed, shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
 import { useDealInfoFieldOrder } from '@/hooks/useDealInfoFieldOrder';
 import type { ContactPickerValue } from '@/components/contacts/ContactPickerField';
@@ -196,6 +197,8 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   );
   const [sourcedVia, setSourcedVia] = useState('');
   const { options: sourcedViaOptions } = useDealSourcedViaOptions();
+  const { options: engagementOpts } = useDealEngagementOptions();
+  const [engagementType, setEngagementType] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [showMilestonesPreview, setShowMilestonesPreview] = useState(false);
   const [dealTypesOpen, setDealTypesOpen] = useState(false);
@@ -364,7 +367,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
         status: null,
         stage: dealStage,
         dealTypes: selectedDealTypes.length > 0 ? selectedDealTypes : undefined,
-        engagementType: 'advisory',
+        engagementType: (engagementType || engagementOpts[0]?.id || 'advisory') as any,
         sourcedVia: sourcedVia && sourcedVia !== '__none__' ? sourcedVia : undefined,
         pipelineId: selectedPipelineId || activePipelineId || undefined,
         dealClass: initialValues?.dealClass || 'standard',
@@ -660,6 +663,24 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                   </div>
                 ) : <div />}
               </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-1">
+                  <LabelWithBadge htmlFor="engagementType">Engagement</LabelWithBadge>
+                  <Select value={engagementType || engagementOpts[0]?.id} onValueChange={setEngagementType}>
+                    <SelectTrigger className={createDealDropdownTriggerClass} style={createDealDropdownTriggerStyle}>
+                      <SelectValue placeholder="Select engagement" />
+                    </SelectTrigger>
+                    <SelectContent data-create-deal-popover className={createDealDropdownContentClass} style={createDealDropdownSurfaceStyle}>
+                      {engagementOpts.map(o => (
+                        <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div />
+              </div>
+
 
 
               {/* Row 4: Deal stage | Deal status */}

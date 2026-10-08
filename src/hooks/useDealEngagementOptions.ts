@@ -77,13 +77,16 @@ export function useDealEngagementOptions() {
       ? existing.deal_info_layout as Record<string, unknown> : {};
     const layout = { ...prev, engagement_options: cleaned } as unknown as Json;
     if (existing) {
-      const { error } = await supabase.from('company_settings').update({ deal_info_layout: layout }).eq('company_id', companyId);
+      const { data: updated, error } = await supabase.from('company_settings')
+        .update({ deal_info_layout: layout }).eq('company_id', companyId).select('id');
       if (error) throw error;
+      if (!updated || updated.length === 0) throw new Error('You do not have permission to change these options. Ask a workspace admin.');
     } else {
       const { error } = await supabase.from('company_settings').insert({ company_id: companyId, deal_info_layout: layout });
       if (error) throw error;
     }
-    queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    queryClient.setQueryData([...QUERY_KEY, companyId], cleaned);
+    await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
   }, [companyId, queryClient]);
 
   const labelFor = useCallback((value?: string | null) => {
