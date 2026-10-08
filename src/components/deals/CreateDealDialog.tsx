@@ -53,6 +53,7 @@ import { usePipelineContext } from '@/contexts/PipelineContext';
 import { formatAmountWithCommas, parseAmountToNumber } from '@/utils/currencyFormat';
 import { addDays, format } from 'date-fns';
 import { useDealSourcedViaOptions } from '@/hooks/useDealSourcedViaOptions';
+import { useDealEngagementOptions } from '@/hooks/useDealEngagementOptions';
 import { isOverlayClickSuppressed, shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
 import { useDealInfoFieldOrder } from '@/hooks/useDealInfoFieldOrder';
 import type { ContactPickerValue } from '@/components/contacts/ContactPickerField';
