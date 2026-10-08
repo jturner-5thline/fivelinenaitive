@@ -33,6 +33,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { SourcedViaSettings } from '@/components/settings/SourcedViaSettings';
+import { EngagementOptionsSettings } from '@/components/settings/EngagementOptionsSettings';
 import { BusinessModelOptionsDialog } from '@/components/settings/BusinessModelOptionsDialog';
 
 interface DealInfoFieldsSettingsProps {
@@ -314,6 +315,11 @@ export function DealInfoFieldsSettings({ isAdmin = true }: DealInfoFieldsSetting
                             toast({ title: 'Field removed', description: `${config.label} is no longer in the Deal Information list.` });
                           } : undefined}
                         />
+                        {fieldId === 'engagement' && visible && (
+                          <div className="ml-7 rounded-lg border border-border/60 bg-muted/20 p-3">
+                            <EngagementOptionsSettings isAdmin={!readOnly} />
+                          </div>
+                        )}
                         {fieldId === 'sourcedVia' && visible && (
                           <div className="ml-7 rounded-lg border border-border/60 bg-muted/20 p-3">
                             <SourcedViaSettings isAdmin={!readOnly} />

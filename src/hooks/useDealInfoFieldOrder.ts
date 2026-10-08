@@ -128,12 +128,16 @@ export function useDealInfoFieldOrder() {
   const saveLayout = useCallback(async (order: DealInfoFieldId[], visibility: Record<DealInfoFieldId, boolean>) => {
     if (!user || !companyId) return;
     try {
-      const layout: DealInfoLayout = { order, visibility };
       const { data: existing } = await supabase
         .from('company_settings')
-        .select('id')
+        .select('id, deal_info_layout')
         .eq('company_id', companyId)
         .maybeSingle();
+      // Preserve sibling keys stored in the same JSON (e.g. engagement_options).
+      const prev = (existing?.deal_info_layout && typeof existing.deal_info_layout === 'object' && !Array.isArray(existing.deal_info_layout))
+        ? existing.deal_info_layout as Record<string, unknown>
+        : {};
+      const layout = { ...prev, order, visibility };
 
       if (existing) {
         await supabase
