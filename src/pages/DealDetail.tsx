@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react";
+import { EngagementSelect } from '@/components/deal/EngagementSelect';
 import { useState, useCallback, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
@@ -4675,14 +4676,7 @@ export default function DealDetail() {
                                 return (
                                   <div key={fieldId} className="flex flex-col gap-1">
                                     <span className="text-muted-foreground text-xs font-medium">Engagement</span>
-                                    <Select value={deal.engagementType} onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}>
-                                      <SelectTrigger className="w-full h-8 text-sm"><SelectValue /></SelectTrigger>
-                                      <SelectContent>
-                                        {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
-                                          <SelectItem key={key} value={key}>{config.label}</SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
+                                    <EngagementSelect value={deal.engagementType} onChange={(value) => updateDeal('engagementType', value as EngagementType)} />
                                   </div>
                                 );
                               case 'exclusivity':

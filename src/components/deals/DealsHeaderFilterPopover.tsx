@@ -1,4 +1,9 @@
 import { useState, ReactNode } from 'react';
+import { useDealEngagementOptions } from '@/hooks/useDealEngagementOptions';
+function EngagementColumnFilter({ selected, onChange }: { selected: string[]; onChange: (next: string[]) => void }) {
+  const { options } = useDealEngagementOptions();
+  return <MultiSelectFilter label="Engagement" options={options} selected={selected} onChange={onChange} />;
+}
 import { Filter, Check, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
@@ -138,11 +143,8 @@ function useFilterBody(
     );
   }
   if (column === 'type') {
-    const options = Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([id, c]) => ({ id, label: c.label }));
     return (
-      <MultiSelectFilter
-        label="Engagement"
-        options={options}
+      <EngagementColumnFilter
         selected={filters.engagementType as string[]}
         onChange={(next) => setFilters({ engagementType: next as EngagementType[] })}
       />

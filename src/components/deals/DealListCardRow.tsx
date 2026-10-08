@@ -1,4 +1,5 @@
 import { TimeInStageText } from './TimeInStageBadge';
+import { useDealEngagementOptions } from '@/hooks/useDealEngagementOptions';
 import { memo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -104,6 +105,7 @@ function DealListCardRowImpl({
   statusNote,
   compact = false,
 }: DealListCardRowProps) {
+  const { labelFor: engagementLabelFor } = useDealEngagementOptions();
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const [activeFlagCount, setActiveFlagCount] = useState<number | null>(null);
   const effectiveFlagCount = activeFlagCount ?? (deal.isFlagged ? 1 : 0);
@@ -164,7 +166,7 @@ function DealListCardRowImpl({
     : '';
 
   const engagementLabel =
-    ENGAGEMENT_TYPE_CONFIG[deal.engagementType]?.label ?? (deal.engagementType || null);
+    deal.engagementType ? engagementLabelFor(deal.engagementType) : null;
 
   return (
     <div
