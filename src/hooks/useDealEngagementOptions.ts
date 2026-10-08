@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAdminCompanyOverride } from '@/contexts/AdminCompanyOverrideContext';
@@ -44,13 +44,14 @@ async function resolveCompanyId(override: string | null): Promise<string | null>
 export function useDealEngagementOptions() {
   const override = useAdminCompanyOverride();
   const queryClient = useQueryClient();
-  const [companyId, setCompanyId] = useState<string | null>(override?.companyId ?? null);
-
-  useEffect(() => {
-    let cancelled = false;
-    resolveCompanyId(override?.companyId ?? null).then((id) => { if (!cancelled) setCompanyId(id); });
-    return () => { cancelled = true; };
-  }, [override?.companyId]);
+  // Shared + cached across all hook instances (deal cards render many of these).
+  const { data: resolvedCompanyId } = useQuery({
+    queryKey: ['deal-engagement-company-id'],
+    enabled: !override?.companyId,
+    staleTime: 5 * 60_000,
+    queryFn: () => resolveCompanyId(null),
+  });
+  const companyId = override?.companyId ?? resolvedCompanyId ?? null;
 
   const { data, isLoading } = useQuery({
     queryKey: [...QUERY_KEY, companyId],
