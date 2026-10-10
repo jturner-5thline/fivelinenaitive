@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Loader2, ExternalLink } from 'lucide-react';
 import { useQbActualsForPeriod } from './QuickBooksActualsPanel';
+import { QBO_ENTITY_BY_KEY } from '@/config/qboEntities';
 
 type KPIFormat = 'currency' | 'percent' | 'number';
 export interface KpiLike {
@@ -10,6 +11,7 @@ export interface KpiLike {
   actual: string;
   target: string;
   format: KPIFormat;
+  templateConfig?: Record<string, unknown> | null;
 }
 
 function fmt(value: string, format: KPIFormat): string {
@@ -20,13 +22,28 @@ function fmt(value: string, format: KPIFormat): string {
   return new Intl.NumberFormat('en-US').format(n);
 }
 
-function classifyKpi(label: string): 'revenue' | 'expense' | 'profit' | null {
+type QbKind = 'revenue' | 'expense' | 'profit' | 'gross_profit' | 'gross_margin';
+
+/** FinServ staple KPIs map to a specific QuickBooks line on the FinServ entity only. */
+const FINSERV_QB_KIND: Record<string, QbKind> = {
+  'finserv-total-revenue': 'revenue',
+  'finserv-gross-profit': 'gross_profit',
+  'finserv-gross-margin': 'gross_margin',
+  'finserv-total-opex': 'expense',
+};
+
+function classifyKpi(label: string): QbKind | null {
   const l = label.toLowerCase();
   if (/\b(net\s*income|profit|ebitda|margin)\b/.test(l)) return 'profit';
   if (/\b(revenue|income|sales|bookings|arr|mrr)\b/.test(l)) return 'revenue';
   if (/\b(expense|cost|opex|spend|cogs)\b/.test(l)) return 'expense';
   return null;
 }
+
+const KIND_LABEL: Record<QbKind, string> = {
+  revenue: 'revenue', expense: 'operating expenses', profit: 'net income',
+  gross_profit: 'gross profit', gross_margin: 'gross margin',
+};
 
 interface Props {
   kpi: KpiLike | null;
@@ -39,14 +56,23 @@ interface Props {
 }
 
 export function KpiDrillDownDialog({ kpi, open, onClose, period, quarter, month, reportLabel }: Props) {
-  const { actuals, isLoading, hasRange } = useQbActualsForPeriod(period, quarter, month);
-  const kind = useMemo(() => (kpi ? classifyKpi(kpi.label) : null), [kpi]);
+  const sourceId = (kpi?.templateConfig as { metricSourceId?: string } | null | undefined)?.metricSourceId ?? '';
+  const finservKind = FINSERV_QB_KIND[sourceId] ?? null;
+  const realmId = finservKind ? QBO_ENTITY_BY_KEY.finserv.realmId : 'all';
+  const entityLabel = finservKind ? QBO_ENTITY_BY_KEY.finserv.label : 'All entities';
+  const { actuals, isLoading, hasRange } = useQbActualsForPeriod(period, quarter, month, realmId);
+  const kind = useMemo<QbKind | null>(() => (kpi ? (finservKind ?? classifyKpi(kpi.label)) : null), [kpi, finservKind]);
+  const qbFormat: KPIFormat = kind === 'gross_margin' ? 'percent' : 'currency';
 
   const qbValue = useMemo(() => {
     if (!actuals || !kind) return null;
-    if (kind === 'revenue') return actuals.totalIncome;
-    if (kind === 'expense') return actuals.totalExpenses;
-    return actuals.netIncome;
+    switch (kind) {
+      case 'revenue': return actuals.totalIncome;
+      case 'expense': return actuals.totalExpenses;
+      case 'gross_profit': return actuals.grossProfit;
+      case 'gross_margin': return actuals.totalIncome ? (actuals.grossProfit / actuals.totalIncome) * 100 : null;
+      default: return actuals.netIncome;
+    }
   }, [actuals, kind]);
 
   const planN = kpi ? Number(kpi.target) : NaN;
@@ -78,7 +104,7 @@ export function KpiDrillDownDialog({ kpi, open, onClose, period, quarter, month,
             {kind && (
               <div className="rounded-md border border-border/50 bg-muted/20 p-3">
                 <div className="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
-                  <span>QuickBooks · {kind}</span>
+                  <span>QuickBooks · {entityLabel} · {KIND_LABEL[kind]}</span>
                   <span>{period === 'monthly' ? month : quarter}</span>
                 </div>
                 {!hasRange ? (
@@ -91,10 +117,10 @@ export function KpiDrillDownDialog({ kpi, open, onClose, period, quarter, month,
                   <div className="mt-2 text-sm text-muted-foreground">No QuickBooks data available.</div>
                 ) : (
                   <div className="mt-2 flex items-baseline gap-3">
-                    <div className="text-2xl font-semibold tabular-nums">{fmt(String(qbValue), 'currency')}</div>
+                    <div className="text-2xl font-semibold tabular-nums">{fmt(String(qbValue), qbFormat)}</div>
                     {Number.isFinite(actualN) && (
                       <div className="text-xs text-muted-foreground">
-                        Δ vs entered actual: {fmt(String(qbValue - actualN), 'currency')}
+                        Δ vs entered actual: {fmt(String(qbValue - actualN), qbFormat)}
                       </div>
                     )}
                   </div>
@@ -114,7 +140,7 @@ export function KpiDrillDownDialog({ kpi, open, onClose, period, quarter, month,
                   href="/finance"
                   className="inline-flex items-center gap-1 rounded-md border border-border/60 px-3 py-1.5 hover:bg-accent"
                 >
-                  Open Finance ({kind}) <ExternalLink className="h-3 w-3" />
+                  Open Finance ({KIND_LABEL[kind]}) <ExternalLink className="h-3 w-3" />
                 </a>
               )}
             </div>
