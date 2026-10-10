@@ -42,26 +42,29 @@ export function periodToCustomDateRange(period: 'monthly' | 'quarterly', quarter
 
 export interface QbActuals {
   totalIncome: number;
+  grossProfit: number;
   totalExpenses: number;
   netIncome: number;
   syncedAt: Date | null;
   periodLabel: string;
 }
 
-/** Aggregate QB P&L across all entities for the report period. */
-export function useQbActualsForPeriod(period: 'monthly' | 'quarterly', quarter: string, month: string) {
+/** Aggregate QB P&L for the report period — all entities by default, or a single realm. */
+export function useQbActualsForPeriod(period: 'monthly' | 'quarterly', quarter: string, month: string, realmId: string = 'all') {
   const dateRange = useMemo(() => periodToCustomDateRange(period, quarter, month), [period, quarter, month]);
   const { data: plReports, isLoading, dataUpdatedAt, syncForDateRange, isSyncing, refetch } =
-    useQBProfitAndLoss('all', dateRange || undefined);
+    useQBProfitAndLoss(realmId, dateRange || undefined);
 
   const actuals = useMemo<QbActuals | null>(() => {
     if (!plReports || plReports.length === 0) return null;
     const totalIncome = plReports.reduce((s, r) => s + (r.totalIncome || 0), 0);
+    const grossProfit = plReports.reduce((s, r) => s + (r.grossProfit || 0), 0);
     const totalExpenses = plReports.reduce((s, r) => s + (r.totalExpenses || 0), 0);
     const netIncome = plReports.reduce((s, r) => s + (r.netIncome || 0), 0);
     // synced_at not on parsed type; use react-query dataUpdatedAt as proxy + fallback
     return {
       totalIncome,
+      grossProfit,
       totalExpenses,
       netIncome,
       syncedAt: dataUpdatedAt ? new Date(dataUpdatedAt) : null,
