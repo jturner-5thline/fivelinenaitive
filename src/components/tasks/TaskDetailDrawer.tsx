@@ -52,6 +52,7 @@ import { DraftEmailToClientContactDialog } from '@/components/deal/email/DraftEm
 import { Mail } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { downloadUrlAsFile } from '@/lib/downloadFile';
+import { UploadHoursPerDealPanel } from '@/components/tasks/UploadHoursPerDealPanel';
 
 interface TaskDetailDrawerProps {
   task: Task;
@@ -810,6 +811,14 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
               <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={handleSaveDesc} disabled={descValue === (task.description || '')} style={{ color: '#8b92a5' }}>Save</Button>
             </div>
           </div>
+
+          {(task as any).task_type === 'upload_hours' && (
+            <>
+              <Separator style={{ backgroundColor: 'rgba(255,255,255,0.06)' }} />
+              <UploadHoursPerDealPanel task={task} />
+            </>
+          )}
+
 
           <Separator style={{ backgroundColor: 'rgba(255,255,255,0.06)' }} />
 
