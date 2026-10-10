@@ -30100,6 +30100,7 @@ export type Database = {
         Args: { p_candidate_ids: string[]; p_table: string }
         Returns: Json
       }
+      fn_next_friday_after: { Args: { _d: string }; Returns: string }
       get_avg_time_between_stages: {
         Args: {
           p_consecutive_only?: boolean
