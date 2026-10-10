@@ -104,7 +104,7 @@ export function KpiDrillDownDialog({ kpi, open, onClose, period, quarter, month,
             {kind && (
               <div className="rounded-md border border-border/50 bg-muted/20 p-3">
                 <div className="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
-                  <span>QuickBooks · {kind}</span>
+                  <span>QuickBooks · {entityLabel} · {KIND_LABEL[kind]}</span>
                   <span>{period === 'monthly' ? month : quarter}</span>
                 </div>
                 {!hasRange ? (
@@ -117,10 +117,10 @@ export function KpiDrillDownDialog({ kpi, open, onClose, period, quarter, month,
                   <div className="mt-2 text-sm text-muted-foreground">No QuickBooks data available.</div>
                 ) : (
                   <div className="mt-2 flex items-baseline gap-3">
-                    <div className="text-2xl font-semibold tabular-nums">{fmt(String(qbValue), 'currency')}</div>
+                    <div className="text-2xl font-semibold tabular-nums">{fmt(String(qbValue), qbFormat)}</div>
                     {Number.isFinite(actualN) && (
                       <div className="text-xs text-muted-foreground">
-                        Δ vs entered actual: {fmt(String(qbValue - actualN), 'currency')}
+                        Δ vs entered actual: {fmt(String(qbValue - actualN), qbFormat)}
                       </div>
                     )}
                   </div>
@@ -140,7 +140,7 @@ export function KpiDrillDownDialog({ kpi, open, onClose, period, quarter, month,
                   href="/finance"
                   className="inline-flex items-center gap-1 rounded-md border border-border/60 px-3 py-1.5 hover:bg-accent"
                 >
-                  Open Finance ({kind}) <ExternalLink className="h-3 w-3" />
+                  Open Finance ({KIND_LABEL[kind]}) <ExternalLink className="h-3 w-3" />
                 </a>
               )}
             </div>
