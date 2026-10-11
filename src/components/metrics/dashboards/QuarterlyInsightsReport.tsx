@@ -327,7 +327,7 @@ export interface KPI {
 }
 export interface Goal { id: string; title: string; owner: string; status: string; due: string; }
 export interface Initiative { id: string; title: string; status: string; progress: number; owner: string; }
-export interface Risk { id: string; description: string; mitigation: string; }
+export interface Risk { id: string; title?: string; description: string; mitigation: string; }
 export interface GoalPriority { id: string; title?: string; description: string; targetPeriod: string; }
 
 export interface ReportState {
@@ -3118,8 +3118,9 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
     return s.risks;
   }, [riskDrill, s.risks]);
   const riskDrillColumns: DrilldownColumn<Risk>[] = [
-    { key: 'description', label: 'Risk', render: (r) => r.description || <span style={{ color: TEXT_LABEL }}>—</span> },
-    { key: 'mitigation', label: 'Mitigation', render: (r) => r.mitigation || <span style={{ color: TEXT_LABEL }}>—</span> },
+    { key: 'title', label: 'Title', render: (r) => r.title || <span style={{ color: TEXT_LABEL }}>—</span> },
+    { key: 'description', label: 'Risk', render: (r) => goalHtmlIsEmpty(r.description) ? <span style={{ color: TEXT_LABEL }}>—</span> : <><style>{GOAL_RICH_CSS}</style><GoalRichView html={r.description} /></> },
+    { key: 'mitigation', label: 'Mitigation', render: (r) => goalHtmlIsEmpty(r.mitigation) ? <span style={{ color: TEXT_LABEL }}>—</span> : <><style>{GOAL_RICH_CSS}</style><GoalRichView html={r.mitigation} /></> },
   ];
 
   const thStyle: React.CSSProperties = { textAlign: 'left', fontSize: 9, fontWeight: 700, color: 'rgba(140,175,200,0.5)', letterSpacing: '.08em', textTransform: 'uppercase', padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' };
@@ -3146,7 +3147,7 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
                 risk={risk}
                 onChange={(patch) => updateRisk(risk.id, patch)}
                 onRemove={() => removeRisk(risk.id)}
-                onDrill={() => setRiskDrill({ sourceId: `risk:${risk.id}`, sourceLabel: `Risk · ${risk.description?.slice(0, 60) || 'Untitled risk'}` })}
+                onDrill={() => setRiskDrill({ sourceId: `risk:${risk.id}`, sourceLabel: `Risk · ${risk.title || goalPlainText(risk.description).slice(0, 60) || 'Untitled risk'}` })}
               />
             ))}
           </div>
@@ -3177,11 +3178,11 @@ function RiskProseBlock({ risk, onChange, onRemove, onDrill }: {
   onRemove: () => void;
   onDrill: () => void;
 }) {
-  const [editing, setEditing] = useState(!risk.description && !risk.mitigation);
-  const descRef = useRef<HTMLTextAreaElement | null>(null);
+  const [editing, setEditing] = useState(!risk.title && goalHtmlIsEmpty(risk.description) && goalHtmlIsEmpty(risk.mitigation));
+  const titleRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
-    if (editing && descRef.current) {
-      try { descRef.current.focus(); } catch {}
+    if (editing && titleRef.current) {
+      try { titleRef.current.focus(); } catch {}
     }
   }, [editing]);
   const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
@@ -3189,35 +3190,44 @@ function RiskProseBlock({ risk, onChange, onRemove, onDrill }: {
     if (next && e.currentTarget.contains(next)) return;
     setEditing(false);
   };
-  const ta: React.CSSProperties = {
-    width: '100%', minHeight: 48, padding: '8px 10px', borderRadius: 8,
+  const box: React.CSSProperties = {
+    width: '100%', padding: '8px 10px', borderRadius: 8,
     background: 'rgba(10,18,36,0.5)', color: TEXT_PRIMARY,
     border: '1px solid rgba(120,170,255,0.18)', outline: 'none',
-    fontSize: 13.5, lineHeight: 1.55, resize: 'vertical', fontFamily: 'inherit',
+    fontSize: 13.5, lineHeight: 1.55, fontFamily: 'inherit',
   };
+  const label: React.CSSProperties = { fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: TEXT_MUTED, marginBottom: 4 };
+  const labelText = risk.title || goalPlainText(risk.description).slice(0, 40) || 'Untitled risk';
   return (
     <div
       className="qir-doc-risk qir-doc-editable-block"
       data-comment-source="risk"
       data-comment-source-id={risk.id}
-      data-comment-source-label={`Risk · ${risk.description?.slice(0, 40) || 'Untitled risk'}`}
+      data-comment-source-label={`Risk · ${labelText}`}
       onBlur={handleBlur}
     >
+      <style>{GOAL_RICH_CSS}</style>
       {editing ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <textarea
-            ref={descRef}
-            value={risk.description}
-            onChange={(e) => onChange({ description: e.target.value })}
-            placeholder="Describe the risk…"
-            style={ta}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <input
+            ref={titleRef}
+            value={risk.title ?? ''}
+            onChange={(e) => onChange({ title: e.target.value })}
+            placeholder="Risk title…"
+            style={{ ...box, fontWeight: 600 }}
           />
-          <textarea
-            value={risk.mitigation}
-            onChange={(e) => onChange({ mitigation: e.target.value })}
-            placeholder="Mitigation plan…"
-            style={ta}
-          />
+          <div>
+            <div style={label}>Description</div>
+            <div style={box}>
+              <GoalRichEditor value={risk.description} onChange={(html) => onChange({ description: html })} placeholder="Describe the risk…" />
+            </div>
+          </div>
+          <div>
+            <div style={label}>Mitigation</div>
+            <div style={box}>
+              <GoalRichEditor value={risk.mitigation} onChange={(html) => onChange({ mitigation: html })} placeholder="Mitigation plan…" />
+            </div>
+          </div>
         </div>
       ) : (
         <div
@@ -3227,12 +3237,15 @@ function RiskProseBlock({ risk, onChange, onRemove, onDrill }: {
           onFocus={() => setEditing(true)}
           style={{ cursor: 'text' }}
         >
-          <div className="qir-doc-risk-statement">
-            {risk.description || <span style={{ color: TEXT_MUTED, fontStyle: 'italic', fontWeight: 400 }}>Describe the risk…</span>}
+          {risk.title && <div className="qir-doc-risk-statement" style={{ fontWeight: 700, marginBottom: 4 }}>{risk.title}</div>}
+          <div className="qir-doc-risk-statement" style={risk.title ? { fontWeight: 400 } : undefined}>
+            {!goalHtmlIsEmpty(risk.description)
+              ? <GoalRichView html={risk.description} />
+              : <span style={{ color: TEXT_MUTED, fontStyle: 'italic', fontWeight: 400 }}>Describe the risk…</span>}
           </div>
           <div className="qir-doc-risk-mitigation">
-            {risk.mitigation
-              ? <><strong>Mitigation:</strong>{risk.mitigation}</>
+            {!goalHtmlIsEmpty(risk.mitigation)
+              ? <><strong>Mitigation:</strong><GoalRichView html={risk.mitigation} /></>
               : <span style={{ fontStyle: 'italic' }}>Add a mitigation plan…</span>}
           </div>
         </div>
