@@ -327,7 +327,7 @@ export interface KPI {
 export interface Goal { id: string; title: string; owner: string; status: string; due: string; }
 export interface Initiative { id: string; title: string; status: string; progress: number; owner: string; }
 export interface Risk { id: string; description: string; mitigation: string; }
-export interface GoalPriority { id: string; description: string; targetPeriod: string; }
+export interface GoalPriority { id: string; title?: string; description: string; targetPeriod: string; }
 
 export interface ReportState {
   period: 'monthly' | 'quarterly';
