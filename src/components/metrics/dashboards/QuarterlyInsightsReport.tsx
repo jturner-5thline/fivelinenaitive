@@ -3262,7 +3262,7 @@ function ReportGoalsPrioritiesSection({ s, set }: { s: ReportState; set: ReportS
   const defaultPeriod = s.period === 'monthly' ? s.month : s.quarter;
   const update = (id: string, patch: Partial<GoalPriority>) => set(prev => ({ ...prev, goalsPriorities: (prev.goalsPriorities ?? []).map(g => g.id === id ? { ...g, ...patch } : g) }));
   const remove = (id: string) => set(prev => ({ ...prev, goalsPriorities: (prev.goalsPriorities ?? []).filter(g => g.id !== id) }));
-  const add = () => set(prev => ({ ...prev, goalsPriorities: [...(prev.goalsPriorities ?? []), { id: uid(), description: '', targetPeriod: defaultPeriod || '' }] }));
+  const add = () => set(prev => ({ ...prev, goalsPriorities: [...(prev.goalsPriorities ?? []), { id: uid(), title: '', description: '', targetPeriod: defaultPeriod || '' }] }));
   const [drill, setDrill] = useState<DrilldownContext | null>(null);
   const drillRows = useMemo<GoalPriority[]>(() => {
     if (!drill) return [];
@@ -3270,11 +3270,14 @@ function ReportGoalsPrioritiesSection({ s, set }: { s: ReportState; set: ReportS
     return items;
   }, [drill, items]);
   const columns: DrilldownColumn<GoalPriority>[] = [
-    { key: 'description', label: 'Goal / Priority', render: (g) => g.description || <span style={{ color: TEXT_LABEL }}>—</span> },
+    { key: 'title', label: 'Goal / Priority', render: (g) => g.title || <span style={{ color: TEXT_LABEL }}>—</span> },
+    { key: 'description', label: 'Description', render: (g) => goalHtmlIsEmpty(g.description) ? <span style={{ color: TEXT_LABEL }}>—</span> : <GoalRichView html={g.description} /> },
     { key: 'targetPeriod', label: 'Target Period', width: 140, render: (g) => g.targetPeriod || '—' },
   ];
+  const goalLabel = (g: GoalPriority) => (g.title || goalPlainText(g.description)).slice(0, 60) || 'Untitled';
   return (
     <Card className="glass-module">
+      <style>{GOAL_RICH_CSS}</style>
       <div style={{ padding: '16px 18px' }}>
         <SectionTitle prominent right={(
           <Btn icon={ExternalLink} variant="ghost" onClick={() => setDrill({ sourceId: 'gp:all', sourceLabel: 'Goals & Priorities · All', selection: `${items.length} item${items.length === 1 ? '' : 's'}` })}>View All</Btn>
@@ -3291,7 +3294,7 @@ function ReportGoalsPrioritiesSection({ s, set }: { s: ReportState; set: ReportS
                 item={g}
                 onChange={(patch) => update(g.id, patch)}
                 onRemove={() => remove(g.id)}
-                onDrill={() => setDrill({ sourceId: `gp:${g.id}`, sourceLabel: `Goal · ${g.description?.slice(0, 60) || 'Untitled'}` })}
+                onDrill={() => setDrill({ sourceId: `gp:${g.id}`, sourceLabel: `Goal · ${goalLabel(g)}` })}
               />
             ))}
           </div>
@@ -3318,41 +3321,46 @@ function GoalPriorityBlock({ item, onChange, onRemove, onDrill }: {
   onRemove: () => void;
   onDrill: () => void;
 }) {
-  const [editing, setEditing] = useState(!item.description);
-  const descRef = useRef<HTMLTextAreaElement | null>(null);
-  useEffect(() => {
-    if (editing && descRef.current) { try { descRef.current.focus(); } catch {} }
-  }, [editing]);
+  const [editing, setEditing] = useState(!item.title && goalHtmlIsEmpty(item.description));
   const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
     const next = e.relatedTarget as Node | null;
     if (next && e.currentTarget.contains(next)) return;
     setEditing(false);
   };
-  const ta: React.CSSProperties = {
-    width: '100%', minHeight: 48, padding: '8px 10px', borderRadius: 8,
+  const box: React.CSSProperties = {
+    width: '100%', padding: '8px 10px', borderRadius: 8,
     background: 'rgba(10,18,36,0.5)', color: TEXT_PRIMARY,
-    border: '1px solid rgba(120,170,255,0.18)', outline: 'none',
-    fontSize: 13.5, lineHeight: 1.55, resize: 'vertical', fontFamily: 'inherit',
+    border: '1px solid rgba(120,170,255,0.18)', outline: 'none', fontFamily: 'inherit',
   };
+  const titleStyle: React.CSSProperties = { fontSize: 14, fontWeight: 600, lineHeight: 1.45, color: TEXT_PRIMARY };
+  const descColor = 'rgba(220,230,245,0.88)';
   const options = item.targetPeriod && !GOAL_PERIOD_OPTIONS.includes(item.targetPeriod)
     ? [item.targetPeriod, ...GOAL_PERIOD_OPTIONS] : GOAL_PERIOD_OPTIONS;
+  const label = (item.title || goalPlainText(item.description)).slice(0, 40) || 'Untitled';
   return (
     <div
       className="qir-doc-risk qir-doc-editable-block"
       data-comment-source="goal-priority"
       data-comment-source-id={item.id}
-      data-comment-source-label={`Goal · ${item.description?.slice(0, 40) || 'Untitled'}`}
+      data-comment-source-label={`Goal · ${label}`}
       onBlur={handleBlur}
     >
       {editing ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <textarea
-            ref={descRef}
-            value={item.description}
-            onChange={(e) => onChange({ description: e.target.value })}
-            placeholder="What do you want to accomplish?"
-            style={ta}
+          <input
+            autoFocus
+            value={item.title ?? ''}
+            onChange={(e) => onChange({ title: e.target.value })}
+            placeholder="Title"
+            style={{ ...box, ...titleStyle, height: 36 }}
           />
+          <div style={{ ...box, color: descColor }}>
+            <GoalRichEditor
+              value={item.description}
+              onChange={(html) => onChange({ description: html })}
+              placeholder="Description"
+            />
+          </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: TEXT_MUTED }}>
             Target period
             <select
@@ -3367,9 +3375,14 @@ function GoalPriorityBlock({ item, onChange, onRemove, onDrill }: {
         </div>
       ) : (
         <div role="button" tabIndex={0} onClick={() => setEditing(true)} onFocus={() => setEditing(true)} style={{ cursor: 'text' }}>
-          <div className="qir-doc-risk-statement">
-            {item.description || <span style={{ color: TEXT_MUTED, fontStyle: 'italic', fontWeight: 400 }}>What do you want to accomplish?</span>}
+          <div style={titleStyle}>
+            {item.title || <span style={{ color: TEXT_MUTED, fontStyle: 'italic', fontWeight: 400 }}>Untitled goal</span>}
           </div>
+          {!goalHtmlIsEmpty(item.description) && (
+            <div style={{ marginTop: 6, color: descColor }}>
+              <GoalRichView html={item.description} />
+            </div>
+          )}
           <div className="qir-doc-risk-mitigation">
             {item.targetPeriod
               ? <><strong>Target:</strong>{item.targetPeriod}</>
