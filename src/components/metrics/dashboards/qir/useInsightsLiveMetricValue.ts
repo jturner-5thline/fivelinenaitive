@@ -507,21 +507,35 @@ export function useInsightsLiveMetricValue(
   });
   const debtAdvisoryBoard = useQuery({
     enabled: isDebtAdvisory && isDaBoard && !!period,
-    queryKey: ['insights-live-debt-advisory-board', period?.start ?? null, period?.end ?? null],
+    queryKey: ['insights-live-debt-advisory-board', 'nda-entry', period?.start ?? null, period?.end ?? null],
     staleTime: 60_000,
     queryFn: async () => {
+      // Same definition as the Debt Advisory dashboard's "Deals on the Board":
+      // distinct deals entering NDA / Needs List Sent on the Active Pipeline,
+      // excluding John Moffitt-owned/authored entries and test deals, deduped by company.
+      const NDA = ['ndaneeds-list-sent','NDA/Needs List Sent','NDA / Needs List Sent','NDA/NEEDS LIST SENT','NDA / NEEDS LIST SENT'];
       const { data, error } = await supabase
-        .from('deals')
-        .select('id, company, value, pipeline_id, created_at')
-        .eq('pipeline_id', ACTIVE_PIPELINE_ID)
-        .gte('created_at', period!.start)
-        .lte('created_at', period!.end + 'T23:59:59.999Z');
+        .from('deal_stage_history')
+        .select('deal_id, changed_at, changed_by, pipeline_id, deals!inner(id, company, value, deal_owner)')
+        .eq('event_type', 'stage_enter')
+        .in('to_stage', NDA)
+        .gte('changed_at', period!.start)
+        .lte('changed_at', period!.end + 'T23:59:59.999Z')
+        .order('changed_at', { ascending: true });
       if (error) throw error;
-      const rows = (data ?? []).filter((d: any) => !isExcludedDealName(d.company));
-      return {
-        count: rows.length,
-        dollarVolume: rows.reduce((s: number, d: any) => s + (Number(d.value) || 0), 0),
-      };
+      const byName = new Map<string, number>();
+      for (const h of (data ?? []) as any[]) {
+        const d = h.deals;
+        if (!d) continue;
+        if (h.pipeline_id && h.pipeline_id !== ACTIVE_PIPELINE_ID) continue;
+        if (h.changed_by === '2e65a4b1-bd94-46ef-87c6-9afe697b3180') continue;
+        if (String(d.deal_owner ?? '').toLowerCase().trim() === 'john moffitt') continue;
+        if (isExcludedDealName(d.company)) continue;
+        const key = String(d.company ?? '').toLowerCase().trim() || d.id;
+        if (!byName.has(key)) byName.set(key, Number(d.value) || 0);
+      }
+      const vals = Array.from(byName.values());
+      return { count: vals.length, dollarVolume: vals.reduce((a, b) => a + b, 0) };
     },
   });
 
