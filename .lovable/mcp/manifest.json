@@ -165,7 +165,7 @@
       {
         "name": "update_deal",
         "title": "Update deal",
-        "description": "Update a deal's stage and/or high-level fields (value, closing_date, deal_owner, manager, narrative, is_flagged, flag_notes). Only fields you pass are changed. Returns the updated deal row.",
+        "description": "Update a deal's stage and/or high-level fields (value, closing_date, deal_owner, manager, narrative, is_flagged, flag_notes, notes = the Status Note box, replaced). Only fields you pass are changed. Returns the updated deal row.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -221,10 +221,65 @@
                   "type": "null"
                 }
               ]
+            },
+            "notes": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000,
+              "description": "Replaces the Status Note text; previous note is archived and the change is logged. Use add_deal_status_note to prepend."
             }
           },
           "required": [
             "deal_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_deal_status_note",
+        "title": "Add deal status note",
+        "description": "Add or replace the status note on a deal (the Status Note box on the deal page).",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "prepend",
+                "append",
+                "replace"
+              ],
+              "default": "prepend",
+              "description": "prepend (default) keeps history below a blank line; replace overwrites."
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "default": "Claude deal-update",
+              "description": "Attribution recorded in the activity log."
+            }
+          },
+          "required": [
+            "deal_id",
+            "note"
           ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
