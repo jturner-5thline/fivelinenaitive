@@ -83,32 +83,46 @@ export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged }: DealHour
           <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          <div className="min-w-0">
+        <div className="flex-1 flex flex-col justify-center gap-4">
+          <div className="text-center">
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Revenue / Hour</p>
-            <p className="text-2xl font-semibold tabular-nums font-mono text-foreground truncate">
+            <p className="text-3xl font-semibold tabular-nums font-mono text-foreground truncate">
               {rph !== null ? fmtMoney(rph) : '—'}
             </p>
           </div>
-          <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total Hours</p>
-            <p className="text-lg font-medium tabular-nums font-mono text-foreground">{totalHours.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-            <p className="text-[11px] text-muted-foreground tabular-nums">Pre {pre.toLocaleString()} · Post {post.toLocaleString()}</p>
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total Fee</p>
-            <p className="text-lg font-medium tabular-nums font-mono text-foreground truncate">{hasFees ? fmtMoney(totalFee) : '—'}</p>
-            {latestWeek && (
-              <p className="text-[11px] text-muted-foreground tabular-nums">Last week {(latestWeek.pre + latestWeek.post).toLocaleString()}h</p>
-            )}
+          <div className="flex items-end justify-between gap-3">
+            <div className="min-w-0 text-left">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total Fee</p>
+              <p className="text-lg font-medium tabular-nums font-mono text-foreground truncate">{hasFees ? fmtMoney(totalFee) : '—'}</p>
+            </div>
+            <div className="min-w-0 text-right">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total Hours</p>
+              <p className="text-lg font-medium tabular-nums font-mono text-foreground">{totalHours.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+            </div>
           </div>
         </div>
 
         {emptyMsg && (
           <p className="text-xs text-muted-foreground">{emptyMsg} — click to add.</p>
         )}
+      </Card>
 
-        <div className="flex-1 min-h-[110px]">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-[720px]" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle className="text-sm font-medium flex items-center gap-2">
+              <Clock className="h-4 w-4" /> Hours & Fees
+            </DialogTitle>
+          </DialogHeader>
+          <HoursFeesInputs deal={deal} updateDeal={updateDeal} onChanged={handleChanged} />
+          <div className="space-y-2 pt-2 border-t border-border/40">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Hours by Week</p>
+              {latestWeek && (
+                <p className="text-[11px] text-muted-foreground tabular-nums">Last week {(latestWeek.pre + latestWeek.post).toLocaleString()}h · Pre {pre.toLocaleString()} · Post {post.toLocaleString()}</p>
+              )}
+            </div>
+        <div className="h-[180px]">
           {chartData.length === 0 ? (
             <div className="h-full flex items-center justify-center text-xs text-muted-foreground rounded-md border border-dashed border-border/50">
               Weekly hours will appear here
@@ -130,16 +144,7 @@ export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged }: DealHour
             </ResponsiveContainer>
           )}
         </div>
-      </Card>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[720px]" onClick={(e) => e.stopPropagation()}>
-          <DialogHeader>
-            <DialogTitle className="text-sm font-medium flex items-center gap-2">
-              <Clock className="h-4 w-4" /> Hours & Fees
-            </DialogTitle>
-          </DialogHeader>
-          <HoursFeesInputs deal={deal} updateDeal={updateDeal} onChanged={handleChanged} />
+          </div>
         </DialogContent>
       </Dialog>
     </>
