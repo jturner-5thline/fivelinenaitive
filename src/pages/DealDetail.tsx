@@ -5101,11 +5101,11 @@ export default function DealDetail() {
                             <Fragment key={id}>
                               {(hasLeftTop || hasRightTop) && (
                                 <>
-                                  <div className="flex flex-col gap-2 min-w-0">
+                                  <div className="flex flex-col gap-2 min-w-0 lg:order-2">
                                     {milestonesWidget}
                                     {fundingMixWidget}
                                   </div>
-                                  <div className="relative min-w-0 min-h-[340px]">
+                                  <div className="relative min-w-0 min-h-[340px] lg:order-1">
                                     <div className={hasLeftTop ? "lg:absolute lg:inset-0 flex flex-col gap-2 h-full" : "flex flex-col gap-2 h-full"}>
                                       {tasksWidget && (
                                         <div className="flex-1 min-h-[200px] [&>div]:!h-full">{tasksWidget}</div>
@@ -5119,11 +5119,11 @@ export default function DealDetail() {
                               )}
                               {hasBottom && (
                                 <>
-                                  <div className="flex flex-col gap-2 min-w-0">
+                                  <div className="flex flex-col gap-2 min-w-0 lg:order-4">
                                     {hoursFeesWidget}
                                     {!calendarWidget && finservWidget}
                                   </div>
-                                  <div className="flex flex-col gap-2 min-w-0">
+                                  <div className="flex flex-col gap-2 min-w-0 lg:order-3">
                                     {calendarWidget && (
                                       <div className="[&>div]:!h-[280px]">{calendarWidget}</div>
                                     )}
