@@ -5091,28 +5091,46 @@ export default function DealDetail() {
                               </Card>
                             </div>
                           ) : null;
-                          // Widgets follow the account-wide order from the
-                          // "Show on deals" menu, filling left/right columns alternately.
-                          const nodes: Partial<Record<string, React.ReactNode>> = {
-                            tasks: tasksWidget,
-                            calendar: calendarWidget,
-                            milestones: milestonesWidget,
-                            fundingMix: fundingMixWidget,
-                            openItems: openItemsWidget,
-                            hoursFees: hoursFeesWidget,
-                          };
-                          const ordered = widgetOrder.filter((k) => nodes[k]);
-                          const left = ordered.filter((_, i) => i % 2 === 0);
-                          const right = ordered.filter((_, i) => i % 2 === 1);
+                          // Fixed pairing: Tasks (+ Open Items appended) matches the
+                          // combined height of Milestones + Funding Source Mix;
+                          // Calendar matches Hours & Fees.
+                          const hasLeftTop = !!(milestonesWidget || fundingMixWidget);
+                          const hasRightTop = !!(tasksWidget || openItemsWidget);
+                          const hasBottom = !!(hoursFeesWidget || calendarWidget || finservWidget);
                           return (
                             <Fragment key={id}>
-                              <div className="flex flex-col gap-2 min-w-0">
-                                {left.map((k) => <Fragment key={k}>{nodes[k]}</Fragment>)}
-                              </div>
-                              <div className="flex flex-col gap-2 min-w-0">
-                                {right.map((k) => <Fragment key={k}>{nodes[k]}</Fragment>)}
-                                {finservWidget}
-                              </div>
+                              {(hasLeftTop || hasRightTop) && (
+                                <>
+                                  <div className="flex flex-col gap-2 min-w-0">
+                                    {milestonesWidget}
+                                    {fundingMixWidget}
+                                  </div>
+                                  <div className="relative min-w-0 min-h-[340px]">
+                                    <div className={hasLeftTop ? "lg:absolute lg:inset-0 flex flex-col gap-2 h-full" : "flex flex-col gap-2 h-full"}>
+                                      {tasksWidget && (
+                                        <div className="flex-1 min-h-[200px] [&>div]:!h-full">{tasksWidget}</div>
+                                      )}
+                                      {openItemsWidget && (
+                                        <div className={openItemsCollapsed ? "shrink-0" : "flex-1 min-h-[200px] [&>div]:!h-full"}>{openItemsWidget}</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                              {hasBottom && (
+                                <>
+                                  <div className="flex flex-col gap-2 min-w-0">
+                                    {hoursFeesWidget}
+                                    {!calendarWidget && finservWidget}
+                                  </div>
+                                  <div className="flex flex-col gap-2 min-w-0">
+                                    {calendarWidget && (
+                                      <div className="[&>div]:!h-[280px]">{calendarWidget}</div>
+                                    )}
+                                    {calendarWidget && finservWidget}
+                                  </div>
+                                </>
+                              )}
                             </Fragment>
                           );
                         }
