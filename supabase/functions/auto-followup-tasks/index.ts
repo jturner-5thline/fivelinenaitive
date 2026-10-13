@@ -301,12 +301,13 @@ async function scanNylasForInternalUsers(
             continue;
           }
 
-          // Idempotency: skip if a task for this nylas event already exists.
+          // Idempotency: skip if any task for this event already exists.
+          // Do NOT filter on sync_source — Asana sync rewrites it to "asana",
+          // which previously caused duplicate follow-up tasks ~20 min later.
           const { data: existing } = await admin
             .from("tasks")
             .select("id")
-            .eq("nylas_event_id", ev.id)
-            .eq("sync_source", "calendar_followup")
+            .or(`nylas_event_id.eq.${ev.id},source_calendar_event_id.eq.${ev.id}`)
             .limit(1)
             .maybeSingle();
           if (existing?.id) {
