@@ -15,7 +15,7 @@
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const TRIAGE_MODEL = "google/gemini-3.6-flash";
+const TRIAGE_MODEL = "google/gemini-3.8-flash";
 
 /** Kill switch — set to "0"/"false" to send every deal straight to Claude. */
 const TRIAGE_ENABLED = !["0", "false", "off"].includes(

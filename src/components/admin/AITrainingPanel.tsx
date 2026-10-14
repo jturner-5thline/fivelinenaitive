@@ -37,10 +37,10 @@ interface AIConfig {
 
 const MODEL_OPTIONS = [
   "claude-sonnet-5-5",
-  "google/gemini-2.5-pro",
+  "google/gemini-3.1-pro-preview",
   "google/gemini-3-flash-preview",
-  "openai/gpt-5",
-  "openai/gpt-5-mini",
+  "openai/gpt-6-sol",
+  "openai/gpt-6-luna",
 ];
 
 export function AITrainingPanel() {

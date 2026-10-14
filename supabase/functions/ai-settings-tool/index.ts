@@ -61,7 +61,7 @@ async function llmClassify(prompt: string): Promise<{ tool_name: string; value: 
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_API_KEY}` },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "google/gemini-3.1-flash-lite",
         response_format: { type: "json_object" },
         messages: [
           {

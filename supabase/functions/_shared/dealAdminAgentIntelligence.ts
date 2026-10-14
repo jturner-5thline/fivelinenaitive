@@ -2417,7 +2417,7 @@ async function callModelForCandidates(
       );
       return {
         raw: '{"items":[]}',
-        model: "google/gemini-3.6-flash (triage)",
+        model: "google/gemini-3.8-flash (triage)",
         inputTokens: null,
         outputTokens: null,
       };
