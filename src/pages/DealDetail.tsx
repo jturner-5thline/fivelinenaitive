@@ -657,7 +657,7 @@ export default function DealDetail() {
   const [pendingMirror, setPendingMirror] = useState<null | { direction: 'status->stage' | 'stage->status' }>(null);
   const { hasPageAccess } = usePageAccessFlags();
   // Company override wins; otherwise global flag; unset defaults to 5th Line only.
-  const hasWriteUpTabAccess = hasPageAccess('deal_writeup', 'staging');
+  const hasWriteUpTabAccessFlag = hasPageAccess('deal_writeup', 'staging');
   const hasDealSpaceAccess = hasPageAccess('deal_space');
   // Unset flag keeps today's behavior (visible to everyone with Deal Space).
   const { hasAccess: canAccessDealAskAi } = useFeatureAccess('deal_ask_ai', 'deployed');
@@ -692,7 +692,7 @@ export default function DealDetail() {
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones, pendingClosingDateSync, dismissClosingDateSync } = useDealMilestones(id);
   const { user } = useAuth();
   // 5th Line-only surfaces (Analysis tab).
-  const canSeeAnalysisTab = canUse5thLineProprietaryActions(user);
+  const canSeeAnalysisTabBase = canUse5thLineProprietaryActions(user);
   const { company, members, isAdmin: isCompanyAdmin } = useCompany();
   const { visibility: widgetVis, setWidgetVisible, order: widgetOrder, setOrder: setWidgetOrder, orderIndex: wOrd } = useDealWidgetVisibility();
   const { features: companyFeatures } = useCompanyFeatures();
@@ -839,6 +839,9 @@ export default function DealDetail() {
   );
   const [naitiveFallbackLoading, setNaitiveFallbackLoading] = useState(false);
   const { hasAccess: hasNaitivePipelineAccess } = useNaitivePipelineAccess();
+  // Analysis & Write Up are 5th Line account-only: hidden entirely elsewhere.
+  const canSeeAnalysisTab = canSeeAnalysisTabBase && hasNaitivePipelineAccess;
+  const hasWriteUpTabAccess = hasWriteUpTabAccessFlag && hasNaitivePipelineAccess;
 
   // Fallback: if deal not in DealsContext and user is 5th Line member, fetch directly
   useEffect(() => {
@@ -1287,9 +1290,9 @@ export default function DealDetail() {
   // The Analysis tab is a 5th Line proprietary surface. Never expose it to
   // other company accounts, and snap back if a URL/persisted tab lands there.
   useEffect(() => {
-    if (canSeeAnalysisTab) return;
-    if (dealInfoTab === 'analysis') setDealInfoTab('deal-info');
-  }, [canSeeAnalysisTab, dealInfoTab]);
+    if (dealInfoTab === 'analysis' && !canSeeAnalysisTab) setDealInfoTab('deal-info');
+    if (dealInfoTab === 'deal-writeup' && !hasWriteUpTabAccess) setDealInfoTab('deal-info');
+  }, [canSeeAnalysisTab, hasWriteUpTabAccess, dealInfoTab]);
   const [tabDirection, setTabDirection] = useState<'left' | 'right' | 'none'>('none');
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   
@@ -6306,18 +6309,13 @@ export default function DealDetail() {
 
                 </TabsContent>
 
+                {canSeeAnalysisTab && (
                 <TabsContent value="analysis" className={cn("mt-6", "deal-tab-fade")}>
-                  {canSeeAnalysisTab && hasNaitivePipelineAccess ? (
-                    <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
-                      <SaaSModelTab dealId={id!} dealData={{ company: deal.company, value: deal.value, stage: deal.stage }} />
-                    </Suspense>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center min-h-[420px] rounded-lg border border-border/50 bg-card/30 px-6 py-16 text-center">
-                      <p className="text-3xl font-semibold tracking-tight text-foreground">COMING SOON!</p>
-                      <p className="mt-2 text-sm text-muted-foreground">Deal analysis is on its way.</p>
-                    </div>
-                  )}
+                  <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
+                    <SaaSModelTab dealId={id!} dealData={{ company: deal.company, value: deal.value, stage: deal.stage }} />
+                  </Suspense>
                 </TabsContent>
+                )}
 
                 {hasDealManagementAccess && (
                 <TabsContent value="deal-management" className={cn("mt-6 overflow-hidden", "deal-tab-fade")}>
@@ -6327,6 +6325,7 @@ export default function DealDetail() {
                 </TabsContent>
                 )}
 
+                {hasWriteUpTabAccess && (
                 <TabsContent value="deal-writeup" className={cn("mt-6 min-w-0", "deal-tab-fade")}>
                   <DealWriteUp
                     key={id}
@@ -6344,6 +6343,7 @@ export default function DealDetail() {
                     resetAllEditFlags={resetAllEditFlags}
                   />
                 </TabsContent>
+                )}
 
                 <TabsContent value="data-room" className={cn("mt-6 min-w-0", "deal-tab-fade")}>
                   <Card className="w-full max-w-full overflow-hidden p-0" style={{ height: 'calc(100vh - 190px)' }}>
