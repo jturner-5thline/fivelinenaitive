@@ -624,7 +624,7 @@ ${financialsBlock ? "- When the recipient asks about financials, deal size, ARR/
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: requestBody?.fastModel === false ? "google/gemini-2.5-flash" : "google/gemini-2.5-flash-lite",
+              model: requestBody?.fastModel === false ? "google/gemini-3.8-flash" : "google/gemini-3.1-flash-lite",
               messages: [
                 { role: "system", content: sys },
                 { role: "user", content: usr },
@@ -1451,9 +1451,9 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
     // for the AI Assist sidebar's initial open). Heavier model is reserved for
     // explicit "Regenerate" actions.
     const selectedModel = action === "generate_draft_options"
-      ? (fastModel === false ? "google/gemini-2.5-flash" : "google/gemini-2.5-flash-lite")
+      ? (fastModel === false ? "google/gemini-3.8-flash" : "google/gemini-3.1-flash-lite")
       : action === "analyze_thread_workflow"
-        ? "google/gemini-2.5-flash"
+        ? "google/gemini-3.8-flash"
         : "google/gemini-3-flash-preview";
 
     // Cap output tokens for draft options so the model can't run away.

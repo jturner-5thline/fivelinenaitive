@@ -81,7 +81,7 @@ Return ONLY the JSON array, no other text. Example:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-3.8-flash",
         messages: [
           { role: "system", content: "You are a commercial lending matching expert. Return only valid JSON arrays." },
           { role: "user", content: prompt },

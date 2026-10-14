@@ -1326,7 +1326,7 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_API_KEY}` },
             body: JSON.stringify({
-              model: "google/gemini-2.5-pro",
+              model: "google/gemini-3.1-pro-preview",
               temperature: 0,
               messages: [
                 { role: "system", content: system },

@@ -28,7 +28,7 @@ const corsHeaders = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MODEL_VERSION = "gemini-2.5-flash+text-embedding-3-small";
-const EXTRACTION_MODEL = "google/gemini-2.5-flash";
+const EXTRACTION_MODEL = "google/gemini-3.8-flash";
 const EMBEDDING_MODEL = "openai/text-embedding-3-small";
 const EMBEDDING_DIM = 1536;
 
