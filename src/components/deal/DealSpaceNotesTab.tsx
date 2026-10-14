@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { FileText, Loader2 } from 'lucide-react';
 import { useDealSpaceNotes, DealSpaceNote } from '@/hooks/useDealSpaceNotes';
 import { useNoteCommentCounts } from '@/hooks/useNoteCommentCounts';
@@ -30,6 +30,13 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
   const [pendingQuote, setPendingQuote] = useState<string | null>(null);
   const [selectedMeeting, setSelectedMeeting] = useState<{ recordingId: string; title: string; url?: string | null } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const autoSelectedRef = useRef(false);
+  useEffect(() => {
+    if (autoSelectedRef.current || selectedNoteId || notes.length === 0) return;
+    autoSelectedRef.current = true;
+    setSelectedNoteId(notes[0].id);
+  }, [notes, selectedNoteId]);
 
   const selectedNote = notes.find(n => n.id === selectedNoteId);
   const { data: commentCounts = {} } = useNoteCommentCounts(dealId, notes.map(n => n.id));

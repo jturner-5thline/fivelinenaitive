@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
+import { FIFTH_LINE_NOTE_TEMPLATES } from '@/components/deal/notes/NoteTemplates';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -50,6 +52,7 @@ export function useDealSpaceNotes(dealId: string | undefined) {
   const { user } = useAuth();
   const [notes, setNotes] = useState<DealSpaceNote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const seededRef = useRef<Set<string>>(new Set());
 
   const fetchNotes = useCallback(async () => {
     if (!dealId || !user) return;
@@ -61,7 +64,23 @@ export function useDealSpaceNotes(dealId: string | undefined) {
         .order('is_pinned', { ascending: false })
         .order('updated_at', { ascending: false });
       if (error) throw error;
-      const rows = (data as DealSpaceNote[]) || [];
+      let rows = (data as DealSpaceNote[]) || [];
+      // 5th Line: every deal starts with the Pre-Kick Off Q&A note.
+      if (rows.length === 0 && !seededRef.current.has(dealId)) {
+        seededRef.current.add(dealId);
+        const { data: deal } = await supabase
+          .from('deals').select('company_id').eq('id', dealId).maybeSingle();
+        if ((deal as any)?.company_id === FIFTH_LINE_COMPANY_ID) {
+          const tpl = FIFTH_LINE_NOTE_TEMPLATES.find(t => t.name === 'pre_kickoff_qa_email');
+          if (tpl) {
+            const { data: created } = await supabase
+              .from('deal_space_notes')
+              .insert({ deal_id: dealId, user_id: user.id, title: 'Pre-Kick Off Q&A Notes', content: tpl.content, template_name: tpl.name, is_shared: true } as any)
+              .select().single();
+            if (created) rows = [created as DealSpaceNote];
+          }
+        }
+      }
       // Demo-only: when no real notes exist, render seeded synthetic
       // notes so the section never appears empty during demos. These
       // are visual placeholders only — never written to the database.
