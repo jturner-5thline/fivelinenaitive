@@ -58,12 +58,27 @@ export function useDealProjectedCashFlows(
       setIsLoading(true);
       const { data, error } = await supabase
         .from('deals')
-        .select('id, company, value, stage, retainer_fee, milestone_fee, success_fee_percent, projected_close_date, contract_start_date')
+        .select('id, company, value, stage, stage_entered_at, retainer_fee, milestone_fee, success_fee_percent, projected_close_date, contract_start_date')
         .eq('company_id', companyId)
         .limit(500);
       if (cancelled) return;
       if (error || !data) {
         setItems([]); setIsLoading(false); return;
+      }
+      // First entry into "Final Credit Items" per deal (drives retainer date).
+      const fciEntryByDeal = new Map<string, string>();
+      const retainerDealIds = (data as any[]).filter((d) => Number(d.retainer_fee) > 0).map((d) => d.id);
+      if (retainerDealIds.length) {
+        const { data: hist } = await (supabase as any)
+          .from('deal_stage_history')
+          .select('deal_id, to_stage, to_stage_id, changed_at')
+          .in('deal_id', retainerDealIds)
+          .order('changed_at', { ascending: true });
+        if (cancelled) return;
+        for (const h of (hist || []) as any[]) {
+          const isFci = normalizeStage(h.to_stage_id) === 'final credit items' || normalizeStage(h.to_stage) === 'final credit items';
+          if (isFci && h.changed_at && !fciEntryByDeal.has(h.deal_id)) fciEntryByDeal.set(h.deal_id, h.changed_at);
+        }
       }
       const out: ScheduledCashFlow[] = [];
       const today = fmtDate(new Date());
@@ -108,30 +123,33 @@ export function useDealProjectedCashFlows(
           });
         }
 
-        // Monthly Retainer projection
+        // Retainer projection — debt retainers are ALWAYS one-time, never
+        // recurring. Scheduled 14 days after the deal first entered the
+        // "Final Credit Items" stage. Skipped if that entry date is unknown.
         const retainer = Number(d.retainer_fee) || 0;
         if (retainer > 0) {
-          const startDateStr = (d.contract_start_date || today).toString().slice(0, 10);
-          const startD = new Date(startDateStr + 'T00:00:00');
-          const dayOfMonth = Number.isFinite(startD.getDate()) ? startD.getDate() : 1;
-          // End: cap at projected close date or +24 months from today, whichever is earlier
-          const horizon = new Date();
-          horizon.setMonth(horizon.getMonth() + 24);
-          const endCandidate = closeDate ? new Date(closeDate + 'T00:00:00') : horizon;
-          const endDate = endCandidate < horizon ? endCandidate : horizon;
-          out.push({
-            id: `deal:${d.id}:retainer`,
-            company_id: '',
-            account: name,
-            category: 'Retainers',
-            amount: retainer,
-            frequency_type: 'monthly_day',
-            frequency_config: { day_of_month: dayOfMonth },
-            flow_type: 'cash_in',
-            start_date: startDateStr,
-            end_date: fmtDate(endDate),
-            notes: `naitive Deal — ${name} · Monthly Retainer (P)`,
-          });
+          let fciEntered: string | null = fciEntryByDeal.get(d.id) || null;
+          if (!fciEntered && normalizeStage(d.stage) === 'final credit items' && d.stage_entered_at) {
+            fciEntered = String(d.stage_entered_at);
+          }
+          if (fciEntered) {
+            const due = new Date(fciEntered);
+            due.setDate(due.getDate() + 14);
+            const dueStr = fmtDate(due);
+            out.push({
+              id: `deal:${d.id}:retainer`,
+              company_id: '',
+              account: name,
+              category: 'Retainers',
+              amount: retainer,
+              frequency_type: 'one_time',
+              frequency_config: { one_time_date: dueStr },
+              flow_type: 'cash_in',
+              start_date: dueStr,
+              end_date: dueStr,
+              notes: `naitive Deal — ${name} · Retainer (P) · 2 weeks after Final Credit Items`,
+            });
+          }
         }
 
         // Milestone (one-time, halfway between today and close date if configured)
