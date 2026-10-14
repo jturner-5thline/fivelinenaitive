@@ -17900,6 +17900,27 @@ export type Database = {
           },
         ]
       }
+      lender_import_staging: {
+        Row: {
+          batch: string
+          created_at: string
+          id: number
+          payload: Json
+        }
+        Insert: {
+          batch: string
+          created_at?: string
+          id?: number
+          payload: Json
+        }
+        Update: {
+          batch?: string
+          created_at?: string
+          id?: number
+          payload?: Json
+        }
+        Relationships: []
+      }
       lender_match_rules: {
         Row: {
           active: boolean
