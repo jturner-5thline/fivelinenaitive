@@ -1321,3 +1321,10 @@ tr:hover .cf-row-remove { opacity: 1; }
 .cf-section-header.transfers td.cf-label-col { box-shadow: inset 2px 0 0 var(--color-primary), 1px 0 0 var(--color-divider); }
 .cf-total-row td { border-top: 1px solid var(--color-border); }
 .cf-indent td.cf-label-col { color: var(--color-text-muted); }
+
+/* Filters merged into the KPI header row */
+.cf-filter-bar.cf-filter-bar-inline {
+  padding: 0; background: transparent; border-bottom: 0;
+  gap: var(--space-2); flex-wrap: wrap; margin-right: var(--space-2);
+}
+.cf-filter-bar-inline .cf-filter-actions { margin-left: 0 !important; }
