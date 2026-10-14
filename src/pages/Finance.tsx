@@ -127,8 +127,8 @@ export default function Finance() {
         padding="md"
         container={false}
         bodySpacing="space-y-2"
-        headerClassName="!bg-transparent !backdrop-blur-none !border-b-0 !py-1 !pb-0"
-        className="finance-flat-surfaces"
+        headerClassName="!bg-transparent !backdrop-blur-none !border-b-0 !pt-0 !pb-0"
+        className="finance-flat-surfaces !pt-0"
         header={<FinanceHeader />}
       >
         <FPAWorkspace />

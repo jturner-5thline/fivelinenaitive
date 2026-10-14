@@ -1,3 +1,4 @@
+import { CashFlowFiltersMenu } from './CashFlowFiltersMenu';
 import { useState, useCallback, useEffect, useRef, useMemo, memo } from 'react';
 import type {
   DailyData, WeeklyData, SidebarData, RecurringTag,
@@ -1472,52 +1473,20 @@ export function CashFlowManager() {
         onConfigureScheduled={() => setScheduledModalOpen(true)}
         filters={(
       <div className="cf-filter-bar cf-filter-bar-inline">
-        <FilterMultiSelect
-          label="Year"
-          options={availableYears.map(String)}
-          selected={filterYears}
-          onChange={setFilterYears}
+        <CashFlowFiltersMenu
+          groups={[
+            { key: 'year', label: 'Year', options: availableYears.map(String), selected: filterYears, onChange: setFilterYears },
+            { key: 'quarter', label: 'Quarter', options: ['Q1', 'Q2', 'Q3', 'Q4'], selected: filterQuarters, onChange: setFilterQuarters },
+            { key: 'entity', label: 'Entity', options: availableEntities, selected: filterEntities, onChange: setFilterEntities, searchable: true },
+            { key: 'category', label: 'Category', options: availableCategories, selected: filterCategories, onChange: setFilterCategories, searchable: true },
+          ]}
+          onClearAll={() => {
+            setFilterYears([]);
+            setFilterQuarters([]);
+            setFilterEntities([]);
+            setFilterCategories([]);
+          }}
         />
-        <FilterMultiSelect
-          label="Quarter"
-          options={['Q1', 'Q2', 'Q3', 'Q4']}
-          selected={filterQuarters}
-          onChange={setFilterQuarters}
-        />
-        {availableEntities.length > 0 && (
-          <FilterMultiSelect
-            label="Entity"
-            options={availableEntities}
-            selected={filterEntities}
-            onChange={setFilterEntities}
-            searchable
-            inlineSummaryMax={1}
-          />
-        )}
-        {availableCategories.length > 0 && (
-          <FilterMultiSelect
-            label="Category"
-            options={availableCategories}
-            selected={filterCategories}
-            onChange={setFilterCategories}
-            searchable
-            inlineSummaryMax={1}
-          />
-        )}
-        {(filterYears.length > 0 || filterQuarters.length > 0 || filterEntities.length > 0 || filterCategories.length > 0) && (
-          <button
-            className="cf-btn cf-btn-ghost"
-            style={{ fontSize: 11, marginLeft: 4 }}
-            onClick={() => {
-              setFilterYears([]);
-              setFilterQuarters([]);
-              setFilterEntities([]);
-              setFilterCategories([]);
-            }}
-          >
-            Clear
-          </button>
-        )}
         {activeTab === 'daily' && (
           <span className="cf-filter-summary">
             {`${filteredDaily.dates.length} days`}
