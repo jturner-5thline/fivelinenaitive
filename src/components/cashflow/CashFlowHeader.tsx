@@ -147,26 +147,25 @@ export const CashFlowHeader = memo(function CashFlowHeader({
           </div>
         </div>
 
-        <div className="cf-actions" style={{ flexWrap: 'wrap' }}>
-          {filters}
-          <div className="cf-role-toggle">
-            <button className={`cf-role-btn ${role === 'admin' ? 'active' : ''}`} onClick={() => onRoleChange('admin')}>
-              <ShieldIcon /> Admin
+        <div className="cf-actions cf-actions-stack">
+          <div className="cf-actions-row">
+            <span className="cf-timestamp">Updated: Mar 8, 2026, 10:31 AM</span>
+            <div className="cf-role-toggle">
+              <button className={`cf-role-btn ${role === 'admin' ? 'active' : ''}`} onClick={() => onRoleChange('admin')}>
+                <ShieldIcon /> Admin
+              </button>
+              <button className={`cf-role-btn ${role === 'viewer' ? 'active' : ''}`} onClick={() => onRoleChange('viewer')}>
+                <EyeIcon /> My View
+              </button>
+            </div>
+            <button className="cf-icon-btn" onClick={onUndo} disabled={undoCount === 0} title={`Undo (${undoCount})`}>
+              <UndoIcon />
             </button>
-            <button className={`cf-role-btn ${role === 'viewer' ? 'active' : ''}`} onClick={() => onRoleChange('viewer')}>
-              <EyeIcon /> My View
+            <button className="cf-icon-btn" onClick={onOpenActivityLog} title="Activity Log">
+              <Clock size={16} />
             </button>
           </div>
-
-          <button className="cf-icon-btn" onClick={onUndo} disabled={undoCount === 0} title={`Undo (${undoCount})`}>
-            <UndoIcon />
-          </button>
-
-          <button className="cf-icon-btn" onClick={onOpenActivityLog} title="Activity Log">
-            <Clock size={16} />
-          </button>
-
-          <span className="cf-timestamp">Updated: Mar 8, 2026, 10:31 AM</span>
+          {filters && <div className="cf-actions-row">{filters}</div>}
         </div>
       </div>
 
