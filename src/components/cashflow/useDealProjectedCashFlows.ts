@@ -36,7 +36,7 @@ function fmtDate(d: Date): string {
 /**
  * Project Cash-In entries from the naitive deal pipeline:
  *  - One-time Closing Fee at expected close date = deal value × success_fee_percent (default 2%)
- *  - Recurring monthly Retainer (day-of-month from contract_start_date) when retainer_fee is set
+ *  - One-time Retainer 14 days after the deal first entered "Final Credit Items" (never recurring)
  *
  * Entries are tagged with id prefix `deal:` and a `notes` value of
  * `naitive Deal — <Company> · <kind>` so the drilldown shows provenance.
