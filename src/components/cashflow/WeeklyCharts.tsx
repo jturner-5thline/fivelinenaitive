@@ -142,8 +142,8 @@ export const WeeklyCharts = memo(function WeeklyCharts({
           {
             label: 'Ending Cash',
             data: endingCash,
-            borderColor: isDark ? '#22c55e' : '#16a34a',
-            backgroundColor: isDark ? 'rgba(34,197,94,0.1)' : 'rgba(22,163,74,0.1)',
+            borderColor: isDark ? '#34d399' : '#16a34a',
+            backgroundColor: isDark ? 'rgba(52,211,153,0.1)' : 'rgba(22,163,74,0.1)',
             fill: true,
             tension: 0.3,
             borderWidth: 1.5,
@@ -171,8 +171,8 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             ? [{
                 label: 'Peak Cash',
                 data: peakPoints,
-                borderColor: isDark ? '#22c55e' : '#16a34a',
-                backgroundColor: isDark ? '#22c55e' : '#16a34a',
+                borderColor: isDark ? '#34d399' : '#16a34a',
+                backgroundColor: isDark ? '#34d399' : '#16a34a',
                 pointStyle: 'triangle' as const,
                 pointRadius: 9,
                 pointHoverRadius: 11,
@@ -186,8 +186,8 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             ? [{
                 label: 'Low Cash',
                 data: lowPoints,
-                borderColor: isDark ? '#ef4444' : '#dc2626',
-                backgroundColor: isDark ? '#ef4444' : '#dc2626',
+                borderColor: isDark ? '#f87171' : '#dc2626',
+                backgroundColor: isDark ? '#f87171' : '#dc2626',
                 // Triangle rotated 180° = ▼
                 pointStyle: 'triangle' as const,
                 pointRotation: 180,
@@ -220,8 +220,8 @@ export const WeeklyCharts = memo(function WeeklyCharts({
           {
             label: 'Cash Out',
             data: cashOut,
-            borderColor: isDark ? '#ef4444' : '#dc2626',
-            backgroundColor: isDark ? 'rgba(239,68,68,0.08)' : 'rgba(220,38,38,0.08)',
+            borderColor: isDark ? '#f87171' : '#dc2626',
+            backgroundColor: isDark ? 'rgba(248,113,113,0.06)' : 'rgba(220,38,38,0.08)',
             fill: true,
             tension: 0.3,
             borderWidth: 1,
@@ -231,11 +231,11 @@ export const WeeklyCharts = memo(function WeeklyCharts({
           {
             label: 'Cash In',
             data: cashIn,
-            borderColor: isDark ? '#22c55e' : '#16a34a',
-            backgroundColor: isDark ? 'rgba(34,197,94,0.92)' : 'rgba(22,163,74,0.92)',
+            borderColor: isDark ? '#34d399' : '#16a34a',
+            backgroundColor: isDark ? 'rgba(52,211,153,0.16)' : 'rgba(5,150,105,0.16)',
             fill: true,
             tension: 0.3,
-            borderWidth: 2,
+            borderWidth: 1.5,
             pointRadius: labels.length > 50 ? 0 : 3,
             order: 1,
           },
@@ -330,7 +330,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
               <Maximize2 className="h-3.5 w-3.5" />
             </button>
           </div>
-          <div ref={chart1WrapRef} style={{ height: 200, position: 'relative' }}>
+          <div ref={chart1WrapRef} style={{ height: 220, position: 'relative' }}>
             <canvas ref={chart1Ref} style={{ width: '100%', height: '100%', display: 'block' }} />
           </div>
         </div>
@@ -347,7 +347,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
               <Maximize2 className="h-3.5 w-3.5" />
             </button>
           </div>
-          <div ref={chart2WrapRef} style={{ height: 200, position: 'relative' }}>
+          <div ref={chart2WrapRef} style={{ height: 220, position: 'relative' }}>
             <canvas ref={chart2Ref} style={{ width: '100%', height: '100%', display: 'block' }} />
           </div>
         </div>

@@ -808,14 +808,14 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
               padding: '10px 14px',
               margin: '8px 0',
               borderRadius: 'var(--radius-md, 8px)',
-              background: 'color-mix(in srgb, var(--color-warning) 15%, transparent)',
-              border: '1px solid color-mix(in srgb, var(--color-warning) 50%, transparent)',
+              background: 'color-mix(in srgb, var(--color-warning) 6%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--color-warning) 22%, transparent)',
               color: 'var(--color-warning)',
               fontSize: 13,
               fontWeight: 500,
             }}
           >
-            <span aria-hidden>⚠️</span>
+            <span aria-hidden style={{ fontSize: 12, opacity: 0.85 }}>▲</span>
             <span>
               Projected cash drops to{' '}
               <strong>
