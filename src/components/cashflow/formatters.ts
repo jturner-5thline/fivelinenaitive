@@ -52,5 +52,5 @@ export function fmtShort(val: number | null | undefined): string {
   } else {
     formatted = '$' + abs.toFixed(0);
   }
-  return val < 0 ? `-${formatted}` : formatted;
+  return val < 0 ? `(${formatted})` : formatted;
 }

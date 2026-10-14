@@ -1470,17 +1470,8 @@ export function CashFlowManager() {
         onUndo={performUndo}
         onOpenActivityLog={handleOpenActivityLog}
         onConfigureScheduled={() => setScheduledModalOpen(true)}
-      />
-
-      {role === 'viewer' && (
-        <div className="cf-viewer-banner">
-          <span>My View Mode — changes are local to you and won't affect the team's model</span>
-          <button onClick={resetSandbox}>Reset to Master</button>
-        </div>
-      )}
-
-      {/* Date period filter */}
-      <div className="cf-filter-bar">
+        filters={(
+      <div className="cf-filter-bar cf-filter-bar-inline">
         <FilterMultiSelect
           label="Year"
           options={availableYears.map(String)}
@@ -1586,6 +1577,15 @@ export function CashFlowManager() {
           </div>
         )}
       </div>
+        )}
+      />
+
+      {role === 'viewer' && (
+        <div className="cf-viewer-banner">
+          <span>My View Mode — changes are local to you and won't affect the team's model</span>
+          <button onClick={resetSandbox}>Reset to Master</button>
+        </div>
+      )}
 
       {/* Hidden file input for Excel import */}
       <input

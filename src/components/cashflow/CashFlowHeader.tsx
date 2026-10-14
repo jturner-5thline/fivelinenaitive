@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, type ReactNode } from 'react';
 import { Clock } from 'lucide-react';
 import type { RoleMode, ThemeMode, ActiveTab } from './types';
 import { fmtShort } from './formatters';
@@ -23,6 +23,7 @@ interface HeaderProps {
   onUndo: () => void;
   onOpenActivityLog: () => void;
   onConfigureScheduled?: () => void;
+  filters?: ReactNode;
 }
 
 function LogoSVG() {
@@ -87,7 +88,7 @@ export const CashFlowHeader = memo(function CashFlowHeader({
   peakCash, lowCash,
   cautionThreshold = 100_000, approachingThreshold = 150_000,
   undoCount, activityCount, onRoleChange, onThemeToggle,
-  onTabChange, onUndo, onOpenActivityLog, onConfigureScheduled,
+  onTabChange, onUndo, onOpenActivityLog, onConfigureScheduled, filters,
 }: HeaderProps) {
   const fmtWeekOf = (iso: string) => {
     if (!iso) return '';
@@ -113,7 +114,7 @@ export const CashFlowHeader = memo(function CashFlowHeader({
           </div>
           <div className="cf-kpi">
             <div className="cf-kpi-label">Cash Out</div>
-            <div className="cf-kpi-value" style={{ color: 'var(--color-negative)' }} title={kpiRangeLabel}>-{fmtShort(Math.abs(cashOut))}</div>
+            <div className="cf-kpi-value" style={{ color: 'var(--color-negative)' }} title={kpiRangeLabel}>{fmtShort(-Math.abs(cashOut))}</div>
             {kpiRangeLabel && <div style={{ fontSize: 10, color: 'var(--color-text-faint)', marginTop: 2 }}>{kpiRangeLabel}</div>}
           </div>
           <div className="cf-kpi">
@@ -146,7 +147,8 @@ export const CashFlowHeader = memo(function CashFlowHeader({
           </div>
         </div>
 
-        <div className="cf-actions">
+        <div className="cf-actions" style={{ flexWrap: 'wrap' }}>
+          {filters}
           <div className="cf-role-toggle">
             <button className={`cf-role-btn ${role === 'admin' ? 'active' : ''}`} onClick={() => onRoleChange('admin')}>
               <ShieldIcon /> Admin
