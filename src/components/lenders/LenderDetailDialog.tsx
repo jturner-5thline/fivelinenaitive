@@ -109,6 +109,8 @@ const LENDER_TYPE_OPTIONS = [
   'SBA',
 ];
 
+import { LenderResponsivenessScorecard } from "./LenderResponsivenessScorecard";
+
 interface LenderInfo {
   id?: string;
   name: string;
@@ -2302,6 +2304,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                               isEditMode={false}
                             />
                           </section>
+                          <LenderResponsivenessScorecard lenderId={lender.id} />
                           <section className="mt-6">
                             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                               Business Info
