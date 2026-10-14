@@ -15,11 +15,11 @@
   --color-primary: #4a90d9;
   --color-primary-hover: #3a7bc8;
   --color-primary-highlight: #1e2d48;
-  --color-positive: #22c55e;
-  --color-negative: #ef4444;
-  --color-warning: #f59e0b;
-  --color-section-receipts: #0f2e1e;
-  --color-section-disbursements: #2e0f0f;
+  --color-positive: #34d399;
+  --color-negative: #f87171;
+  --color-warning: #fbbf24;
+  --color-section-receipts: #0f1a17;
+  --color-section-disbursements: #1c1214;
   --color-section-transfers: #1a1a2e;
   --color-section-summary: #1a2535;
   --color-section-balance: #151d2e;
@@ -1269,3 +1269,55 @@ tr:hover .cf-row-remove { opacity: 1; }
   animation: cf-kpi-pulse-anim 1.4s ease-in-out infinite;
   transform-origin: center;
 }
+
+/* ── Finance visual polish (presentation only) ─────────────────────── */
+.cf-root {
+  --font-figures: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.cf-kpi-row { gap: 0; }
+.cf-kpi {
+  text-align: left;
+  min-width: 112px;
+  padding: 2px 18px;
+  border-left: 1px solid var(--color-divider);
+}
+.cf-kpi:first-child { border-left: 0; padding-left: 4px; }
+.cf-kpi-label { font-size: 10px; letter-spacing: 0.08em; font-weight: 600; }
+.cf-kpi-value {
+  font-family: var(--font-figures);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 2px;
+}
+.cf-timestamp { font-size: 11px; color: var(--color-text-faint); }
+
+/* Grid: mono figures, right-aligned numbers, clearer headers */
+.cf-grid td:not(.cf-label-col),
+.cf-grid td .cf-cell-input {
+  font-family: var(--font-figures);
+  font-size: 12px;
+  letter-spacing: -0.01em;
+}
+.cf-grid td:not(.cf-label-col) { text-align: right; padding-right: 14px; }
+.cf-grid td .cf-cell-input { text-align: right; }
+.cf-grid thead th:not(.cf-label-col) {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+.cf-grid .cf-label-col { box-shadow: 1px 0 0 var(--color-divider); }
+
+/* Section headers: quiet tint + accent rule instead of a heavy fill */
+.cf-section-header td { letter-spacing: 0.06em; }
+.cf-section-header.receipts td,
+.cf-section-header.disbursements td,
+.cf-section-header.transfers td {
+  border-top: 1px solid var(--color-divider);
+  border-bottom: 1px solid var(--color-divider);
+}
+.cf-section-header.receipts td.cf-label-col { box-shadow: inset 2px 0 0 var(--color-positive), 1px 0 0 var(--color-divider); }
+.cf-section-header.disbursements td.cf-label-col { box-shadow: inset 2px 0 0 var(--color-negative), 1px 0 0 var(--color-divider); }
+.cf-section-header.transfers td.cf-label-col { box-shadow: inset 2px 0 0 var(--color-primary), 1px 0 0 var(--color-divider); }
+.cf-total-row td { border-top: 1px solid var(--color-border); }
+.cf-indent td.cf-label-col { color: var(--color-text-muted); }
