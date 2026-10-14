@@ -18789,6 +18789,17 @@ export type Database = {
           referral_lender: string | null
           refinancing: string | null
           relationship_owners: string | null
+          resp_emails_sent: number | null
+          resp_emails_sent_l12m: number | null
+          resp_last_reply_date: string | null
+          resp_median_hours_to_reply: number | null
+          resp_rating: string | null
+          resp_replies_received: number | null
+          resp_reply_rate: number | null
+          resp_reply_rate_excl_mass: number | null
+          resp_reply_rate_l12m: number | null
+          resp_updated_at: string | null
+          resp_window_label: string | null
           sponsor_requirement: string | null
           sponsorship: string | null
           state: string | null
@@ -18856,6 +18867,17 @@ export type Database = {
           referral_lender?: string | null
           refinancing?: string | null
           relationship_owners?: string | null
+          resp_emails_sent?: number | null
+          resp_emails_sent_l12m?: number | null
+          resp_last_reply_date?: string | null
+          resp_median_hours_to_reply?: number | null
+          resp_rating?: string | null
+          resp_replies_received?: number | null
+          resp_reply_rate?: number | null
+          resp_reply_rate_excl_mass?: number | null
+          resp_reply_rate_l12m?: number | null
+          resp_updated_at?: string | null
+          resp_window_label?: string | null
           sponsor_requirement?: string | null
           sponsorship?: string | null
           state?: string | null
@@ -18923,6 +18945,17 @@ export type Database = {
           referral_lender?: string | null
           refinancing?: string | null
           relationship_owners?: string | null
+          resp_emails_sent?: number | null
+          resp_emails_sent_l12m?: number | null
+          resp_last_reply_date?: string | null
+          resp_median_hours_to_reply?: number | null
+          resp_rating?: string | null
+          resp_replies_received?: number | null
+          resp_reply_rate?: number | null
+          resp_reply_rate_excl_mass?: number | null
+          resp_reply_rate_l12m?: number | null
+          resp_updated_at?: string | null
+          resp_window_label?: string | null
           sponsor_requirement?: string | null
           sponsorship?: string | null
           state?: string | null
