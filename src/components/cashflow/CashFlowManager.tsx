@@ -1,3 +1,4 @@
+import { CashFlowFiltersMenu } from './CashFlowFiltersMenu';
 import { useState, useCallback, useEffect, useRef, useMemo, memo } from 'react';
 import type {
   DailyData, WeeklyData, SidebarData, RecurringTag,
