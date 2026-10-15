@@ -120,7 +120,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
       document.removeEventListener('mousedown', swallow, opts);
       document.removeEventListener('click', swallow, opts);
       onClose();
-    }, 150);
+    }, 130);
   };
 
   // Install the global click-rect capture once. Cheap: a single window
@@ -388,7 +388,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           backdropFilter: 'blur(8px) saturate(80%) brightness(0.72)',
           WebkitBackdropFilter: 'blur(8px) saturate(80%) brightness(0.72)',
           opacity: reduceMotion ? 1 : isClosing ? 0 : 1,
-          transition: reduceMotion ? undefined : 'opacity 160ms ease-out',
+          transition: reduceMotion ? undefined : 'opacity 130ms ease-out',
         }}
         onClick={(e) => {
           e.stopPropagation();
@@ -422,20 +422,19 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           // Only fall back to the generic scale-in when we have neither a
           // tile-origin transform nor reduced motion — the rect-driven
           // transform already provides the entrance animation.
-          reduceMotion ? '' : !originTransform && lastAnimatedDealId.current !== deal.id ? 'animate-scale-in' : '',
+          reduceMotion || isClosing || navDir ? '' : 'deal-popup-enter',
         )}
         style={{
-          transformOrigin: isClosing ? 'top left' : 'center center',
+          transformOrigin: 'center center',
           transform: originTransform ?? undefined,
           borderRadius: originBorderRadius != null ? `${originBorderRadius}px` : undefined,
           transition: reduceMotion
             ? undefined
             : isClosing
-              ? 'transform 150ms cubic-bezier(0.4, 0, 0.2, 1), border-radius 150ms cubic-bezier(0.4, 0, 0.2, 1), opacity 140ms ease-out'
-              : 'transform 220ms cubic-bezier(0.16, 1, 0.3, 1), border-radius 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 140ms ease-out',
-          opacity: isClosing ? 0.92 : 1,
-          willChange: 'transform',
-          animation: 'none',
+              ? 'transform 130ms cubic-bezier(0.4, 0, 1, 1), opacity 130ms ease-in'
+              : undefined,
+          opacity: isClosing ? 0 : 1,
+          willChange: 'transform, opacity',
         }}
         onClick={(e) => e.stopPropagation()}
         ref={panelRef}
