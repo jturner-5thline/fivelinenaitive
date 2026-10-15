@@ -345,19 +345,9 @@ const Auth = () => {
       
       <div
         className="min-h-screen relative overflow-hidden"
-        style={{
-          backgroundImage:
-            "radial-gradient(1100px 500px at 8% -10%, hsl(220 85% 55% / 0.22), transparent 55%), radial-gradient(900px 420px at 92% 110%, hsl(265 85% 55% / 0.18), transparent 55%), linear-gradient(135deg, hsl(222 40% 7%) 0%, hsl(235 38% 6%) 45%, hsl(258 30% 4%) 100%)",
-        }}
+        style={{ backgroundColor: "#0B1526" }}
       >
-        {/* Sharp diagonal highlight */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-60"
-          style={{
-            backgroundImage:
-              "linear-gradient(115deg, transparent 0%, transparent 38%, hsl(220 100% 70% / 0.06) 50%, transparent 62%, transparent 100%)",
-          }}
-        />
+
         {/* Fine grid texture for sharpness */}
 
         <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-6">
