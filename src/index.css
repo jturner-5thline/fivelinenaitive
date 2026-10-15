@@ -4915,3 +4915,37 @@ html body.ceo-theme thead th { background-color: #101D33 !important; }
 html body.ceo-theme .bg-muted,
 html body.ceo-theme .bg-secondary,
 html body.ceo-theme .bg-background { background-color: #0B1526 !important; }
+
+/* ===== Widgets on Insights, Finance, Contacts & Companies match deal tiles ===== */
+html body.ceo-theme {
+  --bg-card: #101D33;
+  --bg-card-hover: #13223B;
+  --border-subtle: #1E2C46;
+  --insights-widget-bg: #101D33;
+  --table-header: #101D33;
+  --table-row: #101D33;
+}
+html body.ceo-theme .cf-root {
+  --color-bg: #0B1526;
+  --color-surface: #101D33;
+  --color-surface-2: #101D33;
+  --color-surface-offset: #101D33;
+  --color-border: #1E2C46;
+  --color-divider: #1E2C46;
+}
+html body.ceo-theme .insights-glass-skin [class*="rounded-[10px]"],
+html body.ceo-theme .insights-glass-skin [class*="rounded-lg"].border,
+html body.ceo-theme .insights-glass-skin [class*="rounded-xl"].border,
+html body.ceo-theme .finance-flat-surfaces [class*="rounded-lg"].border,
+html body.ceo-theme .finance-flat-surfaces [class*="rounded-xl"].border,
+html body.ceo-theme .cf-root [class*="rounded-lg"].border,
+html body.ceo-theme .flat-tile-skin [class*="rounded-lg"].border,
+html body.ceo-theme .flat-tile-skin [class*="rounded-xl"].border,
+html body.ceo-theme .crm-companies-title-bar,
+html body.ceo-theme .flat-tile-skin .bg-card,
+html body.ceo-theme .flat-tile-skin [class*="bg-[var(--bg-card)]"] {
+  background-color: #101D33 !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  border: 1px solid #1E2C46 !important;
+}
