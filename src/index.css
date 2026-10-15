@@ -4949,3 +4949,9 @@ html body.ceo-theme .flat-tile-skin [class*="bg-[var(--bg-card)]"] {
   backdrop-filter: none !important;
   border: 1px solid #1E2C46 !important;
 }
+
+/* ===== Platform backdrop (left gutter/behind sidebar) matches page #0B1526 ===== */
+html body.ceo-theme {
+  --bg-app: #0B1526;
+  --app-backdrop: linear-gradient(0deg, #0B1526 0%, #0B1526 100%);
+}
