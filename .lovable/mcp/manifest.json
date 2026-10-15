@@ -859,7 +859,7 @@
       {
         "name": "update_lender",
         "title": "Update funding source / lender",
-        "description": "Update columns on an existing funding source (lender) row in the master directory (`master_lenders`). Partial update: ONLY the fields you pass are changed, everything else is left untouched; pass null to clear a field. Bumps updated_at, returns the full updated lender record, and writes one `lender_audit_logs` entry per changed field (old value -> new value), the same change history `get_lender` returns as `audit_history`. Identify the lender by `lender_id`, or by `name_lookup` (case-insensitive, partial) when the id is unknown. Do NOT use `name` to identify the lender — `name` RENAMES it — ambiguous names are rejected with the candidate ids. NOTE: this tool edits the LEGACY single-contact columns on master_lenders (contact_name, contact_title, contact_phone, contact_geography, email, phone). It does NOT touch the separate multi-contact list in `lender_contacts` — use `upsert_lender_contact` for that. The two are not interchangeable.",
+        "description": "Update columns on an existing funding source (lender) row in the master directory (`master_lenders`). Partial update: ONLY the fields you pass are changed, everything else is left untouched; pass null to clear a field. Bumps updated_at, returns the full updated lender record, and writes one `lender_audit_logs` entry per changed field (old value -> new value), the same change history `get_lender` returns as `audit_history`. Use this for EXISTING funding sources only — to add a new one use `create_lender`. Also covers criteria_reviewed_at, criteria_confidence, upfront_checklist, post_term_sheet_checklist, crm_company_id, onboarded_to_flex and gift_address. Identify the lender by `lender_id`, or by `name_lookup` (case-insensitive, partial) when the id is unknown. Do NOT use `name` to identify the lender — `name` RENAMES it — ambiguous names are rejected with the candidate ids. NOTE: this tool edits the LEGACY single-contact columns on master_lenders (contact_name, contact_title, contact_phone, contact_geography, email, phone). It does NOT touch the separate multi-contact list in `lender_contacts` — use `upsert_lender_contact` for that. The two are not interchangeable.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -1380,6 +1380,87 @@
                   "type": "null"
                 }
               ]
+            },
+            "criteria_reviewed_at": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "When the lending criteria were last reviewed. ISO date (2026-09-14) or timestamp."
+            },
+            "criteria_confidence": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Confidence in the criteria. Validated against the values already used in the directory (e.g. 'imported'); an invalid value returns the allowed list."
+            },
+            "upfront_checklist": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 10000
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated list of upfront diligence items, same format as existing rows."
+            },
+            "post_term_sheet_checklist": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 10000
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated list of post-term-sheet items, same format as existing rows."
+            },
+            "crm_company_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "crm_companies.id to link this funding source to. Must exist and be visible to you."
+            },
+            "onboarded_to_flex": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "gift_address": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -1508,6 +1589,764 @@
           },
           "required": [
             "lender_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_lender",
+        "title": "Create funding source / lender",
+        "description": "Create a NEW funding source (lender) in the master directory (`master_lenders`). Use only when the lender does not exist yet — to change an existing one use `update_lender`. Requires `name`; accepts every field `update_lender` accepts. Rejects the request and returns the candidate ids when a lender with the same name (case-insensitive, trimmed) already exists. Applies the same defaults as the app (owner = you, your company, active = true, appetite_status = 'active', sync_source = 'naitive', no tier), writes a 'created' entry per set field to `lender_audit_logs`, and returns the full new record. Contacts go in `upsert_lender_contact` afterwards.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Name of the new funding source."
+            },
+            "lender_type": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "loan_types": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sub_debt": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "cash_burn": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sponsorship": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "min_revenue": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "ebitda_min": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "min_deal": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "max_deal": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "sweet_spot_min": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "sweet_spot_max": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "min_gross_margin_pct": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "max_leverage": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "industries": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "industries_to_avoid": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "b2b_b2c": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "refinancing": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "company_requirements": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 5000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "deal_structure_notes": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 10000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "geo": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "geographies": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "geographies_excluded": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sponsor_requirement": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "tier": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 50
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "active": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "appetite_status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "tags": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "website": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "linkedin_url": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "city": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "state": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "country": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "phone": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "email": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 320
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_name": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_title": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_phone": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_geography": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "relationship_owners": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "referral_lender": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "referral_fee_offered": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "referral_agreement": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "nda": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "funding_source_notes": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "about_notes": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "lender_one_pager_url": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "criteria_reviewed_at": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "When the lending criteria were last reviewed. ISO date (2026-09-14) or timestamp."
+            },
+            "criteria_confidence": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Confidence in the criteria. Validated against the values already used in the directory (e.g. 'imported'); an invalid value returns the allowed list."
+            },
+            "upfront_checklist": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 10000
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated list of upfront diligence items, same format as existing rows."
+            },
+            "post_term_sheet_checklist": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 10000
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated list of post-term-sheet items, same format as existing rows."
+            },
+            "crm_company_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "crm_companies.id to link this funding source to. Must exist and be visible to you."
+            },
+            "onboarded_to_flex": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "gift_address": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_lender_contact",
+        "title": "Delete a funding source contact",
+        "description": "Permanently remove one contact from a funding source's multi-contact list (`lender_contacts`), e.g. a duplicate or wrong entry. Requires `confirm: true`. Logged to `lender_audit_logs`. Deleting the primary contact leaves the lender with no primary; promote another with `upsert_lender_contact` (is_primary: true) — there is never more than one primary.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "contact_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true,
+              "description": "Must be true to confirm the permanent deletion."
+            }
+          },
+          "required": [
+            "contact_id",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_lender_attachment",
+        "title": "Attach a document to a funding source",
+        "description": "Upload a document (NDA, one-pager, referral agreement, etc.) to a funding source's Attachments, exactly as the app's upload does. Provide the file as `content_base64` OR as a public https `url` to fetch (max 20 MB). Category 'nda' marks the funding source as having an NDA and 'marketing_materials' as having marketing materials in the app. Does not change the legacy `nda` / `referral_agreement` / `lender_one_pager_url` text columns — use `update_lender` for those. Returns the new attachment row.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "file_name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "description": "File name including extension, e.g. 'Acme NDA.pdf'."
+            },
+            "category": {
+              "type": "string",
+              "enum": [
+                "general",
+                "nda",
+                "marketing_materials",
+                "contracts",
+                "presentations",
+                "due_diligence",
+                "term_sheets",
+                "correspondence",
+                "referral_agreement",
+                "other"
+              ],
+              "default": "general"
+            },
+            "content_base64": {
+              "type": "string",
+              "minLength": 1,
+              "description": "File bytes, base64-encoded (a data: URL prefix is accepted)."
+            },
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "description": "Public https URL to download the file from."
+            },
+            "content_type": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "MIME type; inferred from the file extension when omitted."
+            }
+          },
+          "required": [
+            "lender_id",
+            "file_name"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_lender_attachments",
+        "title": "List funding source attachments",
+        "description": "List the documents attached to a funding source (NDAs, one-pagers, referral agreements…) with a signed download URL valid for 1 hour.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "lender_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_lender_attachment",
+        "title": "Delete a funding source attachment",
+        "description": "Permanently delete one funding source attachment (file and record). Requires `confirm: true`. Only the person who uploaded a file can delete it (same rule as the app).",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "attachment_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true,
+              "description": "Must be true to confirm the permanent deletion."
+            }
+          },
+          "required": [
+            "attachment_id",
+            "confirm"
           ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
