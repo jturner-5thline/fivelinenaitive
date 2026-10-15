@@ -5000,3 +5000,17 @@ html body.ceo-theme .insights-glass-skin .glass-module-interactive:hover {
   background: #13223B !important;
   border-color: #1E2C46 !important;
 }
+
+/* ===== Unified platform background on ALL pages (landing, auth, loaders, popups) ===== */
+html, html body, #root { background-color: #0B1526 !important; }
+html body.ceo-theme {
+  --marketing-backdrop: #0B1526;
+}
+html body.ceo-theme .min-h-screen.bg-background,
+html body.ceo-theme .min-h-screen[class*="bg-gradient"],
+html body.ceo-theme .min-h-screen[style*="marketing-backdrop"],
+html body.ceo-theme .popup-shell-surface,
+html body.ceo-theme [data-radix-popper-content-wrapper] ~ .fixed.inset-0.bg-background {
+  background-color: #0B1526 !important;
+  background-image: none !important;
+}
