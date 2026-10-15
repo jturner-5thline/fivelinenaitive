@@ -154,9 +154,9 @@ export type BriefingTabValue = 'dashboard' | 'daily_rundown' | 'agenda' | 'catch
 // surface tint + blur + soft shadow, not bright outlines. `glass-border-soft`
 // / `glass-border-softer` are theme-aware so they don't appear as harsh
 // white outlines on light backgrounds.
-const GLASS_SURFACE = 'bg-background/40 backdrop-blur-2xl glass-border-softer';
-const GLASS_CARD = 'glass-surface-1 backdrop-blur-xl glass-border-softer rounded-lg';
-const GLASS_ROW = 'glass-surface-1 glass-border-softer rounded-lg backdrop-blur-sm';
+const GLASS_SURFACE = 'bg-[#101D33] border border-[#1E2C46]';
+const GLASS_CARD = 'bg-[#101D33] border border-[#1E2C46] rounded-lg';
+const GLASS_ROW = 'bg-[#101D33] border border-[#1E2C46] rounded-lg';
 
 // ── Loading skeleton for tab content ───────────────────────────
 function TabSkeleton() {
@@ -1819,7 +1819,7 @@ function DailyRundownTab({
                   'relative inline-flex items-center gap-1.5 px-3.5 pt-2 pb-2 text-xs font-medium transition-colors',
                   'rounded-t-md border border-b-0 -mb-px',
                   isActive
-                    ? 'bg-[#0a1428] text-foreground border-white/15 shadow-[0_-1px_0_0_rgba(190,220,255,0.08)_inset]'
+                    ? 'bg-[#101D33] text-foreground border-[#1E2C46]'
                     : 'bg-white/[0.02] text-muted-foreground/70 border-transparent hover:bg-white/[0.05] hover:text-foreground/80',
                 )}
               >
@@ -1828,7 +1828,7 @@ function DailyRundownTab({
                 {isActive && (
                   <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute left-0 right-0 -bottom-px h-px bg-[#0a1428]"
+                    className="pointer-events-none absolute left-0 right-0 -bottom-px h-px bg-[#101D33]"
                   />
                 )}
               </button>
