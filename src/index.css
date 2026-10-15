@@ -1,6 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -4804,15 +4803,13 @@ html body .flat-tile-skin .crm-companies-title-bar {
 .ceo-theme,
 .ceo-theme #root,
 .ceo-theme { background-color: #0B1526 !important; background-image: none !important; }
-.ceo-theme,
-.ceo-theme * { font-family: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif; }
 .ceo-theme { font-size: 15px; line-height: 1.55; }
 .ceo-theme h1,
-.ceo-theme h2 { font-family: "Archivo", sans-serif !important; font-weight: 800; letter-spacing: -0.02em; color: #fff; }
-.ceo-theme h3 { font-family: "Archivo", sans-serif !important; font-weight: 700; letter-spacing: -0.01em; }
+.ceo-theme h2 { font-weight: 800; letter-spacing: -0.02em; color: #fff; }
+.ceo-theme h3 { font-weight: 700; letter-spacing: -0.01em; }
 .ceo-theme .font-mono,
 .ceo-theme .tabular-nums,
-.ceo-theme time { font-family: "IBM Plex Mono", ui-monospace, monospace !important; font-variant-numeric: tabular-nums; }
+.ceo-theme time { font-variant-numeric: tabular-nums; }
 .ceo-theme .text-muted-foreground { color: #E6EBF2 !important; }
 
 /* Cards / tiles */
@@ -4878,7 +4875,7 @@ html body .flat-tile-skin .crm-companies-title-bar {
 
 /* Charts */
 .ceo-theme .recharts-cartesian-grid line { stroke: #1E2C46 !important; }
-.ceo-theme .recharts-cartesian-axis-tick text { fill: #E6EBF2 !important; font-family: "IBM Plex Mono", monospace !important; font-size: 11px; }
+.ceo-theme .recharts-cartesian-axis-tick text { fill: #E6EBF2 !important; font-size: 11px; }
 
 /* Sidebar nav items */
 .ceo-theme [data-sidebar="menu-button"] { color: #E2E8F0; font-weight: 600; border-radius: 4px; }
