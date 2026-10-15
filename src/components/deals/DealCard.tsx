@@ -574,11 +574,11 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                           const rest = lines.slice(1).join(' ').trim();
                           return (
                             <>
-                              <p className="text-[14px] xl:text-[15px] font-semibold leading-snug line-clamp-2 xl:line-clamp-3 text-left" style={{ color: '#ffffff' }}>
+                              <p className="text-[14px] xl:text-[15px] font-semibold leading-snug line-clamp-4 xl:line-clamp-5 break-words text-left" style={{ color: '#ffffff' }}>
                                 {headline}
                               </p>
                               {rest && (
-                                <p className="text-[13px] xl:text-[14px] leading-snug mt-1 line-clamp-3 xl:line-clamp-6 2xl:line-clamp-7 text-left" style={{ color: '#ffffff' }}>
+                                <p className="text-[13px] xl:text-[14px] leading-snug mt-1 line-clamp-6 xl:line-clamp-8 2xl:line-clamp-10 break-words text-left" style={{ color: '#ffffff' }}>
                                   {rest}
                                 </p>
                               )}
