@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -4763,3 +4764,117 @@ html body .flat-tile-skin .crm-companies-title-bar {
   background: #1c2437 !important;
   background-color: #1c2437 !important;
 }
+
+/* ============================================================
+   5th Line CEO Dashboard theme — pilot, scoped to Deals page.
+   Applied via `.ceo-theme`; roll out by adding the class elsewhere.
+   ============================================================ */
+.ceo-theme {
+  --background: 218 55% 10%;
+  --foreground: 0 0% 100%;
+  --card: 218 52% 13%;
+  --card-foreground: 0 0% 100%;
+  --popover: 218 52% 13%;
+  --popover-foreground: 0 0% 100%;
+  --primary: 180 71% 45%;
+  --primary-foreground: 218 61% 8%;
+  --secondary: 217 55% 10%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 217 55% 10%;
+  --muted-foreground: 215 32% 93%;
+  --accent: 180 71% 22%;
+  --accent-foreground: 180 71% 45%;
+  --border: 219 40% 20%;
+  --input: 219 35% 25%;
+  --ring: 180 71% 45%;
+  --success: 152 49% 53%;
+  --warning: 39 73% 55%;
+  --warning-foreground: 218 61% 8%;
+  --radius: 0.5rem;
+  --ceo-teal: #21C3C2;
+  --ceo-card: #101D33;
+  --ceo-line: #1E2C46;
+  --ceo-input: #2A3A57;
+  --chart-1: 180 71% 45%;
+  --chart-2: 152 49% 53%;
+  --chart-3: 39 73% 55%;
+  --chart-4: 215 60% 69%;
+  color: #fff;
+}
+.ceo-theme > *,
+.ceo-theme main { background-color: #0B1526 !important; background-image: none !important; }
+.ceo-theme main,
+.ceo-theme main * { font-family: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif; }
+.ceo-theme main { font-size: 15px; line-height: 1.55; }
+.ceo-theme main h1,
+.ceo-theme main h2 { font-family: "Archivo", sans-serif !important; font-weight: 800; letter-spacing: -0.02em; color: #fff; }
+.ceo-theme main h3 { font-family: "Archivo", sans-serif !important; font-weight: 700; letter-spacing: -0.01em; }
+.ceo-theme main .font-mono,
+.ceo-theme main .tabular-nums,
+.ceo-theme main time { font-family: "IBM Plex Mono", ui-monospace, monospace !important; font-variant-numeric: tabular-nums; }
+.ceo-theme main .text-muted-foreground { color: #E6EBF2 !important; }
+
+/* Cards / tiles */
+.ceo-theme main .deal-glass,
+.ceo-theme main .deal-tile,
+.ceo-theme main .bg-card,
+.ceo-theme main [data-slot="card"] {
+  background: var(--ceo-card) !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  border: 1px solid var(--ceo-line) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.3) !important;
+  color: #fff;
+}
+.ceo-theme main .deal-glass::before,
+.ceo-theme main .deal-glass::after { display: none !important; }
+@media (hover: hover) {
+  .ceo-theme main .deal-tile.cursor-pointer,
+  .ceo-theme main .deal-glass.cursor-pointer { transition: transform 180ms ease, box-shadow 180ms ease !important; }
+  .ceo-theme main .deal-tile.cursor-pointer:hover,
+  .ceo-theme main .deal-glass.cursor-pointer:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.4) !important;
+    border-color: var(--ceo-line) !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ceo-theme main .deal-tile:hover { transform: none !important; }
+}
+
+/* Controls */
+.ceo-theme main button,
+.ceo-theme main input,
+.ceo-theme main select,
+.ceo-theme main textarea,
+.ceo-theme main [role="combobox"] { border-radius: 4px; }
+.ceo-theme main .bg-primary { background-color: var(--ceo-teal) !important; color: #081121 !important; font-weight: 600; }
+.ceo-theme main .bg-primary:hover { background-color: #179F9E !important; }
+.ceo-theme main input,
+.ceo-theme main textarea,
+.ceo-theme main [role="combobox"] {
+  background-color: var(--ceo-card) !important;
+  border-color: var(--ceo-input) !important;
+  color: #fff;
+}
+.ceo-theme main input:focus-visible,
+.ceo-theme main textarea:focus-visible,
+.ceo-theme main button:focus-visible { outline: 2px solid var(--ceo-teal) !important; outline-offset: 2px; border-color: var(--ceo-teal) !important; }
+.ceo-theme main [role="tablist"] { background: var(--ceo-card) !important; border: 1px solid var(--ceo-line) !important; padding: 3px; border-radius: 4px; }
+.ceo-theme main [role="tab"][data-state="active"] { background: #081121 !important; color: #fff !important; }
+.ceo-theme main a:not([class*="bg-"]) { color: var(--ceo-teal); font-weight: 600; }
+.ceo-theme main a:not([class*="bg-"]):hover { text-decoration: underline; }
+
+/* Tables / lists */
+.ceo-theme main th { color: #E6EBF2 !important; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; }
+.ceo-theme main tr,
+.ceo-theme main .divide-y > * { border-color: var(--ceo-line) !important; }
+.ceo-theme main tbody tr:hover { background: rgba(33,195,194,.06) !important; }
+
+/* Scrollbars */
+.ceo-theme main * { scrollbar-width: thin; scrollbar-color: #2A3A57 transparent; }
+
+/* Charts */
+.ceo-theme main .recharts-cartesian-grid line { stroke: #1E2C46 !important; }
+.ceo-theme main .recharts-cartesian-axis-tick text { fill: #E6EBF2 !important; font-family: "IBM Plex Mono", monospace !important; font-size: 11px; }
