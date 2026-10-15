@@ -74,7 +74,7 @@ export function SalesModelForecastWidget({ onSave }: Props) {
 
   return (
     <div
-      className="rounded-md border border-white/[0.06] bg-gradient-to-br from-white/[0.04] to-white/[0.01] backdrop-blur-xl shadow-[0_10px_30px_-15px_rgba(0,0,0,0.6)] overflow-hidden"
+      className="insights-widget-surface rounded-md border overflow-hidden"
       style={{ fontFamily: "Inter, system-ui, sans-serif" }}
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
