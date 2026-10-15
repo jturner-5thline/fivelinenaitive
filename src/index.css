@@ -3575,8 +3575,10 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   color: hsl(var(--foreground));
 }
 
-.sidebar-flyout-label {
-  color: hsl(var(--muted-foreground));
+/* Header text matches the Deals "Actions" button text color */
+.sidebar-flyout-label,
+html body .sidebar-flyout .sidebar-flyout-label {
+  color: hsl(var(--foreground)) !important;
 }
 
 .sidebar-flyout-item,
