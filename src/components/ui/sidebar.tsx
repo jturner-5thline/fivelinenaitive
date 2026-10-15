@@ -245,7 +245,7 @@ const Sidebar = React.forwardRef<
           background: '#050C18',
           opacity: 1,
           borderRadius: 8,
-          border: '1px solid #18253D', borderRight: '3px solid #21C3C2',
+          border: '1px solid #18253D',
           boxSizing: 'border-box',
           overflow: 'hidden',
           boxShadow:
