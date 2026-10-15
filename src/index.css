@@ -4885,3 +4885,33 @@ html body .flat-tile-skin .crm-companies-title-bar {
 .ceo-theme [data-sidebar="menu-button"]:hover { background: #0C1729 !important; color: #fff !important; }
 .ceo-theme [data-sidebar="menu-button"][data-active="true"] { background: rgba(33,195,194,.12) !important; color: #21C3C2 !important; box-shadow: inset 0 0 0 1px #21C3C2; }
 .ceo-theme [data-sidebar="separator"] { background: #18253D !important; }
+
+/* ===== CEO surface normalization: page #0B1526, widgets #101D33 + 1px #1E2C46 ===== */
+html body.ceo-theme,
+.ceo-theme main,
+.ceo-theme .deal-detail-surface,
+.ceo-theme [data-sidebar="inset"] { background-color: #0B1526 !important; background-image: none !important; }
+html body.ceo-theme .flat-tile-skin,
+html body.ceo-theme .flat-tile-dialog,
+html body.ceo-theme .insights-glass-skin,
+html body.ceo-theme .insights-widget-surface,
+html body.ceo-theme .fs-tab-widget,
+html body.ceo-theme .crm-companies-table,
+html body.ceo-theme .deal-glass,
+html body.ceo-theme .deal-tile,
+html body.ceo-theme .bg-card,
+html body.ceo-theme .bg-popover,
+html body.ceo-theme [data-slot="card"],
+html body.ceo-theme [role="dialog"] {
+  background-color: #101D33 !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  border: 1px solid #1E2C46 !important;
+}
+html body.ceo-theme .crm-companies-title-bar,
+html body.ceo-theme .flat-tile-skin .crm-companies-title-bar,
+html body.ceo-theme thead,
+html body.ceo-theme thead th { background-color: #101D33 !important; }
+html body.ceo-theme .bg-muted,
+html body.ceo-theme .bg-secondary,
+html body.ceo-theme .bg-background { background-color: #0B1526 !important; }
