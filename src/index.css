@@ -4766,7 +4766,7 @@ html body .flat-tile-skin .crm-companies-title-bar {
 }
 
 /* ============================================================
-   5th Line CEO Dashboard theme — pilot, scoped to Deals page.
+   5th Line CEO Dashboard theme — applied app-wide via <body class="ceo-theme">.
    Applied via `.ceo-theme`; roll out by adding the class elsewhere.
    ============================================================ */
 .ceo-theme {
@@ -4801,24 +4801,25 @@ html body .flat-tile-skin .crm-companies-title-bar {
   --chart-4: 215 60% 69%;
   color: #fff;
 }
-.ceo-theme > *,
-.ceo-theme main { background-color: #0B1526 !important; background-image: none !important; }
-.ceo-theme main,
-.ceo-theme main * { font-family: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif; }
-.ceo-theme main { font-size: 15px; line-height: 1.55; }
-.ceo-theme main h1,
-.ceo-theme main h2 { font-family: "Archivo", sans-serif !important; font-weight: 800; letter-spacing: -0.02em; color: #fff; }
-.ceo-theme main h3 { font-family: "Archivo", sans-serif !important; font-weight: 700; letter-spacing: -0.01em; }
-.ceo-theme main .font-mono,
-.ceo-theme main .tabular-nums,
-.ceo-theme main time { font-family: "IBM Plex Mono", ui-monospace, monospace !important; font-variant-numeric: tabular-nums; }
-.ceo-theme main .text-muted-foreground { color: #E6EBF2 !important; }
+.ceo-theme,
+.ceo-theme #root,
+.ceo-theme { background-color: #0B1526 !important; background-image: none !important; }
+.ceo-theme,
+.ceo-theme * { font-family: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif; }
+.ceo-theme { font-size: 15px; line-height: 1.55; }
+.ceo-theme h1,
+.ceo-theme h2 { font-family: "Archivo", sans-serif !important; font-weight: 800; letter-spacing: -0.02em; color: #fff; }
+.ceo-theme h3 { font-family: "Archivo", sans-serif !important; font-weight: 700; letter-spacing: -0.01em; }
+.ceo-theme .font-mono,
+.ceo-theme .tabular-nums,
+.ceo-theme time { font-family: "IBM Plex Mono", ui-monospace, monospace !important; font-variant-numeric: tabular-nums; }
+.ceo-theme .text-muted-foreground { color: #E6EBF2 !important; }
 
 /* Cards / tiles */
-.ceo-theme main .deal-glass,
-.ceo-theme main .deal-tile,
-.ceo-theme main .bg-card,
-.ceo-theme main [data-slot="card"] {
+.ceo-theme .deal-glass,
+.ceo-theme .deal-tile,
+.ceo-theme .bg-card,
+.ceo-theme [data-slot="card"] {
   background: var(--ceo-card) !important;
   background-image: none !important;
   backdrop-filter: none !important;
@@ -4827,54 +4828,60 @@ html body .flat-tile-skin .crm-companies-title-bar {
   box-shadow: 0 1px 2px rgba(0,0,0,.3) !important;
   color: #fff;
 }
-.ceo-theme main .deal-glass::before,
-.ceo-theme main .deal-glass::after { display: none !important; }
+.ceo-theme .deal-glass::before,
+.ceo-theme .deal-glass::after { display: none !important; }
 @media (hover: hover) {
-  .ceo-theme main .deal-tile.cursor-pointer,
-  .ceo-theme main .deal-glass.cursor-pointer { transition: transform 180ms ease, box-shadow 180ms ease !important; }
-  .ceo-theme main .deal-tile.cursor-pointer:hover,
-  .ceo-theme main .deal-glass.cursor-pointer:hover {
+  .ceo-theme .deal-tile.cursor-pointer,
+  .ceo-theme .deal-glass.cursor-pointer { transition: transform 180ms ease, box-shadow 180ms ease !important; }
+  .ceo-theme .deal-tile.cursor-pointer:hover,
+  .ceo-theme .deal-glass.cursor-pointer:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(0,0,0,.4) !important;
     border-color: var(--ceo-line) !important;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ceo-theme main .deal-tile:hover { transform: none !important; }
+  .ceo-theme .deal-tile:hover { transform: none !important; }
 }
 
 /* Controls */
-.ceo-theme main button,
-.ceo-theme main input,
-.ceo-theme main select,
-.ceo-theme main textarea,
-.ceo-theme main [role="combobox"] { border-radius: 4px; }
-.ceo-theme main .bg-primary { background-color: var(--ceo-teal) !important; color: #081121 !important; font-weight: 600; }
-.ceo-theme main .bg-primary:hover { background-color: #179F9E !important; }
-.ceo-theme main input,
-.ceo-theme main textarea,
-.ceo-theme main [role="combobox"] {
+.ceo-theme button,
+.ceo-theme input,
+.ceo-theme select,
+.ceo-theme textarea,
+.ceo-theme [role="combobox"] { border-radius: 4px; }
+.ceo-theme .bg-primary { background-color: var(--ceo-teal) !important; color: #081121 !important; font-weight: 600; }
+.ceo-theme .bg-primary:hover { background-color: #179F9E !important; }
+.ceo-theme input,
+.ceo-theme textarea,
+.ceo-theme [role="combobox"] {
   background-color: var(--ceo-card) !important;
   border-color: var(--ceo-input) !important;
   color: #fff;
 }
-.ceo-theme main input:focus-visible,
-.ceo-theme main textarea:focus-visible,
-.ceo-theme main button:focus-visible { outline: 2px solid var(--ceo-teal) !important; outline-offset: 2px; border-color: var(--ceo-teal) !important; }
-.ceo-theme main [role="tablist"] { background: var(--ceo-card) !important; border: 1px solid var(--ceo-line) !important; padding: 3px; border-radius: 4px; }
-.ceo-theme main [role="tab"][data-state="active"] { background: #081121 !important; color: #fff !important; }
-.ceo-theme main a:not([class*="bg-"]) { color: var(--ceo-teal); font-weight: 600; }
-.ceo-theme main a:not([class*="bg-"]):hover { text-decoration: underline; }
+.ceo-theme input:focus-visible,
+.ceo-theme textarea:focus-visible,
+.ceo-theme button:focus-visible { outline: 2px solid var(--ceo-teal) !important; outline-offset: 2px; border-color: var(--ceo-teal) !important; }
+.ceo-theme [role="tablist"] { background: var(--ceo-card) !important; border: 1px solid var(--ceo-line) !important; padding: 3px; border-radius: 4px; }
+.ceo-theme [role="tab"][data-state="active"] { background: #081121 !important; color: #fff !important; }
+.ceo-theme a:not([class*="bg-"]) { color: var(--ceo-teal); font-weight: 600; }
+.ceo-theme a:not([class*="bg-"]):hover { text-decoration: underline; }
 
 /* Tables / lists */
-.ceo-theme main th { color: #E6EBF2 !important; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; }
-.ceo-theme main tr,
-.ceo-theme main .divide-y > * { border-color: var(--ceo-line) !important; }
-.ceo-theme main tbody tr:hover { background: rgba(33,195,194,.06) !important; }
+.ceo-theme th { color: #E6EBF2 !important; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; }
+.ceo-theme tr,
+.ceo-theme .divide-y > * { border-color: var(--ceo-line) !important; }
+.ceo-theme tbody tr:hover { background: rgba(33,195,194,.06) !important; }
 
 /* Scrollbars */
-.ceo-theme main * { scrollbar-width: thin; scrollbar-color: #2A3A57 transparent; }
+.ceo-theme * { scrollbar-width: thin; scrollbar-color: #2A3A57 transparent; }
 
 /* Charts */
-.ceo-theme main .recharts-cartesian-grid line { stroke: #1E2C46 !important; }
-.ceo-theme main .recharts-cartesian-axis-tick text { fill: #E6EBF2 !important; font-family: "IBM Plex Mono", monospace !important; font-size: 11px; }
+.ceo-theme .recharts-cartesian-grid line { stroke: #1E2C46 !important; }
+.ceo-theme .recharts-cartesian-axis-tick text { fill: #E6EBF2 !important; font-family: "IBM Plex Mono", monospace !important; font-size: 11px; }
+
+/* Sidebar nav items */
+.ceo-theme [data-sidebar="menu-button"] { color: #E2E8F0; font-weight: 600; border-radius: 4px; }
+.ceo-theme [data-sidebar="menu-button"]:hover { background: #0C1729 !important; color: #fff !important; }
+.ceo-theme [data-sidebar="menu-button"][data-active="true"] { background: rgba(33,195,194,.12) !important; color: #21C3C2 !important; box-shadow: inset 0 0 0 1px #21C3C2; }
+.ceo-theme [data-sidebar="separator"] { background: #18253D !important; }
