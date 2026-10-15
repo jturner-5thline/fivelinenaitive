@@ -1,4 +1,4 @@
-import { defineTool, ToolError } from "@lovable.dev/mcp-js";
+import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser, requireAuth, textResult, errorResult } from "../supabase";
 import { logLenderAudit } from "../lenderWrites";
@@ -47,7 +47,7 @@ export default defineTool({
       if (!url!.startsWith("https://")) return errorResult("url: only https URLs are allowed.");
       let res: Response;
       try {
-        res = await fetch(url!, { signal: ctx.signal, redirect: "follow" });
+        res = await fetch(url!, { redirect: "follow" });
       } catch (e) {
         return errorResult(`url: download failed (${(e as Error).message}).`);
       }
@@ -61,7 +61,7 @@ export default defineTool({
     if (bytes.byteLength > MAX_ATTACHMENT_BYTES) return errorResult("File is larger than 20 MB.");
 
     const userId = ctx.getUserId();
-    if (!userId) throw new ToolError("Caller has no user id.");
+    if (!userId) return errorResult("Caller has no user id.");
     const ext = (file_name.split(".").pop() || "bin").replace(/[^a-z0-9]/gi, "") || "bin";
     const storedName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
     const filePath = `${userId}/${lender.name}/${storedName}`;

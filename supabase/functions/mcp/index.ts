@@ -1992,7 +1992,7 @@ var delete_lender_contact_default = defineTool20({
 });
 
 // src/lib/mcp/tools/add-lender-attachment.ts
-import { defineTool as defineTool21, ToolError } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { defineTool as defineTool21 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z22 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/lenderAttachments.ts
@@ -2072,7 +2072,7 @@ var add_lender_attachment_default = defineTool21({
       if (!url.startsWith("https://")) return errorResult("url: only https URLs are allowed.");
       let res;
       try {
-        res = await fetch(url, { signal: ctx.signal, redirect: "follow" });
+        res = await fetch(url, { redirect: "follow" });
       } catch (e) {
         return errorResult(`url: download failed (${e.message}).`);
       }
@@ -2085,7 +2085,7 @@ var add_lender_attachment_default = defineTool21({
     if (bytes.byteLength === 0) return errorResult("File is empty.");
     if (bytes.byteLength > MAX_ATTACHMENT_BYTES) return errorResult("File is larger than 20 MB.");
     const userId = ctx.getUserId();
-    if (!userId) throw new ToolError("Caller has no user id.");
+    if (!userId) return errorResult("Caller has no user id.");
     const ext = (file_name.split(".").pop() || "bin").replace(/[^a-z0-9]/gi, "") || "bin";
     const storedName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
     const filePath = `${userId}/${lender.name}/${storedName}`;
