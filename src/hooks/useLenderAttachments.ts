@@ -13,6 +13,8 @@ export const LENDER_ATTACHMENT_CATEGORIES = [
   { value: 'due_diligence', label: 'Due Diligence' },
   { value: 'term_sheets', label: 'Term Sheets' },
   { value: 'correspondence', label: 'Correspondence' },
+  { value: 'referral_agreement', label: 'Referral Agreement' },
+  { value: 'other', label: 'Other' },
 ] as const;
 
 export type LenderAttachmentCategory = typeof LENDER_ATTACHMENT_CATEGORIES[number]['value'];
