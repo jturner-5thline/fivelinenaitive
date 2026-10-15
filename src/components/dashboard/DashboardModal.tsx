@@ -357,15 +357,6 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
         const muted = hsl('--muted-foreground');
         const gx = { ticks: { color: muted, font: { size: 9 } }, grid: { display: false }, border: { display: false } };
         const gy = { ticks: { color: muted, font: { size: 9 }, callback: (v: any) => '$' + v + 'K' }, grid: { color: '#1E2C46' }, border: { display: false } };
-        const makeGradient = (top: string, bottom: string) => (ctx: any) => {
-          const chart = ctx.chart;
-          const { ctx: c, chartArea } = chart;
-          if (!chartArea) return top;
-          const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-          g.addColorStop(0, top);
-          g.addColorStop(1, bottom);
-          return g;
-        };
         barChart.current = new Chart(barRef.current, {
           type: 'bar',
           data: {
