@@ -993,10 +993,15 @@ body {
     box-shadow: none !important;
   }
 
-  .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-detail],
-  .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-detail] :is(div, section, article) {
+  .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-detail] {
     background-color: transparent !important;
     background-image: none !important;
+  }
+  .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-detail] :is(div, section, article) {
+    background-image: none !important;
+  }
+  .popup-shell-surface:has([data-approval-queue-panel]) .panel-divider-b {
+    border-bottom-color: #1E2C46 !important;
   }
 
   .dark .glass-border-soft {
