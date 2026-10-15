@@ -259,6 +259,23 @@ export function CreateDealApprovalCard({ item }: Props) {
           execution_result: { deal_id: newDealId, created_via: 'create_deal_dialog', backdated_to: callDate },
         })
         .eq('id', item.id);
+      // Clear the matching meeting from Today so it doesn't linger as a duplicate.
+      try {
+        const evId = (source as any).nylas_event_id as string | undefined;
+        const { data: u } = await supabase.auth.getUser();
+        if (evId && u?.user?.id) {
+          await supabase
+            .from('end_of_day_clears')
+            .upsert({ user_id: u.user.id, item_id: `eod-agenda:${evId}` } as never, { onConflict: 'user_id,item_id', ignoreDuplicates: true });
+          await supabase
+            .from('tasks')
+            .update({ deal_id: newDealId } as never)
+            .or(`nylas_event_id.eq.${evId},source_calendar_event_id.eq.${evId}`)
+            .is('deal_id', null);
+        }
+      } catch (e: any) {
+        console.warn('[CreateDealApprovalCard] clear meeting failed', e?.message);
+      }
       qc.invalidateQueries({ queryKey: ['ai-action-queue'] });
       qc.invalidateQueries({ queryKey: ['ai-action-queue-count'] });
       toast.success('New deal created and item cleared from Approval Queue');

@@ -652,10 +652,32 @@ export function EndOfDayTab({
       });
   }, [approvalItems, isResolved, isDismissed]);
 
-  const outstanding = useMemo<TileEvent[]>(
-    () => [...approvalTiles, ...outstandingEvents],
-    [approvalTiles, outstandingEvents],
-  );
+  // Meetings whose create-deal proposal was already approved (deal exists)
+  // should never reappear as a duplicate wrap-up tile.
+  const { data: dealCreatedEventIds = [] } = useQuery<string[]>({
+    queryKey: ['eod-deal-created-events', outstandingEvents.map(e => e.id).join(',')],
+    enabled: enabled && outstandingEvents.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const ids = outstandingEvents.map(e => e.id);
+      const { data } = await supabase
+        .from('ai_action_queue')
+        .select('source')
+        .eq('action_type', 'create_new_deal')
+        .eq('status', 'approved')
+        .in('source->>nylas_event_id', ids);
+      return ((data || []) as Array<{ source: any }>)
+        .map(r => r.source?.nylas_event_id)
+        .filter(Boolean);
+    },
+  });
+
+  const outstanding = useMemo<TileEvent[]>(() => {
+    const hide = new Set(dealCreatedEventIds);
+    const showingDismissed = filterChips.has('dismissed');
+    const evs = showingDismissed ? outstandingEvents : outstandingEvents.filter(e => !hide.has(e.id));
+    return [...approvalTiles, ...evs];
+  }, [approvalTiles, outstandingEvents, dealCreatedEventIds, filterChips]);
 
 
 

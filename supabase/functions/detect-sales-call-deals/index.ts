@@ -218,6 +218,30 @@ Deno.serve(async (req) => {
             results.push({ nylas_event_id: ev.id, skipped: "already_approved" });
             continue;
           }
+          // Never propose a deal that already exists (created manually or via
+          // another path) — match on company name, case-insensitive.
+          if (company && company.trim()) {
+            const { data: dupDeal } = await admin
+              .from("deals")
+              .select("id")
+              .ilike("company", company.trim())
+              .limit(1)
+              .maybeSingle();
+            if (dupDeal?.id) {
+              if (existing?.id && existing.status === "pending") {
+                await admin
+                  .from("ai_action_queue")
+                  .update({
+                    status: "approved",
+                    executed_at: new Date().toISOString(),
+                    execution_result: { deal_id: dupDeal.id, created_via: "existing_deal_dedupe" },
+                  })
+                  .eq("id", existing.id);
+              }
+              results.push({ nylas_event_id: ev.id, skipped: "deal_already_exists" });
+              continue;
+            }
+          }
           const existingHasClaap = !!(existing?.source && (existing.source as any).claap_meeting_id);
           if (existing?.id && existingHasClaap) {
             results.push({ nylas_event_id: ev.id, skipped: "already_queued_with_claap" });
