@@ -89,28 +89,9 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
       onClose();
       return;
     }
-    const rect = findDealTileRect(id);
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const isDesktop = vw >= 640;
-    const inset = isDesktop ? 24 : 0;
-    const finalLeft = inset;
-    const finalTop = inset;
-    const finalWidth = vw - inset * 2;
-    const finalHeight = vh - inset * 2;
-
-    if (rect) {
-      const sx = Math.max(rect.width / finalWidth, 0.05);
-      const sy = Math.max(rect.height / finalHeight, 0.05);
-      const tx = rect.left - finalLeft;
-      const ty = rect.top - finalTop;
-      setOriginTransform(`translate3d(${tx}px, ${ty}px, 0) scale(${sx}, ${sy})`);
-      setOriginBorderRadius(16);
-    } else {
-      // No tile to land on — gently shrink in place toward the panel center.
-      setOriginTransform('scale(0.94)');
-      setOriginBorderRadius(20);
-    }
+    void findDealTileRect;
+    setOriginTransform('scale(0.97)');
+    setOriginBorderRadius(null);
     setContentVisible(false);
     setIsClosing(true);
 
@@ -237,7 +218,10 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
       return;
     }
 
-    const rect = consumeDealOpenOriginRect(deal.id);
+    // Single fast centered pop (CSS keyframe on the panel) — no
+    // tile-origin expansion, which stuttered while DealDetail mounted.
+    consumeDealOpenOriginRect(deal.id);
+    const rect = null as null | { left: number; top: number; width: number; height: number };
     if (!rect) {
       setOriginTransform(null);
       setOriginBorderRadius(null);
