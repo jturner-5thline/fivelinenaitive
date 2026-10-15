@@ -3629,6 +3629,59 @@ html body .sidebar-flyout .sidebar-flyout-label {
   background-image: none !important;
 }
 
+/* Dashboard pop-up — flat platform tiles everywhere (all tabs).
+   Container chrome only; chart data colors and semantic badges untouched. */
+.dashboard-popup-surface .glass-module,
+.dashboard-popup-surface .glass-surface-1,
+.dashboard-popup-surface .glass-surface-2,
+.dashboard-popup-surface .mgmt-widget,
+.dashboard-popup-surface .briefing-card,
+.dashboard-popup-surface [class*="glass-card"] {
+  background: #101D33 !important;
+  background-image: none !important;
+  border: 1px solid #1E2C46 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.dashboard-popup-surface .glass-border-soft,
+.dashboard-popup-surface .glass-border-softer {
+  border-color: #1E2C46 !important;
+}
+.dashboard-popup-surface .glass-divider-b { border-bottom: 1px solid #1E2C46 !important; }
+.dashboard-popup-surface .glass-divider-t { border-top: 1px solid #1E2C46 !important; }
+.dashboard-popup-surface [class*="border-white/"] { border-color: #1E2C46 !important; }
+.dashboard-popup-surface [class*="divide-white/"] > * + * { border-color: #1E2C46 !important; }
+.dashboard-popup-surface [class*="bg-white/[0.0"],
+.dashboard-popup-surface [class*="bg-white/5"] {
+  background-color: #101D33 !important;
+}
+.dashboard-popup-surface [class*="hover:bg-white/"]:hover {
+  background-color: #13223B !important;
+}
+.dashboard-popup-surface [class*="bg-gradient-to-"] {
+  background-image: none !important;
+}
+.dashboard-popup-surface .backdrop-blur-sm,
+.dashboard-popup-surface .backdrop-blur-xl,
+.dashboard-popup-surface .backdrop-blur-2xl {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+/* Tables */
+.dashboard-popup-surface table thead th {
+  background: #0B1526;
+  border-bottom: 1px solid #1E2C46 !important;
+}
+.dashboard-popup-surface table tbody td { border-color: #1E2C46 !important; }
+.dashboard-popup-surface table tbody tr:hover td { background: #13223B !important; }
+/* Numeric figures */
+.dashboard-popup-surface .db-kpi-value,
+.dashboard-popup-surface .db-tbl td:not(:nth-child(-n+3)) {
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ============================================================
    naitive Design System — centralized token layer
    Source of truth: "naitive Design System" deck.

@@ -356,16 +356,7 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
         const hsl = (token: string) => `hsl(${root.getPropertyValue(token).trim()})`;
         const muted = hsl('--muted-foreground');
         const gx = { ticks: { color: muted, font: { size: 9 } }, grid: { display: false }, border: { display: false } };
-        const gy = { ticks: { color: muted, font: { size: 9 }, callback: (v: any) => '$' + v + 'K' }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { display: false } };
-        const makeGradient = (top: string, bottom: string) => (ctx: any) => {
-          const chart = ctx.chart;
-          const { ctx: c, chartArea } = chart;
-          if (!chartArea) return top;
-          const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-          g.addColorStop(0, top);
-          g.addColorStop(1, bottom);
-          return g;
-        };
+        const gy = { ticks: { color: muted, font: { size: 9 }, callback: (v: any) => '$' + v + 'K' }, grid: { color: '#1E2C46' }, border: { display: false } };
         barChart.current = new Chart(barRef.current, {
           type: 'bar',
           data: {
@@ -374,27 +365,24 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
               {
                 label: 'Revenue',
                 data: metrics.monthlyRevenue,
-                backgroundColor: makeGradient('rgba(120,185,235,0.95)', 'rgba(50,110,170,0.55)'),
-                borderColor: 'rgba(160,210,245,0.55)',
-                borderWidth: 1,
+                backgroundColor: '#21C3C2',
+                borderWidth: 0,
                 borderRadius: 2,
                 stack: 'rev',
               },
               {
                 label: 'Profit',
                 data: metrics.monthlyProfit,
-                backgroundColor: makeGradient('rgba(80,230,160,0.95)', 'rgba(30,150,100,0.55)'),
-                borderColor: 'rgba(130,240,190,0.55)',
-                borderWidth: 1,
+                backgroundColor: '#3B82F6',
+                borderWidth: 0,
                 borderRadius: 2,
                 stack: 'cp',
               },
               {
                 label: 'Commissions',
                 data: metrics.monthlyCommissions,
-                backgroundColor: makeGradient('rgba(245,110,125,0.95)', 'rgba(170,40,55,0.55)'),
-                borderColor: 'rgba(250,160,170,0.55)',
-                borderWidth: 1,
+                backgroundColor: '#F59E0B',
+                borderWidth: 0,
                 borderRadius: 2,
                 stack: 'cp',
               },
@@ -726,7 +714,7 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,minmax(0,1fr))', gap: 6, marginBottom: 4 }}>
                     {metrics.forecast.map((f, i) => (
-                      <div key={i} style={{ background: '#182535', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 7, padding: 8, textAlign: 'center' }}>
+                      <div key={i} style={{ background: '#0B1526', border: '1px solid #1E2C46', borderRadius: 7, padding: 8, textAlign: 'center' }}>
                         <div style={{ fontSize: 9, color: 'rgba(140,175,200,0.4)', marginBottom: 2 }}>Revenue</div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: f.revColor }}>{f.rev}</div>
                         <div style={{ fontSize: 9, color: f.commColor, marginTop: 1 }}>(Comm: {f.comm})</div>
