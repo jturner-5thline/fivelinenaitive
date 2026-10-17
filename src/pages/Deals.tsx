@@ -720,7 +720,7 @@ export default function Dashboard() {
           </>
         }
         headerActions={
-          <div className="flex items-center gap-1.5 flex-wrap shrink-0 mr-2">
+          <div className="flex items-center gap-1.5 shrink-0 mr-2 -translate-y-[6.5px]">
             <div className="deals-toolbar-cluster flex items-center gap-1.5 [&_button]:h-10 [&_button]:rounded-md">
               {!showMilestones && (
                     <DealFilters
@@ -785,7 +785,7 @@ export default function Dashboard() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-1.5 rounded-md h-[40px] px-4" aria-label="Actions">
                       <Settings2 className="h-4 w-4" />
-                      <span className="hidden sm:inline">Actions</span>
+                      <span className="hidden xl:inline">Actions</span>
                       <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                     </Button>
                   </DropdownMenuTrigger>
