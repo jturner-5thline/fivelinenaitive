@@ -20,7 +20,7 @@ const SIDEBAR_WIDTH_MOBILE = "18rem";
 // 2.3125rem (37px) + 16px = 53px total rail — a 10% bump from the prior
 // 48px collapsed rail. Menu buttons remain size-8 (32px), centered via
 // mx-auto with symmetric 10.5px padding on each side.
-const SIDEBAR_WIDTH_ICON = "3.75rem"; // 60px + 16px = 76px icon rail
+const SIDEBAR_WIDTH_ICON = "2.3125rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
 type SidebarContext = {
@@ -245,7 +245,7 @@ const Sidebar = React.forwardRef<
           background: '#050C18',
           opacity: 1,
           borderRadius: 8,
-          border: 'none',
+          border: '1px solid #18253D',
           boxSizing: 'border-box',
           overflow: 'hidden',
           boxShadow:

@@ -87,11 +87,6 @@ export function AppSidebar() {
   const currentPath = location.pathname;
   // Show expanded content if either actually expanded or hovering while collapsed
   const showExpanded = state === "expanded" || (state === "collapsed" && isHovering);
-  const initials = (() => {
-    const name = (user?.user_metadata?.full_name as string | undefined) || user?.email || "";
-    const parts = name.split(/[\s@._-]+/).filter(Boolean);
-    return ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase() || "U";
-  })();
   const iconSrc = resolvedTheme === "dark" ? naitiveIconDark : naitiveIconLight;
   
   // Filter menu items based on feature access — while loading, only show items with no feature gate
@@ -133,9 +128,7 @@ export function AppSidebar() {
           entire underlying layer on every animation frame, which made the
           sidebar slide-in/out janky and slowed the whole app. Use a solid
           translucent fill + gradient overlay instead. */}
-      <SidebarHeader className="rail-brand">
-        <img src={iconSrc} alt="naitive" className="h-7 w-7 object-contain" />
-      </SidebarHeader>
+      {/* Header removed — the sidebar now starts at the first menu item. */}
 
       <SidebarContent className="min-h-0 overflow-y-auto group-data-[collapsible=icon]:overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [&::-webkit-scrollbar]:w-0 [&::-webkit-scrollbar]:bg-transparent">
         <SidebarGroup>
@@ -190,8 +183,7 @@ export function AppSidebar() {
                           </span>
                         )}
                       </div>
-                      <span className="rail-label">{item.title}</span>
-                      {false && (
+                      {showExpanded && (
                         <span className="flex items-center gap-1.5">
                           {item.title}
                           {item.featureKey && <BetaBadge featureKey={`page_${item.featureKey}`} />}
@@ -224,7 +216,7 @@ export function AppSidebar() {
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
                       <ShieldCheck className="h-4 w-4" />
-                      <span className="rail-label">Admin</span>
+                      {showExpanded && <span>Admin</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -252,7 +244,7 @@ export function AppSidebar() {
                     className="hover:bg-sidebar-accent/50"
                   >
                     <item.icon className="h-4 w-4" />
-                    <span className="rail-label">{item.title}</span>
+                    {showExpanded && <span>{item.title}</span>}
                   </a>
                 </SidebarMenuButton>
               ) : (
@@ -274,7 +266,7 @@ export function AppSidebar() {
                         </span>
                       )}
                     </div>
-                    <span className="rail-label">{item.title}</span>
+                    {showExpanded && <span>{item.title}</span>}
                   </NavLink>
                 </SidebarMenuButton>
               )}
@@ -282,19 +274,19 @@ export function AppSidebar() {
           ))}
 
           <SidebarMenuItem>
-            <FeedbackButton showLabel />
+            <FeedbackButton showLabel={showExpanded} />
           </SidebarMenuItem>
 
-        </SidebarMenu>
-      </SidebarFooter>
-      <SidebarFooter className="rail-user">
-        <SidebarMenu>
           <SidebarMenuItem>
             <Popover>
               <PopoverTrigger asChild>
-                <button type="button" className="rail-avatar" aria-label="Profile" title="Profile">
-                  {initials}
-                </button>
+                <SidebarMenuButton
+                  tooltip="Profile"
+                  className="hover:bg-sidebar-accent/50 cursor-pointer"
+                >
+                  <UserCircle className="h-4 w-4" />
+                  {showExpanded && <span>Profile</span>}
+                </SidebarMenuButton>
               </PopoverTrigger>
               <PopoverContent 
                 side="right" 
