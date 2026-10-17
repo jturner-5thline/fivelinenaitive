@@ -4944,6 +4944,14 @@ html body .flat-tile-skin .crm-companies-title-bar {
 .ceo-theme [data-sidebar="menu-button"] { color: #E2E8F0; font-weight: 600; border-radius: 4px; }
 .ceo-theme [data-sidebar="menu-button"]:hover { background: #0C1729 !important; color: #fff !important; }
 .ceo-theme [data-sidebar="menu-button"][data-active="true"] { background: rgba(33,195,194,.12) !important; color: #21C3C2 !important; box-shadow: inset 0 0 0 1px #21C3C2; }
+/* Active nav tile: 1px solid teal border + 12% teal fill (also in collapsed icon mode). */
+html body [data-tour="sidebar"] [data-sidebar="menu-button"][data-active="true"][data-active="true"],
+[data-tour="sidebar"] .group[data-effective-state="collapsed"] [data-sidebar="menu-button"][data-active="true"],
+[data-tour="sidebar"][data-effective-state="collapsed"] [data-sidebar="menu-button"][data-active="true"] {
+  border: 1px solid #21C3C2 !important;
+  background: rgba(33,195,194,.12) !important;
+  box-shadow: none !important;
+}
 /* Icon-only navigation states; SVG stroke/fill inherit currentColor. */
 [data-tour="sidebar"] [data-sidebar="menu-button"] svg {
   color: var(--sidebar-nav-icon-inactive) !important;
