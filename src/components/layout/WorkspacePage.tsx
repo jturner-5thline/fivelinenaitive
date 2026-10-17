@@ -58,7 +58,7 @@ export function WorkspacePage({
     <div className="relative bg-transparent flex-1 flex flex-col min-h-full">
       {headerActions && (
         <div
-          className="absolute right-3 sm:right-4 -top-[88px] h-28 z-20 flex items-center pointer-events-auto"
+          className="absolute right-3 sm:right-4 -top-[85.5px] h-28 z-20 flex items-center pointer-events-auto"
         >
           {headerActions}
         </div>
