@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
+import { useAlignActionsToRightTile } from '@/hooks/useAlignActionsToRightTile';
 import { DealSizeConfirmDialog } from '@/components/deals/DealSizeConfirmDialog';
 import { computeTotalFee } from '@/lib/fees';
 import { Helmet } from 'react-helmet-async';
@@ -204,6 +205,7 @@ export default function Dashboard() {
   const [shareReportOpen, setShareReportOpen] = useState(false);
   const [savedViewsOpen, setSavedViewsOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
+  const actionsRef = useRef<HTMLDivElement>(null);
   const [activityUnread, setActivityUnread] = useState(0);
   const [dealImportOpen, setDealImportOpen] = useState(false);
   const dealCsvConfig = useMemo(
