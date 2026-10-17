@@ -46,9 +46,20 @@ export function CollapsibleSearch({ value, onChange, debounceMs = 350 }: Collaps
       if (wrapper && wrapper.style.left !== `${left}px`) wrapper.style.left = `${left}px`;
       const header = document.querySelector('.floating-header') as HTMLElement | null;
       const headerLeft = header ? header.getBoundingClientRect().left : window.innerWidth;
-      const maxW = Math.round(Math.min(380, Math.max(200, window.innerWidth * 0.18)));
       const available = headerLeft - left - 16;
-      setBoxWidth(Math.max(MIN_W, Math.min(maxW, available)));
+      // Align right edge with the right edge of the left-most deal tile.
+      let tileRight: number | null = null;
+      let minLeft = Infinity;
+      document.querySelectorAll('.deal-tile').forEach((t) => {
+        const r = (t as HTMLElement).getBoundingClientRect();
+        if (r.width > 50 && r.left < minLeft) { minLeft = r.left; tileRight = r.right; }
+      });
+      if (tileRight != null) {
+        setBoxWidth(Math.max(MIN_W, Math.min(available, Math.round(tileRight) - left)));
+      } else {
+        const maxW = Math.round(Math.min(380, Math.max(200, window.innerWidth * 0.18)));
+        setBoxWidth(Math.max(MIN_W, Math.min(maxW, available)));
+      }
     };
     measure();
     window.addEventListener('resize', measure);

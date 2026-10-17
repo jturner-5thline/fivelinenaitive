@@ -535,13 +535,12 @@ export function DealsHeader() {
             // Icon cluster width: 44px buttons + 6px gaps + padding.
             width: `min(${overlayRegistry.length * 32 + Math.max(0, overlayRegistry.length - 1) * 6 + 48}px, calc(100vw - 16px))`,
             borderRadius: 8,
-            background: '#050C18',
-            backgroundColor: '#050C18',
+            background: 'transparent',
+            backgroundColor: 'transparent',
             backdropFilter: 'none',
             WebkitBackdropFilter: 'none',
-            border: '1px solid #1E2C46',
-            boxShadow:
-              '0 10px 28px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
+            border: '1px solid #798dae',
+            boxShadow: 'none',
           }}
         >
           <div className="flex items-center shrink-0"><DemoModeBadge /></div>
