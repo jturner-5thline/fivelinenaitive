@@ -26,7 +26,7 @@ export default function Homepage() {
       </Helmet>
 
       <div
-        className="dark min-h-screen relative"
+        className="dark homepage-ds min-h-screen relative"
         style={{
           colorScheme: 'dark',
           background: '#0B1526',
