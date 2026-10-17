@@ -41,7 +41,11 @@ export function CollapsibleSearch({ value, onChange, debounceMs = 350 }: Collaps
       if (!el) return;
       const wrapper = el.parentElement;
       const logo = document.querySelector('.workspace-logo img, .workspace-logo svg') as HTMLElement | null;
-      const logoRight = logo ? logo.getBoundingClientRect().right : 200;
+      // The logo image has transparent padding on the right (visible
+      // lettering ends at ~84% of the image width), so anchor to the
+      // visible edge rather than the image box.
+      const lr = logo ? logo.getBoundingClientRect() : null;
+      const logoRight = lr ? lr.left + lr.width * (1612 / 1920) : 200;
       const left = Math.round(logoRight + 12);
       if (wrapper && wrapper.style.left !== `${left}px`) wrapper.style.left = `${left}px`;
       const header = document.querySelector('.floating-header') as HTMLElement | null;
