@@ -535,11 +535,11 @@ export function DealsHeader() {
             // Icon cluster width: 44px buttons + 6px gaps + padding.
             width: `min(${overlayRegistry.length * 44 + Math.max(0, overlayRegistry.length - 1) * 6 + 48}px, calc(100vw - 16px))`,
             borderRadius: 8,
-            background: '#1c2437',
-            backgroundColor: '#1c2437',
+            background: '#050C18',
+            backgroundColor: '#050C18',
             backdropFilter: 'none',
             WebkitBackdropFilter: 'none',
-            border: '1px solid #798dae',
+            border: '1px solid #1E2C46',
             boxShadow:
               '0 10px 28px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
           }}
@@ -591,24 +591,24 @@ export function DealsHeader() {
                     onMouseEnter={() => prefetchOverlay(label)}
                     onFocus={() => prefetchOverlay(label)}
                     onPointerDown={() => prefetchOverlay(label)}
-                    className={`relative inline-flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full transition-colors ${
+                    className={`relative inline-flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full transition-colors duration-[180ms] ${
                       isOpen
-                        ? 'bg-blue-400/15 text-blue-400'
-                        : 'text-blue-400/80 hover:text-blue-400 hover:bg-blue-400/10'
+                        ? 'bg-[rgba(33,195,194,0.12)] text-[#21C3C2] ring-1 ring-inset ring-[#21C3C2]'
+                        : 'text-[#E2E8F0] hover:text-[#E6EBF2] hover:bg-white/5'
                     }`}
                   >
                     <Icon className="h-5 w-5 sm:h-[29px] sm:w-[29px]" />
                     {badgeCount > 0 ? (
                       <span
                         aria-label={`${label} has ${badgeCount} pending`}
-                        className="notif-count absolute -top-0.5 -right-0.5 ring-2 ring-[rgba(14,24,42,0.85)] pointer-events-none"
+                        className="notif-count absolute -top-0.5 -right-0.5 ring-2 ring-[#050C18] pointer-events-none"
                       >
                         {badgeCount > 99 ? '99+' : badgeCount}
                       </span>
                     ) : hasBadge && (
                       <span
                         aria-label={`${label} has 1 incomplete item`}
-                        className="notif-count absolute -top-0.5 -right-0.5 ring-2 ring-[rgba(14,24,42,0.85)] pointer-events-none"
+                        className="notif-count absolute -top-0.5 -right-0.5 ring-2 ring-[#050C18] pointer-events-none"
                       >
                         1
                       </span>
