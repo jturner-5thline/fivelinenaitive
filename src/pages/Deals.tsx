@@ -2,7 +2,7 @@ import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } fr
 import { DealSizeConfirmDialog } from '@/components/deals/DealSizeConfirmDialog';
 import { computeTotalFee } from '@/lib/fees';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt, CopyCheck, Share2, RotateCcw, Upload, FileDown } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt, CopyCheck, Share2, RotateCcw, Upload, FileDown, Clock } from 'lucide-react';
 import { EntityCsvImportDialog, downloadEntityTemplate } from '@/components/shared/EntityCsvImportDialog';
 import { dealImportConfig, fetchRowsByIds } from '@/lib/entityImportConfigs';
 import { DEAL_CSV, selectColumns } from '@/utils/csvSchemas';
@@ -202,6 +202,9 @@ export default function Dashboard() {
   const { company } = useCompany();
   const activePipelineName = pipelines.find(p => p.id === activePipelineId)?.name ?? null;
   const [shareReportOpen, setShareReportOpen] = useState(false);
+  const [savedViewsOpen, setSavedViewsOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [activityUnread, setActivityUnread] = useState(0);
   const [dealImportOpen, setDealImportOpen] = useState(false);
   const dealCsvConfig = useMemo(
     () => dealImportConfig({ userId: user?.id, companyId: company?.id ?? null, pipelineId: activePipelineId ?? null }),
