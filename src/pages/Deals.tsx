@@ -649,6 +649,7 @@ export default function Dashboard() {
   };
 
   return (
+    <DealsPageInner actionsRef={actionsRef}>{null}</DealsPageInner>,
     <>
       <Helmet>
         <title>Deals - naitive</title>
@@ -723,7 +724,7 @@ export default function Dashboard() {
           </>
         }
         headerActions={
-          <div className="flex items-center gap-1.5 shrink-0 mr-2 -translate-y-[6.5px]">
+          <div ref={actionsRef} className="deals-header-actions flex items-center gap-1.5 shrink-0 mr-2 -translate-y-[6.5px]">
             <div className="deals-toolbar-cluster flex items-center gap-1.5 [&_button]:h-10 [&_button]:rounded-md">
               {!showMilestones && (
                     <DealFilters
