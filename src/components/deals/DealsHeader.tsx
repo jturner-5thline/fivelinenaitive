@@ -398,6 +398,35 @@ export function DealsHeader() {
 
   const currentOverlay = overlayRegistry.find(o => o.isOpen) ?? null;
 
+  // Align the icon row with the middle deal tile of the first grid row.
+  const [navBounds, setNavBounds] = useState<{ left: number; width: number } | null>(null);
+  useEffect(() => {
+    const measure = () => {
+      const rects = Array.from(document.querySelectorAll('.deal-tile'))
+        .map((t) => (t as HTMLElement).getBoundingClientRect())
+        .filter((r) => r.width > 50 && r.height > 0);
+      let next: { left: number; width: number } | null = null;
+      if (rects.length) {
+        const top = Math.min(...rects.map((r) => r.top));
+        const row = rects.filter((r) => Math.abs(r.top - top) < 4).sort((a, b) => a.left - b.left);
+        if (row.length >= 3) {
+          const mid = row[Math.floor(row.length / 2)];
+          next = { left: Math.round(mid.left), width: Math.round(mid.width) };
+        }
+      }
+      setNavBounds((prev) =>
+        prev?.left === next?.left && prev?.width === next?.width ? prev : next,
+      );
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    const id = window.setInterval(measure, 500);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.clearInterval(id);
+    };
+  }, []);
+
   const goToOverlay = useCallback((target: string) => {
     const fromIdx = currentOverlay
       ? overlayRegistry.findIndex(o => o.label === currentOverlay.label)
@@ -530,23 +559,17 @@ export function DealsHeader() {
         className="pt-4 px-2 sm:px-4 pointer-events-none"
       >
         <div
-          className="floating-header pointer-events-auto mx-auto relative flex h-[40px] items-center gap-1 sm:gap-2 px-2 sm:px-4 min-w-0 rounded-[5px] overflow-hidden text-foreground shadow-glass hover:shadow-glass-hover"
-          style={{
-            // Icon cluster width: 44px buttons + 6px gaps + padding.
-            width: `min(${overlayRegistry.length * 32 + Math.max(0, overlayRegistry.length - 1) * 6 + 48}px, calc(100vw - 16px))`,
-            borderRadius: 8,
-            background: 'transparent',
-            backgroundColor: 'transparent',
-            backdropFilter: 'none',
-            WebkitBackdropFilter: 'none',
-            border: '1px solid #798dae',
-            boxShadow: 'none',
-          }}
+          className="floating-header pointer-events-auto mx-auto relative flex items-start min-w-0 text-foreground"
+          style={
+            navBounds
+              ? { position: 'fixed', top: 12, left: navBounds.left, width: navBounds.width, background: 'transparent', border: 'none', boxShadow: 'none' }
+              : { width: `min(${overlayRegistry.length * 72}px, calc(100vw - 16px))`, background: 'transparent', border: 'none', boxShadow: 'none' }
+          }
         >
-          <div className="flex items-center shrink-0"><DemoModeBadge /></div>
+          <div className="absolute -left-2 top-0 -translate-x-full flex items-center shrink-0"><DemoModeBadge /></div>
 
-          {/* Primary quick-access nav — centered absolutely so trailing utilities don't shift it */}
-          <nav className="flex items-center gap-0.5 sm:gap-1.5 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          {/* Primary quick-access nav — spans the middle deal tile, evenly spaced */}
+          <nav className="flex w-full items-start justify-between">
             {(() => {
               const ICONS: Record<string, typeof Calendar> = {
                 'Calendar': Calendar,
@@ -581,8 +604,7 @@ export function DealsHeader() {
                 onClick: () => goToOverlay(label),
               }));
             })().map(({ label, Icon, isOpen, onClick, hasBadge, badgeCount }) => (
-              <Tooltip key={label}>
-                <TooltipTrigger asChild>
+              <div key={label} className="flex flex-col items-center gap-0.5">
                   <button
                     type="button"
                     aria-label={label}
@@ -596,7 +618,7 @@ export function DealsHeader() {
                         : 'border-transparent text-[#E2E8F0] hover:text-[#E6EBF2] hover:bg-[#0C1729] hover:border-[rgba(255,255,255,0.12)]'
                     }`}
                   >
-                    <Icon className="h-5 w-5 sm:h-[29px] sm:w-[29px]" />
+                    <Icon className="h-5 w-5 sm:h-[26px] sm:w-[26px]" />
                     {badgeCount > 0 ? (
                       <span
                         aria-label={`${label} has ${badgeCount} pending`}
@@ -613,16 +635,10 @@ export function DealsHeader() {
                       </span>
                     )}
                   </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={6} className="">
-                  {label}
-                </TooltipContent>
-              </Tooltip>
+                <span className="text-[10px] leading-none font-medium text-white whitespace-nowrap">{label}</span>
+              </div>
             ))}
           </nav>
-
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
-          </div>
         </div>
       </div>
       {isDashboardOpen && (
