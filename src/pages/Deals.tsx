@@ -721,6 +721,63 @@ export default function Dashboard() {
         }
         headerActions={
           <div className="flex items-center gap-1.5 flex-wrap shrink-0 mr-2">
+            <div className="deals-toolbar-cluster flex items-center gap-1.5 [&_button]:h-10 [&_button]:rounded-md">
+              {!showMilestones && (
+                    <DealFilters
+                      compact
+                      filters={filters}
+                      onFilterChange={updateFilters}
+                      hideStatusFilter={is5thLine}
+                      afterSearchSlot={
+                        (() => {
+                          const toggleGroup = (v: string) => setGroupBy(prev => (prev === v ? null : v));
+                          return (
+                            <>
+                            <PipelineSelector iconOnly />
+                            <DealsViewMenu
+                              viewMode={viewMode}
+                              setViewMode={setViewMode}
+                              sortField={sortField}
+                              sortDirection={sortDirection}
+                              setSortField={setSortField}
+                              setSortDirection={setSortDirection}
+                              toggleSort={toggleSort}
+                              groupBy={groupBy}
+                              setGroupBy={setGroupBy}
+                              toggleGroup={toggleGroup}
+                              timelineEnabled={!!companyFeatures.timeline_view_enabled}
+                              flaggedOnly={filters.flaggedOnly}
+                              onFlaggedOnlyChange={(pressed) => {
+                                if (pressed) {
+                                  updateFilters({ flaggedOnly: true, staleOnly: false, hasNotificationsOnly: false });
+                                } else {
+                                  updateFilters({ flaggedOnly: false });
+                                }
+                                setSavedViewWarningDismissed(false);
+                              }}
+                              duplicatesEnabled={is5thLine}
+                              showDuplicates={showDuplicates}
+                              onShowDuplicatesChange={setShowDuplicates}
+                              duplicateCount={duplicateClusters.length}
+                            />
+                            </>
+                          );
+                        })()
+                      }
+                    />
+              )}
+              {viewMode === 'pipeline' && <PipelineSortButton />}
+              <div className="relative">
+                  <DealSavedViewsMenu
+                    views={savedViews}
+                    onSave={handleSaveView}
+                    onRestore={handleRestoreView}
+                    onDelete={deleteView}
+                    onSetDefault={setDefault}
+                    hasActiveFilters={hasActiveFilters}
+                  />
+              </div>
+            </div>
             <LatestUpdatesDropdown />
             <Tooltip>
               <DropdownMenu>
@@ -810,83 +867,16 @@ export default function Dashboard() {
               }
             `}</style>
 
-            {/* Filters */}
-            <div 
-              className="opacity-0"
-              style={{ animation: 'fadeInUp 0.4s ease-out 0.2s forwards' }}
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                {showMilestones ? (
-                  <MilestoneManagerFilter
-                    selected={filters.manager}
-                    onChange={(manager) => updateFilters({ manager })}
-                  />
-                ) : (
-                  <div className="flex-1 min-w-[200px]">
-                    <DealFilters
-                      filters={filters}
-                      onFilterChange={updateFilters}
-                      hideStatusFilter={is5thLine}
-                      afterSearchSlot={
-                        (() => {
-                          const toggleGroup = (v: string) => setGroupBy(prev => (prev === v ? null : v));
-                          return (
-                            <>
-                            <PipelineSelector iconOnly />
-                            <DealsViewMenu
-                              viewMode={viewMode}
-                              setViewMode={setViewMode}
-                              sortField={sortField}
-                              sortDirection={sortDirection}
-                              setSortField={setSortField}
-                              setSortDirection={setSortDirection}
-                              toggleSort={toggleSort}
-                              groupBy={groupBy}
-                              setGroupBy={setGroupBy}
-                              toggleGroup={toggleGroup}
-                              timelineEnabled={!!companyFeatures.timeline_view_enabled}
-                              flaggedOnly={filters.flaggedOnly}
-                              onFlaggedOnlyChange={(pressed) => {
-                                if (pressed) {
-                                  updateFilters({ flaggedOnly: true, staleOnly: false, hasNotificationsOnly: false });
-                                } else {
-                                  updateFilters({ flaggedOnly: false });
-                                }
-                                setSavedViewWarningDismissed(false);
-                              }}
-                              duplicatesEnabled={is5thLine}
-                              showDuplicates={showDuplicates}
-                              onShowDuplicatesChange={setShowDuplicates}
-                              duplicateCount={duplicateClusters.length}
-                            />
-                            </>
-                          );
-                        })()
-                      }
-                    />
-                    <div className="mt-2">
-                      <AIFilterChips />
-                    </div>
-                  </div>
-                )}
-
-                {/* Stale toggle removed — stale deals are auto-flagged and
-                    surface via the Flag filter below (see useAutoStaleFlags). */}
-
-                {viewMode === 'pipeline' && <PipelineSortButton />}
-
-                {/* Flag + Duplicates toggles moved into the Layout, sort & group menu. */}
-
-                <div className="relative self-center -ml-4 mr-2">
-                  <DealSavedViewsMenu
-                    views={savedViews}
-                    onSave={handleSaveView}
-                    onRestore={handleRestoreView}
-                    onDelete={deleteView}
-                    onSetDefault={setDefault}
-                    hasActiveFilters={hasActiveFilters}
-                  />
-                  {(viewMode === 'grid' || viewMode === 'list') && groupBy && (
+            {/* Toolbar controls live in the top header; only contextual rows remain here. */}
+            {showMilestones && (
+              <MilestoneManagerFilter
+                selected={filters.manager}
+                onChange={(manager) => updateFilters({ manager })}
+              />
+            )}
+            {!showMilestones && <AIFilterChips />}
+            {(viewMode === 'grid' || viewMode === 'list') && groupBy && (
+              <div className="flex justify-end -mb-3">
                     <button
                       onClick={() => {
                         if (allExpanded) {
@@ -897,15 +887,13 @@ export default function Dashboard() {
                           setAllExpanded(true);
                         }
                       }}
-                      className="absolute left-1/2 -translate-x-1/2 top-full text-[10px] text-muted-foreground/70 hover:text-foreground/80 transition-colors cursor-pointer select-none whitespace-nowrap"
+                      className="text-[10px] text-muted-foreground/70 hover:text-foreground/80 transition-colors cursor-pointer select-none whitespace-nowrap"
                       aria-label={allExpanded ? 'Collapse all groups' : 'Expand all groups'}
                     >
                       {allExpanded ? 'Collapse All' : 'Expand All'}
                     </button>
-                  )}
-                </div>
               </div>
-            </div>
+            )}
 
               {savedViewLikelyHidingDeals && !savedViewWarningDismissed && (
                 <div className="rounded-lg border border-border bg-muted/40 px-4 py-3">
