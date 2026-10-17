@@ -591,10 +591,10 @@ export function DealsHeader() {
                     onMouseEnter={() => prefetchOverlay(label)}
                     onFocus={() => prefetchOverlay(label)}
                     onPointerDown={() => prefetchOverlay(label)}
-                    className={`relative inline-flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full transition-colors duration-[180ms] ${
+                    className={`relative inline-flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-md border transition-[color,background-color,border-color] duration-[180ms] ease-out ${
                       isOpen
-                        ? 'bg-[rgba(33,195,194,0.12)] text-[#21C3C2] ring-1 ring-inset ring-[#21C3C2]'
-                        : 'text-[#E2E8F0] hover:text-[#E6EBF2] hover:bg-white/5'
+                        ? 'bg-[rgba(33,195,194,0.12)] text-[#21C3C2] border-[#21C3C2]'
+                        : 'border-transparent text-[#E2E8F0] hover:text-[#E6EBF2] hover:bg-[#0C1729] hover:border-[rgba(255,255,255,0.12)]'
                     }`}
                   >
                     <Icon className="h-5 w-5 sm:h-[29px] sm:w-[29px]" />
