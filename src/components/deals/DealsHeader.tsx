@@ -618,7 +618,7 @@ export function DealsHeader() {
                         : 'border-transparent text-[#E2E8F0] hover:text-[#E6EBF2] hover:bg-[#0C1729] hover:border-[rgba(255,255,255,0.12)]'
                     }`}
                   >
-                    <Icon className="h-5 w-5 sm:h-[26px] sm:w-[26px]" />
+                    <Icon className="h-5 w-5 sm:h-[26px] sm:w-[26px]" strokeWidth={1.65} />
                     {badgeCount > 0 ? (
                       <span
                         aria-label={`${label} has ${badgeCount} pending`}
