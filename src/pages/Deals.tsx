@@ -648,8 +648,9 @@ export default function Dashboard() {
     }
   };
 
+  useAlignActionsToRightTile(actionsRef);
+
   return (
-    <DealsPageInner actionsRef={actionsRef}>{null}</DealsPageInner>,
     <>
       <Helmet>
         <title>Deals - naitive</title>
