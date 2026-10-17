@@ -569,7 +569,7 @@ export function DealsHeader() {
           <div className="absolute -left-2 top-0 -translate-x-full flex items-center shrink-0"><DemoModeBadge /></div>
 
           {/* Primary quick-access nav — spans the middle deal tile, evenly spaced */}
-          <nav className="flex w-full items-start justify-between">
+          <nav className="flex w-full items-start justify-between px-3.5">
             {(() => {
               const ICONS: Record<string, typeof Calendar> = {
                 'Calendar': Calendar,
