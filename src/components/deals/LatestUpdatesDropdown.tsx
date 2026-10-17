@@ -129,7 +129,7 @@ export function LatestUpdatesDropdown() {
         <Button
           variant="outline"
           size="icon"
-          className="relative h-[53px] w-[53px]"
+          className="relative h-[40px] w-[40px]"
           aria-label="Latest updates"
         >
           <Clock className="h-4 w-4" />

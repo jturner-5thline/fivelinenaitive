@@ -530,7 +530,7 @@ export function DealsHeader() {
         className="pt-4 px-2 sm:px-4 pointer-events-none"
       >
         <div
-          className="floating-header pointer-events-auto mx-auto relative flex h-[53px] items-center gap-1 sm:gap-2 px-2 sm:px-4 min-w-0 rounded-[5px] overflow-hidden text-foreground shadow-glass hover:shadow-glass-hover"
+          className="floating-header pointer-events-auto mx-auto relative flex h-[40px] items-center gap-1 sm:gap-2 px-2 sm:px-4 min-w-0 rounded-[5px] overflow-hidden text-foreground shadow-glass hover:shadow-glass-hover"
           style={{
             // Icon cluster width: 44px buttons + 6px gaps + padding.
             width: `min(${overlayRegistry.length * 44 + Math.max(0, overlayRegistry.length - 1) * 6 + 48}px, calc(100vw - 16px))`,
