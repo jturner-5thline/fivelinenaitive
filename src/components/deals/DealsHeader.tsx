@@ -533,7 +533,7 @@ export function DealsHeader() {
           className="floating-header pointer-events-auto mx-auto relative flex h-[40px] items-center gap-1 sm:gap-2 px-2 sm:px-4 min-w-0 rounded-[5px] overflow-hidden text-foreground shadow-glass hover:shadow-glass-hover"
           style={{
             // Icon cluster width: 44px buttons + 6px gaps + padding.
-            width: `min(${overlayRegistry.length * 44 + Math.max(0, overlayRegistry.length - 1) * 6 + 48}px, calc(100vw - 16px))`,
+            width: `min(${overlayRegistry.length * 32 + Math.max(0, overlayRegistry.length - 1) * 6 + 48}px, calc(100vw - 16px))`,
             borderRadius: 8,
             background: '#050C18',
             backgroundColor: '#050C18',
@@ -591,7 +591,7 @@ export function DealsHeader() {
                     onMouseEnter={() => prefetchOverlay(label)}
                     onFocus={() => prefetchOverlay(label)}
                     onPointerDown={() => prefetchOverlay(label)}
-                    className={`relative inline-flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-md border transition-[color,background-color,border-color] duration-[180ms] ease-out ${
+                    className={`relative inline-flex h-8 w-8 items-center justify-center rounded-md border transition-[color,background-color,border-color] duration-[180ms] ease-out ${
                       isOpen
                         ? 'bg-[rgba(33,195,194,0.12)] text-[#21C3C2] border-[#21C3C2]'
                         : 'border-transparent text-[#E2E8F0] hover:text-[#E6EBF2] hover:bg-[#0C1729] hover:border-[rgba(255,255,255,0.12)]'
