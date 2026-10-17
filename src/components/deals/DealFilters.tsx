@@ -39,6 +39,8 @@ interface DealFiltersProps {
    * with the other left-group icon buttons.
    */
   afterSearchSlot?: ReactNode;
+  /** Compact header mode: only icon triggers, no pinned filter chips row. */
+  compact?: boolean;
 }
 
 export function DealFilters({
@@ -46,6 +48,7 @@ export function DealFilters({
   onFilterChange,
   hideStatusFilter = false,
   afterSearchSlot,
+  compact = false,
 }: DealFiltersProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const filterConfigs = useFilterConfigs();
@@ -191,7 +194,7 @@ export function DealFilters({
   const activeChips = getActiveFilterChips();
 
   return (
-    <div className="space-y-3">
+    <div className={compact ? '' : 'space-y-3'}>
       {/* Search is docked to the top-left corner, just right of the logo. */}
       {createPortal(
         <div className="fixed left-[220px] top-[16px] z-[1001]">
@@ -202,7 +205,7 @@ export function DealFilters({
         </div>,
         document.body,
       )}
-      <div className="flex flex-wrap items-center gap-2 pl-2">
+      <div className={compact ? 'flex items-center gap-1.5' : 'flex flex-wrap items-center gap-2 pl-2'}>
         {afterSearchSlot}
 
         {/* Consolidated Filters Popover */}
@@ -223,8 +226,8 @@ export function DealFilters({
           />
         </HintTooltip>
 
-        {/* Quick Filters (Pinned) */}
-        {pinnedFilters
+        {/* Quick Filters (Pinned) — hidden in compact header mode */}
+        {!compact && pinnedFilters
           .filter((key) => !(hideStatusFilter && key === 'status'))
           .map((key) => (
           <MultiSelectFilter
