@@ -245,7 +245,7 @@ export function DealsFlyoutMenu() {
         data-tour="nav-deals"
       >
         <Briefcase className="h-4 w-4" />
-        {showExpanded && <span>Deals</span>}
+        <span className="rail-label">Deals</span>
       </Link>
     </SidebarMenuButton>
   );

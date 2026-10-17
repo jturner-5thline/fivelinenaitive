@@ -73,7 +73,7 @@ export function FeedbackButton({ showLabel = true }: FeedbackButtonProps) {
         className="hover:bg-sidebar-accent/50 cursor-pointer"
       >
         <HelpCircleIcon className="h-4 w-4" />
-        {showLabel && <span>Feedback</span>}
+        {showLabel && <span className="rail-label">Feedback</span>}
       </SidebarMenuButton>
 
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>

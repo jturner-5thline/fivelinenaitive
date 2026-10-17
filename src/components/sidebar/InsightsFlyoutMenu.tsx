@@ -189,7 +189,7 @@ export function InsightsFlyoutMenu({ showSalesBd, showReports }: Props) {
         data-tour="nav-insights"
       >
         <BarChart3 className="h-4 w-4" />
-        {showExpanded && <span>Insights</span>}
+        <span className="rail-label">Insights</span>
       </Link>
     </SidebarMenuButton>
   );
