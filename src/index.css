@@ -4723,6 +4723,11 @@ div.deal-tile.deal-glass:hover,
   border-radius: 7px !important;
   box-shadow: none !important;
 }
+html body [data-tour="sidebar"] [data-sidebar="sidebar"],
+html body [data-tour="sidebar"] [data-sidebar="sidebar"] [data-sidebar="content"] {
+  background-color: #050C18 !important;
+  background-image: none !important;
+}
 
 /* Deal details pop-up tabs: no pill/hover fill — active tab gets a white underline only. */
 html body .deal-underline-tabs > span[aria-hidden], html body .deal-underline-tabs > span.absolute { display: none !important; }
