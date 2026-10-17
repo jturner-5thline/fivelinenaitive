@@ -2,7 +2,7 @@ import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } fr
 import { DealSizeConfirmDialog } from '@/components/deals/DealSizeConfirmDialog';
 import { computeTotalFee } from '@/lib/fees';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt, CopyCheck, Share2, RotateCcw, Upload, FileDown } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt, CopyCheck, Share2, RotateCcw, Upload, FileDown, Clock } from 'lucide-react';
 import { EntityCsvImportDialog, downloadEntityTemplate } from '@/components/shared/EntityCsvImportDialog';
 import { dealImportConfig, fetchRowsByIds } from '@/lib/entityImportConfigs';
 import { DEAL_CSV, selectColumns } from '@/utils/csvSchemas';
@@ -202,6 +202,9 @@ export default function Dashboard() {
   const { company } = useCompany();
   const activePipelineName = pipelines.find(p => p.id === activePipelineId)?.name ?? null;
   const [shareReportOpen, setShareReportOpen] = useState(false);
+  const [savedViewsOpen, setSavedViewsOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [activityUnread, setActivityUnread] = useState(0);
   const [dealImportOpen, setDealImportOpen] = useState(false);
   const dealCsvConfig = useMemo(
     () => dealImportConfig({ userId: user?.id, companyId: company?.id ?? null, pipelineId: activePipelineId ?? null }),
@@ -733,7 +736,6 @@ export default function Dashboard() {
                           const toggleGroup = (v: string) => setGroupBy(prev => (prev === v ? null : v));
                           return (
                             <>
-                            <PipelineSelector iconOnly />
                             <DealsViewMenu
                               viewMode={viewMode}
                               setViewMode={setViewMode}
@@ -759,6 +761,8 @@ export default function Dashboard() {
                               showDuplicates={showDuplicates}
                               onShowDuplicatesChange={setShowDuplicates}
                               duplicateCount={duplicateClusters.length}
+                              onOpenSavedViews={() => setSavedViewsOpen(true)}
+                              savedViewsCount={savedViews.length}
                             />
                             </>
                           );
@@ -766,7 +770,6 @@ export default function Dashboard() {
                       }
                     />
               )}
-              {viewMode === 'pipeline' && <PipelineSortButton />}
               <div className="relative">
                   <DealSavedViewsMenu
                     views={savedViews}
@@ -775,15 +778,23 @@ export default function Dashboard() {
                     onDelete={deleteView}
                     onSetDefault={setDefault}
                     hasActiveFilters={hasActiveFilters}
+                    open={savedViewsOpen}
+                    onOpenChange={setSavedViewsOpen}
+                    hideTrigger
                   />
               </div>
             </div>
-            <LatestUpdatesDropdown />
+            <LatestUpdatesDropdown hideTrigger open={activityOpen} onOpenChange={setActivityOpen} onUnreadCountChange={setActivityUnread} />
             <Tooltip>
               <DropdownMenu>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-1.5 rounded-md h-[40px] px-4" aria-label="Actions">
+                    <Button variant="outline" size="sm" className="relative gap-1.5 rounded-md h-[40px] px-4" aria-label="Actions">
+                      {activityUnread > 0 && (
+                        <Badge variant="destructive" className="notif-count absolute -top-1.5 -right-1.5">
+                          {activityUnread > 99 ? '99+' : activityUnread}
+                        </Badge>
+                      )}
                       <Settings2 className="h-4 w-4" />
                       <span className="hidden xl:inline">Actions</span>
                       <ChevronDown className="h-3.5 w-3.5 opacity-60" />
@@ -792,6 +803,11 @@ export default function Dashboard() {
                 </TooltipTrigger>
                 <TooltipContent>Actions</TooltipContent>
               <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => setActivityOpen(true)} className="justify-between">
+                  <span className="inline-flex items-center"><Clock className="h-4 w-4 mr-2" />Activity</span>
+                  {activityUnread > 0 && <span className="text-xs text-muted-foreground">{activityUnread} new</span>}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setShowMilestones(!showMilestones)}>
                   <Target className="h-4 w-4 mr-2" />
                   {showMilestones ? 'Hide milestones' : 'Show milestones'}

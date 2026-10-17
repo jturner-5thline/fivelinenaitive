@@ -21,9 +21,18 @@ const LAST_READ_KEY = 'latest-updates-last-read-at';
 const READ_TYPE = 'latest_updates_cutoff';
 const READ_ID = 'global';
 
-export function LatestUpdatesDropdown() {
+interface LatestUpdatesDropdownProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+  onUnreadCountChange?: (count: number) => void;
+}
+
+export function LatestUpdatesDropdown({ open: openProp, onOpenChange, hideTrigger = false, onUnreadCountChange }: LatestUpdatesDropdownProps = {}) {
   const { user } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (v: boolean) => { setOpenState(v); onOpenChange?.(v); };
   // Seed from localStorage for instant UI, then reconcile from DB (per-user,
   // cross-device). DB value wins so a refresh after Mark-all-read persists.
   const [lastReadAt, setLastReadAt] = useState<string | null>(() =>
@@ -69,6 +78,7 @@ export function LatestUpdatesDropdown() {
     !lastReadAt || new Date(a.created_at) > new Date(lastReadAt)
   );
   const unreadCount = unreadActivities.length;
+  useEffect(() => { onUnreadCountChange?.(unreadCount); }, [unreadCount, onUnreadCountChange]);
 
   // Group updates by deal, newest deal activity first.
   const dealGroups = (() => {
@@ -125,6 +135,7 @@ export function LatestUpdatesDropdown() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
+      {!hideTrigger && (
       <DialogTrigger asChild>
         <Button
           variant="outline"
@@ -143,6 +154,7 @@ export function LatestUpdatesDropdown() {
           )}
         </Button>
       </DialogTrigger>
+      )}
       <DialogContent className="p-0 gap-0 overflow-hidden border border-border/40 sm:max-w-[560px]">
         <DialogHeader className="px-5 pt-4 pb-3 border-b border-border/40">
           <DialogTitle className="flex items-center gap-2 text-base">
