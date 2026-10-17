@@ -4,14 +4,11 @@ import {
   HomepageHero,
   HomepageStatsBar,
   HomepageFeatureGrid,
-  HomepageWorkflow,
   HomepageFeatureSection,
   HomepageScrollingTags,
   HomepageTestimonials,
-  HomepageDataPrivacy,
   HomepageCTA,
   HomepageFooter,
-  HomepageFromBlog,
   PlatformPreviewDealPipeline,
   PlatformPreviewLenderKanban,
   PlatformPreviewDataRoom,
@@ -91,25 +88,11 @@ export default function Homepage() {
           />
         </div>
 
-        {/* Workflow — numbered steps + deal card stack */}
-        <div className="scroll-reveal-soft">
-          <HomepageWorkflow />
-        </div>
-
         {/* Audience */}
         <div className="scroll-reveal-soft">
           <HomepageTestimonials />
         </div>
 
-        {/* From the Blog — hides itself when no published posts */}
-        <div className="scroll-reveal-soft">
-          <HomepageFromBlog />
-        </div>
-
-        {/* Data & Privacy */}
-        <div className="scroll-reveal-soft">
-          <HomepageDataPrivacy />
-        </div>
 
         {/* Final CTA */}
         <div className="scroll-reveal-soft">
