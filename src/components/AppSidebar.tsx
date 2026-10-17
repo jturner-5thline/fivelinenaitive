@@ -20,6 +20,7 @@ import { useNaitivePipelineAccess } from "@/hooks/useNaitivePipelineAccess";
 import { useCanAccessInsights } from "@/hooks/useCanAccessInsights";
 import { DealsFlyoutMenu } from "@/components/sidebar/DealsFlyoutMenu";
 import { InsightsFlyoutMenu } from "@/components/sidebar/InsightsFlyoutMenu";
+import { AgentsWorkflowsFlyoutMenu } from "@/components/sidebar/AgentsWorkflowsFlyoutMenu";
 import { FeedbackButton } from "@/components/FeedbackButton";
 
 
@@ -142,6 +143,19 @@ export function AppSidebar() {
                   const showSalesBd = visibleMenuItems.some((i) => i.url === "/sales-bd");
                   const showReports = visibleMenuItems.some((i) => i.url === "/reports");
                   return <InsightsFlyoutMenu key={item.title} showSalesBd={showSalesBd} showReports={showReports} />;
+                }
+                // AI Agents and Workflows are merged into one "Agents & Workflows" flyout,
+                // rendered at the position of whichever appears first.
+                if (item.url === "/agents" || item.url === "/wf") {
+                  const firstIdx = visibleMenuItems.findIndex((i) => i.url === "/agents" || i.url === "/wf");
+                  if (visibleMenuItems[firstIdx] !== item) return null;
+                  return (
+                    <AgentsWorkflowsFlyoutMenu
+                      key="agents-workflows"
+                      showAgents={visibleMenuItems.some((i) => i.url === "/agents")}
+                      showWorkflows={visibleMenuItems.some((i) => i.url === "/wf")}
+                    />
+                  );
                 }
                 // Sales & BD and Reports are surfaced via the Insights flyout submenu.
                 if (item.url === "/sales-bd" || item.url === "/reports") {
