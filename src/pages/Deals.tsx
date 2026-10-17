@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAlignActionsToRightTile } from '@/hooks/useAlignActionsToRightTile';
 import { DealSizeConfirmDialog } from '@/components/deals/DealSizeConfirmDialog';
 import { computeTotalFee } from '@/lib/fees';
@@ -727,7 +728,7 @@ export default function Dashboard() {
           </>
         }
         headerActions={
-          <div ref={actionsRef} className="deals-header-actions flex items-center gap-1.5 shrink-0 mr-2 -translate-y-[6.5px]">
+          createPortal(<div ref={actionsRef} className="deals-header-actions fixed top-[16px] right-4 z-[1001] flex items-center gap-1.5 shrink-0">
             <div className="deals-toolbar-cluster flex items-center gap-1.5 [&_button]:h-10 [&_button]:rounded-md">
               {!showMilestones && (
                     <DealFilters
@@ -871,7 +872,7 @@ export default function Dashboard() {
               activePipelineId={activePipelineId}
               pipelineName={activePipelineName}
             />
-          </div>
+          </div>, document.body)
         }
       >
             <style>{`

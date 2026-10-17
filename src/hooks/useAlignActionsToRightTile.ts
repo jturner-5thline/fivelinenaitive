@@ -13,6 +13,7 @@ export function useAlignActionsToRightTile(ref: RefObject<HTMLElement>) {
     const reset = (el: HTMLElement, buttons: HTMLElement[]) => {
       el.style.position = '';
       el.style.left = '';
+      el.style.right = '';
       el.style.top = '';
       el.style.width = '';
       el.style.transform = '';
@@ -49,6 +50,7 @@ export function useAlignActionsToRightTile(ref: RefObject<HTMLElement>) {
       el.style.position = 'fixed';
       el.style.top = '16px';
       el.style.left = `${left}px`;
+      el.style.right = 'auto';
       el.style.width = `${width}px`;
       el.style.transform = 'none';
       el.style.gap = '0px';
