@@ -109,7 +109,7 @@ export function CollapsibleSearch({ value, onChange, debounceMs = 350 }: Collaps
   return (
     <div
       ref={containerRef}
-      className="deals-search-box relative inline-flex items-center h-9 text-sm transition-colors duration-200"
+      className="deals-search-box relative inline-flex items-center h-[53px] text-sm transition-colors duration-200"
       style={{
         width: boxWidth,
         backgroundColor: 'var(--bg-card)',
