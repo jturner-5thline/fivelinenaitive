@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { Loader2, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import { toast } from 'sonner';
@@ -61,17 +62,32 @@ export function UploadHoursPerDealPanel({ task }: { task: any }) {
     return m;
   }, [data]);
 
-  const save = async (dealId: string, phase: Phase, hours: number) => {
-    const existing = entryMap.get(`${dealId}:${phase}`);
-    if ((existing?.hours ?? 0) === hours) return;
-    const res = existing
-      ? hours === 0
-        ? await supabase.from('weekly_time_entries').delete().eq('id', existing.id)
-        : await supabase.from('weekly_time_entries').update({ hours }).eq('id', existing.id)
-      : hours === 0
-        ? { error: null }
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { setDrafts({}); }, [data]);
+
+  const pending = useMemo(() => Object.entries(drafts).filter(([k, v]) => {
+    const n = v.trim() ? Number(v) : 0;
+    return Number.isFinite(n) && n >= 0 && n <= 168 && n !== (entryMap.get(k)?.hours ?? 0);
+  }), [drafts, entryMap]);
+
+  const saveAll = async () => {
+    setSaving(true);
+    let failed = 0;
+    for (const [key, v] of pending) {
+      const [dealId, phase] = key.split(':') as [string, Phase];
+      const hours = v.trim() ? Number(v) : 0;
+      const existing = entryMap.get(key);
+      const res = existing
+        ? hours === 0
+          ? await supabase.from('weekly_time_entries').delete().eq('id', existing.id)
+          : await supabase.from('weekly_time_entries').update({ hours }).eq('id', existing.id)
         : await supabase.from('weekly_time_entries').insert({ deal_id: dealId, user_id: user!.id, week_start_date: week, phase, hours, source: 'upload_hours_task' } as any);
-    if (res.error) { toast.error('Failed to save hours'); return; }
+      if (res.error) failed++;
+    }
+    setSaving(false);
+    if (failed) toast.error(`Failed to save ${failed} entr${failed === 1 ? 'y' : 'ies'}`);
+    else toast.success('Deal hours updated');
     await qc.invalidateQueries({ queryKey: ['upload-hours-panel'] });
     qc.invalidateQueries({ queryKey: ['deals'] });
   };
@@ -100,45 +116,29 @@ export function UploadHoursPerDealPanel({ task }: { task: any }) {
                 </p>
               </div>
               {(['pre_signing', 'post_signing'] as Phase[]).map((p) => (
-                <HoursCell key={p} value={entryMap.get(`${d.id}:${p}`)?.hours ?? 0} onCommit={(n) => save(d.id, p, n)} />
+                <HoursCell key={p} value={drafts[`${d.id}:${p}`] ?? String(entryMap.get(`${d.id}:${p}`)?.hours || '')} onChange={(v) => setDrafts((m) => ({ ...m, [`${d.id}:${p}`]: v }))} />
               ))}
             </div>
           ))}
         </div>
       )}
-      <p className="text-[10px] text-muted-foreground mt-1.5">Hours entered here count toward this week and update each deal's totals.</p>
+      <div className="flex items-center justify-between gap-3 mt-2">
+        <p className="text-[10px] text-muted-foreground">Hours entered here count toward this week and update each deal's totals.</p>
+        <Button size="sm" onClick={saveAll} disabled={saving || !pending.length}>
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Check className="h-3.5 w-3.5 mr-1" />}
+          Save{pending.length ? ` (${pending.length})` : ''}
+        </Button>
+      </div>
     </div>
   );
 }
 
-function HoursCell({ value, onCommit }: { value: number; onCommit: (n: number) => Promise<void> }) {
-  const [draft, setDraft] = useState(value ? String(value) : '');
-  const [focused, setFocused] = useState(false);
-  const [state, setState] = useState<'idle' | 'saving' | 'saved'>('idle');
-  useEffect(() => { if (!focused) setDraft(value ? String(value) : ''); }, [value, focused]);
-  const commit = async () => {
-    const n = draft.trim() ? Number(draft) : 0;
-    if (!Number.isFinite(n) || n < 0 || n > 168) { setDraft(value ? String(value) : ''); return; }
-    if (n === value) return;
-    setState('saving');
-    await onCommit(n);
-    setState('saved');
-    setTimeout(() => setState('idle'), 1200);
-  };
+function HoursCell({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <div className="relative">
-      <Input
-        type="text" inputMode="decimal" value={draft} placeholder="0"
-        className="h-7 text-right text-sm font-mono tabular-nums pr-6"
-        onFocus={() => setFocused(true)}
-        onChange={(e) => { if (/^\d*\.?\d*$/.test(e.target.value)) setDraft(e.target.value); }}
-        onBlur={() => { setFocused(false); void commit(); }}
-        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-      />
-      <span className="absolute right-1.5 top-1/2 -translate-y-1/2">
-        {state === 'saving' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-        {state === 'saved' && <Check className="h-3 w-3 text-primary" />}
-      </span>
-    </div>
+    <Input
+      type="text" inputMode="decimal" value={value} placeholder="0"
+      className="h-7 text-right text-sm font-mono tabular-nums"
+      onChange={(e) => { if (/^\d*\.?\d*$/.test(e.target.value)) onChange(e.target.value); }}
+    />
   );
 }
