@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DealSavedView, DealViewConfig } from '@/hooks/useDealSavedViews';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +15,9 @@ interface DealSavedViewsMenuProps {
   onDelete: (id: string) => void;
   onSetDefault: (id: string | null) => void;
   hasActiveFilters: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }
 
 export function DealSavedViewsMenu({
@@ -24,8 +27,13 @@ export function DealSavedViewsMenu({
   onDelete,
   onSetDefault,
   hasActiveFilters,
+  open: openProp,
+  onOpenChange,
+  hideTrigger = false,
 }: DealSavedViewsMenuProps) {
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (v: boolean) => { setOpenState(v); onOpenChange?.(v); };
   const [newName, setNewName] = useState('');
 
   const handleSave = () => {
@@ -41,6 +49,9 @@ export function DealSavedViewsMenu({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
+      {hideTrigger ? (
+        <PopoverAnchor asChild><span className="absolute right-0 bottom-0 h-0 w-0" aria-hidden /></PopoverAnchor>
+      ) : (
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -60,6 +71,7 @@ export function DealSavedViewsMenu({
           )}
         </Button>
       </PopoverTrigger>
+      )}
       <PopoverContent className="w-72 p-0" align="end">
         <div className="p-3 border-b space-y-2">
           <p className="text-xs font-medium">Saved Views</p>
