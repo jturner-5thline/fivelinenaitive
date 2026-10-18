@@ -63,9 +63,11 @@ export interface DealContextRailProps {
   hideOwner?: boolean;
   /** Extra content merged into the same module, below the core facts. */
   children?: React.ReactNode;
+  /** 'rail' = narrow sticky sidebar; 'widget' = full-width multi-column tile. */
+  layout?: 'rail' | 'widget';
 }
 
-export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, hideStatusStage, lastActivityNode, measureRef, ownerOptions, hideOwner, children }: DealContextRailProps) {
+export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, hideStatusStage, lastActivityNode, measureRef, ownerOptions, hideOwner, children, layout = 'rail' }: DealContextRailProps) {
   const lastActivity = deal.notesUpdatedAt || deal.updatedAt || null;
   const owner = deal.dealOwner || deal.manager || '';
 
@@ -80,14 +82,17 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
   return (
     <aside
       className={cn(
-        'shrink-0 w-full lg:w-[260px] lg:sticky lg:top-4 self-start',
-        'rounded-lg border border-border/40 bg-transparent',
-        'shadow-none px-3 pb-3 pt-0',
+        layout === 'widget'
+          ? 'w-full rounded-lg border border-[#1E2C46] bg-[#101D33] shadow-none px-4 py-3'
+          : 'shrink-0 w-full lg:w-[260px] lg:sticky lg:top-4 self-start rounded-lg border border-border/40 bg-transparent shadow-none px-3 pb-3 pt-0',
         className,
       )}
-      aria-label="Deal context"
+      aria-label="Deal info"
     >
-      <div ref={measureRef} className="space-y-3">
+      {layout === 'widget' && (
+        <h3 className="mb-2 text-[13px] font-semibold text-foreground">Deal Info</h3>
+      )}
+      <div ref={measureRef} className={cn(layout === 'widget' ? 'grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-3 items-start' : 'space-y-3')}>
       {!hideIdentity && (
       <div className="space-y-1.5 pt-3">
         <InlineEditField
@@ -123,8 +128,8 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
 
       {!compact && (
       <>
-      <div className="flex items-center justify-between gap-2 h-10 -mx-3 px-3 border-b border-border/40">
-        <span className="text-sm font-semibold text-foreground whitespace-nowrap">Last activity</span>
+      <div className={cn(layout === 'widget' ? 'flex flex-col gap-1 min-w-0' : 'flex items-center justify-between gap-2 h-10 -mx-3 px-3 border-b border-border/40')}>
+        {layout === 'widget' ? <RailLabel>Last activity</RailLabel> : <span className="text-sm font-semibold text-foreground whitespace-nowrap">Last activity</span>}
         {lastActivityNode ? (
           <div className="flex items-center min-w-0">{lastActivityNode}</div>
         ) : (
@@ -213,7 +218,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
       )}
       </div>
       {children ? (
-        <div className="mt-3 border-t border-border/50 pt-3">{children}</div>
+        <div className={cn('mt-3 border-t pt-3', layout === 'widget' ? 'border-[#1E2C46] deal-info-widget-body' : 'border-border/50')}>{children}</div>
       ) : null}
     </aside>
   );

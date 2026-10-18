@@ -1084,6 +1084,21 @@ export default function DealDetail() {
   // Slot element in the left rail where the Deal Information panel is
   // portaled when the context-rail layout is active.
   const [railPanelSlot, setRailPanelSlot] = useState<HTMLDivElement | null>(null);
+  // Deal Actions widget mirrors the Deal Milestones widget height.
+  const [actionsWidgetHeight, setActionsWidgetHeight] = useState<number | null>(null);
+  useEffect(() => {
+    let ro: ResizeObserver | null = null;
+    let raf = 0;
+    let tries = 0;
+    const attach = () => {
+      const el = document.querySelector('.deal-milestones-widget') as HTMLElement | null;
+      if (!el) { if (tries++ < 180) raf = requestAnimationFrame(attach); return; }
+      ro = new ResizeObserver(() => setActionsWidgetHeight(Math.round(el.getBoundingClientRect().height)));
+      ro.observe(el);
+    };
+    attach();
+    return () => { cancelAnimationFrame(raf); ro?.disconnect(); };
+  }, [id]);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [activityPopupOpen, setActivityPopupOpen] = useState(false);
 
@@ -3324,8 +3339,8 @@ export default function DealDetail() {
                 </div>
   );
 
-  const dealActionCluster = (
-    <div className="flex flex-wrap items-center gap-2 w-full">
+  const renderDealActionCluster = (asWidget: boolean) => (
+    <div className={cn(asWidget ? "grid grid-flow-col auto-cols-fr items-stretch gap-2 w-full h-full deal-actions-grid" : "flex flex-wrap items-center gap-2 w-full")}>
       {dealMemoButton}
       {hasNaitivePipelineAccess && <EmailPromptCenterButton dealId={id!} dealName={deal?.company} contactEmail={(deal as any)?.contactEmail ?? null} />}
       {widgetVis.statusReport && (
@@ -3395,7 +3410,10 @@ export default function DealDetail() {
         </TooltipTrigger>
         <TooltipContent side="bottom">Notes</TooltipContent>
       </Tooltip>
-      {(isAdmin || isCompanyAdmin) && (
+      {!asWidget && dealWidgetSettings}
+    </div>
+  );
+  const dealWidgetSettings = (isAdmin || isCompanyAdmin) ? (
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -3422,9 +3440,8 @@ export default function DealDetail() {
             />
           </PopoverContent>
         </Popover>
-      )}
-    </div>
-  );
+  ) : null;
+  const dealActionCluster = renderDealActionCluster(false);
 
   const dealTabsRow = (
             <div className="px-3 pt-1 pb-3 shrink-0">
@@ -3986,9 +4003,9 @@ export default function DealDetail() {
           {/* Context-rail layout (5th Line, scoped deals): pins identity +
               at-a-glance facts to a left rail and lets the main column
               carry the content. Everything below is unchanged. */}
-          <div className={cn(useContextRailLayout && "flex flex-col lg:flex-row gap-2.5 items-start mt-0")}>
+          <div className={cn(useContextRailLayout && "flex flex-col gap-2.5 mt-0")}>
           {useContextRailLayout && dealInfoTab === 'deal-info' && (
-            <div className="w-full lg:w-[236px] shrink-0 lg:sticky lg:top-4 self-start space-y-2">
+            <div className="w-full px-3 deal-info-widget">
               <DealContextRail
                 deal={deal}
                 compact={dealInfoTab !== 'deal-info'}
@@ -4007,6 +4024,7 @@ export default function DealDetail() {
                     onDeleteNote={deleteStatusNote}
                   />
                 }
+                layout="widget"
                 className="lg:w-full lg:static"
                 onUpdateField={(field, value) => updateDeal(field as any, value as any)}
               >
@@ -4337,7 +4355,18 @@ export default function DealDetail() {
                     </div>
                   )}
 
-                  {useContextRailLayout && <div className="px-3">{dealActionCluster}</div>}
+                  {useContextRailLayout && (
+                    <div className="px-3">
+                      <section
+                        aria-label="Deal actions"
+                        className="deal-actions-widget flex items-center gap-2 rounded-lg border border-[#1E2C46] bg-[#101D33] p-2"
+                        style={actionsWidgetHeight ? { height: actionsWidgetHeight } : undefined}
+                      >
+                        <div className="flex-1 min-w-0 h-full max-h-11 self-center">{renderDealActionCluster(true)}</div>
+                        {dealWidgetSettings}
+                      </section>
+                    </div>
+                  )}
 
                   {/* Panels rendered in custom order - only visible panels.
                       In the context-rail layout the Deal Information panel is
@@ -4863,7 +4892,7 @@ export default function DealDetail() {
                                   Deal Information
                                 </CardTitle>
                               </CardHeader>
-                              <CardContent className={cn("space-y-4", isRailed && "px-0 pb-0 space-y-3")}>
+                              <CardContent className={cn("space-y-4", isRailed && "px-0 pb-0 space-y-0 deal-info-widget-fields")}>
                                 {!(isRailed && !isFinServDeal) && isDealInfoFieldVisible('narrative') && renderDealInfoField('narrative')}
 
                                 {isFinServDeal ? (
