@@ -729,7 +729,27 @@ export default function Dashboard() {
         }
         headerActions={
           createPortal(<div ref={actionsRef} className="deals-header-actions fixed top-[16px] right-4 z-[1001] flex items-center gap-1.5 shrink-0">
-            <div className="deals-toolbar-cluster flex items-center gap-1.5 [&_button]:h-10 [&_button]:rounded-md">
+            <Popover open={controlsOpen} onOpenChange={setControlsOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="relative gap-1.5 rounded-md h-[40px] px-4" aria-label="Controls">
+                  {activityUnread > 0 && (
+                    <Badge variant="destructive" className="notif-count absolute -top-1.5 -right-1.5">
+                      {activityUnread > 99 ? '99+' : activityUnread}
+                    </Badge>
+                  )}
+                  <Settings2 className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Controls</span>
+                  <ChevronDown className="h-3.5 w-3.5 opacity-60 shrink-0" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                forceMount
+                align="end"
+                sideOffset={8}
+                className={cn("w-[320px] p-0 bg-[#101D33] border-[#1E2C46]", !controlsOpen && "hidden")}
+              >
+                <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">View & filters</div>
+            <div className="deals-toolbar-cluster flex items-center gap-1.5 px-3 pb-3 [&>*]:flex-1 [&_button]:h-9 [&_button]:w-full [&_button]:rounded-md">
               {!showMilestones && (
                     <DealFilters
                       compact
