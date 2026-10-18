@@ -1089,9 +1089,10 @@ export default function DealDetail() {
   useEffect(() => {
     let ro: ResizeObserver | null = null;
     let raf = 0;
+    let tries = 0;
     const attach = () => {
       const el = document.querySelector('.deal-milestones-widget') as HTMLElement | null;
-      if (!el) { raf = requestAnimationFrame(attach); return; }
+      if (!el) { if (tries++ < 180) raf = requestAnimationFrame(attach); return; }
       ro = new ResizeObserver(() => setActionsWidgetHeight(Math.round(el.getBoundingClientRect().height)));
       ro.observe(el);
     };

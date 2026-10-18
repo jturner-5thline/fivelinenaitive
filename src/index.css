@@ -5150,3 +5150,16 @@ html body.ceo-theme [data-radix-popper-content-wrapper] ~ .fixed.inset-0.bg-back
 .homepage-ds .marketing-glass-cta:hover { background: rgb(33 195 194 / 0.85) !important; }
 .homepage-ds [class*="border-white/"] { border-color: var(--hp-border) !important; }
 .homepage-ds .font-mono, .homepage-ds [class*="tabular"] { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* Deal Actions widget: equal-width buttons filling one row. */
+.deal-actions-grid > *,
+.deal-actions-grid > * > button,
+.deal-actions-grid button { width: 100%; min-width: 0; height: 100%; max-height: 2.5rem; }
+.deal-actions-grid button { justify-content: center; overflow: hidden; }
+.deal-actions-grid button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Deal Info widget body: lay the detail fields out in columns. */
+.deal-info-widget-body .deal-info-railed-card > div:last-child {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); column-gap: 1rem;
+}
+.deal-info-widget-body .deal-info-railed-card > div:last-child > * { margin-top: 0 !important; }
