@@ -5144,19 +5144,14 @@ export default function DealDetail() {
                                   </div>
                                 </>
                               )}
-                              {dealInfoWidgetNode && (
-                                <>
-                                  <div className="min-w-0 lg:order-3">{dealInfoWidgetNode}</div>
-                                  <div className="hidden lg:block lg:order-3" aria-hidden />
-                                </>
-                              )}
-                              {hasBottom && (
+                              {(hasBottom || dealInfoWidgetNode) && (
                                 <>
                                   <div className="flex flex-col gap-2 min-w-0 lg:order-4">
                                     {hoursFeesWidget}
                                     {!calendarWidget && finservWidget}
                                   </div>
                                   <div className="flex flex-col gap-2 min-w-0 lg:order-3">
+                                    {dealInfoWidgetNode}
                                     {calendarWidget && (
                                       <div className="[&>div]:!h-[280px]">{calendarWidget}</div>
                                     )}
