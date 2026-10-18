@@ -489,7 +489,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
       }}
     >
       <Plus className="h-4 w-4" />
-      <span className="hidden xl:inline">New Deal</span>
+      <span className="truncate min-w-0">New Deal</span>
     </Button>
   );
 

@@ -17,7 +17,10 @@ export function useAlignActionsToRightTile(ref: RefObject<HTMLElement>) {
       el.style.top = '';
       el.style.width = '';
       el.style.transform = '';
-      buttons.forEach((b) => { b.style.marginLeft = ''; b.style.width = ''; b.style.paddingLeft = ''; b.style.paddingRight = ''; b.style.justifyContent = ''; b.style.borderRadius = ''; b.style.fontSize = ''; });
+      buttons.forEach((b) => {
+        b.style.marginLeft = ''; b.style.width = ''; b.style.minWidth = ''; b.style.gap = ''; b.style.paddingLeft = ''; b.style.paddingRight = ''; b.style.justifyContent = ''; b.style.borderRadius = ''; b.style.fontSize = '';
+        b.querySelectorAll<SVGElement>('svg').forEach((svg) => { svg.style.display = ''; });
+      });
       el.querySelectorAll<HTMLElement>('.flex').forEach((w) => (w.style.gap = ''));
       el.style.gap = '';
     };
@@ -55,15 +58,34 @@ export function useAlignActionsToRightTile(ref: RefObject<HTMLElement>) {
       el.style.transform = 'none';
       el.style.gap = '0px';
       el.querySelectorAll<HTMLElement>('.flex').forEach((w) => (w.style.gap = '0px'));
+      // Tiered sizing so labels always fit inside the button borders.
+      const tier = each >= 96 ? 'wide' : each >= 76 ? 'medium' : 'compact';
+      const pad = tier === 'wide' ? 10 : tier === 'medium' ? 6 : 4;
+      const font = tier === 'wide' ? 12 : 11;
       buttons.forEach((b, i) => {
         b.style.marginLeft = i === 0 ? '0px' : `${gap}px`;
         b.style.width = `${each}px`;
+        b.style.minWidth = '0px';
         b.style.height = '40px';
-        b.style.paddingLeft = '8px';
-        b.style.paddingRight = '8px';
+        b.style.paddingLeft = `${pad}px`;
+        b.style.paddingRight = `${pad}px`;
+        b.style.gap = tier === 'wide' ? '6px' : '4px';
         b.style.justifyContent = 'center';
         b.style.borderRadius = '8px';
-        b.style.fontSize = '12px';
+        b.style.fontSize = `${font}px`;
+        b.querySelectorAll<SVGElement>('svg').forEach((svg) => {
+          const isChevron = svg.classList.contains('lucide-chevron-down');
+          svg.style.flexShrink = '0';
+          svg.style.display = isChevron && tier !== 'wide' ? 'none' : '';
+        });
+        b.querySelectorAll<HTMLElement>(':scope > span').forEach((s) => {
+          if (s.classList.contains('notif-count')) return;
+          s.style.display = 'inline-block';
+          s.style.minWidth = '0px';
+          s.style.overflow = 'hidden';
+          s.style.textOverflow = 'ellipsis';
+          s.style.whiteSpace = 'nowrap';
+        });
       });
     };
     measure();
