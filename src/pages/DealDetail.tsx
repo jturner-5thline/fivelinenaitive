@@ -3445,7 +3445,8 @@ export default function DealDetail() {
 
   const dealTabsRow = (
             <div className="px-3 pt-1 pb-3 shrink-0">
-              <div className="border-b border-[#3a4760]">
+              <div className="border-b border-[#3a4760] flex items-end gap-2">
+                <div className="flex-1 min-w-0">
                     <HintTooltip
                       hint="Use these tabs to navigate a deal: Deal Space for AI insights, Deal Information for key details, Lenders for tracking, Deal Management for tasks, Deal Write Up for the memo, Data Room for documents, and Emails for correspondence."
                       visible={isHintVisible('deal-tabs')}
@@ -5125,8 +5126,7 @@ export default function DealDetail() {
                                   <div className="flex flex-col gap-2 min-w-0 lg:order-2">
                                     {useContextRailLayout && (
                                       <section aria-label="Deal actions" className="deal-actions-widget flex items-center gap-2 rounded-lg border border-[#1E2C46] bg-[#101D33] p-2 shrink-0" style={{ height: actionsWidgetHeight ?? 64 }}>
-                                        <div className="flex-1 min-w-0 h-full max-h-11 self-center">{renderDealActionCluster(true)}</div>
-                                        {dealWidgetSettings}
+                                        <div className="flex-1 min-w-0 h-full self-center">{renderDealActionCluster(true)}</div>
                                       </section>
                                     )}
                                     {milestonesWidget}
