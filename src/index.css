@@ -4731,6 +4731,12 @@ html body [data-tour="sidebar"] [data-sidebar="sidebar"] [data-sidebar="content"
 }
 
 /* Deal details pop-up tabs: no pill/hover fill — active tab gets a white underline only. */
+html body .deal-underline-tabs[role="tablist"] {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0;
+}
 html body .deal-underline-tabs > span[aria-hidden], html body .deal-underline-tabs > span.absolute { display: none !important; }
 html body .deal-underline-tabs [role="tab"],
 html body .deal-underline-tabs [role="tab"]:hover,
