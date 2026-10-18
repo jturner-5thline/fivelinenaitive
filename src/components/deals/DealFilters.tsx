@@ -195,16 +195,7 @@ export function DealFilters({
 
   return (
     <div className={compact ? '' : 'space-y-3'}>
-      {/* Search is docked to the top-left corner, just right of the logo. */}
-      {createPortal(
-        <div className="fixed left-[220px] top-[16px] z-[1001]">
-          <CollapsibleSearch
-            value={filters.search}
-            onChange={(value) => onFilterChange({ search: value })}
-          />
-        </div>,
-        document.body,
-      )}
+      {/* Search lives in the page header (always visible), not in this panel. */}
       <div className={compact ? 'flex items-center gap-1.5' : 'flex flex-wrap items-center gap-2 pl-2'}>
         {afterSearchSlot}
 

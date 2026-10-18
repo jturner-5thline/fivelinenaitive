@@ -729,7 +729,17 @@ export default function Dashboard() {
           </>
         }
         headerActions={
-          createPortal(<div ref={actionsRef} className="deals-header-actions fixed top-[16px] right-4 z-[1001] flex items-center gap-1.5 shrink-0">
+          <>
+          {createPortal(
+            <div className="fixed left-[220px] top-[16px] z-[1001]">
+              <CollapsibleSearch
+                value={filters.search}
+                onChange={(value) => updateFilters({ search: value })}
+              />
+            </div>,
+            document.body,
+          )}
+          {createPortal(<div ref={actionsRef} className="deals-header-actions fixed top-[16px] right-4 z-[1001] flex items-center gap-1.5 shrink-0">
             <Popover open={controlsOpen} onOpenChange={setControlsOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="relative gap-1.5 rounded-md h-[40px] px-4" aria-label="Controls">
