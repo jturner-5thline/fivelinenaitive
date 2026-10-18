@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
+import { CollapsibleSearch } from '@/components/deals/CollapsibleSearch';
 import { createPortal } from 'react-dom';
 import { useAlignActionsToRightTile } from '@/hooks/useAlignActionsToRightTile';
 import { DealSizeConfirmDialog } from '@/components/deals/DealSizeConfirmDialog';
