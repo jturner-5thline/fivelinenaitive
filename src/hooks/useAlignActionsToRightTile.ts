@@ -43,10 +43,11 @@ export function useAlignActionsToRightTile(ref: RefObject<HTMLElement>) {
         if (last !== 'none') { reset(el, buttons); last = 'none'; }
         return;
       }
-      const left = Math.round(tile.left);
-      const width = Math.round(tile.width);
       const gap = 8;
-      const each = Math.max(40, (width - gap * (buttons.length - 1)) / buttons.length);
+      // Buttons take half the tile width, anchored to the tile's right edge.
+      const width = Math.round(tile.width / 2);
+      const left = Math.round(tile.right - width);
+      const each = Math.max(0, (width - gap * (buttons.length - 1)) / buttons.length);
       const key = `${left}|${width}|${buttons.length}`;
       if (key === last) return;
       last = key;
