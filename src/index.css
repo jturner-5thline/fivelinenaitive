@@ -5159,7 +5159,7 @@ html body.ceo-theme [data-radix-popper-content-wrapper] ~ .fixed.inset-0.bg-back
 .deal-actions-grid button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Deal Info widget body: lay the detail fields out in columns. */
-.deal-info-widget-body .deal-info-railed-card > div:last-child {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); column-gap: 1rem;
+.deal-info-widget-body .deal-info-widget-fields {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem 1rem; align-items: start;
 }
-.deal-info-widget-body .deal-info-railed-card > div:last-child > * { margin-top: 0 !important; }
+.deal-info-widget-body .deal-info-widget-fields > * { margin-top: 0 !important; min-width: 0; max-width: none !important; width: 100%; }

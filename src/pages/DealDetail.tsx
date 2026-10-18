@@ -4892,7 +4892,7 @@ export default function DealDetail() {
                                   Deal Information
                                 </CardTitle>
                               </CardHeader>
-                              <CardContent className={cn("space-y-4", isRailed && "px-0 pb-0 space-y-3")}>
+                              <CardContent className={cn("space-y-4", isRailed && "px-0 pb-0 space-y-0 deal-info-widget-fields")}>
                                 {!(isRailed && !isFinServDeal) && isDealInfoFieldVisible('narrative') && renderDealInfoField('narrative')}
 
                                 {isFinServDeal ? (
