@@ -206,6 +206,7 @@ export default function Dashboard() {
   const [shareReportOpen, setShareReportOpen] = useState(false);
   const [savedViewsOpen, setSavedViewsOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
+  const [controlsOpen, setControlsOpen] = useState(false);
   const actionsRef = useRef<HTMLDivElement>(null);
   const [activityUnread, setActivityUnread] = useState(0);
   const [dealImportOpen, setDealImportOpen] = useState(false);
@@ -729,7 +730,27 @@ export default function Dashboard() {
         }
         headerActions={
           createPortal(<div ref={actionsRef} className="deals-header-actions fixed top-[16px] right-4 z-[1001] flex items-center gap-1.5 shrink-0">
-            <div className="deals-toolbar-cluster flex items-center gap-1.5 [&_button]:h-10 [&_button]:rounded-md">
+            <Popover open={controlsOpen} onOpenChange={setControlsOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="relative gap-1.5 rounded-md h-[40px] px-4" aria-label="Controls">
+                  {activityUnread > 0 && (
+                    <Badge variant="destructive" className="notif-count absolute -top-1.5 -right-1.5">
+                      {activityUnread > 99 ? '99+' : activityUnread}
+                    </Badge>
+                  )}
+                  <Settings2 className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Controls</span>
+                  <ChevronDown className="h-3.5 w-3.5 opacity-60 shrink-0" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                forceMount
+                align="end"
+                sideOffset={8}
+                className={cn("w-[320px] p-0 bg-[#101D33] border-[#1E2C46]", !controlsOpen && "hidden")}
+              >
+                <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">View & filters</div>
+            <div className="deals-toolbar-cluster flex items-center gap-1.5 px-3 pb-3 [&>*]:flex-1 [&_button]:h-9 [&_button]:w-full [&_button]:rounded-md">
               {!showMilestones && (
                     <DealFilters
                       compact
@@ -789,80 +810,40 @@ export default function Dashboard() {
                   />
               </div>
             </div>
+                <div className="border-t border-[#1E2C46] px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Tools</div>
+                <div className="px-1.5 pb-2 flex flex-col">
+                  {([
+                    { icon: Clock, label: 'Activity', extra: activityUnread > 0 ? `${activityUnread} new` : undefined, onClick: () => setActivityOpen(true) },
+                    { icon: Target, label: showMilestones ? 'Hide milestones' : 'Show milestones', onClick: () => setShowMilestones(!showMilestones) },
+                    { icon: Settings2, label: 'Customize widgets', onClick: () => window.dispatchEvent(new Event('toggle-widgets-edit-mode')) },
+                  ] as const).map(({ icon: Icon, label, extra, onClick }: any) => (
+                    <button key={label} type="button" onClick={() => { setControlsOpen(false); onClick(); }}
+                      className="flex items-center justify-between gap-2 rounded-md px-2 py-2 text-sm text-foreground hover:bg-[#0C1729] transition-colors duration-150">
+                      <span className="inline-flex items-center gap-2 min-w-0"><Icon className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="truncate">{label}</span></span>
+                      {extra && <span className="text-xs text-primary shrink-0">{extra}</span>}
+                    </button>
+                  ))}
+                </div>
+                <div className="border-t border-[#1E2C46] px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Export & import</div>
+                <div className="px-3 pb-3 grid grid-cols-3 gap-1.5">
+                  {[
+                    { label: 'CSV', icon: FileText, onClick: handleDealCsvExport },
+                    { label: 'PDF', icon: FileText, onClick: () => { exportPipelineToPDF(deals); toast({ title: "PDF exported", description: `${deals.length} deals exported to PDF.` }); } },
+                    { label: 'Word', icon: FileText, onClick: async () => { await exportPipelineToWord(deals); toast({ title: "Word document exported", description: `${deals.length} deals exported to Word.` }); } },
+                    { label: 'Share', icon: Share2, onClick: () => setShareReportOpen(true) },
+                    { label: 'Import', icon: Upload, onClick: () => setDealImportOpen(true) },
+                    { label: 'Template', icon: FileDown, onClick: () => downloadEntityTemplate(dealCsvConfig) },
+                  ].map(({ label, icon: Icon, onClick }) => (
+                    <button key={label} type="button" onClick={() => { setControlsOpen(false); onClick(); }}
+                      className="flex flex-col items-center gap-1 rounded-md border border-[#1E2C46] py-2 text-[11px] text-foreground hover:bg-[#0C1729] transition-colors duration-150 min-w-0">
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <span className="truncate max-w-full px-1">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
             <LatestUpdatesDropdown hideTrigger open={activityOpen} onOpenChange={setActivityOpen} onUnreadCountChange={setActivityUnread} />
-            <Tooltip>
-              <DropdownMenu>
-                <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="relative gap-1.5 rounded-md h-[40px] px-4" aria-label="Actions">
-                      {activityUnread > 0 && (
-                        <Badge variant="destructive" className="notif-count absolute -top-1.5 -right-1.5">
-                          {activityUnread > 99 ? '99+' : activityUnread}
-                        </Badge>
-                      )}
-                      <Settings2 className="h-4 w-4" />
-                      <span>Actions</span>
-                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent>Actions</TooltipContent>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => setActivityOpen(true)} className="justify-between">
-                  <span className="inline-flex items-center"><Clock className="h-4 w-4 mr-2" />Activity</span>
-                  {activityUnread > 0 && <span className="text-xs text-muted-foreground">{activityUnread} new</span>}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setShowMilestones(!showMilestones)}>
-                  <Target className="h-4 w-4 mr-2" />
-                  {showMilestones ? 'Hide milestones' : 'Show milestones'}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => window.dispatchEvent(new Event('toggle-widgets-edit-mode'))}>
-                  <Settings2 className="h-4 w-4 mr-2" />
-                  Customize widgets
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export deals
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    <DropdownMenuItem onClick={handleDealCsvExport}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Export as CSV
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => {
-                      exportPipelineToPDF(deals);
-                      toast({ title: "PDF exported", description: `${deals.length} deals exported to PDF.` });
-                    }}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Export as PDF
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={async () => {
-                      await exportPipelineToWord(deals);
-                      toast({ title: "Word document exported", description: `${deals.length} deals exported to Word.` });
-                    }}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Export as Word
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setShareReportOpen(true)}>
-                      <Share2 className="h-4 w-4 mr-2" />
-                      Share Report
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-                <DropdownMenuItem onClick={() => setDealImportOpen(true)}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Import deals
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => downloadEntityTemplate(dealCsvConfig)}>
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Download template CSV
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-              </DropdownMenu>
-            </Tooltip>
             <EntityCsvImportDialog open={dealImportOpen} onOpenChange={setDealImportOpen} config={dealCsvConfig} onDone={refreshDeals} />
             <CreateDealDialog />
             <ShareReportDialog
