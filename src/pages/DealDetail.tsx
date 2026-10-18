@@ -5124,7 +5124,7 @@ export default function DealDetail() {
                                 <>
                                   <div className="flex flex-col gap-2 min-w-0 lg:order-2">
                                     {useContextRailLayout && (
-                                      <section aria-label="Deal actions" className="deal-actions-widget flex items-center gap-2 rounded-lg border border-[#1E2C46] bg-[#101D33] p-2 h-[64px] shrink-0">
+                                      <section aria-label="Deal actions" className="deal-actions-widget flex items-center gap-2 rounded-lg border border-[#1E2C46] bg-[#101D33] p-2 shrink-0" style={{ height: actionsWidgetHeight ?? 64 }}>
                                         <div className="flex-1 min-w-0 h-full max-h-11 self-center">{renderDealActionCluster(true)}</div>
                                         {dealWidgetSettings}
                                       </section>
