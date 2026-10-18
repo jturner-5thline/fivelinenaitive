@@ -1,5 +1,4 @@
 import { useState, useEffect, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +16,6 @@ import { FiltersPopover, FilterKey, FILTER_LABELS, useFilterConfigs } from './Fi
 import { MultiSelectFilter } from './MultiSelectFilter';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
-import { CollapsibleSearch } from './CollapsibleSearch';
 // PipelineSelector consolidated into the Deals page "View" popover.
 
 
@@ -195,16 +193,7 @@ export function DealFilters({
 
   return (
     <div className={compact ? '' : 'space-y-3'}>
-      {/* Search is docked to the top-left corner, just right of the logo. */}
-      {createPortal(
-        <div className="fixed left-[220px] top-[16px] z-[1001]">
-          <CollapsibleSearch
-            value={filters.search}
-            onChange={(value) => onFilterChange({ search: value })}
-          />
-        </div>,
-        document.body,
-      )}
+      {/* Search lives in the page header (always visible), not in this panel. */}
       <div className={compact ? 'flex items-center gap-1.5' : 'flex flex-wrap items-center gap-2 pl-2'}>
         {afterSearchSlot}
 
