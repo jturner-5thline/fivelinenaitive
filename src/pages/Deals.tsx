@@ -750,7 +750,7 @@ export default function Dashboard() {
                 className={cn("w-[320px] p-0 bg-[#101D33] border-[#1E2C46]", !controlsOpen && "hidden")}
               >
                 <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">View & filters</div>
-            <div className="deals-toolbar-cluster flex items-center gap-1.5 px-3 pb-3 [&>*]:flex-1 [&_button]:h-9 [&_button]:w-full [&_button]:rounded-md">
+            <div className="deals-toolbar-cluster relative px-3 pb-3 [&>div:first-child>div]:grid [&>div:first-child>div]:grid-cols-2 [&>div:first-child>div]:gap-1.5 [&_button]:h-9 [&_button]:w-full [&_button]:min-w-0 [&_button]:justify-center [&_button]:rounded-md [&_button]:px-2">
               {!showMilestones && (
                     <DealFilters
                       compact
@@ -796,7 +796,7 @@ export default function Dashboard() {
                       }
                     />
               )}
-              <div className="relative">
+              <div className="absolute left-3 bottom-3 h-0 w-0">
                   <DealSavedViewsMenu
                     views={savedViews}
                     onSave={handleSaveView}
