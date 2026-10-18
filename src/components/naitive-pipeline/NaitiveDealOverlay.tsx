@@ -455,90 +455,67 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
         <div
           className="absolute top-2 right-2 z-[60] flex items-center gap-1.5 rounded-lg border-0 bg-transparent p-1 shadow-none"
         >
-          {/* Jump to any deal without leaving the modal */}
-          <Popover open={jumpOpen} onOpenChange={setJumpOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                role="combobox"
-                aria-expanded={jumpOpen}
-                aria-label="Jump to deal"
-                title="Jump to deal"
-                className={cn(navButtonClass, 'px-2')}
-              >
-                <ChevronsUpDown className="h-4 w-4 shrink-0" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-[20rem] p-0">
-              <Command>
-                <CommandInput placeholder="Search deals…" />
-                <CommandList className="max-h-[18rem]">
-                  <CommandEmpty>No deals found.</CommandEmpty>
-                  <CommandGroup>
-                    {orderedDeals.map((d) => (
-                      <CommandItem
-                        key={d.id}
-                        value={`${d.company ?? ''} ${d.id}`}
-                        onSelect={() => jumpTo(d)}
-                      >
-                        <Check
-                          className={cn(
-                            'mr-2 h-4 w-4 shrink-0',
-                            d.id === deal?.id ? 'opacity-100' : 'opacity-0',
-                          )}
-                        />
-                        <span className="truncate">{d.company || 'Untitled deal'}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-
-          {/* Desktop: labeled buttons. Mobile/tablet: compact segmented control. */}
-          <div className="hidden md:flex items-center gap-1.5">
+          {/* Compact segmented switcher: ‹ | position + jump | › */}
+          <div className="flex h-8 items-center overflow-hidden rounded-md border border-[#1E2C46] bg-[#101D33]">
             <button
               type="button"
               onClick={goPrev}
               disabled={!prevDeal}
               aria-label={`Previous deal${prevDeal?.company ? `: ${prevDeal.company}` : ''}`}
-              title="Previous deal (←)"
-              className={navButtonClass}
+              title={prevDeal?.company ? `← ${prevDeal.company}` : 'Previous deal (←)'}
+              className="inline-flex h-8 w-8 items-center justify-center text-muted-foreground transition-colors hover:bg-[#16263F] hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
             >
-              <ChevronLeft className="h-4 w-4 shrink-0" />
-              <span>Previous deal</span>
+              <ChevronLeft className="h-4 w-4" />
             </button>
+            <span aria-hidden className="h-4 w-px bg-[#1E2C46]" />
+            <Popover open={jumpOpen} onOpenChange={setJumpOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  role="combobox"
+                  aria-expanded={jumpOpen}
+                  aria-label="Jump to deal"
+                  title="Jump to deal"
+                  className="inline-flex h-8 items-center gap-1 px-2.5 font-mono text-xs tabular-nums text-foreground transition-colors hover:bg-[#16263F]"
+                >
+                  {currentIndex >= 0 ? `${currentIndex + 1} of ${orderedDeals.length}` : `${orderedDeals.length} deals`}
+                  <ChevronsUpDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-[20rem] p-0">
+                <Command>
+                  <CommandInput placeholder="Search deals…" />
+                  <CommandList className="max-h-[18rem]">
+                    <CommandEmpty>No deals found.</CommandEmpty>
+                    <CommandGroup>
+                      {orderedDeals.map((d) => (
+                        <CommandItem
+                          key={d.id}
+                          value={`${d.company ?? ''} ${d.id}`}
+                          onSelect={() => jumpTo(d)}
+                        >
+                          <Check
+                            className={cn(
+                              'mr-2 h-4 w-4 shrink-0',
+                              d.id === deal?.id ? 'opacity-100' : 'opacity-0',
+                            )}
+                          />
+                          <span className="truncate">{d.company || 'Untitled deal'}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <span aria-hidden className="h-4 w-px bg-[#1E2C46]" />
             <button
               type="button"
               onClick={goNext}
               disabled={!nextDeal}
               aria-label={`Next deal${nextDeal?.company ? `: ${nextDeal.company}` : ''}`}
-              title="Next deal (→)"
-              className={navButtonClass}
-            >
-              <span>Next deal</span>
-              <ChevronRight className="h-4 w-4 shrink-0" />
-            </button>
-          </div>
-
-          <div className="flex md:hidden items-center rounded-lg border border-[rgba(180,212,255,0.42)] bg-[#0b1226] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.6)] overflow-hidden">
-            <button
-              type="button"
-              onClick={goPrev}
-              disabled={!prevDeal}
-              aria-label="Previous deal"
-              className={segmentButtonClass}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span aria-hidden className="h-6 w-px bg-[rgba(180,212,255,0.42)]" />
-            <button
-              type="button"
-              onClick={goNext}
-              disabled={!nextDeal}
-              aria-label="Next deal"
-              className={segmentButtonClass}
+              title={nextDeal?.company ? `${nextDeal.company} →` : 'Next deal (→)'}
+              className="inline-flex h-8 w-8 items-center justify-center text-muted-foreground transition-colors hover:bg-[#16263F] hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -547,7 +524,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           <button
             ref={closeBtnRef}
             type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[rgba(180,212,255,0.42)] bg-[#0b1226] text-foreground shadow-[0_2px_10px_-4px_rgba(0,0,0,0.6)] transition-colors hover:border-[rgba(180,212,255,0.72)] hover:bg-[#101836] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#1E2C46] bg-[#101D33] text-muted-foreground transition-colors hover:bg-[#16263F] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
