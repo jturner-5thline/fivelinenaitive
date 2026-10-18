@@ -256,6 +256,7 @@ export function FiltersPopover({
           className="gap-2 h-9 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
         >
           <Filter className="h-4 w-4" />
+          <span>Filters</span>
           {activeFiltersCount > 0 && (
             <Badge 
               variant="secondary" 

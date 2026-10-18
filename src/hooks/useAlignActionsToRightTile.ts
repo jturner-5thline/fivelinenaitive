@@ -17,7 +17,7 @@ export function useAlignActionsToRightTile(ref: RefObject<HTMLElement>) {
       el.style.top = '';
       el.style.width = '';
       el.style.transform = '';
-      buttons.forEach((b) => (b.style.marginLeft = ''));
+      buttons.forEach((b) => { b.style.marginLeft = ''; b.style.width = ''; b.style.paddingLeft = ''; b.style.paddingRight = ''; b.style.justifyContent = ''; b.style.borderRadius = ''; b.style.fontSize = ''; });
       el.querySelectorAll<HTMLElement>('.flex').forEach((w) => (w.style.gap = ''));
       el.style.gap = '';
     };
@@ -42,9 +42,9 @@ export function useAlignActionsToRightTile(ref: RefObject<HTMLElement>) {
       }
       const left = Math.round(tile.left);
       const width = Math.round(tile.width);
-      const total = buttons.reduce((s, b) => s + b.offsetWidth, 0);
-      const gap = Math.max(4, (width - total) / (buttons.length - 1));
-      const key = `${left}|${width}|${total}|${buttons.length}`;
+      const gap = 8;
+      const each = Math.max(40, (width - gap * (buttons.length - 1)) / buttons.length);
+      const key = `${left}|${width}|${buttons.length}`;
       if (key === last) return;
       last = key;
       el.style.position = 'fixed';
@@ -55,7 +55,16 @@ export function useAlignActionsToRightTile(ref: RefObject<HTMLElement>) {
       el.style.transform = 'none';
       el.style.gap = '0px';
       el.querySelectorAll<HTMLElement>('.flex').forEach((w) => (w.style.gap = '0px'));
-      buttons.forEach((b, i) => (b.style.marginLeft = i === 0 ? '0px' : `${gap}px`));
+      buttons.forEach((b, i) => {
+        b.style.marginLeft = i === 0 ? '0px' : `${gap}px`;
+        b.style.width = `${each}px`;
+        b.style.height = '40px';
+        b.style.paddingLeft = '8px';
+        b.style.paddingRight = '8px';
+        b.style.justifyContent = 'center';
+        b.style.borderRadius = '8px';
+        b.style.fontSize = '12px';
+      });
     };
     measure();
     window.addEventListener('resize', measure);

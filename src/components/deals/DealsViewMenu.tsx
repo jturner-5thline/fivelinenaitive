@@ -180,7 +180,7 @@ export function DealsViewMenu({
               aria-label="View options"
             >
               {viewIcon}
-              <span className="hidden lg:inline">View</span>
+              <span>View</span>
               <ChevronDown className="h-3.5 w-3.5 opacity-60" />
             </Button>
           </DropdownMenuTrigger>

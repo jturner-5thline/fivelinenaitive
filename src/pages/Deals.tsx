@@ -801,7 +801,7 @@ export default function Dashboard() {
                         </Badge>
                       )}
                       <Settings2 className="h-4 w-4" />
-                      <span className="hidden xl:inline">Actions</span>
+                      <span>Actions</span>
                       <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                     </Button>
                   </DropdownMenuTrigger>
