@@ -635,7 +635,7 @@ export function DealsHeader() {
                       </span>
                     )}
                   </button>
-                <span className="text-[10px] leading-none font-medium text-white whitespace-nowrap">{label}</span>
+                <span title={label} className="block max-w-[56px] truncate text-center text-[9px] lg:text-[10px] leading-none font-medium text-white whitespace-nowrap">{label}</span>
               </div>
             ))}
           </nav>
