@@ -206,6 +206,7 @@ export default function Dashboard() {
   const [shareReportOpen, setShareReportOpen] = useState(false);
   const [savedViewsOpen, setSavedViewsOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
+  const [controlsOpen, setControlsOpen] = useState(false);
   const actionsRef = useRef<HTMLDivElement>(null);
   const [activityUnread, setActivityUnread] = useState(0);
   const [dealImportOpen, setDealImportOpen] = useState(false);
