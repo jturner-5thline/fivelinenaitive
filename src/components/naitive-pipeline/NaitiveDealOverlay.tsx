@@ -478,7 +478,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
                   title="Jump to deal"
                   className="inline-flex h-8 items-center gap-1 px-2.5 font-mono text-xs tabular-nums text-foreground transition-colors hover:bg-[#16263F]"
                 >
-                  {currentIndex >= 0 ? `${currentIndex + 1} of ${orderedDeals.length}` : `${orderedDeals.length} deals`}
+                  {idx >= 0 ? `${idx + 1} of ${orderedDeals.length}` : `${orderedDeals.length} deals`}
                   <ChevronsUpDown className="h-3 w-3 shrink-0 text-muted-foreground" />
                 </button>
               </PopoverTrigger>
