@@ -3537,6 +3537,35 @@ export default function DealDetail() {
             </div>
   );
 
+  const dealInfoWidgetNode = (useContextRailLayout && dealInfoTab === 'deal-info') ? (
+    <div className="deal-info-widget deal-info-compact min-w-0 h-[clamp(340px,calc(100vh-380px),720px)] overflow-y-auto rounded-lg">
+      <DealContextRail
+                deal={deal}
+                compact={dealInfoTab !== 'deal-info'}
+                hideIdentity
+                hideStatusStage
+                measureRef={railMeasureRef}
+                ownerOptions={memberOptions}
+                hideOwner={!isDealInfoFieldVisible('dealOwner')}
+                lastActivityNode={
+                  <DealUpdatesUnified
+                    activities={activityLogs}
+                    isLoadingActivities={isLoadingActivities}
+                    timeAgoText={timeAgoData.text}
+                    highlightClass={timeAgoData.highlightClass}
+                    statusNotes={statusNotes}
+                    onDeleteNote={deleteStatusNote}
+                  />
+                }
+                layout="widget"
+                className="lg:w-full lg:static"
+                onUpdateField={(field, value) => updateDeal(field as any, value as any)}
+              >
+                <div ref={setRailPanelSlot} className="w-full" />
+              </DealContextRail>
+    </div>
+  ) : null;
+
   return (
     <>
       <Helmet>
@@ -4004,34 +4033,6 @@ export default function DealDetail() {
               at-a-glance facts to a left rail and lets the main column
               carry the content. Everything below is unchanged. */}
           <div className={cn(useContextRailLayout && "flex flex-col gap-2.5 mt-0")}>
-          {useContextRailLayout && dealInfoTab === 'deal-info' && (
-            <div className="w-full px-3 deal-info-widget">
-              <DealContextRail
-                deal={deal}
-                compact={dealInfoTab !== 'deal-info'}
-                hideIdentity
-                hideStatusStage
-                measureRef={railMeasureRef}
-                ownerOptions={memberOptions}
-                hideOwner={!isDealInfoFieldVisible('dealOwner')}
-                lastActivityNode={
-                  <DealUpdatesUnified
-                    activities={activityLogs}
-                    isLoadingActivities={isLoadingActivities}
-                    timeAgoText={timeAgoData.text}
-                    highlightClass={timeAgoData.highlightClass}
-                    statusNotes={statusNotes}
-                    onDeleteNote={deleteStatusNote}
-                  />
-                }
-                layout="widget"
-                className="lg:w-full lg:static"
-                onUpdateField={(field, value) => updateDeal(field as any, value as any)}
-              >
-                <div ref={setRailPanelSlot} className="w-full" />
-              </DealContextRail>
-            </div>
-          )}
           <div className={cn(
             useContextRailLayout && "flex-1 min-w-0 w-full",
           )}>
@@ -4355,18 +4356,6 @@ export default function DealDetail() {
                     </div>
                   )}
 
-                  {useContextRailLayout && (
-                    <div className="px-3">
-                      <section
-                        aria-label="Deal actions"
-                        className="deal-actions-widget flex items-center gap-2 rounded-lg border border-[#1E2C46] bg-[#101D33] p-2"
-                        style={actionsWidgetHeight ? { height: actionsWidgetHeight } : undefined}
-                      >
-                        <div className="flex-1 min-w-0 h-full max-h-11 self-center">{renderDealActionCluster(true)}</div>
-                        {dealWidgetSettings}
-                      </section>
-                    </div>
-                  )}
 
                   {/* Panels rendered in custom order - only visible panels.
                       In the context-rail layout the Deal Information panel is
@@ -5134,6 +5123,12 @@ export default function DealDetail() {
                               {(hasLeftTop || hasRightTop) && (
                                 <>
                                   <div className="flex flex-col gap-2 min-w-0 lg:order-2">
+                                    {useContextRailLayout && (
+                                      <section aria-label="Deal actions" className="deal-actions-widget flex items-center gap-2 rounded-lg border border-[#1E2C46] bg-[#101D33] p-2 shrink-0" style={{ height: actionsWidgetHeight ?? 64 }}>
+                                        <div className="flex-1 min-w-0 h-full max-h-11 self-center">{renderDealActionCluster(true)}</div>
+                                        {dealWidgetSettings}
+                                      </section>
+                                    )}
                                     {milestonesWidget}
                                     {fundingMixWidget}
                                   </div>
@@ -5149,13 +5144,14 @@ export default function DealDetail() {
                                   </div>
                                 </>
                               )}
-                              {hasBottom && (
+                              {(hasBottom || dealInfoWidgetNode) && (
                                 <>
                                   <div className="flex flex-col gap-2 min-w-0 lg:order-4">
                                     {hoursFeesWidget}
                                     {!calendarWidget && finservWidget}
                                   </div>
                                   <div className="flex flex-col gap-2 min-w-0 lg:order-3">
+                                    {dealInfoWidgetNode}
                                     {calendarWidget && (
                                       <div className="[&>div]:!h-[280px]">{calendarWidget}</div>
                                     )}
