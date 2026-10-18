@@ -5163,3 +5163,7 @@ html body.ceo-theme [data-radix-popper-content-wrapper] ~ .fixed.inset-0.bg-back
   display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem 1rem; align-items: start;
 }
 .deal-info-widget-body .deal-info-widget-fields > * { margin-top: 0 !important; min-width: 0; max-width: none !important; width: 100%; }
+.deal-info-widget-body .deal-info-widget-fields > *:only-child {
+  grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem 1rem; align-items: start;
+}
+.deal-info-widget-body .deal-info-widget-fields > *:only-child > * { margin-top: 0 !important; min-width: 0; }
