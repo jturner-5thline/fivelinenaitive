@@ -29,13 +29,6 @@ import { loadDealDetail } from '@/lib/lazyDealDetail';
 // one in-flight promise and one emitted chunk.
 const DealDetail = lazy(() => loadDealDetail());
 
-/** Compact, enterprise-grade header nav button. 44px min hit area. */
-const navButtonClass =
-  'inline-flex h-11 items-center gap-1.5 rounded-lg border border-[rgba(180,212,255,0.42)] bg-[#0b1226] px-3 text-[13px] font-medium text-foreground shadow-[0_2px_10px_-4px_rgba(0,0,0,0.6)] transition-colors hover:border-[rgba(180,212,255,0.72)] hover:bg-[#101836] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40 whitespace-nowrap';
-
-const segmentButtonClass =
-  'inline-flex h-11 w-11 items-center justify-center text-foreground transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-40';
-
 interface Props {
   /** Currently open deal. Null when overlay is closed. */
   deal: Deal | null;
