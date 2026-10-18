@@ -3534,6 +3534,10 @@ export default function DealDetail() {
                         )}
                       </TabsList>
                     </HintTooltip>
+                </div>
+                {useContextRailLayout && dealWidgetSettings && (
+                  <div className="shrink-0 pb-1.5 [&_button]:ml-0 [&_button]:h-7 [&_button]:w-7 [&_button]:border-transparent [&_button]:bg-transparent">{dealWidgetSettings}</div>
+                )}
               </div>
             </div>
   );
