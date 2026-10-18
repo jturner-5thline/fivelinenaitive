@@ -1,5 +1,4 @@
 import { useState, useEffect, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +16,6 @@ import { FiltersPopover, FilterKey, FILTER_LABELS, useFilterConfigs } from './Fi
 import { MultiSelectFilter } from './MultiSelectFilter';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
-import { CollapsibleSearch } from './CollapsibleSearch';
 // PipelineSelector consolidated into the Deals page "View" popover.
 
 

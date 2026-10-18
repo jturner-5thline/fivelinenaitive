@@ -863,7 +863,8 @@ export default function Dashboard() {
               activePipelineId={activePipelineId}
               pipelineName={activePipelineName}
             />
-          </div>, document.body)
+          </div>, document.body)}
+          </>
         }
       >
             <style>{`
