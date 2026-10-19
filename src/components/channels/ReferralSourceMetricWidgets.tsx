@@ -312,7 +312,6 @@ function DrillDialog({
 
 }
 
-type ToggleMode = 'deals' | 'dollars';
 
 function formatCompactUsd(v: number): string {
   if (v >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(2)}B`;
@@ -326,8 +325,6 @@ interface LeaderboardTileProps {
   tooltip: string;
   subtext: string;
   entries: LeaderboardRow[];
-  /** Show the deals/dollars toggle */
-  toggleable?: boolean;
   /** Rank by fee revenue rather than deal count / volume */
   byFees?: boolean;
   emptyMessage?: string;
@@ -339,22 +336,24 @@ function LeaderboardTile({
   tooltip,
   subtext,
   entries,
-  toggleable,
   byFees,
   emptyMessage = 'No data in selected timeframe',
   isLoading,
 }: LeaderboardTileProps) {
-  const [mode, setMode] = useState<ToggleMode>('deals');
   const [drill, setDrill] = useState<LeaderboardRow | null>(null);
 
   const ranked = useMemo(() => {
-    const metric = (r: LeaderboardRow) =>
-      byFees ? r.fees : mode === 'dollars' ? r.dollars : r.deals;
-    return [...entries].filter((r) => metric(r) > 0).sort((a, b) => metric(b) - metric(a)).slice(0, 3);
-  }, [entries, mode, byFees]);
+    if (byFees) {
+      return [...entries].filter((r) => r.fees > 0).sort((a, b) => b.fees - a.fees).slice(0, 3);
+    }
+    return [...entries]
+      .filter((r) => r.deals > 0 || r.dollars > 0)
+      .sort((a, b) => b.deals - a.deals || b.dollars - a.dollars)
+      .slice(0, 3);
+  }, [entries, byFees]);
 
   const renderValue = (r: LeaderboardRow) =>
-    byFees ? formatCompactUsd(r.fees) : mode === 'dollars' ? formatCompactUsd(r.dollars) : String(r.deals);
+    byFees ? formatCompactUsd(r.fees) : `${r.deals} | ${formatCompactUsd(r.dollars)}`;
 
   return (
     <div className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3">
@@ -376,24 +375,7 @@ function LeaderboardTile({
             </Tooltip>
           </TooltipProvider>
         </div>
-        {toggleable ? (
-          <div className="flex items-center rounded-md border border-border overflow-hidden shrink-0">
-            {(['deals', 'dollars'] as ToggleMode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                className={`px-2 py-0.5 text-[10px] capitalize transition-colors ${
-                  mode === m
-                    ? 'bg-[hsl(var(--chart-2)/0.18)] text-[hsl(var(--chart-2))]'
-                    : 'text-muted-foreground/70 hover:text-muted-foreground'
-                }`}
-              >
-                {m === 'deals' ? '#' : '$'}
-              </button>
-            ))}
-          </div>
-        ) : ranked.length > 0 ? (
+        {ranked.length > 0 ? (
           <span className="text-[10px] text-muted-foreground/70 whitespace-nowrap">Drill →</span>
         ) : null}
       </div>
@@ -521,10 +503,9 @@ export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <LeaderboardTile
           label="Most Active Referral Sources"
-          tooltip="The referral sources who refer the most deals or dollars. Toggle between deal count (#) and dollar volume ($)."
+          tooltip="The referral sources who refer the most deals. Shows deal count | dollar volume."
           subtext="top 3 in selected timeframe"
           entries={sourceLeaderboard}
-          toggleable
           isLoading={isLoading}
         />
         <LeaderboardTile
@@ -538,10 +519,9 @@ export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode
         />
         <LeaderboardTile
           label="Most Active Channels"
-          tooltip="Top 3 channels (banks, service providers, etc.) by count of deals on the board. Toggle for dollars on the board."
+          tooltip="Top 3 channels (banks, service providers, etc.) by count of deals on the board. Shows deals | dollars on the board."
           subtext="top 3 channels in selected timeframe"
           entries={channelLeaderboard}
-          toggleable
           isLoading={isLoading}
         />
         <LeaderboardTile
