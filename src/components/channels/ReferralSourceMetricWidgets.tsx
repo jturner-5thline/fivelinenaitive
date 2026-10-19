@@ -312,7 +312,6 @@ function DrillDialog({
 
 }
 
-type ToggleMode = 'deals' | 'dollars';
 
 function formatCompactUsd(v: number): string {
   if (v >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(2)}B`;
@@ -326,8 +325,6 @@ interface LeaderboardTileProps {
   tooltip: string;
   subtext: string;
   entries: LeaderboardRow[];
-  /** Show the deals/dollars toggle */
-  toggleable?: boolean;
   /** Rank by fee revenue rather than deal count / volume */
   byFees?: boolean;
   emptyMessage?: string;
@@ -339,7 +336,6 @@ function LeaderboardTile({
   tooltip,
   subtext,
   entries,
-  toggleable,
   byFees,
   emptyMessage = 'No data in selected timeframe',
   isLoading,
@@ -510,7 +506,6 @@ export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode
           tooltip="The referral sources who refer the most deals or dollars. Toggle between deal count (#) and dollar volume ($)."
           subtext="top 3 in selected timeframe"
           entries={sourceLeaderboard}
-          toggleable
           isLoading={isLoading}
         />
         <LeaderboardTile
@@ -524,10 +519,9 @@ export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode
         />
         <LeaderboardTile
           label="Most Active Channels"
-          tooltip="Top 3 channels (banks, service providers, etc.) by count of deals on the board. Toggle for dollars on the board."
+          tooltip="Top 3 channels (banks, service providers, etc.) by count of deals on the board. Shows deals | dollars on the board."
           subtext="top 3 channels in selected timeframe"
           entries={channelLeaderboard}
-          toggleable
           isLoading={isLoading}
         />
         <LeaderboardTile
