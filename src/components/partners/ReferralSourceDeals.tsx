@@ -64,7 +64,10 @@ export function ReferralSourceDeals({
   kpisOnly = false,
   hideKpis = false,
   kpiGridClassName,
+  kpiKeys,
 }: {
+  /** Restrict which KPI tiles render. */
+  kpiKeys?: Array<'board' | 'conversion' | 'sources' | 'referred'>;
   /** Render only the 6 KPI tiles (no title, no details table). */
   kpisOnly?: boolean;
   /** Render title + collapsible details only (skip the 6 KPI tiles). */
@@ -370,7 +373,7 @@ export function ReferralSourceDeals({
         'grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3'
       }
     >
-        <TooltipProvider delayDuration={200}>
+        {(!kpiKeys || kpiKeys.includes('board')) && <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="h-full">
@@ -383,10 +386,10 @@ export function ReferralSourceDeals({
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs">entered NDA / Needs List Sent</TooltipContent>
           </Tooltip>
-        </TooltipProvider>
+        </TooltipProvider>}
 
 
-        <TooltipProvider delayDuration={200}>
+        {(!kpiKeys || kpiKeys.includes('conversion')) && <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="cursor-help h-full">
@@ -405,9 +408,9 @@ export function ReferralSourceDeals({
               Trailing-12-month conversion rate: deals added to active pipeline sourced via Referral that reached the Final Credit Items stage, divided by all deals added to active pipeline sourced via Referral in the trailing 12 months. Independent of the header date filter.
             </TooltipContent>
           </Tooltip>
-        </TooltipProvider>
-        <KpiTile label="Referral Sources" value={sourcesCount} subtext="linked CRM records" onClick={() => setDrill('sources')} />
-        <KpiTile label="Referred Deals" value={`${sourcesDeals} · ${formatCurrencyCompact(sourcesVolume)}`} onClick={() => setDrill('sourceDeals')} />
+        </TooltipProvider>}
+        {(!kpiKeys || kpiKeys.includes('sources')) && <KpiTile label="Referral Sources" value={sourcesCount} subtext="linked CRM records" onClick={() => setDrill('sources')} />}
+        {(!kpiKeys || kpiKeys.includes('referred')) && <KpiTile label="Referred Deals" value={`${sourcesDeals} · ${formatCurrencyCompact(sourcesVolume)}`} onClick={() => setDrill('sourceDeals')} />}
     </div>
   );
 

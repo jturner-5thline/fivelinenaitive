@@ -70,10 +70,18 @@ function SalesBdDashboardInner() {
 
       <div className="mx-auto max-w-[1400px] space-y-6">
         <ReferralSourceMetricWidgets
+          belowSourcesSlot={
+            <ReferralSourceDeals
+              kpisOnly
+              kpiKeys={['board', 'referred']}
+              kpiGridClassName="grid grid-cols-2 gap-3"
+            />
+          }
           sideSlot={
             <ReferralSourceDeals
               kpisOnly
-              kpiGridClassName="grid grid-cols-2 lg:grid-cols-4 gap-3"
+              kpiKeys={['conversion', 'sources']}
+              kpiGridClassName="grid grid-cols-2 gap-3"
             />
           }
         />
