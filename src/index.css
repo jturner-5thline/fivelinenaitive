@@ -5184,3 +5184,12 @@ html body.ceo-theme [data-radix-popper-content-wrapper] ~ .fixed.inset-0.bg-back
   grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem 1rem; align-items: start;
 }
 .deal-info-widget-body .deal-info-widget-fields > *:only-child > * { margin-top: 0 !important; min-width: 0; }
+
+/* Deal Info widget: the nested Deal Information card has no interior border. */
+aside[aria-label="Deal info"] .deal-info-widget-body .deal-info-railed-card,
+aside[aria-label="Deal info"] .deal-info-widget-body .deal-info-railed-card:hover {
+  border: 0 !important;
+  border-width: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
