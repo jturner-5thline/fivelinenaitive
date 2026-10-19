@@ -1458,26 +1458,48 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
 
     // Cap output tokens for draft options so the model can't run away.
     const maxTokensForAction =
-      action === "generate_draft_options" ? (singleTone ? 600 : 1100) : undefined;
+      action === "generate_draft_options" ? (singleTone ? 600 : 1100)
+      : action === "analyze_thread_workflow" ? 3000
+      : undefined;
+
+    // The platform kills requests idle for 150s. Abort the model call well
+    // before that so the caller gets a clean, retryable error instead of a 504.
+    const AI_TIMEOUT_MS = 110_000;
+    const aiAbort = new AbortController();
+    const aiTimer = setTimeout(() => aiAbort.abort(), AI_TIMEOUT_MS);
 
     const t0 = Date.now();
     console.log(`[smart-email-ai] action=${action} model=${selectedModel} singleTone=${singleTone || "none"} threadEmails=${threadData?.emails?.length || 0}`);
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: selectedModel,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: (action === "draft_reply" || action === "auto_draft" || action === "generate_draft_options") ? 0.7 : 0.3,
-        ...(maxTokensForAction ? { max_tokens: maxTokensForAction } : {}),
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        signal: aiAbort.signal,
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: selectedModel,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: (action === "draft_reply" || action === "auto_draft" || action === "generate_draft_options") ? 0.7 : 0.3,
+          ...(maxTokensForAction ? { max_tokens: maxTokensForAction } : {}),
+        }),
+      });
+    } catch (e) {
+      clearTimeout(aiTimer);
+      if ((e as Error)?.name === "AbortError") {
+        console.warn(`[smart-email-ai] action=${action} timed out after ${AI_TIMEOUT_MS}ms`);
+        return new Response(JSON.stringify({ error: "The AI took too long to respond. Please try again.", error_kind: "timeout" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      throw e;
+    }
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -1497,7 +1519,20 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
       throw new Error("AI gateway error");
     }
 
-    const aiResult = await response.json();
+    let aiResult: any;
+    try {
+      aiResult = await response.json();
+    } catch (e) {
+      if ((e as Error)?.name === "AbortError") {
+        return new Response(JSON.stringify({ error: "The AI took too long to respond. Please try again.", error_kind: "timeout" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      throw e;
+    } finally {
+      clearTimeout(aiTimer);
+    }
     const content = aiResult.choices?.[0]?.message?.content || "";
     const latencyMs = Date.now() - t0;
     console.log(`[smart-email-ai] action=${action} model=${selectedModel} latency=${latencyMs}ms input_tokens=${aiResult.usage?.prompt_tokens || 0} output_tokens=${aiResult.usage?.completion_tokens || 0}`);
