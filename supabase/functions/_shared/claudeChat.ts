@@ -87,9 +87,74 @@ function normalizeToolChoice(tc: CallClaudeParams["toolChoice"]) {
   return undefined;
 }
 
+/** True when the Anthropic account itself can't serve requests (no credits, bad/revoked key). */
+export function isAnthropicAccountError(status: number, text: string): boolean {
+  if (status === 401 || status === 403) return true;
+  return status === 400 && /credit balance|billing|purchase credits/i.test(text);
+}
+
+const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const FALLBACK_MODEL = "google/gemini-3-flash-preview";
+
+/** Fallback: same request through the built-in AI gateway, mapped back to the Claude result shape. */
+async function callBuiltInFallback(params: CallClaudeParams): Promise<CallClaudeResult> {
+  const key = Deno.env.get("LOVABLE_API_KEY");
+  if (!key) throw Object.assign(new Error("Built-in AI fallback unavailable"), { status: 500 });
+  const toText = (c: string | any[]) =>
+    typeof c === "string" ? c : c.map((b: any) => (b?.type === "text" ? b.text : typeof b === "string" ? b : "")).join("\n");
+  const messages: any[] = [];
+  if (params.system) messages.push({ role: "system", content: params.system });
+  for (const m of params.messages) messages.push({ role: m.role, content: toText(m.content) });
+  const body: any = { model: FALLBACK_MODEL, messages, max_tokens: params.maxTokens ?? 4096 };
+  const tools = normalizeTools(params.tools);
+  if (tools) {
+    body.tools = tools.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.input_schema } }));
+    const tc = normalizeToolChoice(params.toolChoice);
+    if (tc?.type === "tool") body.tool_choice = { type: "function", function: { name: tc.name } };
+    else if (tc?.type === "any") body.tool_choice = "required";
+  }
+  const resp = await fetch(GATEWAY_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) {
+    const t = await resp.text().catch(() => "");
+    const err = new Error(`Built-in AI ${resp.status}: ${t.slice(0, 300)}`) as any;
+    err.status = resp.status;
+    err.retryable = resp.status === 429 || resp.status >= 500;
+    throw err;
+  }
+  const data = await resp.json();
+  const msg = data?.choices?.[0]?.message ?? {};
+  const toolUses = (msg.tool_calls ?? []).map((c: any) => {
+    let input: any = {};
+    try { input = JSON.parse(c.function?.arguments || "{}"); } catch { /* keep empty */ }
+    return { id: c.id, name: c.function?.name, input };
+  });
+  const text = typeof msg.content === "string" ? msg.content.trim() : "";
+  return {
+    text,
+    toolUse: toolUses[0] ? { name: toolUses[0].name, input: toolUses[0].input } : null,
+    toolUses,
+    contentBlocks: [
+      ...(text ? [{ type: "text", text }] : []),
+      ...toolUses.map((t: any) => ({ type: "tool_use", ...t })),
+    ],
+    stopReason: data?.choices?.[0]?.finish_reason ?? null,
+    usage: data?.usage
+      ? { input_tokens: data.usage.prompt_tokens, output_tokens: data.usage.completion_tokens }
+      : null,
+    raw: data,
+  };
+}
+
 export async function callClaude(params: CallClaudeParams): Promise<CallClaudeResult> {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
+  if (!apiKey) {
+    console.warn("[claudeChat] ANTHROPIC_API_KEY missing — using built-in AI");
+    return callBuiltInFallback(params);
+  }
 
   const body: any = {
     model: params.model ?? DEFAULT_MODEL,
@@ -115,6 +180,10 @@ export async function callClaude(params: CallClaudeParams): Promise<CallClaudeRe
 
   if (!resp.ok) {
     const errText = await resp.text().catch(() => "");
+    if (isAnthropicAccountError(resp.status, errText)) {
+      console.warn(`[claudeChat] Anthropic account unavailable (${resp.status}) — using built-in AI`);
+      return callBuiltInFallback(params);
+    }
     const err = new Error(`Anthropic ${resp.status}: ${errText.slice(0, 500)}`) as any;
     err.status = resp.status;
     err.retryable = resp.status === 429 || resp.status === 529 || resp.status >= 500;
