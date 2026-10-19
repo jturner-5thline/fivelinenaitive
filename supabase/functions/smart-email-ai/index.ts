@@ -1519,7 +1519,20 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
       throw new Error("AI gateway error");
     }
 
-    const aiResult = await response.json();
+    let aiResult: any;
+    try {
+      aiResult = await response.json();
+    } catch (e) {
+      if ((e as Error)?.name === "AbortError") {
+        return new Response(JSON.stringify({ error: "The AI took too long to respond. Please try again.", error_kind: "timeout" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      throw e;
+    } finally {
+      clearTimeout(aiTimer);
+    }
     const content = aiResult.choices?.[0]?.message?.content || "";
     const latencyMs = Date.now() - t0;
     console.log(`[smart-email-ai] action=${action} model=${selectedModel} latency=${latencyMs}ms input_tokens=${aiResult.usage?.prompt_tokens || 0} output_tokens=${aiResult.usage?.completion_tokens || 0}`);
