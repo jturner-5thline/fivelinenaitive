@@ -31,6 +31,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 import { formatAmountWithCommas, parseAmountToNumber } from '@/utils/currencyFormat';
+import { ContactPickerField } from '@/components/contacts/ContactPickerField';
 
 /* ─── Option lists ───────────────────────────────────────────── */
 const LEAD_SOURCES = ['Referral', 'Networking', 'Inbound', 'Partner', 'Internal', 'Other'] as const;
@@ -133,11 +134,13 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
   const [dealStage, setDealStage] = useState<string>('fs-qualification');
   const [onHold, setOnHold] = useState(false);
   const [dealOwner, setDealOwner] = useState<string>('');
+  const [narrative, setNarrative] = useState('');
 
   const resetForm = () => {
     setCompanyName('');
     setPrimaryContact('');
     setContactEmail('');
+    setNarrative('');
     setLeadSource('');
     setReferralSource('');
     setOpportunityType('');
@@ -231,6 +234,7 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
         contract_start_date: data.contractStartDate ? format(data.contractStartDate, 'yyyy-MM-dd') : null,
         contract_end_date: data.contractEndDate ? format(data.contractEndDate, 'yyyy-MM-dd') : null,
         on_hold: data.onHold,
+        narrative: narrative.trim() || null,
       };
 
       const { data: created, error } = await supabase
@@ -310,12 +314,15 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
                 </div>
                 <div>
                   <FieldLabel htmlFor="primaryContact">Primary Contact <Req /></FieldLabel>
-                  <Input
+                  <ContactPickerField
                     id="primaryContact"
-                    value={primaryContact}
-                    onChange={e => setPrimaryContact(e.target.value)}
-                    maxLength={120}
-                    placeholder="e.g., Jane Doe"
+                    value={primaryContact || contactEmail ? { name: primaryContact, email: contactEmail } : null}
+                    onChange={v => {
+                      setPrimaryContact(v.name || v.email || '');
+                      if (v.email) setContactEmail(v.email);
+                    }}
+                    placeholder="Search or add a contact…"
+                    invalid={!!errors.primaryContact}
                     className="h-10"
                   />
                   <Helper>{errors.primaryContact ? <span className="text-destructive">{errors.primaryContact}</span> : null}</Helper>
@@ -403,6 +410,21 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
                   </Helper>
                 </div>
               )}
+
+              {/* ── Narrative ── */}
+              <SectionHeader>Narrative</SectionHeader>
+              <div className="md:col-span-12">
+                <FieldLabel htmlFor="narrative">Deal narrative</FieldLabel>
+                <textarea
+                  id="narrative"
+                  value={narrative}
+                  onChange={e => setNarrative(e.target.value)}
+                  maxLength={5000}
+                  rows={4}
+                  placeholder="What the deal is: the business, what they need from us, and key context..."
+                  className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
 
               {/* ── Section 3 — Scope & Fees ── */}
               <SectionHeader>Scope &amp; Fees</SectionHeader>
