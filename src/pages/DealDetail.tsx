@@ -5122,9 +5122,24 @@ export default function DealDetail() {
                           // Fixed pairing: Tasks (+ Open Items appended) matches the
                           // combined height of Milestones + Funding Source Mix;
                           // Calendar matches Hours & Fees.
-                          const hasLeftTop = !!(milestonesWidget || fundingMixWidget);
+                          // Milestones + Calendar are combined into one widget that
+                          // stretches to the bottom of the Tasks / Open Items column.
+                          const showCombinedCalendar = !!calendarWidget;
+                          const milestonesCalendarWidget = (milestonesWidget || showCombinedCalendar) ? (
+                            <Card className="deal-calendar-panel deal-milestones-calendar-widget flex-1 min-h-[420px] overflow-hidden flex flex-col">
+                              {milestonesWidget && (
+                                <div className="shrink-0 border-b border-[#1E2C46] [&>div]:!border-0 [&>div]:!shadow-none">{milestonesWidget}</div>
+                              )}
+                              {showCombinedCalendar && (
+                                <div className="flex-1 min-h-[280px] flex flex-col">
+                                  <CalendarPanel deal={deal} />
+                                </div>
+                              )}
+                            </Card>
+                          ) : null;
+                          const hasLeftTop = !!(milestonesCalendarWidget || fundingMixWidget);
                           const hasRightTop = !!(tasksWidget || openItemsWidget);
-                          const hasBottom = !!(hoursFeesWidget || calendarWidget || finservWidget);
+                          const hasBottom = !!(hoursFeesWidget || finservWidget);
                           return (
                             <Fragment key={id}>
                               {(hasLeftTop || hasRightTop) && (
@@ -5135,18 +5150,12 @@ export default function DealDetail() {
                                         <div className="flex-1 min-w-0 h-full self-center">{renderDealActionCluster(true)}</div>
                                       </section>
                                     )}
-                                    {milestonesWidget}
                                     {fundingMixWidget}
+                                    {milestonesCalendarWidget}
                                   </div>
-                                  <div className="relative min-w-0 min-h-[340px] lg:order-1">
-                                    <div className={hasLeftTop ? "lg:absolute lg:inset-0 flex flex-col gap-2 h-full" : "flex flex-col gap-2 h-full"}>
-                                      {tasksWidget && (
-                                        <div className="flex-1 min-h-[200px] [&>div]:!h-full">{tasksWidget}</div>
-                                      )}
-                                      {openItemsWidget && (
-                                        <div className={openItemsCollapsed ? "shrink-0" : "flex-1 min-h-[200px] [&>div]:!h-full"}>{openItemsWidget}</div>
-                                      )}
-                                    </div>
+                                  <div className="min-w-0 lg:order-1 flex flex-col gap-2">
+                                      {tasksWidget}
+                                      {openItemsWidget}
                                   </div>
                                 </>
                               )}
@@ -5154,14 +5163,10 @@ export default function DealDetail() {
                                 <>
                                   <div className="flex flex-col gap-2 min-w-0 lg:order-4">
                                     {hoursFeesWidget}
-                                    {!calendarWidget && finservWidget}
                                   </div>
                                   <div className="flex flex-col gap-2 min-w-0 lg:order-3">
                                     {dealInfoWidgetNode}
-                                    {calendarWidget && (
-                                      <div className="[&>div]:!h-[280px]">{calendarWidget}</div>
-                                    )}
-                                    {calendarWidget && finservWidget}
+                                    {finservWidget}
                                   </div>
                                 </>
                               )}
