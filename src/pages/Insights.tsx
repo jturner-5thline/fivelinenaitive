@@ -2525,8 +2525,8 @@ function MetricsInner() {
                           variant="outline"
                           size="sm"
                           className={cn(
-                            'h-8 gap-1.5 rounded-lg border-border dark:border-[var(--border-control)] bg-card dark:bg-[var(--bg-card)] text-sm font-medium text-muted-foreground hover:text-foreground dark:hover:bg-[var(--bg-card-hover)]',
-                            containsActive && "border-[var(--selected-border)] bg-[var(--selected-tint)] text-foreground",
+                            'h-8 gap-1.5 rounded-lg border-0 bg-card dark:bg-[var(--bg-card)] text-sm font-medium text-muted-foreground hover:text-foreground dark:hover:bg-[var(--bg-card-hover)]',
+                            containsActive && "bg-[var(--selected-tint)] text-foreground",
                           )}
                         >
                           <Folder className="h-3.5 w-3.5" />
