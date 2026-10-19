@@ -33,7 +33,7 @@ import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 import { formatAmountWithCommas, parseAmountToNumber } from '@/utils/currencyFormat';
 
 /* ─── Option lists ───────────────────────────────────────────── */
-const LEAD_SOURCES = ['Referral', 'Networking', 'Inbound', 'Partner', 'Other'] as const;
+const LEAD_SOURCES = ['Referral', 'Networking', 'Inbound', 'Partner', 'Internal', 'Other'] as const;
 const OPPORTUNITY_TYPES = [
   'New One-Time Project (e.g., cleanup, RiskReady)',
   'New Ongoing Engagement',

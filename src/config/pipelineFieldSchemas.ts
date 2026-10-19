@@ -49,6 +49,7 @@ export const FINSERV_LEAD_SOURCES = [
   'Networking',
   'Inbound',
   'Partner',
+  'Internal',
   'Other',
 ] as const;
 
