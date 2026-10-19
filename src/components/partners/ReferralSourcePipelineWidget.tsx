@@ -21,7 +21,7 @@ interface ContactHit {
 const contactLabel = (c: ContactHit) =>
   (c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email || 'Unnamed contact').trim();
 
-import { Plus, Info, Trash2, Building2, Search, X } from 'lucide-react';
+import { Plus, Info, Trash2, Building2 } from 'lucide-react';
 import { liquidGlassCard, LIQUID_GLASS_SERIES } from '@/components/metrics/liquidGlass';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 import { ReferralSourceDealsDialog } from './ReferralSourceDealsDialog';

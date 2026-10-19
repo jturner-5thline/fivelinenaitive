@@ -294,8 +294,8 @@ export function ReferralSourcesView({ hideKpis = false, search = '' }: { hideKpi
     });
   }, [filteredSources, sortField, sortDir, tierLookup]);
 
-  const hasActiveFilters = channelFilter.length > 0 || companyFilter.length > 0 || ownerFilter.length > 0 || pipelineFilter !== 'all' || tierFilter.length > 0 || search.length > 0;
-  const clearAll = () => { setChannelFilter([]); setCompanyFilter([]); setOwnerFilter([]); setPipelineFilter('all'); setTierFilter([]); setSearch(''); };
+  const hasActiveFilters = channelFilter.length > 0 || companyFilter.length > 0 || ownerFilter.length > 0 || pipelineFilter !== 'all' || tierFilter.length > 0;
+  const clearAll = () => { setChannelFilter([]); setCompanyFilter([]); setOwnerFilter([]); setPipelineFilter('all'); setTierFilter([]); };
 
   if (isLoading) {
     return (
