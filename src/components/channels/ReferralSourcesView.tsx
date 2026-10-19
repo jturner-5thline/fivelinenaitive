@@ -166,17 +166,13 @@ function ExpandedDeals({ entry }: { entry: DealReferralSourceEntry }) {
   );
 }
 
-export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideKpis?: boolean; initialSearch?: string } = {}) {
+export function ReferralSourcesView({ hideKpis = false, search = '' }: { hideKpis?: boolean; search?: string } = {}) {
   const [channelFilter, setChannelFilter] = useState<string[]>([]);
   const [pipelineFilter, setPipelineFilter] = useState<'all' | 'active' | 'in-development'>('all');
   const [tierFilter, setTierFilter] = useState<TierValue[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<DealReferralSourceEntry | null>(null);
   const [quickView, setQuickView] = useState<QuickViewTarget | null>(null);
-  const [search, setSearch] = useState(initialSearch || '');
-  useEffect(() => {
-    if (typeof initialSearch === 'string') setSearch(initialSearch);
-  }, [initialSearch]);
   const { sortField, sortDir, handleSort } = useTriStateSort({ field: 'totalVolume', direction: 'desc' });
 
   const { referralSources, isLoading, totalCount, totalVolume, totalDeals, companyOptions } = useDealReferralSources({
@@ -381,24 +377,7 @@ export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideK
         )}
 
 
-        <div className="relative ml-auto">
-          <Search className="h-3 w-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search sources…"
-            className="h-7 pl-7 pr-7 text-xs w-52 bg-white/[0.03] border-white/[0.08]"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label="Clear search"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          )}
-        </div>
+        <div className="ml-auto" />
 
         {hasActiveFilters && (
           <Button
