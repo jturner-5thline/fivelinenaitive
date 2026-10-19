@@ -612,6 +612,12 @@ export function useReferralSourceMetrics() {
     newSourceRows,
     sourceLeaderboard,
     channelLeaderboard,
+    atRiskSources: computeAtRiskSources(
+      allTimeReferralSources.map((s) => ({
+        referredBy: s.referredBy,
+        deals: s.deals.filter((dl) => !isExcludedDealName(dl.company)),
+      })),
+    ),
     /** True when no referred deal carries a fee figure. */
     hasFeeData: sourceLeaderboard.some((r) => r.fees > 0),
   };
