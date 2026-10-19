@@ -1087,17 +1087,27 @@ export default function DealDetail() {
   // Deal Actions widget mirrors the Deal Milestones widget height.
   const [actionsWidgetHeight, setActionsWidgetHeight] = useState<number | null>(null);
   useEffect(() => {
+    // The milestones card unmounts when switching tabs, so poll for the
+    // current node and re-attach whenever it changes; ignore 0 heights
+    // from detached/hidden nodes.
     let ro: ResizeObserver | null = null;
-    let raf = 0;
-    let tries = 0;
-    const attach = () => {
+    let observed: HTMLElement | null = null;
+    const sync = () => {
       const el = document.querySelector('.deal-milestones-widget') as HTMLElement | null;
-      if (!el) { if (tries++ < 180) raf = requestAnimationFrame(attach); return; }
-      ro = new ResizeObserver(() => setActionsWidgetHeight(Math.round(el.getBoundingClientRect().height)));
+      if (el === observed) return;
+      ro?.disconnect();
+      ro = null;
+      observed = el;
+      if (!el) return;
+      ro = new ResizeObserver(() => {
+        const h = Math.round(el.getBoundingClientRect().height);
+        if (h > 0) setActionsWidgetHeight(h);
+      });
       ro.observe(el);
     };
-    attach();
-    return () => { cancelAnimationFrame(raf); ro?.disconnect(); };
+    sync();
+    const interval = window.setInterval(sync, 250);
+    return () => { window.clearInterval(interval); ro?.disconnect(); };
   }, [id]);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [activityPopupOpen, setActivityPopupOpen] = useState(false);
@@ -5146,7 +5156,7 @@ export default function DealDetail() {
                                 <>
                                   <div className="flex flex-col gap-2 min-w-0 lg:order-2">
                                     {useContextRailLayout && (
-                                      <section aria-label="Deal actions" className="deal-actions-widget flex items-center gap-2 rounded-lg border border-[#1E2C46] bg-[#101D33] p-2 shrink-0" style={{ height: actionsWidgetHeight ?? 64 }}>
+                                      <section aria-label="Deal actions" className="deal-actions-widget flex items-center gap-2 rounded-lg border border-[#1E2C46] bg-[#101D33] p-2 shrink-0" style={{ height: actionsWidgetHeight && actionsWidgetHeight > 0 ? actionsWidgetHeight : 64 }}>
                                         <div className="flex-1 min-w-0 h-full self-center">{renderDealActionCluster(true)}</div>
                                       </section>
                                     )}
