@@ -14,6 +14,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
 interface CalendarPanelProps {
+  /** Hide the two-week grid and show a flat upcoming list instead. */
+  listOnly?: boolean;
   deal: Deal;
   tasks?: DealTaskItem[];
   onOpenDeal?: () => void;
@@ -102,7 +104,7 @@ function defaultWindowStart(now: Date = new Date()): Date {
   return startOfWeek(now, { weekStartsOn: 1 });
 }
 
-export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelProps) {
+export function CalendarPanel({ deal, tasks = [], onOpenDeal, listOnly = false }: CalendarPanelProps) {
   const { milestones } = useDealMilestones(deal.id);
   const { items: customItems, creators, addItem, updateItem, deleteItem } = useDealCalendarItems(deal.id);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -251,7 +253,13 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
     return `${format(start, 'MMM d, yyyy')} – ${format(end, 'MMM d, yyyy')}`;
   }, [windowStart]);
 
-  const selectedItems = itemsByDate.get(selectedKey) || [];
+  const todayKey = format(new Date(), 'yyyy-MM-dd');
+  const selectedItems: (DayItem & { _date?: string })[] = listOnly
+    ? Array.from(itemsByDate.entries())
+        .filter(([k]) => k >= todayKey)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .flatMap(([k, arr]) => arr.map((it) => ({ ...it, _date: k })))
+    : itemsByDate.get(selectedKey) || [];
 
   const openAddForm = (dateKey?: string) => {
     setEditingId(null);
@@ -350,7 +358,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
 
   return (
     <TooltipProvider>
-      <div className="px-5 pt-2 pb-4 min-w-0 h-full min-h-0 flex flex-col border-t border-white/[0.06]">
+      <div className={cn("min-w-0 h-full min-h-0 flex flex-col", listOnly ? "px-3 pt-2 pb-3" : "px-5 pt-2 pb-4 border-t border-white/[0.06]")}>
         {/* Header */}
         <div className="flex items-center justify-between mb-2 gap-2">
           <button
@@ -365,6 +373,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
             <Maximize2 className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
           </button>
           <div className="flex items-center gap-1">
+            {!listOnly && (<>
             <button
               type="button"
               onClick={() => setWindowStart((w) => addDays(w, -7))}
@@ -391,6 +400,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
             >
               Today
             </button>
+            </>)}
             <button
               type="button"
               onClick={() => openAddForm()}
@@ -402,6 +412,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
           </div>
         </div>
 
+        {!listOnly && (<>
         {/* Weekday header */}
         <div className="grid grid-cols-5 mb-1">
           {WEEKDAY_LABELS.map((d) => (
@@ -507,9 +518,10 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
           })}
         </div>
 
+        </>)}
         {/* Selected day detail */}
-        <div className="mt-2 pt-2 border-t border-white/[0.05] flex-1 min-h-0 flex flex-col">
-          <div className="flex items-center justify-between mb-1">
+        <div className={cn("flex-1 min-h-0 flex flex-col", !listOnly && "mt-2 pt-2 border-t border-white/[0.05]")}>
+          {!listOnly && (<div className="flex items-center justify-between mb-1">
             <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/70">
               {format(parseISO(selectedKey), 'EEE, MMM d')}
             </div>
@@ -520,10 +532,10 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
             >
               <Plus className="h-3 w-3" /> add
             </button>
-          </div>
+          </div>)}
 
           {selectedItems.length === 0 && !formOpen ? (
-            <p className="text-[11px] text-muted-foreground/70">No items scheduled.</p>
+            <p className="text-[11px] text-muted-foreground/70">{listOnly ? 'Nothing upcoming.' : 'No items scheduled.'}</p>
           ) : (
             <ul className="space-y-1 flex-1 min-h-0 overflow-y-auto pr-1">
               {selectedItems.map((it) => (
@@ -534,6 +546,9 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                     onClick={() => handleItemClick(it)}
                     className="flex-1 min-w-0 text-left text-[11px] leading-snug"
                   >
+                    {it._date && (
+                      <span className="text-[10px] font-mono text-muted-foreground mr-1.5">{format(parseISO(it._date), 'MMM d')}</span>
+                    )}
                     <span className="text-[9px] uppercase tracking-wider text-muted-foreground mr-1.5">
                       {it.type ? it.type : KIND_COLORS[it.kind].label}
                     </span>
