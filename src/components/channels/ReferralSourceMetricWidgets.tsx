@@ -43,13 +43,8 @@ function ChannelMixDonut() {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-transparent p-4">
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground leading-tight">
-          Channel Mix
-        </p>
-        <span className="text-[11px] text-muted-foreground/70 tabular-nums">{total} total</span>
-      </div>
+    <div>
+      
       <div className="h-[260px] w-full">
         {isLoading || total === 0 ? (
           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
