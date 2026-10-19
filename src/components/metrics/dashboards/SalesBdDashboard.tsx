@@ -58,7 +58,7 @@ function SalesBdDashboardInner() {
           sideSlot={
             <ReferralSourceDeals
               kpisOnly
-              kpiGridClassName="grid h-full grid-cols-2 sm:grid-cols-3 grid-rows-2 gap-3 auto-rows-fr"
+              kpiGridClassName="grid h-full grid-cols-2 grid-rows-2 gap-3 auto-rows-fr"
             />
           }
         />
