@@ -326,6 +326,7 @@ interface LeaderboardTileProps {
   emptyMessage?: string;
   isLoading?: boolean;
   bare?: boolean;
+  subtextOnHover?: boolean;
 }
 
 function AtRiskList({ rows, isLoading }: { rows: AtRiskRow[]; isLoading?: boolean }) {
@@ -364,6 +365,7 @@ function LeaderboardTile({
   emptyMessage = 'No data in selected timeframe',
   isLoading,
   bare,
+  subtextOnHover,
 }: LeaderboardTileProps) {
   const [drill, setDrill] = useState<LeaderboardRow | null>(null);
 
@@ -380,14 +382,14 @@ function LeaderboardTile({
   const renderValue = (r: LeaderboardRow) =>
     byFees ? formatCompactUsd(r.fees) : `${r.deals} | ${formatCompactUsd(r.dollars)}`;
 
-  return (
+  const tile = (
     <div className={bare ? 'flex flex-col gap-2' : 'rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3'}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#FFFFFF] leading-tight">
             {label}
           </p>
-          <TooltipProvider delayDuration={150}>
+          {!subtextOnHover && <TooltipProvider delayDuration={150}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button type="button" className="text-muted-foreground/60 hover:text-muted-foreground shrink-0">
@@ -398,7 +400,7 @@ function LeaderboardTile({
                 {tooltip}
               </TooltipContent>
             </Tooltip>
-          </TooltipProvider>
+          </TooltipProvider>}
         </div>
         {ranked.length > 0 ? (
           <span className="text-[10px] text-muted-foreground/70 whitespace-nowrap">Drill →</span>
@@ -428,7 +430,7 @@ function LeaderboardTile({
         )}
       </div>
 
-      <p className="text-[11px] text-muted-foreground leading-snug">{subtext}</p>
+      {!subtextOnHover && <p className="text-[11px] text-muted-foreground leading-snug">{subtext}</p>}
 
       <DrillDialog
         open={!!drill}
@@ -438,6 +440,17 @@ function LeaderboardTile({
       />
     </div>
   );
+
+  return subtextOnHover ? (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>{tile}</TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[260px] text-[11px] leading-snug">
+          {subtext} · {tooltip}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  ) : tile;
 }
 
 export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode }) {
@@ -472,6 +485,7 @@ export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode
                 bare
                 label="Most Active"
                 tooltip="Referral sources who refer the most deals. Shows deal count | dollar volume."
+                subtextOnHover
                 subtext="top 3 in selected timeframe"
                 entries={sourceLeaderboard}
                 isLoading={isLoading}
@@ -480,6 +494,7 @@ export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode
                 bare
                 label="Most Profitable"
                 tooltip="Referral sources who have referred the most fee revenue."
+                subtextOnHover
                 subtext="by fee revenue"
                 entries={sourceLeaderboard}
                 byFees
