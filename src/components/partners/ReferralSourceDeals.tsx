@@ -367,11 +367,23 @@ export function ReferralSourceDeals({
     <div
       className={
         kpiGridClassName ??
-        'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-3'
+        'grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3'
       }
     >
-        <KpiTile label="Deals on the Board" value={onBoardDeals.length} subtext="entered NDA / Needs List Sent" onClick={() => setDrill('deals')} />
-        <KpiTile label="Dollars on the Board" value={formatCurrencyCompact(totalValue)} subtext="entered NDA / Needs List Sent" onClick={() => setDrill('value')} />
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="h-full">
+                <KpiTile
+                  label="Deals & Dollars on the Board"
+                  value={`${onBoardDeals.length} · ${formatCurrencyCompact(totalValue)}`}
+                  onClick={() => setDrill('deals')}
+                />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">entered NDA / Needs List Sent</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
 
         <TooltipProvider delayDuration={200}>
@@ -395,8 +407,7 @@ export function ReferralSourceDeals({
           </Tooltip>
         </TooltipProvider>
         <KpiTile label="Referral Sources" value={sourcesCount} subtext="linked CRM records" onClick={() => setDrill('sources')} />
-        <KpiTile label="Referred Deals" value={sourcesDeals} subtext="across all referral sources" onClick={() => setDrill('sourceDeals')} />
-        <KpiTile label="Total Referred Volume" value={formatCurrencyCompact(sourcesVolume)} subtext="across all referral sources" onClick={() => setDrill('volume')} />
+        <KpiTile label="Referred Deals" value={`${sourcesDeals} · ${formatCurrencyCompact(sourcesVolume)}`} onClick={() => setDrill('sourceDeals')} />
     </div>
   );
 
