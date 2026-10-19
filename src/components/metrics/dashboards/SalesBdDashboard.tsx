@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Settings as SettingsIcon } from "lucide-react";
+import { Settings as SettingsIcon, Search, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { ReferralSourceDeals } from "@/components/partners/ReferralSourceDeals";
 import { PartnerDetailPanel } from "@/components/partners/PartnerDetailPanel";
 import { usePartners } from "@/hooks/usePartnersPipeline";
@@ -8,7 +9,6 @@ import { ReferralSourceMetricWidgets } from "@/components/channels/ReferralSourc
 import { ReferralSourcePipelineWidget } from "@/components/partners/ReferralSourcePipelineWidget";
 import { ChannelEntityDetailModal } from "@/components/channels/ChannelEntityDetailModal";
 import type { ChannelEntry } from "@/hooks/useChannelEntries";
-import { SalesBdSearch } from "@/components/partners/SalesBdSearch";
 import { CrmUpdateQueueButton } from "@/components/crm/CrmUpdateQueueButton";
 import { Button } from "@/components/ui/button";
 import { useCanEditPartnerRules } from "@/hooks/usePartnerRules";
@@ -24,7 +24,7 @@ import { PartnerRulesSettings } from "@/components/settings/PartnerRulesSettings
 function SalesBdDashboardInner() {
   const [viewPartnerId, setViewPartnerId] = useState<string | null>(null);
   const [viewChannelEntry, setViewChannelEntry] = useState<ChannelEntry | null>(null);
-  const [referralSearchSeed, setReferralSearchSeed] = useState<string>('');
+  const [search, setSearch] = useState<string>('');
   const [rulesOpen, setRulesOpen] = useState(false);
   const { data: partners = [] } = usePartners();
   const viewPartner = viewPartnerId ? partners.find(p => p.id === viewPartnerId) || null : null;
@@ -33,11 +33,26 @@ function SalesBdDashboardInner() {
   return (
     <div className="sales-bd-page bg-transparent">
       <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
-        <SalesBdSearch
-          onSelectPartner={(p) => setViewPartnerId(p.id)}
-          onSelectChannelEntry={(e) => setViewChannelEntry(e)}
-          onSelectReferralSource={(r) => setReferralSearchSeed(r.name)}
-        />
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search sources, companies, channels…"
+            aria-label="Search referral sources"
+            className="h-8 w-72 pl-7 pr-7 text-xs"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
         {canEditPartnerRules && (
           <Button
             variant="outline"
@@ -64,10 +79,10 @@ function SalesBdDashboardInner() {
         />
         {/* Referral Insights (Activity / Needs Attention) hidden — see mem://features/sales-bd/partner-insights-tabs-hidden */}
 
-        <ReferralSourcePipelineWidget />
+        <ReferralSourcePipelineWidget search={search} />
         <ReferralSourceDeals hideKpis />
 
-        <ReferralSourcesView hideKpis initialSearch={referralSearchSeed} />
+        <ReferralSourcesView hideKpis search={search} />
       </div>
 
       <PartnerDetailPanel partner={viewPartner} onClose={() => setViewPartnerId(null)} />

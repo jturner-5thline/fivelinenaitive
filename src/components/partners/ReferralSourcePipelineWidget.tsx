@@ -21,7 +21,7 @@ interface ContactHit {
 const contactLabel = (c: ContactHit) =>
   (c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email || 'Unnamed contact').trim();
 
-import { Plus, Info, Trash2, Building2, Search, X } from 'lucide-react';
+import { Plus, Info, Trash2, Building2 } from 'lucide-react';
 import { liquidGlassCard, LIQUID_GLASS_SERIES } from '@/components/metrics/liquidGlass';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 import { ReferralSourceDealsDialog } from './ReferralSourceDealsDialog';
@@ -122,7 +122,7 @@ function formatCurrencyCompact(v: number): string {
 
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
-export function ReferralSourcePipelineWidget() {
+export function ReferralSourcePipelineWidget({ search = '' }: { search?: string } = {}) {
   // Tiers are trailing/all-time metrics — the pipeline must not depend on the
   // viewer's header date range, or the same source lands in different columns
   // for different users (e.g. Tier 3 vs Nurturing).
@@ -141,7 +141,6 @@ export function ReferralSourcePipelineWidget() {
   const [selectedContact, setSelectedContact] = useState<ContactHit | null>(null);
   const [openSource, setOpenSource] = useState<string | null>(null);
   const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
-  const [search, setSearch] = useState('');
 
   // Live contact lookup so sources added here map to real CRM contacts.
   useEffect(() => {
@@ -310,28 +309,6 @@ export function ReferralSourcePipelineWidget() {
           </p>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="relative w-44">
-            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search sources"
-              aria-label="Search referral sources"
-              className="h-7 pl-7 pr-7 text-[11px]"
-            />
-            {search && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label="Clear source search"
-                onClick={() => setSearch('')}
-                className="absolute right-0.5 top-1/2 h-6 w-6 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            )}
-          </div>
           <OwnerMultiSelect options={ownerOptions} selected={ownerFilter} onChange={setOwnerFilter} />
           <Popover>
 
