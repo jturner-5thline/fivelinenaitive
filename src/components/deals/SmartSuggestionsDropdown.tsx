@@ -174,7 +174,7 @@ export function SmartSuggestionsDropdown({ deals }: SmartSuggestionsDropdownProp
             )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-80 bg-popover">
+        <DropdownMenuContent align="end" className="w-80">
           <DropdownMenuLabel className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             <span className="font-semibold">Recommended Actions</span>

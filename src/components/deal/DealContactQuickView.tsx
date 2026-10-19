@@ -184,7 +184,7 @@ export function DealContactQuickView({ contactId, contactName, dealId, children 
       }}
     >
       <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent className="w-80 p-3 bg-popover" align="start" onClick={(e) => e.stopPropagation()}>
+      <PopoverContent className="w-80 p-3" align="start" onClick={(e) => e.stopPropagation()}>
         {isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-4 w-32" />

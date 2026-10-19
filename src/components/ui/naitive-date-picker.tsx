@@ -364,7 +364,7 @@ export function NaitiveDatePicker({
             {selected ? format(selected, 'MMM d, yyyy') : <span>{placeholder}</span>}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 bg-popover" align={align}>
+        <PopoverContent className="w-auto p-0" align={align}>
           <CalendarPanel
             selected={selected}
             onSelect={(d) => {

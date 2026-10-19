@@ -262,7 +262,7 @@ export function QuarterlyRevenueGrowthCard({ bare = false, anchorDate }: { bare?
                     {filterLabel}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-popover z-50">
+                <DropdownMenuContent align="end" className="w-56 z-50">
                   <DropdownMenuLabel className="text-xs">Filter entities</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuCheckboxItem

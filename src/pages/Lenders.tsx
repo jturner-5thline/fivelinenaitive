@@ -1721,7 +1721,7 @@ export default function Lenders() {
                       )}
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-popover w-56">
+                  <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuItem onClick={() => setCsvImportOpen(true)}>
                       <Upload className="h-4 w-4 mr-2" />
                       Import (CSV / Excel)

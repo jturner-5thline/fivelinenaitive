@@ -461,7 +461,7 @@ export function DataRoomChecklistPanel({
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48 bg-popover border shadow-lg">
+          <DropdownMenuContent align="start" className="w-48 border shadow-lg">
             <DropdownMenuLabel>Categories</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {availableCategories.map(category => {
