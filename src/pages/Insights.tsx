@@ -2215,7 +2215,7 @@ function MetricsInner() {
         <title>Insights | 5thLine</title>
       </Helmet>
       <div className="bg-transparent">
-        <div className="insights-glass-skin container mx-auto py-6 px-4 space-y-6">
+        <div className="insights-glass-skin container mx-auto pt-0 pb-6 px-4 space-y-6 -mt-[5px]">
           {/* Header (sticky to top of scrollable <main>) */}
           <StickyDashboardHeader
             surface="module"
