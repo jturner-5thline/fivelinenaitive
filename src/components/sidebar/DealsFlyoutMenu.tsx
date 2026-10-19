@@ -306,7 +306,7 @@ export function DealsFlyoutMenu() {
               align="start"
               sideOffset={8}
               className={cn(
-                'w-64 p-1.5 text-popover-foreground sidebar-flyout',
+                'w-56 p-1.5 text-popover-foreground sidebar-flyout',
                 'shadow-[0_12px_28px_-12px_rgba(0,0,0,0.65)]',
               )}
               onMouseEnter={() => clearTimers()}
@@ -323,11 +323,6 @@ export function DealsFlyoutMenu() {
             >
               {isFifthLine ? (
                 <div role="menu" aria-label="Deal segments">
-                  <div className="flex items-center px-2 pb-1.5 pt-1">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider sidebar-flyout-label">
-                      Segments
-                    </span>
-                  </div>
                   <div className="pr-0.5">
                     {fifthLineLinks.map((link, index) => {
                       const isFocused = focusedIndex === index;
@@ -348,7 +343,7 @@ export function DealsFlyoutMenu() {
                             'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm outline-none transition-colors sidebar-flyout-item',
                           )}
                         >
-                          <Icon className="h-3.5 w-3.5 shrink-0 text-popover-foreground/60" />
+                          <Icon className="h-4 w-4 shrink-0" />
                           <span className="truncate text-left flex-1">{link.label}</span>
                         </button>
                       );
@@ -387,7 +382,7 @@ export function DealsFlyoutMenu() {
                             'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm outline-none transition-colors sidebar-flyout-item',
                           )}
                         >
-                          <Briefcase className="h-3.5 w-3.5 shrink-0 text-popover-foreground/60" />
+                          <Briefcase className="h-4 w-4 shrink-0" />
                           <span className="truncate text-left flex-1">{label}</span>
                         </button>
                       );
