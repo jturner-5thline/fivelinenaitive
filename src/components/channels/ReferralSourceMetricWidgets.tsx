@@ -43,13 +43,8 @@ function ChannelMixDonut() {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-transparent p-4">
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground leading-tight">
-          Channel Mix
-        </p>
-        <span className="text-[11px] text-muted-foreground/70 tabular-nums">{total} total</span>
-      </div>
+    <div>
+      
       <div className="h-[260px] w-full">
         {isLoading || total === 0 ? (
           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
@@ -533,9 +528,9 @@ export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode
 
       {sideSlot ? <div className="min-w-0">{sideSlot}</div> : null}
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-stretch">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 items-stretch">
         {/* Referral Sources: active vs. at-risk, side by side */}
-        <section className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0">
+        <section className="xl:col-span-2 rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">Referral Sources</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:divide-x sm:divide-border">
             <div className="flex flex-col gap-4 min-w-0">
@@ -565,11 +560,9 @@ export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode
         {/* Channels: mix donut + active / profitable lists */}
         <section className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">Channels</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:divide-x sm:divide-border">
-            <div className="min-w-0 [&>*]:border-0 [&>*]:bg-transparent [&>*]:p-0">
-              <ChannelMixDonut />
-            </div>
-            <div className="flex flex-col gap-4 min-w-0 sm:pl-4">
+          <div className="flex flex-col gap-4">
+            <ChannelMixDonut />
+            <div className="flex flex-col gap-4 min-w-0 border-t border-border pt-4">
               <LeaderboardTile
                 bare
                 label="Most Active"
