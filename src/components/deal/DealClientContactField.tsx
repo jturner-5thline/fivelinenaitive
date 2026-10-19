@@ -163,7 +163,7 @@ export function DealClientContactField({
             )}
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-80 p-3 bg-popover" align="start">
+        <PopoverContent className="w-80 p-3" align="start">
           <div className="space-y-3">
             {chips.length > 0 && (
               <div className="space-y-1">

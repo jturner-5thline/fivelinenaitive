@@ -304,7 +304,7 @@ export function OutstandingItemDialog({
                       <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent container={dialogContentRef.current} className="pointer-events-auto z-[100] w-[220px] p-0 bg-popover" align="start">
+                  <PopoverContent container={dialogContentRef.current} className="pointer-events-auto z-[100] w-[220px] p-0" align="start">
                     <SearchableRequesterList
                       options={requestedByOptions}
                       selected={requesterValue}

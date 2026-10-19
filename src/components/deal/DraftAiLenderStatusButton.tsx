@@ -71,7 +71,7 @@ export function DraftAiLenderStatusButton({ lenderId, onApply, onApprovePass, al
           <Sparkles className="h-3 w-3 text-primary" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={6} collisionPadding={12} className="w-80 p-3 z-[1300] bg-popover space-y-2">
+      <PopoverContent align="end" sideOffset={6} collisionPadding={12} className="w-80 p-3 z-[1300] space-y-2">
         <div className="text-xs font-medium">Draft AI update</div>
         {loading ? (
           <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">

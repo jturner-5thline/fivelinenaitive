@@ -650,7 +650,7 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
                   <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[220px] p-0 bg-popover" align="end">
+              <PopoverContent className="w-[220px] p-0" align="end">
                 <SearchableRequesterList
                   options={requestedByOptions}
                   selected={editingRequestedBy}
@@ -918,7 +918,7 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
                 </Button>
               </PopoverTrigger>
               <PopoverContent
-                className="w-[240px] p-0 bg-popover overflow-y-auto max-h-[min(70vh,var(--radix-popover-content-available-height))]"
+                className="w-[240px] p-0 overflow-y-auto max-h-[min(70vh,var(--radix-popover-content-available-height))]"
                 align="end"
                 sideOffset={6}
                 collisionPadding={12}
@@ -1014,7 +1014,7 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-[280px] p-2 bg-popover space-y-2"
+                  className="w-[280px] p-2 space-y-2"
                   align="end"
                   sideOffset={6}
                   collisionPadding={12}
@@ -1094,7 +1094,7 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
                     <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[220px] p-0 bg-popover" align="end">
+                <PopoverContent className="w-[220px] p-0" align="end">
                   <SearchableRequesterList
                     options={requestedByOptions}
                     selected={newRequestedBy}
@@ -1376,7 +1376,7 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
                           <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent container={bulkImportDialogContentRef.current} className="pointer-events-auto z-[100] w-[220px] p-0 bg-popover" align="end">
+                      <PopoverContent container={bulkImportDialogContentRef.current} className="pointer-events-auto z-[100] w-[220px] p-0" align="end">
                         <SearchableRequesterList
                           options={requestedByOptions}
                           selected={row.requestedBy}
@@ -1412,7 +1412,7 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
                     <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent container={bulkImportDialogContentRef.current} className="pointer-events-auto z-[100] w-[220px] p-0 bg-popover" align="start">
+                <PopoverContent container={bulkImportDialogContentRef.current} className="pointer-events-auto z-[100] w-[220px] p-0" align="start">
                   <SearchableRequesterList
                     options={requestedByOptions}
                     selected={bulkImportRequestedBy}

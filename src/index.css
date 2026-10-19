@@ -2210,6 +2210,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   -webkit-backdrop-filter: none !important;
 }
 
+
 /* Restore minimal contrast for interactive rows/cards inside overlays. */
 :is(
   [data-radix-popper-content-wrapper] > *:not([role="tooltip"]):not([data-tooltip]),

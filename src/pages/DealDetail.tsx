@@ -3371,7 +3371,7 @@ export default function DealDetail() {
           </TooltipTrigger>
           <TooltipContent side="bottom">Export</TooltipContent>
         </Tooltip>
-        <DropdownMenuContent align="end" className="bg-popover">
+        <DropdownMenuContent align="end" className="">
           <DropdownMenuItem onClick={() => {
             exportDealToCSV(deal);
             toast({ title: "CSV exported", description: "Deal data exported to CSV file." });
@@ -3425,7 +3425,7 @@ export default function DealDetail() {
               <GearIcon className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-64 bg-popover p-3">
+          <PopoverContent align="end" className="w-64 p-3">
             <div className="text-sm font-medium mb-1">Show on deals</div>
             <p className="text-xs text-muted-foreground mb-3">Drag or use arrows to reorder. Widgets fill the left and right columns in this order. Applies to everyone in your account.</p>
             <DealWidgetOrderList
@@ -4192,7 +4192,7 @@ export default function DealDetail() {
                       <ChevronDown className="h-3 w-3 opacity-50" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="bg-popover min-w-[200px] max-h-[300px] overflow-y-auto">
+                  <DropdownMenuContent align="start" className="min-w-[200px] max-h-[300px] overflow-y-auto">
                     <DropdownMenuLabel className="text-xs">Stage</DropdownMenuLabel>
                     {(() => {
                       const dealPipeline = deal.pipelineId ? pipelines.find(p => p.id === deal.pipelineId) : null;

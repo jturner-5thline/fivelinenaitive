@@ -399,7 +399,7 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
                   <SelectTrigger>
                     <SelectValue placeholder="Pick a stage" />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover max-h-72 overflow-y-auto">
+                  <SelectContent className="max-h-72 overflow-y-auto">
                     {stageOptions.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
                     ))}
