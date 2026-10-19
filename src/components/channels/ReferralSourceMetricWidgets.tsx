@@ -1,3 +1,4 @@
+import { AT_RISK_MONTHS, type AtRiskRow } from "./atRiskSources";
 import { useState, useMemo, type ReactNode } from 'react';
 import { Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -329,6 +330,34 @@ interface LeaderboardTileProps {
   byFees?: boolean;
   emptyMessage?: string;
   isLoading?: boolean;
+  bare?: boolean;
+}
+
+function AtRiskList({ rows, isLoading }: { rows: AtRiskRow[]; isLoading?: boolean }) {
+  return (
+    <div className="flex flex-col gap-2 min-w-0 sm:pl-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[hsl(var(--warning,38_92%_50%))]">
+        At Risk · {AT_RISK_MONTHS}+ mo no deals
+      </p>
+      {isLoading ? (
+        <p className="text-xs text-muted-foreground py-2">Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-2">No inactive sources</p>
+      ) : (
+        <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto pr-1">
+          {rows.map((r) => (
+            <div key={r.key} className="flex items-center justify-between gap-2">
+              <span className="text-xs text-muted-foreground/90 truncate">{r.label}</span>
+              <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">
+                {r.monthsSince} mo · {r.totalDeals} deal{r.totalDeals === 1 ? '' : 's'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="text-[11px] text-muted-foreground leading-snug">{rows.length} source{rows.length === 1 ? '' : 's'} to re-engage or remove</p>
+    </div>
+  );
 }
 
 function LeaderboardTile({
@@ -339,6 +368,7 @@ function LeaderboardTile({
   byFees,
   emptyMessage = 'No data in selected timeframe',
   isLoading,
+  bare,
 }: LeaderboardTileProps) {
   const [drill, setDrill] = useState<LeaderboardRow | null>(null);
 
@@ -356,7 +386,7 @@ function LeaderboardTile({
     byFees ? formatCompactUsd(r.fees) : `${r.deals} | ${formatCompactUsd(r.dollars)}`;
 
   return (
-    <div className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3">
+    <div className={bare ? 'flex flex-col gap-2' : 'rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3'}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#FFFFFF] leading-tight">
@@ -431,6 +461,7 @@ export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode
     newSourceRows,
     sourceLeaderboard,
     channelLeaderboard,
+    atRiskSources,
     hasFeeData,
   } = useReferralSourceMetrics();
 

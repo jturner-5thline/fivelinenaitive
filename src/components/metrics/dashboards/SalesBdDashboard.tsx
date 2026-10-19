@@ -32,7 +32,7 @@ function SalesBdDashboardInner() {
 
   return (
     <div className="sales-bd-page bg-transparent">
-      <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -40,7 +40,7 @@ function SalesBdDashboardInner() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search sources, companies, channels…"
             aria-label="Search referral sources"
-            className="h-8 w-72 pl-7 pr-7 text-xs"
+            className="h-8 w-64 pl-7 pr-7 text-xs"
           />
           {search && (
             <button
@@ -68,12 +68,12 @@ function SalesBdDashboardInner() {
         <CrmUpdateQueueButton />
       </div>
 
-      <div className="space-y-8">
+      <div className="mx-auto max-w-[1400px] space-y-6">
         <ReferralSourceMetricWidgets
           sideSlot={
             <ReferralSourceDeals
               kpisOnly
-              kpiGridClassName="grid h-full grid-cols-2 grid-rows-2 gap-3 auto-rows-fr"
+              kpiGridClassName="grid grid-cols-2 lg:grid-cols-4 gap-3"
             />
           }
         />
