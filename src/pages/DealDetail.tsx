@@ -5126,16 +5126,16 @@ export default function DealDetail() {
                           // stretches to the bottom of the Tasks / Open Items column.
                           const showCombinedCalendar = !!calendarWidget;
                           const milestonesCalendarWidget = (milestonesWidget || showCombinedCalendar) ? (
-                            <Card className="deal-calendar-panel deal-milestones-calendar-widget flex-1 min-h-[420px] overflow-hidden flex flex-col">
+                            <section className="deal-milestones-calendar-widget flex-1 min-h-[420px] overflow-hidden flex flex-col rounded-lg border border-[#1E2C46] bg-[#101D33]">
                               {milestonesWidget && (
-                                <div className="shrink-0 border-b border-[#1E2C46] [&>div]:!border-0 [&>div]:!shadow-none">{milestonesWidget}</div>
+                                <div className="shrink-0 [&_.deal-milestones-widget]:!border-0 [&_.deal-milestones-widget]:!shadow-none [&_.deal-milestones-widget]:!bg-transparent [&_.deal-milestones-widget]:!rounded-none">{milestonesWidget}</div>
                               )}
                               {showCombinedCalendar && (
-                                <div className="flex-1 min-h-[280px] flex flex-col">
-                                  <CalendarPanel deal={deal} />
+                                <div className={cn("flex-1 min-h-[160px] flex flex-col", milestonesWidget && "border-t border-[#1E2C46]")}>
+                                  <CalendarPanel deal={deal} listOnly />
                                 </div>
                               )}
-                            </Card>
+                            </section>
                           ) : null;
                           const hasLeftTop = !!(milestonesCalendarWidget || fundingMixWidget);
                           const hasRightTop = !!(tasksWidget || openItemsWidget);
