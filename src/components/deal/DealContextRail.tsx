@@ -218,7 +218,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
       )}
       </div>
       {children ? (
-        <div className={cn('mt-3 border-t pt-3', layout === 'widget' ? 'border-[#1E2C46] deal-info-widget-body' : 'border-border/50')}>{children}</div>
+        <div className={cn('mt-3', layout === 'widget' ? 'deal-info-widget-body' : 'border-t pt-3 border-border/50')}>{children}</div>
       ) : null}
     </aside>
   );

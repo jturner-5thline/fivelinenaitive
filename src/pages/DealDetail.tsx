@@ -4878,14 +4878,16 @@ export default function DealDetail() {
                               )}
                               style={isRailed ? undefined : { background: 'rgba(20, 26, 40, 0.74)' }}
                             >
-                              <CardHeader className={cn("flex flex-row items-center justify-between py-4", isRailed && "px-0 pt-0 pb-2")}>
+                              {!isRailed && (
+                              <CardHeader className="flex flex-row items-center justify-between py-4">
                                 <CardTitle
-                                  className={cn("text-[15px] font-semibold tracking-[0.01em]", isRailed && "text-[13px]")}
+                                  className="text-[15px] font-semibold tracking-[0.01em]"
                                   style={{ color: 'rgba(226, 232, 240, 0.92)' }}
                                 >
                                   Deal Information
                                 </CardTitle>
                               </CardHeader>
+                              )}
                               <CardContent className={cn("space-y-4", isRailed && "px-0 pb-0 space-y-0 deal-info-widget-fields")}>
                                 {!(isRailed && !isFinServDeal) && isDealInfoFieldVisible('narrative') && renderDealInfoField('narrative')}
 
