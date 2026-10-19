@@ -503,7 +503,7 @@ export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <LeaderboardTile
           label="Most Active Referral Sources"
-          tooltip="The referral sources who refer the most deals or dollars. Toggle between deal count (#) and dollar volume ($)."
+          tooltip="The referral sources who refer the most deals. Shows deal count | dollar volume."
           subtext="top 3 in selected timeframe"
           entries={sourceLeaderboard}
           isLoading={isLoading}
