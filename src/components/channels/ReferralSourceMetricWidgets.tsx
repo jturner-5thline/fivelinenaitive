@@ -1,3 +1,4 @@
+import { AT_RISK_MONTHS, type AtRiskRow } from "./atRiskSources";
 import { useState, useMemo, type ReactNode } from 'react';
 import { Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -329,6 +330,34 @@ interface LeaderboardTileProps {
   byFees?: boolean;
   emptyMessage?: string;
   isLoading?: boolean;
+  bare?: boolean;
+}
+
+function AtRiskList({ rows, isLoading }: { rows: AtRiskRow[]; isLoading?: boolean }) {
+  return (
+    <div className="flex flex-col gap-2 min-w-0 sm:pl-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[hsl(var(--warning,38_92%_50%))]">
+        At Risk · {AT_RISK_MONTHS}+ mo no deals
+      </p>
+      {isLoading ? (
+        <p className="text-xs text-muted-foreground py-2">Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-2">No inactive sources</p>
+      ) : (
+        <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto pr-1">
+          {rows.map((r) => (
+            <div key={r.key} className="flex items-center justify-between gap-2">
+              <span className="text-xs text-muted-foreground/90 truncate">{r.label}</span>
+              <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">
+                {r.monthsSince} mo · {r.totalDeals} deal{r.totalDeals === 1 ? '' : 's'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="text-[11px] text-muted-foreground leading-snug">{rows.length} source{rows.length === 1 ? '' : 's'} to re-engage or remove</p>
+    </div>
+  );
 }
 
 function LeaderboardTile({
@@ -339,6 +368,7 @@ function LeaderboardTile({
   byFees,
   emptyMessage = 'No data in selected timeframe',
   isLoading,
+  bare,
 }: LeaderboardTileProps) {
   const [drill, setDrill] = useState<LeaderboardRow | null>(null);
 
@@ -356,7 +386,7 @@ function LeaderboardTile({
     byFees ? formatCompactUsd(r.fees) : `${r.deals} | ${formatCompactUsd(r.dollars)}`;
 
   return (
-    <div className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3">
+    <div className={bare ? 'flex flex-col gap-2' : 'rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3'}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#FFFFFF] leading-tight">
@@ -431,6 +461,7 @@ export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode
     newSourceRows,
     sourceLeaderboard,
     channelLeaderboard,
+    atRiskSources,
     hasFeeData,
   } = useReferralSourceMetrics();
 
@@ -500,44 +531,66 @@ export function ReferralSourceMetricWidgets({ sideSlot }: { sideSlot?: ReactNode
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        <LeaderboardTile
-          label="Most Active Referral Sources"
-          tooltip="The referral sources who refer the most deals. Shows deal count | dollar volume."
-          subtext="top 3 in selected timeframe"
-          entries={sourceLeaderboard}
-          isLoading={isLoading}
-        />
-        <LeaderboardTile
-          label="Most Profitable Referral Sources"
-          tooltip="The referral sources who have referred the most revenue-generating activity to us."
-          subtext="by fee revenue in selected timeframe"
-          entries={sourceLeaderboard}
-          byFees
-          emptyMessage={hasFeeData ? 'No fee revenue in selected timeframe' : 'No fee data yet'}
-          isLoading={isLoading}
-        />
-        <LeaderboardTile
-          label="Most Active Channels"
-          tooltip="Top 3 channels (banks, service providers, etc.) by count of deals on the board. Shows deals | dollars on the board."
-          subtext="top 3 channels in selected timeframe"
-          entries={channelLeaderboard}
-          isLoading={isLoading}
-        />
-        <LeaderboardTile
-          label="Most Profitable Channels"
-          tooltip="Top 3 channels (banks, service providers, etc.) by fee revenue generated from their referrals."
-          subtext="by fee revenue in selected timeframe"
-          entries={channelLeaderboard}
-          byFees
-          emptyMessage={hasFeeData ? 'No fee revenue in selected timeframe' : 'No fee data yet'}
-          isLoading={isLoading}
-        />
-      </div>
+      {sideSlot ? <div className="min-w-0">{sideSlot}</div> : null}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
-        <ChannelMixDonut />
-        {sideSlot ? <div className="min-w-0">{sideSlot}</div> : null}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-stretch">
+        {/* Referral Sources: active vs. at-risk, side by side */}
+        <section className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">Referral Sources</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:divide-x sm:divide-border">
+            <div className="flex flex-col gap-4 min-w-0">
+              <LeaderboardTile
+                bare
+                label="Most Active"
+                tooltip="Referral sources who refer the most deals. Shows deal count | dollar volume."
+                subtext="top 3 in selected timeframe"
+                entries={sourceLeaderboard}
+                isLoading={isLoading}
+              />
+              <LeaderboardTile
+                bare
+                label="Most Profitable"
+                tooltip="Referral sources who have referred the most fee revenue."
+                subtext="by fee revenue"
+                entries={sourceLeaderboard}
+                byFees
+                emptyMessage={hasFeeData ? 'No fee revenue in selected timeframe' : 'No fee data yet'}
+                isLoading={isLoading}
+              />
+            </div>
+            <AtRiskList rows={atRiskSources} isLoading={isLoading} />
+          </div>
+        </section>
+
+        {/* Channels: mix donut + active / profitable lists */}
+        <section className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">Channels</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:divide-x sm:divide-border">
+            <div className="min-w-0 [&>*]:border-0 [&>*]:bg-transparent [&>*]:p-0">
+              <ChannelMixDonut />
+            </div>
+            <div className="flex flex-col gap-4 min-w-0 sm:pl-4">
+              <LeaderboardTile
+                bare
+                label="Most Active"
+                tooltip="Top 3 channels by deals on the board. Shows deals | dollars."
+                subtext="top 3 in selected timeframe"
+                entries={channelLeaderboard}
+                isLoading={isLoading}
+              />
+              <LeaderboardTile
+                bare
+                label="Most Profitable"
+                tooltip="Top 3 channels by fee revenue generated from their referrals."
+                subtext="by fee revenue"
+                entries={channelLeaderboard}
+                byFees
+                emptyMessage={hasFeeData ? 'No fee revenue in selected timeframe' : 'No fee data yet'}
+                isLoading={isLoading}
+              />
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );
