@@ -344,17 +344,20 @@ function LeaderboardTile({
   emptyMessage = 'No data in selected timeframe',
   isLoading,
 }: LeaderboardTileProps) {
-  const [mode, setMode] = useState<ToggleMode>('deals');
   const [drill, setDrill] = useState<LeaderboardRow | null>(null);
 
   const ranked = useMemo(() => {
-    const metric = (r: LeaderboardRow) =>
-      byFees ? r.fees : mode === 'dollars' ? r.dollars : r.deals;
-    return [...entries].filter((r) => metric(r) > 0).sort((a, b) => metric(b) - metric(a)).slice(0, 3);
-  }, [entries, mode, byFees]);
+    if (byFees) {
+      return [...entries].filter((r) => r.fees > 0).sort((a, b) => b.fees - a.fees).slice(0, 3);
+    }
+    return [...entries]
+      .filter((r) => r.deals > 0 || r.dollars > 0)
+      .sort((a, b) => b.deals - a.deals || b.dollars - a.dollars)
+      .slice(0, 3);
+  }, [entries, byFees]);
 
   const renderValue = (r: LeaderboardRow) =>
-    byFees ? formatCompactUsd(r.fees) : mode === 'dollars' ? formatCompactUsd(r.dollars) : String(r.deals);
+    byFees ? formatCompactUsd(r.fees) : `${r.deals} | ${formatCompactUsd(r.dollars)}`;
 
   return (
     <div className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3">
@@ -376,24 +379,7 @@ function LeaderboardTile({
             </Tooltip>
           </TooltipProvider>
         </div>
-        {toggleable ? (
-          <div className="flex items-center rounded-md border border-border overflow-hidden shrink-0">
-            {(['deals', 'dollars'] as ToggleMode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                className={`px-2 py-0.5 text-[10px] capitalize transition-colors ${
-                  mode === m
-                    ? 'bg-[hsl(var(--chart-2)/0.18)] text-[hsl(var(--chart-2))]'
-                    : 'text-muted-foreground/70 hover:text-muted-foreground'
-                }`}
-              >
-                {m === 'deals' ? '#' : '$'}
-              </button>
-            ))}
-          </div>
-        ) : ranked.length > 0 ? (
+        {ranked.length > 0 ? (
           <span className="text-[10px] text-muted-foreground/70 whitespace-nowrap">Drill →</span>
         ) : null}
       </div>
