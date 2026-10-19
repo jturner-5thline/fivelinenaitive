@@ -125,7 +125,7 @@ export function ContactSearchAndCreate({ open, onSelect, selectedName, autoFocus
         />
       </div>
       {(loading || results.length > 0 || search.trim().length > 0) && (
-        <div className="max-h-44 overflow-auto rounded-md border border-border bg-popover">
+        <div className="max-h-44 overflow-auto rounded-md border border-border">
           {loading ? (
             <div className="flex items-center justify-center py-3">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />

@@ -75,7 +75,7 @@ export function ContactPickerField({
           <ChevronDown className="h-3.5 w-3.5 opacity-50 shrink-0" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-3 bg-popover" align="start">
+      <PopoverContent className="w-80 p-3" align="start">
         <ContactSearchAndCreate
           open={open}
           onSelect={handleSelect}
