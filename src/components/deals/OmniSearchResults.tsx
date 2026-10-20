@@ -106,7 +106,7 @@ export function OmniSearchResults({ query, activeIndex, onResults, onSelect, onH
     const lenderR = rankTop(lenderPool, (l) => [l.name, l.contact, l.extra, l.site], q, 6).map((l): OmniResult => ({
       kind: 'lender', id: l.name, title: l.name,
       subtitle: [l.type, l.contact].filter(Boolean).join(' • ') || undefined,
-      path: `/lenders?search=${encodeURIComponent(l.name)}`,
+      path: `/lenders?lender=${encodeURIComponent(l.name)}`,
     }));
     const pageR = rankTop(PAGES, (p) => [p.name], q, 4).map((p): OmniResult => ({ kind: 'page', id: p.path, title: p.name, path: p.path }));
     return [...dealR, ...contactR, ...companyR, ...lenderR, ...pageR];
