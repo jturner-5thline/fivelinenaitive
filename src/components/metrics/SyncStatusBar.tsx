@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -92,35 +92,37 @@ export function SyncStatusBar() {
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      {syncStatuses?.qb?.lastSync && (
-        <Badge variant="outline" className="text-xs gap-1.5 font-normal">
-          <CheckCircle2 className="h-3 w-3 text-success" />
-          <span className="text-muted-foreground">
-            synced {formatDistanceToNow(new Date(syncStatuses.qb.lastSync), { addSuffix: true })}
-          </span>
-        </Badge>
-      )}
-      {syncStatuses?.hs?.lastSync && (
-        <Badge variant="outline" className="text-xs gap-1.5 font-normal">
-          <CheckCircle2 className="h-3 w-3 text-success" />
-          <span className="font-medium">HubSpot</span>
-          <span className="text-muted-foreground">
-            synced {formatDistanceToNow(new Date(syncStatuses.hs.lastSync), { addSuffix: true })}
-          </span>
-        </Badge>
-      )}
-
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleManualRefresh}
-        disabled={refreshing}
-        className="h-7 px-2 gap-1.5 text-xs font-normal"
-        aria-label="Refresh sync"
-      >
-        <RefreshCw className={cn('h-3 w-3', refreshing && 'animate-spin')} />
-        {refreshing ? 'Syncing…' : 'Refresh'}
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleManualRefresh}
+            disabled={refreshing}
+            className="h-7 px-2 gap-1.5 text-xs font-normal"
+            aria-label="Refresh sync"
+          >
+            <RefreshCw className={cn('h-3 w-3', refreshing && 'animate-spin')} />
+            {refreshing ? 'Syncing…' : 'Refresh'}
+          </Button>
+        </TooltipTrigger>
+        {hasAnySyncs && (
+          <TooltipContent align="end" className="text-xs space-y-0.5">
+            {syncStatuses?.qb?.lastSync && (
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-3 w-3 text-success" />
+                synced {formatDistanceToNow(new Date(syncStatuses.qb.lastSync), { addSuffix: true })}
+              </div>
+            )}
+            {syncStatuses?.hs?.lastSync && (
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-3 w-3 text-success" />
+                HubSpot synced {formatDistanceToNow(new Date(syncStatuses.hs.lastSync), { addSuffix: true })}
+              </div>
+            )}
+          </TooltipContent>
+        )}
+      </Tooltip>
 
       {/* Auto-sync settings */}
       <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
