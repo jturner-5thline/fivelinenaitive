@@ -1,5 +1,6 @@
 import { AT_RISK_MONTHS, type AtRiskRow } from "./atRiskSources";
 import { NewlyAddedSources } from "./NewlyAddedSources";
+import { ReferralSourceDealsDialog } from '@/components/partners/ReferralSourceDealsDialog';
 import { useState, useMemo, type ReactNode } from 'react';
 import { Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -328,6 +329,8 @@ interface LeaderboardTileProps {
   isLoading?: boolean;
   bare?: boolean;
   subtextOnHover?: boolean;
+  /** Open the referral-source contact drilldown instead of the generic list */
+  sourceDrill?: boolean;
 }
 
 function AtRiskList({ rows, isLoading }: { rows: AtRiskRow[]; isLoading?: boolean }) {
@@ -368,6 +371,7 @@ function LeaderboardTile({
   isLoading,
   bare,
   subtextOnHover,
+  sourceDrill,
 }: LeaderboardTileProps) {
   const [drill, setDrill] = useState<LeaderboardRow | null>(null);
 
@@ -432,12 +436,16 @@ function LeaderboardTile({
 
       {!subtextOnHover && <p className="text-[11px] text-muted-foreground leading-snug">{subtext}</p>}
 
+      {sourceDrill ? (
+        <ReferralSourceDealsDialog name={drill?.label ?? null} open={!!drill} onOpenChange={(o) => !o && setDrill(null)} />
+      ) : (
       <DrillDialog
         open={!!drill}
         onOpenChange={(o) => !o && setDrill(null)}
         title={drill?.label ?? ''}
         rows={drill?.rows ?? []}
       />
+      )}
     </div>
   );
 
@@ -492,6 +500,7 @@ export function ReferralSourceMetricWidgets({ sideSlot, belowSourcesSlot }: { si
                 subtextOnHover
                 subtext="top 3 in selected timeframe"
                 entries={sourceLeaderboard}
+                sourceDrill
                 isLoading={isLoading}
               />
               <LeaderboardTile
@@ -501,6 +510,7 @@ export function ReferralSourceMetricWidgets({ sideSlot, belowSourcesSlot }: { si
                 subtextOnHover
                 subtext="by fee revenue"
                 entries={sourceLeaderboard}
+                sourceDrill
                 byFees
                 emptyMessage={hasFeeData ? 'No fee revenue in selected timeframe' : 'No fee data yet'}
                 isLoading={isLoading}
