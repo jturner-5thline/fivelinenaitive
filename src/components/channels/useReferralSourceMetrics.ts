@@ -408,6 +408,52 @@ export function useReferralSourceMetrics() {
   );
 
 
+  // All pipeline sources with the date they were added (timeframe-independent),
+  // so a newly added source isn't flagged/removed before it has had 4–6 months.
+  const { data: allSourceRecords = [] } = useQuery({
+    queryKey: ['referral_sources_added_all', company?.id],
+    enabled: !!company?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('referral_sources')
+        .select('name, contact_name, created_at')
+        .eq('company_id', company!.id);
+      if (error) throw error;
+      return (data || []) as { name: string | null; contact_name: string | null; created_at: string }[];
+    },
+  });
+
+  const atRiskInputs = useMemo(() => {
+    const addedByName = new Map<string, string>();
+    for (const r of allSourceRecords) {
+      const k = normalizeEntityName(r.name || r.contact_name || '');
+      if (!k) continue;
+      const prev = addedByName.get(k);
+      if (!prev || r.created_at < prev) addedByName.set(k, r.created_at);
+    }
+    const seen = new Set<string>();
+    const inputs = activePipelineAllTime.map((s) => {
+      const k = normalizeEntityName(s.referredBy || '');
+      seen.add(k);
+      return {
+        referredBy: s.referredBy,
+        addedAt: addedByName.get(k) ?? null,
+        deals: s.deals
+          .filter((dl) => !isExcludedDealName(dl.company))
+          .map((dl) => ({ ...dl, stage: dl.stage || '' })),
+      };
+    });
+    // Manually added sources that have never referred a qualifying deal.
+    for (const r of allSourceRecords) {
+      const label = (r.name || r.contact_name || '').trim();
+      const k = normalizeEntityName(label);
+      if (!k || seen.has(k)) continue;
+      seen.add(k);
+      inputs.push({ referredBy: label, addedAt: addedByName.get(k) ?? r.created_at, deals: [] });
+    }
+    return inputs;
+  }, [activePipelineAllTime, allSourceRecords]);
+
 
   // ---- Fee revenue per referred deal ---------------------------------------
   const dealIds = useMemo(() => {
@@ -617,14 +663,7 @@ export function useReferralSourceMetrics() {
     newSourceRows,
     sourceLeaderboard,
     channelLeaderboard,
-    atRiskSources: computeAtRiskSources(
-      activePipelineAllTime.map((s) => ({
-        referredBy: s.referredBy,
-        deals: s.deals
-          .filter((dl) => !isExcludedDealName(dl.company))
-          .map((dl) => ({ ...dl, stage: dl.stage || '' })),
-      })),
-    ),
+    atRiskSources: computeAtRiskSources(atRiskInputs),
     /** True when no referred deal carries a fee figure. */
     hasFeeData: sourceLeaderboard.some((r) => r.fees > 0),
   };
