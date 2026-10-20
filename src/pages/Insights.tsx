@@ -2219,7 +2219,7 @@ function MetricsInner() {
           {/* Header (sticky to top of scrollable <main>) */}
           <StickyDashboardHeader
             surface="module"
-            className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 !py-2"
+            className="flex flex-col md:flex-row md:items-stretch md:justify-between gap-4 !py-2"
           >
             <div>
               <div className="flex items-center gap-3">
@@ -2503,8 +2503,6 @@ function MetricsInner() {
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                {selectedDashboard !== 'management-review' && <MasterPlanButton />}
-                <SyncStatusBar />
               </div>
               {/* Folder quick-access row: one button per dashboard folder,
                   each opening a dropdown of that folder's dashboards. */}
@@ -2564,6 +2562,11 @@ function MetricsInner() {
               </div>
             </div>
 
+            <div className="flex flex-col items-start md:items-end justify-between gap-3">
+            <div className="flex items-center gap-2">
+              {selectedDashboard !== 'management-review' && <MasterPlanButton />}
+              <SyncStatusBar />
+            </div>
             <div className="flex items-center gap-2">
               {effectiveSelectedDashboard === 'consolidated-debt-pipeline' && (
                 <DebtAdvisoryComparisonToggle />
@@ -2737,6 +2740,7 @@ function MetricsInner() {
                   )}
                 </>
               )}
+            </div>
             </div>
           </StickyDashboardHeader>
 
