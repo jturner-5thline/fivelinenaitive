@@ -331,7 +331,7 @@ interface LeaderboardTileProps {
 
 function AtRiskList({ rows, isLoading }: { rows: AtRiskRow[]; isLoading?: boolean }) {
   return (
-    <div className="flex flex-col gap-2 min-w-0 sm:pl-4">
+    <div className="flex flex-col gap-2 min-w-0 min-h-0 sm:pl-4">
       <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[hsl(var(--warning,38_92%_50%))]">
         At Risk · {AT_RISK_MONTHS}+ Mo
       </p>
@@ -340,7 +340,7 @@ function AtRiskList({ rows, isLoading }: { rows: AtRiskRow[]; isLoading?: boolea
       ) : rows.length === 0 ? (
         <p className="text-xs text-muted-foreground py-2">No inactive sources</p>
       ) : (
-        <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto pr-1">
+        <div className="flex flex-col gap-1.5 flex-1 min-h-0 max-h-56 lg:max-h-none overflow-y-auto pr-1">
           {rows.map((r) => (
             <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_3rem] items-center gap-2 h-5">
               <span className="text-xs text-muted-foreground/90 truncate">{r.label}</span>
@@ -476,10 +476,10 @@ export function ReferralSourceMetricWidgets({ sideSlot, belowSourcesSlot }: { si
         {/* Left column: Referral Sources + KPIs, height driven by Channels */}
         <div className="min-w-0 lg:relative">
         <div className="flex flex-col gap-3 lg:absolute lg:inset-0">
-        <section className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0 lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
+        <section className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0 lg:flex-1 lg:min-h-0 lg:overflow-hidden">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">Referral Sources</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:divide-x sm:divide-border">
-            <div className="flex flex-col gap-4 min-w-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:divide-x sm:divide-border lg:flex-1 lg:min-h-0">
+            <div className="flex flex-col gap-4 min-w-0 lg:min-h-0 lg:overflow-y-auto">
               <LeaderboardTile
                 bare
                 label="Most Active"
