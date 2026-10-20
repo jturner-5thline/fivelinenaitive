@@ -38,6 +38,8 @@ export interface EditableDealStatusTagProps {
   hideDot?: boolean;
   /** When true, hides the chevron affordance (still clickable). */
   hideChevron?: boolean;
+  /** Extra classes for the pill itself (size overrides on larger surfaces). */
+  tagClassName?: string;
 }
 
 export function EditableDealStatusTag({
@@ -46,6 +48,7 @@ export function EditableDealStatusTag({
   className,
   hideDot,
   hideChevron,
+  tagClassName,
 }: EditableDealStatusTagProps) {
   const requestStatusChange = useRequestStatusChange();
   const [open, setOpen] = useState(false);
@@ -109,16 +112,16 @@ export function EditableDealStatusTag({
             <DealStatusTag
               status={current}
               hideDot={hideDot}
-              className="cursor-pointer hover:brightness-110"
+              className={cn('cursor-pointer hover:brightness-110', tagClassName)}
             />
           ) : (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0 h-[18px] rounded-full text-[10px] font-medium leading-none whitespace-nowrap border border-border/60 bg-muted/40 text-muted-foreground cursor-pointer hover:bg-muted/60">
+            <span className={cn('inline-flex items-center gap-1 px-1.5 py-0 h-[18px] rounded-full text-[10px] font-medium leading-none whitespace-nowrap border border-border/60 bg-muted/40 text-muted-foreground cursor-pointer hover:bg-muted/60', tagClassName)}>
               {!hideDot && <CircleDashed className="h-2.5 w-2.5" />}
               <span className="truncate">No status</span>
             </span>
           )}
           {!hideChevron && (
-            <span className="ml-0.5 inline-flex h-[18px] items-center text-muted-foreground/70">
+            <span className={cn('ml-0.5 inline-flex items-center text-muted-foreground/70', tagClassName ? 'h-6' : 'h-[18px]')}>
               {pending
                 ? <Loader2 className="h-3 w-3 animate-spin" />
                 : <ChevronDown className="h-3 w-3" />}
