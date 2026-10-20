@@ -146,6 +146,7 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
     setLeadSource('');
     setReferralSource('');
     setOpportunityType('');
+    setClientType('');
     setServicesOffered([]);
     setFeeType('');
     setMrr('');
