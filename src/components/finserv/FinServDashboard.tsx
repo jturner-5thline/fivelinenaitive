@@ -96,7 +96,7 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
         <div className="lg:col-span-2 space-y-4">
       {/* KPI Strip — every card drills into its underlying deals */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -217,6 +217,20 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
             </CardContent>
           </Card>
         </div>
+        </div>
+        <div className="flex flex-col [&>*]:flex-1 [&_.recharts-responsive-container]:!h-[220px]">
+          <ClientTypeDonut
+            deals={aggregateDeals}
+            onDrill={(s, m) => open({
+              title: `Client Type — ${s.name}`,
+              formula: m === 'count'
+                ? 'Pipeline deals (excl. Churned/Lost/In Development) with this client type.'
+                : 'Sum of MRR across pipeline deals (excl. Churned/Lost/In Development) with this client type.',
+              deals: s.deals,
+            })}
+          />
+        </div>
+        <div className="lg:col-span-2">
 
         {/* Pipeline Stats + Conversion */}
         <Card>
@@ -285,20 +299,7 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
           </CardContent>
         </Card>
         </div>
-
-
-        {/* Timing Metrics */}
-        <div className="space-y-4">
-          <ClientTypeDonut
-            deals={aggregateDeals}
-            onDrill={(s, m) => open({
-              title: `Client Type — ${s.name}`,
-              formula: m === 'count'
-                ? 'Pipeline deals (excl. Churned/Lost/In Development) with this client type.'
-                : 'Sum of MRR across pipeline deals (excl. Churned/Lost/In Development) with this client type.',
-              deals: s.deals,
-            })}
-          />
+        <div>
       {/* Insights */}
       {insights.length > 0 && (
         <Card>
