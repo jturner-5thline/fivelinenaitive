@@ -12488,6 +12488,7 @@ export type Database = {
           ai_status_snapshot: Json | null
           analyst: string | null
           business_model: string | null
+          client_type: string | null
           closed_at: string | null
           closing_date: string | null
           company: string
@@ -12584,6 +12585,7 @@ export type Database = {
           ai_status_snapshot?: Json | null
           analyst?: string | null
           business_model?: string | null
+          client_type?: string | null
           closed_at?: string | null
           closing_date?: string | null
           company: string
@@ -12680,6 +12682,7 @@ export type Database = {
           ai_status_snapshot?: Json | null
           analyst?: string | null
           business_model?: string | null
+          client_type?: string | null
           closed_at?: string | null
           closing_date?: string | null
           company?: string
