@@ -96,8 +96,10 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
 
   return (
     <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+        <div className="lg:col-span-2 space-y-4">
       {/* KPI Strip — every card drills into its underlying deals */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <KpiCard
           label="Total Deals" value={kpis.totalDeals} icon={BarChart3} color="bg-primary"
           onClick={() => open({
@@ -111,14 +113,6 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
           onClick={() => open({
             title: 'Active Deals',
             formula: 'Deals not in a terminal stage (excludes Active Client wins, Churned, and Lost).',
-            deals: activeDeals,
-          })}
-        />
-        <KpiCard
-          label="Weighted Value" value={formatValue(kpis.weightedValue)} icon={Target} color="bg-chart-3"
-          onClick={() => open({
-            title: 'Weighted Pipeline Value',
-            formula: 'Σ (deal value × stage probability) across active, non-Churned/Lost deals.',
             deals: activeDeals,
           })}
         />
@@ -141,14 +135,13 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Pipeline Stats + Conversion */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-3">
+        <Card>
+          <CardHeader className="py-2.5 px-4">
             <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Pipeline Stats & Conversion</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-auto">
+            <div className="overflow-auto max-h-[320px] [&_td]:py-1.5 [&_th]:py-1.5">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
@@ -208,6 +201,8 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
             </div>
           </CardContent>
         </Card>
+        </div>
+
 
         {/* Timing Metrics */}
         <div className="space-y-4">
