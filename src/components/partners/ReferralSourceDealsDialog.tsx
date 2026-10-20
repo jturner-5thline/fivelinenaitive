@@ -119,23 +119,39 @@ export function ReferralSourceDealsDialog({
     },
   });
 
+  const [showContact, setShowContact] = useState(false);
+  const totalVolume = rows.reduce((s, r) => s + (r.value || 0), 0);
+  const lastAt = rows[0]?.referredAt;
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {contactId ? (
-              <a href={`/contacts/${contactId}`} className="hover:underline" title="Open contact details">
-                {name}
-              </a>
-            ) : (
-              name
-            )}
-          </DialogTitle>
+          <div className="flex items-start justify-between gap-3 pr-6">
+            <DialogTitle>{name}</DialogTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1.5 text-[11px]"
+              disabled={!contactId}
+              title={contactId ? 'Open full contact details' : 'No linked contact record'}
+              onClick={() => setShowContact(true)}
+            >
+              <Maximize2 className="h-3 w-3" /> Contact details
+            </Button>
+          </div>
           <DialogDescription>
             {isLoading ? 'Loading referred deals…' : `${rows.length} referred deal${rows.length === 1 ? '' : 's'}`}
           </DialogDescription>
         </DialogHeader>
+        {!isLoading && rows.length > 0 && (
+          <div className="grid grid-cols-3 gap-2 rounded-md border border-border/60 p-2.5 text-center">
+            <div><p className="text-[9px] uppercase tracking-wide text-muted-foreground">Deals</p><p className="font-mono text-sm tabular-nums">{rows.length}</p></div>
+            <div><p className="text-[9px] uppercase tracking-wide text-muted-foreground">Volume</p><p className="font-mono text-sm tabular-nums">{formatUSD(totalVolume)}</p></div>
+            <div><p className="text-[9px] uppercase tracking-wide text-muted-foreground">Last deal</p><p className="font-mono text-sm tabular-nums">{lastAt ? format(new Date(lastAt), 'MMM d, yyyy') : '—'}</p></div>
+          </div>
+        )}
         <div className="flex flex-col divide-y divide-border">
           {!isLoading && rows.length === 0 && (
             <p className="text-sm text-muted-foreground py-6 text-center">No referred deals yet.</p>
@@ -179,5 +195,10 @@ export function ReferralSourceDealsDialog({
         </div>
       </DialogContent>
     </Dialog>
+    <ReferralEntityQuickView
+      target={showContact && contactId ? { type: 'contact', id: contactId } : null}
+      onClose={() => setShowContact(false)}
+    />
+    </>
   );
 }
