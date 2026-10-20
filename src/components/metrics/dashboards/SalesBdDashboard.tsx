@@ -83,7 +83,7 @@ function SalesBdDashboardInner() {
             <ReferralSourceDeals
               kpisOnly
               kpiKeys={['conversion', 'sources']}
-              kpiGridClassName="grid grid-cols-2 gap-3"
+              kpiGridClassName="grid grid-cols-2 gap-3 h-full"
             />
           }
         />

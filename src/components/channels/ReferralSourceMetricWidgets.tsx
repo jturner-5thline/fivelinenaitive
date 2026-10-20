@@ -537,7 +537,8 @@ export function ReferralSourceMetricWidgets({ sideSlot, belowSourcesSlot }: { si
         </section>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="kpi-row-centered grid grid-cols-2 lg:grid-cols-4 gap-3 text-center [&_.flex]:justify-center [&_.flex]:items-center">
+        <div className="contents">
         <MetricTile
           label="Meetings w/ Existing Referral Sources"
           value={String(meetingCount)}
@@ -599,9 +600,9 @@ export function ReferralSourceMetricWidgets({ sideSlot, belowSourcesSlot }: { si
           drillTitle="New referral sources"
           isLoading={isLoading}
         />
+        </div>
+        {sideSlot ? <div className="col-span-2 min-w-0">{sideSlot}</div> : null}
       </div>
-
-      {sideSlot ? <div className="min-w-0">{sideSlot}</div> : null}
     </div>
   );
 }
