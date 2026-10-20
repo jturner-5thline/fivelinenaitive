@@ -16,4 +16,11 @@ describe('computeAtRiskSources', () => {
     );
     expect(rows).toEqual([]);
   });
+  it('ignores deals that never reached NDA / Needs List', () => {
+    const rows = computeAtRiskSources(
+      [{ referredBy: 'S', deals: [{ ...d('2026-03-01T00:00:00Z'), stage: 'proposal-issued' }, { ...d('2026-09-01T00:00:00Z'), stage: 'lead' }] }],
+      now,
+    );
+    expect(rows.map((r) => r.monthsSince)).toEqual([7]);
+  });
 });
