@@ -5194,3 +5194,10 @@ aside[aria-label="Deal info"] .deal-info-widget-body .deal-info-railed-card:hove
   outline: 0 !important;
   box-shadow: none !important;
 }
+
+/* Insights header folder dropdowns (Management Insights / Financial / Sales & BD): borderless. */
+html body.ceo-theme .insights-glass-skin button.insights-folder-btn,
+html body.ceo-theme .insights-glass-skin button.insights-folder-btn:hover {
+  border: 0 !important;
+  box-shadow: none !important;
+}

@@ -2525,7 +2525,7 @@ function MetricsInner() {
                           variant="outline"
                           size="sm"
                           className={cn(
-                            'h-8 gap-1.5 rounded-lg !border-0 !shadow-none bg-card dark:bg-[var(--bg-card)] text-sm font-medium text-muted-foreground hover:text-foreground dark:hover:bg-[var(--bg-card-hover)]',
+                            'insights-folder-btn h-8 gap-1.5 rounded-lg !border-0 !shadow-none bg-card dark:bg-[var(--bg-card)] text-sm font-medium text-muted-foreground hover:text-foreground dark:hover:bg-[var(--bg-card-hover)]',
                             containsActive && "bg-[var(--selected-tint)] text-foreground",
                           )}
                         >
