@@ -99,11 +99,10 @@ export function SyncStatusBar() {
             size="sm"
             onClick={handleManualRefresh}
             disabled={refreshing}
-            className="h-7 px-2 gap-1.5 text-xs font-normal"
-            aria-label="Refresh sync"
+            className="h-7 w-7 p-0"
+            aria-label={refreshing ? 'Syncing' : 'Refresh sync'}
           >
-            <RefreshCw className={cn('h-3 w-3', refreshing && 'animate-spin')} />
-            {refreshing ? 'Syncing…' : 'Refresh'}
+            <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
           </Button>
         </TooltipTrigger>
         {hasAnySyncs && (
