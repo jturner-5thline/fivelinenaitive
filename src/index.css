@@ -5185,6 +5185,10 @@ html body.ceo-theme [data-radix-popper-content-wrapper] ~ .fixed.inset-0.bg-back
   grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem 1rem; align-items: start;
 }
 .deal-info-widget-body .deal-info-widget-fields > *:only-child > * { margin-top: 0 !important; min-width: 0; }
+/* FinServ: narrative spans full width above the sectioned field grid. */
+.deal-info-widget-body .deal-info-widget-fields:has(> .deal-finserv-info) { display: flex; flex-direction: column; gap: 0.875rem; }
+.deal-info-widget-body .deal-info-widget-fields > .deal-finserv-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.875rem 1.25rem; }
+.deal-info-widget-body .deal-finserv-info > section:last-child { grid-column: 1 / -1; }
 
 /* Deal Info widget: the nested Deal Information card has no interior border. */
 aside[aria-label="Deal info"] .deal-info-widget-body .deal-info-railed-card,
