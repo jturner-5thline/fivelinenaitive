@@ -254,6 +254,7 @@ export default function FinServ() {
       <div className="bg-transparent">
         <DashboardPage
           padding="sm"
+          className="!pt-0 -mt-[5px]"
           wrapper={(children) => (
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
               {children}
