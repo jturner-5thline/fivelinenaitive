@@ -1,3 +1,8 @@
+import { useState } from 'react';
+import { Maximize2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { formatUSDFromDollars } from '@/lib/formatters/currency';
+import { ReferralEntityQuickView } from '@/components/channels/ReferralEntityQuickView';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -148,7 +153,7 @@ export function ReferralSourceDealsDialog({
         {!isLoading && rows.length > 0 && (
           <div className="grid grid-cols-3 gap-2 rounded-md border border-border/60 p-2.5 text-center">
             <div><p className="text-[9px] uppercase tracking-wide text-muted-foreground">Deals</p><p className="font-mono text-sm tabular-nums">{rows.length}</p></div>
-            <div><p className="text-[9px] uppercase tracking-wide text-muted-foreground">Volume</p><p className="font-mono text-sm tabular-nums">{formatUSD(totalVolume)}</p></div>
+            <div><p className="text-[9px] uppercase tracking-wide text-muted-foreground">Volume</p><p className="font-mono text-sm tabular-nums">{formatUSDFromDollars(totalVolume)}</p></div>
             <div><p className="text-[9px] uppercase tracking-wide text-muted-foreground">Last deal</p><p className="font-mono text-sm tabular-nums">{lastAt ? format(new Date(lastAt), 'MMM d, yyyy') : '—'}</p></div>
           </div>
         )}
