@@ -138,9 +138,14 @@ export function EditableDealStageTag({
         >
           <Badge
             variant="outline"
-            className="deal-stage-chip rounded-md text-[10px] font-semibold px-2 py-0 cursor-pointer border border-cyan-300/70 text-cyan-200 !bg-transparent transition-colors hover:border-cyan-200 hover:text-cyan-100"
+            className="deal-stage-chip inline-flex items-center gap-1 h-6 rounded-md text-xs font-semibold leading-none px-2 py-0 whitespace-nowrap cursor-pointer border border-cyan-300/70 text-cyan-200 !bg-transparent transition-colors hover:border-cyan-200 hover:text-cyan-100"
           >
             {currentLabel ?? 'Set stage'}
+            {!hideChevron && (
+              pending
+                ? <Loader2 className="h-3 w-3 animate-spin opacity-80" />
+                : <ChevronDown className="h-3 w-3 opacity-70" />
+            )}
           </Badge>
           {!hideChevron && (
             <span className="ml-0.5 inline-flex h-[18px] items-center text-muted-foreground/70">
