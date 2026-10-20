@@ -218,7 +218,7 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
           </Card>
         </div>
         </div>
-        <div className="flex flex-col [&>*]:flex-1 [&_.recharts-responsive-container]:!h-[220px]">
+        <div className="flex flex-col [&>*]:flex-1">
           <ClientTypeDonut
             deals={aggregateDeals}
             onDrill={(s, m) => open({
