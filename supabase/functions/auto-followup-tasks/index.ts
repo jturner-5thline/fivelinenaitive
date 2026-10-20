@@ -27,6 +27,20 @@ const ALLOWED_OWNER_EMAILS = new Set<string>([
   "ppina@5thline.co",
   "ffustinoni@5thline.co",
 ]);
+
+// Per-owner suppression: never auto-create a follow-up task for these owners
+// when the event includes any of the listed attendee emails (user request).
+const OWNER_ATTENDEE_SUPPRESSIONS: Record<string, string[]> = {
+  "swilliams@5thline.co": ["scottrossmanwjr@gmail.com"],
+};
+
+function isSuppressedForOwner(ownerEmail: string, attendees: unknown[]): boolean {
+  const blocked = OWNER_ATTENDEE_SUPPRESSIONS[(ownerEmail || "").toLowerCase().trim()];
+  if (!blocked?.length) return false;
+  return (attendees || []).some((a) =>
+    blocked.includes(String(a ?? "").toLowerCase().trim()),
+  );
+}
 const ASANA_PROJECT_GID = "1130343959659969";
 const ASANA_SECTION_GID = "1200505058741223";
 const ASANA_API = "https://app.asana.com/api/1.0";
@@ -104,6 +118,11 @@ Deno.serve(async (req) => {
       });
       if (!hasExternal) {
         results.push({ event_id: ev.id, skipped: "no_external_attendees" });
+        await markProcessed(admin, ev.id);
+        continue;
+      }
+      if (isSuppressedForOwner(ownerEmail, attendees)) {
+        results.push({ event_id: ev.id, skipped: "owner_attendee_suppressed" });
         await markProcessed(admin, ev.id);
         continue;
       }
@@ -298,6 +317,10 @@ async function scanNylasForInternalUsers(
           });
           if (!hasExternal) {
             out.push({ nylas_event_id: ev.id, skipped: "no_external_attendees" });
+            continue;
+          }
+          if (isSuppressedForOwner(ownerEmail, participants.map((p) => p?.email))) {
+            out.push({ nylas_event_id: ev.id, skipped: "owner_attendee_suppressed" });
             continue;
           }
 
