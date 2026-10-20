@@ -87,6 +87,10 @@ export function useReferralSourceMetrics() {
   const { referralSources: allTimeReferralSources } = useDealReferralSources({
     ignoreDateRange: true,
   });
+  const { referralSources: activePipelineAllTime } = useDealReferralSources({
+    ignoreDateRange: true,
+    pipelineFilter: 'active',
+  });
 
   const sources = useMemo(
     () =>
@@ -614,9 +618,11 @@ export function useReferralSourceMetrics() {
     sourceLeaderboard,
     channelLeaderboard,
     atRiskSources: computeAtRiskSources(
-      allTimeReferralSources.map((s) => ({
+      activePipelineAllTime.map((s) => ({
         referredBy: s.referredBy,
-        deals: s.deals.filter((dl) => !isExcludedDealName(dl.company)),
+        deals: s.deals
+          .filter((dl) => !isExcludedDealName(dl.company))
+          .map((dl) => ({ ...dl, stage: dl.stage || '' })),
       })),
     ),
     /** True when no referred deal carries a fee figure. */

@@ -333,7 +333,7 @@ function AtRiskList({ rows, isLoading }: { rows: AtRiskRow[]; isLoading?: boolea
   return (
     <div className="flex flex-col gap-2 min-w-0 sm:pl-4">
       <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[hsl(var(--warning,38_92%_50%))]">
-        At Risk · {AT_RISK_MONTHS}+ mo no deals
+        At Risk · {AT_RISK_MONTHS}+ Mo
       </p>
       {isLoading ? (
         <p className="text-xs text-muted-foreground py-2">Loading…</p>
@@ -342,16 +342,15 @@ function AtRiskList({ rows, isLoading }: { rows: AtRiskRow[]; isLoading?: boolea
       ) : (
         <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto pr-1">
           {rows.map((r) => (
-            <div key={r.key} className="flex items-center justify-between gap-2">
+            <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_3rem] items-center gap-2 h-5">
               <span className="text-xs text-muted-foreground/90 truncate">{r.label}</span>
-              <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">
-                {r.monthsSince} mo · {r.totalDeals} deal{r.totalDeals === 1 ? '' : 's'}
+              <span className="text-xs font-mono tabular-nums text-muted-foreground text-right">
+                {r.monthsSince} Mo
               </span>
             </div>
           ))}
         </div>
       )}
-      <p className="text-[11px] text-muted-foreground leading-snug">{rows.length} source{rows.length === 1 ? '' : 's'} to re-engage or remove</p>
     </div>
   );
 }
@@ -418,13 +417,11 @@ function LeaderboardTile({
               key={r.key}
               type="button"
               onClick={() => setDrill(r)}
-              className="flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity"
+              className="grid grid-cols-[0.75rem_minmax(0,1fr)_auto] items-center gap-2 h-5 text-left hover:opacity-80 transition-opacity"
             >
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[10px] tabular-nums text-muted-foreground/60 w-3">{i + 1}</span>
-                <span className="text-xs text-muted-foreground/90 truncate">{r.label}</span>
-              </div>
-              <span className="text-sm font-semibold tabular-nums text-[#FFFFFF]">{renderValue(r)}</span>
+              <span className="text-[10px] tabular-nums text-muted-foreground/60">{i + 1}</span>
+              <span className="text-xs text-muted-foreground/90 truncate">{r.label}</span>
+              <span className="text-xs font-mono font-semibold tabular-nums text-foreground text-right whitespace-nowrap">{renderValue(r)}</span>
             </button>
           ))
         )}
