@@ -53,6 +53,7 @@ function SalesBdDashboardInner() {
             </button>
           )}
         </div>
+        <div className="ml-auto flex items-center gap-2">
         <CrmUpdateQueueButton />
         {canEditPartnerRules && (
           <Button
@@ -66,6 +67,7 @@ function SalesBdDashboardInner() {
             <SettingsIcon className="h-3.5 w-3.5" />
           </Button>
         )}
+        </div>
       </div>
 
       <div className="mx-auto max-w-[1400px] space-y-6">
