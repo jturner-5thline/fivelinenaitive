@@ -41,7 +41,7 @@ export function ClientTypeDonut({ deals, onDrill }: { deals: Deal[]; onDrill: (s
         </div>
       </CardHeader>
       <CardContent>
-        <div className="relative h-[180px]">
+        <div className="relative h-[220px]">
           {total === 0 ? (
             <div className="flex h-full items-center justify-center text-xs text-muted-foreground">No data yet</div>
           ) : (
