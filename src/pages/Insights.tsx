@@ -2506,7 +2506,7 @@ function MetricsInner() {
               </div>
               {/* Folder quick-access row: one button per dashboard folder,
                   each opening a dropdown of that folder's dashboards. */}
-              <div className="mt-3 flex flex-wrap items-center gap-2">
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
                 {[
                   ...DEFAULT_FOLDER_GROUPS.map((g) => ({ id: g.id, name: g.name, dashboardIds: g.dashboardIds })),
                   ...folders.map((f) => ({ id: f.id, name: f.name, dashboardIds: f.dashboardIds })),
@@ -2562,7 +2562,7 @@ function MetricsInner() {
               </div>
             </div>
 
-            <div className="flex flex-col items-stretch w-fit md:ml-auto justify-between gap-3">
+            <div className="flex flex-col items-stretch w-fit md:ml-auto justify-between gap-1.5">
             <div className="flex items-center justify-end gap-2">
               {selectedDashboard !== 'management-review' && <MasterPlanButton />}
               <SyncStatusBar />
