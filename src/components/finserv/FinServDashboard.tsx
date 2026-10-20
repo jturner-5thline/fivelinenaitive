@@ -8,6 +8,7 @@ import { DealStageOption } from '@/contexts/DealStagesContext';
 import { useFinServMetrics, FinServInsight } from '@/hooks/useFinServMetrics';
 import { useNavigate } from 'react-router-dom';
 import { FinServDrillDownSheet, FinServDrillDownConfig } from './FinServDrillDownSheet';
+import { ClientTypeDonut } from './ClientTypeDonut';
 
 // Canonical stage IDs — keep in sync with useFinServMetrics + FINSERV_STAGES.
 const ACTIVE_CLIENT_STAGE = 'fs-closed-won';
@@ -210,6 +211,16 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
 
         {/* Timing Metrics */}
         <div className="space-y-4">
+          <ClientTypeDonut
+            deals={aggregateDeals}
+            onDrill={(s, m) => open({
+              title: `Client Type — ${s.name}`,
+              formula: m === 'count'
+                ? 'Pipeline deals (excl. Churned/Lost/In Development) with this client type.'
+                : 'Sum of MRR across pipeline deals (excl. Churned/Lost/In Development) with this client type.',
+              deals: s.deals,
+            })}
+          />
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
