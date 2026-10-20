@@ -112,6 +112,8 @@ interface PipelineCard {
   dealCount: number;
   volume: number;
   manual: boolean;
+  addedAt: string | null;
+  lastDealAt: string | null;
 }
 
 function formatCurrencyCompact(v: number): string {
@@ -119,6 +121,25 @@ function formatCurrencyCompact(v: number): string {
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
   if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
   return `$${Math.round(v).toLocaleString()}`;
+}
+
+function formatAgo(iso: string | null, now = new Date()): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  const days = Math.max(0, Math.floor((now.getTime() - d.getTime()) / 86_400_000));
+  if (days < 1) return 'Today';
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30.44);
+  if (months < 12) return `${months} mo ago`;
+  return `${(days / 365.25).toFixed(1)} yr ago`;
+}
+
+function formatShortDate(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -239,6 +260,9 @@ export function ReferralSourcePipelineWidget({ search = '' }: { search?: string 
       if (!ownerAllows(r.ownerUserId ?? null)) continue;
       if (!matchesSearch(r.referredBy, r.companyName)) continue;
 
+      const dealDates = r.deals.map(d => d.created_at).filter(Boolean).sort();
+      const firstDeal = dealDates[0] ?? null;
+      const manualAdded = addedByName.get(normalize(r.referredBy)) ?? null;
       byStage.get(key)!.push({
         id: `deal:${r.contactId || r.crmCompanyId || r.referredBy}`,
         name: r.referredBy,
@@ -246,6 +270,8 @@ export function ReferralSourcePipelineWidget({ search = '' }: { search?: string 
         dealCount: r.dealCount,
         volume: r.totalVolume,
         manual: false,
+        addedAt: manualAdded && (!firstDeal || manualAdded < firstDeal) ? manualAdded : firstDeal,
+        lastDealAt: dealDates[dealDates.length - 1] ?? r.latestDeal?.created_at ?? null,
       });
     }
 
@@ -263,6 +289,8 @@ export function ReferralSourcePipelineWidget({ search = '' }: { search?: string 
         dealCount: 0,
         volume: 0,
         manual: true,
+        addedAt: m.created_at ?? null,
+        lastDealAt: null,
       });
     }
 
@@ -318,7 +346,7 @@ export function ReferralSourcePipelineWidget({ search = '' }: { search?: string 
 
 
   return (
-    <div className={`${liquidGlassCard} p-4 space-y-4`}>
+    <div className={`${liquidGlassCard} p-3 space-y-2.5`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold tracking-tight text-foreground">Referral Source Pipeline</h3>
@@ -366,7 +394,7 @@ export function ReferralSourcePipelineWidget({ search = '' }: { search?: string 
               </p>
             </div>
 
-            <ScrollArea className="h-56">
+            <ScrollArea className="h-96">
               <div className="p-1.5 space-y-1.5">
                 {stage.cards.length === 0 && (
                   <p className="text-[10px] text-muted-foreground/70 px-1.5 py-3 text-center">No sources</p>
@@ -378,10 +406,10 @@ export function ReferralSourcePipelineWidget({ search = '' }: { search?: string 
                     tabIndex={0}
                     onClick={() => setOpenSource(card.name)}
                     onKeyDown={e => { if (e.key === 'Enter') setOpenSource(card.name); }}
-                    className="group cursor-pointer rounded-md border border-[rgba(126,184,247,0.22)] bg-[#0b1226] px-2 py-1.5 hover:bg-[#101836] hover:border-[rgba(126,184,247,0.4)] transition-colors"
+                    className="group cursor-pointer rounded-md border border-[rgba(126,184,247,0.22)] bg-[#0b1226] px-2.5 py-2 hover:bg-[#101836] hover:border-[rgba(126,184,247,0.4)] transition-colors"
                   >
                     <div className="flex items-start justify-between gap-1">
-                      <p className="text-[11px] font-medium text-foreground leading-tight truncate">{card.name}</p>
+                      <p className="text-xs font-medium text-foreground leading-tight truncate">{card.name}</p>
                       {card.manual && (
                         <button
                           type="button"
@@ -394,14 +422,31 @@ export function ReferralSourcePipelineWidget({ search = '' }: { search?: string 
                       )}
                     </div>
                     {card.company && (
-                      <p className="text-[10px] text-muted-foreground flex items-center gap-1 truncate">
+                      <p className="text-[10px] text-muted-foreground flex items-center gap-1 truncate mt-0.5">
                         <Building2 className="h-2.5 w-2.5 shrink-0" />
                         <span className="truncate">{card.company}</span>
                       </p>
                     )}
-                    <p className="text-[10px] font-mono tabular-nums text-muted-foreground/80 mt-0.5">
-                      {card.dealCount} deal{card.dealCount === 1 ? '' : 's'} · {formatCurrencyCompact(card.volume)}
-                    </p>
+                    <div className="mt-1.5 flex items-baseline justify-between gap-2 font-mono tabular-nums">
+                      <span className="text-[11px] text-foreground">
+                        {card.dealCount} deal{card.dealCount === 1 ? '' : 's'}
+                      </span>
+                      <span className="text-[11px] text-foreground">{formatCurrencyCompact(card.volume)}</span>
+                    </div>
+                    <div className="mt-1 grid grid-cols-2 gap-2 border-t border-[rgba(126,184,247,0.12)] pt-1">
+                      <div className="min-w-0">
+                        <p className="text-[9px] uppercase tracking-wide text-muted-foreground/70">Added</p>
+                        <p className="text-[10px] font-mono tabular-nums text-muted-foreground truncate" title={formatShortDate(card.addedAt)}>
+                          {formatShortDate(card.addedAt)}
+                        </p>
+                      </div>
+                      <div className="min-w-0 text-right">
+                        <p className="text-[9px] uppercase tracking-wide text-muted-foreground/70">Last deal</p>
+                        <p className="text-[10px] font-mono tabular-nums text-muted-foreground truncate">
+                          {card.lastDealAt ? formatAgo(card.lastDealAt) : 'None yet'}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
