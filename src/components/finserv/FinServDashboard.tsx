@@ -135,6 +135,89 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
         />
       </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <Clock className="h-4 w-4" /> Timing
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              <button
+                type="button"
+                onClick={() => open({
+                  title: 'Avg Days in Stage — Active Deals',
+                  formula: 'Average of (now − last updated) across active deals. Drill-down lists every active deal feeding this average.',
+                  deals: activeDeals,
+                })}
+                className="w-full flex justify-between items-center px-2 py-1.5 -mx-2 rounded-md hover:bg-muted/40 transition-colors"
+              >
+                <span className="text-sm text-muted-foreground">Avg Days in Stage</span>
+                <span className="text-sm font-semibold tabular-nums">{kpis.avgDaysInStage}d</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => open({
+                  title: 'At-Risk Deals',
+                  formula: 'Deals with status = "at-risk" (excludes Churned/Lost).',
+                  deals: atRiskDeals,
+                })}
+                className="w-full flex justify-between items-center px-2 py-1.5 -mx-2 rounded-md hover:bg-muted/40 transition-colors"
+              >
+                <span className="text-sm text-muted-foreground">At Risk</span>
+                <span className="text-sm font-semibold tabular-nums text-yellow-500">{kpis.atRiskCount}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => open({
+                  title: 'Stalled Deals (14d+)',
+                  formula: 'Active deals with no update in 14+ days.',
+                  deals: stalledDeals,
+                })}
+                className="w-full flex justify-between items-center px-2 py-1.5 -mx-2 rounded-md hover:bg-muted/40 transition-colors"
+              >
+                <span className="text-sm text-muted-foreground">Stalled (14d+)</span>
+                <span className="text-sm font-semibold tabular-nums text-orange-500">{kpis.stalledCount}</span>
+              </button>
+            </CardContent>
+          </Card>
+          {/* Top Active Clients (deals currently in the Active Client stage only) */}
+          <Card>
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <Trophy className="h-4 w-4" /> Top Active Clients
+              </CardTitle>
+              <button
+                type="button"
+                className="text-[10px] uppercase tracking-wider text-primary hover:underline"
+                onClick={() => open({
+                  title: 'Active Clients — Ranked by MRR',
+                  formula: 'All deals currently in the Active Client stage, sorted by MRR.',
+                  deals: deals.filter(d => d.stage === ACTIVE_CLIENT_STAGE),
+                })}
+              >
+                View all
+              </button>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {topClients.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No deals in the Active Client stage yet.</p>
+              ) : topClients.map((c, i) => (
+                <button
+                  type="button"
+                  key={c.dealId}
+                  onClick={() => navigate(`/finserv?deal=${c.dealId}`)}
+                  className="w-full flex items-center gap-3 px-2 py-1.5 -mx-2 rounded-md text-left hover:bg-muted/40 transition-colors"
+                >
+                  <span className="text-xs font-bold text-muted-foreground w-5">{i + 1}.</span>
+                  <p className="text-sm font-medium truncate flex-1 min-w-0">{c.name}</p>
+                  <span className="text-sm font-semibold tabular-nums text-foreground">{formatMrr(c.mrr)}</span>
+                </button>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Pipeline Stats + Conversion */}
         <Card>
           <CardHeader className="py-2.5 px-4">
@@ -216,87 +299,6 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
               deals: s.deals,
             })}
           />
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <Clock className="h-4 w-4" /> Timing
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1">
-              <button
-                type="button"
-                onClick={() => open({
-                  title: 'Avg Days in Stage — Active Deals',
-                  formula: 'Average of (now − last updated) across active deals. Drill-down lists every active deal feeding this average.',
-                  deals: activeDeals,
-                })}
-                className="w-full flex justify-between items-center px-2 py-1.5 -mx-2 rounded-md hover:bg-muted/40 transition-colors"
-              >
-                <span className="text-sm text-muted-foreground">Avg Days in Stage</span>
-                <span className="text-sm font-semibold tabular-nums">{kpis.avgDaysInStage}d</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => open({
-                  title: 'At-Risk Deals',
-                  formula: 'Deals with status = "at-risk" (excludes Churned/Lost).',
-                  deals: atRiskDeals,
-                })}
-                className="w-full flex justify-between items-center px-2 py-1.5 -mx-2 rounded-md hover:bg-muted/40 transition-colors"
-              >
-                <span className="text-sm text-muted-foreground">At Risk</span>
-                <span className="text-sm font-semibold tabular-nums text-yellow-500">{kpis.atRiskCount}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => open({
-                  title: 'Stalled Deals (14d+)',
-                  formula: 'Active deals with no update in 14+ days.',
-                  deals: stalledDeals,
-                })}
-                className="w-full flex justify-between items-center px-2 py-1.5 -mx-2 rounded-md hover:bg-muted/40 transition-colors"
-              >
-                <span className="text-sm text-muted-foreground">Stalled (14d+)</span>
-                <span className="text-sm font-semibold tabular-nums text-orange-500">{kpis.stalledCount}</span>
-              </button>
-            </CardContent>
-          </Card>
-
-          {/* Top Active Clients (deals currently in the Active Client stage only) */}
-          <Card>
-            <CardHeader className="pb-3 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <Trophy className="h-4 w-4" /> Top Active Clients
-              </CardTitle>
-              <button
-                type="button"
-                className="text-[10px] uppercase tracking-wider text-primary hover:underline"
-                onClick={() => open({
-                  title: 'Active Clients — Ranked by MRR',
-                  formula: 'All deals currently in the Active Client stage, sorted by MRR.',
-                  deals: deals.filter(d => d.stage === ACTIVE_CLIENT_STAGE),
-                })}
-              >
-                View all
-              </button>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {topClients.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No deals in the Active Client stage yet.</p>
-              ) : topClients.map((c, i) => (
-                <button
-                  type="button"
-                  key={c.dealId}
-                  onClick={() => navigate(`/finserv?deal=${c.dealId}`)}
-                  className="w-full flex items-center gap-3 px-2 py-1.5 -mx-2 rounded-md text-left hover:bg-muted/40 transition-colors"
-                >
-                  <span className="text-xs font-bold text-muted-foreground w-5">{i + 1}.</span>
-                  <p className="text-sm font-medium truncate flex-1 min-w-0">{c.name}</p>
-                  <span className="text-sm font-semibold tabular-nums text-foreground">{formatMrr(c.mrr)}</span>
-                </button>
-              ))}
-            </CardContent>
-          </Card>
         </div>
       </div>
 
