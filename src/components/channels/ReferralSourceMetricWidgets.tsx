@@ -476,6 +476,7 @@ export function ReferralSourceMetricWidgets({ sideSlot, belowSourcesSlot }: { si
         {/* Left column: Referral Sources + KPIs, height driven by Channels */}
         <div className="min-w-0 lg:relative">
         <div className="flex flex-col gap-3 lg:absolute lg:inset-0">
+        {belowSourcesSlot ? <div className="shrink-0">{belowSourcesSlot}</div> : null}
         <section className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0 lg:flex-1 lg:min-h-0 lg:overflow-hidden">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">Referral Sources</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:divide-x sm:divide-border lg:flex-1 lg:min-h-0">
@@ -504,7 +505,6 @@ export function ReferralSourceMetricWidgets({ sideSlot, belowSourcesSlot }: { si
             <AtRiskList rows={atRiskSources} isLoading={isLoading} />
           </div>
         </section>
-        {belowSourcesSlot ? <div className="shrink-0">{belowSourcesSlot}</div> : null}
         </div>
         </div>
 
