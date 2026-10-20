@@ -299,9 +299,6 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
               deals: s.deals,
             })}
           />
-        </div>
-      </div>
-
       {/* Insights */}
       {insights.length > 0 && (
         <Card>
@@ -310,7 +307,7 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
               <Lightbulb className="h-4 w-4" /> Insights
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="max-h-[360px] overflow-auto">
             <div className="space-y-2">
               {insights.map(insight => {
                 const cfg = insightIcon[insight.type];
@@ -325,6 +322,9 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
           </CardContent>
         </Card>
       )}
+
+        </div>
+      </div>
 
       <FinServDrillDownSheet config={drill} stages={stages} onOpenChange={(o) => !o && setDrill(null)} />
     </div>
