@@ -331,8 +331,10 @@ interface LeaderboardTileProps {
 }
 
 function AtRiskList({ rows, isLoading }: { rows: AtRiskRow[]; isLoading?: boolean }) {
+  const [open, setOpen] = useState<string | null>(null);
   return (
     <div className="flex flex-col gap-2 min-w-0 min-h-0 sm:pl-4">
+      <ReferralSourceDealsDialog name={open} open={!!open} onOpenChange={(o) => { if (!o) setOpen(null); }} />
       <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[hsl(var(--warning,38_92%_50%))]">
         At Risk · {AT_RISK_MONTHS}+ Mo
       </p>
@@ -343,12 +345,12 @@ function AtRiskList({ rows, isLoading }: { rows: AtRiskRow[]; isLoading?: boolea
       ) : (
         <div className="flex flex-col gap-1.5 flex-1 min-h-0 max-h-56 lg:max-h-none overflow-y-auto pr-1">
           {rows.map((r) => (
-            <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_3rem] items-center gap-2 h-5">
+            <button type="button" onClick={() => setOpen(r.label)} key={r.key} className="grid grid-cols-[minmax(0,1fr)_3rem] items-center gap-2 h-5 text-left hover:opacity-80 transition-opacity">
               <span className="text-xs text-muted-foreground/90 truncate">{r.label}</span>
               <span className="text-xs font-mono tabular-nums text-muted-foreground text-right">
                 {r.monthsSince} Mo
               </span>
-            </div>
+            </button>
           ))}
         </div>
       )}

@@ -1,10 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useReferralSources } from '@/hooks/useReferralSources';
+import { ReferralSourceDealsDialog } from '@/components/partners/ReferralSourceDealsDialog';
 
 const DAY = 86_400_000;
 
 export function NewlyAddedSources() {
   const { referralSources, isLoading } = useReferralSources();
+  const [open, setOpen] = useState<string | null>(null);
   const rows = useMemo(() => {
     const cutoff = Date.now() - 30 * DAY;
     return referralSources
@@ -29,7 +31,12 @@ export function NewlyAddedSources() {
           rows.map((s) => {
             const days = Math.floor((Date.now() - new Date(s.created_at!).getTime()) / DAY);
             return (
-              <div key={s.id} className="flex items-center justify-between gap-3 py-1.5">
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setOpen(s.name)}
+                className="flex items-center justify-between gap-3 py-1.5 text-left hover:opacity-80 transition-opacity"
+              >
                 <div className="min-w-0">
                   <p className="truncate text-xs font-medium text-foreground">{s.name}</p>
                   {s.company && <p className="truncate text-[11px] text-muted-foreground">{s.company}</p>}
@@ -37,11 +44,12 @@ export function NewlyAddedSources() {
                 <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
                   {days < 1 ? 'Today' : `${days}d ago`}
                 </span>
-              </div>
+              </button>
             );
           })
         )}
       </div>
+      <ReferralSourceDealsDialog name={open} open={!!open} onOpenChange={(o) => { if (!o) setOpen(null); }} />
     </section>
   );
 }
