@@ -4910,23 +4910,24 @@ export default function DealDetail() {
                                   // No viewport-breakpoint grids here — the panel
                                   // is portaled into a narrow (~210px) rail, so
                                   // md: columns would wrap unpredictably.
-                                  <div className="flex w-full min-w-0 flex-col gap-4 overflow-x-hidden [&_*]:min-w-0">
-                                    <section className="flex w-full min-w-0 flex-col gap-2.5">
-                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">Ownership</h4>
-                                      {renderDealInfoField('dealOwner')}
+                                  <div className="grid w-full min-w-0 grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3 overflow-x-hidden [&_*]:min-w-0 deal-finserv-info">
+                                    <section className="flex w-full min-w-0 flex-col gap-2">
+                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 pb-1 border-b border-border/40">Company</h4>
+                                      {!isRailed && renderDealInfoField('dealOwner')}
                                       {renderDealInfoField('companyUrl')}
                                       {renderDealInfoField('businessModel')}
                                     </section>
 
-                                    <section className="flex w-full min-w-0 flex-col gap-2.5">
-                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">Contacts &amp; Source</h4>
+                                    <section className="flex w-full min-w-0 flex-col gap-2">
+                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 pb-1 border-b border-border/40">Contacts &amp; Source</h4>
                                       {renderDealInfoField('clientContact')}
                                       {renderDealInfoField('sourcedVia')}
                                       {renderDealInfoField('referralSource')}
                                     </section>
 
-                                    <section className="flex w-full min-w-0 flex-col gap-2.5">
-                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">Commercial</h4>
+                                    <section className="flex w-full min-w-0 flex-col gap-2">
+                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 pb-1 border-b border-border/40">Commercial</h4>
+                                      <PipelineFieldRow stacked deal={deal} fieldKey="clientType" onUpdate={(f, v) => updateDeal(f as any, v)} />
                                       <PipelineFieldRow stacked deal={deal} fieldKey="opportunityType" onUpdate={(f, v) => updateDeal(f as any, v)} />
                                       <PipelineFieldRow stacked deal={deal} fieldKey="feeType" onUpdate={(f, v) => updateDeal(f as any, v)} />
                                       <FinServMrrField
@@ -4957,16 +4958,16 @@ export default function DealDetail() {
                                       </div>
                                     </section>
 
-                                    <section className="flex w-full min-w-0 flex-col gap-2.5">
-                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">Dates &amp; Status</h4>
+                                    <section className="flex w-full min-w-0 flex-col gap-2">
+                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 pb-1 border-b border-border/40">Dates &amp; Status</h4>
                                       <PipelineFieldRow stacked deal={deal} fieldKey="contractStartDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
                                       <PipelineFieldRow stacked deal={deal} fieldKey="projectedCloseDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
                                       <PipelineFieldRow stacked deal={deal} fieldKey="contractEndDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
                                       <PipelineFieldRow stacked deal={deal} fieldKey="onHold" onUpdate={(f, v) => updateDeal(f as any, v)} />
                                     </section>
 
-                                    <section className="flex w-full min-w-0 flex-col gap-2.5">
-                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">Services</h4>
+                                    <section className="flex w-full min-w-0 flex-col gap-2 sm:col-span-2">
+                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 pb-1 border-b border-border/40">Services</h4>
                                       <PipelineFullFieldRow deal={deal} fieldKey="servicesOffered" onUpdate={(f, v) => updateDeal(f as any, v)} />
                                     </section>
                                   </div>
