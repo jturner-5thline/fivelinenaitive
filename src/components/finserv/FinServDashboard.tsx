@@ -201,6 +201,8 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
             </div>
           </CardContent>
         </Card>
+        </div>
+
 
         {/* Timing Metrics */}
         <div className="space-y-4">
