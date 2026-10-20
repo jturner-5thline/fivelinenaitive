@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
+import { allowedMoveTargets } from '@/lib/distressedDebtPipeline';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 
 export interface EditableDealStageTagProps {
@@ -49,7 +50,7 @@ export function EditableDealStageTag({
   onStageChange,
 }: EditableDealStageTagProps) {
   const { updateDeal } = useDealsContext();
-  const { pipelines } = usePipelineContext();
+  const { pipelines: allPipelines } = usePipelineContext();
   const { getStageConfigForDeal } = usePipelineStageConfig();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -61,6 +62,8 @@ export function EditableDealStageTag({
   }, [stageProp, optimistic, pending]);
   const stage = optimistic?.stage ?? stageProp;
   const pipelineId = optimistic ? optimistic.pipelineId : pipelineIdProp;
+  // Distressed Debt is isolated: hide it from other deals, and lock its deals in.
+  const pipelines = useMemo(() => allowedMoveTargets(allPipelines, pipelineId), [allPipelines, pipelineId]);
   const [viewPipelineId, setViewPipelineId] = useState<string | null>(
     pipelineId ?? null,
   );

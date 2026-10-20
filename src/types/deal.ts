@@ -79,7 +79,7 @@ export interface Referrer {
   company?: string;
 }
 
-export type DealClass = 'standard' | 'naitive' | 'finserv';
+export type DealClass = 'standard' | 'naitive' | 'finserv' | 'distressed';
 
 export interface Deal {
   id: string;
@@ -128,6 +128,9 @@ export interface Deal {
   dashboardClosingDate?: string | null;
   sourcedVia?: string;
   dealClass?: DealClass;
+  /** Distressed Debt: funding source currently lending to the company. */
+  currentLenderId?: string;
+  currentLenderName?: string;
   /** FinServ-only: paused without changing stage. */
   onHold?: boolean;
   /* ─── Pipeline-specific fields (FinServ) ─────────────────────────────

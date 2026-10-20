@@ -11306,6 +11306,62 @@ export type Database = {
           },
         ]
       }
+      deal_related_parties: {
+        Row: {
+          contact_id: string | null
+          created_at: string
+          created_by: string | null
+          crm_company_id: string | null
+          deal_id: string
+          id: string
+        }
+        Insert: {
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          crm_company_id?: string | null
+          deal_id: string
+          id?: string
+        }
+        Update: {
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          crm_company_id?: string | null
+          deal_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_related_parties_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_related_parties_crm_company_id_fkey"
+            columns: ["crm_company_id"]
+            isOneToOne: false
+            referencedRelation: "crm_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_related_parties_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_related_parties_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+        ]
+      }
       deal_research_cache: {
         Row: {
           citations: Json | null
@@ -12503,6 +12559,8 @@ export type Database = {
           contract_start_date: string | null
           created_at: string
           crm_company_id: string | null
+          current_lender_id: string | null
+          current_lender_name: string | null
           dashboard_closing_date: string | null
           deal_class: string
           deal_owner: string | null
@@ -12600,6 +12658,8 @@ export type Database = {
           contract_start_date?: string | null
           created_at?: string
           crm_company_id?: string | null
+          current_lender_id?: string | null
+          current_lender_name?: string | null
           dashboard_closing_date?: string | null
           deal_class?: string
           deal_owner?: string | null
@@ -12697,6 +12757,8 @@ export type Database = {
           contract_start_date?: string | null
           created_at?: string
           crm_company_id?: string | null
+          current_lender_id?: string | null
+          current_lender_name?: string | null
           dashboard_closing_date?: string | null
           deal_class?: string
           deal_owner?: string | null
@@ -12786,6 +12848,13 @@ export type Database = {
             columns: ["crm_company_id"]
             isOneToOne: false
             referencedRelation: "crm_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_current_lender_id_fkey"
+            columns: ["current_lender_id"]
+            isOneToOne: false
+            referencedRelation: "master_lenders"
             referencedColumns: ["id"]
           },
           {

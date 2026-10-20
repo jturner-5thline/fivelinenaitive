@@ -381,6 +381,8 @@ export function useDealsDatabase() {
       referralSource: (dbDeal as any).referral_source || undefined,
       opportunityType: (dbDeal as any).opportunity_type || undefined,
       clientType: (dbDeal as any).client_type || undefined,
+      currentLenderId: (dbDeal as any).current_lender_id || undefined,
+      currentLenderName: (dbDeal as any).current_lender_name || undefined,
       servicesOffered: Array.isArray((dbDeal as any).services_offered) ? (dbDeal as any).services_offered : undefined,
       feeType: (dbDeal as any).fee_type || undefined,
       mrr: (dbDeal as any).mrr ?? null,
@@ -469,7 +471,7 @@ export function useDealsDatabase() {
       const naitivePipelineId = await getNaitivePipelineId();
       const dbDeals = (dealsResult.data || []).filter((d: any) => {
         const dc = d.deal_class || 'standard';
-        return dc !== 'naitive' && dc !== 'finserv';
+        return dc !== 'naitive' && dc !== 'finserv' && dc !== 'distressed';
       });
       const dbLenders = lendersResult.data || [];
 
@@ -918,6 +920,8 @@ export function useDealsDatabase() {
       if ((updates as any).leadSource !== undefined) (dbUpdates as any).lead_source = (updates as any).leadSource || null;
       if ((updates as any).referralSource !== undefined) (dbUpdates as any).referral_source = (updates as any).referralSource || null;
       if ((updates as any).opportunityType !== undefined) (dbUpdates as any).opportunity_type = (updates as any).opportunityType || null;
+      if ((updates as any).currentLenderId !== undefined) (dbUpdates as any).current_lender_id = (updates as any).currentLenderId || null;
+      if ((updates as any).currentLenderName !== undefined) (dbUpdates as any).current_lender_name = (updates as any).currentLenderName || null;
       if ((updates as any).clientType !== undefined) (dbUpdates as any).client_type = (updates as any).clientType || null;
       if ((updates as any).servicesOffered !== undefined) (dbUpdates as any).services_offered = (updates as any).servicesOffered ?? [];
       if ((updates as any).feeType !== undefined) (dbUpdates as any).fee_type = (updates as any).feeType || null;
