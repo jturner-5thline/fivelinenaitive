@@ -4912,14 +4912,10 @@ export default function DealDetail() {
                                   // md: columns would wrap unpredictably.
                                   <div className="grid w-full min-w-0 grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3 [&_*]:min-w-0 deal-finserv-info">
                                     <section className="flex w-full min-w-0 flex-col gap-2">
-                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 pb-1 border-b border-border/40">Company</h4>
+                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 pb-1 border-b border-border/40">Company &amp; Source</h4>
                                       {!isRailed && renderDealInfoField('dealOwner')}
                                       {renderDealInfoField('companyUrl')}
                                       {renderDealInfoField('businessModel')}
-                                    </section>
-
-                                    <section className="flex w-full min-w-0 flex-col gap-2">
-                                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 pb-1 border-b border-border/40">Contacts &amp; Source</h4>
                                       {renderDealInfoField('clientContact')}
                                       {renderDealInfoField('sourcedVia')}
                                       {renderDealInfoField('referralSource')}
