@@ -299,16 +299,16 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
           </CardContent>
         </Card>
         </div>
-        <div>
-      {/* Insights */}
+        <div className="relative">
+      {/* Insights — absolutely fills the cell on desktop so its height always equals Pipeline Stats */}
       {insights.length > 0 && (
-        <Card>
+        <Card className="flex flex-col lg:absolute lg:inset-0">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
               <Lightbulb className="h-4 w-4" /> Insights
             </CardTitle>
           </CardHeader>
-          <CardContent className="max-h-[360px] overflow-auto">
+          <CardContent className="flex-1 min-h-0 max-h-[360px] lg:max-h-none overflow-auto">
             <div className="space-y-2">
               {insights.map(insight => {
                 const cfg = insightIcon[insight.type];
