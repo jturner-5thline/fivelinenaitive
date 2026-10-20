@@ -32,6 +32,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 import { formatAmountWithCommas, parseAmountToNumber } from '@/utils/currencyFormat';
 import { ContactPickerField } from '@/components/contacts/ContactPickerField';
+import { FINSERV_CLIENT_TYPES } from '@/config/pipelineFieldSchemas';
 
 /* ─── Option lists ───────────────────────────────────────────── */
 const LEAD_SOURCES = ['Referral', 'Networking', 'Inbound', 'Partner', 'Internal', 'Other'] as const;
@@ -124,6 +125,7 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
   const [leadSource, setLeadSource] = useState<string>('');
   const [referralSource, setReferralSource] = useState('');
   const [opportunityType, setOpportunityType] = useState<string>('');
+  const [clientType, setClientType] = useState<string>('');
   const [servicesOffered, setServicesOffered] = useState<string[]>([]);
   const [feeType, setFeeType] = useState<string>('');
   const [mrr, setMrr] = useState('');
@@ -226,6 +228,7 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
         lead_source: data.leadSource,
         referral_source: data.referralSource || null,
         opportunity_type: data.opportunityType,
+        client_type: clientType || null,
         services_offered: data.servicesOffered,
         fee_type: data.feeType,
         mrr: parseAmountToNumber(data.mrr || '') || null,
@@ -372,6 +375,20 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
                     </SelectContent>
                   </Select>
                   <Helper>{errors.opportunityType ? <span className="text-destructive">{errors.opportunityType}</span> : null}</Helper>
+                </div>
+                <div>
+                  <FieldLabel>Client Type</FieldLabel>
+                  <Select value={clientType} onValueChange={setClientType}>
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Select client type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FINSERV_CLIENT_TYPES.map(t => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Helper>{null}</Helper>
                 </div>
                 <div>
                   <FieldLabel>Deal Owner <Req /></FieldLabel>
