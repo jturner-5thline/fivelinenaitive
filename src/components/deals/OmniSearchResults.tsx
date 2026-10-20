@@ -60,15 +60,18 @@ export function OmniSearchResults({ query, activeIndex, onResults, onSelect, onH
     staleTime: 30_000,
     queryFn: async ({ signal }) => {
       const like = `%${remoteQ}%`;
-      const [c, co] = await Promise.all([
+      const [c, co, fs] = await Promise.all([
         supabase.from('contacts').select('id, full_name, first_name, last_name, email, hs_company_name')
           .or(`full_name.ilike.${like},first_name.ilike.${like},last_name.ilike.${like},email.ilike.${like}`)
           .limit(6).abortSignal(signal),
         supabase.from('crm_companies').select('id, name, domain, industry, hq_city, hq_state')
           .or(`name.ilike.${like},domain.ilike.${like}`)
           .limit(6).abortSignal(signal),
+        supabase.from('master_lenders').select('id, name, contact_name, email, lender_type, website')
+          .or(`name.ilike.${like},contact_name.ilike.${like},email.ilike.${like},website.ilike.${like}`)
+          .limit(8).abortSignal(signal),
       ]);
-      return { contacts: c.data ?? [], companies: co.data ?? [] };
+      return { contacts: c.data ?? [], companies: co.data ?? [], lenders: (fs.data ?? []) as any[] };
     },
   });
 
@@ -95,8 +98,14 @@ export function OmniSearchResults({ query, activeIndex, onResults, onSelect, onH
       subtitle: [c.industry, [c.hq_city, c.hq_state].filter(Boolean).join(', ')].filter(Boolean).join(' • '),
       path: `/crm-companies/${c.id}`,
     }));
-    const lenderR = rankTop(lenders ?? [], (l: any) => [l.name, l.contact?.name], q, 5).map((l: any): OmniResult => ({
-      kind: 'lender', id: l.name, title: l.name, subtitle: l.contact?.name,
+    const seen = new Set<string>();
+    const lenderPool = [
+      ...(remote?.lenders ?? []).map((l: any) => ({ name: l.name, contact: l.contact_name, extra: l.email, type: l.lender_type, site: l.website })),
+      ...(lenders ?? []).map((l: any) => ({ name: l.name, contact: l.contact?.name, extra: l.contact?.email, type: undefined, site: l.website })),
+    ].filter((l) => l.name && !seen.has(l.name.toLowerCase()) && seen.add(l.name.toLowerCase()));
+    const lenderR = rankTop(lenderPool, (l) => [l.name, l.contact, l.extra, l.site], q, 6).map((l): OmniResult => ({
+      kind: 'lender', id: l.name, title: l.name,
+      subtitle: [l.type, l.contact].filter(Boolean).join(' • ') || undefined,
       path: `/lenders?search=${encodeURIComponent(l.name)}`,
     }));
     const pageR = rankTop(PAGES, (p) => [p.name], q, 4).map((p): OmniResult => ({ kind: 'page', id: p.path, title: p.name, path: p.path }));
