@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { ensureReferralSourceForContact, hasReferralSourceTag, REFERRAL_SOURCE_TAG } from '@/lib/ensureReferralSource';
 import { splitContactTypes } from '@/components/contacts/ContactTypeMultiSelect';
+import { isRemovedForInactivity } from '@/components/channels/atRiskSources';
 
 interface ContactHit {
   id: string;
@@ -216,9 +217,25 @@ export function ReferralSourcePipelineWidget({ search = '' }: { search?: string 
     const ownerAllows = (ownerId: string | null) =>
       ownerFilter.length === 0 || ownerFilter.includes(ownerId || UNASSIGNED_OWNER);
 
+    // Earliest date each source was added (manual or automatic) — protects new sources.
+    const addedByName = new Map<string, string>();
+    for (const m of manualSources) {
+      if (!m.created_at) continue;
+      const k = normalize(m.name);
+      const prev = addedByName.get(k);
+      if (!prev || m.created_at < prev) addedByName.set(k, m.created_at);
+    }
+    const now = new Date();
+
     for (const r of referralSources) {
       const key: StageKey = r.tier === null ? 'nurturing' : r.tier;
       seen.add(normalize(r.referredBy));
+      // Removed after 6 months without a referred deal (NDA / Needs List or later).
+      if (isRemovedForInactivity({
+        referredBy: r.referredBy,
+        addedAt: addedByName.get(normalize(r.referredBy)) ?? null,
+        deals: r.deals.map(d => ({ id: d.id, company: d.company, created_at: d.created_at, stage: d.stage || '' })),
+      }, now)) continue;
       if (!ownerAllows(r.ownerUserId ?? null)) continue;
       if (!matchesSearch(r.referredBy, r.companyName)) continue;
 
@@ -235,6 +252,7 @@ export function ReferralSourcePipelineWidget({ search = '' }: { search?: string 
     // Manually added sources with no qualifying deals yet start in Nurturing.
     for (const m of manualSources) {
       if (seen.has(normalize(m.name))) continue;
+      if (isRemovedForInactivity({ referredBy: m.name, addedAt: m.created_at ?? null, deals: [] }, now)) continue;
       if (!ownerAllows(manualOwnerById.get(m.id) ?? null)) continue;
       if (!matchesSearch(m.name, m.company || null)) continue;
 
