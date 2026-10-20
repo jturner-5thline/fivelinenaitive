@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, KeyboardEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
-import { Briefcase, ChevronRight, Landmark, Handshake } from 'lucide-react';
+import { Briefcase, ChevronRight, Landmark, Handshake, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   SidebarMenuItem,
@@ -66,6 +66,7 @@ export function DealsFlyoutMenu() {
       { id: 'debt', label: 'Debt', to: '/deals', Icon: Briefcase },
       { id: 'finserv', label: 'FinServ', to: '/finserv', Icon: Landmark },
       { id: 'naitive', label: 'naitive', to: '/naitive-pipeline', Icon: Handshake },
+      { id: 'distressed', label: 'Distressed Debt', to: '/distressed-debt', Icon: TrendingDown },
     ],
     [],
   );

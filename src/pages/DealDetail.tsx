@@ -66,6 +66,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { DebouncedTextarea } from '@/components/ui/debounced-textarea';
 import { DebouncedInput } from '@/components/ui/debounced-input';
 import { PipelineSpecificFields, PipelineFieldRow, PipelineFullFieldRow } from '@/components/deal/PipelineSpecificFields';
+import { CurrentLenderPicker } from '@/components/distressed/CurrentLenderPicker';
+import { RelatedPartiesField } from '@/components/distressed/RelatedPartiesField';
+import { allowedMoveTargets } from '@/lib/distressedDebtPipeline';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -958,7 +961,9 @@ export default function DealDetail() {
           migratedFromPersonal: dbDeal.migrated_from_personal || false,
           pipelineId: dbDeal.pipeline_id || undefined,
           closingDate: (dbDeal as any).closing_date || null,
-          dealClass: ((dbDeal as any).deal_class || 'standard') as 'standard' | 'naitive' | 'finserv',
+          dealClass: ((dbDeal as any).deal_class || 'standard') as 'standard' | 'naitive' | 'finserv' | 'distressed',
+          currentLenderId: (dbDeal as any).current_lender_id || undefined,
+          currentLenderName: (dbDeal as any).current_lender_name || undefined,
           onHold: (dbDeal as any).on_hold === true,
           contactEmail: (dbDeal as any).contact_email || undefined,
           leadSource: (dbDeal as any).lead_source || undefined,
@@ -1072,6 +1077,7 @@ export default function DealDetail() {
   // Determine if this is a naitive pipeline deal
   const isNaitiveDeal = deal?.dealClass === 'naitive';
   const isFinServDeal = deal?.dealClass === 'finserv';
+  const isDistressedDeal = deal?.dealClass === 'distressed';
   // FinServ deals use same simplified detail view as naitive deals
   const isSimplifiedDeal = isNaitiveDeal || isFinServDeal;
 
@@ -4240,6 +4246,8 @@ export default function DealDetail() {
                                 // Projects pipeline is fully siloed: no moves in or out.
                                 const pipeIsProjects = (pipeline.name || '').trim().toLowerCase() === 'projects';
                                 if (isProjectsDeal) return pipeIsProjects; // only itself
+                                // Distressed Debt is fully isolated too.
+                                if (!allowedMoveTargets(pipelines, deal.pipelineId).some(p => p.id === pipeline.id)) return false;
                                 return !pipeIsProjects; // hide Projects target for non-Projects deals
                               })
                               .map((pipeline) => (
@@ -4996,6 +5004,22 @@ export default function DealDetail() {
                                         src/config/pipelineFieldSchemas.ts so the
                                         create-deal form and detail view stay in
                                         sync. */}
+                                    {isDistressedDeal && (
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                                        <div className="flex flex-col gap-1 min-w-0">
+                                          <span className="text-muted-foreground text-xs font-medium">Current Lender</span>
+                                          <CurrentLenderPicker
+                                            lenderId={deal.currentLenderId}
+                                            lenderName={deal.currentLenderName}
+                                            onChange={(l) => {
+                                              updateDeal('currentLenderId' as any, (l?.id ?? '') as any);
+                                              updateDeal('currentLenderName' as any, (l?.name ?? '') as any);
+                                            }}
+                                          />
+                                        </div>
+                                        <div className="sm:col-span-2"><RelatedPartiesField dealId={deal.id} /></div>
+                                      </div>
+                                    )}
                                     <PipelineSpecificFields
                                       deal={deal}
                                       onUpdate={(field, value) => updateDeal(field as any, value)}

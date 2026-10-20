@@ -49,7 +49,7 @@ export function EditableDealStageTag({
   onStageChange,
 }: EditableDealStageTagProps) {
   const { updateDeal } = useDealsContext();
-  const { pipelines } = usePipelineContext();
+  const { pipelines: allPipelines } = usePipelineContext();
   const { getStageConfigForDeal } = usePipelineStageConfig();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
