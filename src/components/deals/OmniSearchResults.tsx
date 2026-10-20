@@ -150,7 +150,7 @@ export function OmniSearchResults({ query, activeIndex, onResults, onSelect, onH
                 return (
                   <button key={`${r.kind}-${r.id}`} type="button" role="option" aria-selected={i === activeIndex}
                     onMouseEnter={() => onHover(i)} onClick={() => onSelect(r)}
-                    className={cn('flex w-full items-center gap-3 px-3 py-2 text-left transition-colors', i === activeIndex ? 'bg-muted' : 'hover:bg-muted/60')}>
+                    className={cn('flex w-full items-center gap-3 border-0 rounded-none px-3 py-2 text-left transition-colors', i === activeIndex ? 'bg-muted' : 'hover:bg-muted/60')}>
                     <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted/60', Meta.tone)}>
                       <Meta.icon className="h-4 w-4" />
                     </span>
