@@ -53,6 +53,7 @@ function SalesBdDashboardInner() {
             </button>
           )}
         </div>
+        <CrmUpdateQueueButton />
         {canEditPartnerRules && (
           <Button
             variant="outline"
@@ -65,7 +66,6 @@ function SalesBdDashboardInner() {
             <SettingsIcon className="h-3.5 w-3.5" />
           </Button>
         )}
-        <CrmUpdateQueueButton />
       </div>
 
       <div className="mx-auto max-w-[1400px] space-y-6">
