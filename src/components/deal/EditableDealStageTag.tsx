@@ -11,7 +11,7 @@
  * overloaded stage ids — see project memory "Pipeline Stage IDs")
  * stay correct.
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronDown, Check, Loader2, ArrowRightLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -20,6 +20,7 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
@@ -31,6 +32,8 @@ export interface EditableDealStageTagProps {
   className?: string;
   /** When true, hides the chevron affordance (still clickable). */
   hideChevron?: boolean;
+  /** Called optimistically on select, and again with the old value on failure. */
+  onStageChange?: (stage: string, pipelineId: string | null) => void;
 }
 
 function titleCase(s: string): string {
@@ -39,10 +42,11 @@ function titleCase(s: string): string {
 
 export function EditableDealStageTag({
   dealId,
-  stage,
-  pipelineId,
+  stage: stageProp,
+  pipelineId: pipelineIdProp,
   className,
   hideChevron,
+  onStageChange,
 }: EditableDealStageTagProps) {
   const { updateDeal } = useDealsContext();
   const { pipelines } = usePipelineContext();
@@ -50,9 +54,13 @@ export function EditableDealStageTag({
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
-  // Pipeline the user is currently browsing inside the popover. Defaults to
-  // the deal's own pipeline; changing it lets the user pick a stage from a
-  // different pipeline (effectively moving the deal between pipelines).
+  // Optimistic value shown until the parent's props catch up.
+  const [optimistic, setOptimistic] = useState<{ stage: string; pipelineId: string | null } | null>(null);
+  useEffect(() => {
+    if (optimistic && !pending && stageProp === optimistic.stage) setOptimistic(null);
+  }, [stageProp, optimistic, pending]);
+  const stage = optimistic?.stage ?? stageProp;
+  const pipelineId = optimistic ? optimistic.pipelineId : pipelineIdProp;
   const [viewPipelineId, setViewPipelineId] = useState<string | null>(
     pipelineId ?? null,
   );
@@ -80,19 +88,30 @@ export function EditableDealStageTag({
     setOpen(false);
     const movingPipeline = !!viewPipeline && !!pipelineId && viewPipeline.id !== pipelineId;
     if (!nextId || (nextId === current && !movingPipeline)) return;
+    const targetPipelineId = movingPipeline && viewPipeline ? viewPipeline.id : (pipelineId ?? null);
+    const prevStage = current;
+    const prevPipelineId = pipelineId ?? null;
+    // Optimistic: show the new stage immediately and tell the host surface.
+    setOptimistic({ stage: nextId, pipelineId: targetPipelineId });
+    onStageChange?.(nextId, targetPipelineId);
     setPending(true);
     try {
       const updates: any = { stage: nextId };
       if (movingPipeline && viewPipeline) updates.pipelineId = viewPipeline.id;
       await updateDeal(dealId, updates);
-      // Same cross-surface invalidation as EditableDealStatusTag so the
-      // rundown / briefing / pipeline boards re-pull immediately.
+      // updateDeal swallows backend errors, so confirm the write landed.
+      const { data, error } = await supabase
+        .from('deals')
+        .select('stage, pipeline_id')
+        .eq('id', dealId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data || data.stage !== nextId) throw new Error('The stage change was not saved.');
       queryClient.invalidateQueries({ queryKey: ['briefing-pipeline'] });
       queryClient.invalidateQueries({ queryKey: ['briefing-catchup'] });
       queryClient.invalidateQueries({ queryKey: ['briefing'] });
       queryClient.invalidateQueries({ queryKey: ['naitive-pipeline-data'] });
       queryClient.invalidateQueries({ queryKey: ['finserv-pipeline-data'] });
-      const targetPipelineId = movingPipeline && viewPipeline ? viewPipeline.id : pipelineId;
       const label =
         getStageConfigForDeal(nextId, targetPipelineId)?.label || titleCase(nextId);
       if (movingPipeline && viewPipeline) {
@@ -102,11 +121,13 @@ export function EditableDealStageTag({
       }
     } catch (err: any) {
       console.error('[EditableDealStageTag] update failed', err);
+      setOptimistic(null);
+      onStageChange?.(prevStage, prevPipelineId);
       toast.error('Failed to update stage', { description: err?.message });
     } finally {
       setPending(false);
     }
-  }, [current, dealId, updateDeal, pipelineId, viewPipeline, getStageConfigForDeal, queryClient]);
+  }, [current, dealId, updateDeal, pipelineId, viewPipeline, getStageConfigForDeal, queryClient, onStageChange]);
 
   return (
     <Popover
@@ -138,17 +159,15 @@ export function EditableDealStageTag({
         >
           <Badge
             variant="outline"
-            className="deal-stage-chip rounded-md text-[10px] font-semibold px-2 py-0 cursor-pointer border border-cyan-300/70 text-cyan-200 !bg-transparent transition-colors hover:border-cyan-200 hover:text-cyan-100"
+            className="deal-stage-chip inline-flex items-center gap-1 h-6 rounded-md text-xs font-semibold leading-none px-2 py-0 whitespace-nowrap cursor-pointer border border-cyan-300/70 text-cyan-200 !bg-transparent transition-colors hover:border-cyan-200 hover:text-cyan-100"
           >
             {currentLabel ?? 'Set stage'}
+            {!hideChevron && (
+              pending
+                ? <Loader2 className="h-3 w-3 animate-spin opacity-80" />
+                : <ChevronDown className="h-3 w-3 opacity-70" />
+            )}
           </Badge>
-          {!hideChevron && (
-            <span className="ml-0.5 inline-flex h-[18px] items-center text-muted-foreground/70">
-              {pending
-                ? <Loader2 className="h-3 w-3 animate-spin" />
-                : <ChevronDown className="h-3 w-3" />}
-            </span>
-          )}
         </button>
       </PopoverTrigger>
       <PopoverContent

@@ -3919,12 +3919,15 @@ export default function DealDetail() {
                 inputClassName="w-auto [field-sizing:content] deal-header-field !border-0 !outline-none !ring-0 !shadow-none !bg-transparent hover:!border-0 focus:!border-0 focus-visible:!border-0 focus-visible:!ring-0 focus-visible:!shadow-none"
               />
               <div className="flex items-center gap-2 self-center ml-1">
-                <EditableDealStatusTag dealId={deal.id} status={deal.status} className="deal-rail-control" />
+                <EditableDealStatusTag dealId={deal.id} status={deal.status} className="deal-rail-control" tagClassName="!h-6 !px-2 !text-xs !rounded-md gap-1.5" />
                 <EditableDealStageTag
                   dealId={deal.id}
                   stage={deal.stage}
                   pipelineId={deal.pipelineId ?? null}
                   className="deal-rail-control"
+                  onStageChange={(stage, pipelineId) =>
+                    setDeal((prev) => (prev ? { ...prev, stage, pipelineId: pipelineId ?? undefined } : prev))
+                  }
                 />
               </div>
             </div>
