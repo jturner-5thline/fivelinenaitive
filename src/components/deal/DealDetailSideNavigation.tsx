@@ -18,7 +18,7 @@ interface SiblingDeal {
 interface DealDetailSideNavigationProps {
   currentDealId: string;
   pipelineId?: string;
-  dealClass?: 'standard' | 'naitive' | 'finserv';
+  dealClass?: 'standard' | 'naitive' | 'finserv' | 'distressed';
   companyId?: string;
 }
 
