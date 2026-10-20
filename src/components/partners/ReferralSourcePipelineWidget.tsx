@@ -112,6 +112,8 @@ interface PipelineCard {
   dealCount: number;
   volume: number;
   manual: boolean;
+  addedAt: string | null;
+  lastDealAt: string | null;
 }
 
 function formatCurrencyCompact(v: number): string {
@@ -119,6 +121,25 @@ function formatCurrencyCompact(v: number): string {
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
   if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
   return `$${Math.round(v).toLocaleString()}`;
+}
+
+function formatAgo(iso: string | null, now = new Date()): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  const days = Math.max(0, Math.floor((now.getTime() - d.getTime()) / 86_400_000));
+  if (days < 1) return 'Today';
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30.44);
+  if (months < 12) return `${months} mo ago`;
+  return `${(days / 365.25).toFixed(1)} yr ago`;
+}
+
+function formatShortDate(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -239,6 +260,9 @@ export function ReferralSourcePipelineWidget({ search = '' }: { search?: string 
       if (!ownerAllows(r.ownerUserId ?? null)) continue;
       if (!matchesSearch(r.referredBy, r.companyName)) continue;
 
+      const dealDates = r.deals.map(d => d.created_at).filter(Boolean).sort();
+      const firstDeal = dealDates[0] ?? null;
+      const manualAdded = addedByName.get(normalize(r.referredBy)) ?? null;
       byStage.get(key)!.push({
         id: `deal:${r.contactId || r.crmCompanyId || r.referredBy}`,
         name: r.referredBy,
@@ -246,6 +270,8 @@ export function ReferralSourcePipelineWidget({ search = '' }: { search?: string 
         dealCount: r.dealCount,
         volume: r.totalVolume,
         manual: false,
+        addedAt: manualAdded && (!firstDeal || manualAdded < firstDeal) ? manualAdded : firstDeal,
+        lastDealAt: dealDates[dealDates.length - 1] ?? r.latestDeal?.created_at ?? null,
       });
     }
 
@@ -263,6 +289,8 @@ export function ReferralSourcePipelineWidget({ search = '' }: { search?: string 
         dealCount: 0,
         volume: 0,
         manual: true,
+        addedAt: m.created_at ?? null,
+        lastDealAt: null,
       });
     }
 
