@@ -380,6 +380,7 @@ export function useDealsDatabase() {
       leadSource: (dbDeal as any).lead_source || undefined,
       referralSource: (dbDeal as any).referral_source || undefined,
       opportunityType: (dbDeal as any).opportunity_type || undefined,
+      clientType: (dbDeal as any).client_type || undefined,
       servicesOffered: Array.isArray((dbDeal as any).services_offered) ? (dbDeal as any).services_offered : undefined,
       feeType: (dbDeal as any).fee_type || undefined,
       mrr: (dbDeal as any).mrr ?? null,
@@ -917,6 +918,7 @@ export function useDealsDatabase() {
       if ((updates as any).leadSource !== undefined) (dbUpdates as any).lead_source = (updates as any).leadSource || null;
       if ((updates as any).referralSource !== undefined) (dbUpdates as any).referral_source = (updates as any).referralSource || null;
       if ((updates as any).opportunityType !== undefined) (dbUpdates as any).opportunity_type = (updates as any).opportunityType || null;
+      if ((updates as any).clientType !== undefined) (dbUpdates as any).client_type = (updates as any).clientType || null;
       if ((updates as any).servicesOffered !== undefined) (dbUpdates as any).services_offered = (updates as any).servicesOffered ?? [];
       if ((updates as any).feeType !== undefined) (dbUpdates as any).fee_type = (updates as any).feeType || null;
       if ((updates as any).mrr !== undefined) (dbUpdates as any).mrr = (updates as any).mrr;

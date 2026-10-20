@@ -78,6 +78,12 @@ export const FINSERV_FEE_TYPES = [
   'Hybrid (Fixed + Variable)',
 ] as const;
 
+export const FINSERV_CLIENT_TYPES = [
+  'Type A - AINS',
+  'Type B - AINS + Advisory',
+  'Type C - Advisory + GTM',
+] as const;
+
 export const PIPELINE_FIELD_SCHEMAS: Record<string, PipelineSchema> = {
   finserv: {
     sectionLabel: 'FinServ Details',
@@ -93,6 +99,7 @@ export const PIPELINE_FIELD_SCHEMAS: Record<string, PipelineSchema> = {
       //   Row 3: Contract Start   | Projected Close    (dates)
       //   Row 4: Contract End     | On Hold            (dates + compact status)
       //   Row 5: Services Offered (full width)
+      { key: 'clientType', label: 'Client Type', type: 'select', options: FINSERV_CLIENT_TYPES, column: 'left' },
       { key: 'opportunityType', label: 'Opportunity Type', type: 'select', options: FINSERV_OPPORTUNITY_TYPES, column: 'left' },
       { key: 'feeType', label: 'Fee Type', type: 'select', options: FINSERV_FEE_TYPES, column: 'right' },
       { key: 'mrr', label: 'MRR', type: 'currency', placeholder: '0', column: 'left' },
