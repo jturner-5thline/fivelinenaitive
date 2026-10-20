@@ -137,6 +137,7 @@ export interface Deal {
   leadSource?: string;
   referralSource?: string;
   opportunityType?: string;
+  clientType?: string;
   servicesOffered?: string[];
   feeType?: string;
   mrr?: number | null;

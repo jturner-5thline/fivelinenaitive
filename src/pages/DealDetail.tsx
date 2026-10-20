@@ -964,6 +964,7 @@ export default function DealDetail() {
           leadSource: (dbDeal as any).lead_source || undefined,
           referralSource: (dbDeal as any).referral_source || undefined,
           opportunityType: (dbDeal as any).opportunity_type || undefined,
+          clientType: (dbDeal as any).client_type || undefined,
           servicesOffered: Array.isArray((dbDeal as any).services_offered) ? (dbDeal as any).services_offered : undefined,
           feeType: (dbDeal as any).fee_type || undefined,
           mrr: (dbDeal as any).mrr ?? null,
