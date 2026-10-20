@@ -20,7 +20,7 @@ export function ClientTypeDonut({ deals, onDrill }: { deals: Deal[]; onDrill: (s
   const fmt = (v: number) => (metric === 'count' ? String(v) : fmtMrr(v));
 
   return (
-    <Card>
+    <Card className="h-full flex flex-col">
       <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Client Types</CardTitle>
         <div className="flex rounded-md border border-border p-0.5" role="group" aria-label="Client type metric">
@@ -40,8 +40,8 @@ export function ClientTypeDonut({ deals, onDrill }: { deals: Deal[]; onDrill: (s
           ))}
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="relative h-[220px]">
+      <CardContent className="flex-1 flex flex-col justify-center">
+        <div className="relative h-[180px]">
           {total === 0 ? (
             <div className="flex h-full items-center justify-center text-xs text-muted-foreground">No data yet</div>
           ) : (
