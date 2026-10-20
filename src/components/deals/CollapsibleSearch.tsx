@@ -187,7 +187,7 @@ export function CollapsibleSearch({ value, onChange, debounceMs = 350 }: Collaps
             else commitNow(localValue);
           }
         }}
-        placeholder="Search deals, contacts, companies…"
+        placeholder="Search deals, contacts, companies, funding sources…"
         aria-label="Search everything"
         className="h-full w-full bg-transparent pl-8 pr-7 outline-none text-sm placeholder:text-muted-foreground"
       />
