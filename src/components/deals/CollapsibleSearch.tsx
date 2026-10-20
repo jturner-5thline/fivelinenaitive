@@ -1,4 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { OmniSearchResults } from './OmniSearchResults';
+import type { OmniResult } from './omniSearch';
 import { Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -20,6 +23,22 @@ export function CollapsibleSearch({ value, onChange, debounceMs = 350 }: Collaps
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isActive = expanded || localValue.length > 0;
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const resultsRef = useRef<OmniResult[]>([]);
+  const handleResults = useCallback((r: OmniResult[]) => {
+    resultsRef.current = r;
+    setActiveIndex((i) => (i >= r.length ? 0 : i));
+  }, []);
+  const selectResult = (r: OmniResult) => {
+    setMenuOpen(false);
+    // Clear the page filter so the chosen record isn't hidden behind it.
+    setLocalValue('');
+    commitNow('');
+    inputRef.current?.blur();
+    navigate(r.path);
+  };
 
   // Mirror parent value ONLY when we're not actively typing.
   useEffect(() => {
@@ -105,6 +124,7 @@ export function CollapsibleSearch({ value, onChange, debounceMs = 350 }: Collaps
 
   const handleBlur = () => {
     isFocusedRef.current = false;
+    setMenuOpen(false);
     commitNow(localValue);
     if (localValue.length === 0) {
       setExpanded(false);
@@ -141,21 +161,34 @@ export function CollapsibleSearch({ value, onChange, debounceMs = 350 }: Collaps
         onChange={(e) => {
           const next = e.target.value;
           setLocalValue(next);
+          setMenuOpen(true);
+          setActiveIndex(0);
           scheduleCommit(next);
         }}
         onFocus={() => {
           isFocusedRef.current = true;
           setExpanded(true);
+          if (localValue) setMenuOpen(true);
         }}
         onBlur={handleBlur}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          const list = resultsRef.current;
+          if (e.key === 'ArrowDown' && menuOpen && list.length) {
             e.preventDefault();
-            commitNow(localValue);
+            setActiveIndex((i) => (i + 1) % list.length);
+          } else if (e.key === 'ArrowUp' && menuOpen && list.length) {
+            e.preventDefault();
+            setActiveIndex((i) => (i - 1 + list.length) % list.length);
+          } else if (e.key === 'Escape') {
+            setMenuOpen(false);
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (menuOpen && list[activeIndex]) selectResult(list[activeIndex]);
+            else commitNow(localValue);
           }
         }}
-        placeholder="Search..."
-        aria-label="Search deals"
+        placeholder="Search deals, contacts, companies…"
+        aria-label="Search everything"
         className="h-full w-full bg-transparent pl-8 pr-7 outline-none text-sm placeholder:text-muted-foreground"
       />
       {localValue.length > 0 && (
@@ -169,6 +202,15 @@ export function CollapsibleSearch({ value, onChange, debounceMs = 350 }: Collaps
         >
           <X className="h-3 w-3 text-muted-foreground" />
         </button>
+      )}
+      {menuOpen && localValue.trim() && (
+        <OmniSearchResults
+          query={localValue}
+          activeIndex={activeIndex}
+          onResults={handleResults}
+          onSelect={selectResult}
+          onHover={setActiveIndex}
+        />
       )}
     </div>
   );
