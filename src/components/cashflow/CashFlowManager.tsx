@@ -1502,49 +1502,6 @@ export function CashFlowManager() {
             Configure-only: {filteredScheduledItems.length} entr{filteredScheduledItems.length === 1 ? 'y' : 'ies'}
           </span>
         )}
-        {activeTab === 'weekly' && (
-          <div
-            className="cf-filter-actions"
-            style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8 }}
-          >
-            <button
-              type="button"
-              className="cf-pill"
-              style={{ position: 'relative' }}
-              onClick={() => setNotesDialogOpen(true)}
-              title="Notes & Cell Comments"
-            >
-              <MessageSquare size={12} />
-              <span>Notes</span>
-              {cellCommentCount > 0 && (
-                <span
-                  aria-label={`${cellCommentCount} cell comments`}
-                  style={{
-                    background: 'var(--color-primary)',
-                    color: 'white',
-                    borderRadius: 999,
-                    fontSize: 9,
-                    fontWeight: 700,
-                    padding: '1px 6px',
-                    minWidth: 16,
-                    textAlign: 'center',
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {cellCommentCount}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              className="cf-pill"
-              onClick={() => setScheduledModalOpen(true)}
-              title="Configure scheduled payments & revenue"
-            >
-              Configure
-            </button>
-          </div>
-        )}
       </div>
         )}
       />
@@ -1608,6 +1565,33 @@ export function CashFlowManager() {
           cashInDialogOpen={cashInDialogOpen}
           onCashInDialogOpenChange={setCashInDialogOpen}
           onCellCommentCountChange={setCellCommentCount}
+          toolbarActions={(
+            <>
+              <button
+                type="button"
+                className="cf-pill"
+                style={{ position: 'relative' }}
+                onClick={() => setNotesDialogOpen(true)}
+                title="Notes & Cell Comments"
+              >
+                <MessageSquare size={12} />
+                <span>Notes</span>
+                {cellCommentCount > 0 && (
+                  <span aria-label={`${cellCommentCount} cell comments`} className="cf-pill-count">
+                    {cellCommentCount}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                className="cf-pill"
+                onClick={() => setScheduledModalOpen(true)}
+                title="Configure scheduled payments & revenue"
+              >
+                Configure
+              </button>
+            </>
+          )}
           weeksFuture={weeksFuture}
           onWeeksFutureChange={setWeeksFuture}
           weeksPast={weeksPast}
