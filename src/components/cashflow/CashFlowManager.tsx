@@ -1733,11 +1733,6 @@ export function CashFlowManager() {
         />
       )}
 
-      {/* Footer */}
-      <div className="cf-footer">
-        <span>© 2026 5th Line Capital, LLC</span>
-        <a href="#" onClick={e => e.preventDefault()}>Created with Perplexity Computer</a>
-      </div>
 
       {/* Modals — only mounted when open */}
       {exportOpen && (
