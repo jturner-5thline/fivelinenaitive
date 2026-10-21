@@ -346,7 +346,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
       });
       instances.current = [];
     };
-  }, [chartData, theme, expanded]);
+  }, [chartData, theme, expanded, thresholds]);
 
   return (
     <>
