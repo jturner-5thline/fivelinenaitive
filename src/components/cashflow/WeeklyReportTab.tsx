@@ -763,6 +763,79 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
 
   const activePlan = activePlanId ? safePlanSnapshots.find(p => p.id === activePlanId) : null;
 
+  // ─── Excel-style navigation (focus only — never mutates data) ───
+  const getCellFromEvent = (target: EventTarget | null) =>
+    (target as HTMLElement | null)?.closest?.('td') as HTMLTableCellElement | null;
+  const isValueCell = (td: HTMLTableCellElement | null) =>
+    !!td && !td.classList.contains('cf-label-col') && td.colSpan === 1;
+  const focusCell = (td: HTMLTableCellElement) => {
+    if (!td.hasAttribute('tabindex')) td.tabIndex = -1;
+    const input = td.querySelector<HTMLInputElement>('input.cf-cell-input');
+    td.focus({ preventScroll: false });
+    td.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    return input;
+  };
+  const moveFrom = (td: HTMLTableCellElement, dRow: number, dCol: number) => {
+    const tr = td.parentElement as HTMLTableRowElement;
+    const tbody = tr.parentElement as HTMLTableSectionElement;
+    const col = td.cellIndex + dCol;
+    if (dCol !== 0) {
+      const next = tr.cells[col] as HTMLTableCellElement | undefined;
+      if (next && isValueCell(next)) focusCell(next);
+      return;
+    }
+    const rows = Array.from(tbody.rows);
+    let i = rows.indexOf(tr) + dRow;
+    while (i >= 0 && i < rows.length) {
+      const cand = rows[i].cells[td.cellIndex] as HTMLTableCellElement | undefined;
+      if (cand && isValueCell(cand) && rows[i].cells.length === tr.cells.length) { focusCell(cand); return; }
+      i += dRow;
+    }
+  };
+  const handleGridMouseDown = (e: React.MouseEvent) => {
+    const td = getCellFromEvent(e.target);
+    if (!isValueCell(td) || (e.target as HTMLElement).closest('input,button')) return;
+    if (!td!.hasAttribute('tabindex')) td!.tabIndex = -1;
+    requestAnimationFrame(() => td!.focus({ preventScroll: true }));
+  };
+  const handleGridKeyDown = (e: React.KeyboardEvent) => {
+    const td = getCellFromEvent(e.target);
+    if (!isValueCell(td)) return;
+    const inInput = (e.target as HTMLElement).tagName === 'INPUT';
+    const map: Record<string, [number, number]> = {
+      ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1],
+    };
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      if (inInput) (e.target as HTMLInputElement).blur();
+      if (e.key === 'Enter') moveFrom(td!, e.shiftKey ? -1 : 1, 0);
+      else moveFrom(td!, 0, e.shiftKey ? -1 : 1);
+      return;
+    }
+    if (map[e.key]) {
+      if (inInput && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+      e.preventDefault();
+      if (inInput) (e.target as HTMLInputElement).blur();
+      moveFrom(td!, map[e.key][0], map[e.key][1]);
+      return;
+    }
+    if (inInput) return;
+    const input = td!.querySelector<HTMLInputElement>('input.cf-cell-input');
+    if (input && (e.key === 'F2' || /^[0-9.\-]$/.test(e.key))) {
+      input.focus();
+      if (e.key !== 'F2') {
+        e.preventDefault();
+        requestAnimationFrame(() => {
+          const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+          setter.call(input, e.key);
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+      }
+    } else if (!input && e.key === 'F2') {
+      td!.click();
+    }
+  };
+
   const renderVariance = (actual: number, plan: number) => {
     const diff = actual - plan;
     if (Math.abs(diff) < 500) return <div className="cf-variance">—</div>;
@@ -925,6 +998,8 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
         <div
           className={`cf-grid-wrap${edgeState.left ? ' cf-edge-left' : ''}${edgeState.right ? ' cf-edge-right' : ''}`}
           style={{ borderRadius: '0 0 var(--radius-lg) var(--radius-lg)' }}
+          onMouseDown={handleGridMouseDown}
+          onKeyDown={handleGridKeyDown}
         >
           <div className="cf-grid-inner" style={{ minWidth: tableMinWidth, width: tableMinWidth }}>
             <table
