@@ -144,6 +144,8 @@ interface WeeklyReportTabProps {
   cashInDialogOpen?: boolean;
   onCashInDialogOpenChange?: (open: boolean) => void;
   onCellCommentCountChange?: (count: number) => void;
+  /** Extra controls rendered at the right of the table toolbar. */
+  toolbarActions?: React.ReactNode;
   weeksFuture?: number;
   onWeeksFutureChange?: (n: number) => void;
   weeksPast?: number;
@@ -262,6 +264,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   notesDialogOpen, onNotesDialogOpenChange,
   cashInDialogOpen, onCashInDialogOpenChange,
   onCellCommentCountChange,
+  toolbarActions,
   weeksFuture: weeksFutureProp,
   onWeeksFutureChange,
   weeksPast: weeksPastProp,
@@ -945,6 +948,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
             )}
           </div>
           <div className="cf-range-controls">
+            {toolbarActions}
             <button className="cf-btn cf-btn-secondary" onClick={() => setSavePlanOpen(true)}>Save Plan</button>
             <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
               <input
