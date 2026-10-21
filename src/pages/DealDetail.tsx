@@ -5192,7 +5192,7 @@ export default function DealDetail() {
                                     {(tasksWidget || openItemsWidget) && (
                                       <section
                                         aria-label="Tasks and open items"
-                                        className="deal-tasks-openitems-widget flex flex-col overflow-hidden rounded-lg border-0 bg-transparent shadow-none [&>div]:!rounded-none [&>div]:!border-0 [&>div]:!shadow-none [&>div]:!bg-transparent [&>div>div]:!rounded-none [&>div>div]:!border-0 [&>div>div]:!shadow-none [&>div>div]:!bg-transparent"
+                                        className="deal-tasks-openitems-widget flex flex-col overflow-hidden rounded-lg border-0 bg-transparent shadow-none [&>div:not(.shrink-0)]:!rounded-none [&>div:not(.shrink-0)]:!border-0 [&>div:not(.shrink-0)]:!shadow-none [&>div:not(.shrink-0)]:!bg-transparent"
                                       >
                                         {tasksWidget}
                                         {tasksWidget && openItemsWidget && <div className="shrink-0 border-t border-[#1E2C46]" />}
