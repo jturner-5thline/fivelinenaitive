@@ -84,7 +84,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
 
     const isDark = theme === 'dark';
     const gridColor = isDark ? 'rgba(42,51,72,0.5)' : 'rgba(209,213,219,0.5)';
-    const textColor = isDark ? '#8892a8' : '#5a6070';
+    const textColor = isDark ? '#ffffff' : '#111827';
 
     // Vertical gradient fill fading from the line color to transparent.
     const gradient = (rgb: string, topAlpha: number) => (ctx: any) => {
@@ -122,8 +122,8 @@ export const WeeklyCharts = memo(function WeeklyCharts({
           backgroundColor: isDark ? 'rgba(11,21,38,0.96)' : 'rgba(255,255,255,0.97)',
           borderColor: isDark ? '#1E2C46' : '#e5e7eb',
           borderWidth: 1,
-          titleColor: isDark ? '#e6edf7' : '#111827',
-          bodyColor: isDark ? '#c3cbe0' : '#374151',
+          titleColor: isDark ? '#ffffff' : '#111827',
+          bodyColor: isDark ? '#ffffff' : '#374151',
           titleFont: { size: 11, weight: 'bold' as const },
           bodyFont: { size: 11 },
           padding: 10,
@@ -173,7 +173,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             borderColor: isDark ? '#4a90d9' : '#2563eb',
             backgroundColor: gradient(isDark ? '74,144,217' : '37,99,235', 0.28),
             pointHoverRadius: hoverRadius,
-            fill: true,
+            fill: 'start' as const,
             tension: 0.3,
             borderWidth: 1.5,
             pointRadius: labels.length > 50 ? 0 : 3,
@@ -184,7 +184,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             borderColor: isDark ? '#34d399' : '#16a34a',
             backgroundColor: gradient(isDark ? '52,211,153' : '22,163,74', 0.26),
             pointHoverRadius: hoverRadius,
-            fill: true,
+            fill: 'start' as const,
             tension: 0.3,
             borderWidth: 1.5,
             pointRadius: labels.length > 50 ? 0 : 3,
@@ -259,7 +259,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             borderColor: isDark ? '#f87171' : '#dc2626',
             backgroundColor: gradient(isDark ? '248,113,113' : '220,38,38', 0.22),
             pointHoverRadius: hoverRadius,
-            fill: true,
+            fill: 'start' as const,
             tension: 0.3,
             borderWidth: 1,
             pointRadius: labels.length > 50 ? 0 : 3,
@@ -271,7 +271,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             borderColor: isDark ? '#34d399' : '#16a34a',
             backgroundColor: gradient(isDark ? '52,211,153' : '5,150,105', 0.28),
             pointHoverRadius: hoverRadius,
-            fill: true,
+            fill: 'start' as const,
             tension: 0.3,
             borderWidth: 1.5,
             pointRadius: labels.length > 50 ? 0 : 3,
@@ -351,7 +351,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
       <div className="cf-charts-row">
         <div className="cf-chart-card">
           <div className="cf-chart-title flex items-center justify-between">
-            <span>Cash Balance & Liquidity</span>
+            <span className="text-foreground">Cash Balance & Liquidity</span>
             <button
               type="button"
               onClick={() => setExpanded('liquidity')}
@@ -368,7 +368,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
         </div>
         <div className="cf-chart-card">
           <div className="cf-chart-title flex items-center justify-between">
-            <span>Cash In vs Cash Out</span>
+            <span className="text-foreground">Cash In vs Cash Out</span>
             <button
               type="button"
               onClick={() => setExpanded('flow')}
