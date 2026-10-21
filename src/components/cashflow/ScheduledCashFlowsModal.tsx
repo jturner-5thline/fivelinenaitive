@@ -1,3 +1,4 @@
+import { CashThresholdsSection } from './CashThresholdsSection';
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { format, parseISO } from 'date-fns';
 import {
@@ -976,6 +977,7 @@ export function ScheduledCashFlowsModal({
             </div>
           </div>
         </DialogHeader>
+        <CashThresholdsSection />
 
         {/* Body */}
         <div

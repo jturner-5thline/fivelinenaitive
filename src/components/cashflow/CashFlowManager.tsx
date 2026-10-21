@@ -1,3 +1,4 @@
+import { useCashThresholds } from './cashThresholds';
 import { CashFlowFiltersMenu } from './CashFlowFiltersMenu';
 import { useState, useCallback, useEffect, useRef, useMemo, memo } from 'react';
 import type {
@@ -1126,8 +1127,9 @@ export function CashFlowManager() {
   // Peak / Low Ending Cash over the *visible* window (weeksPast → weeksFuture).
   // Mirrors the column window used by WeeklyReportTab so the chips, chart
   // markers, and warning banner all reflect the same forward-looking horizon.
-  const CAUTION_THRESHOLD = 100_000;
-  const APPROACHING_THRESHOLD = 150_000;
+  const cashThresholds = useCashThresholds();
+  const CAUTION_THRESHOLD = cashThresholds.caution;
+  const APPROACHING_THRESHOLD = cashThresholds.caution * 1.5;
   const { peakCash, lowCash, lowCashBelowCaution } = useMemo(() => {
     const sortedEntries = Object.entries(filteredWeekly || {}).sort(([a], [b]) => a.localeCompare(b));
     if (sortedEntries.length === 0) {
@@ -1159,7 +1161,7 @@ export function CashFlowManager() {
       lowCash: low,
       lowCashBelowCaution: !!low && low.value < CAUTION_THRESHOLD,
     };
-  }, [filteredWeekly, weeksPast, weeksFuture]);
+  }, [filteredWeekly, weeksPast, weeksFuture, CAUTION_THRESHOLD]);
 
   const handleCellEdit = useCallback((rowKey: string, colIdx: number, value: number) => {
     pushUndo(`Edit daily cell: ${rowKey}, col ${colIdx}`);

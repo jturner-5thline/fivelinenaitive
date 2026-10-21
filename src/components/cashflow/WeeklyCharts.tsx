@@ -1,3 +1,4 @@
+import { useCashThresholds, thresholdLabel } from './cashThresholds';
 import { useEffect, useRef, memo, useMemo, useState } from 'react';
 import { Chart, registerables } from 'chart.js';
 import type { WeeklyData, ThemeMode } from './types';
@@ -39,6 +40,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
   const instances = useRef<Chart[]>([]);
   const observers = useRef<ResizeObserver[]>([]);
   const [expanded, setExpanded] = useState<null | 'liquidity' | 'flow'>(null);
+  const thresholds = useCashThresholds();
 
   // Memoize chart data to avoid recalculation
   const chartData = useMemo(() => {
@@ -190,8 +192,8 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             pointRadius: labels.length > 50 ? 0 : 3,
           },
           {
-            label: 'Min Liquidity $250K',
-            data: new Array(labels.length).fill(250),
+            label: `Min Liquidity ${thresholdLabel(thresholds.minLiquidity)}`,
+            data: new Array(labels.length).fill(thresholds.minLiquidity / 1000),
             borderColor: isDark ? '#f59e0b' : '#d97706',
             borderDash: [5, 5],
             borderWidth: 1.5,
@@ -200,8 +202,8 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             fill: false,
           },
           {
-            label: 'Caution $100K',
-            data: new Array(labels.length).fill(100),
+            label: `Caution ${thresholdLabel(thresholds.caution)}`,
+            data: new Array(labels.length).fill(thresholds.caution / 1000),
             borderColor: isDark ? '#5a6580' : '#9ca3af',
             borderDash: [3, 3],
             borderWidth: 1.5,
