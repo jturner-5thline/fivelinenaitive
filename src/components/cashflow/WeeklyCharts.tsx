@@ -171,7 +171,8 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             label: 'Total Liquidity',
             data: totalLiquidity,
             borderColor: isDark ? '#4a90d9' : '#2563eb',
-            backgroundColor: isDark ? 'rgba(74,144,217,0.1)' : 'rgba(37,99,235,0.1)',
+            backgroundColor: gradient(isDark ? '74,144,217' : '37,99,235', 0.28),
+            pointHoverRadius: hoverRadius,
             fill: true,
             tension: 0.3,
             borderWidth: 1.5,
@@ -181,7 +182,8 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             label: 'Ending Cash',
             data: endingCash,
             borderColor: isDark ? '#34d399' : '#16a34a',
-            backgroundColor: isDark ? 'rgba(52,211,153,0.1)' : 'rgba(22,163,74,0.1)',
+            backgroundColor: gradient(isDark ? '52,211,153' : '22,163,74', 0.26),
+            pointHoverRadius: hoverRadius,
             fill: true,
             tension: 0.3,
             borderWidth: 1.5,
@@ -194,6 +196,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             borderDash: [5, 5],
             borderWidth: 1.5,
             pointRadius: 0,
+            pointHoverRadius: 0,
             fill: false,
           },
           {
@@ -203,6 +206,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             borderDash: [3, 3],
             borderWidth: 1.5,
             pointRadius: 0,
+            pointHoverRadius: 0,
             fill: false,
           },
           ...(peakIdx >= 0
@@ -213,7 +217,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
                 backgroundColor: isDark ? '#34d399' : '#16a34a',
                 pointStyle: 'triangle' as const,
                 pointRadius: 9,
-                pointHoverRadius: 11,
+                pointHoverRadius: 12,
                 pointBorderWidth: 2,
                 pointBorderColor: isDark ? '#0b1020' : '#ffffff',
                 showLine: false,
@@ -230,7 +234,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
                 pointStyle: 'triangle' as const,
                 pointRotation: 180,
                 pointRadius: 9,
-                pointHoverRadius: 11,
+                pointHoverRadius: 12,
                 pointBorderWidth: 2,
                 pointBorderColor: isDark ? '#0b1020' : '#ffffff',
                 showLine: false,
@@ -241,12 +245,6 @@ export const WeeklyCharts = memo(function WeeklyCharts({
       },
       options: {
         ...commonOptions,
-        plugins: {
-          ...commonOptions.plugins,
-          tooltip: {
-            callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(0)}K` },
-          },
-        },
       },
     });
 
@@ -259,7 +257,8 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             label: 'Cash Out',
             data: cashOut,
             borderColor: isDark ? '#f87171' : '#dc2626',
-            backgroundColor: isDark ? 'rgba(248,113,113,0.06)' : 'rgba(220,38,38,0.08)',
+            backgroundColor: gradient(isDark ? '248,113,113' : '220,38,38', 0.22),
+            pointHoverRadius: hoverRadius,
             fill: true,
             tension: 0.3,
             borderWidth: 1,
@@ -270,7 +269,8 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             label: 'Cash In',
             data: cashIn,
             borderColor: isDark ? '#34d399' : '#16a34a',
-            backgroundColor: isDark ? 'rgba(52,211,153,0.16)' : 'rgba(5,150,105,0.16)',
+            backgroundColor: gradient(isDark ? '52,211,153' : '5,150,105', 0.28),
+            pointHoverRadius: hoverRadius,
             fill: true,
             tension: 0.3,
             borderWidth: 1.5,
@@ -281,12 +281,6 @@ export const WeeklyCharts = memo(function WeeklyCharts({
       },
       options: {
         ...commonOptions,
-        plugins: {
-          ...commonOptions.plugins,
-          tooltip: {
-            callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(1)}K` },
-          },
-        },
         scales: {
           ...commonOptions.scales,
           y: {
