@@ -1344,3 +1344,66 @@ tr:hover .cf-row-remove { opacity: 1; }
 .cf-actions-stack { flex-direction: column; align-items: flex-end; gap: 6px; }
 .cf-actions-row { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
 .cf-actions-stack .cf-icon-btn { width: 28px; height: 28px; }
+
+/* ── Cash Flow layout cleanup: toolbar row + 5 individual KPI cards ── */
+.cf-header {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  background: transparent;
+  border-bottom: 0;
+  padding: var(--space-3) var(--space-3) 0;
+}
+.cf-header > .cf-actions-stack {
+  order: -1;
+  margin-left: 0;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  width: 100%;
+}
+.cf-header > .cf-actions-stack > .cf-actions-row:last-child:not(:first-child) { order: -1; }
+.cf-header .cf-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-3);
+  width: 100%;
+}
+.cf-header .cf-kpi {
+  min-width: 0;
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+.cf-header .cf-kpi:first-child { border-left: 1px solid var(--color-divider); padding-left: 14px; }
+.cf-header .cf-kpi-value { font-size: var(--text-xl); margin-top: 4px; }
+@media (max-width: 1100px) {
+  .cf-header .cf-kpi-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .cf-header .cf-kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Minimal chart widgets */
+.cf-chart-card {
+  background: transparent;
+  border: 1px solid var(--color-divider);
+}
+.cf-chart-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--color-text-muted); }
+
+/* Table toolbar actions */
+.cf-pill-count {
+  background: var(--color-primary);
+  color: var(--color-bg);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1.4;
+}
