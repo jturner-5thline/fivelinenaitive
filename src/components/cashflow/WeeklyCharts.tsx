@@ -86,10 +86,27 @@ export const WeeklyCharts = memo(function WeeklyCharts({
     const gridColor = isDark ? 'rgba(42,51,72,0.5)' : 'rgba(209,213,219,0.5)';
     const textColor = isDark ? '#8892a8' : '#5a6070';
 
+    // Vertical gradient fill fading from the line color to transparent.
+    const gradient = (rgb: string, topAlpha: number) => (ctx: any) => {
+      const { chart } = ctx;
+      const area = chart?.chartArea;
+      if (!area) return `rgba(${rgb},${topAlpha * 0.5})`;
+      const g = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+      g.addColorStop(0, `rgba(${rgb},${topAlpha})`);
+      g.addColorStop(1, `rgba(${rgb},0)`);
+      return g;
+    };
+    const fmtK = (v: number) =>
+      Math.abs(v) >= 1000 ? `$${(v / 1000).toFixed(2)}M` : `$${v.toFixed(1)}K`;
+    const hoverRadius = labels.length > 50 ? 4 : 6;
+
     const commonOptions = {
       responsive: false,
       maintainAspectRatio: false,
-      animation: false as const,
+      animation: { duration: 500, easing: 'easeOutQuart' as const },
+      transitions: { active: { animation: { duration: 180 } } },
+      interaction: { mode: 'index' as const, intersect: false },
+      hover: { mode: 'index' as const, intersect: false },
       plugins: {
         legend: {
           position: 'bottom' as const,
@@ -99,6 +116,27 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             boxWidth: 28,
             boxHeight: 0,
             useLineStyle: true,
+          },
+        },
+        tooltip: {
+          backgroundColor: isDark ? 'rgba(11,21,38,0.96)' : 'rgba(255,255,255,0.97)',
+          borderColor: isDark ? '#1E2C46' : '#e5e7eb',
+          borderWidth: 1,
+          titleColor: isDark ? '#e6edf7' : '#111827',
+          bodyColor: isDark ? '#c3cbe0' : '#374151',
+          titleFont: { size: 11, weight: 'bold' as const },
+          bodyFont: { size: 11 },
+          padding: 10,
+          cornerRadius: 6,
+          boxPadding: 4,
+          usePointStyle: true,
+          caretSize: 5,
+          // Hide static threshold lines from the hover box.
+          filter: (item: any) => !/^(Min Liquidity|Caution)/.test(item.dataset.label || '') && item.parsed?.y != null,
+          callbacks: {
+            title: (items: any[]) => (items[0] ? `Week ending ${items[0].label}` : ''),
+            label: (ctx: any) => ` ${ctx.dataset.label}: ${fmtK(ctx.parsed.y)}`,
+            labelPointStyle: () => ({ pointStyle: 'circle' as const, rotation: 0 }),
           },
         },
       },
