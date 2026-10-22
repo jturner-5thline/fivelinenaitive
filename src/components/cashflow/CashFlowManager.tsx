@@ -1699,7 +1699,10 @@ export function CashFlowManager() {
               const cashPatch: Record<string, any> = {};
               if (typeof patch.amount === 'number') cashPatch.amount = patch.amount;
               if (typeof patch.start_date === 'string') cashPatch.target_date = patch.start_date;
-              if (typeof patch.notes === 'string' && patch.notes) cashPatch.deal_name = patch.notes;
+              if (typeof patch.notes === 'string' && patch.notes) {
+                const cleanName = stripCashInFeeSuffix(patch.notes);
+                if (cleanName) cashPatch.deal_name = cleanName;
+              }
               const ok = await updateCashInDbItem(realId, cashPatch);
               if (ok) {
                 {

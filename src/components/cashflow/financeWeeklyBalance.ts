@@ -262,10 +262,11 @@ export function composeCombinedScheduledItems({
     const date = (it.target_date || '').slice(0, 10);
     const category = FEE_TO_CATEGORY[it.fee_type] || 'Other Receipts';
     const label = FEE_LABEL[it.fee_type] || it.fee_type;
+    const dealName = stripCashInFeeSuffix(it.deal_name || '');
     return {
       id: `cashin:${it.id}`,
       company_id: companyId || '',
-      account: it.deal_name || '',
+      account: dealName,
       category,
       amount: Number(it.amount) || 0,
       frequency_type: 'one_time',
@@ -273,7 +274,7 @@ export function composeCombinedScheduledItems({
       flow_type: 'cash_in',
       start_date: date,
       end_date: date,
-      notes: `${it.deal_name} — ${label}`,
+      notes: `${dealName} — ${label}`,
     } as ScheduledCashFlow;
   });
   // Dedupe: when a manual cash-in row exists for a given deal_id + fee_type,
