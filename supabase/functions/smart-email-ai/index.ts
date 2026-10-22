@@ -1471,24 +1471,38 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
     const t0 = Date.now();
     console.log(`[smart-email-ai] action=${action} model=${selectedModel} singleTone=${singleTone || "none"} threadEmails=${threadData?.emails?.length || 0}`);
     let response: Response;
+    const requestBody = JSON.stringify({
+      model: selectedModel,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: (action === "draft_reply" || action === "auto_draft" || action === "generate_draft_options") ? 0.7 : 0.3,
+      ...(maxTokensForAction ? { max_tokens: maxTokensForAction } : {}),
+    });
     try {
-      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        signal: aiAbort.signal,
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-          temperature: (action === "draft_reply" || action === "auto_draft" || action === "generate_draft_options") ? 0.7 : 0.3,
-          ...(maxTokensForAction ? { max_tokens: maxTokensForAction } : {}),
-        }),
-      });
+      // Bounded retry for transient upstream 5xx (e.g. Google 502 pages).
+      const MAX_ATTEMPTS = 2;
+      let attempt = 0;
+      while (true) {
+        attempt++;
+        response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          signal: aiAbort.signal,
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: requestBody,
+        });
+        if (response.status >= 500 && attempt < MAX_ATTEMPTS) {
+          const txt = await response.text().catch(() => "");
+          console.warn(`[smart-email-ai] transient ${response.status} on attempt ${attempt}, retrying`, txt.slice(0, 200));
+          await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
+          continue;
+        }
+        break;
+      }
     } catch (e) {
       clearTimeout(aiTimer);
       if ((e as Error)?.name === "AbortError") {
@@ -1502,6 +1516,7 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
     }
 
     if (!response.ok) {
+      clearTimeout(aiTimer);
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again shortly." }), {
           status: 429,
@@ -1515,7 +1530,14 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
         });
       }
       const errText = await response.text();
-      console.error("AI gateway error:", response.status, errText);
+      console.error("AI gateway error:", response.status, errText.slice(0, 500));
+      if (response.status >= 500) {
+        // Soft-fail so the UI shows a message instead of a blank screen.
+        return new Response(JSON.stringify({ error: "The AI service is temporarily unavailable. Please try again in a moment.", error_kind: "upstream_unavailable" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       throw new Error("AI gateway error");
     }
 
