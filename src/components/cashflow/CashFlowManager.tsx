@@ -39,6 +39,7 @@ import './cashflow.css';
 import { computeCashInTotal } from './WeeklySidebar';
 import { fmtShort } from './formatters';
 import { MessageSquare } from 'lucide-react';
+import { buildCashflowSnapshot, setCashflowSnapshot } from '@/lib/cashflowSnapshot';
 
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
@@ -1162,6 +1163,20 @@ export function CashFlowManager() {
       lowCashBelowCaution: !!low && low.value < CAUTION_THRESHOLD,
     };
   }, [filteredWeekly, weeksPast, weeksFuture, CAUTION_THRESHOLD]);
+
+  // Publish the visible grid so the Copilot chat can read the on-screen figures.
+  useEffect(() => {
+    const keys = [
+      ...WEEKLY_ROW_ORDER.filter((r: any) => !r.isHeader && !String(r.key).startsWith('__')).map((r) => String(r.key)),
+      ...customRows.receipts,
+      ...customRows.disbursements,
+    ];
+    const snap = buildCashflowSnapshot(filteredWeekly as any, Array.from(new Set(keys)), weeksPast, weeksFuture);
+    setCashflowSnapshot(
+      snap ? { ...snap, thresholds: { minimumLiquidity: cashThresholds.minimum, caution: cashThresholds.caution } } : null,
+    );
+  }, [filteredWeekly, weeksPast, weeksFuture, customRows.receipts, customRows.disbursements, cashThresholds.minimum, cashThresholds.caution]);
+  useEffect(() => () => setCashflowSnapshot(null), []);
 
   const handleCellEdit = useCallback((rowKey: string, colIdx: number, value: number) => {
     pushUndo(`Edit daily cell: ${rowKey}, col ${colIdx}`);
