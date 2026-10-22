@@ -14,6 +14,10 @@ export function useDealActivityTimeline(dealId: string | undefined) {
     queryKey: ['deal-activity-timeline', dealId],
     enabled: !!dealId,
     staleTime: 60_000,
+    // Keep the last result so reopening a deal shows the chart instantly
+    // while a fresh copy loads in the background.
+    gcTime: 24 * 60 * 60_000,
+    refetchOnMount: 'always',
     queryFn: async () => {
       if (!dealId) return { events: [], warning: null };
       const since = subDays(new Date(), WINDOW_DAYS).toISOString();
