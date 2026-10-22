@@ -375,3 +375,13 @@ export function useFinanceWeeklyBalance(companyId: string | undefined): {
     isLoading: schedLoading || overridesLoading,
   };
 }
+/**
+ * Cash-in rows display as "<deal> — <Fee label>". Strip any trailing fee
+ * labels (possibly repeated by older saves) so only the deal name is stored.
+ */
+export function stripCashInFeeSuffix(value: string): string {
+  let out = (value || '').trim();
+  const re = /\s*[—–-]\s*(Closing|Milestone|Retainer)\s*$/i;
+  while (re.test(out)) out = out.replace(re, '').trim();
+  return out;
+}
