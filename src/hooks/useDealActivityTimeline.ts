@@ -2,8 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { subDays } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  ActivityEvent, attendeeEmails, emailDomain, isGenericDomain, matchesParty,
-  titleMentionsDeal, websiteDomain,
+  ActivityEvent, emailDomain, isGenericDomain, matchesParty, websiteDomain,
 } from '@/lib/dealActivityTimeline';
 
 const WINDOW_DAYS = 90;
@@ -52,18 +51,18 @@ export function useDealActivityTimeline(dealId: string | undefined) {
         }
       }
 
-      // Calendar events
-      const { data: cal } = await db.from('calendar_events')
-        .select('id, event_id, title, start_time, attendees, is_cancelled')
-        .gte('start_time', since).lte('start_time', new Date().toISOString())
-        .limit(2000);
-      for (const ev of (cal || []) as any[]) {
-        if (ev.is_cancelled) continue;
-        const key = `cal:${ev.event_id || ev.id}`;
-        const att = attendeeEmails(ev.attendees);
-        if (att.some((a) => matchesParty(a, clientEmails, clientDomains))) events.push({ at: ev.start_time, kind: 'client_meeting', key });
-        else if (att.some((a) => matchesParty(a, lenderEmails, lenderDomains))) events.push({ at: ev.start_time, kind: 'lender_meeting', key });
-        else if (titleMentionsDeal(ev.title, dealName)) events.push({ at: ev.start_time, kind: 'title_meeting', key });
+      // The calendar mirror is caller-only under RLS. Read all verified company
+      // members' connected calendars through the deal-scoped endpoint instead.
+      const { data: cal, error: calendarError } = await supabase.functions.invoke('deal-team-calendar-events', {
+        body: { deal_id: dealId, time_min: since, time_max: new Date().toISOString() },
+      });
+      if (calendarError || cal?.error) throw new Error(cal?.error || calendarError?.message || 'Could not load team calendars');
+      for (const ev of (cal?.events || []) as any[]) {
+        if (ev.start < since || new Date(ev.start).getTime() > Date.now()) continue;
+        const key = `cal:${ev.source_key || ev.nylas_id}`;
+        if (ev.match?.contact || ev.match?.domain) events.push({ at: ev.start, kind: 'client_meeting', key });
+        else if (ev.match?.lender) events.push({ at: ev.start, kind: 'lender_meeting', key });
+        else if (ev.match?.title) events.push({ at: ev.start, kind: 'title_meeting', key });
       }
 
       // Funding-source emails that reference the company
