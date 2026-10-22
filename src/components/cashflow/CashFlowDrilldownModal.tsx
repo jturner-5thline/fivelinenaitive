@@ -826,16 +826,16 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                   return (
                     <tr
                       key={r.id}
-                      className={`border-t border-border hover:bg-muted/40 ${r.projected ? 'italic' : ''}`}
+                      className="border-t border-border hover:bg-muted/40 align-top"
                     >
-                      <td className="px-3 py-2 whitespace-nowrap">{formatNiceDate(r.date)}</td>
-                      <td className="px-3 py-2">{r.account}</td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-1.5">
+                      <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{formatNiceDate(r.date)}</td>
+                      <td className="px-3 py-2.5 font-medium text-foreground">{r.account}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-1.5 whitespace-nowrap">
                           <span>{r.category}</span>
                           {r.projected && (
-                            <Badge variant="outline" className="h-4 px-1 text-[9px] font-medium border-amber-500/40 text-amber-500">
-                              P
+                            <Badge variant="outline" className="h-4 px-1.5 text-[9px] font-medium border-amber-500/40 text-amber-500">
+                              Projected
                             </Badge>
                           )}
                           {r.source === 'quickbooks' && (
@@ -845,11 +845,18 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        <div className="truncate" title={r.notes || ''}>{r.notes || '—'}</div>
-                        <div className="text-[10px] text-muted-foreground/70 truncate" title={r.sourceLabel}>
-                          Source: {r.sourceLabel}
-                        </div>
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                        {(() => {
+                          const desc = describeRow(r);
+                          return (
+                            <>
+                              <div className="text-foreground/90">{desc.primary}</div>
+                              {desc.secondary && (
+                                <div className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">{desc.secondary}</div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </td>
                       <td
                         className={`px-3 py-2 text-right tabular-nums ${
