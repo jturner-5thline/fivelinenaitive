@@ -633,7 +633,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>{context.rowLabel}</DialogTitle>
           <div className="text-sm text-muted-foreground mt-1">
@@ -736,7 +736,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                   <th className="px-3 py-2 font-medium">Category</th>
                   <th className="px-3 py-2 font-medium">Description</th>
                   <th className="px-3 py-2 font-medium text-right">Amount</th>
-                  {canMutate && <th className="px-3 py-2 font-medium text-right w-[80px]">Actions</th>}
+                  {canMutate && <th className="px-3 py-2 font-medium text-right w-[130px]">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -876,7 +876,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                         })()}
                       </td>
                       <td
-                        className={`px-3 py-2 text-right tabular-nums ${
+                        className={`px-3 py-2.5 text-right font-semibold whitespace-nowrap tabular-nums ${
                           r.signedAmount > 0 ? 'text-emerald-500' : r.signedAmount < 0 ? 'text-red-500' : ''
                         }`}
                       >
@@ -884,7 +884,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                       </td>
                       {canMutate && (
                         <td className="px-3 py-2 text-right">
-                          <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100">
+                          <div className="flex justify-end gap-1">
                             {onUpdateEntry && r.source === 'manual' && (
                               <Button
                                 size="sm"
