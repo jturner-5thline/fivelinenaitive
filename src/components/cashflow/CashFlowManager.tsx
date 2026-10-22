@@ -28,7 +28,7 @@ import { useDealCashflowOverrides } from './useDealCashflowOverrides';
 import { useCustomCashFlowRows } from './useCustomCashFlowRows';
 import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, resolveCategoryToGridRow, DEBT_ADVISORY_DEFAULT_SUBCATEGORY, generateOccurrences, applyVariance, gridRowToCanonicalCategory, type ScheduledCashFlow } from './scheduledCashFlows';
 import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from './weeklyHistoricalSeed';
-import { buildFinanceWeeklyBalance, composeCombinedScheduledItems } from './financeWeeklyBalance';
+import { buildFinanceWeeklyBalance, composeCombinedScheduledItems, stripCashInFeeSuffix } from './financeWeeklyBalance';
 import { computeFacilityWeekStates, totalAvailableLocForWeek } from './creditFacilities';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
@@ -1699,7 +1699,10 @@ export function CashFlowManager() {
               const cashPatch: Record<string, any> = {};
               if (typeof patch.amount === 'number') cashPatch.amount = patch.amount;
               if (typeof patch.start_date === 'string') cashPatch.target_date = patch.start_date;
-              if (typeof patch.notes === 'string' && patch.notes) cashPatch.deal_name = patch.notes;
+              if (typeof patch.notes === 'string' && patch.notes) {
+                const cleanName = stripCashInFeeSuffix(patch.notes);
+                if (cleanName) cashPatch.deal_name = cleanName;
+              }
               const ok = await updateCashInDbItem(realId, cashPatch);
               if (ok) {
                 {
