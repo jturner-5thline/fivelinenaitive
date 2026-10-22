@@ -44,7 +44,7 @@ export function DealActivityTimelineChart({ dealId }: { dealId: string }) {
         </div>
       </div>
       {data?.warning && <p role="status" className="mb-2 text-xs text-muted-foreground">{data.warning}</p>}
-      {error ? <p role="alert" className="py-8 text-sm text-destructive">Activity could not be loaded. {error.message}</p> : isLoading ? <Skeleton className="h-[200px] w-full" /> : (
+      {error && !data ? <p role="alert" className="py-8 text-sm text-destructive">Activity could not be loaded. {error.message}</p> : isLoading && !data ? <Skeleton className="h-[200px] w-full" /> : (
         <div className="h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={buckets} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>

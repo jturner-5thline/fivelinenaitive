@@ -278,7 +278,7 @@ const queryClient = new QueryClient({
 
 // Persist a small whitelist of long-lived list queries to localStorage so a
 // hard refresh hydrates from cache instead of triggering a full refetch.
-const PERSISTED_QUERY_KEYS = new Set(['crm-companies-infinite']);
+const PERSISTED_QUERY_KEYS = new Set(['crm-companies-infinite', 'deal-activity-timeline']);
 const localStoragePersister = createSyncStoragePersister({
   storage: typeof window !== 'undefined' ? window.localStorage : undefined,
   key: 'naitive-rq-cache-v1',
