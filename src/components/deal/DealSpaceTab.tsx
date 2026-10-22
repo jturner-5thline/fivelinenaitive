@@ -5,6 +5,7 @@ import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { DealSpaceAskAITab } from './DealSpaceAskAITab';
 import { DealSpaceNotesTab } from './DealSpaceNotesTab';
 import { useFeatureAccess } from '@/hooks/useFeatureFlags';
+import { DealActivityTimelineChart } from './DealActivityTimelineChart';
 
 interface DealSpaceTabProps {
   dealId: string;
@@ -69,5 +70,6 @@ export function DealSpaceTab({ dealId, dealData }: DealSpaceTabProps) {
       </TabsContent>
 
     </Tabs>
+    </>
   );
 }
