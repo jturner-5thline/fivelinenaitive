@@ -2,24 +2,24 @@ import { useQuery } from '@tanstack/react-query';
 import { subDays } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  ActivityEvent, attendeeEmails, emailDomain, isGenericDomain, matchesParty,
-  titleMentionsDeal, websiteDomain,
+  ActivityEvent, emailDomain, isGenericDomain, matchesParty, websiteDomain,
 } from '@/lib/dealActivityTimeline';
 
 const WINDOW_DAYS = 90;
+interface ActivityTimelineResult { events: ActivityEvent[]; warning: string | null }
 
 /** Collects the five Deal Space activity streams for the last ~12 weeks. */
 export function useDealActivityTimeline(dealId: string | undefined) {
-  return useQuery<ActivityEvent[]>({
+  return useQuery<ActivityTimelineResult>({
     queryKey: ['deal-activity-timeline', dealId],
     enabled: !!dealId,
     staleTime: 60_000,
     queryFn: async () => {
-      if (!dealId) return [];
+      if (!dealId) return { events: [], warning: null };
       const since = subDays(new Date(), WINDOW_DAYS).toISOString();
       const db = supabase as any;
 
-      const { data: deal } = await db.from('deals').select('company, contact_email').eq('id', dealId).maybeSingle();
+      const { data: deal } = await db.from('deals').select('company').eq('id', dealId).maybeSingle();
       const dealName: string = deal?.company || '';
 
       const { data: lenders } = await db.from('deal_lenders')
@@ -27,11 +27,7 @@ export function useDealActivityTimeline(dealId: string | undefined) {
         .eq('deal_id', dealId);
       const lenderRows = (lenders || []) as any[];
 
-      // Party matchers
-      const clientEmails = new Set<string>(); const clientDomains = new Set<string>();
-      const ce = (deal?.contact_email || '').trim().toLowerCase();
-      if (ce) { clientEmails.add(ce); const d = emailDomain(ce); if (!isGenericDomain(d)) clientDomains.add(d!); }
-
+      // Funding-source party matchers for email activity.
       const lenderEmails = new Set<string>(); const lenderDomains = new Set<string>();
       const masterIds = lenderRows.map((l) => l.master_lender_id).filter(Boolean);
       if (masterIds.length) {
@@ -52,18 +48,18 @@ export function useDealActivityTimeline(dealId: string | undefined) {
         }
       }
 
-      // Calendar events
-      const { data: cal } = await db.from('calendar_events')
-        .select('id, event_id, title, start_time, attendees, is_cancelled')
-        .gte('start_time', since).lte('start_time', new Date().toISOString())
-        .limit(2000);
-      for (const ev of (cal || []) as any[]) {
-        if (ev.is_cancelled) continue;
-        const key = `cal:${ev.event_id || ev.id}`;
-        const att = attendeeEmails(ev.attendees);
-        if (att.some((a) => matchesParty(a, clientEmails, clientDomains))) events.push({ at: ev.start_time, kind: 'client_meeting', key });
-        else if (att.some((a) => matchesParty(a, lenderEmails, lenderDomains))) events.push({ at: ev.start_time, kind: 'lender_meeting', key });
-        else if (titleMentionsDeal(ev.title, dealName)) events.push({ at: ev.start_time, kind: 'title_meeting', key });
+      // The calendar mirror is caller-only under RLS. Read all verified company
+      // members' connected calendars through the deal-scoped endpoint instead.
+      const { data: cal, error: calendarError } = await supabase.functions.invoke('deal-team-calendar-events', {
+        body: { deal_id: dealId, time_min: since, time_max: new Date().toISOString() },
+      });
+      if (calendarError || cal?.error) throw new Error(cal?.error || calendarError?.message || 'Could not load team calendars');
+      for (const ev of (cal?.events || []) as any[]) {
+        if (ev.start < since || new Date(ev.start).getTime() > Date.now()) continue;
+        const key = `cal:${ev.source_key || ev.nylas_id}`;
+        if (ev.match?.contact || ev.match?.domain) events.push({ at: ev.start, kind: 'client_meeting', key });
+        else if (ev.match?.lender) events.push({ at: ev.start, kind: 'lender_meeting', key });
+        else if (ev.match?.title) events.push({ at: ev.start, kind: 'title_meeting', key });
       }
 
       // Funding-source emails that reference the company
@@ -84,7 +80,7 @@ export function useDealActivityTimeline(dealId: string | undefined) {
           }
         }
       }
-      return events;
+      return { events, warning: cal?.partial ? cal.warning || 'Some calendars are unavailable; meeting counts may be incomplete.' : null };
     },
   });
 }

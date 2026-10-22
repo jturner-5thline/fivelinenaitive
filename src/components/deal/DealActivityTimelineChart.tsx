@@ -23,8 +23,8 @@ function ActivityTooltip({ active, payload }: any) {
 
 export function DealActivityTimelineChart({ dealId }: { dealId: string }) {
   const [granularity, setGranularity] = useState<Granularity>('weekly');
-  const { data, isLoading } = useDealActivityTimeline(dealId);
-  const buckets = useMemo(() => bucketActivity(data || [], granularity), [data, granularity]);
+  const { data, isLoading, error } = useDealActivityTimeline(dealId);
+  const buckets = useMemo(() => bucketActivity(data?.events || [], granularity), [data, granularity]);
   const total = buckets.reduce((s, b) => s + b.total, 0);
 
   return (
@@ -43,7 +43,8 @@ export function DealActivityTimelineChart({ dealId }: { dealId: string }) {
           ))}
         </div>
       </div>
-      {isLoading ? <Skeleton className="h-[200px] w-full" /> : (
+      {data?.warning && <p role="status" className="mb-2 text-xs text-muted-foreground">{data.warning}</p>}
+      {error ? <p role="alert" className="py-8 text-sm text-destructive">Activity could not be loaded. {error.message}</p> : isLoading ? <Skeleton className="h-[200px] w-full" /> : (
         <div className="h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={buckets} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>

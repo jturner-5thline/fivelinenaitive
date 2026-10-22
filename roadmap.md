@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Source Deal Activity client meetings from all connected same-company calendars; verified live client meeting read, Daily chart, isolation and duplicate-counting tests.
+
 - [x] End of Day: clicking a meeting no longer opens a follow-up task automatically
 - [x] Apply the navy-to-blue app backdrop to Contacts, Deals and Queue pages
 - [x] Wire Queue approval actions to real deal status changes (pending -> approved -> closed)
