@@ -229,12 +229,17 @@ serve(async (req: Request): Promise<Response> => {
         const raw: any[] = [];
         const calendarsResponse = await fetch(`${NYLAS_API_URI}/v3/grants/${grantId}/calendars`, {
           headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
-          signal: AbortSignal.timeout(15000),
+          signal: AbortSignal.timeout(30000),
         });
         if (!calendarsResponse.ok) throw new Error(`Calendar provider returned ${calendarsResponse.status}`);
         const calendarsPayload = await calendarsResponse.json();
-        const calendars = calendarsPayload.data || [];
-        // Each connected user's calendars, not the referral dashboard owner allowlist.
+        const availableCalendars = calendarsPayload.data || [];
+        const ownerEmail = (profByUser.get(userId)?.email || '').toLowerCase();
+        // Read each owner's calendar, not subscribed holiday/shared calendars.
+        const ownedCalendars = availableCalendars.filter((calendar: any) =>
+          calendar.is_primary || calendar.id === 'primary' ||
+          (ownerEmail && String(calendar.id).toLowerCase() === ownerEmail));
+        const calendars = ownedCalendars.length ? ownedCalendars : availableCalendars.slice(0, 1);
         for (const calendar of calendars) {
         let cursor: string | null = null;
         for (let page = 0; page < 20; page += 1) {
@@ -247,7 +252,7 @@ serve(async (req: Request): Promise<Response> => {
           if (cursor) url.searchParams.set("page_token", cursor);
           const resp = await fetch(url.toString(), {
             headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
-            signal: AbortSignal.timeout(15000),
+            signal: AbortSignal.timeout(30000),
           });
           if (!resp.ok) throw new Error(`Calendar provider returned ${resp.status}`);
           const data = await resp.json();
