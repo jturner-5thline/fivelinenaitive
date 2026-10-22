@@ -186,6 +186,27 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
+    // Funding-source meetings qualify only when their title references this deal.
+    const lenderEmails = new Set<string>();
+    const lenderDomains = new Set<string>();
+    const { data: lenders, error: lenderError } = await userClient.from("deal_lenders")
+      .select("master_lender_id").eq("deal_id", body.deal_id);
+    if (lenderError) throw lenderError;
+    const lenderIds = (lenders || []).map((lender) => lender.master_lender_id).filter(Boolean);
+    if (lenderIds.length) {
+      const { data: sources, error } = await userClient.from("master_lenders")
+        .select("email, website").in("id", lenderIds);
+      if (error) throw error;
+      for (const source of sources || []) {
+        const email = (source.email || "").trim().toLowerCase();
+        if (email) lenderEmails.add(email);
+        const domain = domainOf(email);
+        if (domain && !FREE_PROVIDERS.has(domain)) lenderDomains.add(domain);
+        const website = normalizeUrlToDomain(source.website);
+        if (website && !FREE_PROVIDERS.has(website)) lenderDomains.add(website);
+      }
+    }
+
     if (matchDomains.size === 0 && contactEmails.size === 0 && !nameLower && tokens.length === 0) {
       return new Response(JSON.stringify({ events: [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -206,10 +227,19 @@ serve(async (req: Request): Promise<Response> => {
     const results = await Promise.all(Array.from(grantByUser.entries()).map(async ([userId, grantId]) => {
       try {
         const raw: any[] = [];
+        const calendarsResponse = await fetch(`${NYLAS_API_URI}/v3/grants/${grantId}/calendars`, {
+          headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
+          signal: AbortSignal.timeout(15000),
+        });
+        if (!calendarsResponse.ok) throw new Error(`Calendar provider returned ${calendarsResponse.status}`);
+        const calendarsPayload = await calendarsResponse.json();
+        const calendars = calendarsPayload.data || [];
+        // Each connected user's calendars, not the referral dashboard owner allowlist.
+        for (const calendar of calendars) {
         let cursor: string | null = null;
         for (let page = 0; page < 20; page += 1) {
           const url = new URL(`${NYLAS_API_URI}/v3/grants/${grantId}/events`);
-          url.searchParams.set("calendar_id", "primary");
+          url.searchParams.set("calendar_id", calendar.id);
           url.searchParams.set("start", String(startUnix));
           url.searchParams.set("end", String(endUnix));
           url.searchParams.set("limit", "200");
@@ -217,6 +247,7 @@ serve(async (req: Request): Promise<Response> => {
           if (cursor) url.searchParams.set("page_token", cursor);
           const resp = await fetch(url.toString(), {
             headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
+            signal: AbortSignal.timeout(15000),
           });
           if (!resp.ok) throw new Error(`Calendar provider returned ${resp.status}`);
           const data = await resp.json();
@@ -225,6 +256,7 @@ serve(async (req: Request): Promise<Response> => {
           cursor = data?.next_cursor || data?.next_page_token || null;
           if (!cursor || batch.length === 0) break;
           if (page === 19) throw new Error("Calendar result limit reached; narrow the date range");
+        }
         }
         const prof = profByUser.get(userId);
         return raw
@@ -249,7 +281,9 @@ serve(async (req: Request): Promise<Response> => {
             const contactHit = contactEmails.size > 0
               ? participantEmails.some((em: string) => contactEmails.has(em))
               : false;
-            if (!titleHit && !domainHit && !contactHit) return null;
+            const lenderHit = titleHit && participantEmails.some((email: string) =>
+              lenderEmails.has(email) || lenderDomains.has(domainOf(email) || ""));
+            if (!titleHit && !domainHit && !contactHit && !lenderHit) return null;
             const w = e.when || {};
             const isAllDay = !w.start_time && !!w.start_date;
             const start = w.start_time ? new Date(w.start_time * 1000).toISOString() : (w.start_date || "");
@@ -264,7 +298,7 @@ serve(async (req: Request): Promise<Response> => {
               html_link: e.html_link || null,
               hangout_link: e.conferencing?.details?.url || null,
               participants: participantEmails,
-              match: { title: titleHit, domain: domainHit, contact: contactHit },
+              match: { title: titleHit, domain: domainHit, contact: contactHit, lender: lenderHit },
               teammate: {
                 user_id: userId,
                 email: prof?.email || null,
