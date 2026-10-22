@@ -18,7 +18,7 @@ export function useDealActivityTimeline(dealId: string | undefined) {
       const since = subDays(new Date(), WINDOW_DAYS).toISOString();
       const db = supabase as any;
 
-      const { data: deal } = await db.from('deals').select('company, contact_email').eq('id', dealId).maybeSingle();
+      const { data: deal } = await db.from('deals').select('company').eq('id', dealId).maybeSingle();
       const dealName: string = deal?.company || '';
 
       const { data: lenders } = await db.from('deal_lenders')
@@ -26,11 +26,7 @@ export function useDealActivityTimeline(dealId: string | undefined) {
         .eq('deal_id', dealId);
       const lenderRows = (lenders || []) as any[];
 
-      // Party matchers
-      const clientEmails = new Set<string>(); const clientDomains = new Set<string>();
-      const ce = (deal?.contact_email || '').trim().toLowerCase();
-      if (ce) { clientEmails.add(ce); const d = emailDomain(ce); if (!isGenericDomain(d)) clientDomains.add(d!); }
-
+      // Funding-source party matchers for email activity.
       const lenderEmails = new Set<string>(); const lenderDomains = new Set<string>();
       const masterIds = lenderRows.map((l) => l.master_lender_id).filter(Boolean);
       if (masterIds.length) {
