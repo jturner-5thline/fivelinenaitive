@@ -112,6 +112,23 @@ function SourceLockedAction({ row }: { row: DrilldownRow }) {
   );
 }
 
+/** Turn verbose provenance notes (e.g. "naitive Deal — Acme · Closing Fee (P)
+ *  · 2% of $10,000,000 − $50,000 milestone") into a short label plus an
+ *  optional calculation line, dropping text already shown in other columns. */
+function describeRow(r: { notes: string | null; source: string; account: string }): { primary: string; secondary?: string } {
+  const notes = (r.notes || '').trim();
+  if (r.source === 'deal') {
+    const parts = notes.split('·').map((s) => s.trim()).filter(Boolean);
+    const kind = (parts[1] || 'Deal projection').replace(/\s*\(P\)\s*/g, '').trim();
+    const calc = parts.slice(2).join(' · ').replace(/−/g, '−');
+    return { primary: `From naitive deal · ${kind}`, secondary: calc || undefined };
+  }
+  if (r.source === 'quickbooks') {
+    return { primary: 'QuickBooks', secondary: notes && notes !== 'QuickBooks' ? notes : undefined };
+  }
+  return { primary: notes || 'Manual entry' };
+}
+
 /** Resolve which categories should be matched for a given row key. */
 function categoriesForRow(rowKey: string): { categories: Set<string>; flowFilter: 'in' | 'out' | 'all' } {
   // Convert canonical short-key category lists into the grid-row keys used
@@ -616,7 +633,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>{context.rowLabel}</DialogTitle>
           <div className="text-sm text-muted-foreground mt-1">
@@ -719,7 +736,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                   <th className="px-3 py-2 font-medium">Category</th>
                   <th className="px-3 py-2 font-medium">Description</th>
                   <th className="px-3 py-2 font-medium text-right">Amount</th>
-                  {canMutate && <th className="px-3 py-2 font-medium text-right w-[80px]">Actions</th>}
+                  {canMutate && <th className="px-3 py-2 font-medium text-right w-[130px]">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -826,16 +843,16 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                   return (
                     <tr
                       key={r.id}
-                      className={`border-t border-border hover:bg-muted/40 ${r.projected ? 'italic' : ''}`}
+                      className="border-t border-border hover:bg-muted/40 align-top"
                     >
-                      <td className="px-3 py-2 whitespace-nowrap">{formatNiceDate(r.date)}</td>
-                      <td className="px-3 py-2">{r.account}</td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-1.5">
+                      <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{formatNiceDate(r.date)}</td>
+                      <td className="px-3 py-2.5 font-medium text-foreground">{r.account}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-1.5 whitespace-nowrap">
                           <span>{r.category}</span>
                           {r.projected && (
-                            <Badge variant="outline" className="h-4 px-1 text-[9px] font-medium border-amber-500/40 text-amber-500">
-                              P
+                            <Badge variant="outline" className="h-4 px-1.5 text-[9px] font-medium border-amber-500/40 text-amber-500">
+                              Projected
                             </Badge>
                           )}
                           {r.source === 'quickbooks' && (
@@ -845,14 +862,21 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        <div className="truncate" title={r.notes || ''}>{r.notes || '—'}</div>
-                        <div className="text-[10px] text-muted-foreground/70 truncate" title={r.sourceLabel}>
-                          Source: {r.sourceLabel}
-                        </div>
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                        {(() => {
+                          const desc = describeRow(r);
+                          return (
+                            <>
+                              <div className="text-foreground/90">{desc.primary}</div>
+                              {desc.secondary && (
+                                <div className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">{desc.secondary}</div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </td>
                       <td
-                        className={`px-3 py-2 text-right tabular-nums ${
+                        className={`px-3 py-2.5 text-right font-semibold whitespace-nowrap tabular-nums ${
                           r.signedAmount > 0 ? 'text-emerald-500' : r.signedAmount < 0 ? 'text-red-500' : ''
                         }`}
                       >
@@ -860,7 +884,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                       </td>
                       {canMutate && (
                         <td className="px-3 py-2 text-right">
-                          <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100">
+                          <div className="flex justify-end gap-1">
                             {onUpdateEntry && r.source === 'manual' && (
                               <Button
                                 size="sm"
