@@ -54,7 +54,9 @@ export function ClientTypeDonut({ deals, onDrill }: { deals: Deal[]; onDrill: (s
                     {data.map((d, i) => <Cell key={d.name} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }}
+                    itemStyle={{ color: 'hsl(var(--foreground))' }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
                     formatter={(v: number, n: string) => [`${fmt(v)} (${Math.round((v / total) * 100)}%)`, n]}
                   />
                 </PieChart>
