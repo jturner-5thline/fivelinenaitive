@@ -45,6 +45,7 @@ import { StatusHistoryPopover } from '@/components/deal/StatusHistoryPopover';
 import { DraftAiStatusButton } from '@/components/deal/DraftAiStatusButton';
 import { EditableDealStageTag } from '@/components/deal/EditableDealStageTag';
 import { DealAskAiQuickBar } from '@/components/deal/DealAskAiQuickBar';
+import { DealActivityTimelineChart } from '@/components/deal/DealActivityTimelineChart';
 import { NaitiveStageMilestonesSection } from '@/components/naitive-pipeline/NaitiveStageMilestonesSection';
 import { NaitiveDealInformation } from '@/components/naitive-pipeline/NaitiveDealInformation';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks, format } from 'date-fns';
@@ -5199,6 +5200,7 @@ export default function DealDetail() {
                                         {openItemsWidget}
                                       </section>
                                     )}
+                                    <DealActivityTimelineChart dealId={deal.id} />
                                   </div>
                                 </>
                               )}
