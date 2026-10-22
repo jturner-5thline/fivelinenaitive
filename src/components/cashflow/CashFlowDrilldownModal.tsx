@@ -126,6 +126,13 @@ function describeRow(r: { notes: string | null; source: string; account: string 
   if (r.source === 'quickbooks') {
     return { primary: 'QuickBooks', secondary: notes && notes !== 'QuickBooks' ? notes : undefined };
   }
+  // Manual cash-in rows read "<entity> — <fee>"; the entity column already
+  // shows the name, so only keep the fee part here.
+  const account = (r.account || '').trim();
+  if (account && notes.startsWith(account)) {
+    const rest = notes.slice(account.length).replace(/^\s*[—–-]\s*/, '').trim();
+    return { primary: rest ? `${rest} (manual entry)` : 'Manual entry' };
+  }
   return { primary: notes || 'Manual entry' };
 }
 
