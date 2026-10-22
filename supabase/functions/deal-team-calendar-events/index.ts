@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { calendarOwnerIds, calendarEventKey } from "./calendarScope.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -82,22 +83,18 @@ serve(async (req: Request): Promise<Response> => {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (!NYLAS_API_KEY) {
-      return new Response(JSON.stringify({ events: [], error: "Nylas not configured" }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const token = authHeader.replace("Bearer ", "");
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const { data: claimsData, error: authError } = await supabase.auth.getClaims(token);
-    if (authError || !claimsData?.claims?.sub) {
+    const { data: userData, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !userData.user) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const callerId = claimsData.claims.sub as string;
-    const callerEmail = (claimsData.claims.email as string | undefined) || null;
+    const callerId = userData.user.id;
+    const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") || "", {
+      global: { headers: { Authorization: authHeader } },
+    });
 
     const body: ReqBody = await req.json();
     if (!body.deal_id || !body.time_min || !body.time_max) {
@@ -106,30 +103,34 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    // Resolve caller domain
-    let callerDomain = domainOf(callerEmail);
-    if (!callerDomain) {
-      const { data: p } = await supabase
-        .from("profiles").select("email").eq("user_id", callerId).maybeSingle();
-      callerDomain = domainOf(p?.email);
-    }
-    if (!callerDomain) {
-      return new Response(JSON.stringify({ events: [] }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const startUnix = Math.floor(new Date(body.time_min).getTime() / 1000);
+    const endUnix = Math.floor(new Date(body.time_max).getTime() / 1000);
+    if (!Number.isFinite(startUnix) || !Number.isFinite(endUnix) || startUnix >= endUnix) {
+      return new Response(JSON.stringify({ error: "Invalid calendar date range" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // Fetch deal
-    const { data: deal, error: dealErr } = await supabase
+    const { data: deal, error: dealErr } = await userClient
       .from("deals")
-      .select("id, company, company_url")
+      .select("id, company, company_url, contact_email, company_id, crm_company_id")
       .eq("id", body.deal_id)
       .maybeSingle();
     if (dealErr || !deal) {
-      return new Response(JSON.stringify({ events: [] }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return new Response(JSON.stringify({ error: "Deal not accessible" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const { data: members, error: membersError } = await supabase.from("company_members")
+      .select("user_id").eq("company_id", deal.company_id);
+    if (membersError) throw membersError;
+    const ids = calendarOwnerIds(members || [], callerId);
+    if (!ids.length) return new Response(JSON.stringify({ error: "Company access required" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+    if (!NYLAS_API_KEY) throw new Error("Calendar integration is not configured");
 
     const companyName = ((deal as any).company || "").trim();
     const companyDomain = normalizeUrlToDomain((deal as any).company_url);
@@ -152,14 +153,14 @@ serve(async (req: Request): Promise<Response> => {
     };
     addEmail((deal as any).contact_email);
     try {
-      const { data: links } = await supabase
+      const { data: links } = await userClient
         .from("contact_deals")
         .select("contact_id")
         .eq("deal_id", body.deal_id)
         .limit(500);
       const contactIds = (links || []).map((l: any) => l.contact_id).filter(Boolean);
       if (contactIds.length > 0) {
-        const { data: contacts } = await supabase
+        const { data: contacts } = await userClient
           .from("contacts")
           .select("email, additional_emails")
           .in("id", contactIds);
@@ -173,6 +174,17 @@ serve(async (req: Request): Promise<Response> => {
     } catch (err) {
       console.error("[deal-team-calendar-events] contact lookup failed", (err as any)?.message);
     }
+    if (deal.crm_company_id) {
+      const { data: contacts, error } = await userClient.from("contacts")
+        .select("email, additional_emails").eq("crm_company_id", deal.crm_company_id);
+      if (error) throw error;
+      for (const contact of contacts || []) {
+        addEmail(contact.email);
+        if (Array.isArray(contact.additional_emails)) {
+          for (const email of contact.additional_emails) addEmail(typeof email === "string" ? email : email?.email);
+        }
+      }
+    }
 
     if (matchDomains.size === 0 && contactEmails.size === 0 && !nameLower && tokens.length === 0) {
       return new Response(JSON.stringify({ events: [] }), {
@@ -180,34 +192,22 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    // Same-domain teammates with grants
+    // All connected owners in the verified deal company, including other email domains.
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id, email, display_name, first_name, last_name, avatar_url");
-    const sameDomain = (profiles || []).filter(
-      (p: any) => domainOf(p.email) === callerDomain,
-    );
-    const ids = sameDomain.map((p: any) => p.user_id);
-    if (ids.length === 0) {
-      return new Response(JSON.stringify({ events: [] }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+      .select("user_id, email, display_name, first_name, last_name, avatar_url").in("user_id", ids);
     const { data: tokenRows } = await supabase
       .from("gmail_tokens").select("user_id, grant_id").in("user_id", ids);
     const grantByUser = new Map<string, string>();
     for (const t of tokenRows || []) if ((t as any).grant_id) grantByUser.set((t as any).user_id, (t as any).grant_id);
     const profByUser = new Map<string, any>();
-    for (const p of sameDomain) profByUser.set(p.user_id, p);
-
-    const startUnix = Math.floor(new Date(body.time_min).getTime() / 1000);
-    const endUnix = Math.floor(new Date(body.time_max).getTime() / 1000);
+    for (const p of profiles || []) profByUser.set(p.user_id, p);
 
     const results = await Promise.all(Array.from(grantByUser.entries()).map(async ([userId, grantId]) => {
       try {
         const raw: any[] = [];
         let cursor: string | null = null;
-        for (let page = 0; page < 6; page += 1) {
+        for (let page = 0; page < 20; page += 1) {
           const url = new URL(`${NYLAS_API_URI}/v3/grants/${grantId}/events`);
           url.searchParams.set("calendar_id", "primary");
           url.searchParams.set("start", String(startUnix));
@@ -218,12 +218,13 @@ serve(async (req: Request): Promise<Response> => {
           const resp = await fetch(url.toString(), {
             headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
           });
-          if (!resp.ok) break;
+          if (!resp.ok) throw new Error(`Calendar provider returned ${resp.status}`);
           const data = await resp.json();
           const batch = (data?.data || []) as any[];
           raw.push(...batch);
-          cursor = data?.next_cursor || null;
+          cursor = data?.next_cursor || data?.next_page_token || null;
           if (!cursor || batch.length === 0) break;
+          if (page === 19) throw new Error("Calendar result limit reached; narrow the date range");
         }
         const prof = profByUser.get(userId);
         return raw
@@ -232,7 +233,7 @@ serve(async (req: Request): Promise<Response> => {
             const title = String(e.title || "");
             const participants = Array.isArray(e.participants) ? e.participants : [];
             const participantEmails = participants
-              .map((pt: any) => (pt?.email || "").toLowerCase())
+              .map((pt: any) => (typeof pt === "string" ? pt : pt?.email || "").trim().toLowerCase())
               .filter(Boolean);
             const titleLower = title.toLowerCase();
             const fullNameHit = nameLower ? titleLower.includes(nameLower) : false;
@@ -256,6 +257,7 @@ serve(async (req: Request): Promise<Response> => {
             return {
               id: `${userId}:${e.id}`,
               nylas_id: e.id,
+              source_key: calendarEventKey(e, start),
               title: title || "Busy",
               start, end, all_day: isAllDay,
               location: e.location || null,
@@ -277,7 +279,7 @@ serve(async (req: Request): Promise<Response> => {
           .filter(Boolean);
       } catch (err) {
         console.error("[deal-team-calendar-events] teammate fetch failed", userId, (err as any)?.message);
-        return [];
+        throw err;
       }
     }));
 
@@ -285,7 +287,7 @@ serve(async (req: Request): Promise<Response> => {
     const seen = new Map<string, any>();
     for (const arr of results) {
       for (const ev of arr as any[]) {
-        const key = ev.nylas_id;
+        const key = ev.source_key;
         if (!seen.has(key)) seen.set(key, ev);
       }
     }
