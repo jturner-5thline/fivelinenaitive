@@ -1171,7 +1171,11 @@ export function CashFlowManager() {
       ...customRows.receipts,
       ...customRows.disbursements,
     ];
-    const snap = buildCashflowSnapshot(filteredWeekly as any, Array.from(new Set(keys)), weeksPast, weeksFuture);
+    const disb = new Set<string>([
+      ...WEEKLY_ROW_ORDER.filter((r: any) => r.section === 'disbursements').map((r) => String(r.key)),
+      ...customRows.disbursements,
+    ]);
+    const snap = buildCashflowSnapshot(filteredWeekly as any, Array.from(new Set(keys)), disb, weeksPast, weeksFuture);
     setCashflowSnapshot(
       snap ? { ...snap, thresholds: { minimumLiquidity: cashThresholds.minLiquidity, caution: cashThresholds.caution } } : null,
     );

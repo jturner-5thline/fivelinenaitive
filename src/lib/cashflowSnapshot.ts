@@ -26,6 +26,7 @@ type WeeklyLike = Record<string, Record<string, unknown> | undefined>;
 export function buildCashflowSnapshot(
   weekly: WeeklyLike,
   rowKeys: string[],
+  disbursementKeys: Set<string>,
   weeksPast: number,
   weeksFuture: number,
   todayISO: string = new Date().toISOString().split('T')[0],
@@ -41,7 +42,9 @@ export function buildCashflowSnapshot(
       label,
       values: win.map(([, e]) => {
         const v = Number((e as any)?.[label]);
-        return Number.isFinite(v) ? Math.round(v) : 0;
+        const n = Number.isFinite(v) ? Math.round(v) : 0;
+        // Match the table's display sign: outgoing cash shows negative.
+        return disbursementKeys.has(label) && n > 0 ? -n : n;
       }),
     }))
     .filter((r) => r.values.some((v) => v !== 0));
