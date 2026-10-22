@@ -77,8 +77,8 @@ export type ExportRow =
 
 export const BASE_EXPORT_ROWS: ExportRow[] = [
   { type: 'line', key: 'BEGINNING CASH', label: 'BEGINNING CASH', section: 'position', bold: true },
-  { type: 'line', key: 'ENDING CASH', label: 'ENDING CASH', section: 'position', bold: true },
   { type: 'line', key: 'NET CHANGE', label: 'NET CHANGE', section: 'position', bold: true },
+  { type: 'line', key: 'ENDING CASH', label: 'ENDING CASH', section: 'position', bold: true },
   { type: 'line', key: "Add'l Liquidity (Delayed Draw)", label: "Add'l Liquidity (Delayed Draw)", section: 'position' },
   { type: 'line', key: 'TOTAL CASH ON HAND', label: 'TOTAL CASH ON HAND', section: 'position', bold: true },
   { type: 'header', label: '( + ) CASH RECEIPTS', section: 'receipts' },
