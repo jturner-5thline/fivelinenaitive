@@ -211,8 +211,8 @@ type WeeklyRow = {
 
 export const WEEKLY_ROW_ORDER: Array<WeeklyRow> = [
   { key: 'BEGINNING CASH', section: 'position', isTotal: true },
-  { key: 'ENDING CASH', section: 'position', isTotal: true },
   { key: 'NET CHANGE', section: 'position', isTotal: true, isNetChange: true },
+  { key: 'ENDING CASH', section: 'position', isTotal: true },
   { key: "Add'l Liquidity (Delayed Draw)", section: 'position', isTotal: false },
   { key: 'TOTAL CASH ON HAND', section: 'position', isTotal: true },
   { key: '__sep_receipts', section: 'receipts', label: '( + ) CASH RECEIPTS', isHeader: true },
@@ -1245,7 +1245,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                 // Hide detail rows when section is collapsed (but keep totals visible).
                 // Skip this hide-rule for transfer rows — the transfers section uses its own
                 // parent-level collapse (transfersCollapsed) rather than the section header.
-                if (!isTotal && !isParent && !isTransferAccount && collapsedSections[rowDef.section]) {
+                if (!isTotal && (!isParent || isDebtAdvParent) && !isTransferAccount && collapsedSections[rowDef.section]) {
                   return null;
                 }
                 // Hide Debt Advisory sub-rows when its parent is collapsed
