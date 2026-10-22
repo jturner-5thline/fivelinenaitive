@@ -9171,6 +9171,7 @@ serve(async (req) => {
     const entityId = override?.entityId ?? context?.entityId ?? null;
     const activeTab = context?.activeTab || null;
     const banners = context?.banners || [];
+    const cashflowSnapshotBlock = buildCashflowSnapshotBlock(context?.cashflowSnapshot);
 
     // ── Permission scope resolution (server-side authorization) ──
     // Resolve the current user's feature scopes BEFORE any retrieval, context
@@ -9505,7 +9506,7 @@ CURRENT CONTEXT:
 - Entity Details: ${context?.entityDetails ? JSON.stringify(context.entityDetails) : "None"}
 - User: ${userName} (${context?.userRole || "member"})
 ${banners.length > 0 ? `\nACTIVE ALERTS/BANNERS ON PAGE:\n${banners.map((b: string) => `⚠️ ${b}`).join('\n')}` : ''}
-${prefetched.block}${dealResolverBlock}${userDealCountBlock}
+${cashflowSnapshotBlock}${prefetched.block}${dealResolverBlock}${userDealCountBlock}
 
 USER DEAL COUNT AUTHORITY RULE (STRICT — overrides every other source):
 - Definition: "managed by <name>" = deals where <name> is the manager OR the owner. This is the ONLY valid definition; do not narrow or broaden it.
@@ -10677,3 +10678,25 @@ WAITING-ON / OUTSTANDING-ITEMS QUERIES (STRICT):
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
+
+
+/** Render the client-supplied weekly cash flow grid (exact on-screen figures) for the prompt. Validates shape and caps size. */
+function buildCashflowSnapshotBlock(raw: unknown): string {
+  const s = raw as { weeks?: unknown; currentWeek?: unknown; rows?: unknown; thresholds?: { minimumLiquidity?: unknown; caution?: unknown } } | null;
+  if (!s || !Array.isArray(s.weeks) || !Array.isArray(s.rows)) return "";
+  const weeks = s.weeks.slice(0, 60).map((w) => String(w).slice(0, 12));
+  const rows = s.rows.slice(0, 80).flatMap((r: any) => {
+    if (!r || typeof r.label !== "string" || !Array.isArray(r.values)) return [];
+    return [`${r.label.slice(0, 80)} | ${r.values.slice(0, weeks.length).map((v: unknown) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : 0)).join(" | ")}`];
+  });
+  if (!weeks.length || !rows.length) return "";
+  const t = s.thresholds;
+  const thr = t && Number.isFinite(Number(t.minimumLiquidity))
+    ? `\nConfigured thresholds: minimum liquidity $${Math.round(Number(t.minimumLiquidity))}, caution $${Math.round(Number(t.caution))}.`
+    : "";
+  return `\nWEEKLY CASH FLOW GRID (exact figures currently on the user's screen, USD, columns = week-ending dates; disbursements are negative; current week = ${String(s.currentWeek ?? "unknown").slice(0, 12)}).${thr}
+Treat these as authoritative for any question about the cash flow table. Do not recompute or estimate them from other sources; if a week or row isn't shown, say it's outside the visible window.
+Row | ${weeks.join(" | ")}
+${rows.join("\n")}
+`;
+}
