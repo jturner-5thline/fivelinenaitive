@@ -328,6 +328,7 @@ serve(async (req: Request): Promise<Response> => {
     // Dedupe by nylas_id (same event on multiple teammate calendars).
     const seen = new Map<string, any>();
     for (const ev of results.events) {
+        if (!ev) continue;
         const key = ev.source_key;
         if (!seen.has(key)) seen.set(key, ev);
     }
