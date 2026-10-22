@@ -1173,9 +1173,9 @@ export function CashFlowManager() {
     ];
     const snap = buildCashflowSnapshot(filteredWeekly as any, Array.from(new Set(keys)), weeksPast, weeksFuture);
     setCashflowSnapshot(
-      snap ? { ...snap, thresholds: { minimumLiquidity: cashThresholds.minimum, caution: cashThresholds.caution } } : null,
+      snap ? { ...snap, thresholds: { minimumLiquidity: cashThresholds.minLiquidity, caution: cashThresholds.caution } } : null,
     );
-  }, [filteredWeekly, weeksPast, weeksFuture, customRows.receipts, customRows.disbursements, cashThresholds.minimum, cashThresholds.caution]);
+  }, [filteredWeekly, weeksPast, weeksFuture, customRows.receipts, customRows.disbursements, cashThresholds.minLiquidity, cashThresholds.caution]);
   useEffect(() => () => setCashflowSnapshot(null), []);
 
   const handleCellEdit = useCallback((rowKey: string, colIdx: number, value: number) => {

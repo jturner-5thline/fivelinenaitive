@@ -5,6 +5,7 @@ import { AgentRunCard } from '@/components/copilot/AgentRunCard';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { getCashflowSnapshot } from '@/lib/cashflowSnapshot';
 import { useCopilotStore } from '@/stores/copilotStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -1558,6 +1559,8 @@ export function AICopilotPanel() {
               entityType: ctx.entityType,
               entityId: ctx.entityId,
               activeTab: ctx.activeTab,
+              // Live weekly cash flow grid (exact on-screen figures) when on /finance.
+              cashflowSnapshot: ctx.page === 'finance' ? getCashflowSnapshot() : null,
               banners: ctx.banners,
               userRole: 'member',
               companyId: '',
