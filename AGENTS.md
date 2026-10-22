@@ -4,3 +4,4 @@
 - Distressed Debt pipeline (5th Line only, deal_class='distressed') is fully isolated: UI uses allowedMoveTargets() and a DB trigger blocks pipeline_id moves in/out — why: user requires deals never switch into or out of it.
 
 - Deal Activity calendar reads use the authenticated deal-team-calendar-events endpoint scoped to verified deal-company membership, not the caller-only mirror or email-domain grouping — why: all connected teammates must contribute without cross-tenant access.
+- Calendar provider reads have one bounded deadline per owner and settle independently with explicit partial-data warnings — why: a slow owner must not discard other calendars or exceed the request idle limit.

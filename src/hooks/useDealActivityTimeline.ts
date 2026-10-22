@@ -6,15 +6,16 @@ import {
 } from '@/lib/dealActivityTimeline';
 
 const WINDOW_DAYS = 90;
+interface ActivityTimelineResult { events: ActivityEvent[]; warning: string | null }
 
 /** Collects the five Deal Space activity streams for the last ~12 weeks. */
 export function useDealActivityTimeline(dealId: string | undefined) {
-  return useQuery<ActivityEvent[]>({
+  return useQuery<ActivityTimelineResult>({
     queryKey: ['deal-activity-timeline', dealId],
     enabled: !!dealId,
     staleTime: 60_000,
     queryFn: async () => {
-      if (!dealId) return [];
+      if (!dealId) return { events: [], warning: null };
       const since = subDays(new Date(), WINDOW_DAYS).toISOString();
       const db = supabase as any;
 
@@ -79,7 +80,7 @@ export function useDealActivityTimeline(dealId: string | undefined) {
           }
         }
       }
-      return events;
+      return { events, warning: cal?.partial ? cal.warning || 'Some calendars are unavailable; meeting counts may be incomplete.' : null };
     },
   });
 }

@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { calendarOwnerIds, calendarEventKey } from "./calendarScope.ts";
+import { calendarOwnerIds, calendarEventKey, collectCalendarResults } from "./calendarScope.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -224,12 +224,15 @@ serve(async (req: Request): Promise<Response> => {
     const profByUser = new Map<string, any>();
     for (const p of profiles || []) profByUser.set(p.user_id, p);
 
-    const results = await Promise.all(Array.from(grantByUser.entries()).map(async ([userId, grantId]) => {
+    const results = await collectCalendarResults(Array.from(grantByUser.entries()).map(async ([userId, grantId]) => {
       try {
+        // One deadline for the whole owner read, including pagination. Resetting
+        // the timer for every page can exceed the edge request's idle limit.
+        const signal = AbortSignal.timeout(40000);
         const raw: any[] = [];
         const calendarsResponse = await fetch(`${NYLAS_API_URI}/v3/grants/${grantId}/calendars`, {
           headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
-          signal: AbortSignal.timeout(30000),
+          signal,
         });
         if (!calendarsResponse.ok) throw new Error(`Calendar provider returned ${calendarsResponse.status}`);
         const calendarsPayload = await calendarsResponse.json();
@@ -252,7 +255,7 @@ serve(async (req: Request): Promise<Response> => {
           if (cursor) url.searchParams.set("page_token", cursor);
           const resp = await fetch(url.toString(), {
             headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
-            signal: AbortSignal.timeout(30000),
+            signal,
           });
           if (!resp.ok) throw new Error(`Calendar provider returned ${resp.status}`);
           const data = await resp.json();
@@ -324,15 +327,14 @@ serve(async (req: Request): Promise<Response> => {
 
     // Dedupe by nylas_id (same event on multiple teammate calendars).
     const seen = new Map<string, any>();
-    for (const arr of results) {
-      for (const ev of arr as any[]) {
+    for (const ev of results.events) {
         const key = ev.source_key;
         if (!seen.has(key)) seen.set(key, ev);
-      }
     }
     const events = Array.from(seen.values());
 
-    return new Response(JSON.stringify({ events }), {
+    return new Response(JSON.stringify({ events, partial: results.partial, failed_calendars: results.failedCalendars,
+      warning: results.partial ? "Some calendars are temporarily unavailable. Meeting counts may be incomplete." : null }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
