@@ -112,6 +112,23 @@ function SourceLockedAction({ row }: { row: DrilldownRow }) {
   );
 }
 
+/** Turn verbose provenance notes (e.g. "naitive Deal — Acme · Closing Fee (P)
+ *  · 2% of $10,000,000 − $50,000 milestone") into a short label plus an
+ *  optional calculation line, dropping text already shown in other columns. */
+function describeRow(r: { notes: string | null; source: string; account: string }): { primary: string; secondary?: string } {
+  const notes = (r.notes || '').trim();
+  if (r.source === 'deal') {
+    const parts = notes.split('·').map((s) => s.trim()).filter(Boolean);
+    const kind = (parts[1] || 'Deal projection').replace(/\s*\(P\)\s*/g, '').trim();
+    const calc = parts.slice(2).join(' · ').replace(/−/g, '−');
+    return { primary: `From naitive deal · ${kind}`, secondary: calc || undefined };
+  }
+  if (r.source === 'quickbooks') {
+    return { primary: 'QuickBooks', secondary: notes && notes !== 'QuickBooks' ? notes : undefined };
+  }
+  return { primary: notes || 'Manual entry' };
+}
+
 /** Resolve which categories should be matched for a given row key. */
 function categoriesForRow(rowKey: string): { categories: Set<string>; flowFilter: 'in' | 'out' | 'all' } {
   // Convert canonical short-key category lists into the grid-row keys used
