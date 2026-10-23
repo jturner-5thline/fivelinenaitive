@@ -1471,7 +1471,7 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
     const t0 = Date.now();
     console.log(`[smart-email-ai] action=${action} model=${selectedModel} singleTone=${singleTone || "none"} threadEmails=${threadData?.emails?.length || 0}`);
     let response: Response;
-    const requestBody = JSON.stringify({
+    const aiRequestBody = JSON.stringify({
       model: selectedModel,
       messages: [
         { role: "system", content: systemPrompt },
@@ -1493,7 +1493,7 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
             Authorization: `Bearer ${LOVABLE_API_KEY}`,
             "Content-Type": "application/json",
           },
-          body: requestBody,
+          body: aiRequestBody,
         });
         if (response.status >= 500 && attempt < MAX_ATTEMPTS) {
           const txt = await response.text().catch(() => "");
