@@ -4988,7 +4988,7 @@ export default function DealDetail() {
                                        // order configured in Settings → Deal Information Fields.
                                        orderedRailFields.length > 0 && (
                                          <div className="grid w-full min-w-0 grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 [&>*]:min-w-0 [&>*]:break-words">
-                                           {orderedRailFields.map(fId => (
+                                           {[...orderedRailFields].sort((a, b) => Number(b === 'narrative') - Number(a === 'narrative')).map(fId => (
                                              <div key={fId} className={cn('min-w-0', fId === 'narrative' && 'sm:col-span-2')}>
                                                {renderDealInfoField(fId)}
                                              </div>
