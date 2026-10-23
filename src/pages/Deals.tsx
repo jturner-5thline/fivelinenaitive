@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { CollapsibleSearch } from '@/components/deals/CollapsibleSearch';
+import { ActivePipelineKPIRow } from '@/components/deals/ActivePipelineKPIRow';
 import { createPortal } from 'react-dom';
 import { useAlignActionsToRightTile } from '@/hooks/useAlignActionsToRightTile';
 import { DealSizeConfirmDialog } from '@/components/deals/DealSizeConfirmDialog';
@@ -868,6 +869,11 @@ export default function Dashboard() {
           </>
         }
       >
+            {is5thLine && pipelines.find(p => p.id === activePipelineId)?.isDefault && (
+              <div className="pt-4">
+                <ActivePipelineKPIRow />
+              </div>
+            )}
             <style>{`
               @keyframes fadeInUp {
                 from {
