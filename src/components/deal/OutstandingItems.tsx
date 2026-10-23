@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { SearchableRequesterList } from '@/components/deal/SearchableRequesterList';
 import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, ChevronRight, LayoutGrid, ArrowRight, GripVertical, CheckSquare, Square, Search, AlertTriangle, ArrowUp, ArrowUpRight, ClipboardPaste, UserPlus, Group, Maximize2, Layers, CheckCircle2 } from 'lucide-react';
 import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
@@ -105,6 +105,7 @@ interface OutstandingItemsProps {
   /** Controlled collapsed state (defaults to collapsed when uncontrolled). */
   collapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
+  initialItemId?: string;
 }
 
 const getItemStage = (item: OutstandingItem): KanbanStage => {
@@ -334,7 +335,7 @@ function KanbanBoard({
   );
 }
 
-export function OutstandingItems({ items, isLoading = false, lenderNames, companyName, onAdd: rawOnAdd, onUpdate: rawOnUpdate, onDelete: rawOnDelete, onBulkAdd: rawOnBulkAdd, onReorder: rawOnReorder, teamMembers, onApplyDefaultChecklist, phaseControls, readOnly = false, readOnlyReason, collapsed: collapsedProp, onCollapsedChange }: OutstandingItemsProps) {
+export function OutstandingItems({ items, isLoading = false, lenderNames, companyName, onAdd: rawOnAdd, onUpdate: rawOnUpdate, onDelete: rawOnDelete, onBulkAdd: rawOnBulkAdd, onReorder: rawOnReorder, teamMembers, onApplyDefaultChecklist, phaseControls, readOnly = false, readOnlyReason, collapsed: collapsedProp, onCollapsedChange, initialItemId }: OutstandingItemsProps) {
   // When readOnly, neuter all mutators so any leftover handler (kanban
   // drag, checkbox toggles, etc.) cannot mutate items. Also disable the
   // top-level add/bulk handlers so banner/empty-state CTAs no-op.
@@ -363,6 +364,12 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedItem, setSelectedItem] = useState<OutstandingItem | null>(null);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
+  useEffect(() => {
+    if (initialItemId) {
+      setSelectedItem({ id: initialItemId } as OutstandingItem);
+      setIsItemDialogOpen(true);
+    }
+  }, [initialItemId]);
   const [showAllItems, setShowAllItems] = useState(true);
   const [requesterPopoverOpen, setRequesterPopoverOpen] = useState(false);
   const [requesterPopoverKey, setRequesterPopoverKey] = useState(0);
@@ -1438,7 +1445,7 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
 
       {/* Outstanding Item Detail Dialog */}
       <OutstandingItemDialog
-        item={selectedItem}
+        item={items.find(item => item.id === selectedItem?.id) || null}
         items={sortedItems}
         open={isItemDialogOpen}
         onOpenChange={setIsItemDialogOpen}
@@ -1447,6 +1454,7 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
         lenderNames={lenderNames}
         companyName={companyName}
         teamMembers={teamMembers}
+        readOnly={readOnly}
       />
     </>
   );

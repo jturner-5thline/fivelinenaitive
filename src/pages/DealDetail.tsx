@@ -5070,6 +5070,32 @@ export default function DealDetail() {
                             </div>
                           ) : null;
                           // Outstanding Items is a debt-pipeline concept — skip for Naitive/Projects.
+                          const renderOpenItems = (initialItemId?: string) => (
+                              <OutstandingItems
+                                initialItemId={initialItemId}
+                                collapsed={false}
+                                items={outstandingItems}
+                                isLoading={isLoadingOutstandingItems}
+                                lenderNames={deal.lenders?.filter(l => configuredStages.find(s => s.id === l.stage)?.group !== 'passed').map(l => l.name) || []}
+                                companyName={company?.name}
+                                onAdd={addOutstandingItem}
+                                onUpdate={updateOutstandingItem}
+                                onDelete={deleteOutstandingItem}
+                                onBulkAdd={bulkAddOutstandingItemsDb}
+                                onReorder={reorderOutstandingItemsDb}
+                                teamMembers={teamMembers}
+                                readOnly={getDealInactiveReason(deal, pipelines.find(p => p.id === deal.pipelineId)?.name) !== null}
+                                readOnlyReason={(() => { const reason = getDealInactiveReason(deal, pipelines.find(p => p.id === deal.pipelineId)?.name); return reason ? inactiveReasonLabel(reason) : undefined; })()}
+                                onApplyDefaultChecklist={async () => {
+                                  if (!company?.id || !user?.id) return;
+                                  const result = await applyDefaultChecklistToOutstandingItems(deal.id, deal.dealTypes || [], company.id, user.id);
+                                  await refreshOutstandingItems();
+                                  await checklistPhaseControls.refresh();
+                                  toast({ title: result.inserted > 0 ? 'Checklist applied' : 'Nothing to add', description: result.inserted > 0 ? `Added ${result.inserted} items from ${result.sourceLabel}.` : 'No new checklist items to add.' });
+                                }}
+                                phaseControls={checklistPhaseControls}
+                              />
+                          );
                           const openItemsWidget = (!isNaitiveDeal && !isProjectsDeal && widgetVis.openItems) ? (
                                <div className={openItemsCollapsed ? "shrink-0" : "shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]"}>
                               <OutstandingItems
@@ -5198,7 +5224,20 @@ export default function DealDetail() {
                                   dealId={deal.id}
                                   openItems={openItemsWidget ? outstandingItems : undefined}
                                   openItemsReadOnly={openItemsLocked}
-                                  onToggleOpenItem={(itemId, completed) => { void updateOutstandingItem(itemId, { completed }); }}
+                                  openItemsReadOnlyReason={(() => { const reason = getDealInactiveReason(deal, pipelines.find(p => p.id === deal.pipelineId)?.name); return reason ? inactiveReasonLabel(reason) : undefined; })()}
+                                  onToggleOpenItem={(itemId, completed) => { if (!openItemsLocked) void updateOutstandingItem(itemId, { received: completed, approved: completed }); }}
+                                  onUpdateOpenItem={(itemId, updates) => { if (!openItemsLocked) void updateOutstandingItem(itemId, updates); }}
+                                  onDeleteOpenItem={(itemId) => { if (!openItemsLocked) void deleteOutstandingItem(itemId); }}
+                                  onMoveOpenItem={(itemId, direction) => {
+                                    if (openItemsLocked) return;
+                                    const index = outstandingItems.findIndex(item => item.id === itemId);
+                                    const target = index + direction;
+                                    if (index < 0 || target < 0 || target >= outstandingItems.length) return;
+                                    const reordered = [...outstandingItems];
+                                    [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+                                    void reorderOutstandingItemsDb(reordered);
+                                  }}
+                                  renderOpenItemsManager={openItemsWidget ? (selectedId) => renderOpenItems(selectedId || undefined) : undefined}
                                   onAddOpenItem={(text) => addOutstandingItem(text, [])}
                                 />
                               </div>
