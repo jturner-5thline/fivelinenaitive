@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode } from "react";
 import { EngagementSelect } from '@/components/deal/EngagementSelect';
+import { HiddenScrollArea } from '@/components/deal/HiddenScrollArea';
 import { useState, useCallback, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
