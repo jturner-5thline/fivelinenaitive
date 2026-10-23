@@ -26,6 +26,7 @@ describe('activeDealsCount', () => {
     expect(activeDealsCount([
       deal('terms-issued'), deal('closed-won'), deal('closed-lost'),
       deal('terms-issued', 'Example Deal'), deal('terms-issued', "Test-Niki's Store"),
+      deal('terms-issued', "Test - Niki's Store"),
       deal('terms-issued', 'test sample'),
     ])).toBe(1);
   });

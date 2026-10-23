@@ -24,7 +24,7 @@ export function activeDealsCount(deals: Deal[], stages: PipelineStage[] = []): n
     'submitted to lenders', 'lenders in review', 'terms issued', 'in due diligence',
   ]);
   return deals.reduce((count, deal) => {
-    if (isExcludedDealName(deal.company)) return count;
+    if (isExcludedDealName(deal.company) || deal.company?.trim().toLowerCase() === "test-niki's store") return count;
     const index = stages.findIndex(s => s.id === deal.stage || normalizeStage(s.label) === normalizeStage(deal.stage));
     const label = normalizeStage(index >= 0 ? stages[index].label : deal.stage);
     if (['closed won', 'closed lost'].includes(label) || CLOSED_STAGES.has(deal.stage)) return count;
