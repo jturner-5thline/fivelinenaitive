@@ -13,9 +13,9 @@ export function ActivePipelineKPIRow() {
   return (
     <div className="grid grid-cols-5 gap-2 sm:gap-3 mb-4">
       {KPIS.map(({ key, label, icon: Icon }) => (
-        <div key={key} className="rounded-lg border border-border bg-card px-2 sm:px-4 py-3 min-w-0">
+        <div key={key} className="rounded-lg border-0 bg-transparent shadow-none px-2 sm:px-4 py-3 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[9px] sm:text-[11px] font-medium uppercase tracking-wider text-muted-foreground truncate">{label}</p>
+            <p className="text-[9px] sm:text-[11px] font-medium uppercase tracking-wider text-foreground truncate">{label}</p>
             <Icon className="h-4 w-4 text-primary shrink-0" />
           </div>
           <p className="mt-2 text-lg sm:text-2xl font-semibold tabular-nums text-foreground">—</p>
