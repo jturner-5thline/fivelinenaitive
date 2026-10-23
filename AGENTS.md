@@ -5,3 +5,4 @@
 
 - Deal Activity calendar reads use the authenticated deal-team-calendar-events endpoint scoped to verified deal-company membership, not the caller-only mirror or email-domain grouping — why: all connected teammates must contribute without cross-tenant access.
 - Calendar provider reads have one bounded deadline per owner and settle independently with explicit partial-data warnings — why: a slow owner must not discard other calendars or exceed the request idle limit.
+- Referral Source pipeline classification for MCP lives in `src/lib/mcp/referralPipeline.ts` and mirrors `useDealReferralSources` + `ReferralSourcePipelineWidget` — why: the connector must report the same stages as the UI, so change both together.
