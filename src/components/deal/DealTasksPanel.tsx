@@ -221,7 +221,7 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
 
         {/* ── Body ── flex-1 so it fills remaining card height */}
         {isOpen && (
-          <CardContent className="flex-1 flex flex-col px-4 pb-4 pt-2 space-y-0 min-h-0">
+          <CardContent className="flex-1 flex flex-col px-0 pb-0 pt-0 space-y-0 min-h-0">
 
             {isLoading && tasks.length === 0 && !hasOpenItems ? (
               <div className="flex-1 flex items-center justify-center">
@@ -240,7 +240,7 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
               </div>
             ) : (
               <ScrollArea className="flex-1 min-h-0">
-                <div className="space-y-1 pr-2">
+                <div className="border-t border-border/60">
                   {displayedTasks.map(task => {
                     const assignee = memberMap.get(task.assigned_to);
                     const isCompleted = isTaskCompleted(task);
@@ -260,12 +260,10 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
                         onClick={() => handleOpenTask(task.id)}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleOpenTask(task.id); }}
                         className={cn(
-                          "flex items-center gap-3 group rounded-lg border px-3 py-1.5 transition-colors cursor-pointer min-h-[50px] overflow-hidden",
+                          "flex items-center gap-3 group border-b border-border/60 px-0 py-1.5 transition-colors cursor-pointer min-h-[50px] overflow-hidden",
                           isCompleted
-                            ? "border-border/50 opacity-60 hover:opacity-100"
-                            : isOverdue
-                              ? "border-destructive hover:bg-muted/30"
-                              : "border-border hover:bg-muted/30"
+                            ? "opacity-60 hover:opacity-100"
+                            : "hover:bg-muted/20"
                         )}
                       >
                         <div onClick={(e) => e.stopPropagation()}>
@@ -299,6 +297,7 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
                             )}
                           </div>
                         </div>
+                        <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal shrink-0">Task</Badge>
                         {task.assigned_by === user?.id && (
                           <Button
                             variant="ghost"
@@ -319,8 +318,8 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
                       <div
                         key={`oi-${item.id}`}
                         className={cn(
-                          "flex items-center gap-3 group rounded-lg border px-3 py-1.5 transition-colors min-h-[50px] overflow-hidden",
-                          item.completed ? "border-border/50 opacity-60 hover:opacity-100" : "border-border hover:bg-muted/30"
+                          "flex items-center gap-3 group border-b border-border/60 px-0 py-1.5 transition-colors min-h-[50px] overflow-hidden",
+                          item.completed ? "opacity-60 hover:opacity-100" : "hover:bg-muted/20"
                         )}
                       >
                         <Checkbox
@@ -332,7 +331,6 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
                         <div className="flex-1 min-w-0">
                           <p className={cn("text-sm font-medium truncate", item.completed ? "text-muted-foreground line-through" : "text-foreground")}>{item.text}</p>
                           <div className="flex items-center gap-3 mt-0.5 flex-nowrap overflow-hidden">
-                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal shrink-0">Open Item</Badge>
                             <span className="text-xs text-muted-foreground shrink-0">{status}</span>
                             {item.eta && (
                               <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
@@ -345,6 +343,7 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
                             )}
                           </div>
                         </div>
+                        <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal shrink-0 whitespace-nowrap">Open Item</Badge>
                       </div>
                     );
                   })}
