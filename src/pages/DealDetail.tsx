@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react";
+import { openItemCompletionUpdates, moveOpenItem } from '@/lib/openItemActions';
 import { EngagementSelect } from '@/components/deal/EngagementSelect';
 import { HiddenScrollArea } from '@/components/deal/HiddenScrollArea';
 import { useState, useCallback, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
@@ -5070,17 +5071,14 @@ export default function DealDetail() {
                             </div>
                           ) : null;
                           // Outstanding Items is a debt-pipeline concept — skip for Naitive/Projects.
-                          const openItemsWidget = (!isNaitiveDeal && !isProjectsDeal && widgetVis.openItems) ? (
-                               <div className={openItemsCollapsed ? "shrink-0" : "shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]"}>
+                          const renderOpenItems = (initialItemId?: string, standalone = false) => (
                               <OutstandingItems
-                                collapsed={openItemsCollapsed}
-                                onCollapsedChange={setOpenItemsCollapsed}
+                                initialItemId={initialItemId}
+                                collapsed={standalone ? openItemsCollapsed : false}
+                                onCollapsedChange={standalone ? setOpenItemsCollapsed : undefined}
                                 items={outstandingItems}
                                 isLoading={isLoadingOutstandingItems}
-                                lenderNames={deal.lenders?.filter(l => {
-                                  const stageConfig = configuredStages.find(s => s.id === l.stage);
-                                  return stageConfig?.group !== 'passed';
-                                }).map(l => l.name) || []}
+                                lenderNames={deal.lenders?.filter(l => configuredStages.find(s => s.id === l.stage)?.group !== 'passed').map(l => l.name) || []}
                                 companyName={company?.name}
                                 onAdd={addOutstandingItem}
                                 onUpdate={updateOutstandingItem}
@@ -5088,46 +5086,21 @@ export default function DealDetail() {
                                 onBulkAdd={bulkAddOutstandingItemsDb}
                                 onReorder={reorderOutstandingItemsDb}
                                 teamMembers={teamMembers}
-                                readOnly={(() => {
-                                  const pname = deal.pipelineId
-                                    ? pipelines.find(p => p.id === deal.pipelineId)?.name
-                                    : null;
-                                  return getDealInactiveReason(deal, pname) !== null;
-                                })()}
-                                readOnlyReason={(() => {
-                                  const pname = deal.pipelineId
-                                    ? pipelines.find(p => p.id === deal.pipelineId)?.name
-                                    : null;
-                                  const r = getDealInactiveReason(deal, pname);
-                                  return r ? inactiveReasonLabel(r) : undefined;
-                                })()}
+                                readOnly={getDealInactiveReason(deal, pipelines.find(p => p.id === deal.pipelineId)?.name) !== null}
+                                readOnlyReason={(() => { const reason = getDealInactiveReason(deal, pipelines.find(p => p.id === deal.pipelineId)?.name); return reason ? inactiveReasonLabel(reason) : undefined; })()}
                                 onApplyDefaultChecklist={async () => {
-                                  if (!company?.id || !user?.id || !deal?.id) return;
-                                  const r = await applyDefaultChecklistToOutstandingItems(
-                                    deal.id,
-                                    deal.dealTypes || [],
-                                    company.id,
-                                    user.id,
-                                  );
+                                  if (!company?.id || !user?.id) return;
+                                  const result = await applyDefaultChecklistToOutstandingItems(deal.id, deal.dealTypes || [], company.id, user.id);
                                   await refreshOutstandingItems();
                                   await checklistPhaseControls.refresh();
-                                  if (r.inserted > 0) {
-                                    toast({
-                                      title: 'Checklist applied',
-                                      description: `Added ${r.inserted} item${r.inserted !== 1 ? 's' : ''} from ${r.sourceLabel}.`,
-                                    });
-                                  } else {
-                                    toast({
-                                      title: 'Nothing to add',
-                                      description: r.source === 'none'
-                                        ? 'No checklist is configured in Settings → Deals → Data Room Checklists.'
-                                        : 'All checklist items already exist on this deal.',
-                                      variant: 'destructive',
-                                    });
-                                  }
+                                  toast({ title: result.inserted > 0 ? 'Checklist applied' : 'Nothing to add', description: result.inserted > 0 ? `Added ${result.inserted} items from ${result.sourceLabel}.` : 'No new checklist items to add.' });
                                 }}
                                 phaseControls={checklistPhaseControls}
                               />
+                          );
+                          const openItemsWidget = (!isNaitiveDeal && !isProjectsDeal && widgetVis.openItems) ? (
+                               <div className={openItemsCollapsed ? "shrink-0" : "shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]"}>
+                              {renderOpenItems(undefined, true)}
                               </div>
                           ) : null;
                           const finservWidget = isFinServDeal ? (
@@ -5198,7 +5171,16 @@ export default function DealDetail() {
                                   dealId={deal.id}
                                   openItems={openItemsWidget ? outstandingItems : undefined}
                                   openItemsReadOnly={openItemsLocked}
-                                  onToggleOpenItem={(itemId, completed) => { void updateOutstandingItem(itemId, { completed }); }}
+                                  openItemsReadOnlyReason={(() => { const reason = getDealInactiveReason(deal, pipelines.find(p => p.id === deal.pipelineId)?.name); return reason ? inactiveReasonLabel(reason) : undefined; })()}
+                                  onToggleOpenItem={(itemId, completed) => { if (!openItemsLocked) void updateOutstandingItem(itemId, openItemCompletionUpdates(completed)); }}
+                                  onUpdateOpenItem={(itemId, updates) => { if (!openItemsLocked) void updateOutstandingItem(itemId, updates); }}
+                                  onDeleteOpenItem={(itemId) => { if (!openItemsLocked) void deleteOutstandingItem(itemId); }}
+                                  onMoveOpenItem={(itemId, direction) => {
+                                    if (openItemsLocked) return;
+                                    const reordered = moveOpenItem(outstandingItems, itemId, direction);
+                                    if (reordered) void reorderOutstandingItemsDb(reordered);
+                                  }}
+                                  renderOpenItemsManager={openItemsWidget ? (selectedId) => renderOpenItems(selectedId || undefined) : undefined}
                                   onAddOpenItem={(text) => addOutstandingItem(text, [])}
                                 />
                               </div>

@@ -63,6 +63,7 @@ interface OutstandingItemDialogProps {
   lenderNames?: string[];
   companyName?: string;
   teamMembers?: { id: string; display_name: string }[];
+  readOnly?: boolean;
 }
 
 export function OutstandingItemDialog({
@@ -70,12 +71,14 @@ export function OutstandingItemDialog({
   items,
   open,
   onOpenChange,
-  onUpdate,
+  onUpdate: rawOnUpdate,
   onSelectItem,
   lenderNames = [],
   companyName,
   teamMembers = [],
+  readOnly = false,
 }: OutstandingItemDialogProps) {
+  const onUpdate = readOnly ? (() => {}) : rawOnUpdate;
   const [newComment, setNewComment] = useState('');
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesValue, setNotesValue] = useState('');
@@ -87,6 +90,16 @@ export function OutstandingItemDialog({
   const dialogContentRef = useRef<HTMLDivElement>(null);
   const { comments, isLoading, addComment, deleteComment } = useOutstandingItemComments(item?.id || null);
   const { user } = useAuth();
+
+  useEffect(() => {
+    setEtaValue(item?.eta || '');
+    setNotesValue(item?.notes || '');
+    setTextValue(item?.text || '');
+    setRequesterValue(item?.requestedBy || []);
+    setEditingText(false);
+    setEditingRequester(false);
+    setEditingNotes(false);
+  }, [item?.id, item?.eta, item?.notes, item?.text, item?.requestedBy]);
 
   // Build requester options
   const requestedByOptions = [
@@ -109,7 +122,7 @@ export function OutstandingItemDialog({
   };
 
   const handleAddComment = async () => {
-    if (!newComment.trim() || !item) return;
+    if (readOnly || !newComment.trim() || !item) return;
     const body = newComment;
     
     // Check for date references in the comment
@@ -154,7 +167,7 @@ export function OutstandingItemDialog({
   };
 
   const handleSaveNotes = () => {
-    if (item) {
+    if (item && !readOnly) {
       onUpdate(item.id, { notes: notesValue });
       setEditingNotes(false);
       void notifyMentions(item.id, notesValue, 'notes');
@@ -162,20 +175,20 @@ export function OutstandingItemDialog({
   };
 
   const handleSaveEta = () => {
-    if (item) {
+    if (item && !readOnly) {
       onUpdate(item.id, { eta: etaValue || null });
     }
   };
 
   const handleSaveText = () => {
-    if (item && textValue.trim()) {
+    if (item && !readOnly && textValue.trim()) {
       onUpdate(item.id, { text: textValue.trim() });
       setEditingText(false);
     }
   };
 
   const handleSaveRequester = () => {
-    if (item) {
+    if (item && !readOnly) {
       onUpdate(item.id, { requestedBy: requesterValue });
       setEditingRequester(false);
     }
@@ -248,7 +261,7 @@ export function OutstandingItemDialog({
                   }
                 }}
               />
-              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleSaveText}>
+              <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Save item name" onClick={handleSaveText}>
                 <Check className="h-4 w-4" />
               </Button>
               <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => {
@@ -265,7 +278,9 @@ export function OutstandingItemDialog({
                 size="icon"
                 variant="ghost"
                 className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => setEditingText(true)}
+                aria-label="Edit item name"
+                disabled={readOnly}
+                onClick={() => { if (!readOnly) setEditingText(true); }}
               >
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
@@ -328,7 +343,7 @@ export function OutstandingItemDialog({
                   "flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors group",
                   hasNoRequester ? "text-destructive" : "text-muted-foreground"
                 )}
-                onClick={() => setEditingRequester(true)}
+                onClick={() => { if (!readOnly) setEditingRequester(true); }}
               >
                 <User className="h-3.5 w-3.5" />
                 {hasNoRequester
@@ -339,28 +354,28 @@ export function OutstandingItemDialog({
             )}
             
             <div className="flex items-center gap-2 ml-auto">
-              <Badge 
-                variant={item.received ? 'default' : 'outline'} 
+              <Button size="sm" disabled={readOnly}
+                variant="outline"
                 className={cn(
                   "text-xs cursor-pointer transition-colors",
-                  item.received && "bg-emerald-500 hover:bg-emerald-600",
+                  item.received && "bg-primary/20 text-foreground border-primary",
                   !item.received && "hover:bg-accent"
                 )}
                 onClick={() => onUpdate(item.id, { received: !item.received })}
               >
                 Received
-              </Badge>
-              <Badge 
-                variant={item.approved ? 'default' : 'outline'} 
+              </Button>
+              <Button size="sm" disabled={readOnly}
+                variant="outline"
                 className={cn(
                   "text-xs cursor-pointer transition-colors",
-                  item.approved && "bg-emerald-500 hover:bg-emerald-600",
+                  item.approved && "bg-primary/20 text-foreground border-primary",
                   !item.approved && "hover:bg-accent"
                 )}
                 onClick={() => onUpdate(item.id, { approved: !item.approved })}
               >
                 Submitted
-              </Badge>
+              </Button>
             </div>
           </div>
 
@@ -373,6 +388,7 @@ export function OutstandingItemDialog({
               ETA:
             </div>
             <NaitiveDatePicker
+              disabled={readOnly}
               value={etaValue || null}
               onChange={(next) => {
                 setEtaValue(next || '');
@@ -387,6 +403,7 @@ export function OutstandingItemDialog({
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Priority:</span>
             <Button
+              disabled={readOnly}
               variant={item.priority === 'urgent' ? 'destructive' : 'outline'}
               size="sm"
               className="h-8 text-sm gap-1.5"
@@ -414,7 +431,8 @@ export function OutstandingItemDialog({
                   variant="ghost"
                   size="sm"
                   className="h-7 text-xs"
-                  onClick={() => setEditingNotes(true)}
+                  disabled={readOnly}
+                  onClick={() => { if (!readOnly) setEditingNotes(true); }}
                 >
                   {item.notes ? 'Edit' : 'Add notes'}
                 </Button>
@@ -476,7 +494,7 @@ export function OutstandingItemDialog({
                           </div>
                           <p className="text-sm"><MentionText text={comment.content} /></p>
                         </div>
-                        {user?.id === comment.user_id && (
+                        {!readOnly && user?.id === comment.user_id && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -494,7 +512,7 @@ export function OutstandingItemDialog({
             </ScrollArea>
 
             {/* Add Comment Input */}
-            <div className="flex gap-2 mt-3 pt-3 border-t border-border">
+            {!readOnly && <div className="flex gap-2 mt-3 pt-3 border-t border-border">
               <MentionTextarea
                 value={newComment}
                 onChange={setNewComment}
@@ -510,7 +528,7 @@ export function OutstandingItemDialog({
               >
                 <Send className="h-4 w-4" />
               </Button>
-            </div>
+            </div>}
           </div>
         </div>
       </DialogContent>

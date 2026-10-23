@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { SearchableRequesterList } from '@/components/deal/SearchableRequesterList';
 import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, ChevronRight, LayoutGrid, ArrowRight, GripVertical, CheckSquare, Square, Search, AlertTriangle, ArrowUp, ArrowUpRight, ClipboardPaste, UserPlus, Group, Maximize2, Layers, CheckCircle2 } from 'lucide-react';
 import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
@@ -105,6 +105,7 @@ interface OutstandingItemsProps {
   /** Controlled collapsed state (defaults to collapsed when uncontrolled). */
   collapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
+  initialItemId?: string;
 }
 
 const getItemStage = (item: OutstandingItem): KanbanStage => {
@@ -334,7 +335,7 @@ function KanbanBoard({
   );
 }
 
-export function OutstandingItems({ items, isLoading = false, lenderNames, companyName, onAdd: rawOnAdd, onUpdate: rawOnUpdate, onDelete: rawOnDelete, onBulkAdd: rawOnBulkAdd, onReorder: rawOnReorder, teamMembers, onApplyDefaultChecklist, phaseControls, readOnly = false, readOnlyReason, collapsed: collapsedProp, onCollapsedChange }: OutstandingItemsProps) {
+export function OutstandingItems({ items, isLoading = false, lenderNames, companyName, onAdd: rawOnAdd, onUpdate: rawOnUpdate, onDelete: rawOnDelete, onBulkAdd: rawOnBulkAdd, onReorder: rawOnReorder, teamMembers, onApplyDefaultChecklist, phaseControls, readOnly = false, readOnlyReason, collapsed: collapsedProp, onCollapsedChange, initialItemId }: OutstandingItemsProps) {
   // When readOnly, neuter all mutators so any leftover handler (kanban
   // drag, checkbox toggles, etc.) cannot mutate items. Also disable the
   // top-level add/bulk handlers so banner/empty-state CTAs no-op.
@@ -342,7 +343,6 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
   const onUpdate = readOnly ? (() => {}) : rawOnUpdate;
   const onDelete = readOnly ? (() => {}) : rawOnDelete;
   const onBulkAdd = readOnly ? undefined : rawOnBulkAdd;
-  const onReorder = readOnly ? undefined : rawOnReorder;
   const [newItemText, setNewItemText] = useState('');
   const [newRequestedBy, setNewRequestedBy] = useState<string[]>([]);
   const [newPriority, setNewPriority] = useState<ItemPriority>('normal');
@@ -361,8 +361,14 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
   const [quickAddRequestedBy, setQuickAddRequestedBy] = useState<string[]>([]);
   const [groupFilterBoundary, setGroupFilterBoundary] = useState<HTMLElement | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [selectedItem, setSelectedItem] = useState<OutstandingItem | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
+  useEffect(() => {
+    if (initialItemId) {
+      setSelectedItemId(initialItemId);
+      setIsItemDialogOpen(true);
+    }
+  }, [initialItemId]);
   const [showAllItems, setShowAllItems] = useState(true);
   const [requesterPopoverOpen, setRequesterPopoverOpen] = useState(false);
   const [requesterPopoverKey, setRequesterPopoverKey] = useState(0);
@@ -379,7 +385,7 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
 
   const handleItemClick = (item: OutstandingItem) => {
     if (editingId) return;
-    setSelectedItem(item);
+    setSelectedItemId(item.id);
     setIsItemDialogOpen(true);
   };
 
@@ -829,7 +835,7 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
   return (
     <>
       <Card className={cn("deal-outstanding-panel-card flex flex-col", collapsed ? "h-auto" : "h-full")}>
-        <CardHeader className={cn("@container flex flex-row flex-nowrap items-center justify-between gap-x-2 min-h-[44px] h-[44px] py-0 px-4 space-y-0 shrink-0 overflow-hidden", !collapsed && "border-b border-white/15")}>
+        <CardHeader className={cn("@container flex flex-row flex-wrap items-center justify-between gap-2 min-h-[44px] py-1 px-4 space-y-0 shrink-0", !collapsed && "border-b border-border")}>
           <div className="flex items-center gap-2 min-w-0 shrink-0 order-1">
             <button
               type="button"
@@ -869,7 +875,7 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
             </button>
           ) : (<>
           {/* Search / add combo sits inline beside the title and flexes with width */}
-          <div className="flex-1 min-w-0 px-2 order-1">
+          <div className="basis-full min-w-0 order-3 sm:basis-0 sm:flex-1 sm:px-2 sm:order-1">
             <Input
               placeholder="Search or Add Items..."
               value={searchQuery}
@@ -981,12 +987,14 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
                 variant="outline" 
                 size="sm" 
                 className="h-8 gap-1.5 text-xs px-2 @[520px]:px-2 order-3 whitespace-nowrap shrink-0"
+                aria-label="Bulk Add"
                 onClick={() => setIsBulkImportOpen(true)}
               >
                 <ClipboardPaste className="h-3.5 w-3.5 shrink-0" />
                 <span className="hidden @[520px]:inline">Bulk Add</span>
               </Button>
             )}
+            {items.length > 0 && onApplyDefaultChecklist && !readOnly && <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Apply Checklist" title="Apply Checklist" onClick={() => { void onApplyDefaultChecklist(); }}><CheckSquare className="h-3.5 w-3.5" /></Button>}
             
             <Button 
               variant="ghost" 
@@ -1438,15 +1446,16 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
 
       {/* Outstanding Item Detail Dialog */}
       <OutstandingItemDialog
-        item={selectedItem}
+        item={items.find(item => item.id === selectedItemId) || null}
         items={sortedItems}
         open={isItemDialogOpen}
         onOpenChange={setIsItemDialogOpen}
         onUpdate={onUpdate}
-        onSelectItem={(item) => setSelectedItem(item)}
+        onSelectItem={(item) => setSelectedItemId(item.id)}
         lenderNames={lenderNames}
         companyName={companyName}
         teamMembers={teamMembers}
+        readOnly={readOnly}
       />
     </>
   );
