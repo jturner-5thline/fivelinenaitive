@@ -83,7 +83,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
     <aside
       className={cn(
         layout === 'widget'
-          ? 'w-full rounded-lg border border-[#1E2C46] bg-[#101D33] shadow-none px-4 py-3'
+          ? 'w-full rounded-lg border border-[#1E2C46] bg-transparent shadow-none px-4 py-3'
           : 'shrink-0 w-full lg:w-[260px] lg:sticky lg:top-4 self-start rounded-lg border border-border/40 bg-transparent shadow-none px-3 pb-3 pt-0',
         className,
       )}

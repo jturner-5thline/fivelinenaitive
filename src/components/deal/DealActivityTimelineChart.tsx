@@ -28,7 +28,7 @@ export function DealActivityTimelineChart({ dealId }: { dealId: string }) {
   const total = buckets.reduce((s, b) => s + b.total, 0);
 
   return (
-    <section className="mb-4 rounded-md border border-border bg-card p-4">
+    <section className="mb-4 rounded-md border border-[#1E2C46] bg-transparent p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-foreground">Deal Activity</h3>
