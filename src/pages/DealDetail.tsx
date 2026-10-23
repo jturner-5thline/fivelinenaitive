@@ -5177,11 +5177,24 @@ export default function DealDetail() {
                           const hasRightTop = !!(tasksWidget || openItemsWidget);
                           const hasBottom = !!(hoursFeesWidget || finservWidget);
                           if (is5thLineUser && useContextRailLayout) {
+                            const openItemsLocked = (() => {
+                              const pname = deal.pipelineId ? pipelines.find(p => p.id === deal.pipelineId)?.name : null;
+                              return getDealInactiveReason(deal, pname) !== null;
+                            })();
+                            const mergedTasksWidget = tasksWidget ? (
+                              <div className="shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]">
+                                <DealTasksPanel
+                                  dealId={deal.id}
+                                  openItems={openItemsWidget ? outstandingItems : undefined}
+                                  openItemsReadOnly={openItemsLocked}
+                                  onToggleOpenItem={(itemId, completed) => { void updateOutstandingItem(itemId, { completed }); }}
+                                  onAddOpenItem={(text) => addOutstandingItem(text, [])}
+                                />
+                              </div>
+                            ) : null;
                             const tasksNode = (tasksWidget || openItemsWidget) ? (
                               <section aria-label="Tasks and open items" className="deal-tasks-openitems-widget flex flex-col overflow-hidden rounded-lg border-0 bg-transparent shadow-none [&>div>div[data-slot=card]]:!rounded-none [&>div>div[data-slot=card]]:!border-0 [&>div>div[data-slot=card]]:!shadow-none [&>div>div[data-slot=card]]:!bg-transparent">
-                                {tasksWidget}
-                                {tasksWidget && openItemsWidget && <div className="shrink-0 border-t border-[#1E2C46]" />}
-                                {openItemsWidget}
+                                {mergedTasksWidget ?? openItemsWidget}
                               </section>
                             ) : null;
                             return (
