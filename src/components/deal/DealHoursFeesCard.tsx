@@ -76,8 +76,7 @@ export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged }: DealHour
         className="deal-hours-fees-panel group p-4 h-full flex flex-col gap-3 cursor-pointer transition-colors hover:bg-muted/20"
       >
         <div className="flex items-center justify-between">
-          <h4 className="text-[13px] font-medium flex items-center gap-2 tracking-[0.01em] text-muted-foreground">
-            <Clock className="h-3.5 w-3.5" />
+          <h4 className="deal-widget-title">
             Hours & Fees
           </h4>
           <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
