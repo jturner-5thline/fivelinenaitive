@@ -4,6 +4,8 @@ import type { Database } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { isDemoEmail, withDemoLenderContact } from '@/lib/demoLenderContact';
 import { toast } from 'sonner';
+import { useCompany } from './useCompany';
+import { syncImportedLenderContacts } from '@/lib/lenders/syncImportedLenderContacts';
 import { extractFlexSyncErrorPayload } from '@/utils/flexSyncError';
 import {
   loadCachedLenders,
@@ -73,6 +75,7 @@ function invalidateMasterLendersCache() {
 
 export function useMasterLenders(options: UseMasterLendersOptions = {}) {
   const { user } = useAuth();
+  const { company } = useCompany();
   const isDemo = isDemoEmail(user?.email);
 
   const mode = options.mode ?? 'all';
@@ -501,8 +504,8 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
   }, [fetchPage, hasMore, lenders.length, loadingMore, mode, page, pageSize, searchQuery, totalCount, user]);
 
   const importLenders = async (lendersToImport: MasterLenderInsert[]): Promise<{ success: number; failed: number; errors: string[] }> => {
-    if (!user) {
-      return { success: 0, failed: lendersToImport.length, errors: ['Not authenticated'] };
+    if (!user || !company) {
+      return { success: 0, failed: lendersToImport.length, errors: ['Sign in and select a company before importing.'] };
     }
 
     const results = { success: 0, failed: 0, errors: [] as string[] };
@@ -512,6 +515,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       const batch = lendersToImport.slice(i, i + batchSize).map((lender) => ({
         ...lender,
         user_id: user.id,
+        company_id: company.id,
       }));
 
       const { error: insertError, data } = await supabase.from('master_lenders').insert(batch).select();
@@ -521,6 +525,13 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
         results.errors.push(`Batch ${Math.floor(i / batchSize) + 1}: ${insertError.message}`);
       } else {
         results.success += data?.length || 0;
+        for (const lender of data ?? []) {
+          try {
+            await syncImportedLenderContacts(lender.id, { userId: user.id, orgCompanyId: company.id });
+          } catch {
+            results.errors.push(`${lender.name}: saved, but contact linking failed. Re-import to retry.`);
+          }
+        }
       }
     }
 

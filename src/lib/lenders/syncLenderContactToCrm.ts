@@ -28,6 +28,7 @@ export async function syncLenderContactToCrm(
   contact: LenderContactCrmInput,
   opts: { userId?: string | null; orgCompanyId?: string | null; existingContactId?: string | null } = {},
 ): Promise<{ contactId: string; crmCompanyId: string | null } | null> {
+  if (!opts.userId || !opts.orgCompanyId) return null;
   try {
     const { data: lender } = await supabase
       .from('master_lenders')
@@ -36,17 +37,25 @@ export async function syncLenderContactToCrm(
       .maybeSingle();
     if (!lender) return null;
 
-    let crmCompanyId: string | null = (lender as any).crm_company_id ?? null;
+    // A shared lender may link to another tenant's CRM company; never reuse it.
+    let crmCompanyId: string | null = null;
+    if (lender.crm_company_id) {
+      const { data: linked, error } = await supabase.from('crm_companies').select('id')
+        .eq('id', lender.crm_company_id).eq('org_company_id', opts.orgCompanyId).maybeSingle();
+      if (error) throw error;
+      crmCompanyId = linked?.id ?? null;
+    }
 
     if (!crmCompanyId && lender.name) {
-      let q = supabase.from('crm_companies').select('id, name, domain').ilike('name', lender.name).limit(1);
+      let q = supabase.from('crm_companies').select('id, name, domain').ilike('name', escapeLike(lender.name)).limit(1);
       if (opts.orgCompanyId) q = q.eq('org_company_id', opts.orgCompanyId);
-      const { data: existing } = await q;
+      const { data: existing, error } = await q;
+      if (error) throw error;
       if (existing && existing.length) crmCompanyId = existing[0].id;
     }
 
     if (!crmCompanyId && lender.name) {
-      const { data: created } = await supabase
+      const { data: created, error } = await supabase
         .from('crm_companies')
         .insert({
           name: lender.name,
@@ -56,6 +65,7 @@ export async function syncLenderContactToCrm(
         } as any)
         .select('id')
         .single();
+      if (error) throw error;
       crmCompanyId = created?.id ?? null;
     }
 
@@ -72,18 +82,22 @@ export async function syncLenderContactToCrm(
     let existing: { id: string; crm_company_id: string | null; job_title: string | null; contact_type?: string | null } | null = null;
 
     if (opts.existingContactId) {
-      const { data: picked } = await supabase
+      const { data: picked, error } = await supabase
         .from('contacts')
         .select('id, crm_company_id, job_title, contact_type')
         .eq('id', opts.existingContactId)
+        .eq('org_company_id', opts.orgCompanyId)
         .maybeSingle();
+      if (error) throw error;
+      if (!picked) throw new Error('Selected contact is not in the current company.');
       if (picked) existing = picked as any;
     }
 
     if (!existing && email) {
       let q = supabase.from('contacts').select('id, crm_company_id, job_title, contact_type').ilike('email', escapeLike(email)).limit(1);
       if (opts.orgCompanyId) q = q.eq('org_company_id', opts.orgCompanyId);
-      const { data: found } = await q;
+      const { data: found, error } = await q;
+      if (error) throw error;
       if (found && found.length) existing = found[0] as any;
     }
 
@@ -94,7 +108,8 @@ export async function syncLenderContactToCrm(
         .ilike('full_name', escapeLike(contact.name.trim()))
         .limit(2);
       if (opts.orgCompanyId) q = q.eq('org_company_id', opts.orgCompanyId);
-      const { data: found } = await q;
+      const { data: found, error } = await q;
+      if (error) throw error;
       if (found && found.length === 1) existing = found[0] as any;
     }
 
@@ -112,7 +127,9 @@ export async function syncLenderContactToCrm(
         if (contact.contactType?.trim()) {
           updates.contact_type = joinContactTypes([...splitContactTypes(existing.contact_type), ...splitContactTypes(contact.contactType)]);
         }
-        await supabase.from('contacts').update(updates as any).eq('id', existing.id);
+        const { error } = await supabase.from('contacts').update(updates as any).eq('id', existing.id)
+          .eq('org_company_id', opts.orgCompanyId);
+        if (error) throw error;
         return { contactId: existing.id, crmCompanyId };
       }
     }
