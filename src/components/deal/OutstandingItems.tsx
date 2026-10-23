@@ -343,7 +343,6 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
   const onUpdate = readOnly ? (() => {}) : rawOnUpdate;
   const onDelete = readOnly ? (() => {}) : rawOnDelete;
   const onBulkAdd = readOnly ? undefined : rawOnBulkAdd;
-  const onReorder = readOnly ? undefined : rawOnReorder;
   const [newItemText, setNewItemText] = useState('');
   const [newRequestedBy, setNewRequestedBy] = useState<string[]>([]);
   const [newPriority, setNewPriority] = useState<ItemPriority>('normal');

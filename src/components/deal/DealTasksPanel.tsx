@@ -338,12 +338,13 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
                         <Checkbox
                           checked={item.completed}
                           disabled={openItemsReadOnly || !onToggleOpenItem}
-                          onCheckedChange={() => onToggleOpenItem?.(item.id, !item.completed)}
+                          aria-label={`Complete open item: ${item.text}`}
+                          onCheckedChange={() => { if (!openItemsReadOnly) onToggleOpenItem?.(item.id, !item.completed); }}
                           className="shrink-0"
                         />
                         <div className="flex-1 min-w-0">
                           <p className={cn("text-sm font-medium truncate", item.completed ? "text-muted-foreground line-through" : "text-foreground")}>{item.text}</p>
-                          <div className="flex items-center gap-3 mt-0.5 flex-nowrap overflow-hidden">
+                          <div className="flex items-center gap-1 mt-0.5 flex-wrap min-w-0">
                             {onUpdateOpenItem ? <>
                               <Button variant="ghost" size="sm" className="h-6 px-1 text-xs" aria-label={`Received: ${item.text}`} aria-pressed={item.received} disabled={openItemsReadOnly} onClick={() => { if (!openItemsReadOnly) onUpdateOpenItem(item.id, { received: !item.received }); }}>Received</Button>
                               <Button variant="ghost" size="sm" className="h-6 px-1 text-xs" aria-label={`Submitted: ${item.text}`} aria-pressed={item.approved} disabled={openItemsReadOnly} onClick={() => { if (!openItemsReadOnly) onUpdateOpenItem(item.id, { approved: !item.approved }); }}>Submitted</Button>
@@ -380,7 +381,7 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
 
       {/* Create Task Dialog */}
       <Dialog open={managerOpen} onOpenChange={setManagerOpen}>
-        <DialogContent className="max-w-4xl w-[calc(100%-24px)] h-[85vh] flex flex-col min-h-0">
+        <DialogContent className="max-w-4xl w-[calc(100%_-_24px)] h-[85vh] flex flex-col min-h-0">
           <DialogHeader><DialogTitle>Manage Open Items</DialogTitle></DialogHeader>
           <div className="flex-1 min-h-0 overflow-hidden">{managerOpen && renderOpenItemsManager?.(selectedOpenItemId)}</div>
         </DialogContent>

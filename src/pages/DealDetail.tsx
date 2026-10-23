@@ -5070,10 +5070,11 @@ export default function DealDetail() {
                             </div>
                           ) : null;
                           // Outstanding Items is a debt-pipeline concept — skip for Naitive/Projects.
-                          const renderOpenItems = (initialItemId?: string) => (
+                          const renderOpenItems = (initialItemId?: string, standalone = false) => (
                               <OutstandingItems
                                 initialItemId={initialItemId}
-                                collapsed={false}
+                                collapsed={standalone ? openItemsCollapsed : false}
+                                onCollapsedChange={standalone ? setOpenItemsCollapsed : undefined}
                                 items={outstandingItems}
                                 isLoading={isLoadingOutstandingItems}
                                 lenderNames={deal.lenders?.filter(l => configuredStages.find(s => s.id === l.stage)?.group !== 'passed').map(l => l.name) || []}
@@ -5098,7 +5099,7 @@ export default function DealDetail() {
                           );
                           const openItemsWidget = (!isNaitiveDeal && !isProjectsDeal && widgetVis.openItems) ? (
                                <div className={openItemsCollapsed ? "shrink-0" : "shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]"}>
-                              {renderOpenItems()}
+                              {renderOpenItems(undefined, true)}
                               </div>
                           ) : null;
                           const finservWidget = isFinServDeal ? (
