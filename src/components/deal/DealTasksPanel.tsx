@@ -263,7 +263,7 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
                           "flex items-center gap-3 group border-b border-border/60 px-0 py-1.5 transition-colors cursor-pointer min-h-[50px] overflow-hidden",
                           isCompleted
                             ? "opacity-60 hover:opacity-100"
-                            : "hover:bg-muted/20"
+                            : "hover:bg-foreground/[0.03]"
                         )}
                       >
                         <div onClick={(e) => e.stopPropagation()}>
@@ -319,7 +319,7 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
                         key={`oi-${item.id}`}
                         className={cn(
                           "flex items-center gap-3 group border-b border-border/60 px-0 py-1.5 transition-colors min-h-[50px] overflow-hidden",
-                          item.completed ? "opacity-60 hover:opacity-100" : "hover:bg-muted/20"
+                          item.completed ? "opacity-60 hover:opacity-100" : "hover:bg-foreground/[0.03]"
                         )}
                       >
                         <Checkbox
