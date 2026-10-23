@@ -5180,33 +5180,35 @@ export default function DealDetail() {
                           const hasRightTop = !!(tasksWidget || openItemsWidget);
                           const hasBottom = !!(hoursFeesWidget || finservWidget);
                           if (is5thLineUser && useContextRailLayout) {
+                            const tasksNode = (tasksWidget || openItemsWidget) ? (
+                              <section aria-label="Tasks and open items" className="deal-tasks-openitems-widget flex flex-col overflow-hidden rounded-lg border-0 bg-transparent shadow-none [&>div>div[data-slot=card]]:!rounded-none [&>div>div[data-slot=card]]:!border-0 [&>div>div[data-slot=card]]:!shadow-none [&>div>div[data-slot=card]]:!bg-transparent">
+                                {tasksWidget}
+                                {tasksWidget && openItemsWidget && <div className="shrink-0 border-t border-[#1E2C46]" />}
+                                {openItemsWidget}
+                              </section>
+                            ) : null;
                             return (
-                              <div key={id} className="lg:col-span-2">
-                                <DealWidgetGrid
-                                  items={dealGrid.items}
-                                  onChange={dealGrid.update}
-                                  onReset={dealGrid.reset}
-                                  widgets={{
-                                    actions: (
-                                      <section aria-label="Deal actions" className="deal-actions-widget flex items-center gap-2 rounded-lg border border-[#1E2C46] bg-[#101D33] p-2 h-[72px]">
-                                        <div className="flex-1 min-w-0 h-full self-center">{renderDealActionCluster(true)}</div>
-                                      </section>
-                                    ),
-                                    tasks: (tasksWidget || openItemsWidget) ? (
-                                      <section aria-label="Tasks and open items" className="deal-tasks-openitems-widget flex flex-col overflow-hidden rounded-lg border-0 bg-transparent shadow-none [&>div>div[data-slot=card]]:!rounded-none [&>div>div[data-slot=card]]:!border-0 [&>div>div[data-slot=card]]:!shadow-none [&>div>div[data-slot=card]]:!bg-transparent">
-                                        {tasksWidget}
-                                        {tasksWidget && openItemsWidget && <div className="shrink-0 border-t border-[#1E2C46]" />}
-                                        {openItemsWidget}
-                                      </section>
-                                    ) : null,
-                                    milestonesCalendar: milestonesCalendarWidget,
-                                    fundingMix: fundingMixWidget,
-                                    activityChart: <DealActivityTimelineChart dealId={deal.id} />,
-                                    dealInfo: dealInfoWidgetNode,
-                                    hoursFees: hoursFeesWidget,
-                                    finserv: finservWidget,
-                                  }}
-                                />
+                              <div key={id} className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                <div className="min-w-0">{tasksNode}</div>
+                                <div className="min-w-0 flex flex-col gap-3">
+                                  <section aria-label="Deal actions" className="deal-actions-widget shrink-0 flex items-center gap-2 rounded-lg border border-[#1E2C46] bg-[#101D33] p-2 h-[72px]">
+                                    <div className="flex-1 min-w-0 h-full self-center">{renderDealActionCluster(true)}</div>
+                                  </section>
+                                  {dealInfoWidgetNode && (
+                                    <div className="relative flex-1 min-h-[240px]">
+                                      <div className="absolute inset-0 [&>*]:!h-full">{dealInfoWidgetNode}</div>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="min-w-0"><DealActivityTimelineChart dealId={deal.id} /></div>
+                                {milestonesCalendarWidget && (
+                                  <div className="relative min-w-0 min-h-[240px]">
+                                    <div className="lg:absolute lg:inset-0 [&>*]:!h-full overflow-hidden">{milestonesCalendarWidget}</div>
+                                  </div>
+                                )}
+                                {fundingMixWidget && <div className="min-w-0">{fundingMixWidget}</div>}
+                                {hoursFeesWidget && <div className="min-w-0">{hoursFeesWidget}</div>}
+                                {finservWidget && <div className="min-w-0">{finservWidget}</div>}
                               </div>
                             );
                           }
