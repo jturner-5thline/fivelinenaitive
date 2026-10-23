@@ -71,7 +71,7 @@ export function FundingSourceMixPie({ lenders, configuredStages = [], className,
     if (!title) return null;
     return (
       <div className={cn('fs-tab-widget rounded-lg px-4 py-3', className)}>
-        <div className="deal-widget-title text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{title}</div>
+        <div className="deal-widget-title text-left">{title}</div>
         <div className="py-8 text-sm text-muted-foreground">No funding sources on this deal yet</div>
       </div>
     );
@@ -87,7 +87,7 @@ export function FundingSourceMixPie({ lenders, configuredStages = [], className,
 
   return (
     <div className={cn('fs-tab-widget rounded-lg px-4 py-0', title && 'pt-3', className)}>
-      {title && <div className="deal-widget-title text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{title}</div>}
+      {title && <div className="deal-widget-title text-left">{title}</div>}
       <div className="h-[220px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
