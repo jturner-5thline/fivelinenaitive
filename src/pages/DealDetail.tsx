@@ -3561,7 +3561,7 @@ export default function DealDetail() {
   );
 
   const dealInfoWidgetNode = (useContextRailLayout && dealInfoTab === 'deal-info') ? (
-    <div className="deal-info-widget deal-info-compact min-w-0 h-[clamp(340px,calc(100vh-380px),720px)] overflow-y-auto rounded-lg">
+    <HiddenScrollArea className="deal-info-widget deal-info-compact min-w-0 h-[clamp(340px,calc(100vh-380px),720px)] rounded-lg">
       <DealContextRail
                 deal={deal}
                 compact={dealInfoTab !== 'deal-info'}
@@ -3586,7 +3586,7 @@ export default function DealDetail() {
               >
                 <div ref={setRailPanelSlot} className="w-full" />
               </DealContextRail>
-    </div>
+    </HiddenScrollArea>
   ) : null;
 
   return (
@@ -4986,8 +4986,12 @@ export default function DealDetail() {
                                        // Single-column rail: render fields strictly in the
                                        // order configured in Settings → Deal Information Fields.
                                        orderedRailFields.length > 0 && (
-                                         <div className="space-y-2 min-w-0">
-                                           {orderedRailFields.map(fId => renderDealInfoField(fId))}
+                                         <div className="grid w-full min-w-0 grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 [&>*]:min-w-0 [&>*]:break-words">
+                                           {orderedRailFields.map(fId => (
+                                             <div key={fId} className={cn('min-w-0', fId === 'narrative' && 'sm:col-span-2')}>
+                                               {renderDealInfoField(fId)}
+                                             </div>
+                                           ))}
                                          </div>
                                        )
                                      ) : (

@@ -92,7 +92,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
       {layout === 'widget' && (
         <h3 className="mb-2 text-[13px] font-semibold text-foreground">Deal Info</h3>
       )}
-      <div ref={measureRef} className={cn(layout === 'widget' ? 'grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-3 items-start' : 'space-y-3')}>
+      <div ref={measureRef} className={cn(layout === 'widget' ? 'grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 items-start [&>*]:min-w-0' : 'space-y-3')}>
       {!hideIdentity && (
       <div className="space-y-1.5 pt-3">
         <InlineEditField
