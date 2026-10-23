@@ -1,6 +1,7 @@
 import { Clock, Layers, DollarSign, Hash, TrendingUp } from 'lucide-react';
 import type { Deal } from '@/types/deal';
-import { currentRevenuePerHour } from '@/lib/activePipelineKpis';
+import { currentRevenuePerHour, totalActivePipelineValue } from '@/lib/activePipelineKpis';
+import { formatUSDFromDollars } from '@/lib/formatters/currency';
 
 const KPIS = [
   { key: 'rev_hour', label: 'Current Revenue / Hour', icon: Clock },
@@ -11,10 +12,11 @@ const KPIS = [
 ] as const;
 
 /** 5th Line active-pipeline KPI row. Unwired values show a placeholder. */
-export function ActivePipelineKPIRow({ deals }: { deals: Deal[] }) {
+export function ActivePipelineKPIRow({ deals, stages = [] }: { deals: Deal[]; stages?: { id: string; label: string }[] }) {
   const rph = currentRevenuePerHour(deals);
   const values: Record<string, string> = {
     rev_hour: rph == null ? '—' : `$${Math.round(rph).toLocaleString()}/hr`,
+    active_pipeline: formatUSDFromDollars(totalActivePipelineValue(deals, stages)),
   };
   return (
     <div className="grid grid-cols-5 gap-2 sm:gap-3 mb-4">

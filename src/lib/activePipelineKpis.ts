@@ -3,6 +3,30 @@ import { isExcludedDealName } from '@/utils/excludedDeals';
 
 const CLOSED_STAGES = new Set(['closed-won', 'closed-lost']);
 
+type PipelineStage = { id: string; label: string };
+const normalizeStage = (stage: string) => stage.toLowerCase().replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+const ACTIVE_VOLUME_STAGES = new Set([
+  'final credit items', 'client strategy review', 'write up pending',
+  'submitted to lenders', 'lenders in review', 'terms issued',
+  'in due diligence', 'agreement pending', 'funded invoiced',
+]);
+
+/** Caller supplies default-pipeline deals; stage order comes from that pipeline. */
+export function totalActivePipelineValue(deals: Deal[], stages: PipelineStage[] = []): number {
+  const milestoneIndex = stages.findIndex(s => normalizeStage(s.label) === 'final credit items');
+  return deals.reduce((total, deal) => {
+    if (isExcludedDealName(deal.company)) return total;
+    const stageIndex = stages.findIndex(s => s.id === deal.stage || normalizeStage(s.label) === normalizeStage(deal.stage));
+    const stageLabel = normalizeStage(stageIndex >= 0 ? stages[stageIndex].label : deal.stage);
+    if (['closed won', 'closed lost'].includes(stageLabel) || CLOSED_STAGES.has(deal.stage)) return total;
+    const qualifies = milestoneIndex >= 0 && stageIndex >= 0
+      ? stageIndex >= milestoneIndex
+      : ACTIVE_VOLUME_STAGES.has(stageLabel);
+    const value = Number(deal.value);
+    return qualifies && Number.isFinite(value) ? total + value : total;
+  }, 0);
+}
+
 /**
  * Aggregate revenue / hour for open Active Pipeline deals:
  * sum(totalFee) ÷ sum(pre + post signing hours), excluding Closed Won / Closed Lost
