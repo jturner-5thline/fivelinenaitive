@@ -5227,7 +5227,7 @@ export default function DealDetail() {
                                     <div className="lg:absolute lg:inset-0 [&>*]:!h-full [&>*]:!min-h-0 overflow-hidden">{milestonesCalendarWidget}</div>
                                   </div>
                                 )}
-                                {fundingMixWidget && <div className="min-w-0 lg:h-[300px] [&>div]:h-full [&_.fs-tab-widget]:h-full [&_.fs-tab-widget]:flex [&_.fs-tab-widget]:flex-col [&_.fs-tab-widget]:justify-center">{fundingMixWidget}</div>}
+                                {fundingMixWidget && <div className="min-w-0 lg:h-[300px] [&>div]:h-full [&_.fs-tab-widget]:h-full [&_.fs-tab-widget]:flex [&_.fs-tab-widget]:flex-col [&_.fs-tab-widget>div:nth-child(2)]:my-auto">{fundingMixWidget}</div>}
                                 {hoursFeesWidget && <div className="min-w-0 lg:h-[300px] [&>div]:!h-full">{hoursFeesWidget}</div>}
                                 {finservWidget && <div className="min-w-0">{finservWidget}</div>}
                               </div>

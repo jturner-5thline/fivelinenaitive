@@ -166,7 +166,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
               )}
               aria-haspopup="dialog"
             >
-              <span className="text-sm font-medium leading-none bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">Deal Milestones</span>
+              <span className="deal-widget-title leading-none bg-none">Deal Milestones</span>
               {milestones.length > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
