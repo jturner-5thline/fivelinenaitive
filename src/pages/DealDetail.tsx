@@ -5186,7 +5186,6 @@ export default function DealDetail() {
                             ) : null;
                             return (
                               <div key={id} className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-3">
-                                <div className="min-w-0">{tasksNode}</div>
                                 <div className="min-w-0 flex flex-col gap-3">
                                   <section aria-label="Deal actions" className="deal-actions-widget shrink-0 flex items-center gap-2 rounded-lg border border-[#1E2C46] bg-[#101D33] p-2 h-[72px]">
                                     <div className="flex-1 min-w-0 h-full self-center">{renderDealActionCluster(true)}</div>
@@ -5197,10 +5196,11 @@ export default function DealDetail() {
                                     </div>
                                   )}
                                 </div>
-                                <div className="min-w-0"><DealActivityTimelineChart dealId={deal.id} /></div>
+                                <div className="min-w-0">{tasksNode}</div>
+                                <div className="min-w-0 [&>section]:!mb-0 [&>section]:h-full"><DealActivityTimelineChart dealId={deal.id} /></div>
                                 {milestonesCalendarWidget && (
-                                  <div className="relative min-w-0 min-h-[240px]">
-                                    <div className="lg:absolute lg:inset-0 [&>*]:!h-full overflow-hidden">{milestonesCalendarWidget}</div>
+                                  <div className="relative min-w-0 min-h-[240px] lg:min-h-0">
+                                    <div className="lg:absolute lg:inset-0 [&>*]:!h-full [&>*]:!min-h-0 overflow-hidden">{milestonesCalendarWidget}</div>
                                   </div>
                                 )}
                                 {fundingMixWidget && <div className="min-w-0">{fundingMixWidget}</div>}
