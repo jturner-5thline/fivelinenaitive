@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react";
+import { openItemCompletionUpdates, moveOpenItem } from '@/lib/openItemActions';
 import { EngagementSelect } from '@/components/deal/EngagementSelect';
 import { HiddenScrollArea } from '@/components/deal/HiddenScrollArea';
 import { useState, useCallback, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
@@ -5171,17 +5172,13 @@ export default function DealDetail() {
                                   openItems={openItemsWidget ? outstandingItems : undefined}
                                   openItemsReadOnly={openItemsLocked}
                                   openItemsReadOnlyReason={(() => { const reason = getDealInactiveReason(deal, pipelines.find(p => p.id === deal.pipelineId)?.name); return reason ? inactiveReasonLabel(reason) : undefined; })()}
-                                  onToggleOpenItem={(itemId, completed) => { if (!openItemsLocked) void updateOutstandingItem(itemId, { received: completed, approved: completed }); }}
+                                  onToggleOpenItem={(itemId, completed) => { if (!openItemsLocked) void updateOutstandingItem(itemId, openItemCompletionUpdates(completed)); }}
                                   onUpdateOpenItem={(itemId, updates) => { if (!openItemsLocked) void updateOutstandingItem(itemId, updates); }}
                                   onDeleteOpenItem={(itemId) => { if (!openItemsLocked) void deleteOutstandingItem(itemId); }}
                                   onMoveOpenItem={(itemId, direction) => {
                                     if (openItemsLocked) return;
-                                    const index = outstandingItems.findIndex(item => item.id === itemId);
-                                    const target = index + direction;
-                                    if (index < 0 || target < 0 || target >= outstandingItems.length) return;
-                                    const reordered = [...outstandingItems];
-                                    [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
-                                    void reorderOutstandingItemsDb(reordered);
+                                    const reordered = moveOpenItem(outstandingItems, itemId, direction);
+                                    if (reordered) void reorderOutstandingItemsDb(reordered);
                                   }}
                                   renderOpenItemsManager={openItemsWidget ? (selectedId) => renderOpenItems(selectedId || undefined) : undefined}
                                   onAddOpenItem={(text) => addOutstandingItem(text, [])}

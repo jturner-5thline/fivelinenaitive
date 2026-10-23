@@ -29,7 +29,7 @@ function setup(readOnly = false, empty = false) {
 describe('merged Open Items controls', () => {
   it('preserves All, Tasks, Open Items and search', () => {
     setup();
-    fireEvent.click(screen.getByRole('radio', { name: 'Tasks', exact: true }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Tasks$/ }));
     expect(screen.queryByText('Tax returns')).toBeNull();
     fireEvent.click(screen.getByRole('radio', { name: /Open Items/ }));
     expect(screen.queryByText('Review finances')).toBeNull();
@@ -59,7 +59,7 @@ describe('merged Open Items controls', () => {
   it('reuses bulk addition with actual texts and requesters', () => {
     const { bulk } = setup();
     fireEvent.click(screen.getByRole('button', { name: 'Manage Open Items' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Bulk Add', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: /^Bulk Add$/ }));
     const textarea = document.querySelector('textarea');
     if (!textarea) throw new Error('Missing bulk input');
     fireEvent.change(textarea, { target: { value: 'One\nTwo' } });
@@ -81,6 +81,6 @@ describe('merged Open Items controls', () => {
     expect(update).not.toHaveBeenCalled(); expect(remove).not.toHaveBeenCalled(); expect(move).not.toHaveBeenCalled(); expect(toggle).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Edit open item: Tax returns' }));
     expect(screen.getByLabelText('ETA')).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Received', exact: true })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^Received$/ })).toBeDisabled();
   });
 });
