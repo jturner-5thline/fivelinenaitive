@@ -5256,3 +5256,11 @@ html body .deal-detail-surface .fs-tab-widget:hover,
   border: 0 !important;
   box-shadow: none !important;
 }
+
+/* Deal Info: inner card shell is transparent and borderless; the outer widget frame owns the border. */
+.deal-info-widget .bg-card,
+.deal-info-widget [class*="dark:bg-[var(--bg-card)]"] {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
