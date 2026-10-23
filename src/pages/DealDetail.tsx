@@ -5187,7 +5187,7 @@ export default function DealDetail() {
                           const hasLeftTop = !!(milestonesCalendarWidget || fundingMixWidget);
                           const hasRightTop = !!(tasksWidget || openItemsWidget);
                           const hasBottom = !!(hoursFeesWidget || finservWidget);
-                          if (is5thLineUser && useContextRailLayout) {
+                          if (useContextRailLayout) {
                             const openItemsLocked = (() => {
                               const pname = deal.pipelineId ? pipelines.find(p => p.id === deal.pipelineId)?.name : null;
                               return getDealInactiveReason(deal, pname) !== null;
