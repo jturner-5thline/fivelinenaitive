@@ -28,11 +28,27 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-interface DealTasksPanelProps {
-  dealId: string;
+export interface DealTasksPanelOpenItem {
+  id: string;
+  text: string;
+  completed: boolean;
+  received: boolean;
+  approved: boolean;
+  eta?: string;
+  requestedBy: string[];
 }
 
-export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
+interface DealTasksPanelProps {
+  dealId: string;
+  /** When provided, Open Items are merged into this list with an All / Open Items toggle. */
+  openItems?: DealTasksPanelOpenItem[];
+  onToggleOpenItem?: (id: string, completed: boolean) => void;
+  onAddOpenItem?: (text: string) => Promise<void> | void;
+  openItemsReadOnly?: boolean;
+}
+
+export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenItem, openItemsReadOnly }: DealTasksPanelProps) {
+  const hasOpenItems = Array.isArray(openItems);
   const { user } = useAuth();
   const { tasks, isLoading, createTask, updateTaskStatus, deleteTask } = useDealTasks(dealId);
   const teamMembers = useTeamMembers();
@@ -71,7 +87,9 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
     writeTaskParam(null);
   };
   const [isOpen, setIsOpen] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<'incomplete' | 'all'>('incomplete');
+  const [view, setView] = useState<'all' | 'openItems'>('all');
+  const [isAddItemOpen, setIsAddItemOpen] = useState(false);
+  const [newItemText, setNewItemText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -126,11 +144,31 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
   const pendingTasks = tasks.filter(t => !isTaskCompleted(t));
   const completedTasks = tasks.filter(t => isTaskCompleted(t));
 
-  const displayedTasks = (statusFilter === 'incomplete' ? pendingTasks : tasks).filter(t => {
-    const q = searchQuery.trim().toLowerCase();
+  const q = searchQuery.trim().toLowerCase();
+  // All: every task (open first, completed dimmed) plus open items.
+  const displayedTasks = view === 'openItems' ? [] : [...pendingTasks, ...completedTasks].filter(t => {
     if (!q) return true;
     return `${t.title || ''} ${t.description || ''}`.toLowerCase().includes(q);
   });
+  const displayedOpenItems = (openItems || [])
+    .filter(i => !q || (i.text || '').toLowerCase().includes(q))
+    .sort((a, b) => Number(a.completed) - Number(b.completed));
+  const pendingOpenItems = (openItems || []).filter(i => !i.completed).length;
+  const totalShown = displayedTasks.length + (hasOpenItems ? displayedOpenItems.length : 0);
+  const totalAll = (view === 'openItems' ? 0 : tasks.length) + (openItems?.length || 0);
+
+  const handleAdd = () => {
+    if (view === 'openItems' && onAddOpenItem) setIsAddItemOpen(true);
+    else setIsCreateOpen(true);
+  };
+
+  const submitOpenItem = async () => {
+    const text = newItemText.trim();
+    if (!text || !onAddOpenItem) return;
+    await onAddOpenItem(text);
+    setNewItemText('');
+    setIsAddItemOpen(false);
+  };
 
   const getInitials = (member: TeamMember | undefined) => {
     if (!member) return '?';
@@ -148,10 +186,24 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
               <Badge variant="secondary" className="text-[10px] h-5 font-normal">{pendingTasks.length} open</Badge>
             )}
           </CardTitle>
+          {isOpen && hasOpenItems && (
+            <div className="shrink-0 pl-3" onClick={(e) => e.stopPropagation()}>
+              <ToggleGroup
+                type="single"
+                value={view}
+                onValueChange={(v) => { if (v) setView(v as 'all' | 'openItems'); }}
+              >
+                <ToggleGroupItem value="all" className="text-[10px] h-6 px-2">All</ToggleGroupItem>
+                <ToggleGroupItem value="openItems" className="text-[10px] h-6 px-2 whitespace-nowrap">
+                  Open Items{pendingOpenItems > 0 ? ` (${pendingOpenItems})` : ''}
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+          )}
           {isOpen && (
             <div className="flex-1 min-w-0 px-2" onClick={(e) => e.stopPropagation()}>
               <Input
-                placeholder="Search tasks..."
+                placeholder={view === 'openItems' ? "Search open items..." : "Search tasks..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Escape') setSearchQuery(''); }}
@@ -160,14 +212,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
             </div>
           )}
           <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-            <ToggleGroup
-              type="single"
-              value={statusFilter === 'all' ? 'all' : ''}
-              onValueChange={(v) => setStatusFilter(v === 'all' ? 'all' : 'incomplete')}
-            >
-              <ToggleGroupItem value="all" className="text-[10px] h-6 px-2">All</ToggleGroupItem>
-            </ToggleGroup>
-            <Button size="sm" variant="outline" onClick={() => setIsCreateOpen(true)} className="h-7 gap-1 text-xs px-2">
+            <Button size="sm" variant="outline" onClick={handleAdd} disabled={view === 'openItems' && (!onAddOpenItem || openItemsReadOnly)} className="h-7 gap-1 text-xs px-2">
               <Plus className="h-3 w-3" /> Add
             </Button>
           </div>
@@ -177,20 +222,20 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
         {isOpen && (
           <CardContent className="flex-1 flex flex-col px-4 pb-4 pt-2 space-y-0 min-h-0">
 
-            {isLoading && tasks.length === 0 ? (
+            {isLoading && tasks.length === 0 && !hasOpenItems ? (
               <div className="flex-1 flex items-center justify-center">
                 <p className="text-xs text-muted-foreground">Loading tasks…</p>
               </div>
-            ) : tasks.length === 0 ? (
+            ) : totalAll === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center">
                 <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center mb-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
                 </div>
-                <p className="text-xs text-muted-foreground">No tasks yet</p>
+                <p className="text-xs text-muted-foreground">{view === 'openItems' ? 'No open items yet' : 'No tasks yet'}</p>
               </div>
-            ) : displayedTasks.length === 0 ? (
+            ) : totalShown === 0 ? (
               <div className="flex-1 flex items-center justify-center">
-                <p className="text-xs text-muted-foreground">No tasks match this filter.</p>
+                <p className="text-xs text-muted-foreground">Nothing matches this search.</p>
               </div>
             ) : (
               <ScrollArea className="flex-1 min-h-0">
