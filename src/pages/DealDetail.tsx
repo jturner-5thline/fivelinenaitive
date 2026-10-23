@@ -5167,7 +5167,7 @@ export default function DealDetail() {
                           // stretches to the bottom of the Tasks / Open Items column.
                           const showCombinedCalendar = !!calendarWidget;
                           const milestonesCalendarWidget = (milestonesWidget || showCombinedCalendar) ? (
-                            <section className="deal-milestones-calendar-widget flex-1 min-h-[420px] overflow-hidden flex flex-col rounded-lg border border-[#1E2C46] bg-[#101D33]">
+                            <section className="deal-milestones-calendar-widget flex-1 min-h-[420px] overflow-hidden flex flex-col rounded-lg border border-[#1E2C46] bg-transparent">
                               {milestonesWidget && (
                                 <div className="shrink-0 [&_.deal-milestones-widget]:!border-0 [&_.deal-milestones-widget]:!shadow-none [&_.deal-milestones-widget]:!bg-transparent [&_.deal-milestones-widget]:!rounded-none">{milestonesWidget}</div>
                               )}
@@ -5205,7 +5205,7 @@ export default function DealDetail() {
                             return (
                               <div key={id} className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-3">
                                 <div className="min-w-0 flex flex-col gap-3">
-                                  <section aria-label="Deal actions" className="deal-actions-widget shrink-0 flex items-center gap-2 rounded-lg border border-[#1E2C46] bg-[#101D33] p-2 h-[72px]">
+                                  <section aria-label="Deal actions" className="deal-actions-widget shrink-0 flex items-center gap-2 rounded-lg border-0 bg-transparent p-2 h-[72px]">
                                     <div className="flex-1 min-w-0 h-full self-center">{renderDealActionCluster(true)}</div>
                                   </section>
                                   {dealInfoWidgetNode && (
@@ -5233,7 +5233,7 @@ export default function DealDetail() {
                                 <>
                                   <div className="flex flex-col gap-2 min-w-0 lg:order-2">
                                     {useContextRailLayout && (
-                                      <section aria-label="Deal actions" className="deal-actions-widget flex items-center gap-2 rounded-lg border border-[#1E2C46] bg-[#101D33] p-2 shrink-0" style={{ height: actionsWidgetHeight && actionsWidgetHeight > 0 ? actionsWidgetHeight : 64 }}>
+                                      <section aria-label="Deal actions" className="deal-actions-widget flex items-center gap-2 rounded-lg border-0 bg-transparent p-2 shrink-0" style={{ height: actionsWidgetHeight && actionsWidgetHeight > 0 ? actionsWidgetHeight : 64 }}>
                                         <div className="flex-1 min-w-0 h-full self-center">{renderDealActionCluster(true)}</div>
                                       </section>
                                     )}

@@ -5210,3 +5210,22 @@ html body.ceo-theme .insights-glass-skin button.insights-folder-btn.insights-fol
   border: 0 !important;
   box-shadow: none !important;
 }
+
+/* Deal detail widgets: transparent (no fill), border kept; Deal Actions has no border. */
+html body .deal-detail-surface .fs-tab-widget,
+html body .deal-detail-surface .fs-tab-widget:hover,
+.deal-detail-surface .deal-hours-fees-panel,
+.deal-detail-surface .deal-hours-fees-panel:hover,
+.deal-detail-surface .deal-calendar-panel [data-slot="card"],
+.deal-detail-surface .deal-milestones-calendar-widget {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border: 1px solid #1E2C46 !important;
+}
+.deal-detail-surface .deal-actions-widget {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
