@@ -28,10 +28,10 @@ export function DealActivityTimelineChart({ dealId }: { dealId: string }) {
   const total = buckets.reduce((s, b) => s + b.total, 0);
 
   return (
-    <section className="mb-4 rounded-md border border-[#1E2C46] bg-transparent p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
+    <section className="mb-4 flex flex-col overflow-hidden rounded-md border border-[#1E2C46] bg-transparent">
+      <div className="sticky top-0 z-10 shrink-0 flex items-center justify-between gap-3 px-4 pt-4 pb-3">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Deal Activity</h3>
+          <h3 className="deal-widget-title">Deal Activity</h3>
           <p className="text-xs text-foreground/60">{total} activities · last {granularity === 'daily' ? '30 days' : '12 weeks'}</p>
         </div>
         <div className="inline-flex rounded-md border border-border p-0.5">
@@ -43,6 +43,7 @@ export function DealActivityTimelineChart({ dealId }: { dealId: string }) {
           ))}
         </div>
       </div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 no-scrollbar">
       {data?.warning && <p role="status" className="mb-2 text-xs text-muted-foreground">{data.warning}</p>}
       {error && !data ? <p role="alert" className="py-8 text-sm text-destructive">Activity could not be loaded. {error.message}</p> : isLoading && !data ? <Skeleton className="h-[200px] w-full" /> : (
         <div className="h-[200px]">
