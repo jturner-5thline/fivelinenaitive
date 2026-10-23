@@ -987,12 +987,14 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
                 variant="outline" 
                 size="sm" 
                 className="h-8 gap-1.5 text-xs px-2 @[520px]:px-2 order-3 whitespace-nowrap shrink-0"
+                aria-label="Bulk Add"
                 onClick={() => setIsBulkImportOpen(true)}
               >
                 <ClipboardPaste className="h-3.5 w-3.5 shrink-0" />
                 <span className="hidden @[520px]:inline">Bulk Add</span>
               </Button>
             )}
+            {items.length > 0 && onApplyDefaultChecklist && !readOnly && <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Apply Checklist" title="Apply Checklist" onClick={() => { void onApplyDefaultChecklist(); }}><CheckSquare className="h-3.5 w-3.5" /></Button>}
             
             <Button 
               variant="ghost" 
