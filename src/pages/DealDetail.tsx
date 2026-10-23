@@ -5098,62 +5098,7 @@ export default function DealDetail() {
                           );
                           const openItemsWidget = (!isNaitiveDeal && !isProjectsDeal && widgetVis.openItems) ? (
                                <div className={openItemsCollapsed ? "shrink-0" : "shrink-0 h-[clamp(340px,calc(100vh-380px),720px)]"}>
-                              <OutstandingItems
-                                collapsed={openItemsCollapsed}
-                                onCollapsedChange={setOpenItemsCollapsed}
-                                items={outstandingItems}
-                                isLoading={isLoadingOutstandingItems}
-                                lenderNames={deal.lenders?.filter(l => {
-                                  const stageConfig = configuredStages.find(s => s.id === l.stage);
-                                  return stageConfig?.group !== 'passed';
-                                }).map(l => l.name) || []}
-                                companyName={company?.name}
-                                onAdd={addOutstandingItem}
-                                onUpdate={updateOutstandingItem}
-                                onDelete={deleteOutstandingItem}
-                                onBulkAdd={bulkAddOutstandingItemsDb}
-                                onReorder={reorderOutstandingItemsDb}
-                                teamMembers={teamMembers}
-                                readOnly={(() => {
-                                  const pname = deal.pipelineId
-                                    ? pipelines.find(p => p.id === deal.pipelineId)?.name
-                                    : null;
-                                  return getDealInactiveReason(deal, pname) !== null;
-                                })()}
-                                readOnlyReason={(() => {
-                                  const pname = deal.pipelineId
-                                    ? pipelines.find(p => p.id === deal.pipelineId)?.name
-                                    : null;
-                                  const r = getDealInactiveReason(deal, pname);
-                                  return r ? inactiveReasonLabel(r) : undefined;
-                                })()}
-                                onApplyDefaultChecklist={async () => {
-                                  if (!company?.id || !user?.id || !deal?.id) return;
-                                  const r = await applyDefaultChecklistToOutstandingItems(
-                                    deal.id,
-                                    deal.dealTypes || [],
-                                    company.id,
-                                    user.id,
-                                  );
-                                  await refreshOutstandingItems();
-                                  await checklistPhaseControls.refresh();
-                                  if (r.inserted > 0) {
-                                    toast({
-                                      title: 'Checklist applied',
-                                      description: `Added ${r.inserted} item${r.inserted !== 1 ? 's' : ''} from ${r.sourceLabel}.`,
-                                    });
-                                  } else {
-                                    toast({
-                                      title: 'Nothing to add',
-                                      description: r.source === 'none'
-                                        ? 'No checklist is configured in Settings → Deals → Data Room Checklists.'
-                                        : 'All checklist items already exist on this deal.',
-                                      variant: 'destructive',
-                                    });
-                                  }
-                                }}
-                                phaseControls={checklistPhaseControls}
-                              />
+                              {renderOpenItems()}
                               </div>
                           ) : null;
                           const finservWidget = isFinServDeal ? (

@@ -362,11 +362,11 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
   const [quickAddRequestedBy, setQuickAddRequestedBy] = useState<string[]>([]);
   const [groupFilterBoundary, setGroupFilterBoundary] = useState<HTMLElement | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [selectedItem, setSelectedItem] = useState<OutstandingItem | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   useEffect(() => {
     if (initialItemId) {
-      setSelectedItem({ id: initialItemId } as OutstandingItem);
+      setSelectedItemId(initialItemId);
       setIsItemDialogOpen(true);
     }
   }, [initialItemId]);
@@ -386,7 +386,7 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
 
   const handleItemClick = (item: OutstandingItem) => {
     if (editingId) return;
-    setSelectedItem(item);
+    setSelectedItemId(item.id);
     setIsItemDialogOpen(true);
   };
 
@@ -1445,12 +1445,12 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
 
       {/* Outstanding Item Detail Dialog */}
       <OutstandingItemDialog
-        item={items.find(item => item.id === selectedItem?.id) || null}
+        item={items.find(item => item.id === selectedItemId) || null}
         items={sortedItems}
         open={isItemDialogOpen}
         onOpenChange={setIsItemDialogOpen}
         onUpdate={onUpdate}
-        onSelectItem={(item) => setSelectedItem(item)}
+        onSelectItem={(item) => setSelectedItemId(item.id)}
         lenderNames={lenderNames}
         companyName={companyName}
         teamMembers={teamMembers}

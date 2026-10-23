@@ -159,8 +159,7 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
     return `${t.title || ''} ${t.description || ''}`.toLowerCase().includes(q);
   });
   const displayedOpenItems = (openItems || [])
-    .filter(i => !q || (i.text || '').toLowerCase().includes(q))
-    ;
+    .filter(i => !q || (i.text || '').toLowerCase().includes(q));
   const pendingOpenItems = (openItems || []).filter(i => !i.completed).length;
   const totalShown = displayedTasks.length + (hasOpenItems && view !== 'tasks' ? displayedOpenItems.length : 0);
   const totalAll = (view === 'openItems' ? 0 : tasks.length) + (view === 'tasks' ? 0 : (openItems?.length || 0));
