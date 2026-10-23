@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Fix smart-email-ai duplicate declaration; deployed, preflight and authenticated synthetic analysis returned 200, startup/auth regression test passed; existing function lint errors remain.
+- [ ] Restore missing Open Items management controls — confirmed in signed-in preview; awaiting approval of the coordinated restoration plan.
+
 - [x] Ensure both funding-source CSV imports create or reuse company-scoped CRM contacts and link them; 12 regression tests and build passed, CSV preview checked without live writes.
 - [ ] Verify an actual import and persisted Contacts entry — blocked by shared production data; requires an approved test environment or test-record writes.
 
