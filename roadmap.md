@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Ensure funding-source imports create or reuse company-scoped CRM contacts and link them; verify without live writes.
+
 - [x] Source Deal Activity client meetings from all connected same-company calendars; verified live client meeting read, Daily chart, isolation and duplicate-counting tests.
 
 - [x] End of Day: clicking a meeting no longer opens a follow-up task automatically
