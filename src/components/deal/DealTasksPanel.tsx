@@ -87,7 +87,7 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
     writeTaskParam(null);
   };
   const [isOpen, setIsOpen] = useState(true);
-  const [view, setView] = useState<'all' | 'openItems'>('all');
+  const [view, setView] = useState<'all' | 'tasks' | 'openItems'>('all');
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [newItemText, setNewItemText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -154,8 +154,8 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
     .filter(i => !q || (i.text || '').toLowerCase().includes(q))
     .sort((a, b) => Number(a.completed) - Number(b.completed));
   const pendingOpenItems = (openItems || []).filter(i => !i.completed).length;
-  const totalShown = displayedTasks.length + (hasOpenItems ? displayedOpenItems.length : 0);
-  const totalAll = (view === 'openItems' ? 0 : tasks.length) + (openItems?.length || 0);
+  const totalShown = displayedTasks.length + (hasOpenItems && view !== 'tasks' ? displayedOpenItems.length : 0);
+  const totalAll = (view === 'openItems' ? 0 : tasks.length) + (view === 'tasks' ? 0 : (openItems?.length || 0));
 
   const handleAdd = () => {
     if (view === 'openItems' && onAddOpenItem) setIsAddItemOpen(true);
@@ -191,9 +191,10 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
               <ToggleGroup
                 type="single"
                 value={view}
-                onValueChange={(v) => { if (v) setView(v as 'all' | 'openItems'); }}
+                onValueChange={(v) => { if (v) setView(v as 'all' | 'tasks' | 'openItems'); }}
               >
                 <ToggleGroupItem value="all" className="text-[10px] h-6 px-2">All</ToggleGroupItem>
+                <ToggleGroupItem value="tasks" className="text-[10px] h-6 px-2">Tasks</ToggleGroupItem>
                 <ToggleGroupItem value="openItems" className="text-[10px] h-6 px-2 whitespace-nowrap">
                   Open Items{pendingOpenItems > 0 ? ` (${pendingOpenItems})` : ''}
                 </ToggleGroupItem>
@@ -311,7 +312,7 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
                       </div>
                     );
                   })}
-                  {hasOpenItems && displayedOpenItems.map(item => {
+                  {hasOpenItems && view !== 'tasks' && displayedOpenItems.map(item => {
                     const status = item.completed ? 'Done' : item.approved ? 'Submitted' : item.received ? 'Received' : 'Requested';
                     const requesters = (item.requestedBy || []).filter(Boolean);
                     return (
