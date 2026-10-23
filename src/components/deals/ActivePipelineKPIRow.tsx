@@ -1,6 +1,6 @@
 import { Clock, Layers, DollarSign, Hash, TrendingUp } from 'lucide-react';
 import type { Deal } from '@/types/deal';
-import { currentRevenuePerHour, totalActivePipelineValue } from '@/lib/activePipelineKpis';
+import { currentRevenuePerHour, totalActivePipelineValue, totalSalesPipelineValue } from '@/lib/activePipelineKpis';
 import { formatUSDFromDollars } from '@/lib/formatters/currency';
 
 const KPIS = [
@@ -17,6 +17,7 @@ export function ActivePipelineKPIRow({ deals, stages = [] }: { deals: Deal[]; st
   const values: Record<string, string> = {
     rev_hour: rph == null ? '—' : `$${Math.round(rph).toLocaleString()}/hr`,
     active_pipeline: formatUSDFromDollars(totalActivePipelineValue(deals, stages)),
+    sales_pipeline: formatUSDFromDollars(totalSalesPipelineValue(deals, stages)),
   };
   return (
     <div className="grid grid-cols-5 gap-2 sm:gap-3 mb-4">

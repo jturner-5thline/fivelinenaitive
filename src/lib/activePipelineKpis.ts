@@ -10,6 +10,26 @@ const ACTIVE_VOLUME_STAGES = new Set([
   'submitted to lenders', 'lenders in review', 'terms issued',
   'in due diligence', 'agreement pending', 'funded invoiced',
 ]);
+const SALES_VOLUME_STAGES = new Set([
+  'nda & needs list sent', 'nda and needs list sent', 'nda needs list sent',
+  'pre credit needs', 'proposal in development', 'proposal issued', 'agreement pending',
+]);
+
+/** Caller supplies default-pipeline deals; include the sales cutoff itself. */
+export function totalSalesPipelineValue(deals: Deal[], stages: PipelineStage[] = []): number {
+  const cutoffIndex = stages.findIndex(s => normalizeStage(s.label) === 'agreement pending');
+  return deals.reduce((total, deal) => {
+    if (isExcludedDealName(deal.company)) return total;
+    const stageIndex = stages.findIndex(s => s.id === deal.stage || normalizeStage(s.label) === normalizeStage(deal.stage));
+    const stageLabel = normalizeStage(stageIndex >= 0 ? stages[stageIndex].label : deal.stage);
+    if (['closed won', 'closed lost'].includes(stageLabel) || CLOSED_STAGES.has(deal.stage)) return total;
+    const qualifies = stages.length > 0
+      ? cutoffIndex >= 0 && stageIndex >= 0 && stageIndex <= cutoffIndex
+      : SALES_VOLUME_STAGES.has(stageLabel);
+    const value = Number(deal.value);
+    return qualifies && Number.isFinite(value) ? total + value : total;
+  }, 0);
+}
 
 /** Caller supplies default-pipeline deals; stage order comes from that pipeline. */
 export function totalActivePipelineValue(deals: Deal[], stages: PipelineStage[] = []): number {
