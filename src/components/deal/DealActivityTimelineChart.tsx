@@ -65,6 +65,7 @@ export function DealActivityTimelineChart({ dealId }: { dealId: string }) {
           </ResponsiveContainer>
         </div>
       )}
+      </div>
     </section>
   );
 }
