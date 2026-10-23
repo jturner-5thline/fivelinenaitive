@@ -311,6 +311,42 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
                       </div>
                     );
                   })}
+                  {hasOpenItems && displayedOpenItems.map(item => {
+                    const status = item.completed ? 'Done' : item.approved ? 'Submitted' : item.received ? 'Received' : 'Requested';
+                    const requesters = (item.requestedBy || []).filter(Boolean);
+                    return (
+                      <div
+                        key={`oi-${item.id}`}
+                        className={cn(
+                          "flex items-center gap-3 group rounded-lg border px-3 py-1.5 transition-colors min-h-[50px] overflow-hidden",
+                          item.completed ? "border-border/50 opacity-60 hover:opacity-100" : "border-border hover:bg-muted/30"
+                        )}
+                      >
+                        <Checkbox
+                          checked={item.completed}
+                          disabled={openItemsReadOnly || !onToggleOpenItem}
+                          onCheckedChange={() => onToggleOpenItem?.(item.id, !item.completed)}
+                          className="shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className={cn("text-sm font-medium truncate", item.completed ? "text-muted-foreground line-through" : "text-foreground")}>{item.text}</p>
+                          <div className="flex items-center gap-3 mt-0.5 flex-nowrap overflow-hidden">
+                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal shrink-0">Open Item</Badge>
+                            <span className="text-xs text-muted-foreground shrink-0">{status}</span>
+                            {item.eta && (
+                              <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                                <CalendarIcon className="h-3 w-3" />
+                                {format(new Date(item.eta.length === 10 ? item.eta + 'T00:00:00' : item.eta), 'MMM d, yyyy')}
+                              </span>
+                            )}
+                            {requesters.length > 0 && (
+                              <span className="text-xs text-muted-foreground truncate">{requesters.join(', ')}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </ScrollArea>
             )}
@@ -358,6 +394,20 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
           <DialogFooter>
             <Button variant="ghost" onClick={() => { resetForm(); setIsCreateOpen(false); }}>Cancel</Button>
             <Button onClick={handleCreate} disabled={!title.trim() || !assignedTo || isSubmitting}>{isSubmitting ? 'Creating…' : 'Create Task'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Add Open Item</DialogTitle></DialogHeader>
+          <div>
+            <Label htmlFor="new-open-item" className="text-xs">Item</Label>
+            <Input id="new-open-item" placeholder="e.g. 2025 tax returns" value={newItemText} onChange={(e) => setNewItemText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void submitOpenItem(); }} className="mt-1" autoFocus />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setNewItemText(''); setIsAddItemOpen(false); }}>Cancel</Button>
+            <Button onClick={() => void submitOpenItem()} disabled={!newItemText.trim()}>Add Item</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
