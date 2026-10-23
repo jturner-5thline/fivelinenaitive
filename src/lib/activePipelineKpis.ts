@@ -15,6 +15,26 @@ const SALES_VOLUME_STAGES = new Set([
   'pre credit needs', 'proposal in development', 'proposal issued', 'agreement pending',
 ]);
 
+/** Caller supplies default-pipeline deals; both stage boundaries are inclusive. */
+export function activeDealsCount(deals: Deal[], stages: PipelineStage[] = []): number {
+  const start = stages.findIndex(s => normalizeStage(s.label) === 'final credit items');
+  const end = stages.findIndex(s => normalizeStage(s.label) === 'in due diligence');
+  const fallbackStages = new Set([
+    'final credit items', 'client strategy review', 'write up pending',
+    'submitted to lenders', 'lenders in review', 'terms issued', 'in due diligence',
+  ]);
+  return deals.reduce((count, deal) => {
+    if (isExcludedDealName(deal.company)) return count;
+    const index = stages.findIndex(s => s.id === deal.stage || normalizeStage(s.label) === normalizeStage(deal.stage));
+    const label = normalizeStage(index >= 0 ? stages[index].label : deal.stage);
+    if (['closed won', 'closed lost'].includes(label) || CLOSED_STAGES.has(deal.stage)) return count;
+    const qualifies = stages.length > 0
+      ? start >= 0 && end >= start && index >= start && index <= end
+      : fallbackStages.has(label);
+    return qualifies ? count + 1 : count;
+  }, 0);
+}
+
 /** Caller supplies default-pipeline deals; include the sales cutoff itself. */
 export function totalSalesPipelineValue(deals: Deal[], stages: PipelineStage[] = []): number {
   const cutoffIndex = stages.findIndex(s => normalizeStage(s.label) === 'agreement pending');
