@@ -4949,6 +4949,9 @@ html body .flat-tile-skin .crm-companies-title-bar {
 
 /* Scrollbars */
 .ceo-theme * { scrollbar-width: thin; scrollbar-color: #2A3A57 transparent; }
+/* Containers that scroll without a visible bar (e.g. Deal Info widget). */
+.no-scrollbar, .ceo-theme .no-scrollbar { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+.no-scrollbar::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
 
 /* Charts */
 .ceo-theme .recharts-cartesian-grid line { stroke: #1E2C46 !important; }

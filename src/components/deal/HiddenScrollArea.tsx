@@ -33,7 +33,8 @@ export function HiddenScrollArea({ className, children }: { className?: string; 
       <div
         ref={ref}
         onScroll={update}
-        className="h-full w-full overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        className="no-scrollbar h-full w-full overflow-y-auto overflow-x-hidden"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {children}
       </div>
