@@ -2,7 +2,7 @@
  * DealContextRail
  * ---------------
  * Fixed left "context rail" used by the redesigned deal detail layout
- * (5th Line only, scoped in DealDetail via `useContextRailLayout`).
+ * (all accounts, scoped in DealDetail via `useContextRailLayout`).
  *
  * Surfaces the identity + at-a-glance facts of a deal — company, deal
  * size, canonical status, pipeline stage, close date, last activity and
