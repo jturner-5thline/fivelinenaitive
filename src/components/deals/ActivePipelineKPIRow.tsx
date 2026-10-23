@@ -1,8 +1,9 @@
-import { Clock, Layers, DollarSign, Hash } from 'lucide-react';
+import { Clock, Layers, DollarSign, Hash, TrendingUp } from 'lucide-react';
 
 const KPIS = [
   { key: 'rev_hour', label: 'Current Revenue / Hour', icon: Clock },
   { key: 'active_pipeline', label: 'Total Active Pipeline', icon: Layers },
+  { key: 'sales_pipeline', label: 'Total Sales Pipeline', icon: TrendingUp },
   { key: 'total_revenue', label: 'Total Revenue', icon: DollarSign },
   { key: 'total_deals', label: 'Total Deals', icon: Hash },
 ] as const;
