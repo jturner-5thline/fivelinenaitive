@@ -871,7 +871,7 @@ export default function Dashboard() {
       >
             {is5thLine && pipelines.find(p => p.id === activePipelineId)?.isDefault && (
               <div className="pt-4">
-                <ActivePipelineKPIRow />
+                <ActivePipelineKPIRow deals={dealsInSelectedPipeline} />
               </div>
             )}
             <style>{`
