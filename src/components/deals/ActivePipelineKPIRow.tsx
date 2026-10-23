@@ -11,7 +11,7 @@ const KPIS = [
 /** 5th Line active-pipeline KPI row. Values are placeholders until wired up. */
 export function ActivePipelineKPIRow() {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+    <div className="grid grid-cols-5 gap-2 sm:gap-3 mb-4">
       {KPIS.map(({ key, label, icon: Icon }) => (
         <div key={key} className="rounded-lg border border-border bg-card px-2 sm:px-4 py-3 min-w-0">
           <div className="flex items-center justify-between gap-2">
