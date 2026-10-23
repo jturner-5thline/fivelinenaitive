@@ -209,7 +209,7 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
             </div>
           )}
           {isOpen && (
-            <div className="flex-1 min-w-0 px-2" onClick={(e) => e.stopPropagation()}>
+            <div className="order-last basis-full min-w-0 sm:order-none sm:basis-0 sm:flex-1 sm:px-2" onClick={(e) => e.stopPropagation()}>
               <Input
                 placeholder={view === 'openItems' ? "Search open items..." : "Search tasks..."}
                 value={searchQuery}
@@ -252,7 +252,7 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
                 <p className="text-xs text-muted-foreground">Nothing matches this search.</p>
               </div>
             ) : (
-              <ScrollArea className="flex-1 min-h-0">
+              <ScrollArea className="flex-1 min-h-0 min-w-0 [&_[data-radix-scroll-area-viewport]>div]:!block">
                 <div className="border-t border-border/60">
                   {displayedTasks.map(task => {
                     const assignee = memberMap.get(task.assigned_to);

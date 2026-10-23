@@ -835,7 +835,7 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
   return (
     <>
       <Card className={cn("deal-outstanding-panel-card flex flex-col", collapsed ? "h-auto" : "h-full")}>
-        <CardHeader className={cn("@container flex flex-row flex-nowrap items-center justify-between gap-x-2 min-h-[44px] h-[44px] py-0 px-4 space-y-0 shrink-0 overflow-hidden", !collapsed && "border-b border-white/15")}>
+        <CardHeader className={cn("@container flex flex-row flex-wrap items-center justify-between gap-2 min-h-[44px] py-1 px-4 space-y-0 shrink-0", !collapsed && "border-b border-border")}>
           <div className="flex items-center gap-2 min-w-0 shrink-0 order-1">
             <button
               type="button"
@@ -875,7 +875,7 @@ export function OutstandingItems({ items, isLoading = false, lenderNames, compan
             </button>
           ) : (<>
           {/* Search / add combo sits inline beside the title and flexes with width */}
-          <div className="flex-1 min-w-0 px-2 order-1">
+          <div className="basis-full min-w-0 order-3 sm:basis-0 sm:flex-1 sm:px-2 sm:order-1">
             <Input
               placeholder="Search or Add Items..."
               value={searchQuery}

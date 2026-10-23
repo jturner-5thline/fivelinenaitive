@@ -354,10 +354,10 @@ export function OutstandingItemDialog({
             
             <div className="flex items-center gap-2 ml-auto">
               <Button size="sm" disabled={readOnly}
-                variant={item.received ? 'default' : 'outline'} 
+                variant="outline"
                 className={cn(
                   "text-xs cursor-pointer transition-colors",
-                  item.received && "bg-emerald-500 hover:bg-emerald-600",
+                  item.received && "bg-primary/20 text-foreground border-primary",
                   !item.received && "hover:bg-accent"
                 )}
                 onClick={() => onUpdate(item.id, { received: !item.received })}
@@ -365,10 +365,10 @@ export function OutstandingItemDialog({
                 Received
               </Button>
               <Button size="sm" disabled={readOnly}
-                variant={item.approved ? 'default' : 'outline'} 
+                variant="outline"
                 className={cn(
                   "text-xs cursor-pointer transition-colors",
-                  item.approved && "bg-emerald-500 hover:bg-emerald-600",
+                  item.approved && "bg-primary/20 text-foreground border-primary",
                   !item.approved && "hover:bg-accent"
                 )}
                 onClick={() => onUpdate(item.id, { approved: !item.approved })}
