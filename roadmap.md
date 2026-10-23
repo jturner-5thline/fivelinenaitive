@@ -1,6 +1,7 @@
 # Roadmap
 
-- [ ] Ensure funding-source imports create or reuse company-scoped CRM contacts and link them; verify without live writes.
+- [x] Ensure both funding-source CSV imports create or reuse company-scoped CRM contacts and link them; 12 regression tests and build passed, CSV preview checked without live writes.
+- [ ] Verify an actual import and persisted Contacts entry — blocked by shared production data; requires an approved test environment or test-record writes.
 
 - [x] Source Deal Activity client meetings from all connected same-company calendars; verified live client meeting read, Daily chart, isolation and duplicate-counting tests.
 
