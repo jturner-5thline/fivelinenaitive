@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isDemoEmail, withDemoLenderContact } from '@/lib/demoLenderContact';
 import { toast } from 'sonner';
 import { useCompany } from './useCompany';
+import { useQueryClient } from '@tanstack/react-query';
 import { syncImportedLenderContacts } from '@/lib/lenders/syncImportedLenderContacts';
 import { extractFlexSyncErrorPayload } from '@/utils/flexSyncError';
 import {
@@ -76,6 +77,7 @@ function invalidateMasterLendersCache() {
 export function useMasterLenders(options: UseMasterLendersOptions = {}) {
   const { user } = useAuth();
   const { company } = useCompany();
+  const queryClient = useQueryClient();
   const isDemo = isDemoEmail(user?.email);
 
   const mode = options.mode ?? 'all';
@@ -538,6 +540,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
     // Refresh the list after import
     invalidateMasterLendersCache();
     await fetchLenders();
+    await queryClient.invalidateQueries({ queryKey: ['contacts', company.id] });
     return results;
   };
 

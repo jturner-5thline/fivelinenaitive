@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
+import { useQueryClient } from '@tanstack/react-query';
 import { syncImportedLenderContacts } from '@/lib/lenders/syncImportedLenderContacts';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -32,6 +33,7 @@ export function downloadLenderTemplate() {
 export function ImportLendersCsvDialog({ open, onOpenChange, existing, onDone }: Props) {
   const { user } = useAuth();
   const { company } = useCompany();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>('upload');
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<string[][]>([]);
@@ -125,6 +127,7 @@ export function ImportLendersCsvDialog({ open, onOpenChange, existing, onDone }:
         variant: failed || contactFailures ? 'destructive' : undefined,
       });
       await onDone();
+      await queryClient.invalidateQueries({ queryKey: ['contacts', company.id] });
       reset();
       onOpenChange(false);
     } finally {
