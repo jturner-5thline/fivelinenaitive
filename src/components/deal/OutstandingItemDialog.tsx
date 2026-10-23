@@ -261,7 +261,7 @@ export function OutstandingItemDialog({
                   }
                 }}
               />
-              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleSaveText}>
+              <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Save item name" onClick={handleSaveText}>
                 <Check className="h-4 w-4" />
               </Button>
               <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => {
@@ -278,6 +278,7 @@ export function OutstandingItemDialog({
                 size="icon"
                 variant="ghost"
                 className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label="Edit item name"
                 disabled={readOnly}
                 onClick={() => { if (!readOnly) setEditingText(true); }}
               >
