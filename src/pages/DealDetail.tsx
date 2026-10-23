@@ -5215,14 +5215,14 @@ export default function DealDetail() {
                                   )}
                                 </div>
                                 <div className="min-w-0">{tasksNode}</div>
-                                <div className="min-w-0 [&>section]:!mb-0 [&>section]:h-full"><DealActivityTimelineChart dealId={deal.id} /></div>
+                                <div className="min-w-0 lg:h-[300px] [&>section]:!mb-0 [&>section]:h-full [&>section]:overflow-hidden"><DealActivityTimelineChart dealId={deal.id} /></div>
                                 {milestonesCalendarWidget && (
                                   <div className="relative min-w-0 min-h-[240px] lg:min-h-0">
                                     <div className="lg:absolute lg:inset-0 [&>*]:!h-full [&>*]:!min-h-0 overflow-hidden">{milestonesCalendarWidget}</div>
                                   </div>
                                 )}
-                                {fundingMixWidget && <div className="min-w-0">{fundingMixWidget}</div>}
-                                {hoursFeesWidget && <div className="min-w-0">{hoursFeesWidget}</div>}
+                                {fundingMixWidget && <div className="min-w-0 lg:h-[300px] [&>div]:h-full [&_.fs-tab-widget]:h-full [&_.fs-tab-widget]:flex [&_.fs-tab-widget]:flex-col [&_.fs-tab-widget]:justify-center">{fundingMixWidget}</div>}
+                                {hoursFeesWidget && <div className="min-w-0 lg:h-[300px] [&>div]:!h-full">{hoursFeesWidget}</div>}
                                 {finservWidget && <div className="min-w-0">{finservWidget}</div>}
                               </div>
                             );
