@@ -2477,17 +2477,17 @@ var list_deal_funding_sources_default = defineTool31({
     }
     let dealIds = null;
     if (deal_query || pipeline_id) {
-      const PAGE = 1e3;
+      const PAGE2 = 1e3;
       const collected = [];
       for (let page = 0; page < 50; page++) {
-        let dq = sb.from("deals").select("id").order("id", { ascending: true }).range(page * PAGE, page * PAGE + PAGE - 1);
+        let dq = sb.from("deals").select("id").order("id", { ascending: true }).range(page * PAGE2, page * PAGE2 + PAGE2 - 1);
         if (deal_query) dq = dq.ilike("company", `%${deal_query}%`);
         if (pipeline_id) dq = dq.eq("pipeline_id", pipeline_id);
         const { data: dealRows, error: dealErr } = await dq;
         if (dealErr) return errorResult(dealErr.message);
         const ids = (dealRows ?? []).map((d) => d.id);
         collected.push(...ids);
-        if (ids.length < PAGE) break;
+        if (ids.length < PAGE2) break;
       }
       dealIds = collected;
       if (dealIds.length === 0) return textResult([], { count: 0, total_count: 0, has_more: false, next_offset: null });
@@ -3291,13 +3291,352 @@ var describe_schema_default = defineTool44({
   }
 });
 
+// src/lib/mcp/tools/list-referral-partners.ts
+import { defineTool as defineTool45 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z46 } from "npm:zod@^3.23.0";
+
+// src/lib/partnerNameMatch.ts
+var STOPWORDS = /* @__PURE__ */ new Set([
+  "at",
+  "the",
+  "of",
+  "and",
+  "inc",
+  "llc",
+  "co",
+  "group",
+  "capital",
+  "bank",
+  "partners",
+  "partner",
+  "consulting",
+  "advisors",
+  "advisory",
+  "firm",
+  "associates",
+  "company",
+  "corp",
+  "corporation",
+  "ventures"
+]);
+function stripFirm(s) {
+  return s.split(/\s*@\s*|\s+-\s+|\s+\bat\b\s+/i)[0].trim();
+}
+function normalize(s) {
+  return s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+function tokens(s) {
+  return normalize(s).split(" ").filter((t) => t.length >= 3 && !STOPWORDS.has(t));
+}
+function partnerMatches(partnerName, candidate) {
+  if (!partnerName || !candidate) return false;
+  const pFull = normalize(partnerName);
+  const cFull = normalize(candidate);
+  if (!pFull || !cFull) return false;
+  if (pFull === cFull) return true;
+  const pCore = normalize(stripFirm(partnerName));
+  const cCore = normalize(stripFirm(candidate));
+  if (pCore && cCore && (pCore === cCore || pCore.includes(cCore) || cCore.includes(pCore))) return true;
+  if (pFull.includes(cFull) || cFull.includes(pFull)) return true;
+  const pTok = new Set(tokens(stripFirm(partnerName)));
+  const cTok = tokens(stripFirm(candidate));
+  if (pTok.size === 0 || cTok.length === 0) return false;
+  let overlap = 0;
+  for (const t of cTok) if (pTok.has(t)) overlap++;
+  return overlap >= 2 || pTok.size === 1 && overlap >= 1;
+}
+
+// src/components/channels/atRiskSources.ts
+var REMOVAL_MONTHS = 6;
+var REACHED_NDA_STAGES = /* @__PURE__ */ new Set([
+  "ndaneeds-list-sent",
+  "pre-credit-needs",
+  "initial-lender-review",
+  "initial-feedback",
+  "proposal-in-development",
+  "proposal-issued",
+  "agreement-pending",
+  "final-credit-items",
+  "client-strategy-review",
+  "write-up-pending",
+  "submitted-to-lenders",
+  "lenders-in-review",
+  "terms-issued",
+  "in-due-diligence",
+  "funded-invoiced",
+  "closed-won"
+]);
+var monthsAgo = (now, months) => {
+  const d = new Date(now);
+  d.setMonth(d.getMonth() - months);
+  return d;
+};
+function activityAnchor(s) {
+  const qualifying = s.deals.filter((d) => d.stage == null || REACHED_NDA_STAGES.has(d.stage));
+  let at = s.addedAt ?? null;
+  for (const d of qualifying) if (!at || d.created_at > at) at = d.created_at;
+  return at ? { at, qualifying: qualifying.length } : null;
+}
+function isRemovedForInactivity(s, now = /* @__PURE__ */ new Date()) {
+  const a = activityAnchor(s);
+  return !!a && new Date(a.at) <= monthsAgo(now, REMOVAL_MONTHS);
+}
+
+// src/lib/mcp/referralPipeline.ts
+var REFERRAL_STAGES = ["Nurturing", "Tier 3", "Tier 2", "Tier 1"];
+var SIGNED_STAGE_SLUGS = /* @__PURE__ */ new Set([
+  "final-credit-items",
+  "closed-won",
+  "funded-invoiced",
+  "terms-issued",
+  "agreement-pending"
+]);
+var toSlug = (s) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+var normalize2 = (s) => s.trim().toLowerCase().replace(/\s+/g, " ");
+var ms = (months) => months * 30 * 24 * 60 * 60 * 1e3;
+function computeTier(name, allDeals, rules, now) {
+  if (!rules) return { tier: null, lastMatchedAt: null };
+  const qualified = new Set((rules.qualified_deal_stages || []).map(toSlug));
+  const winT1 = now - ms(rules.tier1_trailing_months ?? 3);
+  const winT2 = now - ms(rules.tier2_trailing_months ?? 3);
+  const win12 = now - ms(12);
+  const matched = allDeals.filter((d) => partnerMatches(name, d.referred_by) || partnerMatches(name, d.sourced_via));
+  const t = (s) => new Date(s).getTime();
+  const isQ = (d) => !!d.stage && qualified.has(toSlug(d.stage));
+  const qT1 = matched.filter((d) => isQ(d) && t(d.created_at) >= winT1).length;
+  const qT2 = matched.filter((d) => isQ(d) && t(d.created_at) >= winT2).length;
+  const sT1 = matched.filter((d) => !!d.stage && SIGNED_STAGE_SLUGS.has(toSlug(d.stage)) && t(d.closing_date || d.created_at) >= winT1).length;
+  const aT2 = matched.filter((d) => t(d.created_at) >= winT2).length;
+  const aT12 = matched.filter((d) => t(d.created_at) >= win12).length;
+  const lastMatchedAt = matched.reduce((m, d) => !m || d.created_at > m ? d.created_at : m, null);
+  let tier = null;
+  if (qT1 >= rules.tier1_qualified_deals || sT1 >= rules.tier1_signed_clients) tier = 1;
+  else if (qT2 >= rules.tier2_qualified_deals_min && qT2 <= rules.tier2_qualified_deals_max || aT2 >= rules.tier2_deals_on_board) tier = 2;
+  else if (aT12 >= rules.tier3_deals_per_quarter * 4 || matched.length > 0) tier = 3;
+  return { tier, lastMatchedAt };
+}
+function classifyReferralPipeline(input) {
+  const now = input.now ?? /* @__PURE__ */ new Date();
+  const contactById = new Map(input.contacts.map((c) => [c.id, c]));
+  const addedByName = /* @__PURE__ */ new Map();
+  for (const m of input.manualSources) {
+    if (!m.created_at) continue;
+    const k = normalize2(m.name);
+    const prev = addedByName.get(k);
+    if (!prev || m.created_at < prev) addedByName.set(k, m.created_at);
+  }
+  const grouped = /* @__PURE__ */ new Map();
+  for (const d of input.pipelineDeals) {
+    if (!d.referred_by_contact_id && !(d.referred_by_crm_company_id && input.companyNames.has(d.referred_by_crm_company_id))) continue;
+    const contact = d.referred_by_contact_id ? contactById.get(d.referred_by_contact_id) : void 0;
+    const contactId = d.referred_by_contact_id;
+    const key = contactId ? `contact:${contactId}` : `company:${d.referred_by_crm_company_id}`;
+    const companyName = d.referred_by_crm_company_id ? input.companyNames.get(d.referred_by_crm_company_id) : void 0;
+    const raw = contactId ? contact?.full_name?.trim() || d.referred_by || companyName || "Unknown contact" : companyName || d.referred_by || "Unknown";
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        raw,
+        contactId,
+        crmCompanyId: contact?.crm_company_id ?? d.referred_by_crm_company_id ?? null,
+        deals: []
+      });
+    }
+    grouped.get(key).deals.push(d);
+  }
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  const nowMs = now.getTime();
+  for (const [key, g] of grouped) {
+    seen.add(normalize2(g.raw));
+    const addedAt = addedByName.get(normalize2(g.raw)) ?? null;
+    if (isRemovedForInactivity({
+      referredBy: g.raw,
+      addedAt,
+      deals: g.deals.map((d) => ({ id: d.id, company: d.company ?? "", created_at: d.created_at, stage: d.stage || "" }))
+    }, now)) continue;
+    const { tier, lastMatchedAt } = computeTier(g.raw, input.allDeals, input.rules, nowMs);
+    const stage = tier === null ? "Nurturing" : `Tier ${tier}`;
+    const lastPipelineDeal = g.deals.reduce((m, d) => !m || d.created_at > m ? d.created_at : m, null);
+    out.push({
+      key,
+      name: g.raw,
+      contact_id: g.contactId,
+      crm_company_id: g.crmCompanyId,
+      manual_company: null,
+      manual_email: null,
+      stage,
+      stage_entered_at: tier === null ? addedAt ?? lastPipelineDeal : lastMatchedAt ?? lastPipelineDeal,
+      manual_updated_at: null
+    });
+  }
+  for (const m of input.manualSources) {
+    if (seen.has(normalize2(m.name))) continue;
+    if (isRemovedForInactivity({ referredBy: m.name, addedAt: m.created_at ?? null, deals: [] }, now)) continue;
+    const contact = m.contact_id ? contactById.get(m.contact_id) : void 0;
+    out.push({
+      key: `manual:${m.id}`,
+      name: m.name,
+      contact_id: m.contact_id,
+      crm_company_id: contact?.crm_company_id ?? null,
+      manual_company: m.company,
+      manual_email: m.email,
+      stage: "Nurturing",
+      stage_entered_at: m.created_at,
+      manual_updated_at: m.updated_at ?? null
+    });
+  }
+  return out;
+}
+
+// src/lib/mcp/tools/list-referral-partners.ts
+var PAGE = 1e3;
+var CHUNK = 100;
+async function fetchAll(build) {
+  const out = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await build(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    const rows = data ?? [];
+    out.push(...rows);
+    if (rows.length < PAGE || out.length >= 5e4) break;
+  }
+  return out;
+}
+async function fetchByIds(sb, table, select, column, ids) {
+  const out = [];
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const { data, error } = await sb.from(table).select(select).in(column, ids.slice(i, i + CHUNK));
+    if (error) throw new Error(error.message);
+    out.push(...data ?? []);
+  }
+  return out;
+}
+var list_referral_partners_default = defineTool45({
+  name: "list_referral_partners",
+  title: "List referral partners",
+  description: "Read-only. Lists the contacts currently in the Referral Source pipeline (Sales & BD dashboard) at stages Nurturing, Tier 3, Tier 2 and Tier 1 \u2014 the same classification the app shows \u2014 with real field values for building email lists: contact_id, first_name, last_name, email, title, company_name, company_id, stage, stage_entered_at, updated_at and owner. Scoped to the signed-in user's company. Sources without an email are skipped and counted in `missing_email`. Every response includes `stage_counts` (per stage, including skipped rows). Pagination: `limit` (default 200) and `offset`; response includes total_count, returned, next_offset and has_more. `stage_entered_at` is derived (no stage history is stored): Nurturing = date added to the pipeline; Tier N = date of the most recent referred deal behind that tier.",
+  inputSchema: {
+    stages: z46.array(z46.enum(REFERRAL_STAGES)).min(1).max(4).optional().describe('Stages to include. Defaults to all four: "Nurturing", "Tier 3", "Tier 2", "Tier 1".'),
+    limit: z46.number().int().min(1).max(1e3).default(200),
+    offset: z46.number().int().min(0).default(0)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ stages, limit, offset }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const userId = ctx.getUserId();
+    try {
+      const { data: member, error: mErr } = await sb.from("company_members").select("company_id").eq("user_id", userId).maybeSingle();
+      if (mErr) return errorResult(mErr.message);
+      if (!member?.company_id) return errorResult("forbidden: the signed-in user is not a member of a company.");
+      const companyId = member.company_id;
+      const { data: pipelines, error: pErr } = await sb.from("deal_pipelines").select("id, name, is_default").eq("company_id", companyId);
+      if (pErr) return errorResult(pErr.message);
+      const pipelineIds = (pipelines ?? []).filter((p) => {
+        const l = String(p.name ?? "").toLowerCase();
+        return l.includes("in development") || l.includes("in-development") || p.is_default || l.includes("active");
+      }).map((p) => p.id);
+      const [pipelineDeals, allDeals, manualSources, rulesRes] = await Promise.all([
+        pipelineIds.length ? fetchAll((f, t) => sb.from("deals").select("id, company, stage, referred_by, referred_by_contact_id, referred_by_crm_company_id, created_at").eq("company_id", companyId).not("referred_by", "is", null).neq("referred_by", "").in("pipeline_id", pipelineIds).order("id").range(f, t)) : Promise.resolve([]),
+        fetchAll((f, t) => sb.from("deals").select("stage, referred_by, sourced_via, closing_date, created_at").eq("company_id", companyId).not("referred_by", "is", null).neq("referred_by", "").order("id").range(f, t)),
+        fetchAll((f, t) => sb.from("referral_sources").select("id, name, email, company, contact_id, created_at, updated_at").or(`company_id.eq.${companyId},and(company_id.is.null,user_id.eq.${userId})`).order("id").range(f, t)),
+        sb.from("sales_bd_rules").select("tier1_qualified_deals, tier1_trailing_months, tier1_signed_clients, tier2_qualified_deals_min, tier2_qualified_deals_max, tier2_trailing_months, tier2_deals_on_board, tier3_deals_per_quarter, qualified_deal_stages").limit(1).maybeSingle()
+      ]);
+      if (rulesRes.error) return errorResult(rulesRes.error.message);
+      const contactIds = [...new Set([
+        ...pipelineDeals.map((d) => d.referred_by_contact_id),
+        ...manualSources.map((m) => m.contact_id)
+      ].filter((v) => !!v))];
+      const contacts = await fetchByIds(
+        sb,
+        "contacts",
+        "id, full_name, first_name, last_name, email, job_title, crm_company_id, owner_user_id, updated_at",
+        "id",
+        contactIds
+      );
+      const companyIds = [...new Set([
+        ...pipelineDeals.map((d) => d.referred_by_crm_company_id),
+        ...contacts.map((c) => c.crm_company_id)
+      ].filter((v) => !!v))];
+      const companies = await fetchByIds(sb, "crm_companies", "id, name", "id", companyIds);
+      const companyNames = new Map(companies.filter((c) => c.name).map((c) => [c.id, c.name]));
+      const classified = classifyReferralPipeline({
+        pipelineDeals,
+        allDeals,
+        manualSources,
+        contacts,
+        companyNames,
+        rules: rulesRes.data ?? null
+      });
+      const contactById = new Map(contacts.map((c) => [c.id, c]));
+      const ownerIds = [...new Set(contacts.map((c) => c.owner_user_id).filter((v) => !!v))];
+      const owners = await fetchByIds(
+        sb,
+        "profiles_public",
+        "user_id, display_name, first_name, last_name",
+        "user_id",
+        ownerIds
+      );
+      const ownerName = new Map(owners.map((o) => [o.user_id, o.display_name || [o.first_name, o.last_name].filter(Boolean).join(" ") || null]));
+      const wanted = new Set(stages ?? REFERRAL_STAGES);
+      const stage_counts = Object.fromEntries(REFERRAL_STAGES.filter((s) => wanted.has(s)).map((s) => [s, 0]));
+      let missing_email = 0;
+      const rows = [];
+      for (const s of classified) {
+        if (!wanted.has(s.stage)) continue;
+        stage_counts[s.stage] += 1;
+        const c = s.contact_id ? contactById.get(s.contact_id) : void 0;
+        const email = (c?.email || s.manual_email || "").trim();
+        if (!email) {
+          missing_email += 1;
+          continue;
+        }
+        const [fallbackFirst, ...rest] = s.name.split(/\s+/);
+        const companyId2 = c?.crm_company_id ?? s.crm_company_id ?? null;
+        rows.push({
+          contact_id: s.contact_id,
+          first_name: c ? c.first_name : fallbackFirst ?? null,
+          last_name: c ? c.last_name : rest.join(" ") || null,
+          email,
+          title: c?.job_title ?? null,
+          company_name: (companyId2 ? companyNames.get(companyId2) : void 0) ?? s.manual_company ?? null,
+          company_id: companyId2,
+          stage: s.stage,
+          stage_entered_at: s.stage_entered_at,
+          updated_at: c?.updated_at ?? s.manual_updated_at ?? null,
+          owner_user_id: c?.owner_user_id ?? null,
+          owner: c?.owner_user_id ? ownerName.get(c.owner_user_id) ?? null : null
+        });
+      }
+      const order = new Map(REFERRAL_STAGES.map((s, i) => [s, i]));
+      rows.sort((a, b) => order.get(b.stage) - order.get(a.stage) || `${a.last_name ?? ""} ${a.first_name ?? ""}`.localeCompare(`${b.last_name ?? ""} ${b.first_name ?? ""}`));
+      const page = rows.slice(offset, offset + limit);
+      const next = offset + page.length;
+      const payload = {
+        total_count: rows.length,
+        returned: page.length,
+        offset,
+        next_offset: next < rows.length ? next : null,
+        has_more: next < rows.length,
+        stage_counts,
+        missing_email,
+        partners: page
+      };
+      return textResult(payload, payload);
+    } catch (e) {
+      return errorResult(e instanceof Error ? e.message : "Failed to load referral partners");
+    }
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "tgkksvazruzbghssnxde";
 var mcp_default = defineMcp({
   name: "naitive-api",
   title: "naitive API",
   version: "0.1.0",
-  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals \u2014 `list_deals` applies NO implicit pipeline/owner/stage filter and returns deals from every pipeline the caller can see, with `total_count`/`next_offset`/`has_more` for full pagination and a `pipeline_breakdown`; pair it with `list_pipelines` (all pipelines, their stages and deal counts) to confirm coverage across pipelines \u2014 `update_deal` to move stage or edit fields, `add_deal_status_note` to add or replace the status note on a deal (the Status Note box on the deal page), `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups (both searches are paginated and accept fields=* for every column), `get_contact` for one contact's complete record plus linked company, deals, logged activities, field-level change history, AI field suggestions, attachments and funding-source/partner links, `get_company` for one CRM company's complete record plus its contacts, deals, full activity history, attachments, team, contact-match history, parent/child companies, linked funding sources and tasks, `search_lenders` (paginated directory search, fields=* returns every master_lenders column), `get_lender` (one funding source's complete record plus contacts, notes, attachments, change history and linked deals), `update_lender` (partial write to master_lenders columns \u2014 criteria, deal size, industries, geographies, referral terms and the LEGACY single contact_name/contact_title/contact_phone columns \u2014 audited per field), `upsert_lender_contact` (add or update one entry in the SEPARATE multi-contact `lender_contacts` list, with automatic single-primary enforcement; not interchangeable with `update_lender`), `create_lender` (add a NEW funding source; rejects duplicate names \u2014 use `update_lender` for existing ones), `delete_lender_contact` (remove a duplicate/wrong lender_contacts row, confirm required), `add_lender_attachment`/`list_lender_attachments`/`delete_lender_attachment` (funding-source documents such as NDAs, one-pagers and referral agreements) and `add_lender_to_deal` for the funding-source directory, `list_deal_funding_sources` to read the lenders attached to a specific deal (matches the deal's Funding Sources tab), and \u2014 for deep deal context \u2014 `search_deal_notes`, `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal. Daily rundown tools (`get_daily_rundown`, `add_daily_rundown_item`, `update_daily_rundown_item`, `complete_daily_rundown_item`, `reorder_daily_rundown_items`) manage the personal dashboard rundown \u2014 access is restricted to jturner@5thline.co and enforced at the database (RLS) and edge-function layers. Insights analytics tools give full read access to everything on the Insights page: `list_insights_dashboards` enumerates dashboards, saved widget layouts, and custom formula metrics; `get_pipeline_metrics` returns deal-pipeline aggregates (value, fees, counts) broken down by stage, status, type, manager, owner, pipeline, and month for any timeframe; `get_funnel_velocity` returns stage conversion and time-in-stage analytics; `get_revenue_metrics` returns QuickBooks invoiced revenue by month/customer/entity plus P&L snapshots; `get_lender_metrics` returns funding-source funnel analytics; `get_metric_targets` returns Master Plan targets and manual inputs for plan-vs-actual comparisons; and `query_insights_dataset` is a read-only, fully paginated escape hatch over every underlying dataset (including deal write-ups, memos, checklists, attachments, financials and ownership). Use `describe_schema` first to discover exact column names and allowed enum values, then `list_deals` with fields=* to extract complete deal records in bulk across all pipelines. All of them apply the same global test-deal exclusions and RLS scoping as the UI.",
+  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals \u2014 `list_deals` applies NO implicit pipeline/owner/stage filter and returns deals from every pipeline the caller can see, with `total_count`/`next_offset`/`has_more` for full pagination and a `pipeline_breakdown`; pair it with `list_pipelines` (all pipelines, their stages and deal counts) to confirm coverage across pipelines \u2014 `update_deal` to move stage or edit fields, `add_deal_status_note` to add or replace the status note on a deal (the Status Note box on the deal page), `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups (both searches are paginated and accept fields=* for every column), `get_contact` for one contact's complete record plus linked company, deals, logged activities, field-level change history, AI field suggestions, attachments and funding-source/partner links, `get_company` for one CRM company's complete record plus its contacts, deals, full activity history, attachments, team, contact-match history, parent/child companies, linked funding sources and tasks, `search_lenders` (paginated directory search, fields=* returns every master_lenders column), `get_lender` (one funding source's complete record plus contacts, notes, attachments, change history and linked deals), `update_lender` (partial write to master_lenders columns \u2014 criteria, deal size, industries, geographies, referral terms and the LEGACY single contact_name/contact_title/contact_phone columns \u2014 audited per field), `upsert_lender_contact` (add or update one entry in the SEPARATE multi-contact `lender_contacts` list, with automatic single-primary enforcement; not interchangeable with `update_lender`), `create_lender` (add a NEW funding source; rejects duplicate names \u2014 use `update_lender` for existing ones), `delete_lender_contact` (remove a duplicate/wrong lender_contacts row, confirm required), `add_lender_attachment`/`list_lender_attachments`/`delete_lender_attachment` (funding-source documents such as NDAs, one-pagers and referral agreements) and `add_lender_to_deal` for the funding-source directory, `list_deal_funding_sources` to read the lenders attached to a specific deal (matches the deal's Funding Sources tab), and \u2014 for deep deal context \u2014 `search_deal_notes`, `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal. Daily rundown tools (`get_daily_rundown`, `add_daily_rundown_item`, `update_daily_rundown_item`, `complete_daily_rundown_item`, `reorder_daily_rundown_items`) manage the personal dashboard rundown \u2014 access is restricted to jturner@5thline.co and enforced at the database (RLS) and edge-function layers. Insights analytics tools give full read access to everything on the Insights page: `list_insights_dashboards` enumerates dashboards, saved widget layouts, and custom formula metrics; `get_pipeline_metrics` returns deal-pipeline aggregates (value, fees, counts) broken down by stage, status, type, manager, owner, pipeline, and month for any timeframe; `get_funnel_velocity` returns stage conversion and time-in-stage analytics; `get_revenue_metrics` returns QuickBooks invoiced revenue by month/customer/entity plus P&L snapshots; `get_lender_metrics` returns funding-source funnel analytics; `get_metric_targets` returns Master Plan targets and manual inputs for plan-vs-actual comparisons; and `query_insights_dataset` is a read-only, fully paginated escape hatch over every underlying dataset (including deal write-ups, memos, checklists, attachments, financials and ownership). Use `describe_schema` first to discover exact column names and allowed enum values, then `list_deals` with fields=* to extract complete deal records in bulk across all pipelines. `list_referral_partners` (read-only) returns the contacts in the Referral Source pipeline (Nurturing, Tier 3, Tier 2, Tier 1) with name, email, title, company, stage, stage-entered date, last updated and owner, plus per-stage counts and a missing-email count \u2014 use it to build email lists. All of them apply the same global test-deal exclusions and RLS scoping as the UI.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
@@ -3346,7 +3685,8 @@ var mcp_default = defineMcp({
     get_lender_metrics_default,
     get_metric_targets_default,
     query_insights_dataset_default,
-    describe_schema_default
+    describe_schema_default,
+    list_referral_partners_default
   ]
 });
 
