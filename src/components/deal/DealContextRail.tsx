@@ -65,9 +65,11 @@ export interface DealContextRailProps {
   children?: React.ReactNode;
   /** 'rail' = narrow sticky sidebar; 'widget' = full-width multi-column tile. */
   layout?: 'rail' | 'widget';
+  /** Widget layout only: render without its own border/title so a parent frame can keep them fixed while content scrolls. */
+  unframed?: boolean;
 }
 
-export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, hideStatusStage, lastActivityNode, measureRef, ownerOptions, hideOwner, children, layout = 'rail' }: DealContextRailProps) {
+export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, hideStatusStage, lastActivityNode, measureRef, ownerOptions, hideOwner, children, layout = 'rail', unframed = false }: DealContextRailProps) {
   const lastActivity = deal.notesUpdatedAt || deal.updatedAt || null;
   const owner = deal.dealOwner || deal.manager || '';
 
@@ -82,14 +84,16 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
   return (
     <aside
       className={cn(
-        layout === 'widget'
+        layout === 'widget' && unframed
+          ? 'w-full bg-transparent shadow-none px-4 pb-3'
+          : layout === 'widget'
           ? 'w-full rounded-lg border border-[#1E2C46] bg-transparent shadow-none px-4 py-3'
           : 'shrink-0 w-full lg:w-[260px] lg:sticky lg:top-4 self-start rounded-lg border border-border/40 bg-transparent shadow-none px-3 pb-3 pt-0',
         className,
       )}
       aria-label="Deal info"
     >
-      {layout === 'widget' && (
+      {layout === 'widget' && !unframed && (
         <h3 className="mb-2 text-[13px] font-semibold text-foreground">Deal Info</h3>
       )}
       <div ref={measureRef} className={cn(layout === 'widget' ? 'grid grid-cols-3 gap-x-[clamp(0.5rem,1.5vw,1rem)] gap-y-3 items-start [&>*]:min-w-0 [&_button]:min-w-0 [&_button]:max-w-full' : 'space-y-3')}>
