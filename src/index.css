@@ -5257,13 +5257,8 @@ html body .deal-detail-surface .fs-tab-widget:hover,
   box-shadow: none !important;
 }
 
-/* Deal Info: inner card shell is transparent and borderless; the outer widget frame owns the border. */
-.deal-info-widget .bg-card,
-.deal-info-widget [class*="dark:bg-[var(--bg-card)]"] {
-  background-color: transparent !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-}
+
+/* Deal Info: inner card shell is transparent; the outer widget frame owns the border. */
 .dark .deal-detail-surface section.deal-info-widget [data-slot="card"].deal-info-railed-card,
 .dark .deal-detail-surface section.deal-info-widget [data-slot="card"].deal-info-railed-card:hover,
 html .deal-detail-surface section.deal-info-widget aside[aria-label="Deal info"] [data-slot="card"] {
