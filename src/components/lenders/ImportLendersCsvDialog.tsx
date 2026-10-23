@@ -8,6 +8,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
+import { useQueryClient } from '@tanstack/react-query';
+import { syncImportedLenderContacts } from '@/lib/lenders/syncImportedLenderContacts';
 import { toast } from '@/hooks/use-toast';
 import {
   LENDER_FIELDS, autoMapHeader, buildLenderTemplateCsv, downloadCsv, isStandardTemplate, parseCsv, rowToLender,
@@ -29,6 +32,8 @@ export function downloadLenderTemplate() {
 
 export function ImportLendersCsvDialog({ open, onOpenChange, existing, onDone }: Props) {
   const { user } = useAuth();
+  const { company } = useCompany();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>('upload');
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<string[][]>([]);
@@ -81,9 +86,16 @@ export function ImportLendersCsvDialog({ open, onOpenChange, existing, onDone }:
   const dupCount = parsed.length - newCount;
 
   const runImport = async () => {
-    if (!user) return;
+    if (!user || !company) {
+      toast({ title: 'Select a company before importing', variant: 'destructive' });
+      return;
+    }
     setBusy(true);
-    let added = 0, updated = 0, skipped = 0, failed = 0;
+    let added = 0, updated = 0, skipped = 0, failed = 0, contactFailures = 0;
+    const syncContacts = async (id: string) => {
+      try { await syncImportedLenderContacts(id, { userId: user.id, orgCompanyId: company.id }); }
+      catch { contactFailures++; }
+    };
     try {
       // Collapse duplicate names within the file (last row wins, merged).
       const byName = new Map<string, Record<string, any>>();
@@ -94,24 +106,28 @@ export function ImportLendersCsvDialog({ open, onOpenChange, existing, onDone }:
       const inserts: Record<string, any>[] = [];
       for (const [k, l] of byName) {
         const id = existingByName.get(k);
-        if (!id) { inserts.push({ ...l, user_id: user.id }); continue; }
+        if (!id) { inserts.push({ ...l, user_id: user.id, company_id: company.id }); continue; }
         if (dupMode === 'skip') { skipped++; continue; }
         const { name: _n, ...fields } = l;
         if (!Object.keys(fields).length) { skipped++; continue; }
         const { error } = await supabase.from('master_lenders').update(fields as any).eq('id', id);
-        if (error) failed++; else updated++;
+        if (error) failed++; else { updated++; await syncContacts(id); }
       }
       for (let i = 0; i < inserts.length; i += 100) {
         const batch = inserts.slice(i, i + 100);
         const { data, error } = await supabase.from('master_lenders').insert(batch as any).select('id');
-        if (error) { failed += batch.length; console.error(error); } else added += data?.length ?? 0;
+        if (error) { failed += batch.length; console.error(error); } else {
+          added += data?.length ?? 0;
+          for (const lender of data ?? []) await syncContacts(lender.id);
+        }
       }
       toast({
-        title: failed ? 'Import finished with errors' : 'Import complete',
-        description: `Added ${added}, updated ${updated}, skipped ${skipped}${failed ? `, failed ${failed}` : ''}.`,
-        variant: failed ? 'destructive' : undefined,
+        title: failed || contactFailures ? 'Import finished with errors' : 'Import complete',
+        description: `Added ${added}, updated ${updated}, skipped ${skipped}${failed ? `, failed ${failed}` : ''}.${contactFailures ? ` ${contactFailures} funding sources saved but contacts could not be linked; re-import with Update to retry.` : ''}`,
+        variant: failed || contactFailures ? 'destructive' : undefined,
       });
       await onDone();
+      await queryClient.invalidateQueries({ queryKey: ['contacts', company.id] });
       reset();
       onOpenChange(false);
     } finally {
