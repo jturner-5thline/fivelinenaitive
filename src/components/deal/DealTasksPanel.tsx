@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, type ReactNode } from 'react';
 import { SharedTaskDrawer } from '@/components/tasks/SharedTaskDrawer';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,7 +18,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Plus, Trash2, CalendarIcon, CheckCircle2, Clock, ChevronUp, ChevronDown, Search } from 'lucide-react';
+import { Plus, Trash2, CalendarIcon, CheckCircle2, Clock, ChevronUp, ChevronDown, Settings2, Pencil } from 'lucide-react';
 import { useDealTasks } from '@/hooks/useDealTasks';
 import { isTaskCompleted, TASK_STATUS_COMPLETE, TASK_STATUS_REOPENED } from '@/lib/taskCache';
 import { useTeamMembers, type TeamMember } from '@/hooks/useTeamMembers';
@@ -45,9 +45,14 @@ interface DealTasksPanelProps {
   onToggleOpenItem?: (id: string, completed: boolean) => void;
   onAddOpenItem?: (text: string) => Promise<void> | void;
   openItemsReadOnly?: boolean;
+  openItemsReadOnlyReason?: string;
+  onUpdateOpenItem?: (id: string, updates: { received?: boolean; approved?: boolean }) => void;
+  onDeleteOpenItem?: (id: string) => void;
+  onMoveOpenItem?: (id: string, direction: -1 | 1) => void;
+  renderOpenItemsManager?: (selectedItemId: string | null) => ReactNode;
 }
 
-export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenItem, openItemsReadOnly }: DealTasksPanelProps) {
+export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenItem, openItemsReadOnly, openItemsReadOnlyReason, onUpdateOpenItem, onDeleteOpenItem, onMoveOpenItem, renderOpenItemsManager }: DealTasksPanelProps) {
   const hasOpenItems = Array.isArray(openItems);
   const { user } = useAuth();
   const { tasks, isLoading, createTask, updateTaskStatus, deleteTask } = useDealTasks(dealId);
@@ -90,6 +95,9 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
   const [view, setView] = useState<'all' | 'tasks' | 'openItems'>('all');
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [newItemText, setNewItemText] = useState('');
+  const [managerOpen, setManagerOpen] = useState(false);
+  const [selectedOpenItemId, setSelectedOpenItemId] = useState<string | null>(null);
+  const openManager = (id: string | null) => { setSelectedOpenItemId(id); setManagerOpen(true); };
   const [searchQuery, setSearchQuery] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -152,7 +160,7 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
   });
   const displayedOpenItems = (openItems || [])
     .filter(i => !q || (i.text || '').toLowerCase().includes(q))
-    .sort((a, b) => Number(a.completed) - Number(b.completed));
+    ;
   const pendingOpenItems = (openItems || []).filter(i => !i.completed).length;
   const totalShown = displayedTasks.length + (hasOpenItems && view !== 'tasks' ? displayedOpenItems.length : 0);
   const totalAll = (view === 'openItems' ? 0 : tasks.length) + (view === 'tasks' ? 0 : (openItems?.length || 0));
@@ -164,7 +172,7 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
 
   const submitOpenItem = async () => {
     const text = newItemText.trim();
-    if (!text || !onAddOpenItem) return;
+    if (!text || !onAddOpenItem || openItemsReadOnly) return;
     await onAddOpenItem(text);
     setNewItemText('');
     setIsAddItemOpen(false);
@@ -179,7 +187,7 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
     <>
       <Card className="deal-tasks-panel-card h-full w-full flex flex-col">
         {/* ── Header ── fixed height, vertically centered */}
-        <CardHeader className="flex flex-row items-center justify-between min-h-[44px] h-[44px] py-0 px-4 space-y-0 shrink-0 cursor-pointer hover:bg-white/5 transition-colors border-b border-white/15" onClick={() => setIsOpen(o => !o)}>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-y-1 min-h-[44px] py-1 px-4 space-y-0 shrink-0 cursor-pointer hover:bg-foreground/5 transition-colors border-b border-border" onClick={() => setIsOpen(o => !o)}>
           <CardTitle className="text-sm font-medium flex items-center gap-2 shrink-0">
             Tasks
             {pendingTasks.length > 0 && !isOpen && (
@@ -213,6 +221,11 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
             </div>
           )}
           <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+            {hasOpenItems && renderOpenItemsManager && (
+              <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Manage Open Items" title="Manage Open Items" onClick={() => openManager(null)}>
+                <Settings2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
             <Button size="sm" variant="outline" onClick={handleAdd} disabled={view === 'openItems' && (!onAddOpenItem || openItemsReadOnly)} className="h-7 gap-1 text-xs px-2">
               <Plus className="h-3 w-3" /> Add
             </Button>
@@ -222,6 +235,7 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
         {/* ── Body ── flex-1 so it fills remaining card height */}
         {isOpen && (
           <CardContent className="flex-1 flex flex-col px-0 pb-0 pt-0 space-y-0 min-h-0">
+            {hasOpenItems && openItemsReadOnly && <p className="text-xs text-muted-foreground py-2">Open Items are read-only: {openItemsReadOnlyReason || 'inactive deal'}.</p>}
 
             {isLoading && tasks.length === 0 && !hasOpenItems ? (
               <div className="flex-1 flex items-center justify-center">
@@ -331,7 +345,10 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
                         <div className="flex-1 min-w-0">
                           <p className={cn("text-sm font-medium truncate", item.completed ? "text-muted-foreground line-through" : "text-foreground")}>{item.text}</p>
                           <div className="flex items-center gap-3 mt-0.5 flex-nowrap overflow-hidden">
-                            <span className="text-xs text-muted-foreground shrink-0">{status}</span>
+                            {onUpdateOpenItem ? <>
+                              <Button variant="ghost" size="sm" className="h-6 px-1 text-xs" aria-label={`Received: ${item.text}`} aria-pressed={item.received} disabled={openItemsReadOnly} onClick={() => { if (!openItemsReadOnly) onUpdateOpenItem(item.id, { received: !item.received }); }}>Received</Button>
+                              <Button variant="ghost" size="sm" className="h-6 px-1 text-xs" aria-label={`Submitted: ${item.text}`} aria-pressed={item.approved} disabled={openItemsReadOnly} onClick={() => { if (!openItemsReadOnly) onUpdateOpenItem(item.id, { approved: !item.approved }); }}>Submitted</Button>
+                            </> : <span className="text-xs text-muted-foreground shrink-0">{status}</span>}
                             {item.eta && (
                               <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
                                 <CalendarIcon className="h-3 w-3" />
@@ -344,6 +361,11 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
                           </div>
                         </div>
                         <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal shrink-0 whitespace-nowrap">Open Item</Badge>
+                        <div className="flex shrink-0 flex-wrap max-w-[56px]">
+                          {renderOpenItemsManager && <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={`Edit open item: ${item.text}`} title="Open item details" onClick={() => openManager(item.id)}><Pencil className="h-3 w-3" /></Button>}
+                          {onDeleteOpenItem && <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={`Delete open item: ${item.text}`} title="Delete item" disabled={openItemsReadOnly} onClick={() => { if (!openItemsReadOnly) onDeleteOpenItem(item.id); }}><Trash2 className="h-3 w-3" /></Button>}
+                          {onMoveOpenItem && ([-1, 1] as const).map(direction => <Button key={direction} variant="ghost" size="icon" className="h-6 w-6" aria-label={`Move ${direction === -1 ? 'up' : 'down'}: ${item.text}`} title={direction === -1 ? 'Move up' : 'Move down'} disabled={openItemsReadOnly || openItems?.[direction === -1 ? 0 : openItems.length - 1]?.id === item.id} onClick={() => { if (!openItemsReadOnly) onMoveOpenItem(item.id, direction); }}>{direction === -1 ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}</Button>)}
+                        </div>
                       </div>
                     );
                   })}
@@ -358,6 +380,12 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
       </Card>
 
       {/* Create Task Dialog */}
+      <Dialog open={managerOpen} onOpenChange={setManagerOpen}>
+        <DialogContent className="max-w-4xl w-[calc(100%-24px)] h-[85vh] flex flex-col min-h-0">
+          <DialogHeader><DialogTitle>Manage Open Items</DialogTitle></DialogHeader>
+          <div className="flex-1 min-h-0 overflow-hidden">{managerOpen && renderOpenItemsManager?.(selectedOpenItemId)}</div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Create Task</DialogTitle></DialogHeader>
