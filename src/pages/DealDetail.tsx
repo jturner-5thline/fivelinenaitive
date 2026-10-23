@@ -244,8 +244,6 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useDealWidgetVisibility, DEAL_WIDGET_LABELS } from '@/hooks/useDealWidgetVisibility';
-import { useDealGridLayout } from '@/hooks/useDealGridLayout';
-import { DealWidgetGrid } from '@/components/deal/DealWidgetGrid';
 import { DealWidgetOrderList } from '@/components/deal/DealWidgetOrderList';
 import { Switch as WidgetSwitch } from '@/components/ui/switch';
 import { Settings as GearIcon } from 'lucide-react';
@@ -701,7 +699,6 @@ export default function DealDetail() {
   const canSeeAnalysisTabBase = canUse5thLineProprietaryActions(user);
   const { company, members, isAdmin: isCompanyAdmin } = useCompany();
   const { visibility: widgetVis, setWidgetVisible, order: widgetOrder, setOrder: setWidgetOrder, orderIndex: wOrd } = useDealWidgetVisibility();
-  const dealGrid = useDealGridLayout();
   const { features: companyFeatures } = useCompanyFeatures();
   const requestStatusChange = useRequestStatusChange();
   const { scoreConfig } = useLenderScoreConfig();
