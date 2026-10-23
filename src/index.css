@@ -2994,9 +2994,36 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   opacity: 1;
 }
 
-/* Module / widget titles. */
-.deal-detail-surface [data-slot="card-title"] {
+/* Module / widget titles: one uniform style (white, 14px semibold,
+   top-left) for every widget in the deal pop-up. */
+.deal-detail-surface [data-slot="card-title"],
+.deal-detail-surface .deal-widget-title,
+.deal-detail-surface section > h3,
+.deal-detail-surface section > div > h3,
+.deal-detail-surface section > div > div > h3 {
   color: #ffffff !important;
+  font-family: inherit !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  font-weight: 600 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  text-align: left !important;
+  margin-right: auto;
+}
+.deal-detail-surface [data-slot="card-header"] {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+/* Inner shells inside deal widgets are transparent (no nested fill). */
+.deal-detail-surface .bg-card .bg-card,
+.deal-detail-surface [class*="bg-card"] [class*="bg-card"],
+.deal-detail-surface [class*="bg-card"] [class*="bg-muted/"],
+.deal-detail-surface section [class*="bg-muted/"],
+.deal-detail-surface section [class*="bg-card"] {
+  background-color: transparent !important;
+  box-shadow: none !important;
 }
 
 .deal-detail-surface input:focus-visible,
