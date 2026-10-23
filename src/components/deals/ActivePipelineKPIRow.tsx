@@ -1,6 +1,6 @@
 import { Clock, Layers, DollarSign, Hash, TrendingUp } from 'lucide-react';
 import type { Deal } from '@/types/deal';
-import { currentRevenuePerHour, totalActivePipelineValue, totalSalesPipelineValue } from '@/lib/activePipelineKpis';
+import { activeDealsCount, currentRevenuePerHour, totalActivePipelineValue, totalSalesPipelineValue } from '@/lib/activePipelineKpis';
 import { formatUSDFromDollars } from '@/lib/formatters/currency';
 
 const KPIS = [
@@ -8,7 +8,7 @@ const KPIS = [
   { key: 'active_pipeline', label: 'Total Active Pipeline', icon: Layers },
   { key: 'sales_pipeline', label: 'Total Sales Pipeline', icon: TrendingUp },
   { key: 'total_revenue', label: 'Total Revenue', icon: DollarSign },
-  { key: 'total_deals', label: 'Total Deals', icon: Hash },
+  { key: 'active_deals', label: 'Active Deals', icon: Hash },
 ] as const;
 
 /** 5th Line active-pipeline KPI row. Unwired values show a placeholder. */
@@ -18,6 +18,7 @@ export function ActivePipelineKPIRow({ deals, stages = [] }: { deals: Deal[]; st
     rev_hour: rph == null ? '—' : `$${Math.round(rph).toLocaleString()}/hr`,
     active_pipeline: formatUSDFromDollars(totalActivePipelineValue(deals, stages)),
     sales_pipeline: formatUSDFromDollars(totalSalesPipelineValue(deals, stages)),
+    active_deals: activeDealsCount(deals, stages).toLocaleString(),
   };
   return (
     <div className="grid grid-cols-5 gap-2 sm:gap-3 mb-4">

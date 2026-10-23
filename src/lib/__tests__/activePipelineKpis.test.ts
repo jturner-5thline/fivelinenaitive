@@ -1,9 +1,44 @@
 import { describe, it, expect } from 'vitest';
-import { currentRevenuePerHour, totalActivePipelineValue, totalSalesPipelineValue } from '../activePipelineKpis';
+import { activeDealsCount, currentRevenuePerHour, totalActivePipelineValue, totalSalesPipelineValue } from '../activePipelineKpis';
 import type { Deal } from '@/types/deal';
 
 const d = (stage: string, totalFee: number, pre: number, post: number, company = 'Acme') =>
   ({ stage, totalFee, preSigningHours: pre, postSigningHours: post, company }) as Deal;
+
+describe('activeDealsCount', () => {
+  const deal = (stage: string, company = 'Acme') => ({ stage, company }) as Deal;
+  it('counts Final Credit Items through In Due Diligence inclusive, not earlier or later stages', () => {
+    expect(activeDealsCount([
+      deal('proposal-issued'), deal('final-credit-items'), deal('client-strategy-review'),
+      deal('write-up-pending'), deal('submitted-to-lenders'), deal('lenders-in-review'),
+      deal('terms-issued'), deal('in-due-diligence'), deal('agreement-pending'), deal('funded-invoiced'),
+    ])).toBe(7);
+  });
+  it('uses configured IDs and ordering including custom intermediate stages', () => {
+    const stages = [
+      { id: 'early', label: 'Agreement Pending' }, { id: 'credit', label: 'Final Credit Items' },
+      { id: 'custom', label: 'Custom Review' }, { id: 'diligence', label: 'In Due Diligence' },
+      { id: 'later', label: 'Funded Invoiced' },
+    ];
+    expect(activeDealsCount(stages.map(s => deal(s.id)), stages)).toBe(3);
+  });
+  it('excludes closed deals and all globally excluded names', () => {
+    expect(activeDealsCount([
+      deal('terms-issued'), deal('closed-won'), deal('closed-lost'),
+      deal('terms-issued', 'Example Deal'), deal('terms-issued', "Test-Niki's Store"),
+      deal('terms-issued', "Test - Niki's Store"),
+      deal('terms-issued', 'test sample'),
+    ])).toBe(1);
+  });
+  it('returns zero for empty, unknown, missing-boundary or reversed-boundary stages', () => {
+    expect(activeDealsCount([])).toBe(0);
+    expect(activeDealsCount([deal('unknown')])).toBe(0);
+    expect(activeDealsCount([deal('final-credit-items')], [{ id: 'final-credit-items', label: 'Final Credit Items' }])).toBe(0);
+    expect(activeDealsCount([deal('credit')], [
+      { id: 'diligence', label: 'In Due Diligence' }, { id: 'credit', label: 'Final Credit Items' },
+    ])).toBe(0);
+  });
+});
 
 describe('currentRevenuePerHour', () => {
   it('aggregates total fee over total hours for open deals', () => {
