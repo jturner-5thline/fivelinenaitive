@@ -5289,3 +5289,14 @@ html body .deal-fsmix-borderless .fs-tab-widget:hover {
   outline: 0 !important;
   box-shadow: none !important;
 }
+
+/* Draft AI status button stays teal beside the status note. */
+.deal-detail-surface .draft-ai-status-btn,
+.deal-detail-surface .draft-ai-status-btn svg,
+.draft-ai-status-btn,
+.draft-ai-status-btn svg {
+  color: hsl(var(--primary)) !important;
+  -webkit-text-fill-color: hsl(var(--primary)) !important;
+  background: transparent !important;
+  border: 0 !important;
+}
