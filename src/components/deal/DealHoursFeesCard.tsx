@@ -78,7 +78,7 @@ export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged, compact }:
           title={emptyMsg ? `${emptyMsg} — click to add` : 'Edit hours & fees'}
           className="deal-hours-fees-compact group w-full flex flex-col items-center justify-center gap-1 rounded-md !border-0 bg-transparent px-2 py-1 text-center cursor-pointer transition-colors hover:bg-foreground/[0.03]"
         >
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Rev / Hour</p>
+          <p className="text-[10px] uppercase tracking-wide text-foreground">Rev / Hour</p>
           <p className="text-2xl leading-none font-semibold tabular-nums font-mono text-primary truncate max-w-full">{rph !== null ? fmtMoney(rph) : '—'}</p>
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground tabular-nums font-mono whitespace-nowrap">
             <span title="Total Fee">{hasFees ? fmtMoney(totalFee) : '—'} fee</span>
