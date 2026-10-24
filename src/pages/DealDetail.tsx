@@ -3304,7 +3304,7 @@ export default function DealDetail() {
                     />
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
                     <div className="flex items-stretch gap-2">
-                    <div className="flex-1 min-w-0 status-note-editor">
+                    <div className="relative flex-1 min-w-0 status-note-editor pr-8">
                     <RichTextInlineEdit
                       value={deal.notes || ''}
                       onSave={(value) => {
@@ -3331,9 +3331,20 @@ export default function DealDetail() {
                       autoSaveDelay={1500}
                       mentionUsers={mentionUsers}
                     />
+                    <div className="absolute top-0 right-0 z-10 flex items-center gap-1">
+                      <DraftAiStatusButton
+                        dealId={deal.id}
+                        onApply={(text) => {
+                          const oldNotes = deal.notes || '';
+                          const safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                          updateDeal('notes', `<p>${safe}</p>`);
+                          if (oldNotes && oldNotes.trim() && oldNotes !== '<p></p>') addStatusNote(oldNotes.trim());
+                        }}
+                      />
+                    </div>
                     </div>
                     {!isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees && (
-                      <div className="shrink-0 w-[220px] flex justify-center">
+                      <div className="shrink-0 w-[220px] flex justify-center pl-6">
                         <div className="w-[150px]">
                           <DealHoursFeesCard compact deal={deal} updateDeal={(field, value) => updateDeal(field as any, value)} onHoursChanged={() => { void refreshDeals?.(); }} />
                         </div>
@@ -3342,16 +3353,6 @@ export default function DealDetail() {
                     </div>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <div className="flex items-center gap-1">
-                        <DraftAiStatusButton
-                          dealId={deal.id}
-                          onApply={(text) => {
-                            const oldNotes = deal.notes || '';
-                            const safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                            updateDeal('notes', `<p>${safe}</p>`);
-                            if (oldNotes && oldNotes.trim() && oldNotes !== '<p></p>') addStatusNote(oldNotes.trim());
-                          }}
-                        />
-                        <span className="whitespace-nowrap text-[11px] text-muted-foreground">Draft AI Status Update</span>
                         <StatusHistoryPopover statusNotes={statusNotes} onDeleteNote={deleteStatusNote} />
                       </div>
                       {deal.notesUpdatedAt && (
