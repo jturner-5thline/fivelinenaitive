@@ -38,7 +38,7 @@ function initials(name?: string | null): string {
 
 function RailLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-xs font-medium normal-case tracking-normal text-muted-foreground">
+    <span className="text-xs font-medium normal-case tracking-normal text-muted-foreground truncate block">
       {children}
     </span>
   );
@@ -98,7 +98,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
       {layout === 'widget' && !unframed && (
         <h3 className="mb-2 text-[13px] font-semibold text-foreground">Deal Info</h3>
       )}
-      <div ref={measureRef} className={cn(layout === 'widget' ? 'grid grid-cols-4 gap-x-2 gap-y-3 items-start [&>*]:min-w-0 [&_button]:min-w-0 [&_button]:max-w-full [&_button]:px-1.5 [&_*]:truncate-none' : 'space-y-3')}>
+      <div ref={measureRef} className={cn(layout === 'widget' ? 'grid grid-cols-4 gap-x-2 gap-y-3 items-start [&>*]:min-w-0 [&_button]:min-w-0 [&_button]:max-w-full [&_button]:px-1.5' : 'space-y-3')}>
       {!hideIdentity && (
       <div className="space-y-1.5 pt-3">
         <InlineEditField
