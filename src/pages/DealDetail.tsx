@@ -3563,9 +3563,6 @@ export default function DealDetail() {
 
   const dealInfoWidgetNode = (useContextRailLayout && dealInfoTab === 'deal-info') ? (
     <section className="deal-info-widget deal-info-compact flex min-w-0 flex-col overflow-hidden h-[clamp(340px,calc(100vh-380px),720px)] rounded-lg !border-0 bg-transparent">
-      <div className="shrink-0 px-4 pt-3 pb-2">
-        <h3 className="deal-widget-title">Deal Info</h3>
-      </div>
       <HiddenScrollArea className="min-h-0 flex-1">
       <DealContextRail
                 unframed
