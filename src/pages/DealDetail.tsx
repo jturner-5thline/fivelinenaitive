@@ -5191,7 +5191,7 @@ export default function DealDetail() {
                               </section>
                             ) : null;
                             return (
-                              <div key={id} className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-3">
+                              <div key={id} className="relative lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-x-6 lg:before:content-[''] lg:before:absolute lg:before:inset-y-0 lg:before:left-1/2 lg:before:w-px lg:before:-translate-x-1/2 lg:before:bg-border lg:before:pointer-events-none">
                                 <div className="min-w-0 flex flex-col gap-3 lg:order-1">
                                   {dealInfoWidgetNode && (
                                     <div className="relative flex-1 min-h-[240px]">
