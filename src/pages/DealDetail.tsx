@@ -3562,7 +3562,7 @@ export default function DealDetail() {
   );
 
   const dealInfoWidgetNode = (useContextRailLayout && dealInfoTab === 'deal-info') ? (
-    <section className="deal-info-widget deal-info-compact flex min-w-0 flex-col overflow-hidden h-[clamp(340px,calc(100vh-380px),720px)] rounded-lg border border-[#1E2C46] bg-transparent">
+    <section className="deal-info-widget deal-info-compact flex min-w-0 flex-col overflow-hidden h-[clamp(340px,calc(100vh-380px),720px)] rounded-lg !border-0 bg-transparent">
       <div className="shrink-0 px-4 pt-3 pb-2">
         <h3 className="deal-widget-title">Deal Info</h3>
       </div>
@@ -5146,7 +5146,7 @@ export default function DealDetail() {
                           // stretches to the bottom of the Tasks / Open Items column.
                           const showCombinedCalendar = !!calendarWidget;
                           const milestonesCalendarWidget = (milestonesWidget || showCombinedCalendar) ? (
-                            <section className="deal-milestones-calendar-widget flex-1 min-h-[420px] overflow-hidden flex flex-col rounded-lg border border-[#1E2C46] bg-transparent">
+                            <section className="deal-milestones-calendar-widget flex-1 min-h-[420px] overflow-hidden flex flex-col rounded-lg !border-0 bg-transparent">
                               {milestonesWidget && (
                                 <div className="shrink-0 [&_.deal-milestones-widget]:!border-0 [&_.deal-milestones-widget]:!shadow-none [&_.deal-milestones-widget]:!bg-transparent [&_.deal-milestones-widget]:!rounded-none">{milestonesWidget}</div>
                               )}

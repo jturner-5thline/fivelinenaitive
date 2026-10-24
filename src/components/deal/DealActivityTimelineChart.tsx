@@ -30,9 +30,9 @@ export function DealActivityTimelineChart({ dealId }: { dealId: string }) {
   return (
     <section className="mb-4 flex flex-col overflow-hidden rounded-md border border-[#1E2C46] bg-transparent">
       <div className="sticky top-0 z-10 shrink-0 flex items-center justify-between gap-3 px-4 pt-4 pb-3">
-        <div>
-          <h3 className="deal-widget-title">Deal Activity</h3>
-          <p className="text-xs text-foreground/60">{total} activities · last {granularity === 'daily' ? '30 days' : '12 weeks'}</p>
+        <div className="group relative">
+          <h3 className="deal-widget-title cursor-default">Deal Activity</h3>
+          <p className="pointer-events-none absolute left-0 top-full z-20 mt-1 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs text-popover-foreground opacity-0 shadow-md transition-opacity group-hover:opacity-100">{total} activities · last {granularity === 'daily' ? '30 days' : '12 weeks'}</p>
         </div>
         <div className="inline-flex rounded-md border border-border p-0.5">
           {(['daily', 'weekly'] as Granularity[]).map((g) => (
