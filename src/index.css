@@ -3103,7 +3103,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   border-left: 2px solid hsl(var(--primary)) !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  padding: 1px 4px 6px 12px !important;
+  padding: 1px 4px 1px 12px !important;
 }
 /* Status note text: 20% smaller than the original 18px. */
 .status-note-2rows .status-note-editor,
@@ -5288,4 +5288,15 @@ html body .deal-fsmix-borderless .fs-tab-widget:hover {
   border: 0 !important;
   outline: 0 !important;
   box-shadow: none !important;
+}
+
+/* Draft AI status button stays teal beside the status note. */
+.deal-detail-surface .draft-ai-status-btn,
+.deal-detail-surface .draft-ai-status-btn svg,
+.draft-ai-status-btn,
+.draft-ai-status-btn svg {
+  color: hsl(var(--primary)) !important;
+  -webkit-text-fill-color: hsl(var(--primary)) !important;
+  background: transparent !important;
+  border: 0 !important;
 }
