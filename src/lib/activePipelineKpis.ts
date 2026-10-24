@@ -15,23 +15,51 @@ const SALES_VOLUME_STAGES = new Set([
   'pre credit needs', 'proposal in development', 'proposal issued', 'agreement pending',
 ]);
 
-/** Caller supplies default-pipeline deals; both stage boundaries are inclusive. */
-export function activeDealsCount(deals: Deal[], stages: PipelineStage[] = []): number {
-  const start = stages.findIndex(s => normalizeStage(s.label) === 'final credit items');
-  const end = stages.findIndex(s => normalizeStage(s.label) === 'in due diligence');
+type ActivePosition = 'start' | 'middle' | 'diligence';
+
+/** Returns the deal's position within the Active Deals cohort, or null if outside it. */
+function activeDealPosition(deal: Deal, stages: PipelineStage[]): ActivePosition | null {
+  if (isExcludedDealName(deal.company) || deal.company?.trim().toLowerCase() === "test-niki's store") return null;
+  const index = stages.findIndex(s => s.id === deal.stage || normalizeStage(s.label) === normalizeStage(deal.stage));
+  const label = normalizeStage(index >= 0 ? stages[index].label : deal.stage);
+  if (['closed won', 'closed lost'].includes(label) || CLOSED_STAGES.has(deal.stage)) return null;
+  if (stages.length > 0) {
+    const start = stages.findIndex(s => normalizeStage(s.label) === 'final credit items');
+    const end = stages.findIndex(s => normalizeStage(s.label) === 'in due diligence');
+    if (!(start >= 0 && end >= start && index >= start && index <= end)) return null;
+    return index === start ? 'start' : index === end ? 'diligence' : 'middle';
+  }
   const fallbackStages = new Set([
     'final credit items', 'client strategy review', 'write up pending',
     'submitted to lenders', 'lenders in review', 'terms issued', 'in due diligence',
   ]);
-  return deals.reduce((count, deal) => {
-    if (isExcludedDealName(deal.company) || deal.company?.trim().toLowerCase() === "test-niki's store") return count;
-    const index = stages.findIndex(s => s.id === deal.stage || normalizeStage(s.label) === normalizeStage(deal.stage));
-    const label = normalizeStage(index >= 0 ? stages[index].label : deal.stage);
-    if (['closed won', 'closed lost'].includes(label) || CLOSED_STAGES.has(deal.stage)) return count;
-    const qualifies = stages.length > 0
-      ? start >= 0 && end >= start && index >= start && index <= end
-      : fallbackStages.has(label);
-    return qualifies ? count + 1 : count;
+  if (!fallbackStages.has(label)) return null;
+  return label === 'final credit items' ? 'start' : label === 'in due diligence' ? 'diligence' : 'middle';
+}
+
+/** Caller supplies default-pipeline deals; both stage boundaries are inclusive. */
+export function activeDealsCount(deals: Deal[], stages: PipelineStage[] = []): number {
+  return deals.reduce((count, deal) => (activeDealPosition(deal, stages) ? count + 1 : count), 0);
+}
+
+const money = (v: unknown) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : 0; };
+
+/**
+ * Total Revenue over the Active Deals cohort:
+ * - Final Credit Items: Total Fee
+ * - After Final Credit Items (before In Due Diligence): Total Fee − Retainer
+ * - In Due Diligence: Total Fee − Milestone − Retainer (closing fee)
+ * Each deal's contribution is floored at 0.
+ */
+export function totalActiveRevenue(deals: Deal[], stages: PipelineStage[] = []): number {
+  return deals.reduce((total, deal) => {
+    const pos = activeDealPosition(deal, stages);
+    if (!pos) return total;
+    const fee = money(deal.totalFee);
+    const retainer = money(deal.retainerFee);
+    const milestone = money(deal.milestoneFee);
+    const value = pos === 'start' ? fee : pos === 'middle' ? fee - retainer : fee - retainer - milestone;
+    return total + Math.max(0, value);
   }, 0);
 }
 
