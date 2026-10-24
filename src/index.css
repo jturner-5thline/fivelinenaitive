@@ -3103,7 +3103,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   border-left: 2px solid hsl(var(--primary)) !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  padding: 1px 4px 6px 12px !important;
+  padding: 1px 4px 1px 12px !important;
 }
 /* Status note text: 20% smaller than the original 18px. */
 .status-note-2rows .status-note-editor,

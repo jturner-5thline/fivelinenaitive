@@ -3302,9 +3302,9 @@ export default function DealDetail() {
                         }
                       }}
                     />
-                    <div className="flex-1 min-w-0 flex flex-col gap-1">
-                    <div className="flex items-stretch gap-2">
-                    <div className="relative flex-1 min-w-0 status-note-editor pr-10">
+                    <div className="flex-1 min-w-0 flex flex-col gap-0">
+                    <div className="flex items-stretch gap-1">
+                    <div className="relative flex-1 min-w-0 status-note-editor">
                     <RichTextInlineEdit
                       value={deal.notes || ''}
                       onSave={(value) => {
@@ -3331,7 +3331,8 @@ export default function DealDetail() {
                       autoSaveDelay={1500}
                       mentionUsers={mentionUsers}
                     />
-                    <div className="absolute top-0 right-0 z-10 flex items-center gap-1">
+                    </div>
+                    <div className="shrink-0 self-start">
                       <DraftAiStatusButton
                         dealId={deal.id}
                         onApply={(text) => {
@@ -3342,7 +3343,6 @@ export default function DealDetail() {
                         }}
                       />
                     </div>
-                    </div>
                     {!isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees && (
                       <div className="shrink-0 w-[220px] flex justify-center pl-6">
                         <div className="w-[150px]">
@@ -3351,15 +3351,13 @@ export default function DealDetail() {
                       </div>
                     )}
                     </div>
-                    <div className={cn("flex flex-wrap items-center justify-between gap-x-3 gap-y-1", !isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees && "mr-[228px]")}>
-                      <div className="flex items-center gap-1">
-                        <StatusHistoryPopover statusNotes={statusNotes} onDeleteNote={deleteStatusNote} />
-                      </div>
+                    <div className={cn("flex items-center justify-end gap-1", !isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees && "mr-[252px]")}>
                       {deal.notesUpdatedAt && (
-                        <p className="ml-auto whitespace-nowrap text-right text-xs text-muted-foreground/70">
-                          Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
+                        <p className="whitespace-nowrap text-right text-xs text-muted-foreground/70">
+                          Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')}
                         </p>
                       )}
+                      <StatusHistoryPopover statusNotes={statusNotes} onDeleteNote={deleteStatusNote} />
                     </div>
                     </div>
                   </div>
