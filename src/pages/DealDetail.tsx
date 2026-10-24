@@ -3332,7 +3332,13 @@ export default function DealDetail() {
                       mentionUsers={mentionUsers}
                     />
                     </div>
-                    <div className="shrink-0 flex flex-col justify-between items-start gap-1">
+                    {!isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees && (
+                      <div className="shrink-0 w-[150px]">
+                        <DealHoursFeesCard compact deal={deal} updateDeal={(field, value) => updateDeal(field as any, value)} onHoursChanged={() => { void refreshDeals?.(); }} />
+                      </div>
+                    )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <div className="flex items-center gap-1">
                         <DraftAiStatusButton
                           dealId={deal.id}
@@ -3347,11 +3353,10 @@ export default function DealDetail() {
                         <StatusHistoryPopover statusNotes={statusNotes} onDeleteNote={deleteStatusNote} />
                       </div>
                       {deal.notesUpdatedAt && (
-                        <p className="mt-auto whitespace-nowrap text-xs text-muted-foreground/70">
+                        <p className="whitespace-nowrap text-xs text-muted-foreground/70">
                           Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
                         </p>
                       )}
-                    </div>
                     </div>
                     </div>
                   </div>
@@ -5204,11 +5209,6 @@ export default function DealDetail() {
                                     <section aria-label="Deal actions" className="deal-actions-widget flex-1 min-w-0 flex items-center gap-2 rounded-lg border-0 bg-transparent p-2 h-[72px]">
                                       <div className="flex-1 min-w-0 h-full self-center">{renderDealActionCluster(true)}</div>
                                     </section>
-                                    {hoursFeesWidget && (
-                                      <div className="h-[72px] sm:w-[46%] shrink-0 min-w-0">
-                                        <DealHoursFeesCard compact deal={deal} updateDeal={(field, value) => updateDeal(field as any, value)} onHoursChanged={() => { void refreshDeals?.(); }} />
-                                      </div>
-                                    )}
                                   </div>
                                   <div className="min-w-0 [&_.deal-tasks-openitems-widget>div]:!h-[clamp(260px,calc(100vh-464px),640px)]">{tasksNode}</div>
                                 </div>
