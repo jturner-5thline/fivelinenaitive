@@ -5193,9 +5193,16 @@ export default function DealDetail() {
                             return (
                               <div key={id} className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-3">
                                 <div className="min-w-0 flex flex-col gap-3">
-                                  <section aria-label="Deal actions" className="deal-actions-widget shrink-0 flex items-center gap-2 rounded-lg border-0 bg-transparent p-2 h-[72px]">
-                                    <div className="flex-1 min-w-0 h-full self-center">{renderDealActionCluster(true)}</div>
-                                  </section>
+                                  <div className="shrink-0 flex flex-col sm:flex-row gap-3">
+                                    <section aria-label="Deal actions" className="deal-actions-widget flex-1 min-w-0 flex items-center gap-2 rounded-lg border-0 bg-transparent p-2 h-[72px]">
+                                      <div className="flex-1 min-w-0 h-full self-center">{renderDealActionCluster(true)}</div>
+                                    </section>
+                                    {hoursFeesWidget && (
+                                      <div className="h-[72px] sm:w-[46%] shrink-0 min-w-0">
+                                        <DealHoursFeesCard compact deal={deal} updateDeal={(field, value) => updateDeal(field as any, value)} onHoursChanged={() => { void refreshDeals?.(); }} />
+                                      </div>
+                                    )}
+                                  </div>
                                   {dealInfoWidgetNode && (
                                     <div className="relative flex-1 min-h-[240px]">
                                       <div className="absolute inset-0 [&>*]:!h-full">{dealInfoWidgetNode}</div>
@@ -5210,7 +5217,6 @@ export default function DealDetail() {
                                   </div>
                                 )}
                                 {fundingMixWidget && <div className="min-w-0 lg:h-[300px] [&>div]:h-full [&_.fs-tab-widget]:h-full [&_.fs-tab-widget]:flex [&_.fs-tab-widget]:flex-col [&_.fs-tab-widget>div:nth-child(2)]:my-auto">{fundingMixWidget}</div>}
-                                {hoursFeesWidget && <div className="min-w-0 lg:h-[300px] [&>div]:!h-full">{hoursFeesWidget}</div>}
                                 {finservWidget && <div className="min-w-0">{finservWidget}</div>}
                               </div>
                             );
