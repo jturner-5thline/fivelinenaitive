@@ -4075,8 +4075,9 @@ export default function DealDetail() {
             useContextRailLayout
               ? "border-0 bg-transparent shadow-none"
               : "border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]",
-            useContextRailLayout && "mt-0 mb-1",
-            useContextRailLayout && "flex flex-col overflow-visible",
+            // Rail layout renders nothing inside this card; hide it so its
+            // theme border doesn't draw a stray divider above the widgets.
+            useContextRailLayout && "hidden",
             // Legacy (non-rail) layout keeps the header card on Deal Space only.
             !useContextRailLayout && dealInfoTab !== 'deal-info' && "hidden",
           )}
