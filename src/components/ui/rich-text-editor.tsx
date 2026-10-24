@@ -1,6 +1,6 @@
 import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { Bold, Italic, List, ListOrdered, Check, X } from 'lucide-react';
+import { Bold, Italic, Underline as UnderlineIcon, List, ListOrdered, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -187,6 +187,16 @@ export function RichTextEditor({
           onClick={() => editor.chain().focus().toggleItalic().run()}
         >
           <Italic className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          size="icon"
+          variant={editor.isActive('underline') ? 'secondary' : 'ghost'}
+          className="h-7 w-7"
+          aria-label="Underline"
+          onClick={() => editor.chain().focus().toggleUnderline().run()}
+        >
+          <UnderlineIcon className="h-4 w-4" />
         </Button>
         <div className="w-px h-4 bg-border mx-1" />
         <Button

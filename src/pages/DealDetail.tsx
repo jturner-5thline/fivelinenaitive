@@ -3330,7 +3330,6 @@ export default function DealDetail() {
                       autoSave
                       autoSaveDelay={1500}
                       mentionUsers={mentionUsers}
-                      bulletMode
                     />
                     </div>
                     <div className="shrink-0 flex flex-col justify-between items-start gap-1">
