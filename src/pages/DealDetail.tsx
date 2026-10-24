@@ -4630,7 +4630,7 @@ export default function DealDetail() {
                             switch (fieldId) {
                                case 'narrative':
                                  return (
-                                   <div key={fieldId} className="space-y-0.5 pb-0 [&_textarea]:mb-0">
+                                   <div key={fieldId} className="w-full min-w-0 col-span-full space-y-0.5 pb-0 [&_textarea]:mb-0">
                                      <div className="flex h-4 items-center justify-between gap-2 leading-none">
                                        <label className="text-xs font-medium text-muted-foreground">Narrative</label>
                                        <button
@@ -5002,7 +5002,7 @@ export default function DealDetail() {
                                        orderedRailFields.length > 0 && (
                                          <div className="grid w-full min-w-0 grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 [&>*]:min-w-0 [&>*]:break-words">
                                            {[...orderedRailFields].sort((a, b) => Number(b === 'narrative') - Number(a === 'narrative')).map(fId => (
-                                             <div key={fId} className={cn('min-w-0', fId === 'narrative' && 'sm:col-span-2')}>
+                                             <div key={fId} className={cn('min-w-0', fId === 'narrative' && 'col-span-full w-full')}>
                                                {renderDealInfoField(fId)}
                                              </div>
                                            ))}
