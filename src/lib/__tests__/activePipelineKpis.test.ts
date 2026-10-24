@@ -123,3 +123,27 @@ describe('totalSalesPipelineValue', () => {
     expect(totalSalesPipelineValue([deal('agreement-pending', 500)], [{ id: 'other', label: 'Other' }])).toBe(0);
   });
 });
+
+import { totalActiveRevenue } from '../activePipelineKpis';
+describe('totalActiveRevenue', () => {
+  const r = (stage: string, totalFee: number, retainerFee = 0, milestoneFee = 0, company = 'Acme') =>
+    ({ stage, totalFee, retainerFee, milestoneFee, company }) as Deal;
+  it('counts full Total Fee at Final Credit Items', () => {
+    expect(totalActiveRevenue([r('final-credit-items', 100, 20, 30)])).toBe(100);
+  });
+  it('subtracts retainer for stages after Final Credit Items', () => {
+    expect(totalActiveRevenue([r('terms-issued', 100, 20, 30)])).toBe(80);
+  });
+  it('counts only closing fee (fee − milestone − retainer) at In Due Diligence', () => {
+    expect(totalActiveRevenue([r('in-due-diligence', 100, 20, 30)])).toBe(50);
+  });
+  it('excludes deals outside the Active Deals cohort and test deals', () => {
+    expect(totalActiveRevenue([
+      r('agreement-pending', 100), r('funded-invoiced', 100), r('closed-won', 100),
+      r('terms-issued', 100, 0, 0, 'Example Deal'),
+    ])).toBe(0);
+  });
+  it('floors each deal at zero', () => {
+    expect(totalActiveRevenue([r('in-due-diligence', 10, 20, 30), r('final-credit-items', 5)])).toBe(5);
+  });
+});
