@@ -87,7 +87,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
     <aside
       className={cn(
         layout === 'widget' && unframed
-          ? 'w-full bg-transparent shadow-none px-4 pb-3'
+          ? 'w-full bg-transparent shadow-none px-4 pb-1'
           : layout === 'widget'
           ? 'w-full rounded-lg border border-[#1E2C46] bg-transparent shadow-none px-4 py-3'
           : 'shrink-0 w-full lg:w-[260px] lg:sticky lg:top-4 self-start rounded-lg border border-border/40 bg-transparent shadow-none px-3 pb-3 pt-0',
@@ -244,7 +244,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
       )}
       </div>
       {children ? (
-        <div className={cn('mt-3', layout === 'widget' ? 'deal-info-widget-body' : 'border-t pt-3 border-border/50')}>{children}</div>
+        <div className={cn(layout === 'widget' ? 'mt-2 deal-info-widget-body' : 'mt-3 border-t pt-3 border-border/50')}>{children}</div>
       ) : null}
     </aside>
   );

@@ -4624,8 +4624,8 @@ export default function DealDetail() {
                             switch (fieldId) {
                                case 'narrative':
                                  return (
-                                   <div key={fieldId} className="space-y-1.5">
-                                     <div className="flex items-center justify-between gap-2">
+                                   <div key={fieldId} className="space-y-0.5 pb-0 [&_textarea]:mb-0">
+                                     <div className="flex h-4 items-center justify-between gap-2 leading-none">
                                        <label className="text-xs font-medium text-muted-foreground">Narrative</label>
                                        <button
                                          type="button"
