@@ -61,6 +61,8 @@ export interface DealContextRailProps {
   /** Options for the deal owner dropdown; when omitted the owner is read-only. */
   ownerOptions?: { value: string; label: string }[];
   hideOwner?: boolean;
+  /** Show the Deal Manager picker (uses ownerOptions) between Close date and Deal owner. */
+  showManager?: boolean;
   /** Extra content merged into the same module, below the core facts. */
   children?: React.ReactNode;
   /** 'rail' = narrow sticky sidebar; 'widget' = full-width multi-column tile. */
@@ -69,7 +71,7 @@ export interface DealContextRailProps {
   unframed?: boolean;
 }
 
-export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, hideStatusStage, lastActivityNode, measureRef, ownerOptions, hideOwner, children, layout = 'rail', unframed = false }: DealContextRailProps) {
+export function DealContextRail({ deal, className, onUpdateField, compact, hideIdentity, hideStatusStage, lastActivityNode, measureRef, ownerOptions, hideOwner, showManager = false, children, layout = 'rail', unframed = false }: DealContextRailProps) {
   const lastActivity = deal.notesUpdatedAt || deal.updatedAt || null;
   const owner = deal.dealOwner || deal.manager || '';
 
@@ -96,7 +98,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
       {layout === 'widget' && !unframed && (
         <h3 className="mb-2 text-[13px] font-semibold text-foreground">Deal Info</h3>
       )}
-      <div ref={measureRef} className={cn(layout === 'widget' ? 'grid grid-cols-3 gap-x-[clamp(0.5rem,1.5vw,1rem)] gap-y-3 items-start [&>*]:min-w-0 [&_button]:min-w-0 [&_button]:max-w-full' : 'space-y-3')}>
+      <div ref={measureRef} className={cn(layout === 'widget' ? 'grid grid-cols-[repeat(auto-fit,minmax(min(100%,130px),1fr))] gap-x-[clamp(0.5rem,1.5vw,1rem)] gap-y-3 items-start [&>*]:min-w-0 [&_button]:min-w-0 [&_button]:max-w-full' : 'space-y-3')}>
       {!hideIdentity && (
       <div className="space-y-1.5 pt-3">
         <InlineEditField
@@ -185,6 +187,26 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
           </div>
         )}
       </div>
+
+      {showManager && (
+      <div className="flex flex-col gap-1 min-w-0">
+        <RailLabel>Deal manager</RailLabel>
+        <Select
+          value={deal.manager || ''}
+          onValueChange={(value) => onUpdateField?.('manager', value)}
+          disabled={!onUpdateField}
+        >
+          <SelectTrigger className="h-8 w-full min-w-0 text-sm">
+            <SelectValue placeholder="Select manager" />
+          </SelectTrigger>
+          <SelectContent>
+            {(ownerOptions ?? []).map((option) => (
+              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      )}
 
       {!hideOwner && (
       <div className="flex flex-col gap-1">

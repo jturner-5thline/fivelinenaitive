@@ -3573,6 +3573,7 @@ export default function DealDetail() {
                 measureRef={railMeasureRef}
                 ownerOptions={memberOptions}
                 hideOwner={!isDealInfoFieldVisible('dealOwner')}
+                showManager={isDealInfoFieldVisible('dealManager')}
                 lastActivityNode={
                   <DealUpdatesUnified
                     activities={activityLogs}
@@ -4662,6 +4663,8 @@ export default function DealDetail() {
                                    </div>
                                  );
                               case 'dealManager':
+                                // Shown in the top row of the Deal Info widget when railed.
+                                if (useContextRailLayout && railPanelSlot) return null;
                                 return (
                                   <div key={fieldId} className="flex flex-col gap-1">
                                     <span className="text-muted-foreground text-xs font-medium">Deal Manager</span>
