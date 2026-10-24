@@ -187,12 +187,12 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
       <Card className="deal-tasks-panel-card h-full w-full flex flex-col">
         {/* ── Header ── fixed height, vertically centered */}
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-y-1 min-h-[44px] py-1 px-4 space-y-0 shrink-0 cursor-pointer hover:bg-foreground/5 transition-colors border-b border-border" onClick={() => setIsOpen(o => !o)}>
-          <CardTitle className="text-sm font-medium flex items-center gap-2 shrink-0">
-            Tasks
-            {pendingTasks.length > 0 && !isOpen && (
-              <Badge variant="secondary" className="text-[10px] h-5 font-normal">{pendingTasks.length} open</Badge>
-            )}
-          </CardTitle>
+          {pendingTasks.length > 0 && !isOpen && (
+            <CardTitle className="sr-only">Tasks</CardTitle>
+          )}
+          {pendingTasks.length > 0 && !isOpen && (
+            <Badge variant="secondary" className="text-[10px] h-5 font-normal shrink-0">{pendingTasks.length} open tasks</Badge>
+          )}
           {isOpen && hasOpenItems && (
             <div className="shrink-0 pl-3" onClick={(e) => e.stopPropagation()}>
               <ToggleGroup
