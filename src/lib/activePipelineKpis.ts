@@ -111,3 +111,32 @@ export function currentRevenuePerHour(deals: Deal[]): number | null {
   }
   return hours > 0 ? fees / hours : null;
 }
+
+export type KpiKey = 'rev_hour' | 'active_pipeline' | 'sales_pipeline' | 'total_revenue' | 'active_deals';
+export interface KpiDrilldownRow { deal: Deal; stageLabel: string; amount: number | null; detail?: string }
+
+/** Deals that factor into each KPI, using the exact same rules as the totals. */
+export function kpiDrilldownRows(key: KpiKey, deals: Deal[], stages: PipelineStage[] = []): KpiDrilldownRow[] {
+  const label = (d: Deal) => stages.find(s => s.id === d.stage || normalizeStage(s.label) === normalizeStage(d.stage))?.label ?? d.stage;
+  const rows: KpiDrilldownRow[] = [];
+  for (const d of deals) {
+    if (key === 'active_deals') {
+      if (activeDealPosition(d, stages)) rows.push({ deal: d, stageLabel: label(d), amount: Number(d.value) || 0 });
+    } else if (key === 'total_revenue') {
+      if (!activeDealPosition(d, stages)) continue;
+      const amount = totalActiveRevenue([d], stages);
+      const pos = activeDealPosition(d, stages);
+      rows.push({ deal: d, stageLabel: label(d), amount, detail: pos === 'start' ? 'Total fee' : pos === 'middle' ? 'Fee − retainer' : 'Closing fee' });
+    } else if (key === 'active_pipeline' || key === 'sales_pipeline') {
+      const fn = key === 'active_pipeline' ? totalActivePipelineValue : totalSalesPipelineValue;
+      if (fn([{ ...d, value: 1 } as Deal], stages) > 0) rows.push({ deal: d, stageLabel: label(d), amount: Number(d.value) || 0 });
+    } else {
+      if (CLOSED_STAGES.has(d.stage) || isExcludedDealName(d.company)) continue;
+      const fee = Number(d.totalFee) || 0;
+      const hrs = (Number(d.preSigningHours) || 0) + (Number(d.postSigningHours) || 0);
+      if (fee <= 0 && hrs <= 0) continue;
+      rows.push({ deal: d, stageLabel: label(d), amount: fee, detail: `${hrs.toLocaleString()} hrs${hrs > 0 ? ` · $${Math.round(fee / hrs).toLocaleString()}/hr` : ''}` });
+    }
+  }
+  return rows.sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
+}
