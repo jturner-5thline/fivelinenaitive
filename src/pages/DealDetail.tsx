@@ -3290,7 +3290,7 @@ export default function DealDetail() {
   // beneath the deal name (above the status/stage selectors) at 50% width;
   // otherwise it stays inside the header card.
   const statusNoteColumn = (
-                <div className="relative w-full flex flex-col gap-1">
+                <div className="relative w-full flex flex-col gap-0">
                    <div className="relative flex items-start gap-2 status-note-2rows">
                     <StaleStatusNudge
                       deal={deal}
@@ -3332,7 +3332,7 @@ export default function DealDetail() {
                       mentionUsers={mentionUsers}
                     />
                     </div>
-                    <div className="shrink-0 self-start">
+                    <div className="shrink-0 self-stretch flex flex-col items-center justify-between gap-1">
                       <DraftAiStatusButton
                         dealId={deal.id}
                         onApply={(text) => {
@@ -3342,6 +3342,7 @@ export default function DealDetail() {
                           if (oldNotes && oldNotes.trim() && oldNotes !== '<p></p>') addStatusNote(oldNotes.trim());
                         }}
                       />
+                      <StatusHistoryPopover statusNotes={statusNotes} onDeleteNote={deleteStatusNote} />
                     </div>
                     {!isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees && (
                       <div className="shrink-0 w-[220px] flex justify-center pl-6">
@@ -3351,14 +3352,13 @@ export default function DealDetail() {
                       </div>
                     )}
                     </div>
-                    <div className={cn("flex items-center justify-end gap-1", !isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees && "mr-[252px]")}>
-                      {deal.notesUpdatedAt && (
-                        <p className="whitespace-nowrap text-right text-xs text-muted-foreground/70">
+                    {deal.notesUpdatedAt && (
+                    <div className={cn("flex items-center justify-end -mb-1", !isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees && "mr-[252px]")}>
+                        <p className="whitespace-nowrap text-right text-xs leading-none text-muted-foreground/70">
                           Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')}
                         </p>
-                      )}
-                      <StatusHistoryPopover statusNotes={statusNotes} onDeleteNote={deleteStatusNote} />
                     </div>
+                    )}
                     </div>
                   </div>
                 </div>
