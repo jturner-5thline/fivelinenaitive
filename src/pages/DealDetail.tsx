@@ -3345,7 +3345,7 @@ export default function DealDetail() {
                       <StatusHistoryPopover statusNotes={statusNotes} onDeleteNote={deleteStatusNote} />
                     </div>
                     {!isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees && (
-                      <div className="shrink-0 w-[220px] flex justify-center pl-6">
+                      <div className="shrink-0 w-[35%] flex justify-center pl-6">
                         <div className="w-[150px]">
                           <DealHoursFeesCard compact deal={deal} updateDeal={(field, value) => updateDeal(field as any, value)} onHoursChanged={() => { void refreshDeals?.(); }} />
                         </div>
@@ -3353,7 +3353,7 @@ export default function DealDetail() {
                     )}
                     </div>
                     {deal.notesUpdatedAt && (
-                    <div className={cn("pointer-events-none relative flex h-6 -mt-6 items-center justify-end", !isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees ? "mr-[274px]" : "mr-[22px]")}>
+                    <div className={cn("pointer-events-none relative flex h-6 -mt-6 items-center justify-end", !isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees ? "mr-[calc(35%+54px)]" : "mr-[22px]")}>
                         <p className="whitespace-nowrap text-right text-xs leading-none text-muted-foreground/70">
                           Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')}
                         </p>
@@ -3953,7 +3953,7 @@ export default function DealDetail() {
 
           {/* Status note sits directly under the deal name, half-width. */}
           {useContextRailLayout && (
-            <div className="w-full sm:w-[85%] mt-2 ml-3">
+            <div className="w-full mt-2 ml-3 pr-3">
               {statusNoteColumn}
             </div>
           )}
@@ -5197,7 +5197,7 @@ export default function DealDetail() {
                               </section>
                             ) : null;
                             return (
-                              <div key={id} className="relative lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-x-6 lg:before:content-[''] lg:before:absolute lg:before:inset-y-0 lg:before:left-1/2 lg:before:w-px lg:before:-translate-x-1/2 lg:before:bg-border lg:before:pointer-events-none">
+                              <div key={id} className="relative lg:col-span-2 grid grid-cols-1 lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] gap-3 lg:gap-x-6 lg:before:content-[''] lg:before:absolute lg:before:inset-y-0 lg:before:left-[calc(65%+3.6px)] lg:before:w-px lg:before:-translate-x-1/2 lg:before:bg-border lg:before:pointer-events-none">
                                 <div className="min-w-0 flex flex-col gap-3 lg:order-1">
                                   {dealInfoWidgetNode && (
                                     <div className="relative flex-1 min-h-[240px]">
