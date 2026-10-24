@@ -3095,13 +3095,15 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .status-note-2rows textarea {
   resize: none;
 }
-/* Status note box colors — matches the deal tile status box. */
+/* Status note: transparent with a single left accent. */
 .status-note-2rows .status-note-editor {
-  background-color: rgba(255, 255, 255, 0.03) !important;
+  background-color: transparent !important;
   background-image: none !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  border-radius: 0.5rem !important;
-  padding: 1px 4px 6px !important;
+  border: 0 !important;
+  border-left: 2px solid hsl(var(--primary)) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 1px 4px 6px 12px !important;
 }
 /* Status note text: 20% smaller than the original 18px. */
 .status-note-2rows .status-note-editor,
@@ -3121,7 +3123,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .status-note-2rows .status-note-editor .ProseMirror,
 .status-note-2rows .status-note-editor [contenteditable="true"],
 .status-note-2rows .status-note-editor textarea {
-  padding-left: 10px !important;
+  padding-left: 0 !important;
 }
 /* Only the wrapper carries the border: strip any inner border/ring so the
    box doesn't render a doubled outline. */
@@ -3461,11 +3463,13 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   padding-right: 0 !important;
 }
 
-/* Status note: same subtle translucent box as the deal tiles. */
+/* Preserve the transparent, left-border-only note above surface resets. */
 .deal-detail-surface .status-note-2rows .status-note-editor {
-  background-color: rgba(255, 255, 255, 0.03) !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  border-radius: 0.5rem !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-left: 2px solid hsl(var(--primary)) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 /* ── Deal status chips: flat glassy tint (matches the "Stale" flag) ───────
