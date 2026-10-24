@@ -5192,7 +5192,14 @@ export default function DealDetail() {
                             ) : null;
                             return (
                               <div key={id} className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-3">
-                                <div className="min-w-0 flex flex-col gap-3">
+                                <div className="min-w-0 flex flex-col gap-3 lg:order-1">
+                                  {dealInfoWidgetNode && (
+                                    <div className="relative flex-1 min-h-[240px]">
+                                      <div className="absolute inset-0 [&>*]:!h-full">{dealInfoWidgetNode}</div>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex flex-col gap-3 lg:order-2">
                                   <div className="shrink-0 flex flex-col sm:flex-row gap-3">
                                     <section aria-label="Deal actions" className="deal-actions-widget flex-1 min-w-0 flex items-center gap-2 rounded-lg border-0 bg-transparent p-2 h-[72px]">
                                       <div className="flex-1 min-w-0 h-full self-center">{renderDealActionCluster(true)}</div>
@@ -5203,20 +5210,17 @@ export default function DealDetail() {
                                       </div>
                                     )}
                                   </div>
-                                  {dealInfoWidgetNode && (
-                                    <div className="relative flex-1 min-h-[240px]">
-                                      <div className="absolute inset-0 [&>*]:!h-full">{dealInfoWidgetNode}</div>
-                                    </div>
-                                  )}
+                                  <div className="min-w-0 [&_.deal-tasks-openitems-widget>div]:!h-[clamp(260px,calc(100vh-464px),640px)]">{tasksNode}</div>
                                 </div>
-                                <div className="min-w-0">{tasksNode}</div>
-                                <div className="min-w-0 lg:h-[300px] [&>section]:!mb-0 [&>section]:h-full [&>section]:overflow-hidden"><DealActivityTimelineChart dealId={deal.id} /></div>
+                                <div className="min-w-0 lg:order-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  {fundingMixWidget && <div className="min-w-0 lg:h-[300px] [&>div]:h-full [&_.fs-tab-widget]:h-full [&_.fs-tab-widget]:flex [&_.fs-tab-widget]:flex-col [&_.fs-tab-widget>div:nth-child(2)]:my-auto">{fundingMixWidget}</div>}
+                                  <div className={cn("min-w-0 lg:h-[300px] [&>section]:!mb-0 [&>section]:h-full [&>section]:overflow-hidden", !fundingMixWidget && "sm:col-span-2")}><DealActivityTimelineChart dealId={deal.id} /></div>
+                                </div>
                                 {milestonesCalendarWidget && (
-                                  <div className="relative min-w-0 min-h-[240px] lg:min-h-0">
+                                  <div className="relative min-w-0 min-h-[240px] lg:min-h-0 lg:order-4">
                                     <div className="lg:absolute lg:inset-0 [&>*]:!h-full [&>*]:!min-h-0 overflow-hidden">{milestonesCalendarWidget}</div>
                                   </div>
                                 )}
-                                {fundingMixWidget && <div className="min-w-0 lg:h-[300px] [&>div]:h-full [&_.fs-tab-widget]:h-full [&_.fs-tab-widget]:flex [&_.fs-tab-widget]:flex-col [&_.fs-tab-widget>div:nth-child(2)]:my-auto">{fundingMixWidget}</div>}
                                 {finservWidget && <div className="min-w-0">{finservWidget}</div>}
                               </div>
                             );
