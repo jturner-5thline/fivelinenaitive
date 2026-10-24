@@ -5247,13 +5247,19 @@ html body .deal-detail-surface .fs-tab-widget,
 html body .deal-detail-surface .fs-tab-widget:hover,
 .deal-detail-surface .deal-hours-fees-panel,
 .deal-detail-surface .deal-hours-fees-panel:hover,
-.deal-detail-surface .deal-calendar-panel [data-slot="card"],
-.deal-detail-surface .deal-milestones-calendar-widget {
+.deal-detail-surface .deal-calendar-panel [data-slot="card"] {
   background: transparent !important;
   background-color: transparent !important;
   background-image: none !important;
   box-shadow: none !important;
   border: 1px solid #1E2C46 !important;
+}
+/* Milestones + Calendar widget: no fill, no border. */
+.deal-detail-surface .deal-milestones-calendar-widget {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border: 0 !important;
 }
 .deal-detail-surface .deal-actions-widget {
   background: transparent !important;
