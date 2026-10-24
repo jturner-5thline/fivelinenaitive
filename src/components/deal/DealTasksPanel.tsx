@@ -194,7 +194,7 @@ export function DealTasksPanel({ dealId, openItems, onToggleOpenItem, onAddOpenI
             <Badge variant="secondary" className="text-[10px] h-5 font-normal shrink-0">{pendingTasks.length} open tasks</Badge>
           )}
           {isOpen && hasOpenItems && (
-            <div className="shrink-0 pl-3" onClick={(e) => e.stopPropagation()}>
+            <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
               <ToggleGroup
                 type="single"
                 value={view}
