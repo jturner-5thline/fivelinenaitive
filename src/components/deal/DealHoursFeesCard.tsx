@@ -127,6 +127,7 @@ export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged, compact }:
           <p className="text-xs text-muted-foreground">{emptyMsg} — click to add.</p>
         )}
       </Card>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[720px]" onClick={(e) => e.stopPropagation()}>
