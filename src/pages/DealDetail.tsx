@@ -3304,7 +3304,7 @@ export default function DealDetail() {
                     />
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
                     <div className="flex items-stretch gap-2">
-                    <div className="relative flex-1 min-w-0 status-note-editor pr-8">
+                    <div className="relative flex-1 min-w-0 status-note-editor pr-10">
                     <RichTextInlineEdit
                       value={deal.notes || ''}
                       onSave={(value) => {
@@ -3351,12 +3351,12 @@ export default function DealDetail() {
                       </div>
                     )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <div className={cn("flex flex-wrap items-center justify-between gap-x-3 gap-y-1", !isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees && "mr-[228px]")}>
                       <div className="flex items-center gap-1">
                         <StatusHistoryPopover statusNotes={statusNotes} onDeleteNote={deleteStatusNote} />
                       </div>
                       {deal.notesUpdatedAt && (
-                        <p className="whitespace-nowrap text-xs text-muted-foreground/70">
+                        <p className="ml-auto whitespace-nowrap text-right text-xs text-muted-foreground/70">
                           Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
                         </p>
                       )}
