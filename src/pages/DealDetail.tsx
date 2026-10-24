@@ -5213,7 +5213,7 @@ export default function DealDetail() {
                                   <div className="min-w-0 [&_.deal-tasks-openitems-widget>div]:!h-[clamp(260px,calc(100vh-464px),640px)]">{tasksNode}</div>
                                 </div>
                                 <div className="min-w-0 lg:order-3 grid grid-cols-1 sm:grid-cols-2 gap-0">
-                                  {fundingMixWidget && <div className="min-w-0 lg:h-[300px] [&>div]:h-full [&_.fs-tab-widget]:h-full [&_.fs-tab-widget]:flex [&_.fs-tab-widget]:flex-col [&_.fs-tab-widget>div:nth-child(2)]:my-auto [&_*]:!border-0 [&_*]:!shadow-none [&_.fs-tab-widget]:!p-2">{fundingMixWidget}</div>}
+                                  {fundingMixWidget && <div className="deal-fsmix-borderless min-w-0 lg:h-[300px] [&>div]:h-full [&_.fs-tab-widget]:h-full [&_.fs-tab-widget]:flex [&_.fs-tab-widget]:flex-col [&_.fs-tab-widget>div:nth-child(2)]:my-auto [&_*]:!border-0 [&_*]:!shadow-none [&_.fs-tab-widget]:!p-2">{fundingMixWidget}</div>}
                                   <div className={cn("min-w-0 lg:h-[300px] [&>section]:!mb-0 [&>section]:h-full [&>section]:overflow-hidden [&>section]:!border-0 [&>section>div:first-child]:!px-2 [&>section>div:first-child]:!pt-2 [&>section>div:first-child]:!pb-1 [&>section>div:last-child]:!px-2 [&>section>div:last-child]:!pb-2", !fundingMixWidget && "sm:col-span-2")}><DealActivityTimelineChart dealId={deal.id} /></div>
                                 </div>
                                 {milestonesCalendarWidget && (
