@@ -3353,7 +3353,7 @@ export default function DealDetail() {
                     )}
                     </div>
                     {deal.notesUpdatedAt && (
-                    <div className={cn("pointer-events-none relative flex h-6 -mt-6 items-center justify-end", !isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees ? "mr-[280px]" : "mr-[28px]")}>
+                    <div className={cn("pointer-events-none relative flex h-6 -mt-6 items-center justify-end", !isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees ? "mr-[274px]" : "mr-[22px]")}>
                         <p className="whitespace-nowrap text-right text-xs leading-none text-muted-foreground/70">
                           Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')}
                         </p>
