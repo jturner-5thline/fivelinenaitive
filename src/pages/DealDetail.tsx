@@ -3333,8 +3333,10 @@ export default function DealDetail() {
                     />
                     </div>
                     {!isSimplifiedDeal && !isNaitiveDeal && !isProjectsDeal && widgetVis.hoursFees && (
-                      <div className="shrink-0 w-[150px]">
-                        <DealHoursFeesCard compact deal={deal} updateDeal={(field, value) => updateDeal(field as any, value)} onHoursChanged={() => { void refreshDeals?.(); }} />
+                      <div className="shrink-0 w-[220px] flex justify-center">
+                        <div className="w-[150px]">
+                          <DealHoursFeesCard compact deal={deal} updateDeal={(field, value) => updateDeal(field as any, value)} onHoursChanged={() => { void refreshDeals?.(); }} />
+                        </div>
                       </div>
                     )}
                     </div>
