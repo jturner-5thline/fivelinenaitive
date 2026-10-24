@@ -21,7 +21,7 @@ interface WeekRow { week_start_date: string; hours: number; phase: string }
  * KPI-style Hours & Fees widget: current Revenue / Hour + weekly hours chart.
  * Clicking opens a dialog with the full hours & fees inputs.
  */
-export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged }: DealHoursFeesCardProps) {
+export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged, compact }: DealHoursFeesCardProps & { compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<WeekRow[]>([]);
 
@@ -68,6 +68,28 @@ export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged }: DealHour
 
   return (
     <>
+      {compact ? (
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Hours and fees"
+          onClick={() => setOpen(true)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(true); } }}
+          title={emptyMsg ? `${emptyMsg} — click to add` : 'Edit hours & fees'}
+          className="deal-hours-fees-compact group h-full w-full grid grid-cols-3 items-center rounded-lg border border-[#1E2C46] bg-transparent cursor-pointer transition-colors hover:bg-foreground/[0.03]"
+        >
+          {[
+            { label: 'Rev / Hour', value: rph !== null ? fmtMoney(rph) : '—', primary: true },
+            { label: 'Total Fee', value: hasFees ? fmtMoney(totalFee) : '—' },
+            { label: 'Hours', value: totalHours.toLocaleString(undefined, { maximumFractionDigits: 1 }) },
+          ].map((m, i) => (
+            <div key={m.label} className={`min-w-0 px-2 text-center ${i > 0 ? 'border-l border-[#1E2C46]' : ''}`}>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground truncate">{m.label}</p>
+              <p className={`tabular-nums font-mono truncate ${m.primary ? 'text-lg font-semibold text-primary' : 'text-sm font-medium text-foreground'}`}>{m.value}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
       <Card
         role="button"
         tabIndex={0}
