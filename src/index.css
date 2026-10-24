@@ -5273,3 +5273,13 @@ html .deal-detail-surface section.deal-milestones-calendar-widget [data-slot="ca
   border-color: transparent !important;
   box-shadow: none !important;
 }
+
+/* Funding Source Mix beside Deal Activity: no outer border */
+html body .deal-detail-surface .deal-fsmix-borderless .fs-tab-widget,
+html body.ceo-theme .deal-detail-surface .deal-fsmix-borderless .fs-tab-widget,
+html body .deal-fsmix-borderless .fs-tab-widget,
+html body .deal-fsmix-borderless .fs-tab-widget:hover {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
