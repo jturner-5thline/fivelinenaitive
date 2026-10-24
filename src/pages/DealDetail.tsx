@@ -3957,7 +3957,7 @@ export default function DealDetail() {
               {statusNoteColumn}
             </div>
           )}
-          {useContextRailLayout && <div className="mt-3">{dealTabsRow}</div>}
+          {useContextRailLayout && <div className="mt-1 [&>div]:pt-0">{dealTabsRow}</div>}
 
           <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
             <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
