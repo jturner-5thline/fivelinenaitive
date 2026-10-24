@@ -98,7 +98,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
       {layout === 'widget' && !unframed && (
         <h3 className="mb-2 text-[13px] font-semibold text-foreground">Deal Info</h3>
       )}
-      <div ref={measureRef} className={cn(layout === 'widget' ? 'grid grid-cols-[repeat(auto-fit,minmax(min(100%,130px),1fr))] gap-x-[clamp(0.5rem,1.5vw,1rem)] gap-y-3 items-start [&>*]:min-w-0 [&_button]:min-w-0 [&_button]:max-w-full' : 'space-y-3')}>
+      <div ref={measureRef} className={cn(layout === 'widget' ? 'grid grid-cols-4 gap-x-2 gap-y-3 items-start [&>*]:min-w-0 [&_button]:min-w-0 [&_button]:max-w-full [&_button]:px-1.5 [&_*]:truncate-none' : 'space-y-3')}>
       {!hideIdentity && (
       <div className="space-y-1.5 pt-3">
         <InlineEditField
@@ -213,7 +213,7 @@ export function DealContextRail({ deal, className, onUpdateField, compact, hideI
         <RailLabel>Deal owner</RailLabel>
         {ownerOptions && ownerOptions.length > 0 && onUpdateField ? (
           <div className="flex items-center gap-2">
-            <span className="h-6 w-6 shrink-0 rounded-full bg-primary/15 text-primary text-[11px] font-semibold flex items-center justify-center">
+            <span className="h-5 w-5 shrink-0 rounded-full bg-primary/15 text-primary text-[10px] font-semibold flex items-center justify-center">
               {initials(owner)}
             </span>
             <Select
