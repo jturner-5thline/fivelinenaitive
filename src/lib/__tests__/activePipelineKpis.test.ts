@@ -147,3 +147,20 @@ describe('totalActiveRevenue', () => {
     expect(totalActiveRevenue([r('in-due-diligence', 10, 20, 30), r('final-credit-items', 5)])).toBe(5);
   });
 });
+
+import { kpiDrilldownRows, activeDealsCount as _adc } from '../activePipelineKpis';
+describe('kpiDrilldownRows', () => {
+  const stages = ['NDA & Needs List Sent','Agreement Pending','Final Credit Items','Terms Issued','In Due Diligence','Closed Won'].map((l, i) => ({ id: `s${i}`, label: l }));
+  const mk = (id: string, stage: string, extra: Record<string, unknown> = {}) => ({ id, company: `Co ${id}`, stage, value: 100, ...extra }) as any;
+  const deals = [mk('a','s0'), mk('b','s1'), mk('c','s2',{ totalFee: 50 }), mk('d','s4',{ totalFee: 50, retainerFee: 10, milestoneFee: 5 }), mk('e','s5')];
+  it('active deals list matches the count', () => {
+    expect(kpiDrilldownRows('active_deals', deals, stages).map(r => r.deal.id).sort()).toEqual(['c','d']);
+    expect(_adc(deals, stages)).toBe(2);
+  });
+  it('sales pipeline lists Agreement Pending or earlier only', () => {
+    expect(kpiDrilldownRows('sales_pipeline', deals, stages).map(r => r.deal.id).sort()).toEqual(['a','b']);
+  });
+  it('total revenue rows use the closing fee at In Due Diligence', () => {
+    expect(kpiDrilldownRows('total_revenue', deals, stages).find(r => r.deal.id === 'd')?.amount).toBe(35);
+  });
+});
