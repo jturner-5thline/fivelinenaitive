@@ -76,18 +76,15 @@ export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged, compact }:
           onClick={() => setOpen(true)}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(true); } }}
           title={emptyMsg ? `${emptyMsg} — click to add` : 'Edit hours & fees'}
-          className="deal-hours-fees-compact group h-full w-full grid grid-cols-3 items-center rounded-lg border border-[#1E2C46] bg-transparent cursor-pointer transition-colors hover:bg-foreground/[0.03]"
+          className="deal-hours-fees-compact group w-full flex flex-col items-center justify-center gap-1 rounded-md !border-0 bg-transparent px-2 py-1 text-center cursor-pointer transition-colors hover:bg-foreground/[0.03]"
         >
-          {[
-            { label: 'Rev / Hour', value: rph !== null ? fmtMoney(rph) : '—', primary: true },
-            { label: 'Total Fee', value: hasFees ? fmtMoney(totalFee) : '—' },
-            { label: 'Hours', value: totalHours.toLocaleString(undefined, { maximumFractionDigits: 1 }) },
-          ].map((m, i) => (
-            <div key={m.label} className={`min-w-0 px-2 text-center ${i > 0 ? 'border-l border-[#1E2C46]' : ''}`}>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground truncate">{m.label}</p>
-              <p className={`tabular-nums font-mono truncate ${m.primary ? 'text-lg font-semibold text-primary' : 'text-sm font-medium text-foreground'}`}>{m.value}</p>
-            </div>
-          ))}
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Rev / Hour</p>
+          <p className="text-2xl leading-none font-semibold tabular-nums font-mono text-primary truncate max-w-full">{rph !== null ? fmtMoney(rph) : '—'}</p>
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground tabular-nums font-mono whitespace-nowrap">
+            <span title="Total Fee">{hasFees ? fmtMoney(totalFee) : '—'} fee</span>
+            <span aria-hidden>·</span>
+            <span title="Total Hours">{totalHours.toLocaleString(undefined, { maximumFractionDigits: 1 })} hrs</span>
+          </div>
         </div>
       ) : (
       <Card
