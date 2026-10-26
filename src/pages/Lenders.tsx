@@ -1574,7 +1574,7 @@ export default function Lenders() {
         header chrome, or padding rhythm.
       */}
       <WorkspacePage
-        mainClassName="w-full px-4 -mt-1 pb-0 sm:px-6 flex-1 flex flex-col min-h-0"
+        mainClassName="w-full px-4 pt-0 -mt-1 pb-0 sm:px-6 flex-1 flex flex-col min-h-0"
         contentClassName="space-y-2 flex-1 flex flex-col min-h-0"
       >
             {/* Compact single-band toolbar — title + all controls in one row so
