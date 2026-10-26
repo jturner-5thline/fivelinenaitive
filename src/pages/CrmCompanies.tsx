@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { createPortal } from 'react-dom';
 import { Plus, Upload, Building2, Loader2, RefreshCw, Download, Search, X, ChevronDown, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
@@ -199,14 +200,14 @@ export default function CrmCompanies() {
                 ) : null}
               </div>
                   }
-                  toolbarActions={
-                    <>
+                  toolbarActions={createPortal(
+                    <div className="crm-companies-header-actions fixed top-[16px] right-4 z-[1001] flex items-center gap-1.5 shrink-0">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="h-9">
-                            {isExporting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
-                            Actions
-                            <ChevronDown className="h-4 w-4 ml-1.5" />
+                          <Button variant="outline" size="sm" className="relative gap-1.5 rounded-md h-[40px] px-4">
+                            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                            <span className="truncate">Actions</span>
+                            <ChevronDown className="h-3.5 w-3.5 opacity-60 shrink-0" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56">
@@ -224,9 +225,13 @@ export default function CrmCompanies() {
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                      <Button size="sm" className="h-9" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-1.5" /> Add Company</Button>
-                    </>
-                  }
+                      <Button variant="liquid-glass" size="sm" className="gap-2 h-[40px] px-4" onClick={() => setShowCreate(true)}>
+                        <Plus className="h-4 w-4" />
+                        <span className="truncate min-w-0">Add Company</span>
+                      </Button>
+                    </div>,
+                    document.body,
+                  )}
                   leadingFilterSlot={
                     <>
                     <div className="relative flex-1 min-w-[160px]">
