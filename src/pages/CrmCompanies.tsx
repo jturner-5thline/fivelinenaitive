@@ -182,6 +182,7 @@ export default function CrmCompanies() {
             <>
               <div className="flex-1 min-h-0">
                 <CrmCompaniesTable
+                  title="Companies"
                   companies={companies}
                   onEndReached={handleEndReached}
                   footer={
