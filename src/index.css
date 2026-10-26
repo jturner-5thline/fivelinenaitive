@@ -4671,8 +4671,8 @@ main:has(.deals-surface) .deal-milestones-card {
   background: transparent !important;
 }
 .flat-tile-skin .crm-companies-table {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border-subtle) !important;
+  background: transparent !important;
+  border: none !important;
   border-radius: var(--radius-card, 8px) !important;
   box-shadow: none !important;
   --tw-ring-shadow: 0 0 #0000 !important;
