@@ -410,18 +410,18 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-3 crm-companies-surface">
-      <div className="crm-companies-title-bar shrink-0 flex items-center gap-2 flex-wrap w-full min-w-0 rounded-xl border border-border/60 bg-card px-4 py-2 shadow-sm">
-        {title && <h1 className="text-2xl font-bold text-foreground shrink-0 mr-2">{title}</h1>}
+      <div className="crm-companies-title-bar shrink-0 flex items-center gap-1.5 xl:gap-2 flex-nowrap w-full min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card px-4 py-2 shadow-sm [&_button[role=combobox]]:min-w-[72px] [&_button[role=combobox]]:shrink [&>*]:min-w-0">
+        {title && <h1 className="text-xl xl:text-2xl font-bold text-foreground shrink-0 mr-1 xl:mr-2 whitespace-nowrap">{title}</h1>}
         {leadingFilterSlot}
         <Select value={companyTypeFilter} onValueChange={setCompanyTypeFilter}>
-          <SelectTrigger className={cn('w-[125px]', TOOLBAR_CONTROL_CLASS)}><SelectValue placeholder="Type" /></SelectTrigger>
+          <SelectTrigger className={cn('w-[125px] shrink', TOOLBAR_CONTROL_CLASS)}><SelectValue placeholder="Type" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
             {CRM_COMPANY_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-          <SelectTrigger className={cn('w-[130px]', TOOLBAR_CONTROL_CLASS)}><SelectValue placeholder="Owner" /></SelectTrigger>
+          <SelectTrigger className={cn('w-[130px] shrink', TOOLBAR_CONTROL_CLASS)}><SelectValue placeholder="Owner" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Owners</SelectItem>
             <SelectItem value="unassigned">Unassigned</SelectItem>
@@ -429,7 +429,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
           </SelectContent>
         </Select>
         <Select value={industryFilter} onValueChange={setIndustryFilter}>
-          <SelectTrigger className={cn('w-[135px]', TOOLBAR_CONTROL_CLASS)}><SelectValue placeholder="Industry" /></SelectTrigger>
+          <SelectTrigger className={cn('w-[135px] shrink', TOOLBAR_CONTROL_CLASS)}><SelectValue placeholder="Industry" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Industries</SelectItem>
             {industryOptions.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}

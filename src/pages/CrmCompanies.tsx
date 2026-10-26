@@ -234,7 +234,7 @@ export default function CrmCompanies() {
                   )}
                   leadingFilterSlot={
                     <>
-                    <div className="relative flex-1 min-w-[160px]">
+                    <div className="relative flex-1 min-w-[110px]">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         placeholder="Search companies..."
