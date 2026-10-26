@@ -5314,3 +5314,10 @@ html body .deal-fsmix-borderless .fs-tab-widget:hover {
   background: transparent !important;
   border: 0 !important;
 }
+
+/* Companies table column header: match the page canvas so it reads transparent
+   while still masking rows that scroll beneath the sticky header. */
+html body.ceo-theme .crm-companies-table thead tr,
+html body.ceo-theme .crm-companies-table thead th {
+  background-color: #0B1526 !important;
+}
