@@ -45,7 +45,7 @@ import { FlaggedDealsCarousel } from '@/components/deals/FlaggedDealsCarousel';
 import { CreateCompanyBanner } from '@/components/deals/CreateCompanyBanner';
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { useDeals, DEFAULT_DEAL_FILTERS } from '@/hooks/useDeals';
-import { useDealSavedViews, DealViewConfig } from '@/hooks/useDealSavedViews';
+import { useDealSavedViews, DealViewConfig, isSameViewConfig } from '@/hooks/useDealSavedViews';
 import { DealSavedViewsMenu } from '@/components/deals/DealSavedViewsMenu';
 import { useDealsLastViewState } from '@/hooks/useDealsLastViewState';
 import { useDealsContext } from '@/contexts/DealsContext';
@@ -135,6 +135,7 @@ export default function Dashboard() {
     views: savedViews,
     isLoaded: savedViewsLoaded,
     saveView,
+    saveCurrentAsDefault,
     deleteView,
     setDefault,
     clearDefaultView,
@@ -148,9 +149,9 @@ export default function Dashboard() {
   // if they never explicitly saved a view. Loaded from localStorage
   // synchronously, then hydrated from the DB.
   const [lastViewState, persistLastViewState] = useDealsLastViewState(null);
-  // Last-state wins over the org default view — it reflects the user's
-  // most recent intent.
-  const initialView = lastViewState ?? (defaultView?.config ?? null);
+  // The company default view wins on page load; last-used state is the
+  // fallback when no default has been set.
+  const initialView = defaultView?.config ?? lastViewState ?? null;
 
   // Grouping is optional and starts unset; we hydrate from the org default view
   // (or leave it null = ungrouped) once saved views finish loading. NEVER coerce
@@ -336,9 +337,9 @@ export default function Dashboard() {
   const defaultViewAppliedRef = useRef(false);
   useEffect(() => {
     if (!savedViewsLoaded || defaultViewAppliedRef.current) return;
-    // Prefer the user's last-used state over the org default view so a
-    // refresh always lands the user back where they left off.
-    const source = lastViewState ?? defaultView?.config ?? null;
+    // The company default view is authoritative on page load; the user's
+    // last-used state only applies when no default view exists.
+    const source = defaultView?.config ?? lastViewState ?? null;
     if (source) {
       defaultViewAppliedRef.current = true;
       setFilters(source.filters);
@@ -376,24 +377,31 @@ export default function Dashboard() {
   useEffect(() => {
     if (previousPipelineIdRef.current === activePipelineId) return;
     previousPipelineIdRef.current = activePipelineId;
-    resetDealViewState({ clearDefaultOnly: true });
+    resetDealViewState();
   }, [activePipelineId, resetDealViewState]);
 
   // Check if any filters are active (different from defaults)
   const hasActiveFilters = JSON.stringify(filters) !== JSON.stringify(DEFAULT_DEAL_FILTERS) 
     || sortField !== 'updatedAt' || sortDirection !== 'desc';
 
-  const handleSaveView = (name: string) => {
-    const config: DealViewConfig = {
-      filters,
-      sortField,
-      sortDirection,
-      viewMode,
-      groupBy,
-      collapsedGroups,
-    };
-    saveView(name, config);
+  const currentViewConfig = (): DealViewConfig => ({
+    filters,
+    sortField,
+    sortDirection,
+    viewMode,
+    groupBy,
+    collapsedGroups,
+  });
+
+  const handleSaveView = (name: string, makeDefault?: boolean) => {
+    saveView(name, currentViewConfig(), { makeDefault });
   };
+
+  const handleSaveAsDefault = () => {
+    saveCurrentAsDefault(currentViewConfig());
+  };
+
+  const isDefaultViewActive = !!defaultView && isSameViewConfig(defaultView.config, currentViewConfig());
 
   const handleRestoreView = (view: typeof savedViews[0]) => {
     setFilters(view.config.filters);
@@ -435,12 +443,15 @@ export default function Dashboard() {
     return sameFilters && sameSort;
   }, [dealsInSelectedPipeline.length, pipelineFilteredDeals.length, defaultView, filters, sortField, sortDirection]);
 
+  // The default view is shared company-wide, so never delete it here — just
+  // reset this page's filters so deals are visible.
   useEffect(() => {
     if (!savedViewLikelyHidingDeals || isLoading || savedViewWarningDismissed) return;
-    resetDealViewState({ clearSavedViews: true, showToast: true });
+    resetDealViewState();
+    setSavedViewWarningDismissed(true);
     toast({
-      title: 'Saved view cleared',
-      description: 'A saved view was hiding all deals in this pipeline, so it was removed.',
+      title: 'Filters reset',
+      description: 'The default view was hiding all deals in this pipeline, so filters were reset for now.',
     });
   }, [isLoading, resetDealViewState, savedViewLikelyHidingDeals, savedViewWarningDismissed]);
 
@@ -816,6 +827,9 @@ export default function Dashboard() {
                     onDelete={deleteView}
                     onSetDefault={setDefault}
                     hasActiveFilters={hasActiveFilters}
+                    onSaveAsDefault={handleSaveAsDefault}
+                    isDefaultViewActive={isDefaultViewActive}
+                    defaultViewName={defaultView?.name ?? null}
                     open={savedViewsOpen}
                     onOpenChange={setSavedViewsOpen}
                     hideTrigger
@@ -932,7 +946,7 @@ export default function Dashboard() {
                       </Button>
                       <Button
                         size="sm"
-                        onClick={() => resetDealViewState({ clearSavedViews: true, showToast: true })}
+                        onClick={() => resetDealViewState({ showToast: true })}
                       >
                         Reset Filters
                       </Button>
