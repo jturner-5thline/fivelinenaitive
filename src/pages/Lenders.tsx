@@ -3,6 +3,7 @@ import { parseMoney, toList } from '@/lib/lenders/parseLenderForm';
 import { useState, useMemo, useCallback, useRef, useEffect, useDeferredValue } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { createPortal } from 'react-dom';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
 import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown, FolderPlus, FileX, BarChart3, Copy, Layers, GitMerge, Video } from 'lucide-react';
 import { WorkspacePage } from '@/components/layout/WorkspacePage';
