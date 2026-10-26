@@ -3,6 +3,7 @@ import { parseMoney, toList } from '@/lib/lenders/parseLenderForm';
 import { useState, useMemo, useCallback, useRef, useEffect, useDeferredValue } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { createPortal } from 'react-dom';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
 import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown, FolderPlus, FileX, BarChart3, Copy, Layers, GitMerge, Video } from 'lucide-react';
 import { WorkspacePage } from '@/components/layout/WorkspacePage';
@@ -1573,13 +1574,13 @@ export default function Lenders() {
         header chrome, or padding rhythm.
       */}
       <WorkspacePage
-        mainClassName="w-full px-4 pt-5 pb-0 sm:px-6 flex-1 flex flex-col min-h-0"
+        mainClassName="w-full px-4 pt-0 -mt-1 pb-0 sm:px-6 flex-1 flex flex-col min-h-0"
         contentClassName="space-y-2 flex-1 flex flex-col min-h-0"
       >
             {/* Compact single-band toolbar — title + all controls in one row so
                 the funding sources grid becomes the dominant vertical region. */}
-            <div className="lg-toolbar flex flex-wrap items-center gap-2 px-3 py-2">
-              <h1 className="text-sm font-semibold flex items-center gap-2 text-foreground tracking-tight mr-2">
+            <div className="crm-companies-title-bar crm-companies-header-clear flex flex-nowrap items-center gap-1.5 xl:gap-2 w-full min-w-0 overflow-hidden px-3 py-2 [&_button[role=combobox]]:min-w-[72px] [&_button[role=combobox]]:shrink [&>*]:min-w-0">
+              <h1 className="text-xl xl:text-2xl font-bold flex items-center gap-2 text-foreground shrink-0 whitespace-nowrap mr-1 xl:mr-2">
                 <Building2 className="h-4 w-4 text-foreground/80" />
                 Directory
                 <BetaBadge featureKey="page_lenders" />
@@ -1593,7 +1594,7 @@ export default function Lenders() {
 
               <LenderSearchInput onDebouncedChange={setDebouncedSearchQuery} />
 
-              <div className="flex flex-wrap items-center gap-1.5 ml-auto">
+              <div className="flex flex-nowrap items-center gap-1.5 ml-auto min-w-0 shrink">
                 {/* Filters — opens off-canvas sheet */}
                 <Button
                   variant="outline"
@@ -1694,26 +1695,23 @@ export default function Lenders() {
                   </Button>
                 </div>
 
-                {/* Primary CTA */}
-                <Button onClick={openAddDialog} size="sm" className="lg-cta gap-1 h-8">
-                  <Plus className="h-3.5 w-3.5" />
-                  Add
-                </Button>
-
-                {/* Consolidated Actions dropdown — Import, Merge, Sync, Config, Analytics */}
+                {/* Actions + Add live in the top-right corner, matching Deals' Controls / New Deal */}
+                {createPortal(
+                <div className="crm-companies-header-actions fixed top-[16px] right-4 z-[1001] flex items-center gap-1.5 shrink-0">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="lg-pill relative h-8 w-8 p-0"
+                      className="relative gap-1.5 rounded-md h-[40px] px-4"
                       aria-label={
                         pendingCallMatches > 0
-                          ? `More actions — ${pendingCallMatches} call matches to review`
-                          : 'More actions'
+                          ? `Actions — ${pendingCallMatches} call matches to review`
+                          : 'Actions'
                       }
                     >
-                      <MoreHorizontal className="h-4 w-4" />
+                      <span className="truncate">Actions</span>
+                      <ChevronDown className="h-3.5 w-3.5 opacity-60 shrink-0" />
                       {pendingCallMatches > 0 && (
                         <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-semibold leading-none text-black">
                           {pendingCallMatches > 99 ? '99+' : pendingCallMatches}
@@ -1779,6 +1777,13 @@ export default function Lenders() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <Button variant="liquid-glass" size="sm" className="gap-2 h-[40px] px-4" onClick={openAddDialog}>
+                  <Plus className="h-4 w-4" />
+                  <span className="truncate min-w-0">Add Funding Source</span>
+                </Button>
+                </div>,
+                document.body,
+                )}
               </div>
             </div>
 

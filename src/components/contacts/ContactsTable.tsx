@@ -35,6 +35,8 @@ interface ContactsTableProps {
   onSearchChange?: (value: string) => void;
   toolbarExtras?: React.ReactNode;
   toolbarActions?: React.ReactNode;
+  /** Page title rendered inside the merged header bar. */
+  title?: string;
   footer?: React.ReactNode;
   isFetching?: boolean;
 }
@@ -76,7 +78,7 @@ const CONTACT_HEADERS: Record<string, { label: string; field?: string }> = {
 };
 const CONTACT_COLUMNS: CrmColumnDef[] = Object.entries(CONTACT_HEADERS).map(([id, h]) => ({ id, label: h.label }));
 
-export function ContactsTable({ contacts, onBulkAction, search: controlledSearch, onSearchChange, toolbarExtras, toolbarActions, footer, isFetching }: ContactsTableProps) {
+export function ContactsTable({ contacts, onBulkAction, search: controlledSearch, onSearchChange, toolbarExtras, toolbarActions, footer, isFetching, title }: ContactsTableProps) {
   const navigate = useNavigate();
   const cols = useCrmTableColumns('contacts', CONTACT_COLUMNS);
   const [localSearch, setLocalSearch] = useState('');
@@ -224,9 +226,10 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-3 crm-companies-surface">
-      {/* Toolbar */}
-      <div className="shrink-0 flex items-center gap-2 flex-nowrap">
-        <div className="relative flex-1 min-w-[140px]">
+      {/* Merged header: title + search + filters, single row, transparent */}
+      <div className="crm-companies-title-bar crm-companies-header-clear shrink-0 flex items-center gap-1.5 xl:gap-2 flex-nowrap w-full min-w-0 overflow-hidden px-4 py-2 [&_button[role=combobox]]:min-w-[72px] [&_button[role=combobox]]:shrink [&>*]:min-w-0">
+        {title && <h1 className="text-xl xl:text-2xl font-bold text-foreground shrink-0 mr-1 xl:mr-2 whitespace-nowrap">{title}</h1>}
+        <div className="relative flex-1 min-w-[110px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search contacts..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9" />
         </div>
@@ -272,7 +275,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="ml-auto flex items-center gap-2 shrink-0">
           <ColumnSettingsButton
             columns={CONTACT_COLUMNS}
             order={cols.order}
