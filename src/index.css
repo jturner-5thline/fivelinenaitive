@@ -2666,9 +2666,14 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    hyperlinks (`a`) keep their link color and hover behavior.
    ───────────────────────────────────────────────────────────────────── */
 .crm-companies-table {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border-subtle);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
   border-radius: var(--radius-card, 8px);
+}
+.crm-companies-table th {
+  background: transparent !important;
 }
 .crm-companies-table thead tr,
 .crm-companies-table thead th,

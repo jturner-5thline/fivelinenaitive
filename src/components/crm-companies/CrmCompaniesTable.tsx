@@ -35,6 +35,8 @@ interface CrmCompaniesTableProps {
   onBulkAction?: (action: string, ids: string[]) => void;
   leadingFilterSlot?: React.ReactNode;
   toolbarActions?: React.ReactNode;
+  /** Page title rendered inside the merged header/toolbar bar. */
+  title?: string;
   /** Called when the user scrolls to the bottom of the table. */
   onEndReached?: () => void;
   footer?: React.ReactNode;
@@ -74,7 +76,7 @@ const COMPANY_HEADERS: Record<string, { label: string; field: string; sortable?:
 };
 const COMPANY_COLUMNS: CrmColumnDef[] = Object.entries(COMPANY_HEADERS).map(([id, h]) => ({ id, label: h.label }));
 
-export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, toolbarActions, onEndReached, footer }: CrmCompaniesTableProps) {
+export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, toolbarActions, onEndReached, footer, title }: CrmCompaniesTableProps) {
   const navigate = useNavigate();
   const cols = useCrmTableColumns('crm_companies', COMPANY_COLUMNS);
   const [search, setSearch] = useState('');
@@ -408,7 +410,8 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-3 crm-companies-surface">
-      <div className="shrink-0 flex items-center gap-2 flex-nowrap w-full min-w-0">
+      <div className="crm-companies-title-bar shrink-0 flex items-center gap-2 flex-nowrap w-full min-w-0 rounded-xl border border-border/60 bg-card px-4 py-2 shadow-sm">
+        {title && <h1 className="text-2xl font-bold text-foreground shrink-0 mr-2">{title}</h1>}
         {leadingFilterSlot}
         <Select value={companyTypeFilter} onValueChange={setCompanyTypeFilter}>
           <SelectTrigger className={cn('w-[125px]', TOOLBAR_CONTROL_CLASS)}><SelectValue placeholder="Type" /></SelectTrigger>
