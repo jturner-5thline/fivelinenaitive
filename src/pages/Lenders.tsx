@@ -1694,26 +1694,23 @@ export default function Lenders() {
                   </Button>
                 </div>
 
-                {/* Primary CTA */}
-                <Button onClick={openAddDialog} size="sm" className="lg-cta gap-1 h-8">
-                  <Plus className="h-3.5 w-3.5" />
-                  Add
-                </Button>
-
-                {/* Consolidated Actions dropdown — Import, Merge, Sync, Config, Analytics */}
+                {/* Actions + Add live in the top-right corner, matching Deals' Controls / New Deal */}
+                {createPortal(
+                <div className="crm-companies-header-actions fixed top-[16px] right-4 z-[1001] flex items-center gap-1.5 shrink-0">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="lg-pill relative h-8 w-8 p-0"
+                      className="relative gap-1.5 rounded-md h-[40px] px-4"
                       aria-label={
                         pendingCallMatches > 0
-                          ? `More actions — ${pendingCallMatches} call matches to review`
-                          : 'More actions'
+                          ? `Actions — ${pendingCallMatches} call matches to review`
+                          : 'Actions'
                       }
                     >
-                      <MoreHorizontal className="h-4 w-4" />
+                      <span className="truncate">Actions</span>
+                      <ChevronDown className="h-3.5 w-3.5 opacity-60 shrink-0" />
                       {pendingCallMatches > 0 && (
                         <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-semibold leading-none text-black">
                           {pendingCallMatches > 99 ? '99+' : pendingCallMatches}
@@ -1779,6 +1776,9 @@ export default function Lenders() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                </div>,
+                document.body,
+                )}
               </div>
             </div>
 
