@@ -249,7 +249,6 @@ export default function Contacts() {
                   title="Contacts"
                   toolbarActions={createPortal(
                     <div className="crm-companies-header-actions fixed top-[16px] right-4 z-[1001] flex items-center gap-1.5 shrink-0">
-              <CrmUpdateQueueButton />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="relative gap-1.5 rounded-md h-[40px] px-4">
@@ -312,6 +311,7 @@ export default function Contacts() {
                   )}
                   toolbarExtras={
                     <div className="flex items-center gap-1.5 min-w-0 shrink [&_button[role=combobox]]:min-w-[72px] [&_button[role=combobox]]:shrink">
+                      <CrmUpdateQueueButton />
                       <AdvancedFilterBuilder
                         availableFields={CONTACT_CORE_FIELDS}
                         filters={advancedFilters}
