@@ -5028,7 +5028,6 @@ html body.ceo-theme .flat-tile-skin,
 html body.ceo-theme .flat-tile-dialog,
 html body.ceo-theme .insights-widget-surface,
 html body.ceo-theme .fs-tab-widget,
-html body.ceo-theme .crm-companies-table,
 html body.ceo-theme .deal-glass,
 html body.ceo-theme .deal-tile,
 html body.ceo-theme .bg-card,
@@ -5044,6 +5043,16 @@ html body.ceo-theme .crm-companies-title-bar,
 html body.ceo-theme .flat-tile-skin .crm-companies-title-bar,
 html body.ceo-theme thead,
 html body.ceo-theme thead th { background-color: #101D33 !important; }
+/* Companies table: fully transparent, borderless (header bar keeps its frame) */
+html body.ceo-theme .crm-companies-table,
+html body.ceo-theme .crm-companies-table thead,
+html body.ceo-theme .crm-companies-table thead th {
+  background-color: transparent !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+html body.ceo-theme .crm-companies-table { border: none !important; }
 html body.ceo-theme .bg-muted,
 html body.ceo-theme .bg-secondary,
 html body.ceo-theme .bg-background { background-color: #0B1526 !important; }
