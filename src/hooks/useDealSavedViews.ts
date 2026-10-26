@@ -197,6 +197,7 @@ export function useDealSavedViews() {
     views,
     isLoaded: !!companyId && !isLoading,
     saveView,
+    saveCurrentAsDefault,
     deleteView,
     setDefault,
     clearDefaultView,
