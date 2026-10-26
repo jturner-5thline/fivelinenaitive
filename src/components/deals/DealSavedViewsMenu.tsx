@@ -4,17 +4,21 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DealSavedView, DealViewConfig } from '@/hooks/useDealSavedViews';
 import { cn } from '@/lib/utils';
 
 interface DealSavedViewsMenuProps {
   views: DealSavedView[];
-  onSave: (name: string) => void;
+  onSave: (name: string, makeDefault?: boolean) => void;
   onRestore: (view: DealSavedView) => void;
   onDelete: (id: string) => void;
   onSetDefault: (id: string | null) => void;
   hasActiveFilters: boolean;
+  onSaveAsDefault?: () => void;
+  isDefaultViewActive?: boolean;
+  defaultViewName?: string | null;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   hideTrigger?: boolean;
@@ -27,6 +31,9 @@ export function DealSavedViewsMenu({
   onDelete,
   onSetDefault,
   hasActiveFilters,
+  onSaveAsDefault,
+  isDefaultViewActive = false,
+  defaultViewName = null,
   open: openProp,
   onOpenChange,
   hideTrigger = false,
@@ -35,11 +42,13 @@ export function DealSavedViewsMenu({
   const open = openProp ?? openState;
   const setOpen = (v: boolean) => { setOpenState(v); onOpenChange?.(v); };
   const [newName, setNewName] = useState('');
+  const [makeDefault, setMakeDefault] = useState(false);
 
   const handleSave = () => {
     if (!newName.trim()) return;
-    onSave(newName.trim());
+    onSave(newName.trim(), makeDefault);
     setNewName('');
+    setMakeDefault(false);
   };
 
   const handleRestore = (view: DealSavedView) => {
@@ -72,11 +81,35 @@ export function DealSavedViewsMenu({
         </Button>
       </PopoverTrigger>
       )}
-      <PopoverContent className="w-72 p-0" align="end">
+      <PopoverContent className="w-80 p-0" align="end">
+        {onSaveAsDefault && (
+          <div className="p-3 border-b space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-medium">Default view</p>
+              <span className="text-[10px] text-muted-foreground truncate">
+                {defaultViewName
+                  ? (isDefaultViewActive ? `Showing "${defaultViewName}"` : 'Current view differs')
+                  : 'None set'}
+              </span>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Loads for everyone in your account when they open Deals.
+            </p>
+            <Button
+              size="sm"
+              className="h-8 w-full gap-1.5"
+              onClick={() => { onSaveAsDefault(); setOpen(false); }}
+              disabled={isDefaultViewActive}
+            >
+              <Star className="h-3.5 w-3.5" />
+              {isDefaultViewActive ? 'Current view is the default' : 'Save current view as default'}
+            </Button>
+          </div>
+        )}
         <div className="p-3 border-b space-y-2">
-          <p className="text-xs font-medium">Saved Views</p>
+          <p className="text-xs font-medium">Save as new view</p>
           <p className="text-[10px] text-muted-foreground">
-            Save your current filters, sorting, and view mode
+            Saves current filters, sorting, grouping, and layout
           </p>
           <div className="flex gap-1.5">
             <Input
@@ -91,10 +124,15 @@ export function DealSavedViewsMenu({
               className="h-7 px-2"
               onClick={handleSave}
               disabled={!newName.trim()}
+              aria-label="Save view"
             >
               <BookmarkPlus className="h-3.5 w-3.5" />
             </Button>
           </div>
+          <label className="flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer">
+            <Checkbox checked={makeDefault} onCheckedChange={(v) => setMakeDefault(v === true)} />
+            Make this the default view
+          </label>
         </div>
         <ScrollArea className="max-h-56">
           {views.length === 0 ? (
