@@ -1578,8 +1578,8 @@ export default function Lenders() {
       >
             {/* Compact single-band toolbar — title + all controls in one row so
                 the funding sources grid becomes the dominant vertical region. */}
-            <div className="lg-toolbar flex flex-wrap items-center gap-2 px-3 py-2">
-              <h1 className="text-sm font-semibold flex items-center gap-2 text-foreground tracking-tight mr-2">
+            <div className="crm-companies-title-bar crm-companies-header-clear flex flex-nowrap items-center gap-1.5 xl:gap-2 w-full min-w-0 overflow-hidden px-3 py-2 [&_button[role=combobox]]:min-w-[72px] [&_button[role=combobox]]:shrink [&>*]:min-w-0">
+              <h1 className="text-xl xl:text-2xl font-bold flex items-center gap-2 text-foreground shrink-0 whitespace-nowrap mr-1 xl:mr-2">
                 <Building2 className="h-4 w-4 text-foreground/80" />
                 Directory
                 <BetaBadge featureKey="page_lenders" />
@@ -1593,7 +1593,7 @@ export default function Lenders() {
 
               <LenderSearchInput onDebouncedChange={setDebouncedSearchQuery} />
 
-              <div className="flex flex-wrap items-center gap-1.5 ml-auto">
+              <div className="flex flex-nowrap items-center gap-1.5 ml-auto min-w-0 shrink">
                 {/* Filters — opens off-canvas sheet */}
                 <Button
                   variant="outline"
@@ -1776,6 +1776,10 @@ export default function Lenders() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <Button variant="liquid-glass" size="sm" className="gap-2 h-[40px] px-4" onClick={openAddDialog}>
+                  <Plus className="h-4 w-4" />
+                  <span className="truncate min-w-0">Add Funding Source</span>
+                </Button>
                 </div>,
                 document.body,
                 )}
