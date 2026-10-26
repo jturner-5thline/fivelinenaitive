@@ -827,6 +827,9 @@ export default function Dashboard() {
                     onDelete={deleteView}
                     onSetDefault={setDefault}
                     hasActiveFilters={hasActiveFilters}
+                    onSaveAsDefault={handleSaveAsDefault}
+                    isDefaultViewActive={isDefaultViewActive}
+                    defaultViewName={defaultView?.name ?? null}
                     open={savedViewsOpen}
                     onOpenChange={setSavedViewsOpen}
                     hideTrigger
