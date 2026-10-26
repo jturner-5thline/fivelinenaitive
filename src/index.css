@@ -2666,9 +2666,14 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    hyperlinks (`a`) keep their link color and hover behavior.
    ───────────────────────────────────────────────────────────────────── */
 .crm-companies-table {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border-subtle);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
   border-radius: var(--radius-card, 8px);
+}
+.crm-companies-table th {
+  background: transparent !important;
 }
 .crm-companies-table thead tr,
 .crm-companies-table thead th,
@@ -4666,8 +4671,8 @@ main:has(.deals-surface) .deal-milestones-card {
   background: transparent !important;
 }
 .flat-tile-skin .crm-companies-table {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border-subtle) !important;
+  background: transparent !important;
+  border: none !important;
   border-radius: var(--radius-card, 8px) !important;
   box-shadow: none !important;
   --tw-ring-shadow: 0 0 #0000 !important;
@@ -5023,7 +5028,6 @@ html body.ceo-theme .flat-tile-skin,
 html body.ceo-theme .flat-tile-dialog,
 html body.ceo-theme .insights-widget-surface,
 html body.ceo-theme .fs-tab-widget,
-html body.ceo-theme .crm-companies-table,
 html body.ceo-theme .deal-glass,
 html body.ceo-theme .deal-tile,
 html body.ceo-theme .bg-card,
@@ -5039,6 +5043,16 @@ html body.ceo-theme .crm-companies-title-bar,
 html body.ceo-theme .flat-tile-skin .crm-companies-title-bar,
 html body.ceo-theme thead,
 html body.ceo-theme thead th { background-color: #101D33 !important; }
+/* Companies table: fully transparent, borderless (header bar keeps its frame) */
+html body.ceo-theme .crm-companies-table,
+html body.ceo-theme .crm-companies-table thead,
+html body.ceo-theme .crm-companies-table thead th {
+  background-color: transparent !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+html body.ceo-theme .crm-companies-table { border: none !important; }
 html body.ceo-theme .bg-muted,
 html body.ceo-theme .bg-secondary,
 html body.ceo-theme .bg-background { background-color: #0B1526 !important; }
@@ -5299,4 +5313,11 @@ html body .deal-fsmix-borderless .fs-tab-widget:hover {
   -webkit-text-fill-color: hsl(var(--primary)) !important;
   background: transparent !important;
   border: 0 !important;
+}
+
+/* Companies table column header: match the page canvas so it reads transparent
+   while still masking rows that scroll beneath the sticky header. */
+html body.ceo-theme .crm-companies-table thead tr,
+html body.ceo-theme .crm-companies-table thead th {
+  background-color: #0B1526 !important;
 }
