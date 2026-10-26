@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Upload, RefreshCw, Loader2, Link2, Download, Tags, ChevronDown, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -203,11 +204,12 @@ export default function Contacts() {
       </Helmet>
 
       <div className="bg-transparent">
-        <main className="w-full px-4 pt-2 pb-3 sm:px-6 flex flex-col gap-3 overflow-hidden h-[calc(100dvh-76px)]">
-          {/* Header */}
-          <div className="shrink-0 crm-companies-title-bar sticky top-0 z-30 flex items-center justify-between rounded-xl border border-border/60 px-4 py-2.5 shadow-sm">
-            <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
-          </div>
+        <main className="w-full px-4 -mt-1 pb-3 sm:px-6 flex flex-col gap-3 overflow-hidden h-[calc(100dvh-72px)]">
+          {isLoading && (
+            <div className="shrink-0 crm-companies-title-bar crm-companies-header-clear flex items-center px-4 py-2">
+              <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
+            </div>
+          )}
 
           {/* Content */}
           {isLoading ? (
@@ -244,12 +246,13 @@ export default function Contacts() {
                   search={search}
                   onSearchChange={handleSearchChange}
                   isFetching={isSearchPending}
-                  toolbarActions={
-                    <>
+                  title="Contacts"
+                  toolbarActions={createPortal(
+                    <div className="crm-companies-header-actions fixed top-[16px] right-4 z-[1001] flex items-center gap-1.5 shrink-0">
               <CrmUpdateQueueButton />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="relative gap-1.5 rounded-md h-[40px] px-4">
                     {isMatching || isExporting || isPreviewingMatch ? (
                       <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
                     ) : null}
@@ -301,13 +304,14 @@ export default function Contacts() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button size="sm" onClick={() => setShowCreate(true)}>
-                <Plus className="h-4 w-4 mr-1.5" /> Add Contact
+              <Button variant="liquid-glass" size="sm" className="gap-2 h-[40px] px-4" onClick={() => setShowCreate(true)}>
+                <Plus className="h-4 w-4" /> <span className="truncate min-w-0">Add Contact</span>
               </Button>
-                    </>
-                  }
+                    </div>,
+                    document.body,
+                  )}
                   toolbarExtras={
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 min-w-0 shrink [&_button[role=combobox]]:min-w-[72px] [&_button[role=combobox]]:shrink">
                       <AdvancedFilterBuilder
                         availableFields={CONTACT_CORE_FIELDS}
                         filters={advancedFilters}
