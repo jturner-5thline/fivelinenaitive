@@ -5321,3 +5321,15 @@ html body.ceo-theme .crm-companies-table thead tr,
 html body.ceo-theme .crm-companies-table thead th {
   background-color: #0B1526 !important;
 }
+
+/* Companies merged header: fully transparent, no border or shadow */
+html body .crm-companies-title-bar.crm-companies-header-clear,
+html body.ceo-theme .crm-companies-title-bar.crm-companies-header-clear,
+html body.ceo-theme .flat-tile-skin .crm-companies-title-bar.crm-companies-header-clear {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
