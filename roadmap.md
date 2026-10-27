@@ -2,8 +2,9 @@
 
 ## Invitation approval access
 - [x] Confirm invitation approval gap and reproduce denial redirect with simulated preview responses; all five Blount members currently approved.
-- [ ] Implement trusted invitation approval and error recovery — awaiting approval of the access-rule plan.
-- [ ] Verify invitation acceptance and regression tests — follows plan approval; live persistence requires approved test records.
+- [x] Apply transactional invitation approval with verified-recipient, inviter/company, reuse and revocation safeguards; show retry on approval-check errors; no existing records rewritten.
+- [x] Eight frontend tests and 24 isolated PostgreSQL assertions passed; desktop/phone preview checked at 1280/390px with intercepted acceptance and reopen; targeted lint and automatic build passed. Broader suite: 419 passed, 18 unrelated failures.
+- [ ] Verify real invitation acceptance persistence — requires approved test records or an isolated hosted environment; production invitation writes were not exercised.
 
 ## Homepage rebuild
 - [x] Update lifecycle sequence from uploaded brief; verified three ordered steps, 15px dots and desktop track endpoints at 1280/1198/820/390px; targeted lint and preview build passed.

@@ -12,3 +12,5 @@
 - Public homepage uses isolated `homepage-os` semantic tokens and a shared BookDemoDialog for every demo CTA; why: marketing updates must not restyle authenticated screens or diverge in request handling.
 
 - Assignment-email exclusions use the shared taskAssignmentEmailPolicy at both managed and legacy send boundaries; why: every assignment path must enforce the same policy without changing tasks or in-app notifications.
+
+- Team invitations use the transactional `accept_company_invitation` RPC to validate the token, verified recipient, approved same-company inviter, availability, and revocations before committing membership and approval; why: invitations must not leave partial memberships or turn self-signups and revoked users into approved accounts. Approval queries throw on failures, and both access screens show retry without granting access.

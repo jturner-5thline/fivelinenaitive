@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { seedSampleDeal } from '@/utils/seedSampleDeal';
@@ -12,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { ProfileSetupModal } from '@/components/onboarding/ProfileSetupModal';
 import { MigrateDealsDialog } from '@/components/company/MigrateDealsDialog';
+import { useQueryClient } from '@tanstack/react-query';
 interface InvitationData {
   id: string;
   email: string;
@@ -24,6 +25,7 @@ interface InvitationData {
 export default function AcceptInvite() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, isLoading: authLoading } = useAuth();
   const { profile, isLoading: profileLoading } = useProfile();
   const token = searchParams.get('token');
@@ -84,16 +86,8 @@ export default function AcceptInvite() {
     checkInvitation();
   }, [token]);
 
-  // Auto-accept for logged-in users
-  useEffect(() => {
-    if (status === 'valid' && user && invitation && !autoAcceptTriggered && !isAccepting) {
-      setAutoAcceptTriggered(true);
-      handleAccept();
-    }
-  }, [status, user, invitation, autoAcceptTriggered, isAccepting]);
-
-  const handleAccept = async () => {
-    if (!user || !invitation) return;
+  const handleAccept = useCallback(async () => {
+    if (!user || !invitation || !token) return;
 
     setIsAccepting(true);
 
@@ -110,50 +104,20 @@ export default function AcceptInvite() {
         return;
       }
 
-      // Check if user is already a member
-      const { data: existingMember } = await supabase
-        .from('company_members')
-        .select('id')
-        .eq('company_id', invitation.company_id)
-        .eq('user_id', user.id)
-        .single();
+      // The server verifies and commits membership, acceptance, and approval together.
+      const { error: acceptError } = await supabase.rpc('accept_company_invitation', { _token: token });
+      if (acceptError) throw acceptError;
 
-      if (existingMember) {
-        toast({
-          title: "Already a member",
-          description: "You are already a member of this company.",
-        });
-        navigate('/deals');
-        return;
-      }
-
-      // Add user as company member
-      const { error: memberError } = await supabase
-        .from('company_members')
-        .insert([{
-          company_id: invitation.company_id,
-          user_id: user.id,
-          role: invitation.role as 'admin' | 'member' | 'owner',
-        }]);
-
-      if (memberError) throw memberError;
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['user-approved', user.id] }),
+        queryClient.invalidateQueries({ queryKey: ['company', user.id] }),
+      ]);
 
       // Seed sample deal (or repair orphaned one) for this user+company
       try {
         await seedSampleDeal(user.id, invitation.company_id);
       } catch (seedErr) {
         console.error('Sample deal seed/repair failed:', seedErr);
-      }
-
-      // Mark invitation as accepted - this uses RLS policy for users with matching email
-      const { error: updateError } = await supabase
-        .from('company_invitations')
-        .update({ accepted_at: new Date().toISOString() })
-        .eq('id', invitation.id);
-
-      if (updateError) {
-        console.error('Error updating invitation:', updateError);
-        // Don't throw - user was added as member, just log the error
       }
 
       toast({
@@ -169,17 +133,26 @@ export default function AcceptInvite() {
         // Show migrate deals dialog
         setShowMigrateDeals(true);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error accepting invitation:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to accept invitation",
+        description: error && typeof error === 'object' && 'message' in error
+          ? String(error.message) : "Failed to accept invitation",
         variant: "destructive",
       });
     } finally {
       setIsAccepting(false);
     }
-  };
+  }, [user, invitation, token, queryClient, profile]);
+
+  // Wait for the profile before deciding whether setup is needed.
+  useEffect(() => {
+    if (status === 'valid' && user && invitation && !profileLoading && !autoAcceptTriggered && !isAccepting) {
+      setAutoAcceptTriggered(true);
+      void handleAccept();
+    }
+  }, [status, user, invitation, profileLoading, autoAcceptTriggered, isAccepting, handleAccept]);
 
   const handleProfileSetupComplete = () => {
     setShowProfileSetup(false);

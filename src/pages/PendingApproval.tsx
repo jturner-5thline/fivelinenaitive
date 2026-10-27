@@ -8,19 +8,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Clock, LogOut, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { ApprovalCheckError } from '@/components/ApprovalCheckError';
 
 export default function PendingApproval() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { data: isApproved, refetch, isLoading } = useIsApproved();
+  const { data: isApproved, refetch, isLoading, isError, isFetching } = useIsApproved();
   const [isSending, setIsSending] = useState(false);
 
   // Redirect if approved
   useEffect(() => {
-    if (isApproved) {
-      navigate("/pipeline", { replace: true });
+    if (isApproved && !isError) {
+      navigate("/deals", { replace: true });
     }
-  }, [isApproved, navigate]);
+  }, [isApproved, isError, navigate]);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -59,6 +60,10 @@ export default function PendingApproval() {
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
+  }
+
+  if (isError) {
+    return <ApprovalCheckError onRetry={() => { void refetch(); }} isRetrying={isFetching} />;
   }
 
   return (

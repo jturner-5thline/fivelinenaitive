@@ -1,10 +1,11 @@
-// v5 - admin approval gate reinstated
+// Approval errors remain distinct from confirmed pending accounts.
 import { Navigate } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useIsApproved } from '@/hooks/useUserApproval';
 import { Loader2 } from 'lucide-react';
+import { ApprovalCheckError } from '@/components/ApprovalCheckError';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -19,7 +20,7 @@ export function ProtectedRoute({
 }: ProtectedRouteProps) {
   const { user, isLoading: authLoading } = useAuth();
   const { profile, isLoading: profileLoading } = useProfile();
-  const { data: isApproved, isLoading: approvalLoading } = useIsApproved();
+  const { data: isApproved, isLoading: approvalLoading, isError: approvalError, isFetching, refetch } = useIsApproved();
   const location = useLocation();
 
   // Demo users skip onboarding entirely — they go straight to their seeded workspace.
@@ -44,7 +45,11 @@ export function ProtectedRoute({
     return <Navigate to={`/login${redirectQuery}`} replace />;
   }
 
-  // Unapproved users (not 5th Line, not demo) wait for an admin to approve them.
+  if (needsApprovalCheck && approvalError) {
+    return <ApprovalCheckError onRetry={() => { void refetch(); }} isRetrying={isFetching} />;
+  }
+
+  // Unapproved users (not 5th Line, not demo) wait for approval.
   if (needsApprovalCheck && isApproved !== true) {
     return <Navigate to="/pending-approval" replace />;
   }
