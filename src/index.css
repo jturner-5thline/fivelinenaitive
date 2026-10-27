@@ -5348,6 +5348,7 @@ html body.ceo-theme .flat-tile-skin .crm-companies-title-bar.crm-companies-heade
   --ring: 180 71% 45%;
   --destructive: 0 85% 72%;
   --os-overlay: 216 55% 6%;
+  --os-testimonial-mask: radial-gradient(ellipse 70% 75% at 50% 42%, #000 55%, transparent 100%), linear-gradient(to bottom, #000 60%, transparent 100%);
   --os-hero-shade: linear-gradient(90deg, hsl(var(--background) / .92), hsl(var(--background) / .70) 55%, hsl(var(--background) / .20)), linear-gradient(0deg, hsl(var(--background)), transparent 35%);
   font-family: "DM Sans", sans-serif;
   letter-spacing: 0;
@@ -5382,10 +5383,17 @@ html body.ceo-theme .flat-tile-skin .crm-companies-title-bar.crm-companies-heade
 @media (min-width: 640px) {
   .homepage-os .os-platform.os-container { padding-inline: 24px; }
 }
-.homepage-os .os-testimonial-band { background: hsl(var(--card) / .3); }
+.homepage-os .os-testimonial .os-container { padding-inline: 16px; }
+.homepage-os .os-testimonial-photo {
+  -webkit-mask-image: var(--os-testimonial-mask);
+  mask-image: var(--os-testimonial-mask);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+@media (min-width: 640px) {
+  .homepage-os .os-testimonial .os-container { padding-inline: 24px; }
+}
 .homepage-os .os-attribution { color: hsl(var(--foreground)); }
-.homepage-os .os-portrait-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 240px; }
-.homepage-os .os-monogram { font-family: "Space Grotesk", sans-serif; font-size: 140px; line-height: 1.2; font-weight: 300; color: hsl(var(--foreground) / .15); }
 .homepage-os .os-lifecycle { position: relative; }
 .homepage-os .os-lifecycle::before { content: ""; position: absolute; top: 20px; left: 20px; right: calc((100% - 80px) / 3 - 20px); height: 1px; background: hsl(var(--primary) / .3); }
 .homepage-demo-dialog.homepage-demo-dialog { background: hsl(var(--background)) !important; background-image: none !important; border: 1px solid hsl(var(--border)) !important; color: hsl(var(--foreground)) !important; }
@@ -5399,7 +5407,6 @@ html body.ceo-theme .flat-tile-skin .crm-companies-title-bar.crm-companies-heade
   .homepage-os .os-hero { min-height: 0; }
   .homepage-os .os-hero-image { object-position: 65% center; }
   .homepage-os .os-lifecycle::before { display: none; }
-  .homepage-os .os-portrait-placeholder { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .homepage-os .os-marquee-track { animation: none; }
