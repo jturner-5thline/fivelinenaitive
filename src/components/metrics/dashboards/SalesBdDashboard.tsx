@@ -5,6 +5,7 @@ import { ReferralSourceDeals } from "@/components/partners/ReferralSourceDeals";
 import { PartnerDetailPanel } from "@/components/partners/PartnerDetailPanel";
 import { usePartners } from "@/hooks/usePartnersPipeline";
 import { ReferralSourceMetricWidgets } from "@/components/channels/ReferralSourceMetricWidgets";
+import { ReferralConversionWidget } from "@/components/channels/ReferralConversionWidget";
 import { ReferralSourcePipelineWidget } from "@/components/partners/ReferralSourcePipelineWidget";
 import { ChannelEntityDetailModal } from "@/components/channels/ChannelEntityDetailModal";
 import type { ChannelEntry } from "@/hooks/useChannelEntries";
@@ -86,6 +87,9 @@ function SalesBdDashboardInner() {
             />
           }
         />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <ReferralConversionWidget />
+        </div>
         {/* Referral Insights (Activity / Needs Attention) hidden — see mem://features/sales-bd/partner-insights-tabs-hidden */}
 
         <ReferralSourcePipelineWidget search={search} />
