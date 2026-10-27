@@ -10,6 +10,20 @@ export interface ConversionDeal {
   stage: string | null;
   /** Stage ids this deal has entered on the Active pipeline (history). */
   enteredStages: Set<string>;
+  name?: string | null;
+  value?: number | null;
+  /** Raw current stage (any pipeline) for display. */
+  displayStage?: string | null;
+}
+
+const sourceKey = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+
+/** NDA-cohort deals referred by `source`, flagged by whether they reached `target`. */
+export function sourceCohortDeals(deals: ConversionDeal[], source: string, target: string) {
+  const key = sourceKey(source);
+  return deals
+    .filter((d) => sourceKey(d.referredBy) === key && inNdaCohort(d))
+    .map((d) => ({ deal: d, converted: reachedStage(d, target) }));
 }
 
 export interface SourceConversion {
