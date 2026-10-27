@@ -7,7 +7,7 @@ import { isExcludedDealName } from "@/utils/excludedDeals";
 import { formatUSDFromDollars } from "@/lib/formatters/currency";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
-  sourceConversions, sourceCohortDeals, topAndBottom, MIN_CONVERSION_DEALS, inTrailingYear,
+  sourceConversions, sourceCohortDeals, topAndBottom, MIN_CONVERSION_DEALS, inTrailingYear, closingRateDeals,
   type ConversionDeal, type SourceConversion, type ConversionMetric,
 } from "@/lib/referralConversion";
 import { earliestNdaEntries, type NdaHistoryRow } from "@/lib/referralNdaEntry";
@@ -69,9 +69,9 @@ export function ReferralConversionWidget() {
   const [metric, setMetric] = useState<ConversionMetric>("rate");
 
   const { data: deals = [], isLoading } = useQuery({
-    queryKey: ["referral_conversion_deals", company?.id, "ttm"],
+    queryKey: ["referral_conversion_deals", company?.id, "ttm2"],
     enabled: !!company?.id,
-    queryFn: async (): Promise<ConversionDeal[]> => {
+    queryFn: async (): Promise<(ConversionDeal & { closedWonAt: string | null })[]> => {
       const { data: pipes, error: pe } = await supabase
         .from("deal_pipelines").select("id").eq("company_id", company!.id).eq("is_default", true);
       if (pe) throw pe;
@@ -99,6 +99,13 @@ export function ReferralConversionWidget() {
           entered.get(r.deal_id)!.add(s);
         }
       }
+      const closedWon = new Map<string, string>();
+      for (const r of history) {
+        if (!r.changed_at || (r.to_stage_id ?? r.to_stage) !== "closed-won") continue;
+        if (r.pipeline_id && !active.includes(r.pipeline_id)) continue;
+        const prev = closedWon.get(r.deal_id);
+        if (!prev || r.changed_at > prev) closedWon.set(r.deal_id, r.changed_at);
+      }
       const ndaEntries = earliestNdaEntries(history, new Set(active), new Map(list.map((r) => [r.id, r.pipeline_id])));
       const all = list
         .filter((r) => (r.pipeline_id && active.includes(r.pipeline_id)) || entered.has(r.id))
@@ -112,17 +119,21 @@ export function ReferralConversionWidget() {
           value: r.value as number | null,
           displayStage: r.stage,
           ndaEnteredAt: ndaEntries.get(r.id) ?? null,
+          closedWonAt: closedWon.get(r.id) ?? null,
         }));
-      // Trailing 12 months: deal must have ENTERED NDA / Needs List Sent within the last year.
-      return inTrailingYear(all);
+      return all;
     },
   });
 
-  const engagement = useMemo(() => sourceConversions(deals, "final-credit-items"), [deals]);
-  const closing = useMemo(() => sourceConversions(deals, "closed-won"), [deals]);
+  // Engagement: deal must have ENTERED NDA / Needs List Sent within the last 12 months.
+  const engagementDeals = useMemo(() => inTrailingYear(deals), [deals]);
+  // Closing Rate: deals that entered NDA or Closed-Won within the last 12 months.
+  const closingDeals = useMemo(() => closingRateDeals(deals), [deals]);
+  const engagement = useMemo(() => sourceConversions(engagementDeals, "final-credit-items"), [engagementDeals]);
+  const closing = useMemo(() => sourceConversions(closingDeals, "closed-won"), [closingDeals]);
   const drillRows = useMemo(
-    () => (drill ? sourceCohortDeals(deals, drill.source, drill.target).sort((a, b) => Number(b.converted) - Number(a.converted)) : []),
-    [drill, deals],
+    () => (drill ? sourceCohortDeals(drill.target === "closed-won" ? closingDeals : engagementDeals, drill.source, drill.target).sort((a, b) => Number(b.converted) - Number(a.converted)) : []),
+    [drill, engagementDeals, closingDeals],
   );
   const convertedCount = drillRows.filter((r) => r.converted).length;
 
