@@ -255,12 +255,12 @@ export function ReferralSourcePipelineWidget({ search = '' }: { search?: string 
       if (isRemovedForInactivity({
         referredBy: r.referredBy,
         addedAt: addedByName.get(normalize(r.referredBy)) ?? null,
-        deals: r.deals.map(d => ({ id: d.id, company: d.company, created_at: d.created_at, stage: d.stage || '' })),
+        deals: r.deals.filter(d => !!d.ndaEnteredAt).map(d => ({ id: d.id, company: d.company, created_at: d.ndaEnteredAt as string, stage: null })),
       }, now)) continue;
       if (!ownerAllows(r.ownerUserId ?? null)) continue;
       if (!matchesSearch(r.referredBy, r.companyName)) continue;
 
-      const dealDates = r.deals.map(d => d.created_at).filter(Boolean).sort();
+      const dealDates = r.deals.map(d => d.ndaEnteredAt).filter((v): v is string => !!v).sort();
       const firstDeal = dealDates[0] ?? null;
       const manualAdded = addedByName.get(normalize(r.referredBy)) ?? null;
       byStage.get(key)!.push({

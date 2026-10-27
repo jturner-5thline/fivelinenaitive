@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
-import { partnerMatches } from '@/lib/partnerNameMatch';
 import { useDealFirstActivityDates, filterByEffectiveDate } from '@/hooks/useDealFirstActivityDates';
 import { computeTier } from '@/lib/mcp/referralPipeline';
 import { earliestNdaEntries, resolveNdaEnteredAt, NDA_STAGE_ID, type NdaHistoryRow } from '@/lib/referralNdaEntry';
@@ -95,13 +94,6 @@ interface SalesBdRules {
   qualified_deal_stages: string[];
 }
 
-const SIGNED_STAGE_SLUGS = new Set([
-  'final-credit-items', 'closed-won', 'funded-invoiced', 'terms-issued', 'agreement-pending',
-]);
-
-function toSlug(s: string): string {
-  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-}
 
 const FIRM_KEYWORDS = [
   'capital', 'bank', 'partners', 'group', 'advisors', 'advisory', 'ventures',
@@ -575,6 +567,7 @@ export function useDealReferralSources(filters?: {
           created_at: d.created_at,
           pipelineName: pipelineMap.get(d.pipeline_id) || 'Unknown',
           pipelineId: d.pipeline_id,
+          ndaEnteredAt: ndaByDeal.get(d.id) ?? null,
         })),
         channelType: modalChannel,
         companyName: derivedCompany,
@@ -595,7 +588,7 @@ export function useDealReferralSources(filters?: {
     filtered.sort((a, b) => b.totalVolume - a.totalVolume);
 
     return filtered;
-  }, [deals, channelEntries, referralSourceRecords, linkedContacts, linkedCompanies, pipelineMap, filters?.channelFilter, filters?.companyFilter, allDeals, rules]);
+  }, [deals, channelEntries, referralSourceRecords, linkedContacts, linkedCompanies, pipelineMap, filters?.channelFilter, filters?.companyFilter, allDeals, rules, ndaByDeal]);
 
   // Unique companies for filter options
   const companyOptions = useMemo(() => {
