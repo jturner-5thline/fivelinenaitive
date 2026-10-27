@@ -5,14 +5,12 @@ import { useState, useMemo, type ReactNode } from 'react';
 import { Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from 'recharts';
-import { useChannelEntries } from '@/hooks/useChannelEntries';
+import { useDealReferralSources } from '@/hooks/useDealReferralSources';
+import { useReferralSources } from '@/hooks/useReferralSources';
+import { isRemovedForInactivity, previousMonthEnd } from './atRiskSources';
 import { CHANNEL_TYPE_OPTIONS } from './channelOptions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { useCompany } from '@/hooks/useCompany';
-import { isExcludedDealName } from '@/utils/excludedDeals';
 import { formatSlug } from '@/utils/dealTypeLabels';
 import { formatUSDFromDollars } from '@/lib/formatters/currency';
 import {
@@ -21,16 +19,63 @@ import {
   type LeaderboardRow,
 } from './useReferralSourceMetrics';
 
+interface ChannelSourceRow {
+  id: string;
+  name: string;
+  company: string | null;
+  channel: string;
+  deals: { id: string; company: string; stage: string; value: number }[];
+}
+
+/** Sources currently shown on the Referral Source Pipeline, each with its company's channel. */
+function usePipelineChannelSources() {
+  const { referralSources, resolveChannel, isLoading } = useDealReferralSources({ ignoreDateRange: true });
+  const { referralSources: manualSources } = useReferralSources();
+  const rows = useMemo(() => {
+    const norm = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
+    const addedByName = new Map<string, string>();
+    for (const m of manualSources) {
+      if (!m.created_at) continue;
+      const k = norm(m.name);
+      const prev = addedByName.get(k);
+      if (!prev || m.created_at < prev) addedByName.set(k, m.created_at);
+    }
+    const now = previousMonthEnd();
+    const seen = new Set<string>();
+    const out: ChannelSourceRow[] = [];
+    for (const r of referralSources) {
+      seen.add(norm(r.referredBy));
+      if (isRemovedForInactivity({
+        referredBy: r.referredBy,
+        addedAt: addedByName.get(norm(r.referredBy)) ?? null,
+        deals: r.deals.filter(d => !!d.ndaEnteredAt).map(d => ({ id: d.id, company: d.company, created_at: d.ndaEnteredAt as string, stage: null })),
+      }, now)) continue;
+      out.push({
+        id: `deal:${r.contactId || r.crmCompanyId || r.referredBy}`,
+        name: r.referredBy,
+        company: r.companyName,
+        channel: r.channelType || 'Other',
+        deals: r.deals.map(d => ({ id: d.id, company: d.company, stage: d.stage, value: d.value })),
+      });
+    }
+    for (const m of manualSources) {
+      if (seen.has(norm(m.name))) continue;
+      if (isRemovedForInactivity({ referredBy: m.name, addedAt: m.created_at ?? null, deals: [] }, now)) continue;
+      seen.add(norm(m.name));
+      out.push({ id: `manual:${m.id}`, name: m.name, company: m.company || null, channel: resolveChannel(m.name, m.company) || 'Other', deals: [] });
+    }
+    return out;
+  }, [referralSources, manualSources, resolveChannel]);
+  return { rows, isLoading };
+}
+
 function ChannelMixDonut() {
-  const { data: entries = [], isLoading } = useChannelEntries();
+  const { rows: entries, isLoading } = usePipelineChannelSources();
   const [drill, setDrill] = useState<{ value: string; label: string; color: string } | null>(null);
 
   const data = useMemo(() => {
     const counts = new Map<string, number>();
-    entries.forEach((e) => {
-      const key = String(e.channel_type ?? 'Other');
-      counts.set(key, (counts.get(key) || 0) + 1);
-    });
+    entries.forEach((e) => counts.set(e.channel, (counts.get(e.channel) || 0) + 1));
     return CHANNEL_TYPE_OPTIONS.map((o) => ({
       name: o.label,
       channel: o.value as string,
@@ -42,41 +87,12 @@ function ChannelMixDonut() {
   const total = data.reduce((s, d) => s + d.value, 0);
 
   const drillRows = useMemo(
-    () => (drill ? entries.filter((e) => String(e.channel_type) === drill.value) : []),
+    () => (drill ? entries.filter((e) => e.channel === drill.value) : []),
     [entries, drill],
   );
 
-  const { company } = useCompany();
   const navigate = useNavigate();
-  const { data: allDeals = [] } = useQuery({
-    queryKey: ['channel_donut_deals', company?.id],
-    enabled: !!company?.id && !!drill,
-    queryFn: async () => {
-      const out: any[] = [];
-      for (let from = 0; ; from += 1000) {
-        const { data: chunk, error } = await supabase
-          .from('deals')
-          .select('id, company, stage, value, referred_by, referred_by_contact_id, referred_by_crm_company_id, crm_company_id')
-          .eq('company_id', company!.id)
-          .range(from, from + 999);
-        if (error) throw error;
-        out.push(...(chunk || []));
-        if (!chunk || chunk.length < 1000) break;
-      }
-      return out.filter((d) => !isExcludedDealName(String(d.company || '')));
-    },
-  });
-
-  const dealsFor = (e: (typeof entries)[number]) => {
-    const names = [e.contact?.full_name, e.crm_company?.name]
-      .map((n) => (n || '').trim().toLowerCase())
-      .filter(Boolean);
-    return allDeals.filter((d: any) =>
-      (e.contact_id && d.referred_by_contact_id === e.contact_id) ||
-      (e.crm_company_id && (d.referred_by_crm_company_id === e.crm_company_id || d.crm_company_id === e.crm_company_id)) ||
-      (d.referred_by && names.includes(String(d.referred_by).trim().toLowerCase())),
-    );
-  };
+  const dealsFor = (e: ChannelSourceRow) => e.deals;
 
   const openDrill = (name: string) => {
     const d = data.find((x) => x.name === name);
@@ -140,7 +156,7 @@ function ChannelMixDonut() {
                 className="inline-block h-2.5 w-2.5 rounded-full"
                 style={{ backgroundColor: drill?.color }}
               />
-              {drill?.label} · {drillRows.length} {drillRows.length === 1 ? 'record' : 'records'}
+              {drill?.label} · {drillRows.length} {drillRows.length === 1 ? 'source' : 'sources'}
             </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col divide-y divide-border">
@@ -154,21 +170,14 @@ function ChannelMixDonut() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">
-                      {e.crm_company?.name || e.contact?.full_name || 'Untitled'}
+                      {e.name}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {[
-                        e.crm_company?.name && e.contact?.full_name ? e.contact.full_name : null,
-                        e.contact?.job_title,
-                        e.contact?.email || e.crm_company?.main_contact_email,
-                        e.crm_company?.domain,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ') || '—'}
+                      {e.company || 'No company'}
                     </p>
                   </div>
                   <span className="text-[11px] text-muted-foreground/70 whitespace-nowrap">
-                    {e.crm_company?.name ? 'Company' : 'Contact'}
+                    {e.deals.length} {e.deals.length === 1 ? 'deal' : 'deals'}
                   </span>
                 </div>
                 {linked.length > 0 ? (
