@@ -5349,6 +5349,7 @@ html body.ceo-theme .flat-tile-skin .crm-companies-title-bar.crm-companies-heade
   --destructive: 0 85% 72%;
   --os-overlay: 216 55% 6%;
   --os-testimonial-mask: radial-gradient(ellipse 70% 75% at 50% 42%, #000 55%, transparent 100%), linear-gradient(to bottom, #000 60%, transparent 100%);
+  --os-lifecycle-track: linear-gradient(to right, hsl(var(--accent) / .6), hsl(var(--accent) / .3));
   --os-hero-shade: linear-gradient(90deg, hsl(var(--background) / .92), hsl(var(--background) / .70) 55%, hsl(var(--background) / .20)), linear-gradient(0deg, hsl(var(--background)), transparent 35%);
   font-family: "DM Sans", sans-serif;
   letter-spacing: 0;
@@ -5394,8 +5395,12 @@ html body.ceo-theme .flat-tile-skin .crm-companies-title-bar.crm-companies-heade
   .homepage-os .os-testimonial .os-container { padding-inline: 24px; }
 }
 .homepage-os .os-attribution { color: hsl(var(--foreground)); }
-.homepage-os .os-lifecycle { position: relative; }
-.homepage-os .os-lifecycle::before { content: ""; position: absolute; top: 20px; left: 20px; right: calc((100% - 80px) / 3 - 20px); height: 1px; background: hsl(var(--primary) / .3); }
+.homepage-os .os-lifecycle-section.os-container { padding-inline: 16px; }
+.homepage-os .os-lifecycle-section h2, .homepage-os .os-lifecycle-section h3 { font-weight: 600; }
+.homepage-os .os-lifecycle-track { background: var(--os-lifecycle-track); }
+@media (min-width: 640px) {
+  .homepage-os .os-lifecycle-section.os-container { padding-inline: 24px; }
+}
 .homepage-demo-dialog.homepage-demo-dialog { background: hsl(var(--background)) !important; background-image: none !important; border: 1px solid hsl(var(--border)) !important; color: hsl(var(--foreground)) !important; }
 .homepage-demo-dialog input, .homepage-demo-dialog textarea { background: hsl(var(--card)) !important; color: hsl(var(--foreground)) !important; border: 1px solid hsl(var(--input)) !important; }
 .homepage-demo-dialog input:focus-visible, .homepage-demo-dialog textarea:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
@@ -5406,7 +5411,6 @@ html body.ceo-theme .flat-tile-skin .crm-companies-title-bar.crm-companies-heade
   .homepage-os .os-section-title { font-size: 28px; }
   .homepage-os .os-hero { min-height: 0; }
   .homepage-os .os-hero-image { object-position: 65% center; }
-  .homepage-os .os-lifecycle::before { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .homepage-os .os-marquee-track { animation: none; }

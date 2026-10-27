@@ -54,10 +54,18 @@ export function HomepageOperatingSections() {
         </div>
       </div>
     </section>
-    <section className="os-section os-container">
-      <h2 className="os-section-title mb-10">From mandate to close, in one system</h2>
-      <div className="os-lifecycle grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10">
-        {steps.map((step, i) => <div className="relative min-w-0" key={step.title}><div className="os-step-number relative z-10 h-10 w-10 border border-primary/40 rounded-full bg-background flex items-center justify-center text-primary font-mono text-sm mb-6">0{i + 1}</div><h3 className="text-lg mb-3">{step.title}</h3><p className="text-sm leading-7">{step.description}</p></div>)}
+    <section className="os-lifecycle-section os-container py-14 md:py-16" aria-labelledby="lifecycle-heading">
+      <h2 id="lifecycle-heading" className="text-3xl font-semibold text-foreground mb-14">From mandate to close, in one system</h2>
+      <div className="relative">
+        <div className="os-lifecycle-track hidden md:block absolute left-[7px] right-[calc((100%-4rem)/3-7px)] top-[7px] h-px" aria-hidden="true" />
+        <ol className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8 relative z-10">
+          {steps.map((step, i) => <li className="relative min-w-0" key={step.title}>
+            <div className="h-[15px] w-[15px] rounded-full border-2 border-accent bg-background mb-6 relative z-10" aria-hidden="true" />
+            <div className="font-mono text-sm text-accent mb-3" aria-hidden="true">0{i + 1}</div>
+            <h3 className="text-lg font-semibold text-foreground mb-3">{step.title}</h3>
+            <p className="text-sm text-muted-foreground font-light leading-relaxed">{step.description}</p>
+          </li>)}
+        </ol>
       </div>
     </section>
     <section className="os-section border-t border-border text-center">
