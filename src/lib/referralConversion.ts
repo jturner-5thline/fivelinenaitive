@@ -66,13 +66,16 @@ export function sourceConversions(deals: ConversionDeal[], target: string, minDe
     .map((r) => ({ ...r, rate: r.converted / r.total }));
 }
 
-/** Top and bottom N by rate; ties broken by more deals. Bottom excludes sources already in top. */
-export function topAndBottom(rows: SourceConversion[], n = 3) {
-  const top = [...rows].sort((a, b) => b.rate - a.rate || b.total - a.total).slice(0, n);
+export type ConversionMetric = "rate" | "count";
+
+/** Top and bottom N by rate (or converted count); ties broken by more deals. Bottom excludes sources already in top. */
+export function topAndBottom(rows: SourceConversion[], n = 3, metric: ConversionMetric = "rate") {
+  const v = (r: SourceConversion) => (metric === "count" ? r.converted : r.rate);
+  const top = [...rows].sort((a, b) => v(b) - v(a) || b.total - a.total).slice(0, n);
   const topKeys = new Set(top.map((r) => r.source));
   const bottom = [...rows]
     .filter((r) => !topKeys.has(r.source))
-    .sort((a, b) => a.rate - b.rate || b.total - a.total)
+    .sort((a, b) => v(a) - v(b) || b.total - a.total)
     .slice(0, n);
   return { top, bottom };
 }

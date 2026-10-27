@@ -42,3 +42,14 @@ describe("referral conversion", () => {
     expect(bottom.map((r) => r.source)).toEqual(["S3"]);
   });
 });
+
+it("count mode ranks by converted deals, not rate", () => {
+  const rows = [
+    { source: "A", total: 2, converted: 2, rate: 1 },
+    { source: "B", total: 10, converted: 5, rate: 0.5 },
+    { source: "C", total: 3, converted: 0, rate: 0 },
+  ];
+  expect(topAndBottom(rows, 1, "count").top[0].source).toBe("B");
+  expect(topAndBottom(rows, 1, "rate").top[0].source).toBe("A");
+  expect(topAndBottom(rows, 1, "count").bottom[0].source).toBe("C");
+});

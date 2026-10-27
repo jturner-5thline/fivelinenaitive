@@ -8,7 +8,7 @@ import { formatUSDFromDollars } from "@/lib/formatters/currency";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   sourceConversions, sourceCohortDeals, topAndBottom, MIN_CONVERSION_DEALS,
-  type ConversionDeal, type SourceConversion,
+  type ConversionDeal, type SourceConversion, type ConversionMetric,
 } from "@/lib/referralConversion";
 
 const pct = (r: number) => `${Math.round(r * 100)}%`;
@@ -19,7 +19,7 @@ const humanize = (s: string) =>
 
 type Drill = { source: string; target: string; title: string; targetLabel: string };
 
-function List({ label, rows, onPick }: { label: string; rows: SourceConversion[]; onPick: (s: string) => void }) {
+function List({ label, rows, onPick, metric }: { label: string; rows: SourceConversion[]; onPick: (s: string) => void; metric: ConversionMetric }) {
   return (
     <div className="flex flex-col gap-1 min-w-0">
       <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
@@ -35,7 +35,11 @@ function List({ label, rows, onPick }: { label: string; rows: SourceConversion[]
           >
             <span className="truncate text-foreground hover:text-primary" title={r.source}>{r.source}</span>
             <span className="shrink-0 font-mono text-muted-foreground" title={`${r.converted} of ${r.total} deals`}>
-              <span className="text-primary">{pct(r.rate)}</span> · {r.converted}/{r.total}
+              {metric === "count" ? (
+                <><span className="text-primary">{r.converted}</span> · {pct(r.rate)}</>
+              ) : (
+                <><span className="text-primary">{pct(r.rate)}</span> · {r.converted}/{r.total}</>
+              )}
             </span>
           </button>
         ))
@@ -44,13 +48,15 @@ function List({ label, rows, onPick }: { label: string; rows: SourceConversion[]
   );
 }
 
-function Column({ title, tooltip, rows, onPick }: { title: string; tooltip: string; rows: SourceConversion[]; onPick: (s: string) => void }) {
-  const { top, bottom } = topAndBottom(rows);
+function Column({ title, tooltip, rows, onPick, metric }: { title: string; tooltip: string; rows: SourceConversion[]; onPick: (s: string) => void; metric: ConversionMetric }) {
+  const { top, bottom } = topAndBottom(rows, 3, metric);
+  const word = metric === "count" ? "Most converted deals" : "Highest converting";
+  const low = metric === "count" ? "Least converted deals" : "Lowest converting";
   return (
     <div className="flex flex-col gap-3 min-w-0">
       <p className="text-xs font-semibold text-foreground" title={tooltip}>{title}</p>
-      <List label="Highest converting" rows={top} onPick={onPick} />
-      <List label="Lowest converting" rows={bottom} onPick={onPick} />
+      <List label={word} rows={top} onPick={onPick} metric={metric} />
+      <List label={low} rows={bottom} onPick={onPick} metric={metric} />
     </div>
   );
 }
@@ -59,6 +65,7 @@ export function ReferralConversionWidget() {
   const { company } = useCompany();
   const navigate = useNavigate();
   const [drill, setDrill] = useState<Drill | null>(null);
+  const [metric, setMetric] = useState<ConversionMetric>("rate");
 
   const { data: deals = [], isLoading } = useQuery({
     queryKey: ["referral_conversion_deals", company?.id],
@@ -116,19 +123,35 @@ export function ReferralConversionWidget() {
     <section className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0">
       <div className="flex items-center justify-between">
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">Conversion</p>
-        <span className="text-[10px] text-muted-foreground">sources with {MIN_CONVERSION_DEALS}+ deals at NDA</span>
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] text-muted-foreground">sources with {MIN_CONVERSION_DEALS}+ deals at NDA</span>
+          <div role="group" aria-label="Show as" className="flex rounded-md border border-border p-0.5">
+            {(["rate", "count"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={metric === m}
+                onClick={() => setMetric(m)}
+                title={m === "rate" ? "Conversion rate" : "Number of converted deals"}
+                className={`px-2 py-0.5 text-[11px] font-mono rounded transition-colors ${metric === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                {m === "rate" ? "%" : "#"}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       {isLoading ? (
         <p className="py-3 text-xs text-muted-foreground">Loading…</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:divide-x sm:divide-border">
           <Column
-            title="Engagement" tooltip="NDA / Needs List Sent → Final Credit Items" rows={engagement}
+            title="Engagement" tooltip="NDA / Needs List Sent → Final Credit Items" rows={engagement} metric={metric}
             onPick={(s) => setDrill({ source: s, target: "final-credit-items", title: "Engagement", targetLabel: "Final Credit Items" })}
           />
           <div className="sm:pl-4 min-w-0">
             <Column
-              title="Closing Rate" tooltip="NDA / Needs List Sent → Closed-Won" rows={closing}
+              title="Closing Rate" tooltip="NDA / Needs List Sent → Closed-Won" rows={closing} metric={metric}
               onPick={(s) => setDrill({ source: s, target: "closed-won", title: "Closing Rate", targetLabel: "Closed-Won" })}
             />
           </div>
