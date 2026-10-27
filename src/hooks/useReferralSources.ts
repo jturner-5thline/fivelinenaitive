@@ -11,6 +11,7 @@ export interface ReferralSource {
   phone?: string;
   company?: string;
   created_at?: string;
+  user_id?: string | null;
 }
 
 export function useReferralSources() {
@@ -32,7 +33,7 @@ export function useReferralSources() {
       // Legacy rows without a company are still shown to their author.
       let query = supabase
         .from('referral_sources')
-        .select('id, name, email, phone, company, created_at');
+        .select('id, name, email, phone, company, created_at, user_id');
 
       query = company?.id
         ? query.or(`company_id.eq.${company.id},and(company_id.is.null,user_id.eq.${user.id})`)

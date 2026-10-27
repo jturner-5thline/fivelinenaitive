@@ -1,11 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useReferralSources } from '@/hooks/useReferralSources';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { ReferralSourceDealsDialog } from '@/components/partners/ReferralSourceDealsDialog';
 
 const DAY = 86_400_000;
 
 export function NewlyAddedSources() {
   const { referralSources, isLoading } = useReferralSources();
+  const members = useTeamMembers();
+  const nameById = useMemo(() => new Map(members.map((m) => [m.id, m.display_name])), [members]);
   const [open, setOpen] = useState<string | null>(null);
   const rows = useMemo(() => {
     const cutoff = Date.now() - 30 * DAY;
@@ -40,6 +43,9 @@ export function NewlyAddedSources() {
                 <div className="min-w-0">
                   <p className="truncate text-xs font-medium text-foreground">{s.name}</p>
                   {s.company && <p className="truncate text-[11px] text-muted-foreground">{s.company}</p>}
+                  <p className="truncate text-[10px] text-muted-foreground">
+                    Added by {(s.user_id && nameById.get(s.user_id)) || 'Unknown'}
+                  </p>
                 </div>
                 <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
                   {days < 1 ? 'Today' : `${days}d ago`}
