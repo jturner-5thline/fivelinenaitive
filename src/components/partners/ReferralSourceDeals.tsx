@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 const kpiCard = "h-full rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-2 justify-between";
 
-function KpiTile({ label, value, subtext, badge, onClick }: { label: React.ReactNode; value: string | number; subtext?: string; badge?: React.ReactNode; onClick?: () => void }) {
+function KpiTile({ label, value, subtext, badge, onClick }: { label: React.ReactNode; value: React.ReactNode; subtext?: string; badge?: React.ReactNode; onClick?: () => void }) {
   return (
     <div
       className={`${kpiCard} ${onClick ? 'cursor-pointer transition-colors hover:border-[hsl(var(--chart-2)/0.5)] hover:bg-card/80' : ''}`}
@@ -36,7 +36,7 @@ function KpiTile({ label, value, subtext, badge, onClick }: { label: React.React
         </p>
         {badge ?? (onClick ? <span className="text-[10px] text-muted-foreground/70 whitespace-nowrap">Drill →</span> : null)}
       </div>
-      <p className="text-3xl font-bold tabular-nums leading-none text-[#FFFFFF]">{value}</p>
+      <div className="text-3xl font-bold tabular-nums leading-none text-[#FFFFFF]">{value}</div>
       {subtext ? <p className="text-[11px] text-muted-foreground leading-snug">{subtext}</p> : null}
     </div>
   );
@@ -415,7 +415,28 @@ export function ReferralSourceDeals({
           </Tooltip>
         </TooltipProvider>}
         {(!kpiKeys || kpiKeys.includes('sources')) && <KpiTile label="Referral Sources" value={sourcesCount} subtext="linked CRM records" onClick={() => setDrill('sources')} />}
-        {(!kpiKeys || kpiKeys.includes('referred')) && <KpiTile label="Referred Deals" value={`${sourcesDeals} · ${formatCurrencyCompact(sourcesVolume)}`} onClick={() => setDrill('sourceDeals')} />}
+        {(!kpiKeys || kpiKeys.includes('referred')) && (() => {
+          const pct = (n: number, d: number) => (d > 0 ? `${Math.round((n / d) * 100)}%` : '—');
+          return (
+            <KpiTile
+              label="Referred Deals"
+              value={
+                <span className="inline-flex items-start gap-3">
+                  <span className="flex flex-col items-start">
+                    <span>{sourcesDeals}</span>
+                    <span className="mt-1 text-[11px] font-medium text-muted-foreground" title={`${sourcesDeals} of ${onBoardDeals.length} deals on the board`}>{pct(sourcesDeals, onBoardDeals.length)}</span>
+                  </span>
+                  <span>·</span>
+                  <span className="flex flex-col items-start">
+                    <span>{formatCurrencyCompact(sourcesVolume)}</span>
+                    <span className="mt-1 text-[11px] font-medium text-muted-foreground" title={`${formatCurrencyCompact(sourcesVolume)} of ${formatCurrencyCompact(totalValue)} on the board`}>{pct(sourcesVolume, totalValue)}</span>
+                  </span>
+                </span>
+              }
+              onClick={() => setDrill('sourceDeals')}
+            />
+          );
+        })()}
     </div>
   );
 
