@@ -88,11 +88,11 @@ export default function AcceptInvite() {
 
   // Auto-accept for logged-in users
   useEffect(() => {
-    if (status === 'valid' && user && invitation && !autoAcceptTriggered && !isAccepting) {
+    if (status === 'valid' && user && invitation && !profileLoading && !autoAcceptTriggered && !isAccepting) {
       setAutoAcceptTriggered(true);
       handleAccept();
     }
-  }, [status, user, invitation, autoAcceptTriggered, isAccepting]);
+  }, [status, user, invitation, profileLoading, autoAcceptTriggered, isAccepting]);
 
   const handleAccept = async () => {
     if (!user || !invitation || !token) return;
