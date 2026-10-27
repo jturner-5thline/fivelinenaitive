@@ -5377,8 +5377,11 @@ html body.ceo-theme .flat-tile-skin .crm-companies-title-bar.crm-companies-heade
 .homepage-os .os-marquee-track { animation: os-marquee 42s linear infinite; }
 @keyframes os-marquee { to { transform: translateX(-50%); } }
 .homepage-os .os-capability { background: hsl(var(--card)) !important; border-color: hsl(var(--border)) !important; box-shadow: none !important; }
-.homepage-os .os-pipeline-visual { margin-top: 24px; padding: 18px 0 0; max-width: 520px; }
-.homepage-os .os-pipeline-item { background: hsl(var(--background) / .45); }
+.homepage-os .os-platform.os-container { padding-inline: 16px; }
+.homepage-os .os-platform h2, .homepage-os .os-platform h3 { font-weight: 600; }
+@media (min-width: 640px) {
+  .homepage-os .os-platform.os-container { padding-inline: 24px; }
+}
 .homepage-os .os-testimonial-band { background: hsl(var(--card) / .3); }
 .homepage-os .os-attribution { color: hsl(var(--foreground)); }
 .homepage-os .os-portrait-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 240px; }
