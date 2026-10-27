@@ -186,7 +186,7 @@ const PrivacyPolicy = lazy(lazyRetry(() => import("./pages/PrivacyPolicy")));
 const TermsOfService = lazy(lazyRetry(() => import("./pages/TermsOfService")));
 const Unsubscribe = lazy(lazyRetry(() => import("./pages/Unsubscribe")));
 const ScheduleConfirm = lazy(lazyRetry(() => import("./pages/ScheduleConfirm")));
-// Approval gates removed — keep imports out of the bundle.
+const PendingApproval = lazy(lazyRetry(() => import("./pages/PendingApproval")));
 const Homepage = lazy(lazyRetry(() => import("./pages/Homepage")));
 const BlogPost = lazy(lazyRetry(() => import("./pages/BlogPost")));
 const Promo = lazy(lazyRetry(() => import("./pages/Promo")));
@@ -403,8 +403,8 @@ const App = () => (
                           <Route path="/auth/demo/callback" element={<DemoCallbackRedirect />} />
                           <Route path="/auth/impersonation/callback" element={<ImpersonationCallback />} />
                           <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
-                          <Route path="/pending-approval" element={<Navigate to="/pipeline" replace />} />
-                          <Route path="/pending-company-approval" element={<Navigate to="/pipeline" replace />} />
+                          <Route path="/pending-approval" element={<ProtectedRoute skipOnboarding skipApprovalCheck><PendingApproval /></ProtectedRoute>} />
+                          <Route path="/pending-company-approval" element={<Navigate to="/pending-approval" replace />} />
                           <Route path="/onboarding" element={
                             <ProtectedRoute skipOnboarding><Onboarding /></ProtectedRoute>
                           } />
