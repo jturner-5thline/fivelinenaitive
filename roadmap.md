@@ -1,9 +1,9 @@
 # Roadmap
 
 ## Invitation approval access
-- [ ] Verify invitation lockout and preserve platform approval for self-service registrations.
-- [ ] Apply bounded approval fix and regression tests without changing existing account records.
-- [ ] Verify preview access/error handling without live invitation writes.
+- [x] Confirm invitation approval gap and reproduce denial redirect with simulated preview responses; all five Blount members currently approved.
+- [ ] Implement trusted invitation approval and error recovery — awaiting approval of the access-rule plan.
+- [ ] Verify invitation acceptance and regression tests — follows plan approval; live persistence requires approved test records.
 
 ## Homepage rebuild
 - [x] Update lifecycle sequence from uploaded brief; verified three ordered steps, 15px dots and desktop track endpoints at 1280/1198/820/390px; targeted lint and preview build passed.
