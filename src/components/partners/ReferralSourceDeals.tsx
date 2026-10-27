@@ -189,6 +189,11 @@ export function ReferralSourceDeals({
         if (r.changed_by && NDA_EXCLUDED_CHANGED_BY.includes(r.changed_by)) continue;
         if (NDA_EXCLUDED_OWNERS.includes(String(d.deal_owner || '').toLowerCase().trim())) continue;
         if (isExcludedDealName(d.company)) continue;
+        // Referral-sourced only: a "Referred by" value or Sourced Via = Referral.
+        const isReferral =
+          !!String(d.referred_by || '').trim() ||
+          /^referral/i.test(String(d.sourced_via || '').trim());
+        if (!isReferral) continue;
         const nameKey = String(d.company || '').toLowerCase().trim();
         if (seenIds.has(d.id) || (nameKey && seenNames.has(nameKey))) continue;
         seenIds.add(d.id);

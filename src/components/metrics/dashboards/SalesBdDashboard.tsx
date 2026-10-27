@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { ReferralSourceDeals } from "@/components/partners/ReferralSourceDeals";
 import { PartnerDetailPanel } from "@/components/partners/PartnerDetailPanel";
 import { usePartners } from "@/hooks/usePartnersPipeline";
-import { ReferralSourcesView } from "@/components/channels/ReferralSourcesView";
 import { ReferralSourceMetricWidgets } from "@/components/channels/ReferralSourceMetricWidgets";
 import { ReferralSourcePipelineWidget } from "@/components/partners/ReferralSourcePipelineWidget";
 import { ChannelEntityDetailModal } from "@/components/channels/ChannelEntityDetailModal";
@@ -91,8 +90,6 @@ function SalesBdDashboardInner() {
 
         <ReferralSourcePipelineWidget search={search} />
         <ReferralSourceDeals hideKpis />
-
-        <ReferralSourcesView hideKpis search={search} />
       </div>
 
       <PartnerDetailPanel partner={viewPartner} onClose={() => setViewPartnerId(null)} />
