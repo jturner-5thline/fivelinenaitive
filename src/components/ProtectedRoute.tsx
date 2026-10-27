@@ -1,8 +1,9 @@
-// v4 - approval gate removed; auth + profile only
+// v5 - admin approval gate reinstated
 import { Navigate } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
+import { useIsApproved } from '@/hooks/useUserApproval';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -14,16 +15,20 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ 
   children, 
   skipOnboarding = false,
-  skipApprovalCheck: _skipApprovalCheck = false 
+  skipApprovalCheck = false 
 }: ProtectedRouteProps) {
   const { user, isLoading: authLoading } = useAuth();
   const { profile, isLoading: profileLoading } = useProfile();
+  const { data: isApproved, isLoading: approvalLoading } = useIsApproved();
   const location = useLocation();
 
   // Demo users skip onboarding entirely — they go straight to their seeded workspace.
   const isDemoUser = Boolean((profile as { is_demo_user?: boolean } | null)?.is_demo_user);
+  const is5thLineUser = user?.email?.toLowerCase().endsWith('@5thline.co') ?? false;
+  const autoApproved = is5thLineUser || isDemoUser;
+  const needsApprovalCheck = !!user && !skipApprovalCheck && !autoApproved;
 
-  const isLoading = authLoading || profileLoading;
+  const isLoading = authLoading || profileLoading || (needsApprovalCheck && approvalLoading);
 
   if (isLoading) {
     return (
@@ -37,6 +42,11 @@ export function ProtectedRoute({
     const target = `${location.pathname}${location.search}${location.hash}`;
     const redirectQuery = target && target !== '/' ? `?redirect=${encodeURIComponent(target)}` : '';
     return <Navigate to={`/login${redirectQuery}`} replace />;
+  }
+
+  // Unapproved users (not 5th Line, not demo) wait for an admin to approve them.
+  if (needsApprovalCheck && isApproved !== true) {
+    return <Navigate to="/pending-approval" replace />;
   }
 
   // Redirect to onboarding if not completed (unless skipOnboarding is true or demo user)
