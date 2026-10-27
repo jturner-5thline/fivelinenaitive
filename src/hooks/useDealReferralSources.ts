@@ -6,7 +6,7 @@ import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext'
 import { useDealFirstActivityDates, filterByEffectiveDate } from '@/hooks/useDealFirstActivityDates';
 import { computeTier } from '@/lib/mcp/referralPipeline';
 import { previousMonthEnd } from '@/components/channels/atRiskSources';
-import { earliestNdaEntries, resolveNdaEnteredAt, NDA_STAGE_ID, type NdaHistoryRow } from '@/lib/referralNdaEntry';
+import { earliestNdaEntries, resolveNdaEnteredAt, NDA_ONWARD_STAGE_ORDER, type NdaHistoryRow } from '@/lib/referralNdaEntry';
 
 
 export interface DealReferralSourceEntry {
@@ -356,9 +356,9 @@ export function useDealReferralSources(filters?: {
       for (let i = 0; i < allDealIds.length; i += 200) {
         const { data, error } = await supabase
           .from('deal_stage_history')
-          .select('deal_id, changed_at, pipeline_id')
+          .select('deal_id, changed_at, pipeline_id, to_stage_id, to_stage')
           .eq('event_type', 'stage_enter')
-          .or(`to_stage_id.eq.${NDA_STAGE_ID},to_stage.eq.${NDA_STAGE_ID}`)
+          .or(`to_stage_id.in.(${NDA_ONWARD_STAGE_ORDER.join(',')}),to_stage.in.(${NDA_ONWARD_STAGE_ORDER.join(',')})`)
           .in('deal_id', allDealIds.slice(i, i + 200));
         if (error) throw error;
         out.push(...((data || []) as NdaHistoryRow[]));
