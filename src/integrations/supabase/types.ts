@@ -5489,6 +5489,7 @@ export type Database = {
       company_invitations: {
         Row: {
           accepted_at: string | null
+          accepted_by: string | null
           company_id: string
           created_at: string
           email: string
@@ -5503,6 +5504,7 @@ export type Database = {
         }
         Insert: {
           accepted_at?: string | null
+          accepted_by?: string | null
           company_id: string
           created_at?: string
           email: string
@@ -5517,6 +5519,7 @@ export type Database = {
         }
         Update: {
           accepted_at?: string | null
+          accepted_by?: string | null
           company_id?: string
           created_at?: string
           email?: string
@@ -29542,6 +29545,10 @@ export type Database = {
       _deal_lender_status_bucket: {
         Args: { _stage: string; _substage: string; _tracking: string }
         Returns: string
+      }
+      accept_company_invitation: {
+        Args: { _token: string }
+        Returns: undefined
       }
       activate_lender_match_calibration: {
         Args: { p_id: string }
