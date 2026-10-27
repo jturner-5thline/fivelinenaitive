@@ -5368,7 +5368,8 @@ html body.ceo-theme .flat-tile-skin .crm-companies-title-bar.crm-companies-heade
 .homepage-os .os-eyebrow { color: hsl(var(--primary)); font: 12px "JetBrains Mono", monospace; letter-spacing: 0; }
 .homepage-os .os-header { background: hsl(var(--background)); }
 .homepage-os .os-hero { min-height: min(640px, calc(100svh - 156px)); }
-.homepage-os .os-hero-image { object-position: center; -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 15%, #000 65%); mask-image: linear-gradient(to right, transparent 0%, transparent 15%, #000 65%); }
+.homepage-os .os-hero-image { left: auto !important; right: 0; width: 58% !important; object-position: 70% center; -webkit-mask-image: radial-gradient(ellipse 75% 80% at 60% 45%, #000 45%, transparent 100%), linear-gradient(to right, transparent 0%, #000 45%); -webkit-mask-composite: source-in; mask-image: radial-gradient(ellipse 75% 80% at 60% 45%, #000 45%, transparent 100%), linear-gradient(to right, transparent 0%, #000 45%); mask-composite: intersect; }
+@media (max-width: 767px) { .homepage-os .os-hero-image { width: 100% !important; } }
 .homepage-os .os-hero-shade { background: var(--os-hero-shade); }
 .homepage-os .os-hero-subhead { color: hsl(var(--foreground) / .78); }
 .homepage-os .os-primary.os-primary { background: hsl(var(--primary)) !important; color: hsl(var(--primary-foreground)) !important; border: 1px solid transparent !important; box-shadow: none !important; font-weight: 600; }
