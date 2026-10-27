@@ -8,6 +8,13 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTo
 import { useChannelEntries } from '@/hooks/useChannelEntries';
 import { CHANNEL_TYPE_OPTIONS } from './channelOptions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
+import { isExcludedDealName } from '@/utils/excludedDeals';
+import { formatSlug } from '@/utils/dealTypeLabels';
+import { formatUSDFromDollars } from '@/lib/formatters/currency';
 import {
   useReferralSourceMetrics,
   type DrillRow,
@@ -38,6 +45,38 @@ function ChannelMixDonut() {
     () => (drill ? entries.filter((e) => String(e.channel_type) === drill.value) : []),
     [entries, drill],
   );
+
+  const { company } = useCompany();
+  const navigate = useNavigate();
+  const { data: allDeals = [] } = useQuery({
+    queryKey: ['channel_donut_deals', company?.id],
+    enabled: !!company?.id && !!drill,
+    queryFn: async () => {
+      const out: any[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data: chunk, error } = await supabase
+          .from('deals')
+          .select('id, company, stage, value, referred_by, referred_by_contact_id, referred_by_crm_company_id, crm_company_id')
+          .eq('company_id', company!.id)
+          .range(from, from + 999);
+        if (error) throw error;
+        out.push(...(chunk || []));
+        if (!chunk || chunk.length < 1000) break;
+      }
+      return out.filter((d) => !isExcludedDealName(String(d.company || '')));
+    },
+  });
+
+  const dealsFor = (e: (typeof entries)[number]) => {
+    const names = [e.contact?.full_name, e.crm_company?.name]
+      .map((n) => (n || '').trim().toLowerCase())
+      .filter(Boolean);
+    return allDeals.filter((d: any) =>
+      (e.contact_id && d.referred_by_contact_id === e.contact_id) ||
+      (e.crm_company_id && (d.referred_by_crm_company_id === e.crm_company_id || d.crm_company_id === e.crm_company_id)) ||
+      (d.referred_by && names.includes(String(d.referred_by).trim().toLowerCase())),
+    );
+  };
 
   const openDrill = (name: string) => {
     const d = data.find((x) => x.name === name);
@@ -108,8 +147,11 @@ function ChannelMixDonut() {
             {drillRows.length === 0 ? (
               <p className="text-sm text-muted-foreground py-6 text-center">No records in this channel.</p>
             ) : (
-              drillRows.map((e) => (
-                <div key={e.id} className="py-2.5 flex items-start justify-between gap-3">
+              drillRows.map((e) => {
+                const linked = dealsFor(e);
+                return (
+                <div key={e.id} className="py-2.5 flex flex-col gap-1.5">
+                <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">
                       {e.crm_company?.name || e.contact?.full_name || 'Untitled'}
@@ -129,7 +171,29 @@ function ChannelMixDonut() {
                     {e.crm_company?.name ? 'Company' : 'Contact'}
                   </span>
                 </div>
-              ))
+                {linked.length > 0 ? (
+                  <div className="flex flex-col gap-0.5 pl-3 border-l border-primary/40">
+                    {linked.map((d: any) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => navigate(`/deal/${d.id}`)}
+                        className="flex items-center justify-between gap-3 text-left text-xs hover:text-primary transition-colors"
+                      >
+                        <span className="truncate">{d.company || 'Untitled deal'}</span>
+                        <span className="flex items-center gap-2 shrink-0 text-muted-foreground">
+                          <span className="truncate max-w-[160px]">{d.stage ? formatSlug(d.stage) : '—'}</span>
+                          <span className="font-mono tabular-nums">{d.value ? formatUSDFromDollars(Number(d.value)) : '—'}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="pl-3 text-[11px] text-muted-foreground/60">No deals yet</p>
+                )}
+                </div>
+                );
+              })
             )}
           </div>
         </DialogContent>
