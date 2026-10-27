@@ -1,4 +1,4 @@
-import { Building2, FileSearch, Handshake, LayoutDashboard, LineChart, BarChart3, Shield, Quote, Users, ArrowRight } from "lucide-react";
+import { Building2, FileSearch, Handshake, LayoutDashboard, LineChart, BarChart3, Shield, Users, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BookDemoDialog } from "./BookDemoDialog";
 import gregBlountPhoto from "@/assets/greg-blount-testimonial.png.asset.json";
@@ -49,7 +49,7 @@ export function HomepageOperatingSections() {
         <div className="mx-auto w-full max-w-sm md:max-w-none md:order-2 min-w-0">
           <img src={gregBlountPhoto.url} alt="Greg Blount, Founder of Blount Capital" className="os-testimonial-photo block w-full h-auto" width={768} height={798} loading="lazy" decoding="async" />
         </div>
-        <div><Quote className="h-8 w-8 text-primary mb-5" strokeWidth={1.3} /><blockquote className="text-2xl md:text-[28px] leading-[1.5] text-foreground">“naitive gave our team one place to run every deal — from first lender conversations through closing. We spend far less time chasing updates and far more time moving transactions forward.”</blockquote>
+        <div><blockquote className="text-2xl md:text-[28px] leading-[1.5] text-foreground">“naitive gave our team one place to run every deal — from first lender conversations through closing. We spend far less time chasing updates and far more time moving transactions forward.”</blockquote>
           <div className="mt-6"><p className="os-attribution text-base font-semibold">Greg Blount</p><p className="mt-1 text-sm">Founder, Blount Capital</p></div>
         </div>
       </div>
