@@ -531,7 +531,10 @@ export function useDealReferralSources(filters?: {
         const c = sourcedViaToChannel((d as any).sourced_via ?? null);
         if (c) channelCounts.set(c, (channelCounts.get(c) || 0) + 1);
       }
-      let modalChannel: string | null = override?.channel || match?.channelType || null;
+      // Channel: manual override, then the contact's channel entry, then the
+      // channel of the company the contact belongs to, then sourced_via.
+      const companyMatch = derivedCompany ? channelLookup.get(normalize(derivedCompany)) : undefined;
+      let modalChannel: string | null = override?.channel || match?.channelType || companyMatch?.channelType || null;
       const alternateChannels: string[] = [];
       if (!modalChannel && channelCounts.size > 0) {
         const sortedC = [...channelCounts.entries()].sort((a, b) => b[1] - a[1]);
@@ -607,8 +610,23 @@ export function useDealReferralSources(filters?: {
     [deals],
   );
 
+  /** Channel for a source not on any deal (manual Nurturing sources): override, contact, then company. */
+  const resolveChannel = useMemo(() => {
+    const normalize = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
+    const byName = new Map<string, string>();
+    for (const ce of channelEntries) {
+      if (ce.contact?.full_name) byName.set(normalize(ce.contact.full_name), ce.channel_type);
+      if (ce.crm_company?.name) byName.set(normalize(ce.crm_company.name), ce.channel_type);
+    }
+    const overrides = new Map<string, string>();
+    for (const rs of referralSourceRecords) if (rs.channel && rs.name) overrides.set(normalize(rs.name), rs.channel);
+    return (name: string, companyName?: string | null): string | null =>
+      overrides.get(normalize(name)) || byName.get(normalize(name)) || (companyName ? byName.get(normalize(companyName)) : undefined) || null;
+  }, [channelEntries, referralSourceRecords]);
+
   return {
     referralSources,
+    resolveChannel,
     isLoading: dealsLoading,
     totalCount: referralSources.length,
     totalVolume: referralSources.reduce((s, r) => s + r.totalVolume, 0),
