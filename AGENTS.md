@@ -5,7 +5,7 @@
 
 - Deal Activity calendar reads use the authenticated deal-team-calendar-events endpoint scoped to verified deal-company membership, not the caller-only mirror or email-domain grouping — why: all connected teammates must contribute without cross-tenant access.
 - Calendar provider reads have one bounded deadline per owner and settle independently with explicit partial-data warnings — why: a slow owner must not discard other calendars or exceed the request idle limit.
-- Referral Source tiers count only deals that entered NDA / Needs List Sent on the Active (default) pipeline, dated by that entry (src/lib/referralNdaEntry.ts) — why: import timestamps and pre-NDA leads inflated tiers.
+- Referral Source tiers count only referred deals with a recorded Active (default) pipeline stage entry, dated by NDA / Needs List Sent entry or else the closest later stage entry, never created_at (src/lib/referralNdaEntry.ts) — why: import timestamps and pre-NDA leads inflated tiers.
 - Referral Source pipeline classification for MCP lives in `src/lib/mcp/referralPipeline.ts` and mirrors `useDealReferralSources` + `ReferralSourcePipelineWidget` — why: the connector must report the same stages as the UI, so change both together.
 - Funding-source imports reconcile legacy primary fields and child contacts through `syncImportedLenderContacts` and the company-scoped CRM resolver — why: both CSV import paths must create or reuse Contacts records and report partial linking failures without deleting imported data.
 - The merged Tasks panel reuses OutstandingItems for management and item details; completion updates Received and Submitted together — why: preserve bulk/checklist editing and persist the actual stored status fields without duplicating editor logic.
