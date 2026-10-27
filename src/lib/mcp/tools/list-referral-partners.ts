@@ -109,7 +109,7 @@ export default defineTool({
       const history = await fetchByIds<NdaHistoryRow & { event_type: string; to_stage_id: string | null; to_stage: string | null }>(
         sb, "deal_stage_history", "deal_id, changed_at, pipeline_id, event_type, to_stage_id, to_stage", "deal_id", allDeals.map((d) => d.id));
       const entries = earliestNdaEntries(
-        history.filter((h) => h.event_type === "stage_enter" && (h.to_stage_id === NDA_STAGE_ID || h.to_stage === NDA_STAGE_ID)),
+        history.filter((h) => h.event_type === "stage_enter"),
         activeIds, dealPipeline);
       for (const d of allDeals) d.nda_entered_at = resolveNdaEnteredAt(d, entries, activeIds);
       const ndaById = new Map(allDeals.map((d) => [d.id, d.nda_entered_at]));

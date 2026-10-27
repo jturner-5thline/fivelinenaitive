@@ -3333,24 +3333,25 @@ function isRemovedForInactivity(s, now = /* @__PURE__ */ new Date()) {
 
 // src/lib/referralNdaEntry.ts
 var NDA_STAGE_ID = "ndaneeds-list-sent";
+var NDA_ONWARD_STAGE_ORDER = [...REACHED_NDA_STAGES];
 function earliestNdaEntries(rows, activePipelineIds, dealPipeline) {
-  const out = /* @__PURE__ */ new Map();
+  const best = /* @__PURE__ */ new Map();
   for (const r of rows) {
     if (!r.changed_at) continue;
     const pid = r.pipeline_id ?? dealPipeline.get(r.deal_id) ?? null;
     if (!pid || !activePipelineIds.has(pid)) continue;
-    const prev = out.get(r.deal_id);
-    if (!prev || r.changed_at < prev) out.set(r.deal_id, r.changed_at);
+    const stage = r.to_stage_id ?? r.to_stage ?? NDA_STAGE_ID;
+    const rank = NDA_ONWARD_STAGE_ORDER.indexOf(stage);
+    if (rank < 0) continue;
+    const prev = best.get(r.deal_id);
+    if (!prev || rank < prev.rank || rank === prev.rank && r.changed_at < prev.at) {
+      best.set(r.deal_id, { rank, at: r.changed_at });
+    }
   }
-  return out;
+  return new Map([...best].map(([id, v]) => [id, v.at]));
 }
-function resolveNdaEnteredAt(deal, entries, activePipelineIds) {
-  const hit = entries.get(deal.id);
-  if (hit) return hit;
-  if (deal.pipeline_id && activePipelineIds.has(deal.pipeline_id) && deal.stage && REACHED_NDA_STAGES.has(deal.stage)) {
-    return deal.created_at;
-  }
-  return null;
+function resolveNdaEnteredAt(deal, entries, _activePipelineIds) {
+  return entries.get(deal.id) ?? null;
 }
 
 // src/lib/mcp/tools/list-referral-partners.ts
@@ -3582,7 +3583,7 @@ var list_referral_partners_default = defineTool45({
         allDeals.map((d) => d.id)
       );
       const entries = earliestNdaEntries(
-        history.filter((h) => h.event_type === "stage_enter" && (h.to_stage_id === NDA_STAGE_ID || h.to_stage === NDA_STAGE_ID)),
+        history.filter((h) => h.event_type === "stage_enter"),
         activeIds,
         dealPipeline
       );
