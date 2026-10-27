@@ -1,5 +1,10 @@
 # Roadmap
 
+## Invitation approval access
+- [ ] Verify invitation lockout and preserve platform approval for self-service registrations.
+- [ ] Apply bounded approval fix and regression tests without changing existing account records.
+- [ ] Verify preview access/error handling without live invitation writes.
+
 ## Homepage rebuild
 - [x] Update lifecycle sequence from uploaded brief; verified three ordered steps, 15px dots and desktop track endpoints at 1280/1198/820/390px; targeted lint and preview build passed.
 - [x] Apply uploaded Platform brief; removed embedded pipeline preview, verified five cards and navigation at 1280/1138/820/390px, targeted lint and five existing tests passed; preview build OK.
