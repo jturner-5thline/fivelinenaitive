@@ -39,6 +39,8 @@ export interface TierDeal {
   sourced_via: string | null;
   closing_date: string | null;
   created_at: string;
+  /** When the deal entered NDA / Needs List Sent on the Active Pipeline; null = never (does not count). */
+  nda_entered_at: string | null;
 }
 
 export interface ManualSource {
@@ -65,7 +67,7 @@ export interface ClassifiedSource {
   manual_company: string | null;
   manual_email: string | null;
   stage: ReferralStage;
-  /** Derived: Nurturing = date added; Tier N = most recent referred deal behind the tier. */
+  /** Derived: Nurturing = date added; Tier N = most recent NDA entry of a referred deal. */
   stage_entered_at: string | null;
   manual_updated_at: string | null;
 }
@@ -77,6 +79,10 @@ const toSlug = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 const ms = (months: number) => months * 30 * 24 * 60 * 60 * 1000;
 
+/**
+ * Tier rules. Only deals that entered NDA / Needs List Sent on the Active
+ * Pipeline count, and every trailing window is measured from that entry date.
+ */
 export function computeTier(
   name: string,
   allDeals: TierDeal[],
@@ -88,15 +94,15 @@ export function computeTier(
   const winT1 = now - ms(rules.tier1_trailing_months ?? 3);
   const winT2 = now - ms(rules.tier2_trailing_months ?? 3);
   const win12 = now - ms(12);
-  const matched = allDeals.filter((d) => partnerMatches(name, d.referred_by) || partnerMatches(name, d.sourced_via));
-  const t = (s: string) => new Date(s).getTime();
+  const matched = allDeals.filter((d) => !!d.nda_entered_at && (partnerMatches(name, d.referred_by) || partnerMatches(name, d.sourced_via)));
+  const at = (d: TierDeal) => new Date(d.nda_entered_at as string).getTime();
   const isQ = (d: TierDeal) => !!d.stage && qualified.has(toSlug(d.stage));
-  const qT1 = matched.filter((d) => isQ(d) && t(d.created_at) >= winT1).length;
-  const qT2 = matched.filter((d) => isQ(d) && t(d.created_at) >= winT2).length;
-  const sT1 = matched.filter((d) => !!d.stage && SIGNED_STAGE_SLUGS.has(toSlug(d.stage)) && t(d.closing_date || d.created_at) >= winT1).length;
-  const aT2 = matched.filter((d) => t(d.created_at) >= winT2).length;
-  const aT12 = matched.filter((d) => t(d.created_at) >= win12).length;
-  const lastMatchedAt = matched.reduce<string | null>((m, d) => (!m || d.created_at > m ? d.created_at : m), null);
+  const qT1 = matched.filter((d) => isQ(d) && at(d) >= winT1).length;
+  const qT2 = matched.filter((d) => isQ(d) && at(d) >= winT2).length;
+  const sT1 = matched.filter((d) => !!d.stage && SIGNED_STAGE_SLUGS.has(toSlug(d.stage)) && (d.closing_date ? new Date(d.closing_date).getTime() : at(d)) >= winT1).length;
+  const aT2 = matched.filter((d) => at(d) >= winT2).length;
+  const aT12 = matched.filter((d) => at(d) >= win12).length;
+  const lastMatchedAt = matched.reduce<string | null>((m, d) => (!m || d.nda_entered_at! > m ? d.nda_entered_at : m), null);
   let tier: 1 | 2 | 3 | null = null;
   if (qT1 >= rules.tier1_qualified_deals || sT1 >= rules.tier1_signed_clients) tier = 1;
   else if ((qT2 >= rules.tier2_qualified_deals_min && qT2 <= rules.tier2_qualified_deals_max) || aT2 >= rules.tier2_deals_on_board) tier = 2;
