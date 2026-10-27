@@ -29,10 +29,11 @@ export const useIsApproved = () => {
       
       if (error) {
         console.error("Error checking approval status:", error);
-        return false;
+        throw error;
       }
       
-      return data as boolean;
+      if (typeof data !== 'boolean') throw new Error('Invalid approval status response');
+      return data;
     },
     enabled: !!user?.id,
     staleTime: 30000, // Cache for 30 seconds
