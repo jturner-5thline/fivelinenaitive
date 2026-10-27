@@ -25,6 +25,10 @@ describe("referral conversion", () => {
     const rows = sourceConversions([d("Ann", "on-hold", ["ndaneeds-list-sent", "funded-invoiced"]), d("Ann", "ndaneeds-list-sent")], "funded-invoiced");
     expect(rows[0].converted).toBe(1);
   });
+  it("Closing Rate: Funded / Invoiced alone does not count; Closed-Won does", () => {
+    const rows = sourceConversions([d("Ann", "funded-invoiced"), d("Ann", "closed-won")], "closed-won");
+    expect(rows[0].converted).toBe(1);
+  });
   it("ignores deals that never reached NDA", () => {
     expect(sourceConversions([d("Ann", "on-hold"), d("Ann", "on-hold")], "pre-credit-needs")).toEqual([]);
   });
