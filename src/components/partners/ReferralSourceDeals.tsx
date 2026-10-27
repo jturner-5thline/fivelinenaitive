@@ -151,7 +151,7 @@ export function ReferralSourceDeals({
   // calculation: distinct deals with a stage_enter into NDA / Needs List Sent
   // on the Active Pipeline within the timeframe, excluding John Moffitt-owned
   // or -authored entries and de-duped by company name. All acquisition
-  // channels are included (not referral-only).
+  // Only referral-sourced deals are included.
   const NDA_EXCLUDED_OWNERS = ['john moffitt'];
   const NDA_EXCLUDED_CHANGED_BY = ['2e65a4b1-bd94-46ef-87c6-9afe697b3180'];
   void REACHED_NDA_STAGES;
