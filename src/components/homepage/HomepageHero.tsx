@@ -10,7 +10,7 @@ export const HomepageHero = () => (
     <div className="os-container relative z-10 w-full py-16">
       <h1 className="max-w-[800px] text-[36px] md:text-[52px] lg:text-[64px] leading-[1.06] mb-6">The Operating System for Deal Management</h1>
       <p className="os-hero-subhead max-w-[660px] text-lg md:text-xl leading-relaxed mb-8">Centralizing deal execution into a single operating system — bringing work, decisions, and data together as deals move through review, diligence, and approval.</p>
-      <div className="flex items-center gap-3">
+      <div data-hero-demo className="flex items-center gap-3">
         <BookDemoDialog><Button className="os-primary h-11 px-6">Book a Demo<ArrowRight /></Button></BookDemoDialog>
       </div>
     </div>
