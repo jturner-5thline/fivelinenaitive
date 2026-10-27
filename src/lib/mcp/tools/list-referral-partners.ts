@@ -1,4 +1,5 @@
 import { defineTool } from "@lovable.dev/mcp-js";
+import { earliestNdaEntries, resolveNdaEnteredAt, NDA_STAGE_ID, type NdaHistoryRow } from "../../referralNdaEntry";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseForUser, requireAuth, textResult, errorResult } from "../supabase";
@@ -82,13 +83,13 @@ export default defineTool({
         pipelineIds.length
           ? fetchAll<PipelineDeal>((f, t) =>
               sb.from("deals")
-                .select("id, company, stage, referred_by, referred_by_contact_id, referred_by_crm_company_id, created_at")
+                .select("id, company, stage, referred_by, referred_by_contact_id, referred_by_crm_company_id, created_at, pipeline_id")
                 .eq("company_id", companyId).not("referred_by", "is", null).neq("referred_by", "")
                 .in("pipeline_id", pipelineIds).order("id").range(f, t))
           : Promise.resolve([] as PipelineDeal[]),
-        fetchAll<TierDeal>((f, t) =>
+        fetchAll<TierDeal & { id: string; pipeline_id: string | null }>((f, t) =>
           sb.from("deals")
-            .select("stage, referred_by, sourced_via, closing_date, created_at")
+            .select("id, stage, referred_by, sourced_via, closing_date, created_at, pipeline_id")
             .eq("company_id", companyId).not("referred_by", "is", null).neq("referred_by", "")
             .order("id").range(f, t)),
         fetchAll<ManualSource>((f, t) =>
@@ -101,6 +102,18 @@ export default defineTool({
           .limit(1).maybeSingle(),
       ]);
       if (rulesRes.error) return errorResult(rulesRes.error.message);
+
+      // Tiers count only deals that entered NDA / Needs List Sent on the Active Pipeline.
+      const activeIds = new Set((pipelines ?? []).filter((p) => p.is_default).map((p) => p.id as string));
+      const dealPipeline = new Map(allDeals.map((d) => [d.id, d.pipeline_id]));
+      const history = await fetchByIds<NdaHistoryRow & { event_type: string; to_stage_id: string | null; to_stage: string | null }>(
+        sb, "deal_stage_history", "deal_id, changed_at, pipeline_id, event_type, to_stage_id, to_stage", "deal_id", allDeals.map((d) => d.id));
+      const entries = earliestNdaEntries(
+        history.filter((h) => h.event_type === "stage_enter" && (h.to_stage_id === NDA_STAGE_ID || h.to_stage === NDA_STAGE_ID)),
+        activeIds, dealPipeline);
+      for (const d of allDeals) d.nda_entered_at = resolveNdaEnteredAt(d, entries, activeIds);
+      const ndaById = new Map(allDeals.map((d) => [d.id, d.nda_entered_at]));
+      for (const d of pipelineDeals) d.nda_entered_at = ndaById.get(d.id) ?? null;
 
       const contactIds = [...new Set([
         ...pipelineDeals.map((d) => d.referred_by_contact_id),
