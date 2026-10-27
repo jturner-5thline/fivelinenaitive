@@ -19,7 +19,7 @@ const humanize = (s: string) =>
 
 type Drill = { source: string; target: string; title: string; targetLabel: string };
 
-function List({ label, rows, onPick }: { label: string; rows: SourceConversion[]; onPick: (s: string) => void }) {
+function List({ label, rows, onPick, metric }: { label: string; rows: SourceConversion[]; onPick: (s: string) => void; metric: ConversionMetric }) {
   return (
     <div className="flex flex-col gap-1 min-w-0">
       <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
@@ -35,7 +35,11 @@ function List({ label, rows, onPick }: { label: string; rows: SourceConversion[]
           >
             <span className="truncate text-foreground hover:text-primary" title={r.source}>{r.source}</span>
             <span className="shrink-0 font-mono text-muted-foreground" title={`${r.converted} of ${r.total} deals`}>
-              <span className="text-primary">{pct(r.rate)}</span> · {r.converted}/{r.total}
+              {metric === "count" ? (
+                <><span className="text-primary">{r.converted}</span> · {pct(r.rate)}</>
+              ) : (
+                <><span className="text-primary">{pct(r.rate)}</span> · {r.converted}/{r.total}</>
+              )}
             </span>
           </button>
         ))
@@ -44,13 +48,15 @@ function List({ label, rows, onPick }: { label: string; rows: SourceConversion[]
   );
 }
 
-function Column({ title, tooltip, rows, onPick }: { title: string; tooltip: string; rows: SourceConversion[]; onPick: (s: string) => void }) {
-  const { top, bottom } = topAndBottom(rows);
+function Column({ title, tooltip, rows, onPick, metric }: { title: string; tooltip: string; rows: SourceConversion[]; onPick: (s: string) => void; metric: ConversionMetric }) {
+  const { top, bottom } = topAndBottom(rows, 3, metric);
+  const word = metric === "count" ? "Most converted deals" : "Highest converting";
+  const low = metric === "count" ? "Least converted deals" : "Lowest converting";
   return (
     <div className="flex flex-col gap-3 min-w-0">
       <p className="text-xs font-semibold text-foreground" title={tooltip}>{title}</p>
-      <List label="Highest converting" rows={top} onPick={onPick} />
-      <List label="Lowest converting" rows={bottom} onPick={onPick} />
+      <List label={word} rows={top} onPick={onPick} metric={metric} />
+      <List label={low} rows={bottom} onPick={onPick} metric={metric} />
     </div>
   );
 }
