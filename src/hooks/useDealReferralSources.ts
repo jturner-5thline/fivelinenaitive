@@ -5,6 +5,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
 import { useDealFirstActivityDates, filterByEffectiveDate } from '@/hooks/useDealFirstActivityDates';
 import { computeTier } from '@/lib/mcp/referralPipeline';
+import { previousMonthEnd } from '@/components/channels/atRiskSources';
 import { earliestNdaEntries, resolveNdaEnteredAt, NDA_STAGE_ID, type NdaHistoryRow } from '@/lib/referralNdaEntry';
 
 
@@ -468,7 +469,7 @@ export function useDealReferralSources(filters?: {
     }
 
 
-    const now = Date.now();
+    const now = previousMonthEnd().getTime();
     const tierDeals = allDeals.map(d => ({ ...d, nda_entered_at: ndaByDeal.get(d.id) ?? null }));
 
     const entries: DealReferralSourceEntry[] = [];

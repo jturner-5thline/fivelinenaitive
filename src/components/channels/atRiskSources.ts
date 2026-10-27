@@ -25,10 +25,17 @@ export interface AtRiskRow {
   totalDeals: number;
 }
 
+/**
+ * Rolling "as of" date for referral criteria: the last moment of the previous
+ * month. Stable all month, rolls forward on the 1st.
+ */
+export function previousMonthEnd(reference: Date = new Date()): Date {
+  return new Date(reference.getFullYear(), reference.getMonth(), 0, 23, 59, 59, 999);
+}
+
 const monthsAgo = (now: Date, months: number) => {
-  const d = new Date(now);
-  d.setMonth(d.getMonth() - months);
-  return d;
+  // Month-aligned: the 6-month window ends on the last day of a month.
+  return new Date(now.getFullYear(), now.getMonth() - months + 1, 0, 23, 59, 59, 999);
 };
 
 /**

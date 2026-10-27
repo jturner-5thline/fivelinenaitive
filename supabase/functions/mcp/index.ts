@@ -3315,9 +3315,7 @@ var REACHED_NDA_STAGES = /* @__PURE__ */ new Set([
   "closed-won"
 ]);
 var monthsAgo = (now, months) => {
-  const d = new Date(now);
-  d.setMonth(d.getMonth() - months);
-  return d;
+  return new Date(now.getFullYear(), now.getMonth() - months + 1, 0, 23, 59, 59, 999);
 };
 function activityAnchor(s) {
   const qualifying = s.deals.filter((d) => d.stage == null || REACHED_NDA_STAGES.has(d.stage));
