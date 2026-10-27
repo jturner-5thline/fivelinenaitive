@@ -1,5 +1,9 @@
 # Roadmap
 
+## Homepage rebuild
+- [ ] Rebuild public homepage using the uploaded operating-system brief and shared demo modal.
+- [ ] Verify homepage and demo interactions at desktop and mobile sizes without sending real communications.
+
 - [x] Fix smart-email-ai duplicate declaration; deployed, preflight and authenticated synthetic analysis returned 200, startup/auth regression test passed; existing function lint errors remain.
 - [x] Restore Open Items editor, bulk/checklist management, status and reorder controls in merged Tasks; regression tests and desktop/mobile read-only preview checked.
 - [ ] Verify Open Items saves against approved test records — blocked by shared production data; no live records changed during verification.
