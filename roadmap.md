@@ -1,5 +1,10 @@
 # Roadmap
 
+## Invitation approval access
+- [x] Confirm invitation approval gap and reproduce denial redirect with simulated preview responses; all five Blount members currently approved.
+- [ ] Implement trusted invitation approval and error recovery — awaiting approval of the access-rule plan.
+- [ ] Verify invitation acceptance and regression tests — follows plan approval; live persistence requires approved test records.
+
 ## Homepage rebuild
 - [x] Update lifecycle sequence from uploaded brief; verified three ordered steps, 15px dots and desktop track endpoints at 1280/1198/820/390px; targeted lint and preview build passed.
 - [x] Apply uploaded Platform brief; removed embedded pipeline preview, verified five cards and navigation at 1280/1138/820/390px, targeted lint and five existing tests passed; preview build OK.
