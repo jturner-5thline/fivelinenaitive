@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
-import { partnerMatches } from '@/lib/partnerNameMatch';
 import { useDealFirstActivityDates, filterByEffectiveDate } from '@/hooks/useDealFirstActivityDates';
+import { computeTier } from '@/lib/mcp/referralPipeline';
+import { earliestNdaEntries, resolveNdaEnteredAt, NDA_STAGE_ID, type NdaHistoryRow } from '@/lib/referralNdaEntry';
 
 
 export interface DealReferralSourceEntry {
@@ -38,6 +39,8 @@ export interface DealReferralSourceEntry {
     created_at: string;
     pipelineName: string;
     pipelineId: string;
+    /** Entry into NDA / Needs List Sent on the Active Pipeline; null = not reached. */
+    ndaEnteredAt: string | null;
   }[];
   /** Channel type from channel_entries if matched */
   channelType: string | null;
@@ -76,6 +79,7 @@ interface AllDealRow {
   closing_date: string | null;
   created_at: string;
   company: string | null;
+  pipeline_id: string | null;
 }
 
 interface SalesBdRules {
@@ -90,13 +94,6 @@ interface SalesBdRules {
   qualified_deal_stages: string[];
 }
 
-const SIGNED_STAGE_SLUGS = new Set([
-  'final-credit-items', 'closed-won', 'funded-invoiced', 'terms-issued', 'agreement-pending',
-]);
-
-function toSlug(s: string): string {
-  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-}
 
 const FIRM_KEYWORDS = [
   'capital', 'bank', 'partners', 'group', 'advisors', 'advisory', 'ventures',
@@ -335,7 +332,7 @@ export function useDealReferralSources(filters?: {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('deals')
-        .select('id, value, stage, referred_by, sourced_via, closing_date, created_at, company')
+        .select('id, value, stage, referred_by, sourced_via, closing_date, created_at, company, pipeline_id')
         .eq('company_id', company!.id)
         .not('referred_by', 'is', null)
         .neq('referred_by', '');
@@ -343,6 +340,39 @@ export function useDealReferralSources(filters?: {
       return (data || []) as AllDealRow[];
     },
   });
+
+  // Tier dates = entry into NDA / Needs List Sent on the Active (default) pipeline.
+  const allDealIds = useMemo(() => allDeals.map(d => d.id).sort(), [allDeals]);
+  const defaultPipelineIds = useMemo(
+    () => pipelines.filter(p => p.is_default).map(p => p.id).sort(),
+    [pipelines],
+  );
+  const { data: ndaHistory = [] } = useQuery({
+    queryKey: ['deal_referral_nda_entries', company?.id, allDealIds.length, allDealIds[0] ?? null, allDealIds[allDealIds.length - 1] ?? null],
+    enabled: !!company?.id && allDealIds.length > 0,
+    queryFn: async () => {
+      const out: NdaHistoryRow[] = [];
+      for (let i = 0; i < allDealIds.length; i += 200) {
+        const { data, error } = await supabase
+          .from('deal_stage_history')
+          .select('deal_id, changed_at, pipeline_id')
+          .eq('event_type', 'stage_enter')
+          .or(`to_stage_id.eq.${NDA_STAGE_ID},to_stage.eq.${NDA_STAGE_ID}`)
+          .in('deal_id', allDealIds.slice(i, i + 200));
+        if (error) throw error;
+        out.push(...((data || []) as NdaHistoryRow[]));
+      }
+      return out;
+    },
+  });
+  const ndaByDeal = useMemo(() => {
+    const active = new Set(defaultPipelineIds);
+    const dealPipeline = new Map(allDeals.map(d => [d.id, d.pipeline_id]));
+    const entries = earliestNdaEntries(ndaHistory, active, dealPipeline);
+    const m = new Map<string, string | null>();
+    for (const d of allDeals) m.set(d.id, resolveNdaEnteredAt(d, entries, active));
+    return m;
+  }, [allDeals, ndaHistory, defaultPipelineIds]);
 
   const { data: rules } = useQuery({
     queryKey: ['sales_bd_rules_global'],
@@ -438,15 +468,8 @@ export function useDealReferralSources(filters?: {
     }
 
 
-    // Pre-compute tier-relevant windows once.
     const now = Date.now();
-    const ms = (months: number) => months * 30 * 24 * 60 * 60 * 1000;
-    const qualifiedSlugs = new Set((rules?.qualified_deal_stages || []).map(toSlug));
-    const t1Months = rules?.tier1_trailing_months ?? 3;
-    const t2Months = rules?.tier2_trailing_months ?? 3;
-    const winT1 = now - ms(t1Months);
-    const winT2 = now - ms(t2Months);
-    const win12 = now - ms(12);
+    const tierDeals = allDeals.map(d => ({ ...d, nda_entered_at: ndaByDeal.get(d.id) ?? null }));
 
     const entries: DealReferralSourceEntry[] = [];
     for (const [, { raw, contactId, crmCompanyId, deals: groupDeals }] of grouped) {
@@ -515,23 +538,8 @@ export function useDealReferralSources(filters?: {
         for (let i = 1; i < sortedC.length; i++) alternateChannels.push(sortedC[i][0]);
       }
 
-      // === Compute tier from all-time deals matched by partnerMatches() ===
-      let tier: 1 | 2 | 3 | null = null;
-      if (rules) {
-        const matched = allDeals.filter(d => partnerMatches(raw, d.referred_by) || partnerMatches(raw, d.sourced_via));
-        const qualifiedT1 = matched.filter(d => d.stage && qualifiedSlugs.has(toSlug(d.stage)) && new Date(d.created_at).getTime() >= winT1).length;
-        const qualifiedT2 = matched.filter(d => d.stage && qualifiedSlugs.has(toSlug(d.stage)) && new Date(d.created_at).getTime() >= winT2).length;
-        const signedT1 = matched.filter(d => d.stage && SIGNED_STAGE_SLUGS.has(toSlug(d.stage)) && new Date(d.closing_date || d.created_at).getTime() >= winT1).length;
-        const addedT2 = matched.filter(d => new Date(d.created_at).getTime() >= winT2).length;
-        const addedT12 = matched.filter(d => new Date(d.created_at).getTime() >= win12).length;
-        if (qualifiedT1 >= rules.tier1_qualified_deals || signedT1 >= rules.tier1_signed_clients) {
-          tier = 1;
-        } else if ((qualifiedT2 >= rules.tier2_qualified_deals_min && qualifiedT2 <= rules.tier2_qualified_deals_max) || addedT2 >= rules.tier2_deals_on_board) {
-          tier = 2;
-        } else if (addedT12 >= rules.tier3_deals_per_quarter * 4 || matched.length > 0) {
-          tier = 3;
-        }
-      }
+      // === Tier: only deals that entered NDA / Needs List Sent on the Active Pipeline count ===
+      const tier = computeTier(raw, tierDeals, rules ?? null, now).tier;
 
       entries.push({
         referredBy: raw,
@@ -559,6 +567,7 @@ export function useDealReferralSources(filters?: {
           created_at: d.created_at,
           pipelineName: pipelineMap.get(d.pipeline_id) || 'Unknown',
           pipelineId: d.pipeline_id,
+          ndaEnteredAt: ndaByDeal.get(d.id) ?? null,
         })),
         channelType: modalChannel,
         companyName: derivedCompany,
@@ -579,7 +588,7 @@ export function useDealReferralSources(filters?: {
     filtered.sort((a, b) => b.totalVolume - a.totalVolume);
 
     return filtered;
-  }, [deals, channelEntries, referralSourceRecords, linkedContacts, linkedCompanies, pipelineMap, filters?.channelFilter, filters?.companyFilter, allDeals, rules]);
+  }, [deals, channelEntries, referralSourceRecords, linkedContacts, linkedCompanies, pipelineMap, filters?.channelFilter, filters?.companyFilter, allDeals, rules, ndaByDeal]);
 
   // Unique companies for filter options
   const companyOptions = useMemo(() => {

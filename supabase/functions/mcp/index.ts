@@ -3293,6 +3293,66 @@ var describe_schema_default = defineTool44({
 
 // src/lib/mcp/tools/list-referral-partners.ts
 import { defineTool as defineTool45 } from "npm:@lovable.dev/mcp-js@0.23.0";
+
+// src/components/channels/atRiskSources.ts
+var REMOVAL_MONTHS = 6;
+var REACHED_NDA_STAGES = /* @__PURE__ */ new Set([
+  "ndaneeds-list-sent",
+  "pre-credit-needs",
+  "initial-lender-review",
+  "initial-feedback",
+  "proposal-in-development",
+  "proposal-issued",
+  "agreement-pending",
+  "final-credit-items",
+  "client-strategy-review",
+  "write-up-pending",
+  "submitted-to-lenders",
+  "lenders-in-review",
+  "terms-issued",
+  "in-due-diligence",
+  "funded-invoiced",
+  "closed-won"
+]);
+var monthsAgo = (now, months) => {
+  const d = new Date(now);
+  d.setMonth(d.getMonth() - months);
+  return d;
+};
+function activityAnchor(s) {
+  const qualifying = s.deals.filter((d) => d.stage == null || REACHED_NDA_STAGES.has(d.stage));
+  let at = s.addedAt ?? null;
+  for (const d of qualifying) if (!at || d.created_at > at) at = d.created_at;
+  return at ? { at, qualifying: qualifying.length } : null;
+}
+function isRemovedForInactivity(s, now = /* @__PURE__ */ new Date()) {
+  const a = activityAnchor(s);
+  return !!a && new Date(a.at) <= monthsAgo(now, REMOVAL_MONTHS);
+}
+
+// src/lib/referralNdaEntry.ts
+var NDA_STAGE_ID = "ndaneeds-list-sent";
+function earliestNdaEntries(rows, activePipelineIds, dealPipeline) {
+  const out = /* @__PURE__ */ new Map();
+  for (const r of rows) {
+    if (!r.changed_at) continue;
+    const pid = r.pipeline_id ?? dealPipeline.get(r.deal_id) ?? null;
+    if (!pid || !activePipelineIds.has(pid)) continue;
+    const prev = out.get(r.deal_id);
+    if (!prev || r.changed_at < prev) out.set(r.deal_id, r.changed_at);
+  }
+  return out;
+}
+function resolveNdaEnteredAt(deal, entries, activePipelineIds) {
+  const hit = entries.get(deal.id);
+  if (hit) return hit;
+  if (deal.pipeline_id && activePipelineIds.has(deal.pipeline_id) && deal.stage && REACHED_NDA_STAGES.has(deal.stage)) {
+    return deal.created_at;
+  }
+  return null;
+}
+
+// src/lib/mcp/tools/list-referral-partners.ts
 import { z as z46 } from "npm:zod@^3.23.0";
 
 // src/lib/partnerNameMatch.ts
@@ -3346,42 +3406,6 @@ function partnerMatches(partnerName, candidate) {
   return overlap >= 2 || pTok.size === 1 && overlap >= 1;
 }
 
-// src/components/channels/atRiskSources.ts
-var REMOVAL_MONTHS = 6;
-var REACHED_NDA_STAGES = /* @__PURE__ */ new Set([
-  "ndaneeds-list-sent",
-  "pre-credit-needs",
-  "initial-lender-review",
-  "initial-feedback",
-  "proposal-in-development",
-  "proposal-issued",
-  "agreement-pending",
-  "final-credit-items",
-  "client-strategy-review",
-  "write-up-pending",
-  "submitted-to-lenders",
-  "lenders-in-review",
-  "terms-issued",
-  "in-due-diligence",
-  "funded-invoiced",
-  "closed-won"
-]);
-var monthsAgo = (now, months) => {
-  const d = new Date(now);
-  d.setMonth(d.getMonth() - months);
-  return d;
-};
-function activityAnchor(s) {
-  const qualifying = s.deals.filter((d) => d.stage == null || REACHED_NDA_STAGES.has(d.stage));
-  let at = s.addedAt ?? null;
-  for (const d of qualifying) if (!at || d.created_at > at) at = d.created_at;
-  return at ? { at, qualifying: qualifying.length } : null;
-}
-function isRemovedForInactivity(s, now = /* @__PURE__ */ new Date()) {
-  const a = activityAnchor(s);
-  return !!a && new Date(a.at) <= monthsAgo(now, REMOVAL_MONTHS);
-}
-
 // src/lib/mcp/referralPipeline.ts
 var REFERRAL_STAGES = ["Nurturing", "Tier 3", "Tier 2", "Tier 1"];
 var SIGNED_STAGE_SLUGS = /* @__PURE__ */ new Set([
@@ -3400,15 +3424,15 @@ function computeTier(name, allDeals, rules, now) {
   const winT1 = now - ms(rules.tier1_trailing_months ?? 3);
   const winT2 = now - ms(rules.tier2_trailing_months ?? 3);
   const win12 = now - ms(12);
-  const matched = allDeals.filter((d) => partnerMatches(name, d.referred_by) || partnerMatches(name, d.sourced_via));
-  const t = (s) => new Date(s).getTime();
+  const matched = allDeals.filter((d) => !!d.nda_entered_at && (partnerMatches(name, d.referred_by) || partnerMatches(name, d.sourced_via)));
+  const at = (d) => new Date(d.nda_entered_at).getTime();
   const isQ = (d) => !!d.stage && qualified.has(toSlug(d.stage));
-  const qT1 = matched.filter((d) => isQ(d) && t(d.created_at) >= winT1).length;
-  const qT2 = matched.filter((d) => isQ(d) && t(d.created_at) >= winT2).length;
-  const sT1 = matched.filter((d) => !!d.stage && SIGNED_STAGE_SLUGS.has(toSlug(d.stage)) && t(d.closing_date || d.created_at) >= winT1).length;
-  const aT2 = matched.filter((d) => t(d.created_at) >= winT2).length;
-  const aT12 = matched.filter((d) => t(d.created_at) >= win12).length;
-  const lastMatchedAt = matched.reduce((m, d) => !m || d.created_at > m ? d.created_at : m, null);
+  const qT1 = matched.filter((d) => isQ(d) && at(d) >= winT1).length;
+  const qT2 = matched.filter((d) => isQ(d) && at(d) >= winT2).length;
+  const sT1 = matched.filter((d) => !!d.stage && SIGNED_STAGE_SLUGS.has(toSlug(d.stage)) && (d.closing_date ? new Date(d.closing_date).getTime() : at(d)) >= winT1).length;
+  const aT2 = matched.filter((d) => at(d) >= winT2).length;
+  const aT12 = matched.filter((d) => at(d) >= win12).length;
+  const lastMatchedAt = matched.reduce((m, d) => !m || d.nda_entered_at > m ? d.nda_entered_at : m, null);
   let tier = null;
   if (qT1 >= rules.tier1_qualified_deals || sT1 >= rules.tier1_signed_clients) tier = 1;
   else if (qT2 >= rules.tier2_qualified_deals_min && qT2 <= rules.tier2_qualified_deals_max || aT2 >= rules.tier2_deals_on_board) tier = 2;
@@ -3452,7 +3476,7 @@ function classifyReferralPipeline(input) {
     if (isRemovedForInactivity({
       referredBy: g.raw,
       addedAt,
-      deals: g.deals.map((d) => ({ id: d.id, company: d.company ?? "", created_at: d.created_at, stage: d.stage || "" }))
+      deals: g.deals.filter((d) => !!d.nda_entered_at).map((d) => ({ id: d.id, company: d.company ?? "", created_at: d.nda_entered_at, stage: null }))
     }, now)) continue;
     const { tier, lastMatchedAt } = computeTier(g.raw, input.allDeals, input.rules, nowMs);
     const stage = tier === null ? "Nurturing" : `Tier ${tier}`;
@@ -3538,12 +3562,29 @@ var list_referral_partners_default = defineTool45({
         return l.includes("in development") || l.includes("in-development") || p.is_default || l.includes("active");
       }).map((p) => p.id);
       const [pipelineDeals, allDeals, manualSources, rulesRes] = await Promise.all([
-        pipelineIds.length ? fetchAll((f, t) => sb.from("deals").select("id, company, stage, referred_by, referred_by_contact_id, referred_by_crm_company_id, created_at").eq("company_id", companyId).not("referred_by", "is", null).neq("referred_by", "").in("pipeline_id", pipelineIds).order("id").range(f, t)) : Promise.resolve([]),
-        fetchAll((f, t) => sb.from("deals").select("stage, referred_by, sourced_via, closing_date, created_at").eq("company_id", companyId).not("referred_by", "is", null).neq("referred_by", "").order("id").range(f, t)),
+        pipelineIds.length ? fetchAll((f, t) => sb.from("deals").select("id, company, stage, referred_by, referred_by_contact_id, referred_by_crm_company_id, created_at, pipeline_id").eq("company_id", companyId).not("referred_by", "is", null).neq("referred_by", "").in("pipeline_id", pipelineIds).order("id").range(f, t)) : Promise.resolve([]),
+        fetchAll((f, t) => sb.from("deals").select("id, stage, referred_by, sourced_via, closing_date, created_at, pipeline_id").eq("company_id", companyId).not("referred_by", "is", null).neq("referred_by", "").order("id").range(f, t)),
         fetchAll((f, t) => sb.from("referral_sources").select("id, name, email, company, contact_id, created_at, updated_at").or(`company_id.eq.${companyId},and(company_id.is.null,user_id.eq.${userId})`).order("id").range(f, t)),
         sb.from("sales_bd_rules").select("tier1_qualified_deals, tier1_trailing_months, tier1_signed_clients, tier2_qualified_deals_min, tier2_qualified_deals_max, tier2_trailing_months, tier2_deals_on_board, tier3_deals_per_quarter, qualified_deal_stages").limit(1).maybeSingle()
       ]);
       if (rulesRes.error) return errorResult(rulesRes.error.message);
+      const activeIds = new Set((pipelines ?? []).filter((p) => p.is_default).map((p) => p.id));
+      const dealPipeline = new Map(allDeals.map((d) => [d.id, d.pipeline_id]));
+      const history = await fetchByIds(
+        sb,
+        "deal_stage_history",
+        "deal_id, changed_at, pipeline_id, event_type, to_stage_id, to_stage",
+        "deal_id",
+        allDeals.map((d) => d.id)
+      );
+      const entries = earliestNdaEntries(
+        history.filter((h) => h.event_type === "stage_enter" && (h.to_stage_id === NDA_STAGE_ID || h.to_stage === NDA_STAGE_ID)),
+        activeIds,
+        dealPipeline
+      );
+      for (const d of allDeals) d.nda_entered_at = resolveNdaEnteredAt(d, entries, activeIds);
+      const ndaById = new Map(allDeals.map((d) => [d.id, d.nda_entered_at]));
+      for (const d of pipelineDeals) d.nda_entered_at = ndaById.get(d.id) ?? null;
       const contactIds = [...new Set([
         ...pipelineDeals.map((d) => d.referred_by_contact_id),
         ...manualSources.map((m) => m.contact_id)
