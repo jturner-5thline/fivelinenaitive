@@ -30,6 +30,8 @@ export interface PipelineDeal {
   referred_by_contact_id: string | null;
   referred_by_crm_company_id: string | null;
   created_at: string;
+  /** NDA / Needs List Sent entry on the Active Pipeline; null = never reached. */
+  nda_entered_at?: string | null;
 }
 
 /** Every referred deal (any pipeline), used for tier windows. */
@@ -162,7 +164,7 @@ export function classifyReferralPipeline(input: {
     if (isRemovedForInactivity({
       referredBy: g.raw,
       addedAt,
-      deals: g.deals.map((d) => ({ id: d.id, company: d.company ?? "", created_at: d.created_at, stage: d.stage || "" })),
+      deals: g.deals.filter((d) => !!d.nda_entered_at).map((d) => ({ id: d.id, company: d.company ?? "", created_at: d.nda_entered_at as string, stage: null })),
     }, now)) continue;
     const { tier, lastMatchedAt } = computeTier(g.raw, input.allDeals, input.rules, nowMs);
     const stage: ReferralStage = tier === null ? "Nurturing" : (`Tier ${tier}` as ReferralStage);

@@ -3452,7 +3452,7 @@ function classifyReferralPipeline(input) {
     if (isRemovedForInactivity({
       referredBy: g.raw,
       addedAt,
-      deals: g.deals.map((d) => ({ id: d.id, company: d.company ?? "", created_at: d.created_at, stage: d.stage || "" }))
+      deals: g.deals.filter((d) => !!d.nda_entered_at).map((d) => ({ id: d.id, company: d.company ?? "", created_at: d.nda_entered_at, stage: null }))
     }, now)) continue;
     const { tier, lastMatchedAt } = computeTier(g.raw, input.allDeals, input.rules, nowMs);
     const stage = tier === null ? "Nurturing" : `Tier ${tier}`;
