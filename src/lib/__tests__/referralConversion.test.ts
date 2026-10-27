@@ -14,6 +14,13 @@ describe("referral conversion", () => {
     expect(rows.find((r) => r.source === "Ann")?.rate).toBe(0.5);
     expect(rows.find((r) => r.source === "Bob")?.rate).toBe(0);
   });
+  it("Engagement: Pre-Credit Needs alone does not count; Final Credit Items does", () => {
+    const rows = sourceConversions([
+      d("Ann", "pre-credit-needs"), d("Ann", "final-credit-items"),
+    ], "final-credit-items");
+    expect(rows[0].converted).toBe(1);
+    expect(rows[0].rate).toBe(0.5);
+  });
   it("counts a deal that passed the target earlier but is now on hold", () => {
     const rows = sourceConversions([d("Ann", "on-hold", ["ndaneeds-list-sent", "funded-invoiced"]), d("Ann", "ndaneeds-list-sent")], "funded-invoiced");
     expect(rows[0].converted).toBe(1);
