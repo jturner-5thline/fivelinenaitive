@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import naitiveLogoDark from "@/assets/naitive-logo-dark.png";
 
 export const HomepageHeader = () => (
-  <header className="os-header border-b border-border">
+  <header className="os-header sticky top-0 z-50">
     <nav className="os-container flex items-center justify-between gap-4 h-[76px]" aria-label="Main navigation">
       <Link to="/" aria-label="naitive by 5th Line home" className="shrink-0 flex items-center">
         <img src={naitiveLogoDark} alt="naitive" className="h-[108px] w-auto object-contain -mr-[28px]" />
