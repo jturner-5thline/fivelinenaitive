@@ -10,28 +10,32 @@ interface ContactUsRequestProps {
   lastName?: string
   email?: string
   company?: string
+  notes?: string
+  requestType?: string
   submittedAt?: string
 }
 
 const ContactUsRequestEmail = (props: ContactUsRequestProps) => {
-  const { firstName, lastName, email, company, submittedAt } = props
+  const { firstName, lastName, email, company, notes, requestType, submittedAt } = props
+  const isDemo = requestType === 'demo'
   const fullName = [firstName, lastName].filter(Boolean).join(' ') || 'a visitor'
   const h = React.createElement
   return h(Html, { lang: 'en', dir: 'ltr' },
     h(Head, null),
-    h(Preview, null, `Someone has contacted us — ${fullName}`),
+    h(Preview, null, `${isDemo ? 'Demo request' : 'Someone has contacted us'} — ${fullName}`),
     h(Body, { style: main },
       h(Container, { style: container },
         h(Section, { style: { textAlign: 'center', marginBottom: 8 } as any },
           h(Text, { style: logoText }, 'naitive'),
         ),
         h(Hr, { style: divider }),
-        h(Heading, { style: h1Style }, 'Someone has contacted us'),
-        h(Text, { style: text }, 'A new contact request was submitted from the naitive website.'),
+        h(Heading, { style: h1Style }, isDemo ? 'New demo request' : 'Someone has contacted us'),
+        h(Text, { style: text }, `A new ${isDemo ? 'demo' : 'contact'} request was submitted from the naitive website.`),
         h(Section, { style: card },
           h(Text, { style: row }, h('strong', null, 'Name: '), fullName),
           h(Text, { style: row }, h('strong', null, 'Email: '), email || '—'),
           h(Text, { style: row }, h('strong', null, 'Company: '), company || '—'),
+          notes ? h(Text, { style: row }, h('strong', null, 'Notes: '), notes) : null,
           h(Text, { style: row }, h('strong', null, 'Submitted at: '), submittedAt || new Date().toISOString()),
         ),
         h(Text, { style: text }, 'Please follow up with them.'),

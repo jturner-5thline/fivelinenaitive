@@ -1,56 +1,11 @@
-const tags = [
-  "Deal Pipeline Tracking",
-  "Lender Management",
-  "Data Room Organization",
-  "Milestone Tracking",
-  "AI Research Assistant",
-  "Document Analysis",
-  "Meeting Prep",
-  "Company Profiles",
-  "Market Intelligence",
-  "Workflow Automation",
-  "Team Collaboration",
-  "Custom Reports",
-];
+const tags = ["Deal Workspace", "Deal AI", "Smarter Lender Matching", "Pipeline Visibility", "Relationship Intelligence", "Email-to-Deal Workflows", "Lender Tracking", "Connected Documents", "Workflow Automation"];
 
-export const HomepageScrollingTags = () => {
-  return (
-    <section
-      className="relative overflow-hidden flex items-center"
-      style={{
-        width: "100vw",
-        marginLeft: "calc(50% - 50vw)",
-        height: "72px",
-        backgroundColor: "transparent",
-        WebkitMaskImage:
-          "linear-gradient(90deg, transparent 0%, black 6%, black 94%, transparent 100%)",
-        maskImage:
-          "linear-gradient(90deg, transparent 0%, black 6%, black 94%, transparent 100%)",
-      }}
-    >
-      <div className="relative w-full">
-        {/* Scrolling container */}
-        <div className="flex items-center animate-scroll-left">
-          {[...tags, ...tags, ...tags].map((tag, index) => (
-            <div
-              key={index}
-              className="flex-shrink-0 px-5 py-2.5 mx-2 rounded-lg bg-gradient-to-b from-white/[0.04] to-white/[0.02] border border-white/10 text-white/75 text-sm font-medium tracking-tight whitespace-nowrap pointer-events-none backdrop-blur-sm"
-            >
-              {tag}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes scroll-left {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-33.333%); }
-        }
-        .animate-scroll-left {
-          animation: scroll-left 30s linear infinite;
-        }
-      `}</style>
-    </section>
-  );
-};
+export const HomepageScrollingTags = () => (
+  <section aria-label="Platform capabilities" className="os-marquee border-y border-border overflow-hidden py-5">
+    <div className="os-marquee-track flex w-max">
+      {[0, 1].map(copy => <div key={copy} aria-hidden={copy === 1 ? true : undefined} className="flex shrink-0 items-center gap-3 pr-3">
+        {tags.map(tag => <span key={tag} className="flex items-center gap-3 whitespace-nowrap rounded-md border border-border bg-card px-4 py-2 text-sm text-foreground"><span className="h-1.5 w-1.5 rounded-full bg-primary" />{tag}</span>)}
+      </div>)}
+    </div>
+  </section>
+);
