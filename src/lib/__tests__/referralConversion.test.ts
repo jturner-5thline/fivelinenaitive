@@ -42,3 +42,16 @@ describe("referral conversion", () => {
     expect(bottom.map((r) => r.source)).toEqual(["S3"]);
   });
 });
+
+import { topAndBottom as tb } from "../referralConversion";
+import { test as t2, expect as e2 } from "bun:test";
+t2("count mode ranks by converted deals, not rate", () => {
+  const rows = [
+    { source: "A", total: 2, converted: 2, rate: 1 },
+    { source: "B", total: 10, converted: 5, rate: 0.5 },
+    { source: "C", total: 3, converted: 0, rate: 0 },
+  ];
+  e2(tb(rows, 1, "count").top[0].source).toBe("B");
+  e2(tb(rows, 1, "rate").top[0].source).toBe("A");
+  e2(tb(rows, 1, "count").bottom[0].source).toBe("C");
+});
