@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
+import { shouldSkipTaskAssignmentEmail } from '../_shared/taskAssignmentEmailPolicy.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
@@ -1347,6 +1348,10 @@ const handler = async (req: Request): Promise<Response> => {
         continue;
       }
       // Check per-recipient notification preferences
+      if (shouldSkipTaskAssignmentEmail(payload.type, recipient.email)) {
+        results.push({ email: recipient.email, skipped: true, reason: 'task_assignment_email_disabled' });
+        continue;
+      }
       const profileData = recipient.profile;
       if (!profileData.email_notifications || (preferenceKey && !profileData[preferenceKey])) {
         console.log(`Skipping ${recipient.email}: notifications disabled`);
