@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { sendTemplateEmail } from '../_shared/transactional-email-templates/send-email.ts'
+import { shouldSkipTaskAssignmentEmail } from '../_shared/taskAssignmentEmailPolicy.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,6 +48,10 @@ Deno.serve(async (req) => {
 
   if (!templateName || typeof templateName !== 'string') {
     return json({ error: 'templateName is required' }, 400)
+  }
+
+  if (typeof recipientEmail === 'string' && shouldSkipTaskAssignmentEmail(templateName, recipientEmail)) {
+    return json({ success: true, sent: false, reason: 'task_assignment_email_disabled' })
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
