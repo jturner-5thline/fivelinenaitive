@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeAtRiskSources, isRemovedForInactivity } from './atRiskSources';
+import { computeAtRiskSources, isRemovedForInactivity, previousMonthEnd } from './atRiskSources';
 
 const now = new Date('2026-10-19T00:00:00Z');
 const d = (created_at: string, stage?: string) => ({ id: created_at, company: 'X', created_at, stage });
@@ -42,5 +42,16 @@ describe('isRemovedForInactivity', () => {
   });
   it('removes a manually added source with no deal after 6 months', () => {
     expect(isRemovedForInactivity({ referredBy: 'M', addedAt: '2026-04-01T00:00:00Z', deals: [] }, now)).toBe(true);
+  });
+});
+
+describe('previousMonthEnd', () => {
+  it('is the last day of last month all month long', () => {
+    expect(previousMonthEnd(new Date(2026, 9, 27)).getDate()).toBe(30);
+    expect(previousMonthEnd(new Date(2026, 9, 27)).getMonth()).toBe(8);
+  });
+  it('rolls forward on the first of the month', () => {
+    const d = previousMonthEnd(new Date(2026, 10, 1, 0, 0, 1));
+    expect([d.getMonth(), d.getDate()]).toEqual([9, 31]);
   });
 });
