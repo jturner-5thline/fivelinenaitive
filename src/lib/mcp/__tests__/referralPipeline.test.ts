@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifyReferralPipeline, type TierRules } from "../referralPipeline";
+import { classifyReferralPipeline, computeTier, type TierRules } from "../referralPipeline";
 
 const rules: TierRules = {
   tier1_qualified_deals: 3, tier1_trailing_months: 3, tier1_signed_clients: 2,
@@ -26,10 +26,29 @@ describe("classifyReferralPipeline", () => {
     const out = classifyReferralPipeline({
       ...base,
       pipelineDeals: [deal],
-      allDeals: [{ stage: deal.stage, referred_by: "Bob Smith", sourced_via: null, closing_date: null, created_at: deal.created_at }],
+      allDeals: [{ stage: deal.stage, referred_by: "Bob Smith", sourced_via: null, closing_date: null, created_at: deal.created_at, nda_entered_at: deal.created_at }],
       contacts: [{ id: "c1", full_name: "Bob Smith", crm_company_id: null }],
     });
     expect(out[0].stage).toBe("Tier 2");
     expect(out[0].contact_id).toBe("c1");
+  });
+
+  it("does not count a referred deal that never entered NDA / Needs List Sent", () => {
+    const deal = { id: "d1", company: "Acme", stage: "lead", referred_by: "Bob Smith", referred_by_contact_id: "c1", referred_by_crm_company_id: null, created_at: "2026-10-01T00:00:00Z", nda_entered_at: null };
+    const out = classifyReferralPipeline({
+      ...base,
+      pipelineDeals: [deal],
+      allDeals: [{ stage: "lead", referred_by: "Bob Smith", sourced_via: null, closing_date: null, created_at: deal.created_at, nda_entered_at: null }],
+      contacts: [{ id: "c1", full_name: "Bob Smith", crm_company_id: null }],
+    });
+    expect(out[0].stage).toBe("Nurturing");
+  });
+
+  it("measures trailing windows from the NDA entry date, not created_at", () => {
+    const tierDeal = (nda: string) => ({ stage: "ndaneeds-list-sent", referred_by: "Bob Smith", sourced_via: null, closing_date: null, created_at: "2024-01-01T00:00:00Z", nda_entered_at: nda });
+    // Two deals imported long ago but entering NDA last month meet "2 deals on board in 3 months" -> Tier 2.
+    expect(computeTier("Bob Smith", [tierDeal("2026-09-20T00:00:00Z"), tierDeal("2026-10-01T00:00:00Z")], rules, now.getTime()).tier).toBe(2);
+    // Same deals entering NDA a year ago fall outside the window -> Tier 3.
+    expect(computeTier("Bob Smith", [tierDeal("2025-11-01T00:00:00Z"), tierDeal("2025-11-02T00:00:00Z")], rules, now.getTime()).tier).toBe(3);
   });
 });
