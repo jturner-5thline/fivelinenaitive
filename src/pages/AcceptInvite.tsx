@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { seedSampleDeal } from '@/utils/seedSampleDeal';
@@ -86,15 +86,7 @@ export default function AcceptInvite() {
     checkInvitation();
   }, [token]);
 
-  // Auto-accept for logged-in users
-  useEffect(() => {
-    if (status === 'valid' && user && invitation && !profileLoading && !autoAcceptTriggered && !isAccepting) {
-      setAutoAcceptTriggered(true);
-      handleAccept();
-    }
-  }, [status, user, invitation, profileLoading, autoAcceptTriggered, isAccepting]);
-
-  const handleAccept = async () => {
+  const handleAccept = useCallback(async () => {
     if (!user || !invitation || !token) return;
 
     setIsAccepting(true);
@@ -152,7 +144,15 @@ export default function AcceptInvite() {
     } finally {
       setIsAccepting(false);
     }
-  };
+  }, [user, invitation, token, queryClient, profile]);
+
+  // Wait for the profile before deciding whether setup is needed.
+  useEffect(() => {
+    if (status === 'valid' && user && invitation && !profileLoading && !autoAcceptTriggered && !isAccepting) {
+      setAutoAcceptTriggered(true);
+      void handleAccept();
+    }
+  }, [status, user, invitation, profileLoading, autoAcceptTriggered, isAccepting, handleAccept]);
 
   const handleProfileSetupComplete = () => {
     setShowProfileSetup(false);
