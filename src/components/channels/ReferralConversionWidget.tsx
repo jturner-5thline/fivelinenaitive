@@ -104,7 +104,7 @@ export function ReferralConversionWidget() {
     },
   });
 
-  const engagement = useMemo(() => sourceConversions(deals, "pre-credit-needs"), [deals]);
+  const engagement = useMemo(() => sourceConversions(deals, "final-credit-items"), [deals]);
   const closing = useMemo(() => sourceConversions(deals, "funded-invoiced"), [deals]);
   const drillRows = useMemo(
     () => (drill ? sourceCohortDeals(deals, drill.source, drill.target).sort((a, b) => Number(b.converted) - Number(a.converted)) : []),
@@ -123,8 +123,8 @@ export function ReferralConversionWidget() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:divide-x sm:divide-border">
           <Column
-            title="Engagement" tooltip="NDA / Needs List Sent → Pre-Credit Needs" rows={engagement}
-            onPick={(s) => setDrill({ source: s, target: "pre-credit-needs", title: "Engagement", targetLabel: "Pre-Credit Needs" })}
+            title="Engagement" tooltip="NDA / Needs List Sent → Final Credit Items" rows={engagement}
+            onPick={(s) => setDrill({ source: s, target: "final-credit-items", title: "Engagement", targetLabel: "Final Credit Items" })}
           />
           <div className="sm:pl-4 min-w-0">
             <Column
