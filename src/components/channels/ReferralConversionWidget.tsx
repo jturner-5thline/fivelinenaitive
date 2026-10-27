@@ -7,9 +7,10 @@ import { isExcludedDealName } from "@/utils/excludedDeals";
 import { formatUSDFromDollars } from "@/lib/formatters/currency";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
-  sourceConversions, sourceCohortDeals, topAndBottom, MIN_CONVERSION_DEALS,
+  sourceConversions, sourceCohortDeals, topAndBottom, MIN_CONVERSION_DEALS, inTrailingYear,
   type ConversionDeal, type SourceConversion, type ConversionMetric,
 } from "@/lib/referralConversion";
+import { earliestNdaEntries, type NdaHistoryRow } from "@/lib/referralNdaEntry";
 
 const pct = (r: number) => `${Math.round(r * 100)}%`;
 const humanize = (s: string) =>
@@ -83,12 +84,14 @@ export function ReferralConversionWidget() {
       const list = (rows || []).filter((r) => !isExcludedDealName(r.company));
       const ids = list.map((r) => r.id);
       const entered = new Map<string, Set<string>>();
+      const history: NdaHistoryRow[] = [];
       for (let i = 0; i < ids.length; i += 200) {
         const { data: h, error: he } = await supabase
-          .from("deal_stage_history").select("deal_id, to_stage, to_stage_id, pipeline_id")
+          .from("deal_stage_history").select("deal_id, to_stage, to_stage_id, pipeline_id, changed_at")
           .eq("event_type", "stage_enter").in("deal_id", ids.slice(i, i + 200));
         if (he) throw he;
         for (const r of h || []) {
+          history.push(r as NdaHistoryRow);
           if (r.pipeline_id && !active.includes(r.pipeline_id)) continue;
           const s = r.to_stage_id ?? r.to_stage;
           if (!s) continue;
@@ -96,7 +99,8 @@ export function ReferralConversionWidget() {
           entered.get(r.deal_id)!.add(s);
         }
       }
-      return list
+      const ndaEntries = earliestNdaEntries(history, new Set(active), new Map(list.map((r) => [r.id, r.pipeline_id])));
+      const all = list
         .filter((r) => (r.pipeline_id && active.includes(r.pipeline_id)) || entered.has(r.id))
         .map((r) => ({
           id: r.id,
@@ -107,7 +111,10 @@ export function ReferralConversionWidget() {
           name: r.company,
           value: r.value as number | null,
           displayStage: r.stage,
+          ndaEnteredAt: ndaEntries.get(r.id) ?? null,
         }));
+      // Trailing 12 months: deal must have ENTERED NDA / Needs List Sent within the last year.
+      return inTrailingYear(all);
     },
   });
 
