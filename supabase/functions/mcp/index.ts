@@ -3314,10 +3314,11 @@ var REACHED_NDA_STAGES = /* @__PURE__ */ new Set([
   "funded-invoiced",
   "closed-won"
 ]);
+function previousMonthEnd(reference = /* @__PURE__ */ new Date()) {
+  return new Date(reference.getFullYear(), reference.getMonth(), 0, 23, 59, 59, 999);
+}
 var monthsAgo = (now, months) => {
-  const d = new Date(now);
-  d.setMonth(d.getMonth() - months);
-  return d;
+  return new Date(now.getFullYear(), now.getMonth() - months + 1, 0, 23, 59, 59, 999);
 };
 function activityAnchor(s) {
   const qualifying = s.deals.filter((d) => d.stage == null || REACHED_NDA_STAGES.has(d.stage));
@@ -3417,14 +3418,17 @@ var SIGNED_STAGE_SLUGS = /* @__PURE__ */ new Set([
 ]);
 var toSlug = (s) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 var normalize2 = (s) => s.trim().toLowerCase().replace(/\s+/g, " ");
-var ms = (months) => months * 30 * 24 * 60 * 60 * 1e3;
+var windowStart = (asOf, months) => {
+  const d = new Date(asOf);
+  return new Date(d.getFullYear(), d.getMonth() - months + 1, 1).getTime();
+};
 function computeTier(name, allDeals, rules, now) {
   if (!rules) return { tier: null, lastMatchedAt: null };
   const qualified = new Set((rules.qualified_deal_stages || []).map(toSlug));
-  const winT1 = now - ms(rules.tier1_trailing_months ?? 3);
-  const winT2 = now - ms(rules.tier2_trailing_months ?? 3);
-  const win12 = now - ms(12);
-  const matched = allDeals.filter((d) => !!d.nda_entered_at && (partnerMatches(name, d.referred_by) || partnerMatches(name, d.sourced_via)));
+  const winT1 = windowStart(now, rules.tier1_trailing_months ?? 3);
+  const winT2 = windowStart(now, rules.tier2_trailing_months ?? 3);
+  const win12 = windowStart(now, 12);
+  const matched = allDeals.filter((d) => !!d.nda_entered_at && new Date(d.nda_entered_at).getTime() <= now && (partnerMatches(name, d.referred_by) || partnerMatches(name, d.sourced_via)));
   const at = (d) => new Date(d.nda_entered_at).getTime();
   const isQ = (d) => !!d.stage && qualified.has(toSlug(d.stage));
   const qT1 = matched.filter((d) => isQ(d) && at(d) >= winT1).length;
@@ -3440,7 +3444,7 @@ function computeTier(name, allDeals, rules, now) {
   return { tier, lastMatchedAt };
 }
 function classifyReferralPipeline(input) {
-  const now = input.now ?? /* @__PURE__ */ new Date();
+  const now = previousMonthEnd(input.now ?? /* @__PURE__ */ new Date());
   const contactById = new Map(input.contacts.map((c) => [c.id, c]));
   const addedByName = /* @__PURE__ */ new Map();
   for (const m of input.manualSources) {

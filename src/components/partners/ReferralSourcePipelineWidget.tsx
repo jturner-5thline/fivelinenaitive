@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { ensureReferralSourceForContact, hasReferralSourceTag, REFERRAL_SOURCE_TAG } from '@/lib/ensureReferralSource';
 import { splitContactTypes } from '@/components/contacts/ContactTypeMultiSelect';
-import { isRemovedForInactivity } from '@/components/channels/atRiskSources';
+import { isRemovedForInactivity, previousMonthEnd } from '@/components/channels/atRiskSources';
 
 interface ContactHit {
   id: string;
@@ -246,7 +246,7 @@ export function ReferralSourcePipelineWidget({ search = '' }: { search?: string 
       const prev = addedByName.get(k);
       if (!prev || m.created_at < prev) addedByName.set(k, m.created_at);
     }
-    const now = new Date();
+    const now = previousMonthEnd();
 
     for (const r of referralSources) {
       const key: StageKey = r.tier === null ? 'nurturing' : r.tier;

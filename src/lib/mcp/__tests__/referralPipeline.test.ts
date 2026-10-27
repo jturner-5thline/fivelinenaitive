@@ -22,7 +22,7 @@ describe("classifyReferralPipeline", () => {
   });
 
   it("classifies a linked referrer with one qualified recent deal as Tier 2", () => {
-    const deal = { id: "d1", company: "Acme", stage: "lenders-in-review", referred_by: "Bob Smith", referred_by_contact_id: "c1", referred_by_crm_company_id: null, created_at: "2026-10-01T00:00:00Z" };
+    const deal = { id: "d1", company: "Acme", stage: "lenders-in-review", referred_by: "Bob Smith", referred_by_contact_id: "c1", referred_by_crm_company_id: null, created_at: "2026-09-15T00:00:00Z" };
     const out = classifyReferralPipeline({
       ...base,
       pipelineDeals: [deal],
@@ -50,5 +50,17 @@ describe("classifyReferralPipeline", () => {
     expect(computeTier("Bob Smith", [tierDeal("2026-09-20T00:00:00Z"), tierDeal("2026-10-01T00:00:00Z")], rules, now.getTime()).tier).toBe(2);
     // Same deals entering NDA a year ago fall outside the window -> Tier 3.
     expect(computeTier("Bob Smith", [tierDeal("2025-11-01T00:00:00Z"), tierDeal("2025-11-02T00:00:00Z")], rules, now.getTime()).tier).toBe(3);
+  });
+});
+
+describe("rolling as-of date (last day of previous month)", () => {
+  const deal = (at: string) => ({ stage: "lenders-in-review", referred_by: "Bob", sourced_via: null, closing_date: null, created_at: at, nda_entered_at: at });
+  it("ignores deals entered after the end of last month", () => {
+    const asOf = new Date(2026, 8, 30, 23, 59, 59, 999).getTime();
+    expect(computeTier("Bob", [deal("2026-10-05T12:00:00Z")], rules, asOf).tier).toBeNull();
+  });
+  it("uses a month-aligned trailing window (Jul 1 - Sep 30 for 3 months)", () => {
+    const asOf = new Date(2026, 8, 30, 23, 59, 59, 999).getTime();
+    expect(computeTier("Bob", [deal("2026-07-02T12:00:00Z")], rules, asOf).tier).toBe(2);
   });
 });

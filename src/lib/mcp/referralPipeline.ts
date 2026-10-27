@@ -4,7 +4,7 @@
  * connector sees the same stages as the UI. No I/O here.
  */
 import { partnerMatches } from "../partnerNameMatch";
-import { isRemovedForInactivity } from "../../components/channels/atRiskSources";
+import { isRemovedForInactivity, previousMonthEnd } from "../../components/channels/atRiskSources";
 
 export const REFERRAL_STAGES = ["Nurturing", "Tier 3", "Tier 2", "Tier 1"] as const;
 export type ReferralStage = (typeof REFERRAL_STAGES)[number];
@@ -79,7 +79,11 @@ const SIGNED_STAGE_SLUGS = new Set([
 ]);
 const toSlug = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-const ms = (months: number) => months * 30 * 24 * 60 * 60 * 1000;
+/** Start of the month-aligned trailing window ending at `asOf` (a month end). */
+const windowStart = (asOf: number, months: number) => {
+  const d = new Date(asOf);
+  return new Date(d.getFullYear(), d.getMonth() - months + 1, 1).getTime();
+};
 
 /**
  * Tier rules. Only deals that entered NDA / Needs List Sent on the Active
@@ -93,10 +97,10 @@ export function computeTier(
 ): { tier: 1 | 2 | 3 | null; lastMatchedAt: string | null } {
   if (!rules) return { tier: null, lastMatchedAt: null };
   const qualified = new Set((rules.qualified_deal_stages || []).map(toSlug));
-  const winT1 = now - ms(rules.tier1_trailing_months ?? 3);
-  const winT2 = now - ms(rules.tier2_trailing_months ?? 3);
-  const win12 = now - ms(12);
-  const matched = allDeals.filter((d) => !!d.nda_entered_at && (partnerMatches(name, d.referred_by) || partnerMatches(name, d.sourced_via)));
+  const winT1 = windowStart(now, rules.tier1_trailing_months ?? 3);
+  const winT2 = windowStart(now, rules.tier2_trailing_months ?? 3);
+  const win12 = windowStart(now, 12);
+  const matched = allDeals.filter((d) => !!d.nda_entered_at && new Date(d.nda_entered_at).getTime() <= now && (partnerMatches(name, d.referred_by) || partnerMatches(name, d.sourced_via)));
   const at = (d: TierDeal) => new Date(d.nda_entered_at as string).getTime();
   const isQ = (d: TierDeal) => !!d.stage && qualified.has(toSlug(d.stage));
   const qT1 = matched.filter((d) => isQ(d) && at(d) >= winT1).length;
@@ -121,7 +125,7 @@ export function classifyReferralPipeline(input: {
   rules: TierRules | null;
   now?: Date;
 }): ClassifiedSource[] {
-  const now = input.now ?? new Date();
+  const now = previousMonthEnd(input.now ?? new Date());
   const contactById = new Map(input.contacts.map((c) => [c.id, c]));
 
   // Earliest date each source was added manually — protects new sources from removal.
