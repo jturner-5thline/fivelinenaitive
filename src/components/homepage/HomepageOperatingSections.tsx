@@ -1,13 +1,13 @@
-import { Building2, FileSearch, Handshake, Layers3, LineChart, Mail, Network, Quote, Users, ArrowRight } from "lucide-react";
+import { Building2, FileSearch, Handshake, LayoutDashboard, LineChart, BarChart3, Shield, Quote, Users, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BookDemoDialog } from "./BookDemoDialog";
 
 const capabilities = [
-  { title: "Intelligent Pipeline Dashboard", description: "Every deal, every stage, every stakeholder — unified into a single source of truth. Spot bottlenecks before they cost you the deal.", icon: Layers3 },
-  { title: "Automated Deal Digest", description: "Daily and weekly summaries of new activity, blockers, and next steps — delivered straight to your inbox.", icon: Mail },
-  { title: "Lender Network", description: "Track outreach, engagement, and term sheets across your lender universe. No more spreadsheets, no more side channels.", icon: Network },
-  { title: "Document Intelligence", description: "AI-parsed financials, CIMs, and diligence packages — surfaced as structured data inside the deal.", icon: FileSearch },
-  { title: "Team Collaboration", description: "Roles, ownership, and approvals built around how deal teams actually work — not generic project management.", icon: Users },
+  { title: "Intelligent Pipeline Dashboard", description: "Every deal, every stage, every stakeholder — unified into a single source of truth. Spot bottlenecks before they cost you the deal.", icon: LayoutDashboard },
+  { title: "Automated Deal Digest", description: "Daily and weekly summaries of new activity, blockers, and next steps — delivered straight to your inbox.", icon: Users },
+  { title: "Lender Network", description: "Track outreach, engagement, and term sheets across your lender universe. No more spreadsheets, no more side channels.", icon: FileSearch },
+  { title: "Document Intelligence", description: "AI-parsed financials, CIMs, and diligence packages — surfaced as structured data inside the deal.", icon: BarChart3 },
+  { title: "Team Collaboration", description: "Roles, ownership, and approvals built around how deal teams actually work — not generic project management.", icon: Shield },
 ];
 const audiences = [
   { title: "Advisors & Brokers", icon: Handshake, description: "Teams managing complex, multi-party deal processes — from origination through diligence and close — who need execution to stay organized, transparent, and repeatable as deal volume scales" },
@@ -20,29 +20,17 @@ const steps = [
   { title: "Built-in funding intelligence.", description: "Keep lender profiles, preferences, relationship history, and deal activity connected—so your team can evaluate fit and coordinate outreach without relying on static lists or offline notes." },
 ];
 
-function PipelineVisual() {
-  return <div className="os-pipeline-visual" aria-hidden="true">
-    <div className="flex items-center justify-between border-b border-border pb-3 mb-3"><span className="text-xs text-foreground">Active Pipeline</span><span className="font-mono text-[10px] text-primary">LIVE</span></div>
-    <div className="grid grid-cols-3 gap-3">
-      {["Origination", "In Diligence", "Closing"].map((stage, i) => <div key={stage} className="min-w-0"><div className="text-[10px] text-muted-foreground mb-3 flex items-center gap-2"><span className="h-1 w-1 rounded-full bg-primary shrink-0" />{stage}</div>
-        {Array.from({ length: i === 1 ? 2 : 1 }, (_, n) => <div key={n} className="os-pipeline-item mb-2 p-3 rounded-md border border-border"><div className="h-1 w-3/4 bg-foreground/30 rounded-sm mb-2" /><div className="h-1 w-1/2 bg-muted-foreground/20 rounded-sm mb-4" /><div className="flex justify-between items-center"><div className="h-1 w-8 bg-primary/50" /><span className="h-3 w-3 rounded-full bg-muted-foreground/20" /></div></div>)}
-      </div>)}
-    </div>
-  </div>;
-}
-
 export function HomepageOperatingSections() {
   return <>
-    <section id="platform" className="os-section os-container">
-      <p className="os-eyebrow mb-4">PLATFORM</p>
-      <h2 className="os-section-title mb-4">Built for the way deals actually move.</h2>
-      <p className="max-w-3xl leading-relaxed text-base mb-8">naitive is designed for teams responsible for running complex deals end-to-end — coordinating stakeholders, managing review and diligence, and moving work forward across fragmented systems.</p>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {capabilities.map(({ title, description, icon: Icon }, index) => <article key={title} className={`os-capability rounded-lg border border-border bg-card p-6 ${index === 0 ? "md:col-span-2" : ""}`}>
-          <Icon className="h-6 w-6 text-primary mb-5" strokeWidth={1.5} />
-          <h3 className="text-lg mb-3">{title}</h3>
-          <p className="text-sm leading-relaxed max-w-xl">{description}</p>
-          {index === 0 && <PipelineVisual />}
+    <section id="platform" className="os-platform os-container py-14 md:py-16" aria-labelledby="platform-heading">
+      <p className="os-eyebrow font-mono uppercase text-xs mb-3">Platform</p>
+      <h2 id="platform-heading" className="text-3xl font-semibold text-foreground mb-4">Built for the way deals actually move.</h2>
+      <p className="text-lg text-muted-foreground font-light leading-relaxed mb-12">naitive is designed for teams responsible for running complex deals end-to-end — coordinating stakeholders, managing review and diligence, and moving work forward across fragmented systems.</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {capabilities.map(({ title, description, icon: Icon }, index) => <article key={title} className={`os-capability min-w-0 rounded-lg border border-border bg-card p-7 ${index === 0 ? "md:col-span-2" : ""}`}>
+          <Icon className="h-6 w-6 text-accent mb-5" aria-hidden="true" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">{title}</h3>
+          <p className="text-sm text-muted-foreground font-light leading-normal">{description}</p>
         </article>)}
       </div>
     </section>
