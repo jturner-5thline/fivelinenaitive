@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sourceConversions, topAndBottom, inTrailingYear, type ConversionDeal } from "../referralConversion";
+import { sourceConversions, topAndBottom, inTrailingYear, closingRateDeals, type ConversionDeal } from "../referralConversion";
 
 const d = (referredBy: string, stage: string, entered: string[] = []): ConversionDeal => ({
   id: Math.random().toString(), referredBy, stage, enteredStages: new Set(entered),
@@ -61,4 +61,18 @@ it("trailing 12 months: only deals that entered NDA within the last year count",
     mk("recent", "2026-03-01"), mk("old", "2025-10-01"), mk("none", null), mk("edge", "2025-10-28"),
   ], now).map((d) => d.id);
   expect(kept).toEqual(["recent", "edge"]);
+});
+
+it("Closing Rate counts only Closed-Won entries in the last 12 months", () => {
+  const now = new Date("2026-10-27T00:00:00Z");
+  const base = { referredBy: "Ann", enteredStages: new Set(["ndaneeds-list-sent", "closed-won"]), stage: "closed-won" };
+  const out = closingRateDeals([
+    { ...base, id: "wonRecent", ndaEnteredAt: "2024-01-01", closedWonAt: "2026-05-01" },
+    { ...base, id: "wonOld", ndaEnteredAt: "2024-01-01", closedWonAt: "2024-06-01" },
+    { ...base, id: "openRecent", stage: "pre-credit-needs", enteredStages: new Set(["ndaneeds-list-sent"]), ndaEnteredAt: "2026-04-01", closedWonAt: null },
+  ], now);
+  expect(out.map((d) => d.id)).toEqual(["wonRecent", "openRecent"]);
+  const rows = sourceConversions(out, "closed-won");
+  expect(rows[0].converted).toBe(1);
+  expect(rows[0].total).toBe(2);
 });

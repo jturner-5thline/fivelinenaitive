@@ -92,3 +92,25 @@ export function topAndBottom(rows: SourceConversion[], n = 3, metric: Conversion
     .slice(0, n);
   return { top, bottom };
 }
+
+/**
+ * Closing Rate window (trailing 12 months): a deal counts when it entered NDA /
+ * Needs List Sent OR entered Closed-Won within the last year. It counts as
+ * converted only when its Closed-Won entry falls inside that window.
+ */
+export function closingRateDeals<T extends ConversionDeal & { closedWonAt?: string | null }>(deals: T[], now = new Date()): T[] {
+  const since = new Date(now);
+  since.setFullYear(since.getFullYear() - 1);
+  const inWin = (at?: string | null) => {
+    if (!at) return false;
+    const t = new Date(at).getTime();
+    return t >= since.getTime() && t <= now.getTime();
+  };
+  return deals
+    .filter((d) => inWin(d.ndaEnteredAt) || inWin(d.closedWonAt))
+    .map((d) => {
+      if (inWin(d.closedWonAt)) return d;
+      const enteredStages = new Set([...d.enteredStages].filter((s) => s !== "closed-won"));
+      return { ...d, stage: d.stage === "closed-won" ? null : d.stage, enteredStages };
+    });
+}
