@@ -151,7 +151,7 @@ export function ReferralSourceDeals({
   // calculation: distinct deals with a stage_enter into NDA / Needs List Sent
   // on the Active Pipeline within the timeframe, excluding John Moffitt-owned
   // or -authored entries and de-duped by company name. All acquisition
-  // channels are included (not referral-only).
+  // Only referral-sourced deals are included.
   const NDA_EXCLUDED_OWNERS = ['john moffitt'];
   const NDA_EXCLUDED_CHANGED_BY = ['2e65a4b1-bd94-46ef-87c6-9afe697b3180'];
   void REACHED_NDA_STAGES;
@@ -189,6 +189,11 @@ export function ReferralSourceDeals({
         if (r.changed_by && NDA_EXCLUDED_CHANGED_BY.includes(r.changed_by)) continue;
         if (NDA_EXCLUDED_OWNERS.includes(String(d.deal_owner || '').toLowerCase().trim())) continue;
         if (isExcludedDealName(d.company)) continue;
+        // Referral-sourced only: a "Referred by" value or Sourced Via = Referral.
+        const isReferral =
+          !!String(d.referred_by || '').trim() ||
+          /^referral/i.test(String(d.sourced_via || '').trim());
+        if (!isReferral) continue;
         const nameKey = String(d.company || '').toLowerCase().trim();
         if (seenIds.has(d.id) || (nameKey && seenNames.has(nameKey))) continue;
         seenIds.add(d.id);
