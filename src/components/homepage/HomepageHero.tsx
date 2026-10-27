@@ -5,7 +5,7 @@ import officeImage from "@/assets/homepage-office.jpg";
 
 export const HomepageHero = () => (
   <section data-homepage-hero className="os-hero relative overflow-hidden flex items-center">
-    <img src={officeImage} alt="" className="os-hero-image absolute inset-0 h-full w-full object-cover" />
+    <img src={officeImage} alt="" width={1920} height={1024} className="os-hero-image absolute inset-0 h-full w-full object-cover" />
     <div className="os-hero-shade absolute inset-0" />
     <div className="os-container relative z-10 w-full py-16">
       <h1 className="max-w-[800px] text-[36px] md:text-[52px] lg:text-[64px] leading-[1.06] mb-6">The Operating System for Deal Management</h1>

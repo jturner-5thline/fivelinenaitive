@@ -1,8 +1,10 @@
 # Roadmap
 
 ## Homepage rebuild
-- [ ] Rebuild public homepage using the uploaded operating-system brief and shared demo modal.
-- [ ] Verify homepage and demo interactions at desktop and mobile sizes without sending real communications.
+- [x] Rebuild public homepage using the uploaded operating-system brief and shared demo modal; optional notes included in deployed enquiry email template.
+- [x] Verify homepage and demo interactions at 1280px, 1139px and 390px without sending real communications; five form tests, targeted lint and preview build passed.
+- [ ] Replace testimonial monogram with Greg Blount’s real headshot — awaiting user-provided photo.
+- [ ] Verify real demo email delivery — requires approval to send a test communication; intercepted requests verified instead.
 
 - [x] Fix smart-email-ai duplicate declaration; deployed, preflight and authenticated synthetic analysis returned 200, startup/auth regression test passed; existing function lint errors remain.
 - [x] Restore Open Items editor, bulk/checklist management, status and reorder controls in merged Tasks; regression tests and desktop/mobile read-only preview checked.
