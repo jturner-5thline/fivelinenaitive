@@ -89,7 +89,6 @@ function SalesBdDashboardInner() {
         {/* Referral Insights (Activity / Needs Attention) hidden — see mem://features/sales-bd/partner-insights-tabs-hidden */}
 
         <ReferralSourcePipelineWidget search={search} />
-        <ReferralSourceDeals hideKpis />
       </div>
 
       <PartnerDetailPanel partner={viewPartner} onClose={() => setViewPartnerId(null)} />
