@@ -1,5 +1,5 @@
 import { defineTool } from "@lovable.dev/mcp-js";
-import { earliestNdaEntries, resolveNdaEnteredAt, NDA_STAGE_ID, type NdaHistoryRow } from "../../referralNdaEntry";
+import { earliestNdaEntries, resolveNdaEnteredAt, type NdaHistoryRow } from "../../referralNdaEntry";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseForUser, requireAuth, textResult, errorResult } from "../supabase";

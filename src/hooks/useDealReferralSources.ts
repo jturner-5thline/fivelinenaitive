@@ -6,7 +6,7 @@ import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext'
 import { useDealFirstActivityDates, filterByEffectiveDate } from '@/hooks/useDealFirstActivityDates';
 import { computeTier } from '@/lib/mcp/referralPipeline';
 import { previousMonthEnd } from '@/components/channels/atRiskSources';
-import { earliestNdaEntries, resolveNdaEnteredAt, NDA_STAGE_ID, type NdaHistoryRow } from '@/lib/referralNdaEntry';
+import { earliestNdaEntries, resolveNdaEnteredAt, NDA_ONWARD_STAGE_ORDER, type NdaHistoryRow } from '@/lib/referralNdaEntry';
 
 
 export interface DealReferralSourceEntry {
