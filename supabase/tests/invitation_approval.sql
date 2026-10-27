@@ -27,6 +27,7 @@ BEGIN
 END $$;
 
 DO $$
+#variable_conflict use_variable
 DECLARE
   inviter uuid := '00000000-0000-0000-0000-000000000001';
   invitee uuid := '00000000-0000-0000-0000-000000000002';
