@@ -5379,6 +5379,7 @@ html body.ceo-theme .flat-tile-skin .crm-companies-title-bar.crm-companies-heade
 .homepage-os .os-primary.os-primary:hover { background: hsl(var(--primary) / .85) !important; }
 .homepage-os .os-secondary.os-secondary { background: transparent !important; color: hsl(var(--foreground)) !important; border: 1px solid hsl(var(--foreground) / .3) !important; box-shadow: none !important; }
 .homepage-os .os-secondary:hover { background: hsl(var(--foreground) / .05) !important; }
+.homepage-os .os-header .os-primary, .homepage-os .os-header .os-secondary { border-radius: 0.5rem !important; }
 .homepage-os .os-marquee { background: hsl(var(--background)); }
 .homepage-os .os-marquee-track { animation: os-marquee 42s linear infinite; }
 @keyframes os-marquee { to { transform: translateX(-50%); } }
