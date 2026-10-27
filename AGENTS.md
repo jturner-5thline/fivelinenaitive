@@ -8,3 +8,5 @@
 - Referral Source pipeline classification for MCP lives in `src/lib/mcp/referralPipeline.ts` and mirrors `useDealReferralSources` + `ReferralSourcePipelineWidget` — why: the connector must report the same stages as the UI, so change both together.
 - Funding-source imports reconcile legacy primary fields and child contacts through `syncImportedLenderContacts` and the company-scoped CRM resolver — why: both CSV import paths must create or reuse Contacts records and report partial linking failures without deleting imported data.
 - The merged Tasks panel reuses OutstandingItems for management and item details; completion updates Received and Submitted together — why: preserve bulk/checklist editing and persist the actual stored status fields without duplicating editor logic.
+
+- Public homepage uses isolated `homepage-os` semantic tokens and a shared BookDemoDialog for every demo CTA; why: marketing updates must not restyle authenticated screens or diverge in request handling.
