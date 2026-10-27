@@ -7,9 +7,10 @@ import { isExcludedDealName } from "@/utils/excludedDeals";
 import { formatUSDFromDollars } from "@/lib/formatters/currency";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
-  sourceConversions, sourceCohortDeals, topAndBottom, MIN_CONVERSION_DEALS,
+  sourceConversions, sourceCohortDeals, topAndBottom, MIN_CONVERSION_DEALS, inTrailingYear,
   type ConversionDeal, type SourceConversion, type ConversionMetric,
 } from "@/lib/referralConversion";
+import { earliestNdaEntries, type NdaHistoryRow } from "@/lib/referralNdaEntry";
 
 const pct = (r: number) => `${Math.round(r * 100)}%`;
 const humanize = (s: string) =>
@@ -68,7 +69,7 @@ export function ReferralConversionWidget() {
   const [metric, setMetric] = useState<ConversionMetric>("rate");
 
   const { data: deals = [], isLoading } = useQuery({
-    queryKey: ["referral_conversion_deals", company?.id],
+    queryKey: ["referral_conversion_deals", company?.id, "ttm"],
     enabled: !!company?.id,
     queryFn: async (): Promise<ConversionDeal[]> => {
       const { data: pipes, error: pe } = await supabase
@@ -83,12 +84,14 @@ export function ReferralConversionWidget() {
       const list = (rows || []).filter((r) => !isExcludedDealName(r.company));
       const ids = list.map((r) => r.id);
       const entered = new Map<string, Set<string>>();
+      const history: NdaHistoryRow[] = [];
       for (let i = 0; i < ids.length; i += 200) {
         const { data: h, error: he } = await supabase
-          .from("deal_stage_history").select("deal_id, to_stage, to_stage_id, pipeline_id")
+          .from("deal_stage_history").select("deal_id, to_stage, to_stage_id, pipeline_id, changed_at")
           .eq("event_type", "stage_enter").in("deal_id", ids.slice(i, i + 200));
         if (he) throw he;
         for (const r of h || []) {
+          history.push(r as NdaHistoryRow);
           if (r.pipeline_id && !active.includes(r.pipeline_id)) continue;
           const s = r.to_stage_id ?? r.to_stage;
           if (!s) continue;
@@ -96,7 +99,8 @@ export function ReferralConversionWidget() {
           entered.get(r.deal_id)!.add(s);
         }
       }
-      return list
+      const ndaEntries = earliestNdaEntries(history, new Set(active), new Map(list.map((r) => [r.id, r.pipeline_id])));
+      const all = list
         .filter((r) => (r.pipeline_id && active.includes(r.pipeline_id)) || entered.has(r.id))
         .map((r) => ({
           id: r.id,
@@ -107,7 +111,10 @@ export function ReferralConversionWidget() {
           name: r.company,
           value: r.value as number | null,
           displayStage: r.stage,
+          ndaEnteredAt: ndaEntries.get(r.id) ?? null,
         }));
+      // Trailing 12 months: deal must have ENTERED NDA / Needs List Sent within the last year.
+      return inTrailingYear(all);
     },
   });
 
@@ -124,7 +131,7 @@ export function ReferralConversionWidget() {
       <div className="flex items-center justify-between">
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">Conversion</p>
         <div className="flex items-center gap-3">
-          <span className="text-[10px] text-muted-foreground">sources with {MIN_CONVERSION_DEALS}+ deals at NDA</span>
+          <span className="text-[10px] text-muted-foreground">trailing 12 months · sources with {MIN_CONVERSION_DEALS}+ deals entering NDA</span>
           <div role="group" aria-label="Show as" className="flex rounded-md border border-border p-0.5">
             {(["rate", "count"] as const).map((m) => (
               <button

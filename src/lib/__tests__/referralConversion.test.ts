@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sourceConversions, topAndBottom, type ConversionDeal } from "../referralConversion";
+import { sourceConversions, topAndBottom, inTrailingYear, type ConversionDeal } from "../referralConversion";
 
 const d = (referredBy: string, stage: string, entered: string[] = []): ConversionDeal => ({
   id: Math.random().toString(), referredBy, stage, enteredStages: new Set(entered),
@@ -52,4 +52,13 @@ it("count mode ranks by converted deals, not rate", () => {
   expect(topAndBottom(rows, 1, "count").top[0].source).toBe("B");
   expect(topAndBottom(rows, 1, "rate").top[0].source).toBe("A");
   expect(topAndBottom(rows, 1, "count").bottom[0].source).toBe("C");
+});
+
+it("trailing 12 months: only deals that entered NDA within the last year count", () => {
+  const now = new Date("2026-10-27T00:00:00Z");
+  const mk = (id: string, at: string | null) => ({ id, ndaEnteredAt: at });
+  const kept = inTrailingYear([
+    mk("recent", "2026-03-01"), mk("old", "2025-10-01"), mk("none", null), mk("edge", "2025-10-28"),
+  ], now).map((d) => d.id);
+  expect(kept).toEqual(["recent", "edge"]);
 });

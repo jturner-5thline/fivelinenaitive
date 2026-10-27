@@ -14,6 +14,19 @@ export interface ConversionDeal {
   value?: number | null;
   /** Raw current stage (any pipeline) for display. */
   displayStage?: string | null;
+  /** Recorded entry into NDA / Needs List Sent (or closest later Active stage). */
+  ndaEnteredAt?: string | null;
+}
+
+/** Only deals that ENTERED NDA / Needs List Sent within the trailing 12 months of `now`. */
+export function inTrailingYear<T extends { ndaEnteredAt?: string | null }>(deals: T[], now = new Date()): T[] {
+  const since = new Date(now);
+  since.setFullYear(since.getFullYear() - 1);
+  return deals.filter((d) => {
+    if (!d.ndaEnteredAt) return false;
+    const t = new Date(d.ndaEnteredAt).getTime();
+    return t >= since.getTime() && t <= now.getTime();
+  });
 }
 
 const sourceKey = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
