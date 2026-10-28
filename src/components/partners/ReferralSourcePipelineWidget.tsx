@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
@@ -144,7 +144,7 @@ function formatShortDate(iso: string | null): string {
 
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
-export function ReferralSourcePipelineWidget({ search = '', searchSlot }: { search?: string; searchSlot?: React.ReactNode } = {}) {
+export function ReferralSourcePipelineWidget({ search = '', searchSlot }: { search?: string; searchSlot?: ReactNode } = {}) {
   // Tiers are trailing/all-time metrics — the pipeline must not depend on the
   // viewer's header date range, or the same source lands in different columns
   // for different users (e.g. Tier 3 vs Nurturing).
