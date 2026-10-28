@@ -30233,6 +30233,19 @@ export type Database = {
         Args: { p_candidate_ids: string[]; p_table: string }
         Returns: Json
       }
+      fn_lender_contact_resolve_crm: {
+        Args: {
+          _city: string
+          _country: string
+          _email: string
+          _lender_id: string
+          _name: string
+          _phone: string
+          _state: string
+          _title: string
+        }
+        Returns: string
+      }
       fn_next_friday_after: { Args: { _d: string }; Returns: string }
       get_avg_time_between_stages: {
         Args: {
