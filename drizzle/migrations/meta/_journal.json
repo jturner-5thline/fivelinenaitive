@@ -281,6 +281,13 @@
       "when": 1793110999996,
       "tag": "0039_trusted_company_invitation_acceptance",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793192151137,
+      "tag": "0040_funding_source_contacts_crm_sync",
+      "breakpoints": true
     }
   ]
 }
