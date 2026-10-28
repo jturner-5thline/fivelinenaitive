@@ -1,3 +1,4 @@
+import { syncImportedLenderContacts } from '@/lib/lenders/syncImportedLenderContacts';
 import { FundingSourceTypeSelect } from '@/components/lenders/FundingSourceTypeSelect';
 import { useEffect, useState } from 'react';
 import { Loader2, Plus, Settings2, Sparkles, X } from 'lucide-react';
@@ -333,22 +334,7 @@ export function FundingSourceFormDialog({
       const affiliatedContactIds: string[] = [];
       if (contactsToSave.length) {
         const resolved = await Promise.all(contactsToSave.map(async (contact) => {
-          let contactId = contact.contact_id;
-          if (!contactId && contact.name.trim()) {
-            const [firstName, ...rest] = contact.name.trim().split(/\s+/);
-            const { data: newContact, error } = await supabase
-              .from('contacts')
-              .insert({
-                first_name: firstName || null,
-                last_name: rest.join(' ').trim() || null,
-                email: contact.email.trim() || null,
-                job_title: contact.title.trim() || null,
-                phone_work: contact.phone.trim() || null,
-              })
-              .select('id')
-              .single();
-            if (!error) contactId = newContact?.id || null;
-          }
+          const contactId = contact.contact_id;
           if (contactId) affiliatedContactIds.push(contactId);
           return {
             lender_id: created.id,
@@ -361,7 +347,16 @@ export function FundingSourceFormDialog({
             is_primary: contact.isPrimary,
           };
         }));
-        await supabase.from('lender_contacts').insert(resolved);
+        const { error: lcErr } = await supabase.from('lender_contacts').insert(resolved);
+        if (lcErr) throw lcErr;
+      }
+      if (user && company?.id) {
+        try {
+          await syncImportedLenderContacts(created.id, { userId: user.id, orgCompanyId: company.id });
+        } catch (e) {
+          console.warn('[FundingSourceFormDialog] contact sync failed', e);
+          toast.error(e instanceof Error ? e.message : 'A contact could not be added to Contacts.');
+        }
       }
 
       if (linkedCrmCompany && affiliatedContactIds.length) {

@@ -1,3 +1,5 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { syncImportedLenderContacts } from '@/lib/lenders/syncImportedLenderContacts';
 import { FundingSourceTypeSelect } from '@/components/lenders/FundingSourceTypeSelect';
 import { parseMoney, toList } from '@/lib/lenders/parseLenderForm';
 import { useState, useMemo, useCallback, useRef, useEffect, useDeferredValue } from 'react';
@@ -329,6 +331,18 @@ export default function Lenders() {
   const { getLenderSummary, setManualFlag, refetch: refetchAttachmentSummaries } = useLenderAttachmentsSummary();
   const { user } = useAuth();
   const { company, members: companyMembers } = useCompany();
+  const contactsQueryClient = useQueryClient();
+  /** Every funding-source contact (legacy primary + list) must exist in Contacts. */
+  const syncLenderContactsToDirectory = async (lenderId: string) => {
+    if (!user || !company?.id) return;
+    try {
+      await syncImportedLenderContacts(lenderId, { userId: user.id, orgCompanyId: company.id });
+    } catch (e) {
+      console.warn('[Lenders] contact sync failed', e);
+      toast({ title: 'Contacts not fully linked', description: e instanceof Error ? e.message : 'A contact could not be added to Contacts.', variant: 'destructive' });
+    }
+    contactsQueryClient.invalidateQueries({ queryKey: ['contacts'] });
+  };
   const quickUploadRef = useRef<HTMLInputElement>(null);
   const [quickUploadTarget, setQuickUploadTarget] = useState<{ lenderName: string; category: 'nda' | 'marketing_materials' } | null>(null);
   const [isQuickUploading, setIsQuickUploading] = useState(false);
@@ -1282,29 +1296,7 @@ export default function Lenders() {
           form.contacts
             .filter(c => c.name.trim())
             .map(async (c) => {
-              let contactId = c.contact_id ?? null;
-              // No CRM link yet → create a fresh contact row so we link instead of dup later
-              if (!contactId) {
-                const trimmedName = c.name.trim();
-                const [firstName, ...rest] = trimmedName.split(' ');
-                const lastName = rest.join(' ').trim() || null;
-                const { data: created, error: createErr } = await supabase
-                  .from('contacts')
-                  .insert({
-                    first_name: firstName || null,
-                    last_name: lastName,
-                    email: c.email.trim() || null,
-                    job_title: c.title.trim() || null,
-                    phone_work: c.phone.trim() || null,
-                  })
-                  .select('id')
-                  .single();
-                if (createErr) {
-                  console.warn('[Lenders] could not create CRM contact, saving lender contact without link', createErr);
-                } else {
-                  contactId = created?.id ?? null;
-                }
-              }
+              const contactId = c.contact_id ?? null;
               if (contactId) affiliatedContactIds.push(contactId);
               return {
                 lender_id: lenderId!,
@@ -1319,8 +1311,10 @@ export default function Lenders() {
             })
         );
         if (resolved.length > 0) {
-          await supabase.from('lender_contacts').insert(resolved);
+          const { error: lcErr } = await supabase.from('lender_contacts').insert(resolved);
+          if (lcErr) throw lcErr;
         }
+        await syncLenderContactsToDirectory(lenderId);
       }
 
       // Every funding source is also a company: affiliate its contacts with it.
@@ -1413,6 +1407,7 @@ export default function Lenders() {
       toast({ title: "Save failed", description: "Your changes were not saved. Please try again.", variant: "destructive" });
       throw new Error("Failed to save funding source");
     }
+    await syncLenderContactsToDirectory(lenderId);
 
     // Update the selected lender to reflect changes immediately
     setSelectedLender(prev => masterLenderToLenderInfo({
