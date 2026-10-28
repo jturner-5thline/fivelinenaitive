@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
@@ -144,7 +144,7 @@ function formatShortDate(iso: string | null): string {
 
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
-export function ReferralSourcePipelineWidget({ search = '' }: { search?: string } = {}) {
+export function ReferralSourcePipelineWidget({ search = '', searchSlot }: { search?: string; searchSlot?: ReactNode } = {}) {
   // Tiers are trailing/all-time metrics — the pipeline must not depend on the
   // viewer's header date range, or the same source lands in different columns
   // for different users (e.g. Tier 3 vs Nurturing).
@@ -348,8 +348,11 @@ export function ReferralSourcePipelineWidget({ search = '' }: { search?: string 
   return (
     <div className={`${liquidGlassCard} p-3 space-y-2.5`}>
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-base font-semibold tracking-tight text-foreground">Referral Source Pipeline</h3>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="text-base font-semibold tracking-tight text-foreground">Referral Source Pipeline</h3>
+            {searchSlot}
+          </div>
           <p className="text-[10px] text-muted-foreground mt-0.5">
             Sources advance automatically as their referred deals meet the Tier 3 → Tier 1 rules
           </p>

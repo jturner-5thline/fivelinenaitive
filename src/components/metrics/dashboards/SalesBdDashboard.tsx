@@ -37,27 +37,7 @@ function SalesBdDashboardInner() {
 
   return (
     <div className="sales-bd-page bg-transparent">
-      <div className="-mt-3 mb-2 flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search sources, companies, channels…"
-            aria-label="Search referral sources"
-            className="h-8 w-64 pl-7 pr-7 text-xs"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              aria-label="Clear search"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          )}
-        </div>
+      <div>
         {headerSlot && createPortal(
           <div className="flex items-center gap-2">
             <CrmUpdateQueueButton className="h-9 rounded-md" />
@@ -100,7 +80,31 @@ function SalesBdDashboardInner() {
         </div>
         {/* Referral Insights (Activity / Needs Attention) hidden — see mem://features/sales-bd/partner-insights-tabs-hidden */}
 
-        <ReferralSourcePipelineWidget search={search} />
+        <ReferralSourcePipelineWidget
+          search={search}
+          searchSlot={
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search sources, companies, channels…"
+                aria-label="Search referral sources"
+                className="h-7 w-64 pl-7 pr-7 text-xs"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          }
+        />
       </div>
 
       <PartnerDetailPanel partner={viewPartner} onClose={() => setViewPartnerId(null)} />
