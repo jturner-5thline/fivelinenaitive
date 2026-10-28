@@ -28,7 +28,7 @@ export function MasterPlanButton({ className }: Props) {
               variant="outline"
               size="sm"
               onClick={() => setOpen(true)}
-              className={cn('h-8 gap-1.5', className)}
+              className={cn('h-9 gap-1.5 rounded-md', className)}
             >
               <Target className="h-3.5 w-3.5" />
               Master Plan

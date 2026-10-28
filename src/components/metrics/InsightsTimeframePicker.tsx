@@ -137,7 +137,7 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
             aria-label="Dashboard timeframe"
             aria-busy={isRefreshing}
             className={cn(
-              'h-9 min-w-[180px] justify-between gap-2 text-xs font-medium',
+              'h-9 min-w-[180px] justify-between gap-2 rounded-md text-xs font-medium',
               isRefreshing && 'border-primary/40 text-primary',
             )}
           >

@@ -108,7 +108,7 @@ function QueueCard({
   );
 }
 
-export function CrmUpdateQueueButton({ variant = 'outline' as const }) {
+export function CrmUpdateQueueButton({ variant = 'outline' as const, className }: { variant?: 'outline'; className?: string }) {
   const [open, setOpen] = useState(false);
   const [confirmAllOpen, setConfirmAllOpen] = useState(false);
   const { data: count = 0 } = usePendingSuggestionsCount();
@@ -142,7 +142,7 @@ export function CrmUpdateQueueButton({ variant = 'outline' as const }) {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant={variant} size="sm" className="relative gap-1.5">
+        <Button variant={variant} size="sm" className={`relative gap-1.5 ${className ?? ''}`}>
           <Sparkles className="h-4 w-4" />
           Updates
           {count > 0 && (

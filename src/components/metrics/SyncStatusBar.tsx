@@ -99,7 +99,7 @@ export function SyncStatusBar() {
             size="sm"
             onClick={handleManualRefresh}
             disabled={refreshing}
-            className="h-7 w-7 p-0"
+            className="h-9 w-9 p-0 rounded-md"
             aria-label={refreshing ? 'Syncing' : 'Refresh sync'}
           >
             <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
