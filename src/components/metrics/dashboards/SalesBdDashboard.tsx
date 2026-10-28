@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Settings as SettingsIcon, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ReferralSourceDeals } from "@/components/partners/ReferralSourceDeals";
@@ -29,6 +30,10 @@ function SalesBdDashboardInner() {
   const { data: partners = [] } = usePartners();
   const viewPartner = viewPartnerId ? partners.find(p => p.id === viewPartnerId) || null : null;
   const canEditPartnerRules = useCanEditPartnerRules();
+  const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setHeaderSlot(document.getElementById('qir-header-actions-slot'));
+  }, []);
 
   return (
     <div className="sales-bd-page bg-transparent">
@@ -53,21 +58,24 @@ function SalesBdDashboardInner() {
             </button>
           )}
         </div>
-        <div className="ml-auto flex items-center gap-2">
-        <CrmUpdateQueueButton />
-        {canEditPartnerRules && (
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
-            title="Rules & Definitions"
-            aria-label="Rules & Definitions"
-            onClick={() => setRulesOpen(true)}
-          >
-            <SettingsIcon className="h-3.5 w-3.5" />
-          </Button>
+        {headerSlot && createPortal(
+          <div className="flex items-center gap-2">
+            <CrmUpdateQueueButton className="h-9 rounded-md" />
+            {canEditPartnerRules && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 rounded-md"
+                title="Rules & Definitions"
+                aria-label="Rules & Definitions"
+                onClick={() => setRulesOpen(true)}
+              >
+                <SettingsIcon className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>,
+          headerSlot,
         )}
-        </div>
       </div>
 
       <div className="mx-auto max-w-[1400px] space-y-6">
