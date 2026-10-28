@@ -665,7 +665,7 @@ export default function Dashboard() {
     }
   };
 
-  useAlignActionsToRightTile(actionsRef);
+  useAlignActionsToRightTile(actionsRef, viewMode === "grid");
 
   return (
     <>
