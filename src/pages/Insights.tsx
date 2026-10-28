@@ -2563,16 +2563,16 @@ function MetricsInner() {
             </div>
 
             <div className="flex flex-col items-stretch w-fit md:ml-auto justify-between gap-1.5">
-            <div className="flex items-center justify-end gap-2">
-              {selectedDashboard !== 'management-review' && <MasterPlanButton />}
-              <SyncStatusBar />
+            <div className="flex flex-nowrap items-center justify-end gap-2 min-w-0">
+              {selectedDashboard !== 'management-review' && (
+                <InsightsTimeframePicker className="min-w-0 shrink [&>button]:min-w-0 [&>button]:truncate" />
+              )}
+              {selectedDashboard !== 'management-review' && <div className="shrink-0"><MasterPlanButton /></div>}
+              <div className="shrink-0"><SyncStatusBar /></div>
             </div>
-            <div className="flex items-center justify-end gap-2 w-0 min-w-full">
+            <div className="flex items-center justify-end gap-2 w-0 min-w-full empty:hidden">
               {effectiveSelectedDashboard === 'consolidated-debt-pipeline' && (
                 <DebtAdvisoryComparisonToggle />
-              )}
-              {selectedDashboard !== 'management-review' && (
-                <InsightsTimeframePicker className="flex-1 min-w-0 [&>button]:flex-1 [&>button]:min-w-0" />
               )}
 
               {effectiveSelectedDashboard === 'management-review' && (
