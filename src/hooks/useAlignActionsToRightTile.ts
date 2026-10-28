@@ -7,7 +7,7 @@ import { useEffect, type RefObject } from 'react';
  * Falls back to the default right-aligned cluster when fewer than 3 tiles
  * share the top row.
  */
-export function useAlignActionsToRightTile(ref: RefObject<HTMLElement>) {
+export function useAlignActionsToRightTile(ref: RefObject<HTMLElement>, enabled = true) {
   useEffect(() => {
     let last = '';
     const reset = (el: HTMLElement, buttons: HTMLElement[]) => {
@@ -41,7 +41,7 @@ export function useAlignActionsToRightTile(ref: RefObject<HTMLElement>) {
         const row = rects.filter((r) => Math.abs(r.top - top) < 4).sort((a, b) => a.left - b.left);
         if (row.length >= 3) tile = row[row.length - 1];
       }
-      if (!tile || buttons.length < 2) {
+      if (!enabled || !tile || buttons.length < 2) {
         if (last !== 'none') { reset(el, buttons); last = 'none'; }
         return;
       }
@@ -98,5 +98,5 @@ export function useAlignActionsToRightTile(ref: RefObject<HTMLElement>) {
       window.removeEventListener('resize', measure);
       window.clearInterval(id);
     };
-  }, [ref]);
+  }, [ref, enabled]);
 }
