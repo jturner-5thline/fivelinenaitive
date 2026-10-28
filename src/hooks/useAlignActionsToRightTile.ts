@@ -32,7 +32,9 @@ export function useAlignActionsToRightTile(ref: RefObject<HTMLElement>) {
       );
       const rects = Array.from(document.querySelectorAll('.deal-tile'))
         .map((t) => (t as HTMLElement).getBoundingClientRect())
-        .filter((r) => r.width > 50 && r.height > 0);
+        // Ignore tiles outside the viewport (e.g. off-screen pipeline columns),
+        // otherwise the buttons get pushed off the right edge of the screen.
+        .filter((r) => r.width > 50 && r.height > 0 && r.left >= 0 && r.right <= window.innerWidth);
       let tile: DOMRect | null = null;
       if (rects.length) {
         const top = Math.min(...rects.map((r) => r.top));
