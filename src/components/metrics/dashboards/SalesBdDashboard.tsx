@@ -70,8 +70,8 @@ function SalesBdDashboardInner() {
           sideSlot={
             <ReferralSourceDeals
               kpisOnly
-              kpiKeys={['conversion', 'sources']}
-              kpiGridClassName="grid grid-cols-2 gap-3 h-full"
+              kpiKeys={['conversion']}
+              kpiGridClassName="grid grid-cols-1 gap-3 h-full"
             />
           }
         />
