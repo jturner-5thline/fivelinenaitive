@@ -35,7 +35,7 @@ export const HomepageHeader = () => {
             </BookDemoDialog>
           </div>
           <Button asChild variant="outline" className="os-secondary h-9 px-4 text-sm whitespace-nowrap"><a href="https://www.5thline.co" target="_blank" rel="noopener noreferrer">Visit 5th Line</a></Button>
-          <Button asChild className="os-primary h-9 px-4 text-sm"><a href="https://naitive.co/login" target="_blank" rel="noopener noreferrer">Log In</a></Button>
+          <Button asChild className="os-primary h-9 px-4 text-sm"><Link to="/login">Log In</Link></Button>
         </div>
       </nav>
     </header>
