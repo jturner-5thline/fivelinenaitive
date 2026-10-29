@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
-import { requireInternal, maskEmail } from "../_shared/requestAuth.ts";
+import { requireInternal, maskEmail, escapeHtml } from "../_shared/requestAuth.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -26,7 +26,12 @@ const handler = async (req: Request): Promise<Response> => {
 
 
   try {
-    const { name, email }: WaitlistWelcomeRequest = await req.json();
+    const __req: WaitlistWelcomeRequest = await req.json();
+    const name = escapeHtml(String(__req.name ?? "").slice(0, 100));
+    const email = String(__req.email ?? "").trim().slice(0, 254);
+    if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)) {
+      return new Response(JSON.stringify({ error: "Invalid email" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     console.log(`Sending waitlist welcome email to ${maskEmail(email)}`);
 

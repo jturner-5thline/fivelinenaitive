@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { requireInternal, escapeHtml } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -29,7 +29,12 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { user_id, user_email, user_name } = await req.json() as ApprovalRequest;
+    const __req = await req.json() as ApprovalRequest;
+    // Signed-in callers can only announce themselves; identity comes from the session.
+    const user_id = __auth.internal ? __req.user_id : __auth.user.id;
+    const rawEmail = __auth.internal ? __req.user_email : (__auth.user.email || "");
+    const user_email = escapeHtml(String(rawEmail || "").slice(0, 254));
+    const user_name = __req.user_name ? escapeHtml(String(__req.user_name).slice(0, 100)) : __req.user_name;
 
     if (!user_id || !user_email) {
       return new Response(

@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { requireInternal, escapeHtml } from "../_shared/requestAuth.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -30,7 +30,14 @@ const handler = async (req: Request): Promise<Response> => {
 
 
   try {
-    const { title, message, type, page_url, user_email, user_name, screenshot_url }: FeedbackNotificationRequest = await req.json();
+    const __req: FeedbackNotificationRequest = await req.json();
+    const title = escapeHtml(String(__req.title ?? "").slice(0, 300));
+    const message = escapeHtml(String(__req.message ?? "").slice(0, 5000));
+    const type = escapeHtml(String(__req.type ?? "").slice(0, 50));
+    const page_url = escapeHtml(String(__req.page_url ?? "").slice(0, 500));
+    const user_email = escapeHtml(String(__req.user_email ?? "").slice(0, 254));
+    const user_name = escapeHtml(String(__req.user_name ?? "").slice(0, 100));
+    const screenshot_url = /^https:\/\//.test(String(__req.screenshot_url ?? "")) ? escapeHtml(__req.screenshot_url) : "";
 
     // Validate required fields
     if (!title || !message || !type) {
