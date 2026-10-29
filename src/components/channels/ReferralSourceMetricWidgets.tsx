@@ -685,25 +685,30 @@ export function ReferralSourceMetricWidgets({ sideSlot, belowSourcesSlot }: { si
         <section className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">Channels</p>
           <div className="flex flex-col gap-4">
-            <ChannelMixDonut />
+            <ChannelMixDonut
+              timeframe={channelTimeframe}
+              setTimeframe={setChannelTimeframe}
+              entries={channelEntries}
+              isLoading={channelEntriesLoading}
+            />
             <div className="flex flex-col gap-4 min-w-0 border-t border-border pt-4">
               <LeaderboardTile
                 bare
                 label="Most Active"
                 tooltip="Top 3 channels by deals on the board. Shows deals | dollars."
                 subtext="top 3 in selected timeframe"
-                entries={channelLeaderboard}
-                isLoading={isLoading}
+                entries={channelTimeframeLeaderboard.rows}
+                isLoading={channelEntriesLoading}
               />
               <LeaderboardTile
                 bare
                 label="Most Profitable"
                 tooltip="Top 3 channels by fee revenue generated from their referrals."
                 subtext="by fee revenue"
-                entries={channelLeaderboard}
+                entries={channelTimeframeLeaderboard.rows}
                 byFees
-                emptyMessage={hasFeeData ? 'No fee revenue in selected timeframe' : 'No fee data yet'}
-                isLoading={isLoading}
+                emptyMessage={channelTimeframeLeaderboard.hasFeeData ? 'No fee revenue in selected timeframe' : 'No fee data yet'}
+                isLoading={channelEntriesLoading || channelTimeframeLeaderboard.feesLoading}
               />
             </div>
           </div>
