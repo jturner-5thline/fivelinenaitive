@@ -16,7 +16,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-  const __auth = await requireInternal(req, corsHeaders, { allowUser: true });
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
   if (!__auth.ok) return __auth.response;
 
 
