@@ -1,4 +1,7 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useLayoutEffect } from 'react';
+
+/** Distance between the fixed floating sidebar's bottom edge and the viewport bottom. */
+const SIDEBAR_BOTTOM_GAP = 19;
 import { filterToActiveIndustries } from '@/lib/industryOptions';
 import { TableVirtuoso, type TableComponents } from 'react-virtuoso';
 import { Building2, Loader2, ArrowUp, ArrowDown, ArrowUpDown, ExternalLink } from 'lucide-react';
