@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
+import { isCompanyMember } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-claap-signature",
@@ -603,6 +604,11 @@ Deno.serve(async (req) => {
         .single();
 
       if (!skippedCall) throw new Error("Skipped call not found");
+      if (!skippedCall.company_id || !(await isCompanyMember(userId!, skippedCall.company_id))) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       await supabaseAdmin
         .from("claap_skipped_calls")
