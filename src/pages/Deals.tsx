@@ -745,7 +745,7 @@ export default function Dashboard() {
         headerActions={
           <>
           {createPortal(
-            <div className="fixed left-[220px] top-[16px] z-[1001]">
+            <div className="fixed left-[276px] top-[16px] z-[1001]">
               <CollapsibleSearch
                 value={filters.search}
                 onChange={(value) => updateFilters({ search: value })}
