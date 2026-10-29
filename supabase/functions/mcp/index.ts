@@ -997,6 +997,14 @@ var complete_task_default = defineTool8({
   }
 });
 
+// src/lib/mcp/orFilter.ts
+function orIlike(value) {
+  const raw = String(value ?? "").slice(0, 200);
+  const likeEscaped = raw.replace(/[\\%_]/g, (c) => `\\${c}`);
+  const quoted = `%${likeEscaped}%`.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return `"${quoted}"`;
+}
+
 // src/lib/mcp/tools/search-contacts.ts
 import { defineTool as defineTool9 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z9 } from "npm:zod@^3.23.0";
@@ -1040,7 +1048,7 @@ var search_contacts_default = defineTool9({
     }
     let q = sb.from("contacts").select(select, { count: "exact" }).range(offset, offset + limit - 1);
     if (query) {
-      const like = `%${query}%`;
+      const like = orIlike(query);
       q = q.or(
         `first_name.ilike.${like},last_name.ilike.${like},full_name.ilike.${like},email.ilike.${like},website_url.ilike.${like},job_title.ilike.${like},phone_mobile.ilike.${like},phone_work.ilike.${like},linkedin_url.ilike.${like}`
       );
@@ -1122,7 +1130,7 @@ var get_contact_default = defineTool10({
       if (error) return errorResult(error.message);
       contact = (data ?? [])[0] ?? null;
     } else {
-      const like = `%${name}%`;
+      const like = orIlike(name);
       const { data, error } = await sb.from("contacts").select("*").or(`full_name.ilike.${like},first_name.ilike.${like},last_name.ilike.${like}`).limit(10);
       if (error) return errorResult(error.message);
       const matches = data ?? [];
@@ -1252,10 +1260,10 @@ var search_companies_default = defineTool11({
     }
     let q = sb.from("crm_companies").select(select, { count: "exact" }).range(offset, offset + limit - 1);
     if (query) {
-      const like = `%${query}%`;
+      const like = orIlike(query);
       q = q.or(`name.ilike.${like},domain.ilike.${like},website_url.ilike.${like}`);
     }
-    if (industry) q = q.or(`industry.ilike.%${industry}%,sub_industry.ilike.%${industry}%`);
+    if (industry) q = q.or(`industry.ilike.${orIlike(industry)},sub_industry.ilike.${orIlike(industry)}`);
     if (company_type) q = q.ilike("company_type", company_type);
     if (status) q = q.ilike("status", status);
     if (lifecycle_stage) q = q.ilike("lifecycle_stage", lifecycle_stage);
@@ -1311,7 +1319,7 @@ var get_company_default = defineTool12({
       if (error) return errorResult(error.message);
       company = data ?? null;
     } else if (domain) {
-      const like = `%${domain}%`;
+      const like = orIlike(domain);
       const { data, error } = await sb.from("crm_companies").select("*").or(`domain.ilike.${like},domain_normalized.ilike.${like},website_url.ilike.${like}`).limit(5);
       if (error) return errorResult(error.message);
       company = (data ?? [])[0] ?? null;
@@ -2238,7 +2246,7 @@ var search_deal_notes_default = defineTool25({
     }
     let q = sb.from("deal_space_notes").select("id, deal_id, title, content, folder, tags, is_pinned, user_id, created_at, updated_at").in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("updated_at", { ascending: false }).limit(limit);
     if (query) {
-      const like = `%${query}%`;
+      const like = orIlike(query);
       q = q.or(`title.ilike.${like},content.ilike.${like}`);
     }
     const { data, error } = await q;
@@ -2329,7 +2337,7 @@ var search_deal_documents_default = defineTool27({
     ).in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("created_at", { ascending: false }).limit(limit);
     if (category) q = q.eq("category", category);
     if (query) {
-      const like = `%${query}%`;
+      const like = orIlike(query);
       q = q.or(`name.ilike.${like},source_subject.ilike.${like},extracted_text.ilike.${like}`);
     }
     const { data, error } = await q;
@@ -2393,7 +2401,7 @@ var search_deal_emails_default = defineTool29({
     ).in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).eq("activity_type", "email").order("sent_at", { ascending: false, nullsFirst: false }).limit(limit);
     if (direction) q = q.eq("direction", direction);
     if (query) {
-      const like = `%${query}%`;
+      const like = orIlike(query);
       q = q.or(`subject.ilike.${like},body.ilike.${like},from_address.ilike.${like}`);
     }
     const { data, error } = await q;
@@ -2438,7 +2446,7 @@ var search_deal_recordings_default = defineTool30({
     if (include_transcript) {
       let tQ = sb.from("claap_transcripts").select("id, claap_meeting_id, transcript_text, summary, participants, duration_seconds, recorded_at, call_type").in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("recorded_at", { ascending: false, nullsFirst: false }).limit(limit);
       if (query) {
-        const like = `%${query}%`;
+        const like = orIlike(query);
         tQ = tQ.or(`transcript_text.ilike.${like},summary.ilike.${like}`);
       }
       const tRes = await tQ;

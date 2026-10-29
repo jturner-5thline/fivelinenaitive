@@ -49,7 +49,7 @@ export default defineTool({
       if (error) return errorResult(error.message);
       company = ((data ?? [])[0] as Record<string, unknown> | undefined) ?? null;
     } else {
-      const like = orIlike(name);
+      const like = `%${name}%`;
       const { data, error } = await sb.from("crm_companies").select("*").ilike("name", like).limit(10);
       if (error) return errorResult(error.message);
       const matches = (data ?? []) as Array<Record<string, unknown>>;
