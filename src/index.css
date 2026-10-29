@@ -5439,3 +5439,15 @@ html body.ceo-theme .flat-tile-skin .crm-companies-title-bar.crm-companies-heade
   .homepage-os .os-marquee-track { animation: none; }
   .homepage-os *, .homepage-os *::before { transition-duration: 0s !important; }
 }
+
+/* Funding Sources tab: borderless widgets; a vertical divider separates the columns. */
+html body .deal-fs-tab-layout .fs-tab-widget,
+html body .deal-fs-tab-layout .fs-tab-widget:hover,
+html body.ceo-theme .deal-detail-surface .deal-fs-tab-layout .fs-tab-widget,
+html body.ceo-theme .deal-detail-surface .deal-fs-tab-layout .fs-tab-widget:hover {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+}

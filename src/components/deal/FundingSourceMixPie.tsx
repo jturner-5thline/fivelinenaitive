@@ -162,7 +162,7 @@ export function FundingSourceMixPie({ lenders, configuredStages = [], className,
               verticalAlign="middle"
               iconType="circle"
               wrapperStyle={{ paddingRight: 12 }}
-              formatter={(value: string) => <span className="text-xs text-muted-foreground">{value}</span>}
+              formatter={(value: string) => <span className="text-xs text-white">{value}</span>}
             />
           </PieChart>
         </ResponsiveContainer>
