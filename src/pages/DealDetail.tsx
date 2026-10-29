@@ -5916,7 +5916,7 @@ export default function DealDetail() {
                                          </div>
                                         <div className="min-w-0">
                                 {/* Funding Source Notes */}
-                                <div className="ml-2 space-y-1">
+                                <div className="space-y-1 min-w-0">
                                   <div className="flex items-start gap-2">
                                     <LenderNotesField
                                       lenderId={lender.id}
@@ -6016,7 +6016,7 @@ export default function DealDetail() {
                                   )}
                                 </div>
                                         </div>
-                                        <div className="flex items-start gap-1 shrink-0 md:justify-end">
+                                        <div className="flex items-start gap-1 shrink-0 md:justify-end md:pr-1">
                                           <LenderFollowUpPopover
                                             className={"h-8 w-8 inline-flex items-center justify-center rounded-md border border-border/60 bg-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"}
                                             dealId={deal.id}
