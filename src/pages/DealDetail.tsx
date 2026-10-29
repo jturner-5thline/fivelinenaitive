@@ -5709,7 +5709,7 @@ export default function DealDetail() {
                                         staleStatus.isStale && !staleStatus.isUrgent && 'bg-warning/5',
                                         shouldAnimate && 'animate-pulse-highlight'
                                       )}>
-                                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,1.3fr)_130px_minmax(260px,2.6fr)_auto] md:items-start md:gap-4">
+                                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.2fr)_120px_minmax(0,2.4fr)_auto] md:items-start md:gap-3">
                                          <div className="min-w-0 flex items-start justify-between gap-2">
                                    <div className="flex items-center gap-1 group/lender -ml-1 min-w-0">
                                     {scoreConfig.enabled && lender.score != null && (
@@ -5759,42 +5759,6 @@ export default function DealDetail() {
                                         />
                                     </div>
                                   </div>
-                                   {/* NDA & Marketing Materials Status Icons */}
-                                   <div className="flex flex-col items-center gap-0.5 shrink-0">
-                                     {(() => {
-                                       const summary = getLenderSummary(lender.name);
-                                       return (
-                                         <>
-                                           <Tooltip>
-                                             <TooltipTrigger asChild>
-                                               <div className={cn(
-                                                 "p-1 rounded",
-                                                 summary.hasNda ? "text-primary" : "text-muted-foreground/50"
-                                               )}>
-                                                 <FileSignature className="h-4 w-4" />
-                                               </div>
-                                             </TooltipTrigger>
-                                             <TooltipContent>
-                                               <p>{summary.hasNda ? 'NDA on file' : 'No NDA'}</p>
-                                             </TooltipContent>
-                                           </Tooltip>
-                                           <Tooltip>
-                                             <TooltipTrigger asChild>
-                                               <div className={cn(
-                                                 "p-1 rounded",
-                                                 summary.hasMarketingMaterials ? "text-primary" : "text-muted-foreground/50"
-                                               )}>
-                                                 <Megaphone className="h-4 w-4" />
-                                               </div>
-                                             </TooltipTrigger>
-                                             <TooltipContent>
-                                               <p>{summary.hasMarketingMaterials ? 'Marketing materials on file' : 'No marketing materials'}</p>
-                                             </TooltipContent>
-                                           </Tooltip>
-                                         </>
-                                       );
-                                     })()}
-                                   </div>
                                         </div>
                                         <div className="min-w-0 space-y-1.5">
                                   <Select
@@ -5888,6 +5852,30 @@ export default function DealDetail() {
                                       })}
                                     </SelectContent>
                                   </Select>
+                                  {/* NDA & Marketing Materials Status Icons */}
+                                  {(() => {
+                                    const summary = getLenderSummary(lender.name);
+                                    return (
+                                      <div className="flex items-center justify-evenly">
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <div className={cn("p-0.5 rounded", summary.hasNda ? "text-primary" : "text-muted-foreground/50")}>
+                                              <FileSignature className="h-4 w-4" />
+                                            </div>
+                                          </TooltipTrigger>
+                                          <TooltipContent><p>{summary.hasNda ? 'NDA on file' : 'No NDA'}</p></TooltipContent>
+                                        </Tooltip>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <div className={cn("p-0.5 rounded", summary.hasMarketingMaterials ? "text-primary" : "text-muted-foreground/50")}>
+                                              <Megaphone className="h-4 w-4" />
+                                            </div>
+                                          </TooltipTrigger>
+                                          <TooltipContent><p>{summary.hasMarketingMaterials ? 'Marketing materials on file' : 'No marketing materials'}</p></TooltipContent>
+                                        </Tooltip>
+                                      </div>
+                                    );
+                                  })()}
                                   {substagesEnabled && (
                                   <Select
                                     value={lender.substage || '__none__'}
