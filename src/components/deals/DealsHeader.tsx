@@ -398,34 +398,9 @@ export function DealsHeader() {
 
   const currentOverlay = overlayRegistry.find(o => o.isOpen) ?? null;
 
-  // Align the icon row with the middle deal tile of the first grid row.
-  const [navBounds, setNavBounds] = useState<{ left: number; width: number } | null>(null);
-  useEffect(() => {
-    const measure = () => {
-      const rects = Array.from(document.querySelectorAll('.deal-tile'))
-        .map((t) => (t as HTMLElement).getBoundingClientRect())
-        .filter((r) => r.width > 50 && r.height > 0);
-      let next: { left: number; width: number } | null = null;
-      if (rects.length) {
-        const top = Math.min(...rects.map((r) => r.top));
-        const row = rects.filter((r) => Math.abs(r.top - top) < 4).sort((a, b) => a.left - b.left);
-        if (row.length >= 3) {
-          const mid = row[Math.floor(row.length / 2)];
-          next = { left: Math.round(mid.left), width: Math.round(mid.width) };
-        }
-      }
-      setNavBounds((prev) =>
-        prev?.left === next?.left && prev?.width === next?.width ? prev : next,
-      );
-    };
-    measure();
-    window.addEventListener('resize', measure);
-    const id = window.setInterval(measure, 500);
-    return () => {
-      window.removeEventListener('resize', measure);
-      window.clearInterval(id);
-    };
-  }, []);
+  // Header layout is identical across every view (grid, pipeline, list,
+  // timeline) and page — it never snaps to whatever tiles are on screen.
+  const navBounds = null as { left: number; width: number } | null;
 
   const goToOverlay = useCallback((target: string) => {
     const fromIdx = currentOverlay

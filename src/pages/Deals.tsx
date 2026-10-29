@@ -665,7 +665,8 @@ export default function Dashboard() {
     }
   };
 
-  useAlignActionsToRightTile(actionsRef, viewMode === "grid");
+  // Header must look identical in every view, so never snap to tiles.
+  useAlignActionsToRightTile(actionsRef, false);
 
   return (
     <>
