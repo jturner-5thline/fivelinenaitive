@@ -1,4 +1,7 @@
 import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
 import { usePartners, usePipelineStages } from '@/hooks/usePartnersPipeline';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -8,11 +11,27 @@ import { CHANNEL_PARTNER_STAGES, channelPartnerStageFor, type ChannelPartnerStag
 
 const norm = (s: string) => s.trim().toLowerCase();
 
-export function ChannelPartnerPipelineBoard({ search = '', ownerFilter = [] as string[], onOpenPartner }: {
+export function ChannelPartnerPipelineBoard({ search = '', ownerFilter = [] as string[], onOpenPartner, onOpenSource }: {
   search?: string;
   ownerFilter?: string[];
   onOpenPartner?: (id: string) => void;
+  onOpenSource?: (name: string) => void;
 }) {
+  const { company } = useCompany();
+  // Only referral sources with the Channel Partner toggle on appear here.
+  const { data: flagged = [] } = useQuery({
+    queryKey: ['channel_partner_referral_sources', company?.id],
+    enabled: !!company?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('referral_sources')
+        .select('id, name, channel_partner_stage, relationship_owner_id')
+        .eq('company_id', company!.id)
+        .eq('is_channel_partner', true);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
   const { data: partners = [] } = usePartners();
   const { data: stages = [] } = usePipelineStages();
   const team = useTeamMembers();
@@ -29,14 +48,26 @@ export function ChannelPartnerPipelineBoard({ search = '', ownerFilter = [] as s
       if (ownerFilter.length && !ownerFilter.includes(p.owner_id || '__unassigned__')) continue;
       by.get(key)!.push(p);
     }
+    const src = new Map<ChannelPartnerStageKey, { id: string; name: string; owner: string | null }[]>(CHANNEL_PARTNER_STAGES.map(s => [s.key, []]));
+    const seen = new Set<string>();
+    for (const r of flagged) {
+      const k = norm(r.name);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      if (q && !k.includes(q)) continue;
+      if (ownerFilter.length && !ownerFilter.includes(r.relationship_owner_id || '__unassigned__')) continue;
+      const key = (r.channel_partner_stage as ChannelPartnerStageKey) || 'prospect';
+      (src.get(key) || src.get('prospect')!).push({ id: r.id, name: r.name, owner: r.relationship_owner_id });
+    }
     return CHANNEL_PARTNER_STAGES.map((s, i) => ({
       ...s,
+      sources: (src.get(s.key) || []).sort((a, b) => a.name.localeCompare(b.name)),
       cards: (by.get(s.key) || []).slice().sort((a, b) => a.name.localeCompare(b.name)),
       color: LIQUID_GLASS_SERIES[i % LIQUID_GLASS_SERIES.length],
     }));
-  }, [partners, stages, search, ownerFilter]);
+  }, [partners, stages, search, ownerFilter, flagged]);
 
-  const total = columns.reduce((n, c) => n + c.cards.length, 0);
+  const total = columns.reduce((n, c) => n + c.cards.length + c.sources.length, 0);
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -51,15 +82,30 @@ export function ChannelPartnerPipelineBoard({ search = '', ownerFilter = [] as s
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-56 text-[11px]">{stage.definition}</TooltipContent>
                 </Tooltip>
-                <p className="text-sm font-bold font-mono tabular-nums text-foreground">{stage.cards.length}</p>
+                <p className="text-sm font-bold font-mono tabular-nums text-foreground">{stage.cards.length + stage.sources.length}</p>
               </div>
-              <p className="text-[10px] text-muted-foreground">channel partner{stage.cards.length === 1 ? '' : 's'}</p>
+              <p className="text-[10px] text-muted-foreground">channel partner{stage.cards.length + stage.sources.length === 1 ? '' : 's'}</p>
             </div>
             <ScrollArea className="h-96">
               <div className="p-1.5 space-y-1.5">
-                {stage.cards.length === 0 && (
+                {stage.cards.length + stage.sources.length === 0 && (
                   <p className="text-[10px] text-muted-foreground/70 px-1.5 py-3 text-center">No partners</p>
                 )}
+                {stage.sources.map(r => (
+                  <div
+                    key={r.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onOpenSource?.(r.name)}
+                    onKeyDown={e => { if (e.key === 'Enter') onOpenSource?.(r.name); }}
+                    className="cursor-pointer rounded-md border border-[rgba(126,184,247,0.22)] bg-[#0b1226] px-2.5 py-2 hover:bg-[#101836] hover:border-[rgba(126,184,247,0.4)] transition-colors"
+                  >
+                    <p className="text-xs font-medium text-foreground leading-tight truncate">{r.name}</p>
+                    <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                      Referral source · {r.owner ? ownerName.get(r.owner) || 'Unknown' : 'Unassigned'}
+                    </p>
+                  </div>
+                ))}
                 {stage.cards.map(p => (
                   <div
                     key={p.id}
