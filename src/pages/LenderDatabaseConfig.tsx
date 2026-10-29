@@ -91,7 +91,7 @@ const defaultLenderTypes: ConfigItem[] = [
 ];
 
 // Funding source types folded into "Private Credit".
-const RETIRED_LENDER_TYPES = new Set(['non-bank', 'venture debt']);
+const RETIRED_LENDER_TYPES = new Set(['non-bank', 'venture debt', 'commercial bank', 'lender', 'alternative', 'credit fund', 'credit funds']);
 
 function sanitizeLenderTypes(items: ConfigItem[]): ConfigItem[] {
   const seen = new Set<string>();
