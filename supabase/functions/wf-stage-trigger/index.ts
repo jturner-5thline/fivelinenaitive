@@ -650,7 +650,7 @@ async function sendWorkflowEmail(
 
     await fetch(`${supabaseUrl}/functions/v1/send-notification-email`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
       body: JSON.stringify({
         type: "workflow_action",
         user_id: assigneeId,
@@ -681,7 +681,7 @@ async function sendInAppNotification(
   try {
     await fetch(`${supabaseUrl}/functions/v1/notification-engine`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
       body: JSON.stringify({
         trigger: "workflow_task_assigned",
         user_id: assigneeId,
