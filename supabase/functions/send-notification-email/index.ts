@@ -1358,7 +1358,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
       const profileData = recipient.profile;
       if (!profileData.email_notifications || (preferenceKey && !profileData[preferenceKey])) {
-        console.log(`Skipping ${recipient.email}: notifications disabled`);
+        console.log(`Skipping ${maskEmail(recipient.email)}: notifications disabled`);
         results.push({ email: recipient.email, skipped: true, reason: 'notifications_disabled' });
         continue;
       }
@@ -1379,7 +1379,7 @@ const handler = async (req: Request): Promise<Response> => {
         console.log(`Email sent to ${maskEmail(recipient.email)}:`, emailResponse);
         results.push({ email: recipient.email, success: true, emailResponse });
       } catch (sendErr: any) {
-        console.error(`Failed to send to ${recipient.email}:`, sendErr);
+        console.error(`Failed to send to ${maskEmail(recipient.email)}:`, sendErr);
         results.push({ email: recipient.email, success: false, error: sendErr.message });
       }
     }

@@ -173,7 +173,7 @@ const handler = async (req: Request): Promise<Response> => {
             }
           }
         } catch (lookupErr) {
-          console.warn("[create-demo-access] existing-user lookup failed", email, lookupErr);
+          console.warn("[create-demo-access] existing-user lookup failed", maskEmail(email), lookupErr);
         }
 
         if (existing) {
@@ -189,7 +189,7 @@ const handler = async (req: Request): Promise<Response> => {
             },
           });
           if (updateUserErr) {
-            console.error("[create-demo-access] updateUserById failed", email, updateUserErr);
+            console.error("[create-demo-access] updateUserById failed", maskEmail(email), updateUserErr);
             results.push({ email, ok: false, reason: updateUserErr.message ?? "Failed to update demo user" });
             continue;
           }
@@ -201,7 +201,7 @@ const handler = async (req: Request): Promise<Response> => {
             user_metadata: { full_name: name, invited_via: "demo-access", demo_access: true },
           });
           if (createErr || !created.user) {
-            console.error("[create-demo-access] createUser failed", email, createErr);
+            console.error("[create-demo-access] createUser failed", maskEmail(email), createErr);
             results.push({ email, ok: false, reason: createErr?.message ?? "Failed to create user" });
             continue;
           }
@@ -288,7 +288,7 @@ const handler = async (req: Request): Promise<Response> => {
         // 3. Send branded demo-access email with the working demo login URL as the CTA.
         let sent = false;
         let sendErr: string | null = null;
-        console.log("[create-demo-access] attempting demo-invite send", email);
+        console.log("[create-demo-access] attempting demo-invite send", maskEmail(email));
         try {
           const { data: txData, error: txErr } = await admin.functions.invoke("send-app-email", {
             headers: { Authorization: authHeader },
@@ -331,7 +331,7 @@ const handler = async (req: Request): Promise<Response> => {
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error("[create-demo-access] user error", email, msg);
+        console.error("[create-demo-access] user error", maskEmail(email), msg);
         results.push({
           email,
           ok: false,
