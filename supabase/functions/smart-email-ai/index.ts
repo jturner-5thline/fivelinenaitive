@@ -16,19 +16,31 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const authHeader = req.headers.get("Authorization");
+    const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
+    }
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader || "" } },
+      global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Verify the JWT locally (signing keys) so transient auth-server network
+    // failures are not misreported as 401 Unauthorized.
+    const token = authHeader.replace("Bearer ", "");
+    let claimsResult: Awaited<ReturnType<typeof supabase.auth.getClaims>>;
+    try {
+      claimsResult = await supabase.auth.getClaims(token);
+    } catch (e) {
+      console.error("[smart-email-ai] auth verification unavailable", e);
+      return new Response(JSON.stringify({ error: "Auth temporarily unavailable, please retry" }), { status: 503, headers: jsonHeaders });
     }
+    const userId = claimsResult.data?.claims?.sub as string | undefined;
+    if (claimsResult.error || !userId) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
+    }
+    const user = { id: userId, email: claimsResult.data?.claims?.email as string | undefined };
 
     const requestBody = await req.json();
     const { action, dealId, emailData, threadData, draftType, customInstructions, optionCount, singleTone, fastModel, dealContextHint } = requestBody;
