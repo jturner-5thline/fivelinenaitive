@@ -1,4 +1,4 @@
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { isCompanyMember, requireInternal } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
@@ -42,6 +42,18 @@ serve(async (req) => {
     const supabase: any = createClient(supabaseUrl, supabaseServiceKey);
     const body = await req.json();
     const { action } = body;
+    if (!__auth.internal) {
+      if (action === "process_all_scheduled") { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      if (action === "run_scheduled") {
+        const { data: rep } = await supabase.from("scheduled_reports").select("company_id").eq("id", body.scheduled_report_id).maybeSingle();
+        if (!rep?.company_id || !(await isCompanyMember(__auth.user.id, rep.company_id))) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      }
+      if (action === "generate_report") {
+        if (!body.company_id || !(await isCompanyMember(__auth.user.id, body.company_id))) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+        // On-demand user reports never post to a caller-chosen Slack channel.
+        delete body.delivery;
+      }
+    }
 
     switch (action) {
       case "generate_report":

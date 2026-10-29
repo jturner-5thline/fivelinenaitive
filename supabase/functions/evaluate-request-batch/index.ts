@@ -1,4 +1,4 @@
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { canAccessDeal, isCompanyMember, isPlatformAdmin, requireInternal } from "../_shared/requestAuth.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -79,6 +79,18 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const mode = body.mode || 'evaluate'; // 'evaluate' | 'force_draft' | 'approve' | 'reject'
+    if (!__auth.internal) {
+      userId = __auth.user.id;
+      if (mode === 'approve' || mode === 'reject') {
+        const { data: draft } = await supabase.from('client_request_drafts').select('company_id, deal_id').eq('id', body.draft_id).maybeSingle();
+        if (!draft?.company_id || !(await isCompanyMember(userId, draft.company_id))) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      } else if (mode === 'force_draft') {
+        if (!body.deal_id || !(await canAccessDeal(req, body.deal_id))) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      } else if (!(await isPlatformAdmin(userId))) {
+        // Global evaluation spans all companies; restrict to platform admins.
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
 
     if (mode === 'approve') {
       const { draft_id } = body;
