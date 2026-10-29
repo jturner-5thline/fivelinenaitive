@@ -98,7 +98,8 @@ Deno.serve(async (req) => {
 
   try {
     const triggerSource = req.headers.get("x-trigger-source") || "client";
-    const isDbTrigger = triggerSource === "db_trigger";
+    // The db_trigger path is only honoured for verified internal callers.
+    const isDbTrigger = triggerSource === "db_trigger" && __auth.ok && __auth.internal;
 
     // Auth: client calls require a valid user JWT; db_trigger calls are server-to-server.
     const authHeader = req.headers.get("Authorization") || "";
