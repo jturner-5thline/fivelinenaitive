@@ -10,6 +10,7 @@
 // Auth: requires a valid Supabase JWT. Restricted to internal 5th Line users.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
+import { requireInternal } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
@@ -40,6 +41,9 @@ function jsonResponse(payload: unknown, status = 200, download = false, filename
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
   if (req.method !== 'POST') {
     return jsonResponse({ error: 'method_not_allowed' }, 405);
   }

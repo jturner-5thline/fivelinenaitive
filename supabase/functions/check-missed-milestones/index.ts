@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
 
+import { requireInternal } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -10,6 +11,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
 
   // Called by pg_cron internally - verify_jwt=false in config.toml
 

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
+import { requireInternal } from "../_shared/requestAuth.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -24,6 +25,9 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     const { title, message, type, page_url, user_email, user_name, screenshot_url }: FeedbackNotificationRequest = await req.json();

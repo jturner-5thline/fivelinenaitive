@@ -30,6 +30,7 @@ import { enqueueAdminAgentSelections } from "../_shared/adminAgentQueue.ts";
 import { runDealAdminAgentAnalysis } from "../_shared/dealAdminAgentIntelligence.ts";
 import { rescheduleFollowupTasksForCompany } from "../_shared/rescheduleFollowupTasks.ts";
 import {
+import { requireInternal } from "../_shared/requestAuth.ts";
   AGENT_KEYS,
   isAgentEnabledForCompany,
 } from "../_shared/agentEntitlement.ts";
@@ -53,6 +54,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
 
   let body: any = {};
   try {

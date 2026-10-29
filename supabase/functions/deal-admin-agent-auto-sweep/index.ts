@@ -20,6 +20,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { runDealAdminAgentAnalysis } from "../_shared/dealAdminAgentIntelligence.ts";
 import { AGENT_KEYS, isAgentEnabledForCompany } from "../_shared/agentEntitlement.ts";
 
+import { requireInternal } from "../_shared/requestAuth.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -29,6 +30,9 @@ declare const EdgeRuntime: any;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
 
   let body: any = {};
   try {
