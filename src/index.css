@@ -5406,6 +5406,24 @@ html body.ceo-theme .flat-tile-skin .crm-companies-title-bar.crm-companies-heade
 @media (min-width: 640px) {
   .homepage-os .os-lifecycle-section.os-container { padding-inline: 24px; }
 }
+/* Fluid full-screen layout: scales with the viewport, widening on large monitors */
+@media (min-width: 768px) {
+  .homepage-os .os-container,
+  .homepage-os .os-platform.os-container,
+  .homepage-os .os-testimonial .os-container,
+  .homepage-os .os-lifecycle-section.os-container { max-width: min(92vw, 1800px); padding-inline: clamp(24px, 4vw, 72px); }
+  .homepage-os .os-hero { min-height: calc(100svh - 76px - 66px); }
+  .homepage-os .os-hero h1 { max-width: min(62vw, 1100px); font-size: clamp(52px, 4.4vw, 88px); }
+  .homepage-os .os-hero-subhead { max-width: min(52vw, 860px); font-size: clamp(18px, 1.3vw, 24px); }
+}
+@media (min-width: 1600px) {
+  .homepage-os .os-section-title, .homepage-os .os-platform h2, .homepage-os .os-lifecycle-section h2 { font-size: clamp(34px, 2.3vw, 46px); }
+  .homepage-os .os-platform h2 + p { max-width: 60rem; font-size: 20px; }
+  .homepage-os .os-platform h3, .homepage-os .os-lifecycle-section h3 { font-size: 20px; }
+  .homepage-os .os-platform article p, .homepage-os .os-lifecycle-section li p, .homepage-os #built-for p { font-size: 16px; }
+  .homepage-os .os-testimonial blockquote { font-size: clamp(28px, 1.9vw, 38px); }
+  .homepage-os .os-testimonial .os-container > div:first-child { max-width: 640px; justify-self: end; }
+}
 .homepage-demo-dialog.homepage-demo-dialog { background: hsl(var(--background)) !important; background-image: none !important; border: 1px solid hsl(var(--border)) !important; color: hsl(var(--foreground)) !important; }
 .homepage-demo-dialog input, .homepage-demo-dialog textarea { background: hsl(var(--card)) !important; color: hsl(var(--foreground)) !important; border: 1px solid hsl(var(--input)) !important; }
 .homepage-demo-dialog input:focus-visible, .homepage-demo-dialog textarea:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
