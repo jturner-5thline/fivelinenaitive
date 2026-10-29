@@ -20,6 +20,11 @@ import {
   parseTypeTags,
   generateId 
 } from './AdvancedFilterBuilder';
+import {
+  LENDER_MISSING_FIELD_OPTIONS,
+  filterLendersByMissingFields,
+  type MissingFieldMatchMode,
+} from '@/lib/lenderMissingFields';
 
 // Legacy interface for backward compatibility
 export interface LenderFilters {
@@ -36,6 +41,9 @@ export interface LenderFilters {
   lenderTypes?: string[];
   tiers: string[];
   ndaOnFile?: boolean;
+  /** Show lenders missing these fields */
+  missingFields?: string[];
+  missingFieldMatchMode?: MissingFieldMatchMode;
   // New advanced conditions
   advancedConditions: FilterCondition[];
   // Filter mode
@@ -315,6 +323,26 @@ function SimpleFilters({
           </div>
         ))}
       </section>
+
+      <section className="space-y-3">
+        <div className={sectionCls}>Missing Information</div>
+        <div className="space-y-1">
+          <Label className={fieldLabelCls}>Fields missing</Label>
+          <MultiSelectFilter
+            label="None"
+            options={LENDER_MISSING_FIELD_OPTIONS}
+            selected={filters.missingFields || []}
+            onChange={(selected) => onFiltersChange({ ...filters, missingFields: selected })}
+            className="w-full h-9 text-sm justify-between"
+          />
+        </div>
+        <ChoiceRow
+          label="Match"
+          value={filters.missingFieldMatchMode === 'all' ? 'all' : ''}
+          options={[{ value: 'all', label: 'Missing all selected' }]}
+          onChange={(v) => onFiltersChange({ ...filters, missingFieldMatchMode: v === 'all' ? 'all' : 'any' })}
+        />
+      </section>
     </div>
   );
 }
@@ -375,6 +403,7 @@ export function countActiveLenderFilters(filters: LenderFilters): number {
     if (filters.sponsorship) count++;
     if (filters.cashBurn) count++;
     if (filters.ndaOnFile) count++;
+    if (filters.missingFields?.length) count++;
   }
   return count;
 }
@@ -404,6 +433,7 @@ function LenderFiltersPanelInner({ filters, onFiltersChange, lenders, isOpen, se
       if (filters.sponsorship) count++;
       if (filters.cashBurn) count++;
       if (filters.ndaOnFile) count++;
+      if (filters.missingFields?.length) count++;
     }
     return count;
   }, [filters, filterMode]);
@@ -700,6 +730,12 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
         return !!v && !NO.includes(v);
       });
     }
+
+    result = filterLendersByMissingFields(
+      result,
+      safeFilters.missingFields,
+      safeFilters.missingFieldMatchMode || 'any',
+    );
   }
 
   return result;
