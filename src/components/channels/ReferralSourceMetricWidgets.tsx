@@ -5,6 +5,8 @@ import { useState, useMemo, type ReactNode } from 'react';
 import { Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from 'recharts';
+import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
+import { CHANNEL_MIX_TIMEFRAMES, channelMixWindow, ndaEnteredWithin, type ChannelMixTimeframe } from '@/lib/channelMixTimeframe';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 import { useReferralSources } from '@/hooks/useReferralSources';
 import { isRemovedForInactivity, previousMonthEnd } from './atRiskSources';
