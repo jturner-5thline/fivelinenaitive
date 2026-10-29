@@ -279,10 +279,10 @@ export function LenderSpreadsheetView({
       setSurfaceHeight(Math.max(280, Math.round(window.innerHeight - SIDEBAR_BOTTOM_GAP - top)));
     };
     update();
-    const ro = new ResizeObserver(update);
-    if (el.parentElement) ro.observe(el.parentElement);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null;
+    if (el.parentElement) ro?.observe(el.parentElement);
     window.addEventListener('resize', update);
-    return () => { ro.disconnect(); window.removeEventListener('resize', update); };
+    return () => { ro?.disconnect(); window.removeEventListener('resize', update); };
   }, []);
 
   return (
