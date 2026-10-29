@@ -40,10 +40,22 @@ function matchesAny(values: unknown, wanted: string[]): boolean {
   return wanted.some(w => have.has(w.toLowerCase()));
 }
 
+/** Parse a typed deal amount in dollars ("10000000", "$10,000,000", "10M", "500k"). */
+export function parseCheckSizeInput(raw: string): number | null {
+  const s = raw.trim().toLowerCase().replace(/[$,\s]/g, '');
+  if (!s) return null;
+  const m = s.match(/^(\d*\.?\d+)(k|m|mm|b)?$/);
+  if (!m) return null;
+  const mult = m[2] === 'k' ? 1e3 : m[2] === 'm' || m[2] === 'mm' ? 1e6 : m[2] === 'b' ? 1e9 : 1;
+  const n = Number(m[1]) * mult;
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Lender fits when min <= amount <= max; a missing bound defers to the one present. */
 export function fitsCheckSize(l: DirectoryFilterable, amount: number | null): boolean {
   if (amount == null) return true;
-  const min = l.min_deal ?? null;
-  const max = l.max_deal ?? null;
+  const min = l.min_deal == null ? null : Number(l.min_deal);
+  const max = l.max_deal == null ? null : Number(l.max_deal);
   if (min == null && max == null) return false;
   return (min == null || min <= amount) && (max == null || max >= amount);
 }

@@ -33,3 +33,21 @@ describe('directory column filters', () => {
     expect(distinctColumnValues(lenders, 'geo')).toEqual(['Canada', 'US']);
   });
 });
+
+import { parseCheckSizeInput, fitsCheckSize } from './lenderDirectoryColumnFilters';
+describe('check size regression', () => {
+  it('parses full dollar input', () => {
+    expect(parseCheckSizeInput('10000000')).toBe(10_000_000);
+    expect(parseCheckSizeInput('$10,000,000')).toBe(10_000_000);
+    expect(parseCheckSizeInput('10M')).toBe(10_000_000);
+  });
+  it('excludes a lender with a $30M minimum for a $10M deal', () => {
+    expect(fitsCheckSize({ name: 'X', min_deal: 30_000_000, max_deal: null }, 10_000_000)).toBe(false);
+    expect(fitsCheckSize({ name: 'X', min_deal: 30_000_000, max_deal: 100_000_000 }, 10_000_000)).toBe(false);
+  });
+  it('uses the only bound present', () => {
+    expect(fitsCheckSize({ name: 'X', min_deal: null, max_deal: 20_000_000 }, 10_000_000)).toBe(true);
+    expect(fitsCheckSize({ name: 'X', min_deal: null, max_deal: 5_000_000 }, 10_000_000)).toBe(false);
+    expect(fitsCheckSize({ name: 'X', min_deal: 5_000_000, max_deal: null }, 10_000_000)).toBe(true);
+  });
+});
