@@ -72,9 +72,18 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!item) return json({ error: 'item not found' }, 404);
 
+    // Only notify mentioned users who belong to the item's deal company.
+    const { data: deal } = await admin.from('deals').select('company_id').eq('id', item.deal_id).maybeSingle();
+    if (!deal?.company_id) return json({ error: 'deal company not found' }, 403);
+    const { data: members } = await admin
+      .from('company_members').select('user_id')
+      .eq('company_id', deal.company_id).in('user_id', mentioned);
+    const recipientIds = (members ?? []).map((m: { user_id: string }) => m.user_id);
+    if (recipientIds.length === 0) return json({ ok: true, sent: 0, skipped: 'no_company_mentions' });
+
     const [{ data: author }, { data: targets }] = await Promise.all([
       admin.from('profiles').select('display_name, full_name, first_name, last_name, email').eq('user_id', userData.user.id).maybeSingle(),
-      admin.from('profiles').select('user_id, display_name, email').in('user_id', mentioned),
+      admin.from('profiles').select('user_id, display_name, email').in('user_id', recipientIds),
     ]);
 
     const authorName =

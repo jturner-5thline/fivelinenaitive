@@ -88,9 +88,7 @@ serve(async (req) => {
     const fromName = user.user_metadata?.full_name || user.email || "Naitive";
     const fromEmail = buildFrom("Naitive");
 
-    const html = bodyHtmlInput
-      ? `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-size:14px;color:#0f172a;line-height:1.55;">${bodyHtmlInput}</body></html>`
-      : toHtml(body);
+    const html = toHtml(body || bodyHtmlInput.replace(/<[^>]*>/g, " "));
 
     const sent = await resend.emails.send({
       from: fromEmail,
