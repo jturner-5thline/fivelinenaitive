@@ -343,6 +343,9 @@ export function useDeleteContact() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Remove funding-source copies first; otherwise the sync trigger recreates the contact.
+      const { error: lcError } = await supabase.from('lender_contacts').delete().eq('contact_id', id);
+      if (lcError) throw lcError;
       const { error } = await supabase.from('contacts').delete().eq('id', id);
       if (error) throw error;
     },
