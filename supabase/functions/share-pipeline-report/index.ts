@@ -1,3 +1,4 @@
+import { isKnownRecipient } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
@@ -68,6 +69,15 @@ serve(async (req) => {
     const payload = (await req.json()) as Payload;
     const to = (payload.to || []).map((s) => s.trim()).filter(Boolean);
     const cc = (payload.cc || []).map((s) => s.trim()).filter(Boolean);
+    // Recipients must be teammates or saved contacts of the sender's company.
+    if (to.length + cc.length > 25) {
+      return new Response(JSON.stringify({ error: "Too many recipients" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    for (const addr of [...to, ...cc]) {
+      if (!(await isKnownRecipient(user.id, user.email, addr))) {
+        return new Response(JSON.stringify({ error: `${addr} is not a teammate or saved contact. Add them to Contacts first.` }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
     const subject = (payload.subject || "").trim();
     const body = payload.body || "";
     const bodyHtmlInput = (payload.bodyHtml || "").trim();

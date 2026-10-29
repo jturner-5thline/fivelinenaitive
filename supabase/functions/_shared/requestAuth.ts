@@ -162,3 +162,15 @@ export async function isTeammateEmail(userId: string, callerEmail: string | null
   const { data: shared } = await svc.from("company_members").select("user_id").in("company_id", companyIds).in("user_id", ids).limit(1);
   return (shared ?? []).length > 0;
 }
+
+/** True when `email` is a teammate or a saved contact in one of the caller's companies. */
+export async function isKnownRecipient(userId: string, callerEmail: string | null | undefined, email: string): Promise<boolean> {
+  if (await isTeammateEmail(userId, callerEmail, email)) return true;
+  const target = String(email ?? "").trim().toLowerCase();
+  const svc = serviceClient();
+  const { data: mine } = await svc.from("company_members").select("company_id").eq("user_id", userId);
+  const companyIds = (mine ?? []).map((m: { company_id: string }) => m.company_id);
+  if (!target || companyIds.length === 0) return false;
+  const { data } = await svc.from("contacts").select("id").in("company_id", companyIds).ilike("email", target).limit(1);
+  return (data ?? []).length > 0;
+}
