@@ -155,7 +155,7 @@ export function ReferralSourceDealsDialog({
         if (error) throw error;
       } else {
         const { error } = await supabase.from('referral_sources').insert({
-          company_id: company.id, name, type: 'person', is_channel_partner: on, contact_id: contactId ?? null,
+          company_id: company.id, name, user_id: (await supabase.auth.getUser()).data.user?.id ?? null, is_channel_partner: on, contact_id: contactId ?? null,
         });
         if (error) throw error;
       }
