@@ -235,8 +235,11 @@ Deno.serve(async (req) => {
     } else {
       // General mode — use Agent API for true deep research
       let finalQuery = body.query;
-      const finalInstructions = body.instructions ||
+      const finalInstructions =
         'You are a senior financial research analyst. Provide thorough, well-sourced analysis with specific data. Structure with clear headers. Cite sources with URLs.';
+      if (typeof body.instructions === 'string' && body.instructions.trim()) {
+        finalQuery += `\n\nAdditional research focus (from the user):\n${body.instructions.slice(0, 4000)}`;
+      }
 
       if (dealId) {
         const { data: deal } = await supabase
