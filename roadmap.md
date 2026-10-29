@@ -2,7 +2,7 @@
 
 ## Header logo replacement
 - [x] Replace public and workspace header logos with the supplied wordmark and matching browser icon.
-- [ ] Verify header rendering and navigation in desktop and phone preview.
+- [x] Verified public and signed-in header logos at 1280px and public header at 390px; login stays in the same tab, no phone overflow, targeted lint and preview build passed. Local CDN image serving was intercepted with the uploaded asset during screenshot checks.
 
 ## Invitation approval access
 - [x] Confirm invitation approval gap and reproduce denial redirect with simulated preview responses; all five Blount members currently approved.
