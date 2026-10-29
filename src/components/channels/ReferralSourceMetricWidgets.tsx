@@ -114,7 +114,7 @@ function ChannelMixDonut() {
     if (d) setDrill({ value: d.channel, label: d.name, color: d.color });
   };
 
-  const currentLabel = dateCtx?.range?.label || 'Current period';
+  const currentLabel = dateCtx?.range?.resolved?.label || 'Current period';
 
   return (
     <div>
