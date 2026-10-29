@@ -5,13 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 
 export const FUNDING_SOURCE_TYPE_OPTIONS = [
-  'Alternative',
   'Asset-Based Lender',
   'Bank',
   'Distressed / Specialty',
   'Equipment Financing',
   'Equity',
   'Mezzanine',
+  'Private Credit',
   'Real Estate',
   'SBA',
 ];

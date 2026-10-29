@@ -98,13 +98,13 @@ function CriteriaSelect({
 }
 
 const LENDER_TYPE_OPTIONS = [
-  'Alternative',
   'Asset-Based Lender',
   'Bank',
   'Distressed / Specialty',
   'Equipment Financing',
   'Equity',
   'Mezzanine',
+  'Private Credit',
   'Real Estate',
   'SBA',
 ];
