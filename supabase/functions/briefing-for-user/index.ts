@@ -100,6 +100,9 @@ serve(async (req) => {
       return jsonResponse({ error: 'targetUserId, startISO, endISO required' }, 400);
     }
 
+    if (user.id !== targetUserId && !(user as any).email_confirmed_at) {
+      return jsonResponse({ error: 'Forbidden' }, 403);
+    }
     if (!isAuthorizedCaller(user.email, user.id, targetUserId)) {
       // Audit denied access attempt
       console.warn(
