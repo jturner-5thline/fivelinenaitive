@@ -31,41 +31,10 @@ async function processPendingInvitations(userId: string, userEmail: string) {
     }
 
     for (const invitation of invitations) {
-      // Check if user is already a member of this company
-      const { data: existingMember } = await supabase
-        .from('company_members')
-        .select('id')
-        .eq('company_id', invitation.company_id)
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (existingMember) {
-        // Already a member, just mark invitation as accepted
-        await supabase
-          .from('company_invitations')
-          .update({ accepted_at: new Date().toISOString() })
-          .eq('id', invitation.id);
-        continue;
-      }
-
-      // Add user to company
-      const { error: memberError } = await supabase
-        .from('company_members')
-        .insert({
-          company_id: invitation.company_id,
-          user_id: userId,
-          role: invitation.role,
-        });
-
-      if (!memberError) {
-        // Mark invitation as accepted
-        await supabase
-          .from('company_invitations')
-          .update({ accepted_at: new Date().toISOString() })
-          .eq('id', invitation.id);
-        
-        console.log(`Auto-accepted invitation for company ${invitation.company_id}`);
-      }
+      if (!invitation.token) continue;
+      // Server-side RPC validates token, verified recipient, and inviter before joining.
+      const { error } = await supabase.rpc('accept_company_invitation', { _token: invitation.token });
+      if (error) console.warn('Could not auto-accept invitation', invitation.id);
     }
   } catch (error) {
     console.error('Error processing pending invitations:', error);
