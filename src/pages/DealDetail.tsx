@@ -1480,7 +1480,12 @@ export default function DealDetail() {
   
   // Panel reorder functionality
   const { panelOrder, panelVisibility, visiblePanels, reorderPanels, togglePanelVisibility, isPanelVisible, resetToDefault } = useDealPanelOrder();
-  const { fieldOrder: dealInfoFieldOrder, isFieldVisible: isDealInfoFieldVisible } = useDealInfoFieldOrder();
+  const { fieldOrder: dealInfoFieldOrder, isFieldVisible: baseIsDealInfoFieldVisible } = useDealInfoFieldOrder();
+  // 5th Line does not use the Analyst field — hide it from Deal Info.
+  const isDealInfoFieldVisible = (fieldId: DealInfoFieldId) =>
+    fieldId === 'analyst' && company?.id === '44556c46-9127-4b12-b14e-d6fee784afcf'
+      ? false
+      : baseIsDealInfoFieldVisible(fieldId);
   const { options: businessModelOptions } = useBusinessModelOptions();
   const { options: sourcedViaOptions } = useDealSourcedViaOptions();
   const [isPanelReorderDialogOpen, setIsPanelReorderDialogOpen] = useState(false);
