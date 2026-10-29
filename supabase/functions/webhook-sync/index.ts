@@ -1,3 +1,4 @@
+import { safeFetch } from "../_shared/safeUrl.ts";
 import { requireInternal } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
@@ -40,7 +41,7 @@ async function sendToWebhook(
       headers['Authorization'] = `Bearer ${apiKey}`;
     }
 
-    const response = await fetch(webhookUrl, {
+    const response = await safeFetch(webhookUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -79,6 +80,8 @@ serve(async (req) => {
 
   try {
     const payload: WebhookPayload = await req.json();
+    // Browser callers may only fire their own webhook integrations.
+    if (!__auth.internal) payload.user_id = __auth.user.id;
     
     console.log(`Processing webhook for ${payload.type} on ${payload.table}:`, {
       type: payload.type,

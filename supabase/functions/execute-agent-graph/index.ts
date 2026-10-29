@@ -1,3 +1,4 @@
+import { safeFetch } from "../_shared/safeUrl.ts";
 import { requireInternal } from "../_shared/requestAuth.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
@@ -142,7 +143,7 @@ async function executeToolNode(node: GraphNode, inputs: Record<string, any>, sup
       if (config.headers) {
         try { headers = { ...headers, ...JSON.parse(config.headers) }; } catch {}
       }
-      const resp = await fetch(url, { method, headers });
+      const resp = await safeFetch(url, { method, headers });
       const body = await resp.text();
       let parsed;
       try { parsed = JSON.parse(body); } catch { parsed = body; }

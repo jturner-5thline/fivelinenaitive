@@ -1,3 +1,5 @@
+import { safeFetch } from "../_shared/safeUrl.ts";
+import { escapeHtml } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
@@ -99,7 +101,7 @@ async function executeWebhookAction(config: Record<string, any>, triggerData: Re
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-    const response = await fetch(url, {
+    const response = await safeFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -164,10 +166,10 @@ async function executeEmailAction(
       body: JSON.stringify({
         from: buildFrom("Naitive"),
         to: [userEmail],
-        subject: subject,
+        subject: String(subject).replace(/[\r\n]+/g, " ").slice(0, 200),
         html: `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>${subject}</h2>
-          <p>${body}</p>
+          <h2>${escapeHtml(subject)}</h2>
+          <p>${escapeHtml(body)}</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
           <p style="color: #666; font-size: 12px;">This email was sent by an automated workflow.</p>
         </div>`,
@@ -436,7 +438,13 @@ serve(async (req) => {
       });
     }
 
-    const { workflowId, triggerType, triggerData, actions }: ExecuteWorkflowRequest = await req.json();
+    const { workflowId, triggerType, triggerData }: ExecuteWorkflowRequest = await req.json();
+    // Actions always come from the stored workflow the caller can see (RLS), never the request.
+    const { data: storedWorkflow } = await supabaseClient.from("workflows").select("id, actions").eq("id", workflowId).maybeSingle();
+    if (!storedWorkflow) {
+      return new Response(JSON.stringify({ error: "Workflow not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const actions = (Array.isArray(storedWorkflow.actions) ? storedWorkflow.actions : []) as unknown as WorkflowAction[];
 
     // The caller must be able to see any deal the workflow targets.
     const targetDealId = (triggerData as any)?.dealId || (triggerData as any)?.deal_id;

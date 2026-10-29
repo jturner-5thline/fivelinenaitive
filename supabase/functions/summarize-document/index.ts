@@ -30,7 +30,16 @@ Deno.serve(async (req) => {
     let textContent = '';
 
     if (isTextBased) {
-      const res = await fetch(fileUrl);
+      // Only fetch files from this project's own storage.
+      let allowed = false;
+      try {
+        const u = new URL(fileUrl);
+        allowed = u.protocol === 'https:' && u.host === new URL(Deno.env.get('SUPABASE_URL')!).host && u.pathname.startsWith('/storage/v1/');
+      } catch { allowed = false; }
+      if (!allowed) {
+        return new Response(JSON.stringify({ error: 'fileUrl must point to app storage' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const res = await fetch(fileUrl, { redirect: 'manual' });
       textContent = (await res.text()).slice(0, 15000);
     }
 

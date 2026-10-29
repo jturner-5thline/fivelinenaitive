@@ -1,4 +1,5 @@
-import { requireInternal, maskEmail } from "../_shared/requestAuth.ts";
+import { safeFetch } from "../_shared/safeUrl.ts";
+import { escapeHtml, isTeammateEmail, maskEmail, requireInternal } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.87.1";
@@ -445,6 +446,12 @@ async function sendEmail(
     const subject = replaceVariables(config.subject || 'Workflow Email', triggerData);
     const body = replaceVariables(config.body || 'A workflow action was triggered', triggerData);
     const toEmail = config.to || triggerData.userEmail;
+    // Delayed emails may only go to the workflow owner or the owner's teammates.
+    if (config.to && config.to !== triggerData.userEmail) {
+      if (!triggerData.userId || !(await isTeammateEmail(String(triggerData.userId), triggerData.userEmail ?? null, String(config.to)))) {
+        return { actionId, type: 'send_email', success: false, message: 'Recipient must be the workflow owner or a teammate' };
+      }
+    }
 
     if (!toEmail) {
       return { actionId, type: 'send_email', success: false, message: 'No recipient email specified' };
@@ -473,8 +480,8 @@ async function sendEmail(
         body: JSON.stringify({
           from: buildFrom("Naitive"),
           to: [toEmail],
-          subject: subject,
-          html: `<p>${body}</p><p style="color: #888; font-size: 12px; margin-top: 20px;">This is a delayed automated email from your workflow.</p>`,
+          subject: String(subject).replace(/[\r\n]+/g, ' ').slice(0, 200),
+          html: `<p>${escapeHtml(body)}</p><p style="color: #888; font-size: 12px; margin-top: 20px;">This is a delayed automated email from your workflow.</p>`,
         }),
       });
 
@@ -505,7 +512,7 @@ async function callWebhook(
 
     console.log(`[Delayed Webhook] Calling ${url}`);
 
-    const response = await fetch(url, {
+    const response = await safeFetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
