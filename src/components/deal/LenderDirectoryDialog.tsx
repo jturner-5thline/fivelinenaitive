@@ -177,9 +177,9 @@ function ColumnFilterButton({ columnKey, filters, onChange, options }: { columnK
         )}
         {columnKey === 'min_deal' && (
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Show sources that can fund a deal of ($M):</p>
-            <Input autoFocus type="number" min={0} step="0.1" placeholder="e.g. 5" value={filters.checkSize == null ? '' : String(filters.checkSize / 1_000_000)}
-              onChange={e => { const v = e.target.value; onChange({ ...filters, checkSize: v === '' || isNaN(Number(v)) ? null : Number(v) * 1_000_000 }); }} className="h-8 text-xs" />
+            <p className="text-xs text-muted-foreground">Show sources that can fund a deal of ($):</p>
+            <Input autoFocus inputMode="decimal" placeholder="e.g. 10000000 or 10M" value={q || (filters.checkSize == null ? '' : String(filters.checkSize))}
+              onChange={e => { const v = e.target.value; setQ(v); onChange({ ...filters, checkSize: parseCheckSizeInput(v) }); }} className="h-8 text-xs" />
           </div>
         )}
         {columnKey === 'action' && (
