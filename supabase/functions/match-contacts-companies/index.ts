@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { requireInternal, isCompanyMember } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -41,6 +41,10 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    if (orgCompanyId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(orgCompanyId))) {
+      return new Response(JSON.stringify({ error: "Invalid org_company_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (!__auth.internal && (!orgCompanyId || !(await isCompanyMember(__auth.user.id, orgCompanyId)))) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     if (!orgCompanyId) {
       // Fallback to 5th Line
       const { data: co } = await admin.from('companies').select('id')
