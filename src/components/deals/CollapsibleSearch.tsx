@@ -51,33 +51,39 @@ export function CollapsibleSearch({ value, onChange, debounceMs = 350 }: Collaps
   // gap between our left edge and the header pill, and clamp the width to it.
   // Sized dynamically: sits just right of the workspace logo and stops before
   // the floating menu pill, growing on wide screens and shrinking on small ones.
-  const MIN_W = 96;
-  const [boxWidth, setBoxWidth] = useState<number>(243);
+  // Width scales with screen size (between MIN_W and MAX_W) and is measured
+  // only against header anchors (logo + menu pill), never view content, so
+  // grid / pipeline / list / timeline all render it identically.
+  const MIN_W = 120;
+  const MAX_W = 320;
+  const [boxWidth, setBoxWidth] = useState<number>(240);
 
   useEffect(() => {
     const measure = () => {
       const el = containerRef.current;
       if (!el) return;
       const wrapper = el.parentElement;
-      const logo = document.querySelector('.workspace-logo img, .workspace-logo svg') as HTMLElement | null;
-      // The logo image has transparent padding on the right (visible
-      // lettering ends at ~84% of the image width), so anchor to the
-      // visible edge rather than the image box.
+      const logo = document.querySelector('.workspace-logo img') as HTMLImageElement | null;
       const lr = logo ? logo.getBoundingClientRect() : null;
-      const logoRight = lr ? lr.left + lr.width * (1612 / 1920) : 200;
-      const left = Math.round(logoRight + 12);
+      // Use the full logo box (never overlap) with a safe fallback while
+      // the image hasn't rendered yet.
+      const logoRight = lr && lr.width > 0 ? lr.right : 260;
+      const left = Math.round(Math.max(logoRight, 140) + 16);
       if (wrapper && wrapper.style.left !== `${left}px`) wrapper.style.left = `${left}px`;
       const header = document.querySelector('.floating-header') as HTMLElement | null;
       const headerLeft = header ? header.getBoundingClientRect().left : window.innerWidth;
       const available = headerLeft - left - 16;
-      // Fixed width in every view (grid, pipeline, list, timeline); only
-      // shrinks when needed to avoid the floating menu pill.
-      setBoxWidth(Math.max(MIN_W, Math.min(280, available)));
+      // Fluid: ~18% of viewport, clamped, and never past the menu pill.
+      const fluid = Math.round(window.innerWidth * 0.18);
+      setBoxWidth(Math.max(MIN_W, Math.min(MAX_W, fluid, available)));
     };
     measure();
+    const logoImg = document.querySelector('.workspace-logo img');
+    logoImg?.addEventListener('load', measure);
     window.addEventListener('resize', measure);
     const id = window.setInterval(measure, 500);
     return () => {
+      logoImg?.removeEventListener('load', measure);
       window.removeEventListener('resize', measure);
       window.clearInterval(id);
     };
