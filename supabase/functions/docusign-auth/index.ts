@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
+import { isCompanyMember } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -68,6 +69,7 @@ serve(async (req) => {
     // ─── EXCHANGE CODE ────────────────────────────────────────
     if (action === "exchange_code") {
       const { code, company_id } = body;
+      if (!(await isCompanyMember(user.id, company_id))) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       if (!code || !company_id) {
         return new Response(
           JSON.stringify({ error: "code and company_id are required" }),
@@ -150,6 +152,7 @@ serve(async (req) => {
     // ─── CHECK STATUS ─────────────────────────────────────────
     if (action === "status") {
       const { company_id } = body;
+      if (!(await isCompanyMember(user.id, company_id))) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       if (!company_id) {
         return new Response(
           JSON.stringify({ error: "company_id is required" }),
@@ -187,6 +190,7 @@ serve(async (req) => {
     // ─── DISCONNECT ───────────────────────────────────────────
     if (action === "disconnect") {
       const { company_id } = body;
+      if (!(await isCompanyMember(user.id, company_id))) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       if (!company_id) {
         return new Response(
           JSON.stringify({ error: "company_id is required" }),
@@ -215,6 +219,7 @@ serve(async (req) => {
     // ─── REFRESH TOKEN ────────────────────────────────────────
     if (action === "refresh") {
       const { company_id } = body;
+      if (!(await isCompanyMember(user.id, company_id))) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       if (!company_id) {
         return new Response(
           JSON.stringify({ error: "company_id is required" }),

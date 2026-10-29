@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
+import { isCompanyMember } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -81,6 +82,7 @@ serve(async (req) => {
     };
 
     if (!rows?.length || !company_id) throw new Error("Missing rows or company_id");
+    if (!(await isCompanyMember(user!.id, company_id))) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const stmtType = statement_type || 'both';
 
