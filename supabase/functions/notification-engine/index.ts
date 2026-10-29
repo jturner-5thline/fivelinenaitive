@@ -1,4 +1,4 @@
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { canAccessDeal, requireInternal } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
@@ -337,6 +337,13 @@ serve(async (req) => {
     );
 
     const payload: NotifyPayload = await req.json();
+    if (!__auth.internal) {
+      // Browser callers act only as themselves and only on deals they can access.
+      payload.actorUserId = __auth.user.id;
+      const dealId = payload.context?.deal_id;
+      if (dealId && !(await canAccessDeal(req, String(dealId)))) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      if (!dealId) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+    }
     const { triggerKey, actorUserId, context } = payload;
 
     if (!triggerKey) {
