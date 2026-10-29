@@ -1,3 +1,4 @@
+import { canAccessDeal } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
@@ -1408,6 +1409,7 @@ serve(async (req: Request): Promise<Response> => {
 
       case "send": {
         const { to, cc, bcc, subject, body, body_html, attachments, reply_to_message_id, deal_id, thread_id: hintThreadId } = requestData;
+        if (deal_id && !(await canAccessDeal(req, deal_id))) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
 
         // Defensive recipient normalization — Nylas v3 rejects comma-joined
         // strings (e.g. "a@x.co, b@x.co"). Always coerce to a clean string[]

@@ -1,3 +1,4 @@
+import { canAccessDeal } from "../_shared/requestAuth.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -55,6 +56,7 @@ Deno.serve(async (req) => {
 
   const eventType = body?.event_type;
   const dealId = body?.deal_id ?? null;
+  if (dealId && !(await canAccessDeal(req, dealId))) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
   const metadata = (body?.metadata && typeof body.metadata === 'object') ? body.metadata : {};
 
   if (!ALLOWED_EVENTS.has(eventType)) {
