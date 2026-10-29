@@ -3,7 +3,7 @@ import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { requireInternal, maskEmail } from "../_shared/requestAuth.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -702,7 +702,7 @@ const handler = async (req: Request): Promise<Response> => {
       for (const email of alwaysNotifyEmails) {
         const userId = emailToUserId[email];
         if (!userId) {
-          console.log(`Always-notify email ${email} not found in company members`);
+          console.log(`Always-notify email ${maskEmail(email)} not found in company members`);
           continue;
         }
         const profile = profiles.find(p => p.user_id === userId);
@@ -793,9 +793,9 @@ const handler = async (req: Request): Promise<Response> => {
           });
 
           results.push({ user_id: userId, email, company_id: settings.company_id, deal_count: recipient.deals.length, is_global: recipient.isGlobal, success: true });
-          console.log(`Deal attention alert sent to ${email} (${recipient.isGlobal ? 'global' : 'role-based'}, ${recipient.deals.length} deals)`);
+          console.log(`Deal attention alert sent to ${maskEmail(email)} (${recipient.isGlobal ? 'global' : 'role-based'}, ${recipient.deals.length} deals)`);
         } catch (sendError: any) {
-          console.error(`Error sending to ${email}:`, sendError);
+          console.error(`Error sending to ${maskEmail(email)}:`, sendError);
           results.push({ user_id: userId, success: false, error: sendError.message });
         }
       }

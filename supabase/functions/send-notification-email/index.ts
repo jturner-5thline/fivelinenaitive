@@ -4,7 +4,7 @@ import { shouldSkipTaskAssignmentEmail } from '../_shared/taskAssignmentEmailPol
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { requireInternal, maskEmail } from "../_shared/requestAuth.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -1376,7 +1376,7 @@ const handler = async (req: Request): Promise<Response> => {
           text: `${template.subject}\n\n${message}${payload.changed_by ? `\nBy: ${payload.changed_by}` : ''}${changesText}\n\n${dealUrl ? `View Deal: ${dealUrl}\n\n` : ''}---\nnaitive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubscribe`,
           html: emailHtml,
         });
-        console.log(`Email sent to ${recipient.email}:`, emailResponse);
+        console.log(`Email sent to ${maskEmail(recipient.email)}:`, emailResponse);
         results.push({ email: recipient.email, success: true, emailResponse });
       } catch (sendErr: any) {
         console.error(`Failed to send to ${recipient.email}:`, sendErr);

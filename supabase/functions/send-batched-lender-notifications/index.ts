@@ -3,7 +3,7 @@ import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { requireInternal, maskEmail } from "../_shared/requestAuth.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -447,9 +447,9 @@ const handler = async (req: Request): Promise<Response> => {
               });
 
               results.push({ deal_id: dealId, email: recipient.email, lender_count: emailableNotifications.length, success: true });
-              console.log(`Batched lender email sent to ${recipient.email} for deal ${deal.company} (${emailableNotifications.length} lenders)`);
+              console.log(`Batched lender email sent to ${maskEmail(recipient.email)} for deal ${deal.company} (${emailableNotifications.length} lenders)`);
             } catch (sendError: any) {
-              console.error(`Error sending to ${recipient.email}:`, sendError);
+              console.error(`Error sending to ${maskEmail(recipient.email)}:`, sendError);
               results.push({ deal_id: dealId, email: recipient.email, success: false, error: sendError.message });
             }
           }

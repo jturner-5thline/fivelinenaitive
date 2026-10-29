@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
+import { maskEmail } from "../_shared/requestAuth.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -104,7 +106,7 @@ serve(async (req: Request): Promise<Response> => {
           email_confirm: true,
         });
       } catch (e) {
-        console.warn("[resend-demo-invite] password reset failed", email, e);
+        console.warn("[resend-demo-invite] password reset failed", maskEmail(email), e);
       }
 
       const loginUrl = `${PLATFORM_URL}/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(demoPassword)}&demo=1&redirect=${encodeURIComponent("/deals")}`;
@@ -129,7 +131,7 @@ serve(async (req: Request): Promise<Response> => {
         results.push({ email, sent: true, error: null });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        console.warn("[resend-demo-invite] send failed", email, msg);
+        console.warn("[resend-demo-invite] send failed", maskEmail(email), msg);
         results.push({ email, sent: false, error: msg });
       }
     }

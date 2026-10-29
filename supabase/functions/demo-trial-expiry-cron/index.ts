@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { requireInternal, maskEmail } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -112,7 +112,7 @@ serve(async (req) => {
                 },
               });
             } catch (sendErr) {
-              console.warn("[demo-trial-expiry-cron] warning email failed", p.email, sendErr);
+              console.warn("[demo-trial-expiry-cron] warning email failed", maskEmail(p.email), sendErr);
             }
           }
 

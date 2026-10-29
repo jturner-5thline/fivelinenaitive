@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.87.1";
 
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { requireInternal, maskEmail } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -459,7 +459,7 @@ async function sendEmail(
       return { actionId, type: 'send_email', success: true, message: `Suppressed jturner reminder email (in-app Daily Briefing)` };
     }
 
-    console.log(`[Delayed Email] Sending to ${toEmail}, Subject: ${subject}`);
+    console.log(`[Delayed Email] Sending to ${maskEmail(toEmail)}, Subject: ${subject}`);
 
     // Use Resend to send email
     const resendApiKey = Deno.env.get('RESEND_API_KEY');

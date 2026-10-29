@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { requireInternal, maskEmail } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -535,7 +535,7 @@ Deno.serve(async (req) => {
             );
 
           results.push({ userId: eff.userId, type: 'daily', success: true });
-          console.log(`[deal-summaries] Daily sent to ${userData.user.email}`);
+          console.log(`[deal-summaries] Daily sent to ${maskEmail(userData.user.email)}`);
         }
 
         if (weeklyDue) {
@@ -593,7 +593,7 @@ Deno.serve(async (req) => {
             );
 
           results.push({ userId: eff.userId, type: 'weekly', success: true });
-          console.log(`[deal-summaries] Weekly sent to ${userData.user.email}`);
+          console.log(`[deal-summaries] Weekly sent to ${maskEmail(userData.user.email)}`);
         }
       } catch (userErr: any) {
         console.error(`[deal-summaries] Error for user ${eff.userId}:`, userErr);
