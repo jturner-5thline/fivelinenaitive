@@ -1,4 +1,4 @@
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { canAccessDeal, requireInternal } from "../_shared/requestAuth.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
-    const {
+    let {
       deal_id,
       pipeline_id,
       stage,
@@ -76,6 +76,12 @@ Deno.serve(async (req) => {
       manager,
       fields_changed,
     } = await req.json();
+    if (!__auth.internal) {
+      if (!(await canAccessDeal(req, deal_id))) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      const { data: own } = await supabase.from("deals").select("hubspot_deal_id, company_id, pipeline_id").eq("id", deal_id).maybeSingle();
+      if (!own) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      hubspot_deal_id = own.hubspot_deal_id; company_id = own.company_id; pipeline_id = own.pipeline_id;
+    }
 
     // Skip if no HubSpot link
     if (!hubspot_deal_id) {
