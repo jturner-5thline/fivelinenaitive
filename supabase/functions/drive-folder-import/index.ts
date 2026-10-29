@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    if (!INTERNAL_DOMAINS.has(domainOf(user.email))) {
+    if (!user.email_confirmed_at || !INTERNAL_DOMAINS.has(domainOf(user.email))) {
       return new Response(JSON.stringify({ error: 'forbidden' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
