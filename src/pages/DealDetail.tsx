@@ -5291,8 +5291,8 @@ export default function DealDetail() {
                 </TabsContent>
 
                 <TabsContent value="lenders" className={cn(useContextRailLayout ? "mt-1" : "mt-2", "deal-tab-fade")}>
-              <div className="w-full max-w-full min-w-0 min-h-0 space-y-6 mx-auto overflow-x-hidden [&>*]:w-full [&>*]:min-w-0">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 items-start">
+              <div className="w-full max-w-full min-w-0 min-h-0 mx-auto overflow-x-hidden grid grid-cols-1 lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] gap-4 items-start">
+              <div className="flex w-full min-w-0 flex-col gap-4 lg:col-start-2 lg:row-start-1">
               {/* Funding source mix pie (with drilldown) */}
               <FundingSourceMixPie
                 lenders={deal.lenders || []}
@@ -5345,9 +5345,55 @@ export default function DealDetail() {
                   </div>
                 );
               })()}
+              {/* Top 3 pass reasons (vertical bars) */}
+              {(() => {
+                const norm = (s?: string) => (s || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
+                const labelFor = (l: any) => norm(configuredStages.find(s => s.id === l.stage)?.label || l.stage);
+                const isPassed = (l: any) => {
+                  const ts = norm(l.trackingStatus);
+                  const lb = labelFor(l);
+                  return ts === 'passed' || ts === 'pass' || ts === 'not a fit' || lb === 'passed' || lb.includes('not a fit');
+                };
+                const reasonCounts = new Map<string, number>();
+                (deal.lenders || []).filter(isPassed).forEach((l: any) => {
+                  const raw: string = l.passReason || '';
+                  raw.split(', ').map(s => s.trim()).filter(Boolean).forEach(label => {
+                    const clean = label.toLowerCase().startsWith('other:') ? 'Other' : label;
+                    reasonCounts.set(clean, (reasonCounts.get(clean) || 0) + 1);
+                  });
+                });
+                const topReasons = Array.from(reasonCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3);
+                const maxReason = topReasons[0]?.[1] || 1;
+                return (
+                  <div className="fs-tab-widget w-full min-w-0 rounded-lg px-4 py-3">
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Top pass reasons</p>
+                    {topReasons.length === 0 ? (
+                      <div className="mt-3 flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border/60 py-8 text-center">
+                        <p className="text-sm font-medium text-foreground">No pass reasons logged yet</p>
+                        <p className="text-xs text-muted-foreground">
+                          When a funding source is marked Passed, the reason you select will appear here.
+                        </p>
+                      </div>
+                    ) : (
+                    <div className="mt-4 grid grid-cols-3 gap-4 items-end" style={{ height: 180 }}>
+                      {topReasons.map(([label, count]) => (
+                        <div key={label} className="flex h-full flex-col items-center justify-end gap-2">
+                          <span className="text-xs font-mono tabular-nums text-foreground">{count}</span>
+                          <div
+                            className="w-full max-w-[72px] rounded-t-md bg-red-400/70"
+                            style={{ height: `${Math.max(6, (count / maxReason) * 100)}%` }}
+                          />
+                          <span className="w-full truncate text-center text-[11px] text-muted-foreground" title={label}>{label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    )}
+                  </div>
+                );
+              })()}
               </div>
               {/* Lenders Card */}
-                 <Card className="fs-tab-widget flex flex-col min-h-0">
+                 <Card className="fs-tab-widget flex w-full min-w-0 flex-col min-h-0 lg:col-start-1 lg:row-start-1">
                    <CardHeader className="pb-3 pt-3">
                        <div className="flex items-center gap-2 flex-wrap">
                           <div className="flex-1 shrink basis-[180px] min-w-[120px] max-w-[260px]">
@@ -6390,52 +6436,6 @@ export default function DealDetail() {
                     </CardContent>
                   
                 </Card>
-              {/* Top 3 pass reasons (vertical bars) */}
-              {(() => {
-                const norm = (s?: string) => (s || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
-                const labelFor = (l: any) => norm(configuredStages.find(s => s.id === l.stage)?.label || l.stage);
-                const isPassed = (l: any) => {
-                  const ts = norm(l.trackingStatus);
-                  const lb = labelFor(l);
-                  return ts === 'passed' || ts === 'pass' || ts === 'not a fit' || lb === 'passed' || lb.includes('not a fit');
-                };
-                const reasonCounts = new Map<string, number>();
-                (deal.lenders || []).filter(isPassed).forEach((l: any) => {
-                  const raw: string = l.passReason || '';
-                  raw.split(', ').map(s => s.trim()).filter(Boolean).forEach(label => {
-                    const clean = label.toLowerCase().startsWith('other:') ? 'Other' : label;
-                    reasonCounts.set(clean, (reasonCounts.get(clean) || 0) + 1);
-                  });
-                });
-                const topReasons = Array.from(reasonCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3);
-                const maxReason = topReasons[0]?.[1] || 1;
-                return (
-                  <div className="rounded-xl border border-border/60 bg-card px-4 py-3">
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Top pass reasons</p>
-                    {topReasons.length === 0 ? (
-                      <div className="mt-3 flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border/60 py-8 text-center">
-                        <p className="text-sm font-medium text-foreground">No pass reasons logged yet</p>
-                        <p className="text-xs text-muted-foreground">
-                          When a funding source is marked Passed, the reason you select will appear here.
-                        </p>
-                      </div>
-                    ) : (
-                    <div className="mt-4 grid grid-cols-3 gap-4 items-end" style={{ height: 180 }}>
-                      {topReasons.map(([label, count]) => (
-                        <div key={label} className="flex h-full flex-col items-center justify-end gap-2">
-                          <span className="text-xs font-mono tabular-nums text-foreground">{count}</span>
-                          <div
-                            className="w-full max-w-[72px] rounded-t-md bg-red-400/70"
-                            style={{ height: `${Math.max(6, (count / maxReason) * 100)}%` }}
-                          />
-                          <span className="w-full truncate text-center text-[11px] text-muted-foreground" title={label}>{label}</span>
-                        </div>
-                      ))}
-                    </div>
-                    )}
-                  </div>
-                );
-              })()}
               </div>
 
                 </TabsContent>
