@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { shouldDefer, getQuotaStatus } from "../_shared/claap-quota.ts";
 
+import { requireInternal } from "../_shared/requestAuth.ts";
 // Also count list-endpoint pulls against the daily Claap quota — every
 // /v1/recordings page consumes a real API call and needs to be visible to
 // the quota gate, otherwise cron jobs silently blow through the budget.
@@ -419,6 +420,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  const __auth = await requireInternal(req, corsHeaders, { allowUser: true });
+  if (!__auth.ok) return __auth.response;
+
 
   const supabaseAdmin = createClient(
     Deno.env.get("SUPABASE_URL")!,

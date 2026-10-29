@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { hasClaapToken } from '../_shared/claap-api.ts';
 import {
+import { requireInternal } from "../_shared/requestAuth.ts";
   claapFetchRecording,
   shouldDefer,
   getQuotaStatus,
@@ -265,6 +266,9 @@ async function resolveRecordingByMeeting(admin: any, meetingId: string): Promise
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const __auth = await requireInternal(req, corsHeaders, { allowUser: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     if (!hasClaapToken()) {
