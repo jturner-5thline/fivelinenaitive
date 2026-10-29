@@ -1,6 +1,11 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { sendTemplateEmail } from '../_shared/transactional-email-templates/send-email.ts'
 import { shouldSkipTaskAssignmentEmail } from '../_shared/taskAssignmentEmailPolicy.ts'
+import { isInternalCaller, getRequestUser, isTeammateEmail } from '../_shared/requestAuth.ts'
+
+const PUBLIC_TEMPLATES = new Set(['contact-us-request', 'demo-request'])
+const PUBLIC_INBOX = 'support@naitive.co'
+const TEAMMATE_TEMPLATES = new Set(['task-assigned', 'qir-mention', 'insights-report-ready'])
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -48,6 +53,22 @@ Deno.serve(async (req) => {
 
   if (!templateName || typeof templateName !== 'string') {
     return json({ error: 'templateName is required' }, 400)
+  }
+
+  // Caller-based recipient policy: internal callers are trusted; public forms
+  // may only reach the support inbox; signed-in users may only email themselves
+  // or teammates who share a company, using a small set of templates.
+  if (!(await isInternalCaller(req))) {
+    if (PUBLIC_TEMPLATES.has(templateName)) {
+      recipientEmail = PUBLIC_INBOX
+    } else {
+      const user = await getRequestUser(req)
+      if (!user) return json({ error: 'Unauthorized' }, 401)
+      if (!TEAMMATE_TEMPLATES.has(templateName)) return json({ error: 'Forbidden' }, 403)
+      if (typeof recipientEmail !== 'string' || !(await isTeammateEmail(user.id, user.email, recipientEmail))) {
+        return json({ error: 'Recipient must be a teammate' }, 403)
+      }
+    }
   }
 
   if (typeof recipientEmail === 'string' && shouldSkipTaskAssignmentEmail(templateName, recipientEmail)) {
