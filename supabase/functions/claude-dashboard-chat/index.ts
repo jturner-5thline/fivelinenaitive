@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 import { compactHistory, historyStats } from "../_shared/contextBudget.ts";
 
+import { sanitizeChatMessages } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -831,6 +832,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     const body = await req.json();
+    const messages = sanitizeChatMessages((body as any).messages);
     const rawMessages = body.messages || [];
     if (!Array.isArray(rawMessages) || rawMessages.length === 0) {
       return new Response(JSON.stringify({ error: "Messages required" }), {

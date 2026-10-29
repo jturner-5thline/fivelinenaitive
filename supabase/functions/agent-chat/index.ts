@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
+import { sanitizeChatMessages } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -156,12 +157,13 @@ serve(async (req) => {
     }
 
     // ── Parse request ────────────────────────────────────
-    const { messages, agentConfig, dealContext, stream } = await req.json() as {
+    let { messages, agentConfig, dealContext, stream } = await req.json() as {
       messages: Message[];
       agentConfig: AgentConfig;
       dealContext?: DealContext;
       stream?: boolean;
     };
+    messages = sanitizeChatMessages(messages) as any;
 
     if (!messages || !agentConfig) {
       return new Response(

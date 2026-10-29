@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
+import { sanitizeChatMessages } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -29,7 +30,8 @@ serve(async (req) => {
       });
     }
 
-    const { messages, context } = await req.json();
+    let { messages, context } = await req.json();
+    messages = sanitizeChatMessages(messages) as any;
     const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
     if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
 

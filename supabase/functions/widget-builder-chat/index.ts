@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { requireInternal, sanitizeChatMessages } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -141,7 +141,8 @@ serve(async (req) => {
 
 
   try {
-    const { messages, currentConfig } = await req.json();
+    let { messages, currentConfig } = await req.json();
+    messages = sanitizeChatMessages(messages) as any;
 
     const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
     if (!ANTHROPIC_API_KEY) {

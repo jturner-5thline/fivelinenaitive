@@ -4,6 +4,7 @@ import JSZip from "https://esm.sh/jszip@3.10.1";
 import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 import { compactHistory, historyStats } from "../_shared/contextBudget.ts";
 
+import { sanitizeChatMessages } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -938,7 +939,8 @@ serve(async (req) => {
 
     const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { messages, dealId, action, sectionKey, documentId, scope, stream, conversationId, includeDataRoom } = await req.json();
+    let { messages, dealId, action, sectionKey, documentId, scope, stream, conversationId, includeDataRoom } = await req.json();
+    messages = sanitizeChatMessages(messages) as any;
 
     // 5th Line proprietary actions: hard-enforce company gating server-side
     // so non-5th-Line users cannot invoke these features via direct API

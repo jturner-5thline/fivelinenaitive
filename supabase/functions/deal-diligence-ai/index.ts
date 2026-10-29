@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { buildDealContext, renderDealContextBlock, DEAL_CONTEXT_SYSTEM_FRAGMENT } from "../_shared/dealContext.ts";
 
+import { sanitizeChatMessages } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -34,7 +35,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { dealId, messages, action, fileId } = await req.json();
+    let { dealId, messages, action, fileId } = await req.json();
+    messages = sanitizeChatMessages(messages) as any;
     if (!dealId) throw new Error("dealId is required");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
