@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { requireInternal, escapeHtml, maskEmail } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -40,7 +40,7 @@ serve(async (req) => {
       );
     }
 
-    const displayName = user_name || user_email.split("@")[0];
+    const displayName = escapeHtml(String(user_name || user_email.split("@")[0]).slice(0, 100));
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -116,7 +116,7 @@ serve(async (req) => {
     }
 
     const result = await emailResponse.json();
-    console.log("Approval email sent to:", user_email, result);
+    console.log("Approval email sent:", maskEmail(user_email), result?.id);
 
     return new Response(
       JSON.stringify({ success: true, emailId: result.id }),
