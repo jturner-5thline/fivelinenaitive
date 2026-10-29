@@ -438,9 +438,20 @@ serve(async (req) => {
 
     const { workflowId, triggerType, triggerData, actions }: ExecuteWorkflowRequest = await req.json();
 
+    // The caller must be able to see any deal the workflow targets.
+    const targetDealId = (triggerData as any)?.dealId || (triggerData as any)?.deal_id;
+    if (targetDealId) {
+      const { data: visibleDeal } = await supabaseClient.from("deals").select("id").eq("id", targetDealId).maybeSingle();
+      if (!visibleDeal) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     console.log(`Executing workflow ${workflowId} for user ${user.id}`);
-    console.log(`Trigger: ${triggerType}`, triggerData);
-    console.log(`Actions:`, actions);
+    console.log(`Trigger: ${triggerType}`);
 
     // ──────────────────────────────────────────────────────────────
     // Structured per-step observability.
