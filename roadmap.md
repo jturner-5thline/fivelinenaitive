@@ -1,5 +1,9 @@
 # Roadmap
 
+## Header logo replacement
+- [x] Replace public and workspace header logos with the supplied wordmark and matching browser icon.
+- [ ] Verify header rendering and navigation in desktop and phone preview.
+
 ## Invitation approval access
 - [x] Confirm invitation approval gap and reproduce denial redirect with simulated preview responses; all five Blount members currently approved.
 - [x] Apply transactional invitation approval with verified-recipient, inviter/company, reuse and revocation safeguards; show retry on approval-check errors; no existing records rewritten.

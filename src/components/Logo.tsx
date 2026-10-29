@@ -1,21 +1,15 @@
-import { useTheme } from "next-themes";
-import naitiveLogo from "@/assets/naitive-logo.png";
-import naitiveLogoDark from "@/assets/naitive-logo-dark.png";
+import naitiveLogo from "@/assets/naitive-header-logo.png.asset.json";
 
 interface LogoProps {
   className?: string;
 }
 
 export const Logo = ({ className = "h-3" }: LogoProps) => {
-  const { resolvedTheme } = useTheme();
-  const logoSrc = resolvedTheme === "dark" ? naitiveLogoDark : naitiveLogo;
-
   return (
     <img 
-      src={logoSrc} 
+      src={naitiveLogo.url} 
       alt="naitive deal management logo" 
       className={`${className} w-auto shrink-0 object-contain`}
-      style={{ aspectRatio: 'auto' }}
     />
   );
 };

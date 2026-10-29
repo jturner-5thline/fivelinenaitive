@@ -72,10 +72,10 @@ function MainContent({
       <DealsHeader />
       {showWorkspaceLogo && (
         <div
-          className="workspace-logo fixed left-[2px] -top-[27px] z-40 pointer-events-none"
+          className="workspace-logo fixed left-[12px] top-[14px] z-40 pointer-events-none"
           aria-hidden="true"
         >
-          <Logo className="h-32" />
+          <Logo className="h-8" />
         </div>
       )}
       <div className="relative z-10 flex-1 flex flex-col min-h-full pt-[68px]">
