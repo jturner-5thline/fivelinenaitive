@@ -20,6 +20,9 @@ import { cn } from '@/lib/utils';
 import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
 import { toast } from 'sonner';
 import { MultiSelectFilter } from '@/components/deals/MultiSelectFilter';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Filter } from 'lucide-react';
+import { applyDirectoryColumnFilters, countActiveColumnFilters, distinctColumnValues, EMPTY_DIRECTORY_FILTERS, type DirectoryColumnFilters } from '@/lib/lenderDirectoryColumnFilters';
 import { Badge } from '@/components/ui/badge';
 import { DealCriteria, useLenderMatching } from '@/hooks/useLenderMatching';
 import { useAiRecommendedLenders } from '@/hooks/useAiRecommendedLenders';
@@ -140,7 +143,7 @@ function getSortValue(lender: MasterLender, key: string, isOnDeal: boolean): str
   const value = lender[key as keyof MasterLender];
   if (value === null || value === undefined) return null;
   if (key === 'active') return value ? 1 : 0;
-  if (Array.isArray(value)) return value.length > 0 ? value[0].toLowerCase() : '';
+  if (Array.isArray(value)) return value.length > 0 ? String(value[0]).toLowerCase() : '';
   if (typeof value === 'number') return value;
   if (key === 'created_at' || key === 'external_last_modified') {
     try { return new Date(value as string).getTime(); } catch { return String(value).toLowerCase(); }
@@ -150,6 +153,71 @@ function getSortValue(lender: MasterLender, key: string, isOnDeal: boolean): str
 }
 
 type SortDirection = 'asc' | 'desc' | null;
+
+type ColumnOptions = { loan_types: string[]; geo: string[]; industries: string[] };
+function ColumnFilterButton({ columnKey, filters, onChange, options }: { columnKey: string; filters: DirectoryColumnFilters; onChange: (f: DirectoryColumnFilters) => void; options: ColumnOptions }) {
+  const [q, setQ] = useState('');
+  const listKey = columnKey === 'loan_types' ? 'structure' : columnKey === 'geo' ? 'geo' : columnKey === 'industries' ? 'industries' : null;
+  const supported = listKey || ['name', 'min_deal', 'action'].includes(columnKey);
+  if (!supported) return null;
+  const active = listKey ? filters[listKey].length > 0 : columnKey === 'name' ? !!filters.name.trim() : columnKey === 'min_deal' ? filters.checkSize != null : !!filters.status;
+  const values = listKey ? options[columnKey as keyof ColumnOptions].filter(v => v.toLowerCase().includes(q.toLowerCase())) : [];
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation();
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <span role="button" tabIndex={0} aria-label={`Filter column`} onClick={stop} onKeyDown={stop}
+          className={cn('ml-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-muted', active ? 'text-primary' : 'text-muted-foreground/50')}>
+          <Filter className="h-3 w-3" fill={active ? 'currentColor' : 'none'} />
+        </span>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 p-3 normal-case tracking-normal font-normal" onClick={stop}>
+        {columnKey === 'name' && (
+          <Input autoFocus placeholder="Name contains…" value={filters.name} onChange={e => onChange({ ...filters, name: e.target.value })} className="h-8 text-xs" />
+        )}
+        {columnKey === 'min_deal' && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Show sources that can fund a deal of ($M):</p>
+            <Input autoFocus type="number" min={0} step="0.1" placeholder="e.g. 5" value={filters.checkSize == null ? '' : String(filters.checkSize / 1_000_000)}
+              onChange={e => { const v = e.target.value; onChange({ ...filters, checkSize: v === '' || isNaN(Number(v)) ? null : Number(v) * 1_000_000 }); }} className="h-8 text-xs" />
+          </div>
+        )}
+        {columnKey === 'action' && (
+          <div className="flex flex-col gap-1">
+            {([['all', null], ['On deal', 'on'], ['Not on deal', 'off']] as const).map(([label, val]) => (
+              <button key={label} type="button" onClick={() => onChange({ ...filters, status: val })}
+                className={cn('rounded px-2 py-1 text-left text-xs hover:bg-muted', filters.status === val && 'bg-muted text-primary')}>{label === 'all' ? 'All' : label}</button>
+            ))}
+          </div>
+        )}
+        {listKey && (
+          <div className="space-y-2">
+            <Input autoFocus placeholder="Search values…" value={q} onChange={e => setQ(e.target.value)} className="h-8 text-xs" />
+            <div className="max-h-60 overflow-y-auto space-y-0.5">
+              {values.length === 0 && <p className="py-2 text-center text-xs text-muted-foreground">No values</p>}
+              {values.map(v => {
+                const checked = filters[listKey].includes(v);
+                return (
+                  <label key={v} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-xs hover:bg-muted">
+                    <Checkbox checked={checked} className="h-3.5 w-3.5"
+                      onCheckedChange={() => onChange({ ...filters, [listKey]: checked ? filters[listKey].filter(x => x !== v) : [...filters[listKey], v] })} />
+                    <span className="truncate">{v}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {active && (
+          <button type="button" className="mt-2 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => onChange(listKey ? { ...filters, [listKey]: [] } : columnKey === 'name' ? { ...filters, name: '' } : columnKey === 'min_deal' ? { ...filters, checkSize: null } : { ...filters, status: null })}>
+            Clear filter
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const LenderDirectoryContent = memo(function LenderDirectoryContent({
   existingLenderNames,
@@ -181,6 +249,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   const [groupByTier, setGroupByTier] = useState(true);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+  const [colFilters, setColFilters] = useState<DirectoryColumnFilters>(EMPTY_DIRECTORY_FILTERS);
   const { matches: localMatches } = useLenderMatching(masterLenders, matchingCriteria, {
     minScore: 0,
     maxResults: 5000,
@@ -194,7 +263,8 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
       { key: 'fit', sortKey: 'fit', label: 'Deal Fit', sortable: false, track: 'minmax(150px,1.2fr)' },
       { key: 'min_deal', sortKey: 'min_deal', label: 'Check Size', sortable: true, track: '150px' },
       { key: 'loan_types', sortKey: 'loan_types', label: 'Structure', sortable: true, track: 'minmax(160px,1.4fr)' },
-      { key: 'geo', sortKey: 'geo', label: 'Geo · Industry', sortable: true, track: 'minmax(160px,1.4fr)' },
+      { key: 'geo', sortKey: 'geo', label: 'Geo', sortable: true, track: 'minmax(120px,1fr)' },
+      { key: 'industries', sortKey: 'industries', label: 'Industries', sortable: true, track: 'minmax(150px,1.3fr)' },
       { key: 'action', sortKey: 'status', label: 'Status', sortable: true, track: '110px' },
     ];
     return matchingEnabled ? cols : cols.filter(c => c.key !== 'fit');
@@ -367,8 +437,14 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
     if (tierFilter !== 'all') {
       list = list.filter(l => (l.tier || 'None') === tierFilter);
     }
+    list = applyDirectoryColumnFilters(list, colFilters, l => existingSet.has(l.name.toLowerCase()));
     return list;
-  }, [masterLenders, search, selectedTypes, tierFilter]);
+  }, [masterLenders, search, selectedTypes, tierFilter, colFilters, existingSet]);
+  const columnOptions = useMemo(() => ({
+    loan_types: distinctColumnValues(masterLenders, 'loan_types'),
+    geo: distinctColumnValues(masterLenders, 'geo'),
+    industries: distinctColumnValues(masterLenders, 'industries'),
+  }), [masterLenders]);
 
   const sorted = useMemo(() => {
     const items = filtered.map(l => ({ ...l, isOnDeal: existingSet.has(l.name.toLowerCase()), match: localMatchById.get(l.id) }));
@@ -531,7 +607,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
             </SelectContent>
           </Select>
           <div className="ml-auto flex items-center gap-2">
-            {(selectedTypes.length > 0 || tierFilter !== 'all' || search) && (
+            {(selectedTypes.length > 0 || tierFilter !== 'all' || search || countActiveColumnFilters(colFilters) > 0) && (
               <span className="text-[11px] text-muted-foreground/70 tabular-nums">
                 {sorted.length.toLocaleString()} {sorted.length === 1 ? 'result' : 'results'}
               </span>
@@ -646,6 +722,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                 >
                   <span className="truncate">{col.label}</span>
                   {renderSortIcon(col.sortKey, col.sortable)}
+                  <ColumnFilterButton columnKey={col.key} filters={colFilters} onChange={setColFilters} options={columnOptions} />
                 </button>
               ))}
             </div>
@@ -718,9 +795,13 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                         {loanTypes.length > 2 && <span className="text-[10px] text-muted-foreground/60">+{loanTypes.length - 2}</span>}
                         {loanTypes.length === 0 && <span className="text-[11px] text-muted-foreground/50">—</span>}
                       </div>
-                      {/* Geo / industry */}
-                      <div className="min-w-0 truncate text-[12px] text-foreground/75" title={[geo, industries.join(', ')].filter(Boolean).join(' · ')}>
-                        {[geo, industries[0]].filter(Boolean).join(' · ') || <span className="text-muted-foreground/50">—</span>}
+                      {/* Geo */}
+                      <div className="min-w-0 truncate text-[12px] text-foreground/75" title={geo}>
+                        {geo || <span className="text-muted-foreground/50">—</span>}
+                      </div>
+                      {/* Industries */}
+                      <div className="min-w-0 truncate text-[12px] text-foreground/75" title={industries.join(', ')}>
+                        {industries.length ? <>{industries[0]}{industries.length > 1 && <span className="ml-1 text-[10px] text-muted-foreground/60">+{industries.length - 1}</span>}</> : <span className="text-muted-foreground/50">—</span>}
                       </div>
                       {/* Action */}
                       <div className="flex items-center justify-end">
