@@ -402,7 +402,12 @@ export function DealsHeader() {
   const [navBounds, setNavBounds] = useState<{ left: number; width: number } | null>(null);
   useEffect(() => {
     const measure = () => {
-      const rects = Array.from(document.querySelectorAll('.deal-tile'))
+      // Header layout must be identical across all Deals views and pages,
+      // so it no longer snaps to whatever tiles happen to be on screen.
+      const rects: Element[] = [];
+      void rects;
+      const tiles: Element[] = [];
+      const rectsList = tiles
         .map((t) => (t as HTMLElement).getBoundingClientRect())
         .filter((r) => r.width > 50 && r.height > 0);
       let next: { left: number; width: number } | null = null;
