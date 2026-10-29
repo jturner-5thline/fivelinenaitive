@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
+import { requireInternal } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -142,6 +143,10 @@ serve(async (req) => {
     .eq("sync_calendar_enabled", true)
     .neq("status", "disconnected");
 
+  const __auth = await requireInternal(req, corsHeaders, { allowUser: true });
+  if (!__auth.ok) return __auth.response;
+  // Signed-in users can only sync their own mailbox/calendar.
+  if (!__auth.internal) body.user_id = __auth.user.id;
   if (body.user_id) query = query.eq("user_id", body.user_id);
 
   const { data: tokens, error } = await query;
