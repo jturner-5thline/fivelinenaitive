@@ -94,7 +94,11 @@ Deno.serve(async (req) => {
   const prepared = rows
     .filter((r: any) => r && hasIdentity(r))
     .map((r: any) => {
-      const { company_name: companyName, ...contact } = r;
+      const companyName = r.company_name;
+      const contact: Record<string, any> = {};
+      for (const k of ["email","full_name","first_name","last_name","phone_work","phone_mobile","job_title","department","description","linkedin_url","website_url"]) {
+        if (Object.prototype.hasOwnProperty.call(r, k)) contact[k] = r[k];
+      }
       const fullName = String(contact.full_name ?? "").trim();
       if (fullName && !contact.first_name && !contact.last_name) {
         const parts = fullName.split(/\s+/);
@@ -108,7 +112,7 @@ Deno.serve(async (req) => {
       return {
         ...contact,
         email: contact.email ? String(contact.email).trim() : null,
-        crm_company_id: crmCompanyId ?? contact.crm_company_id ?? null,
+        crm_company_id: crmCompanyId ?? null,
         org_company_id,
         created_by: userId,
       };

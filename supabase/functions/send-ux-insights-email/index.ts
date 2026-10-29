@@ -1,4 +1,4 @@
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { isTeammateEmail, requireInternal } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { Resend } from "https://esm.sh/resend@2.0.0";
@@ -28,7 +28,7 @@ const j = (status: number, body: any) =>
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  const __auth = await requireInternal(req, corsHeaders, { allowUser: true });
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
   if (!__auth.ok) return __auth.response;
 
 
@@ -44,7 +44,7 @@ serve(async (req) => {
 
     // ── Auth: cron (anon/CRON_SECRET) OR authenticated admin ──
     const authHeader = req.headers.get("Authorization") || "";
-    const isCron = authHeader === `Bearer ${cronSecret}` || authHeader === `Bearer ${anonKey}`;
+    const isCron = __auth.internal;
     let triggeredBy: "cron" | "manual" = isCron ? "cron" : "manual";
     let triggeredByUser: string | null = null;
 
@@ -63,6 +63,9 @@ serve(async (req) => {
     try { body = await req.json(); } catch { /* allow empty body */ }
     const reportKey: ReportKey = body.report_key || "weekly-insights";
     const overrideRecipient: string | undefined = body.override_recipient;
+    if (overrideRecipient && __auth.user && !(await isTeammateEmail(__auth.user.id, __auth.user.email, overrideRecipient))) {
+      return j(403, { error: "Override recipient must be a teammate" });
+    }
     const dryRun: boolean = body.dry_run === true;
 
     // ── Load config from recurring_reports ──

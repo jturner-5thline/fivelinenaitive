@@ -81,6 +81,7 @@ serve(async (req) => {
 
     const { data: memberships } = await membershipQuery;
     const memberCompanyIds = (memberships ?? []).map((row) => row.company_id).filter(Boolean);
+    if (requestedCompanyId && !memberCompanyIds.includes(requestedCompanyId)) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
     const effectiveCompanyId = requestedCompanyId ?? memberCompanyIds[0] ?? null;
 
     let tokenRows: any[] | null = null;

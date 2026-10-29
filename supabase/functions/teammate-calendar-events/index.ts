@@ -59,27 +59,22 @@ serve(async (req: Request): Promise<Response> => {
 
     const body: ReqBody = await req.json();
 
-    // Resolve caller's email domain (claims first, then profile fallback).
-    let callerDomain = domainOf(callerEmail);
-    if (!callerDomain) {
-      const { data: p } = await supabase
-        .from("profiles").select("email").eq("user_id", callerId).maybeSingle();
-      callerDomain = domainOf(p?.email);
-    }
-    if (!callerDomain) {
-      return new Response(JSON.stringify({ error: "Could not resolve caller domain" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Teammates = users sharing a company membership with the caller.
+    const { data: myMemberships } = await supabase.from("company_members").select("company_id").eq("user_id", callerId);
+    const companyIds = (myMemberships || []).map((m: any) => m.company_id);
+    if (companyIds.length === 0) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+    const { data: sharedMembers } = await supabase.from("company_members").select("user_id").in("company_id", companyIds);
+    const sharedUserIds = new Set<string>((sharedMembers || []).map((m: any) => m.user_id));
 
     if (body.action === "list_teammates") {
       // All profiles in the same email domain who have a Google grant.
       const { data: profiles, error: profErr } = await supabase
         .from("profiles")
-        .select("user_id, email, display_name, first_name, last_name, avatar_url");
+        .select("user_id, email, display_name, first_name, last_name, avatar_url")
+        .in("user_id", [...sharedUserIds]);
       if (profErr) throw profErr;
       const sameDomain = (profiles || []).filter(
-        (p: any) => p.user_id !== callerId && domainOf(p.email) === callerDomain,
+        (p: any) => p.user_id !== callerId && sharedUserIds.has(p.user_id),
       );
       const ids = sameDomain.map((p: any) => p.user_id);
       let connectedIds = new Set<string>();
@@ -122,7 +117,7 @@ serve(async (req: Request): Promise<Response> => {
       // Domain check against target profile.
       const { data: target } = await supabase
         .from("profiles").select("user_id, email, display_name").eq("user_id", targetId).maybeSingle();
-      if (!target || domainOf(target.email) !== callerDomain) {
+      if (!target || !sharedUserIds.has(targetId)) {
         return new Response(JSON.stringify({ error: "Not authorized for this teammate" }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

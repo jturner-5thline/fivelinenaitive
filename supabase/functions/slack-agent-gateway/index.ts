@@ -1,4 +1,4 @@
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { canAccessDeal, isPlatformAdmin, requireInternal } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { anthropicFetch } from "../_shared/anthropicUsage.ts";
@@ -31,6 +31,15 @@ serve(async (req) => {
 
     const body = await req.json();
     const { action } = body;
+    if (!__auth.internal) {
+      const isAdmin = await isPlatformAdmin(__auth.user.id);
+      // Inbound processing and SLA sweeps are internal-only.
+      if (action === "process_incoming" || action === "send_sla_reminder") { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      // Free-form posting is limited to platform admins.
+      if (action === "send_message" && !isAdmin) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      if ((action === "update_deal_status" || action === "draft_followup") && !(body.deal_id && (await canAccessDeal(req, body.deal_id)))) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      if (action === "update_deal_status") body.user_id = __auth.user.id;
+    }
 
     // Route based on action type
     switch (action) {

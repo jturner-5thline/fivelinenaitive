@@ -50,12 +50,14 @@ serve(async (req) => {
       );
     }
 
+    // Caller-scoped client so reads honor RLS (no cross-tenant aggregation).
+    const scoped = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } });
     // Fetch user's data for analysis
     const [dealsResult, activitiesResult, workflowsResult, lendersResult] = await Promise.all([
-      supabase.from("deals").select("id, stage, status, created_at, updated_at").limit(100),
-      supabase.from("activity_logs").select("action, created_at, deal_id").order("created_at", { ascending: false }).limit(200),
-      supabase.from("workflows").select("trigger_type, is_active").eq("user_id", user.id),
-      supabase.from("deal_lenders").select("stage, updated_at").limit(100)
+      scoped.from("deals").select("id, stage, status, created_at, updated_at").limit(100),
+      scoped.from("activity_logs").select("action, created_at, deal_id").order("created_at", { ascending: false }).limit(200),
+      scoped.from("workflows").select("trigger_type, is_active").eq("user_id", user.id),
+      scoped.from("deal_lenders").select("stage, updated_at").limit(100)
     ]);
 
     const deals = dealsResult.data || [];

@@ -1,3 +1,4 @@
+import { isCompanyMember } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
@@ -65,6 +66,7 @@ serve(async (req) => {
       });
     }
 
+    if (!tokenData.company_id || !(await isCompanyMember(user.id, tokenData.company_id))) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
     // Refresh access token if expired.
     let accessToken = tokenData.access_token;
     if (new Date(tokenData.expires_at) < new Date()) {

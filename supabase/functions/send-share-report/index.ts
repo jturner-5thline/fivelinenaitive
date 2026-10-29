@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { buildFrom } from "../_shared/resendFrom.ts";
+import { escapeHtml, isKnownRecipient } from "../_shared/requestAuth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -65,6 +66,15 @@ serve(async (req) => {
     }
     const to = rawTo.filter((e) => EMAIL_RE.test(e));
     const cc = rawCc.filter((e) => EMAIL_RE.test(e));
+    // Recipients must be teammates or saved contacts of the sender's company.
+    if (to.length + cc.length > 25) {
+      return new Response(JSON.stringify({ error: "Too many recipients" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    for (const addr of [...to, ...cc]) {
+      if (!(await isKnownRecipient(user.id, user.email, addr))) {
+        return new Response(JSON.stringify({ error: `${addr} is not a teammate or saved contact. Add them to Contacts first.` }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
     const subject = (payload.subject || "").trim();
     if (to.length === 0) {
       return new Response(JSON.stringify({ error: "Missing recipients" }), {
@@ -82,9 +92,8 @@ serve(async (req) => {
 
     const messageText = payload.message || "";
     const messageHtml = (payload.messageHtml || "").trim();
-    const bodyHtml = messageHtml
-      ? messageHtml
-      : `<p style="white-space:pre-wrap;margin:0 0 12px 0;">${messageText.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]!))}</p>`;
+    // Never forward caller-supplied HTML; render only escaped plain text.
+    const bodyHtml = `<p style="white-space:pre-wrap;margin:0 0 12px 0;">${escapeHtml(messageText || messageHtml.replace(/<[^>]*>/g, " "))}</p>`;
 
     const html = `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-size:14px;color:#0f172a;line-height:1.55;">
       ${bodyHtml}

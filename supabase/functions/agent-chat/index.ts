@@ -165,6 +165,17 @@ serve(async (req) => {
     };
     messages = sanitizeChatMessages(messages) as any;
 
+    // Load the agent's instructions from the database (RLS-scoped) instead of trusting the request.
+    const requestedAgentId = (agentConfig as any)?.id;
+    if (typeof requestedAgentId !== "string" || !requestedAgentId) {
+      return new Response(JSON.stringify({ error: "agent id is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const { data: storedAgent } = await supabase.from("agents").select("*").eq("id", requestedAgentId).maybeSingle();
+    if (!storedAgent) {
+      return new Response(JSON.stringify({ error: "Agent not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    agentConfig = storedAgent as unknown as AgentConfig;
+
     if (!messages || !agentConfig) {
       return new Response(
         JSON.stringify({ error: "Messages and agent config are required" }),

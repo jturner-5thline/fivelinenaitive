@@ -1,4 +1,4 @@
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { canAccessDeal, requireInternal } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
@@ -37,6 +37,14 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+    if (!__auth.internal && !(await canAccessDeal(req, deal_id))) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+    if (!Array.isArray(linked_request_ids) || !Array.isArray(linked_document_ids)) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+    for (const [table, ids] of [["vdr_irl_requests", linked_request_ids], ["vdr_documents", linked_document_ids]] as const) {
+      const uniq = [...new Set(ids as string[])];
+      if (!uniq.length) continue;
+      const { data: scoped, error: scopeErr } = await supabase.from(table).select("id").eq("deal_id", deal_id).in("id", uniq);
+      if (scopeErr || (scoped?.length ?? 0) !== uniq.length) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+    }
 
     // Gather context from linked IRL requests
     let irlContext = "";

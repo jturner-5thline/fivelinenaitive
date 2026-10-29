@@ -101,6 +101,7 @@ serve(async (req: Request) => {
       });
     }
 
+    if (!__auth.internal) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
     // action === "run" — triggered by pg_cron
     // Find all users with auto-sync enabled and whose interval has elapsed
     const { data: schedules, error: schedError } = await supabase

@@ -1,3 +1,4 @@
+import { isCompanyMember, escapeHtml } from "../_shared/requestAuth.ts";
 import { maskEmail } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
@@ -59,7 +60,26 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const { invitationId, email, companyName, inviterName, role, token }: SendInviteRequest = await req.json();
+    const reqBody: SendInviteRequest = await req.json();
+    // Recipient, role, token and company come from the stored invitation, never the request.
+    const { data: inv } = await supabaseAdmin
+      .from("company_invitations")
+      .select("id, email, role, token, company_id, invited_by")
+      .eq("id", reqBody.invitationId)
+      .maybeSingle();
+    if (!inv || !(await isCompanyMember(user.id, inv.company_id))) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } });
+    }
+    if (inv.role !== "member" && !(await isCompanyAdminUser(supabaseAdmin, user.id, inv.company_id))) {
+      return new Response(JSON.stringify({ error: "Only company admins can send admin invitations" }), { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } });
+    }
+    const { data: co } = await supabaseAdmin.from("companies").select("name").eq("id", inv.company_id).maybeSingle();
+    const email = String(inv.email);
+    const token = String(inv.token);
+    const role = escapeHtml(inv.role);
+    const companyName = escapeHtml(co?.name ?? "your team");
+    const inviterName = escapeHtml(String(reqBody.inviterName ?? user.email ?? "A teammate").slice(0, 120));
+    const invitationId = inv.id;
 
     // Use the published app URL for invitation links
     const appUrl = "https://naitive.co";
@@ -216,5 +236,10 @@ const handler = async (req: Request): Promise<Response> => {
     );
   }
 };
+
+async function isCompanyAdminUser(admin: any, userId: string, companyId: string): Promise<boolean> {
+  const { data } = await admin.rpc("is_company_admin", { _user_id: userId, _company_id: companyId });
+  return data === true;
+}
 
 serve(handler);

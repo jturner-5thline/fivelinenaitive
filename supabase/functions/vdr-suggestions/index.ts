@@ -1,4 +1,4 @@
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { canAccessDeal, requireInternal } from "../_shared/requestAuth.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { callClaude } from '../_shared/claudeChat.ts';
 
@@ -20,6 +20,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+    if (!__auth.internal && !(await canAccessDeal(req, deal_id))) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
 
     // Grab a sample of chunks from key documents (financial, legal, corporate)
     const { data: chunks } = await supabase

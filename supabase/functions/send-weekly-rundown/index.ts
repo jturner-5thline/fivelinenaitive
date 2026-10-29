@@ -1,4 +1,4 @@
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { escapeHtml, isTeammateEmail, requireInternal } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
@@ -140,8 +140,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Optional one-off test override: { testRecipient: "x@y.com" }
     let list: Array<{ email: string; name: string | null }>;
+    if (body?.testRecipient && __auth.user && !(await isTeammateEmail(__auth.user.id, __auth.user.email, String(body.testRecipient)))) {
+      return new Response(JSON.stringify({ error: "Test recipient must be a teammate" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     if (body?.testRecipient && typeof body.testRecipient === "string") {
-      list = [{ email: body.testRecipient, name: body.testName ?? null }];
+      list = [{ email: body.testRecipient, name: body.testName ? escapeHtml(String(body.testName).slice(0, 80)) : null }];
     } else {
       const { data: recipients, error } = await supabase
         .from("weekly_rundown_recipients")

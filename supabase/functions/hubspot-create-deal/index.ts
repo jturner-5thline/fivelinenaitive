@@ -1,4 +1,4 @@
-import { requireInternal } from "../_shared/requestAuth.ts";
+import { canAccessDeal, requireInternal } from "../_shared/requestAuth.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -281,6 +281,7 @@ Deno.serve(async (req) => {
 
   try {
     const { deal_id, force = false } = await req.json();
+    if (!__auth.internal && !(await canAccessDeal(req, deal_id))) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
     if (!deal_id) {
       return new Response(JSON.stringify({ error: 'deal_id is required' }), {
         status: 400,

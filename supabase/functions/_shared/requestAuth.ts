@@ -146,3 +146,31 @@ export function maskEmail(email: unknown): string {
   if (!d) return "***";
   return `${u.slice(0, 1)}***@${d}`;
 }
+
+/** True when `email` belongs to the caller or to a user sharing a company with the caller. */
+export async function isTeammateEmail(userId: string, callerEmail: string | null | undefined, email: string): Promise<boolean> {
+  const target = String(email ?? "").trim().toLowerCase();
+  if (!target) return false;
+  if (callerEmail && callerEmail.trim().toLowerCase() === target) return true;
+  const svc = serviceClient();
+  const { data: profiles } = await svc.from("profiles").select("user_id").ilike("email", target).limit(5);
+  const ids = (profiles ?? []).map((p: { user_id: string }) => p.user_id);
+  if (ids.length === 0) return false;
+  const { data: mine } = await svc.from("company_members").select("company_id").eq("user_id", userId);
+  const companyIds = (mine ?? []).map((m: { company_id: string }) => m.company_id);
+  if (companyIds.length === 0) return false;
+  const { data: shared } = await svc.from("company_members").select("user_id").in("company_id", companyIds).in("user_id", ids).limit(1);
+  return (shared ?? []).length > 0;
+}
+
+/** True when `email` is a teammate or a saved contact in one of the caller's companies. */
+export async function isKnownRecipient(userId: string, callerEmail: string | null | undefined, email: string): Promise<boolean> {
+  if (await isTeammateEmail(userId, callerEmail, email)) return true;
+  const target = String(email ?? "").trim().toLowerCase();
+  const svc = serviceClient();
+  const { data: mine } = await svc.from("company_members").select("company_id").eq("user_id", userId);
+  const companyIds = (mine ?? []).map((m: { company_id: string }) => m.company_id);
+  if (!target || companyIds.length === 0) return false;
+  const { data } = await svc.from("contacts").select("id").in("company_id", companyIds).ilike("email", target).limit(1);
+  return (data ?? []).length > 0;
+}
