@@ -1,7 +1,11 @@
 import { useState, useMemo, useRef } from 'react';
 import { filterToActiveIndustries } from '@/lib/industryOptions';
-import { Virtuoso } from 'react-virtuoso';
-import { Building2, Loader2, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { TableVirtuoso, type TableComponents } from 'react-virtuoso';
+import { Building2, Loader2, ArrowUp, ArrowDown, ArrowUpDown, ExternalLink } from 'lucide-react';
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { MasterLender } from '@/hooks/useMasterLenders';
 
@@ -26,7 +30,7 @@ interface SortState {
   direction: SortDirection;
 }
 
-// Column definitions matching the Excel screenshot
+// Preserve the directory fields while matching the CRM table presentation.
 const COLUMNS = [
   { key: 'name', label: 'Name', width: 200, sortable: true },
   { key: 'active', label: 'Active', width: 90, sortable: true },
@@ -155,59 +159,34 @@ function getSortValue(lender: MasterLender, key: ColumnKey): string | number | b
   return String(value).toLowerCase();
 }
 
-// Total width of all columns for the horizontal scroll (add 40 for checkbox column)
-const TOTAL_WIDTH = COLUMNS.reduce((sum, col) => sum + col.width, 0) + 50 + 40; // +50 for row number, +40 for checkbox
-
 type ColumnDef = typeof COLUMNS[number];
+const columnWidth = (col: ColumnDef) => Math.max(col.width, col.label.length * 7 + 52);
+const DATA_WIDTH = COLUMNS.reduce((sum, col) => sum + columnWidth(col), 0);
 
 function LenderCell({ lender, col }: { lender: MasterLender; col: ColumnDef }) {
   const isCurrency = CURRENCY_COLUMNS.has(col.key);
-  const isIndustries = col.key === 'industries';
-  const rawValue = isIndustries
-    ? filterToActiveIndustries(lender.industries as string[] | null)
-    : lender[col.key as keyof MasterLender];
-  const formatted = isIndustries ? (rawValue as string[]).join(', ') : formatCellValue(lender, col.key);
-
-  // Tag/chip rendering for Deal Industries
-  if (isIndustries && Array.isArray(rawValue) && rawValue.length > 0) {
-    return (
-      <div
-        className="flex-shrink-0 px-3 py-2 border-r border-white/[0.04] flex items-center gap-1 overflow-hidden"
-        style={{ width: col.width }}
-        title={rawValue.join(', ')}
-      >
-        <div className="flex items-center gap-1 flex-nowrap overflow-hidden">
-          {rawValue.map((industry, i) => (
-            <span
-              key={`${industry}-${i}`}
-              className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium text-foreground/80 bg-white/[0.05] border border-white/10 whitespace-nowrap shrink-0"
-            >
-              {industry}
-            </span>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
+  const industries = col.key === 'industries' ? filterToActiveIndustries(lender.industries) : [];
+  const formatted = col.key === 'industries' ? industries.join(', ') : formatCellValue(lender, col.key);
+  const onePager = col.key === 'lender_one_pager_url' && /^https?:\/\//i.test(formatted) ? formatted : null;
   return (
-    <div
-      className={`flex-shrink-0 px-3 py-2 text-xs border-r border-white/[0.04] truncate flex items-center ${
-        isCurrency ? 'justify-center tabular-nums' : ''
-      } ${
-        col.key === 'name' ? 'text-foreground font-medium' : 'text-foreground/75'
-      }`}
-      style={{ width: col.width }}
-      title={formatted}
-    >
-      {formatted || <span className="text-muted-foreground/30">—</span>}
-    </div>
+    <TableCell className={cn('text-sm text-muted-foreground', isCurrency && 'text-center tabular-nums', col.key === 'name' && 'font-medium text-foreground')}>
+      {industries.length > 0 ? (
+        <div className="flex flex-nowrap gap-1 overflow-hidden" title={formatted}>
+          {industries.map((industry, i) => <Badge key={`${industry}-${i}`} variant="outline" className="shrink-0 text-[10px] font-medium">{industry}</Badge>)}
+        </div>
+      ) : col.key === 'email' && formatted ? (
+        <a href={`mailto:${formatted}`} onClick={e => e.stopPropagation()} className="block truncate text-primary hover:underline" title={formatted}>{formatted}</a>
+      ) : onePager ? (
+        <a href={onePager} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex max-w-full items-center gap-1 text-primary hover:underline" title={formatted}>
+          <span className="truncate">One-pager</span><ExternalLink className="h-3 w-3 shrink-0" />
+        </a>
+      ) : <span className="block truncate" title={formatted || undefined}>{formatted || '—'}</span>}
+    </TableCell>
   );
 }
 
 export function LenderSpreadsheetView({
   lenders,
-  activeDealCounts,
   loadingMore,
   hasMore,
   totalCount,
@@ -218,7 +197,6 @@ export function LenderSpreadsheetView({
   onSelectAll,
   onClearSelection,
 }: LenderSpreadsheetViewProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const [sortState, setSortState] = useState<SortState>({ column: null, direction: null });
 
   const handleHeaderClick = (columnKey: string, sortable: boolean) => {
@@ -257,138 +235,85 @@ export function LenderSpreadsheetView({
     });
   }, [lenders, sortState]);
 
-  const renderSortIcon = (columnKey: string, sortable: boolean) => {
-    if (!sortable) return null;
-    
-    if (sortState.column === columnKey) {
-      if (sortState.direction === 'asc') {
-        return <ArrowUp className="h-3 w-3 ml-1 text-[hsl(292,46%,72%)]" />;
-      }
-      if (sortState.direction === 'desc') {
-        return <ArrowDown className="h-3 w-3 ml-1 text-[hsl(292,46%,72%)]" />;
-      }
-    }
-    return <ArrowUpDown className="h-3 w-3 ml-1 text-muted-foreground/30 group-hover:text-muted-foreground/60" />;
-  };
+  // Keep row identities stable during sorting and selection to avoid scroll flicker.
+  const interactionRef = useRef({ onRowClick, selectedIds });
+  interactionRef.current = { onRowClick, selectedIds };
+  const tableWidth = DATA_WIDTH + (onToggleSelect ? 40 : 0);
+  const components = useMemo<TableComponents<MasterLender>>(() => ({
+    // A plain table avoids the second scroll container in the shared Table wrapper.
+    Table: ({ style, ...props }) => <table {...props} className="w-full table-fixed caption-bottom text-sm" style={{ ...style, width: tableWidth, minWidth: '100%' }} />,
+    TableHead: TableHeader,
+    TableBody,
+    TableRow: ({ item, context: _context, ...props }) => {
+      const activate = () => { if (item) interactionRef.current.onRowClick?.(item); };
+      return <TableRow {...props}
+        role="button" tabIndex={0} aria-label={item ? `Open ${item.name}` : undefined}
+        data-state={item && interactionRef.current.selectedIds?.has(item.id) ? 'selected' : undefined}
+        className="cursor-pointer border-0 hover:bg-foreground/[0.025] focus:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors"
+        onClick={e => {
+          if ((e.target as HTMLElement).closest('a,button,input,[role="checkbox"]')) return;
+          activate();
+        }}
+        onKeyDown={e => {
+          if ((e.target as HTMLElement).closest('a,button,input,[role="checkbox"]')) return;
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); }
+        }}
+      />;
+    },
+  }), [tableWidth]);
+  const selectedCount = sortedLenders.filter(lender => selectedIds?.has(lender.id)).length;
 
   return (
-    <div className="rounded-lg border border-white/10 bg-transparent overflow-hidden">
-      {/*
-        Bug fix (scroll glitch): previously this view nested a Virtuoso
-        virtualized list inside a Radix `ScrollArea`. The outer ScrollArea
-        tried to scroll vertically at the same time Virtuoso did, which
-        produced flickering and row-jumping during scroll. We now use a
-        single horizontally-scrolling container and let Virtuoso own the
-        vertical scroll. `backdrop-blur` on sticky row cells is also
-        removed — recompositing the blur per scroll frame is a known
-        perf/flicker hazard.
-      */}
-      <div className="w-full overflow-x-auto" style={{ height: 'calc(100vh - 280px)' }}>
-        <div style={{ minWidth: TOTAL_WIDTH, height: '100%' }} className="flex flex-col">
-          {/* Header Row */}
-          <div className="flex sticky top-0 z-10 bg-transparent backdrop-blur-sm border-b border-white/10">
-            {/* Checkbox header */}
-            {onToggleSelect && (
-              <div className="flex-shrink-0 w-[40px] px-2 py-2.5 border-r border-white/5 bg-transparent sticky left-0 z-20 flex items-center justify-center">
-                <Checkbox
-                  checked={selectedIds && selectedIds.size === lenders.length && lenders.length > 0}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      onSelectAll?.();
-                    } else {
-                      onClearSelection?.();
-                    }
-                  }}
-                />
-              </div>
-            )}
-            {/* Row number header */}
-            <div className={`flex-shrink-0 w-[50px] px-2 py-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70 border-r border-white/5 bg-transparent ${onToggleSelect ? '' : 'sticky left-0'} z-20`}>
-              #
-            </div>
-            {COLUMNS.map((col) => (
-              <div
-                key={col.key}
-                className={`flex-shrink-0 px-3 py-2.5 text-[11px] font-medium tracking-normal text-muted-foreground border-r border-white/5 bg-transparent flex items-center transition-colors ${
-                  CURRENCY_COLUMNS.has(col.key) ? 'justify-center' : ''
-                } ${
-                  col.sortable ? 'cursor-pointer hover:text-foreground hover:bg-white/[0.06] select-none' : ''
-                } ${col.key === 'name' ? 'text-foreground/90' : ''}`}
-                style={{ width: col.width }}
-                title={col.sortable ? `Click to sort by ${col.label}` : col.label}
-                onClick={() => handleHeaderClick(col.key, col.sortable)}
-              >
-                <span className="truncate">{col.label}</span>
-                {renderSortIcon(col.key, col.sortable)}
-              </div>
-            ))}
-          </div>
-
-          {/* Data Rows - Virtualized */}
-          <Virtuoso
-            style={{ flex: 1, minHeight: 0, contain: 'strict', willChange: 'transform' }}
-            totalCount={sortedLenders.length}
-            endReached={onLoadMore}
-            increaseViewportBy={{ top: 1200, bottom: 1200 }}
-            computeItemKey={(index) => sortedLenders[index]?.id ?? index}
-            itemContent={(index) => {
-              const lender = sortedLenders[index];
-              const isSelected = selectedIds?.has(lender.id) ?? false;
-              return (
-                <div
-                  className={`flex h-9 border-b border-white/[0.04] cursor-pointer transition-colors duration-150 ${
-                    isSelected
-                      ? 'bg-[hsl(272,100%,70%)]/[0.08] hover:bg-[hsl(272,100%,70%)]/[0.12]'
-                      : 'hover:bg-white/[0.03]'
-                  }`}
-                  onClick={() => onRowClick?.(lender)}
-                >
-                  {/* Checkbox */}
-                  {onToggleSelect && (
-                  <div 
-                    className="flex-shrink-0 w-[40px] px-2 py-2 border-r border-white/[0.04] bg-transparent sticky left-0 z-10 flex items-center justify-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => onToggleSelect!(lender.id)}
-                      />
-                    </div>
-                  )}
-                  {/* Row number */}
-                  <div className={`flex-shrink-0 w-[50px] px-2 py-2 text-xs text-muted-foreground/60 border-r border-white/[0.04] bg-transparent flex items-center ${onToggleSelect ? '' : 'sticky left-0'} z-10`} style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {index + 1}
-                  </div>
-                  {COLUMNS.map((col) => (
-                    <LenderCell key={col.key} lender={lender} col={col} />
-                  ))}
-                </div>
-              );
-            }}
-            components={{
-              Footer: () => (
-                <div className="py-4 px-4 text-center text-xs text-muted-foreground/70 border-t border-white/[0.05] bg-transparent">
-                  {loadingMore ? (
-                    <span className="inline-flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading more lenders... ({sortedLenders.length.toLocaleString()}{totalCount ? ` / ${totalCount.toLocaleString()}` : ''})
-                    </span>
-                  ) : hasMore ? (
-                    <span className="inline-flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      Scroll to load more ({sortedLenders.length.toLocaleString()}{totalCount ? ` / ${totalCount.toLocaleString()}` : ''})
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      Showing all {sortedLenders.length.toLocaleString()} lenders
-                    </span>
-                  )}
-                </div>
-              ),
-            }}
-          />
-        </div>
+    <div className="crm-companies-surface flex min-h-0 min-w-0 flex-col">
+      <div className="crm-companies-table lender-spreadsheet-table overflow-hidden rounded-lg
+        [&_table]:border-separate [&_table]:border-spacing-0
+        [&_th]:h-10 [&_th]:px-3 [&_th]:py-0 [&_th]:font-medium [&_th]:text-[11px] [&_th]:uppercase [&_th]:text-muted-foreground [&_th]:whitespace-nowrap
+        [&_thead]:z-20 [&_thead_th]:border-b [&_thead_th]:border-border/60
+        [&_td]:h-11 [&_td]:px-3 [&_td]:py-0 [&_td]:align-middle [&_td]:border-b [&_td]:border-border/25 [&_td]:whitespace-nowrap"
+        style={{ height: 'max(240px, calc(100dvh - 280px))' }}>
+        <TableVirtuoso
+          style={{ height: '100%' }}
+          data={sortedLenders}
+          computeItemKey={(_index, lender) => lender.id}
+          components={components}
+          endReached={() => { if (hasMore && !loadingMore) onLoadMore(); }}
+          increaseViewportBy={{ top: 300, bottom: 300 }}
+          fixedHeaderContent={() => (
+            <TableRow className="border-0 hover:bg-transparent">
+              {onToggleSelect && <TableHead style={{ width: 40 }}>
+                <Checkbox aria-label="Select all funding sources"
+                  checked={sortedLenders.length > 0 && selectedCount === sortedLenders.length ? true : selectedCount > 0 ? 'indeterminate' : false}
+                  onCheckedChange={checked => { if (checked) onSelectAll?.(); else onClearSelection?.(); }} />
+              </TableHead>}
+              {COLUMNS.map(col => {
+                const active = sortState.column === col.key && sortState.direction;
+                const Icon = active ? sortState.direction === 'asc' ? ArrowUp : ArrowDown : ArrowUpDown;
+                return <TableHead key={col.key} style={{ width: columnWidth(col) }} title={col.label} aria-sort={active ? sortState.direction === 'asc' ? 'ascending' : 'descending' : 'none'}>
+                  {col.sortable ? <Button variant="ghost" size="sm"
+                    className={cn('h-auto w-full p-0 text-[11px] font-medium uppercase hover:bg-transparent', CURRENCY_COLUMNS.has(col.key) ? 'justify-center' : 'justify-start')}
+                    onClick={() => handleHeaderClick(col.key, true)} aria-label={`Sort by ${col.label}`}>
+                    <span className="truncate">{col.label}</span><Icon className={cn('ml-1 h-3 w-3 shrink-0', !active && 'opacity-50')} />
+                  </Button> : col.label}
+                </TableHead>;
+              })}
+            </TableRow>
+          )}
+          itemContent={(_index, lender) => <>
+            {onToggleSelect && <TableCell onClick={e => e.stopPropagation()}>
+              <Checkbox aria-label={`Select ${lender.name}`} checked={selectedIds?.has(lender.id) ?? false} onCheckedChange={() => onToggleSelect(lender.id)} />
+            </TableCell>}
+            {COLUMNS.map(col => <LenderCell key={col.key} lender={lender} col={col} />)}
+          </>}
+          // Keep the wide directory fields in one synchronized horizontal scroller.
+          className="w-full"
+        />
+      </div>
+      <div className="shrink-0 border-t border-border/40 px-3 py-2 text-xs text-muted-foreground" role="status">
+        <span className="inline-flex items-center gap-2">
+          {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
+          {loadingMore ? 'Loading more lenders…' : hasMore ? 'Scroll to load more' : 'Showing all'}{' '}
+          {sortedLenders.length.toLocaleString()} lenders{totalCount && hasMore ? ` / ${totalCount.toLocaleString()}` : ''}
+        </span>
       </div>
     </div>
   );
