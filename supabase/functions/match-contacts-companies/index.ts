@@ -1,3 +1,4 @@
+import { requireInternal, isCompanyMember } from "../_shared/requestAuth.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -9,6 +10,9 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+  const __auth = await requireInternal(req, corsHeaders, { allowUser: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -37,6 +41,10 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    if (orgCompanyId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(orgCompanyId))) {
+      return new Response(JSON.stringify({ error: "Invalid org_company_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (!__auth.internal && (!orgCompanyId || !(await isCompanyMember(__auth.user.id, orgCompanyId)))) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     if (!orgCompanyId) {
       // Fallback to 5th Line
       const { data: co } = await admin.from('companies').select('id')

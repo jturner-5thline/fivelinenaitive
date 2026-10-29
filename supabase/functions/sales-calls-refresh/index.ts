@@ -1,3 +1,4 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 // sales-calls-refresh — recomputes the sales-calls cache for the current
 // calendar year(s). Invoked by pg_cron on a daily cadence so the dashboard
 // can serve from cache instantly.
@@ -198,6 +199,9 @@ async function refreshCompanyYear(supabase: any, companyId: string, year: number
 
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const body = await req.json().catch(() => ({} as any));

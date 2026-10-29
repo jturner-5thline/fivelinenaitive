@@ -1,6 +1,8 @@
+import { maskEmail } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { provisionDemoWorkspace, type ProvisionResult } from "../_shared/provisionDemoWorkspace.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -171,7 +173,7 @@ const handler = async (req: Request): Promise<Response> => {
             }
           }
         } catch (lookupErr) {
-          console.warn("[create-demo-access] existing-user lookup failed", email, lookupErr);
+          console.warn("[create-demo-access] existing-user lookup failed", maskEmail(email), lookupErr);
         }
 
         if (existing) {
@@ -187,7 +189,7 @@ const handler = async (req: Request): Promise<Response> => {
             },
           });
           if (updateUserErr) {
-            console.error("[create-demo-access] updateUserById failed", email, updateUserErr);
+            console.error("[create-demo-access] updateUserById failed", maskEmail(email), updateUserErr);
             results.push({ email, ok: false, reason: updateUserErr.message ?? "Failed to update demo user" });
             continue;
           }
@@ -199,7 +201,7 @@ const handler = async (req: Request): Promise<Response> => {
             user_metadata: { full_name: name, invited_via: "demo-access", demo_access: true },
           });
           if (createErr || !created.user) {
-            console.error("[create-demo-access] createUser failed", email, createErr);
+            console.error("[create-demo-access] createUser failed", maskEmail(email), createErr);
             results.push({ email, ok: false, reason: createErr?.message ?? "Failed to create user" });
             continue;
           }
@@ -265,10 +267,10 @@ const handler = async (req: Request): Promise<Response> => {
         provisionedUserIds.push(userId!);
 
         const loginUrl = `${PLATFORM_URL}/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(demoPassword)}&demo=1&redirect=${encodeURIComponent("/deals")}`;
-        console.log("[create-demo-access] provisioned user", { email, userId, hasLoginUrl: !!loginUrl });
+        console.log("[create-demo-access] provisioned user", { email: maskEmail(email), userId, hasLoginUrl: !!loginUrl });
 
         if (body.sendWelcomeEmail === false) {
-          console.log("[create-demo-access] welcome email disabled, skipping send", email);
+          console.log("[create-demo-access] welcome email disabled, skipping send", maskEmail(email));
           results.push({
             email,
             ok: true,
@@ -286,7 +288,7 @@ const handler = async (req: Request): Promise<Response> => {
         // 3. Send branded demo-access email with the working demo login URL as the CTA.
         let sent = false;
         let sendErr: string | null = null;
-        console.log("[create-demo-access] attempting demo-invite send", email);
+        console.log("[create-demo-access] attempting demo-invite send", maskEmail(email));
         try {
           const { data: txData, error: txErr } = await admin.functions.invoke("send-app-email", {
             headers: { Authorization: authHeader },
@@ -310,10 +312,10 @@ const handler = async (req: Request): Promise<Response> => {
             if (inner) throw new Error(inner);
           }
           sent = true;
-          console.log("[create-demo-access] demo-invite enqueued", email);
+          console.log("[create-demo-access] demo-invite enqueued", maskEmail(email));
         } catch (e) {
           sendErr = e instanceof Error ? e.message : String(e);
-          console.error("[create-demo-access] demo-access email failed", email, sendErr);
+          console.error("[create-demo-access] demo-access email failed", maskEmail(email), sendErr);
         }
 
         results.push({
@@ -329,7 +331,7 @@ const handler = async (req: Request): Promise<Response> => {
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error("[create-demo-access] user error", email, msg);
+        console.error("[create-demo-access] user error", maskEmail(email), msg);
         results.push({
           email,
           ok: false,

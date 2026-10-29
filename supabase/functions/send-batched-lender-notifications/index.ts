@@ -1,3 +1,4 @@
+import { requireInternal, maskEmail } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
@@ -184,6 +185,9 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     const supabaseAdmin = createClient(
@@ -443,9 +447,9 @@ const handler = async (req: Request): Promise<Response> => {
               });
 
               results.push({ deal_id: dealId, email: recipient.email, lender_count: emailableNotifications.length, success: true });
-              console.log(`Batched lender email sent to ${recipient.email} for deal ${deal.company} (${emailableNotifications.length} lenders)`);
+              console.log(`Batched lender email sent to ${maskEmail(recipient.email)} for deal ${deal.company} (${emailableNotifications.length} lenders)`);
             } catch (sendError: any) {
-              console.error(`Error sending to ${recipient.email}:`, sendError);
+              console.error(`Error sending to ${maskEmail(recipient.email)}:`, sendError);
               results.push({ deal_id: dealId, email: recipient.email, success: false, error: sendError.message });
             }
           }

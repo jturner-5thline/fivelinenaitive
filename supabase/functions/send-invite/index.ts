@@ -1,7 +1,9 @@
+import { maskEmail } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -63,7 +65,7 @@ const handler = async (req: Request): Promise<Response> => {
     const appUrl = "https://naitive.co";
     const inviteUrl = `${appUrl}/accept-invite?token=${token}`;
 
-    console.log(`Sending invite to ${email} for company ${companyName}`);
+    console.log(`Sending invite to ${maskEmail(email)} for company ${companyName}`);
 
     try {
       const emailResponse = await resend.emails.send({

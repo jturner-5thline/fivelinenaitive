@@ -1,3 +1,4 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { callClaude } from '../_shared/claudeChat.ts';
 
@@ -8,6 +9,9 @@ const corsHeaders = {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  const __auth = await requireInternal(req, corsHeaders, { allowUser: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     const { deal_id } = await req.json();

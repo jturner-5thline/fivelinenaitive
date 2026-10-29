@@ -1,3 +1,4 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
@@ -650,7 +651,7 @@ async function sendWorkflowEmail(
 
     await fetch(`${supabaseUrl}/functions/v1/send-notification-email`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
       body: JSON.stringify({
         type: "workflow_action",
         user_id: assigneeId,
@@ -681,7 +682,7 @@ async function sendInAppNotification(
   try {
     await fetch(`${supabaseUrl}/functions/v1/notification-engine`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
       body: JSON.stringify({
         trigger: "workflow_task_assigned",
         user_id: assigneeId,
@@ -702,6 +703,9 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

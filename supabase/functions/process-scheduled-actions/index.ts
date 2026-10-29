@@ -1,3 +1,4 @@
+import { requireInternal, maskEmail } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.87.1";
@@ -84,6 +85,9 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -455,7 +459,7 @@ async function sendEmail(
       return { actionId, type: 'send_email', success: true, message: `Suppressed jturner reminder email (in-app Daily Briefing)` };
     }
 
-    console.log(`[Delayed Email] Sending to ${toEmail}, Subject: ${subject}`);
+    console.log(`[Delayed Email] Sending to ${maskEmail(toEmail)}, Subject: ${subject}`);
 
     // Use Resend to send email
     const resendApiKey = Deno.env.get('RESEND_API_KEY');

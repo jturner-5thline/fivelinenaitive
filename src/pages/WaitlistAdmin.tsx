@@ -78,7 +78,12 @@ export default function WaitlistAdmin() {
 
     const csvContent = [
       headers.join(','),
-      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
+      ...rows.map((row) => row.map((cell) => {
+        let v = String(cell ?? '');
+        // Neutralise spreadsheet formulas (CSV injection).
+        if (/^[=+\-@\t\r]/.test(v)) v = `'${v}`;
+        return `"${v.replace(/"/g, '""')}"`;
+      }).join(',')),
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

@@ -284,6 +284,8 @@ document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&
   useEffect(() => {
     function onMessage(ev: MessageEvent) {
       const data = ev.data as { __bef?: boolean; id?: string; height?: number } | null;
+      // Only accept height messages from our own sandboxed preview frame.
+      if (!iframeRef.current || ev.source !== iframeRef.current.contentWindow) return;
       if (!data || typeof data !== 'object' || !data.__bef) return;
       if (data.id !== frameId.current) return;
       const next = Math.min(Math.max(120, Number(data.height) || 0), maxHeight);

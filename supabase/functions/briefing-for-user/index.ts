@@ -1,3 +1,4 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 // Fetches another user's email_cache + email_analysis on behalf of an
 // authorized caller. Uses service role to bypass RLS.
 //
@@ -66,6 +67,9 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+  const __auth = await requireInternal(req, corsHeaders, { allowUser: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -96,6 +100,9 @@ serve(async (req) => {
       return jsonResponse({ error: 'targetUserId, startISO, endISO required' }, 400);
     }
 
+    if (user.id !== targetUserId && !(user as any).email_confirmed_at) {
+      return jsonResponse({ error: 'Forbidden' }, 403);
+    }
     if (!isAuthorizedCaller(user.email, user.id, targetUserId)) {
       // Audit denied access attempt
       console.warn(

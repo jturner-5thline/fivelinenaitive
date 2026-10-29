@@ -1,3 +1,4 @@
+import { isCompanyMember } from "../_shared/requestAuth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
@@ -603,6 +604,11 @@ Deno.serve(async (req) => {
         .single();
 
       if (!skippedCall) throw new Error("Skipped call not found");
+      if (!skippedCall.company_id || !(await isCompanyMember(userId!, skippedCall.company_id))) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       await supabaseAdmin
         .from("claap_skipped_calls")
@@ -1176,7 +1182,7 @@ Deno.serve(async (req) => {
         const analyzeUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/claap-analyze-meeting`;
         fetch(analyzeUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
           body: JSON.stringify({ meeting_id: meetingId }),
         }).catch((e) => console.error("Failed to trigger AI analysis:", e));
       } catch (e) {
@@ -1299,7 +1305,7 @@ Deno.serve(async (req) => {
           const extractUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/claap-extract-action-items`;
           fetch(extractUrl, {
             method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
             body: JSON.stringify({ meeting_id: meetingId, assignee_user_id: taskAssignee }),
           }).catch((e) => console.error("Failed to trigger action-items extraction:", e));
         } catch (e) {

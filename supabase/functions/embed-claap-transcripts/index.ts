@@ -1,3 +1,4 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 // Embed Claap transcripts for semantic search via Ask nAItive.
 // Modes:
 //   POST { transcript_id }              → (re)embed a single transcript
@@ -99,6 +100,9 @@ async function embedTranscript(supabase: any, transcriptId: string) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     if (!LOVABLE_API_KEY) {

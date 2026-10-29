@@ -1,3 +1,4 @@
+import { sanitizeChatMessages } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import JSZip from "https://esm.sh/jszip@3.10.1";
@@ -938,7 +939,8 @@ serve(async (req) => {
 
     const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { messages, dealId, action, sectionKey, documentId, scope, stream, conversationId, includeDataRoom } = await req.json();
+    let { messages, dealId, action, sectionKey, documentId, scope, stream, conversationId, includeDataRoom } = await req.json();
+    messages = sanitizeChatMessages(messages) as any;
 
     // 5th Line proprietary actions: hard-enforce company gating server-side
     // so non-5th-Line users cannot invoke these features via direct API

@@ -1,3 +1,4 @@
+import { getRequestUser } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
@@ -46,6 +47,16 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
+
+  const __user = await getRequestUser(req);
+  if (!__user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  // Always act on the signed-in user's own connection.
+  body.user_id = __user.id;
 
   const action = body.action as string | undefined;
 

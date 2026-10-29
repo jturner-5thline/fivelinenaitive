@@ -1,3 +1,4 @@
+import { requireInternal, maskEmail, escapeHtml } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { Resend } from "https://esm.sh/resend@2.0.0";
@@ -20,11 +21,19 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
-    const { name, email }: WaitlistWelcomeRequest = await req.json();
+    const __req: WaitlistWelcomeRequest = await req.json();
+    const name = escapeHtml(String(__req.name ?? "").slice(0, 100));
+    const email = String(__req.email ?? "").trim().slice(0, 254);
+    if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)) {
+      return new Response(JSON.stringify({ error: "Invalid email" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
-    console.log(`Sending waitlist welcome email to ${email}`);
+    console.log(`Sending waitlist welcome email to ${maskEmail(email)}`);
 
     const appUrl = "https://naitive.co";
 

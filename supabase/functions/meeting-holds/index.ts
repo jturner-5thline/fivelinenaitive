@@ -1,3 +1,4 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 /**
  * meeting-holds
  * -------------
@@ -69,6 +70,9 @@ type Body = CreateBody | ConfirmBody | ReleaseBody | SweepBody;
 
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const __auth = await requireInternal(req, corsHeaders, { allowUser: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     const authHeader = req.headers.get("Authorization");

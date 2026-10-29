@@ -1,3 +1,4 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { anthropicFetch } from "../_shared/anthropicUsage.ts";
@@ -285,6 +286,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+  const __auth = await requireInternal(req, corsHeaders, { allowUser: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     const authHeader = req.headers.get('Authorization');

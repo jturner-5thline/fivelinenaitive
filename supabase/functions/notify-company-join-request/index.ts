@@ -1,3 +1,4 @@
+import { requireInternal, escapeHtml } from "../_shared/requestAuth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { buildFrom } from '../_shared/resendFrom.ts';
 
@@ -26,9 +27,18 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  const __auth = await requireInternal(req, corsHeaders, { allowUser: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
-    const { company_id, user_id, user_email, user_name, note } = await req.json();
+    const __req = await req.json();
+    const company_id = __req.company_id;
+    // Signed-in callers can only announce their own join request.
+    const user_id = __auth.internal ? __req.user_id : __auth.user.id;
+    const user_email = escapeHtml(String((__auth.internal ? __req.user_email : __auth.user.email) || "").slice(0, 254));
+    const user_name = __req.user_name ? escapeHtml(String(__req.user_name).slice(0, 100)) : __req.user_name;
+    const note = __req.note ? escapeHtml(String(__req.note).slice(0, 2000)) : __req.note;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -42,7 +52,7 @@ Deno.serve(async (req) => {
       .eq("id", company_id)
       .single();
 
-    const companyName = company?.name || "Unknown Company";
+    const companyName = escapeHtml(company?.name || "Unknown Company");
 
     // Get the join request ID (most recent pending one for this user+company)
     const { data: joinReq } = await supabaseAdmin
@@ -56,6 +66,11 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     const requestId = joinReq?.id;
+    if (!requestId && !__auth.internal) {
+      return new Response(JSON.stringify({ error: "No pending join request" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Get company admins
     const { data: admins } = await supabaseAdmin

@@ -1,3 +1,4 @@
+import { orIlike } from "../orFilter";
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser, requireAuth, textResult, errorResult } from "../supabase";
@@ -56,7 +57,7 @@ export default defineTool({
       if (error) return errorResult(error.message);
       contact = ((data ?? [])[0] as Record<string, unknown> | undefined) ?? null;
     } else {
-      const like = `%${name}%`;
+      const like = orIlike(name);
       const { data, error } = await sb
         .from("contacts")
         .select("*")

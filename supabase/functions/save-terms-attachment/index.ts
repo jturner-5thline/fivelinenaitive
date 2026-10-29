@@ -128,7 +128,15 @@ Deno.serve(async (req) => {
       500,
     );
   }
+  const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+  const declaredSize = Number(attRes.headers.get("content-length") || match.size || 0);
+  if (declaredSize > MAX_ATTACHMENT_BYTES) {
+    return json({ error: "attachment too large (max 25 MB)" }, 413);
+  }
   const bytes = new Uint8Array(await attRes.arrayBuffer());
+  if (bytes.length > MAX_ATTACHMENT_BYTES) {
+    return json({ error: "attachment too large (max 25 MB)" }, 413);
+  }
   const contentType =
     (attRes.headers.get("content-type") || match.content_type || "application/octet-stream")
       .split(";")[0]

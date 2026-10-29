@@ -1,3 +1,4 @@
+import { sanitizeChatMessages } from "../_shared/requestAuth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 import { compactHistory, historyStats } from "../_shared/contextBudget.ts";
@@ -831,7 +832,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     const body = await req.json();
-    const rawMessages = body.messages || [];
+    const rawMessages = sanitizeChatMessages(body.messages);
     if (!Array.isArray(rawMessages) || rawMessages.length === 0) {
       return new Response(JSON.stringify({ error: "Messages required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -1,3 +1,4 @@
+import { sanitizeChatMessages } from "../_shared/requestAuth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { buildDealContext, renderDealContextBlock, DEAL_CONTEXT_SYSTEM_FRAGMENT } from "../_shared/dealContext.ts";
 
@@ -34,7 +35,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { dealId, messages, action, fileId } = await req.json();
+    let { dealId, messages, action, fileId } = await req.json();
+    messages = sanitizeChatMessages(messages) as any;
     if (!dealId) throw new Error("dealId is required");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

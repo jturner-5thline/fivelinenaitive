@@ -1,3 +1,4 @@
+import { sanitizeChatMessages } from "../_shared/requestAuth.ts";
 // ─────────────────────────────────────────────────────────────────────────────
 // claude-ai — LEGACY entrypoint. Retained ONLY for server-to-server callers
 // (other edge functions) and any historical references. Frontend code MUST
@@ -150,6 +151,7 @@ serve(async (req) => {
 
     // ── Parse & validate request ─────────────────────────
     const body: ClaudeRequest = await req.json();
+    body.messages = sanitizeChatMessages(body.messages) as any;
 
     if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
       return new Response(

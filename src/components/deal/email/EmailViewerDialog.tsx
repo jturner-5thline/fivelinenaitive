@@ -16,6 +16,7 @@ import { Loader2, Reply, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import DOMPurify from 'dompurify';
 
 const DraftEmailToClientContactDialog = lazy(() =>
   import('./DraftEmailToClientContactDialog').then((m) => ({
@@ -138,7 +139,7 @@ export function EmailViewerDialog({ open, onOpenChange, message, dealId, dealNam
             ) : bodyHtml ? (
               <div
                 className="prose prose-sm prose-invert max-w-none break-words text-foreground [&_*]:!text-foreground [&_a]:!text-primary [&_blockquote]:!text-foreground/80 [&_img]:max-w-full"
-                dangerouslySetInnerHTML={{ __html: bodyHtml }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(bodyHtml, { FORBID_TAGS: ['style', 'form', 'input', 'button'], FORBID_ATTR: ['style'] }) }}
               />
             ) : bodyText ? (
               <pre className="whitespace-pre-wrap text-sm text-foreground font-sans">{bodyText}</pre>

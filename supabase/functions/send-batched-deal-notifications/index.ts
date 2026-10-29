@@ -1,3 +1,4 @@
+import { requireInternal, maskEmail } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
@@ -539,6 +540,9 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     let isTestMode = false;
@@ -860,9 +864,9 @@ const handler = async (req: Request): Promise<Response> => {
             });
 
             results.push({ company_id: companyId, email: recipientEmail, deals: userDeals.length, updates: activityCount, success: true });
-            console.log(`Digest sent to ${recipientEmail}: ${userDeals.length} deals, ${activityCount} updates`);
+            console.log(`Digest sent to ${maskEmail(recipientEmail)}: ${userDeals.length} deals, ${activityCount} updates`);
           } catch (sendError: any) {
-            console.error(`Error sending digest to ${recipientEmail}:`, sendError);
+            console.error(`Error sending digest to ${maskEmail(recipientEmail)}:`, sendError);
             results.push({ email: recipientEmail, success: false, error: sendError.message });
           }
         }

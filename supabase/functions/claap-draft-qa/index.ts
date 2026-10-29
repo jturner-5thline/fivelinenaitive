@@ -98,15 +98,15 @@ Deno.serve(async (req) => {
 
     let meeting: any = null;
     if (meeting_id) {
-      const { data } = await admin.from("claap_meetings").select(cols).eq("id", meeting_id).maybeSingle();
+      const { data } = await userClient.from("claap_meetings").select(cols).eq("id", meeting_id).maybeSingle();
       meeting = data;
     }
     if (!meeting && recording_id) {
-      const { data } = await admin.from("claap_meetings").select(cols).eq("claap_id", recording_id).maybeSingle();
+      const { data } = await userClient.from("claap_meetings").select(cols).eq("claap_id", recording_id).maybeSingle();
       meeting = data;
     }
     if (!meeting && title) {
-      const { data } = await admin
+      const { data } = await userClient
         .from("claap_meetings")
         .select(cols)
         .ilike("title", `%${String(title).slice(0, 80)}%`)
@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
       // Some linked recordings have no `claap_meetings` row yet (link created
       // before the sync ingested it). Pull the content live from Claap so the
       // user never has to wait for the scheduled sync.
-      const { data: link } = await admin
+      const { data: link } = await userClient
         .from("deal_claap_recordings")
         .select("recording_title, recording_url, deal_id")
         .eq("recording_id", recording_id)

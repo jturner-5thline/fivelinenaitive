@@ -199,6 +199,23 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Caller must be able to see the deal and (if mirrored) the recording under RLS.
+    {
+      const { data: visibleDeal } = await supabaseUser.from("deals").select("id").eq("id", raw.deal_id).maybeSingle();
+      const { data: mirrored } = await createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
+        .from("claap_meetings").select("id").eq("claap_id", raw.recording_id).maybeSingle();
+      let meetingVisible = true;
+      if (mirrored) {
+        const { data: own } = await supabaseUser.from("claap_meetings").select("id").eq("id", mirrored.id).maybeSingle();
+        meetingVisible = !!own;
+      }
+      if (!visibleDeal || !meetingVisible) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // ============================================================
     // ACTION: post (commit user-reviewed draft)
     // ============================================================

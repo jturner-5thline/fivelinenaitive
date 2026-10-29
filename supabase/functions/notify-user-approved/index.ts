@@ -1,3 +1,4 @@
+import { requireInternal, escapeHtml, maskEmail } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 
@@ -15,6 +16,9 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
@@ -36,7 +40,7 @@ serve(async (req) => {
       );
     }
 
-    const displayName = user_name || user_email.split("@")[0];
+    const displayName = escapeHtml(String(user_name || user_email.split("@")[0]).slice(0, 100));
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -112,7 +116,7 @@ serve(async (req) => {
     }
 
     const result = await emailResponse.json();
-    console.log("Approval email sent to:", user_email, result);
+    console.log("Approval email sent:", maskEmail(user_email), result?.id);
 
     return new Response(
       JSON.stringify({ success: true, emailId: result.id }),

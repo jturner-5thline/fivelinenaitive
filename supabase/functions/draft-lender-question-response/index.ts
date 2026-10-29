@@ -117,6 +117,12 @@ Deno.serve(async (req) => {
     .select("id, user_id, thread_id, subject, from_email, from_name, to_emails, cc_emails, body_text, body_html, snippet, received_at")
     .eq("id", emailCacheId)
     .maybeSingle();
+  if (email && email.user_id !== userData.user.id) {
+    return new Response(JSON.stringify({ ok: false, error: "forbidden" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
   if (emailErr || !email) {
     return new Response(JSON.stringify({ ok: false, error: `email not found: ${emailErr?.message}` }), {
       status: 404,

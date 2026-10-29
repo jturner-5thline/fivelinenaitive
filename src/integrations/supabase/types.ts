@@ -17543,6 +17543,24 @@ export type Database = {
           },
         ]
       }
+      internal_function_secrets: {
+        Row: {
+          created_at: string
+          name: string
+          secret: string
+        }
+        Insert: {
+          created_at?: string
+          name: string
+          secret: string
+        }
+        Update: {
+          created_at?: string
+          name?: string
+          secret?: string
+        }
+        Relationships: []
+      }
       ip_allowlist: {
         Row: {
           created_at: string
@@ -30512,6 +30530,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      internal_function_secret: { Args: never; Returns: string }
       is_5thline_user: { Args: { _user_id: string }; Returns: boolean }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_admin_agent_activated: {
@@ -30794,6 +30813,10 @@ export type Database = {
           metadata: Json
           similarity: number
         }[]
+      }
+      verify_internal_function_secret: {
+        Args: { p_secret: string }
+        Returns: boolean
       }
     }
     Enums: {

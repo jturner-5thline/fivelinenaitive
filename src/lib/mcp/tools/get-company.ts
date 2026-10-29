@@ -1,3 +1,4 @@
+import { orIlike } from "../orFilter";
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser, requireAuth, textResult, errorResult } from "../supabase";
@@ -39,7 +40,7 @@ export default defineTool({
       if (error) return errorResult(error.message);
       company = (data as Record<string, unknown> | null) ?? null;
     } else if (domain) {
-      const like = `%${domain}%`;
+      const like = orIlike(domain);
       const { data, error } = await sb
         .from("crm_companies")
         .select("*")

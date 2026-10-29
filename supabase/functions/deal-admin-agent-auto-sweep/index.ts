@@ -1,4 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
+import { requireInternal } from "../_shared/requestAuth.ts";
 /**
  * Deal Admin Agent · automatic background sweep.
  *
@@ -29,6 +30,9 @@ declare const EdgeRuntime: any;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
 
   let body: any = {};
   try {

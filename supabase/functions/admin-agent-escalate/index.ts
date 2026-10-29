@@ -1,4 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
+import { requireInternal } from "../_shared/requestAuth.ts";
 /**
  * Admin Agent · 4-business-day escalation pass.
  *
@@ -22,6 +23,9 @@ const ESCALATION_BD = 4;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE, {
     auth: { persistSession: false, autoRefreshToken: false },

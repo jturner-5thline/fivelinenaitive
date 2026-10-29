@@ -1,3 +1,4 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 // smoke-mention-flow: automated end-to-end smoke for the mention notification
 // pipeline. Inserts a task_comment authored by James mentioning Niki, invokes
 // notify-comment-mentions, then returns the resulting message_id +
@@ -40,6 +41,9 @@ function jsonResponse(payload: unknown, status = 200, download = false, filename
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
   if (req.method !== 'POST') {
     return jsonResponse({ error: 'method_not_allowed' }, 405);
   }

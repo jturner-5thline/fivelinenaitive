@@ -1,3 +1,4 @@
+import { sanitizeChatMessages } from "../_shared/requestAuth.ts";
 // ─────────────────────────────────────────────────────────────────────────────
 // claude-gateway — canonical server-side proxy for every Claude/Anthropic call
 // originating from the naitive frontend.
@@ -402,6 +403,7 @@ serve(async (req) => {
 
     // ── Parse & validate request ─────────────────────────
     const body: ClaudeRequest = await req.json();
+    body.messages = sanitizeChatMessages(body.messages) as any;
 
     if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
       return new Response(

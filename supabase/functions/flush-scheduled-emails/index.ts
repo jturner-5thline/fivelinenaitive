@@ -1,3 +1,4 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 // Flush scheduled emails — invoked by pg_cron every minute.
 // Picks up `pending` rows in `scheduled_emails` whose scheduled_for <= now()
 // and dispatches them via Nylas. Updates row status to `sent` or `failed`.
@@ -72,6 +73,9 @@ async function dispatch(row: ScheduledRow, grantId: string): Promise<{ ok: true;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
 
   if (!NYLAS_API_KEY) {
     return new Response(JSON.stringify({ error: "NYLAS_API_KEY not configured" }), {

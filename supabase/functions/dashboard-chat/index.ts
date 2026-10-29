@@ -1,3 +1,4 @@
+import { sanitizeChatMessages } from "../_shared/requestAuth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { callClaude, streamClaudeAsOpenAISSE } from "../_shared/claudeChat.ts";
 
@@ -1135,7 +1136,8 @@ Deno.serve(async (req) => {
     const user = { id: resolvedUserId };
     userId = user.id;
 
-    const { messages, includeAlerts } = await req.json();
+    let { messages, includeAlerts } = await req.json();
+    messages = sanitizeChatMessages(messages) as any;
 
     // Handle alerts-only request
     if (includeAlerts) {

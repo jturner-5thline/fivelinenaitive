@@ -1,3 +1,4 @@
+import { requireInternal, maskEmail } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { shouldSkipTaskAssignmentEmail } from '../_shared/taskAssignmentEmailPolicy.ts';
@@ -816,6 +817,9 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  const __auth = await requireInternal(req, corsHeaders, { allowUser: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     const supabaseAdmin = createClient(
@@ -1354,7 +1358,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
       const profileData = recipient.profile;
       if (!profileData.email_notifications || (preferenceKey && !profileData[preferenceKey])) {
-        console.log(`Skipping ${recipient.email}: notifications disabled`);
+        console.log(`Skipping ${maskEmail(recipient.email)}: notifications disabled`);
         results.push({ email: recipient.email, skipped: true, reason: 'notifications_disabled' });
         continue;
       }
@@ -1372,10 +1376,10 @@ const handler = async (req: Request): Promise<Response> => {
           text: `${template.subject}\n\n${message}${payload.changed_by ? `\nBy: ${payload.changed_by}` : ''}${changesText}\n\n${dealUrl ? `View Deal: ${dealUrl}\n\n` : ''}---\nnaitive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubscribe`,
           html: emailHtml,
         });
-        console.log(`Email sent to ${recipient.email}:`, emailResponse);
+        console.log(`Email sent to ${maskEmail(recipient.email)}:`, emailResponse);
         results.push({ email: recipient.email, success: true, emailResponse });
       } catch (sendErr: any) {
-        console.error(`Failed to send to ${recipient.email}:`, sendErr);
+        console.error(`Failed to send to ${maskEmail(recipient.email)}:`, sendErr);
         results.push({ email: recipient.email, success: false, error: sendErr.message });
       }
     }

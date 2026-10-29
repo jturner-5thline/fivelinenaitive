@@ -1,3 +1,4 @@
+import { requireInternal, getRequestUser } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
@@ -94,6 +95,9 @@ async function fetchForGrant(
 
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const __auth = await requireInternal(req, corsHeaders, { allowUser: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -126,12 +130,12 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    let callerDomain = domainOf(callerEmail);
-    if (!callerDomain) {
-      const { data: p } = await supabase
-        .from("profiles").select("email").eq("user_id", callerId).maybeSingle();
-      callerDomain = domainOf(p?.email);
-    }
+    // Only a verified email address may establish domain-based access.
+    const verifiedUser = await getRequestUser(req);
+    const callerDomain = verifiedUser?.id === callerId && verifiedUser?.email_confirmed_at
+      ? domainOf(verifiedUser.email)
+      : null;
+    void callerEmail;
     if (!callerDomain) {
       return new Response(JSON.stringify({ error: "Could not resolve caller domain" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },

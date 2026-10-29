@@ -1,3 +1,4 @@
+import { requireInternal, sanitizeChatMessages } from "../_shared/requestAuth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { buildDealContext, renderDealContextBlock, DEAL_CONTEXT_SYSTEM_FRAGMENT } from "../_shared/dealContext.ts";
 
@@ -10,6 +11,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  const __auth = await requireInternal(req, corsHeaders, { allowAdmin: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     // Authentication check
@@ -38,7 +42,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { dealId, messages } = await req.json();
+    let { dealId, messages } = await req.json();
+    messages = sanitizeChatMessages(messages) as any;
 
     if (!dealId) {
       throw new Error("dealId is required");

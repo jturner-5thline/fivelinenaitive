@@ -1,3 +1,4 @@
+import { requireInternal, isCompanyMember } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { callClaude } from "../_shared/claudeChat.ts";
@@ -25,6 +26,9 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  const __auth = await requireInternal(req, corsHeaders, { allowUser: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     const { contact_id, source_type, source_id, email_data: incomingEmailData, company_id } = await req.json();
@@ -57,6 +61,9 @@ serve(async (req) => {
       );
     }
 
+    if (!__auth.internal) {
+      if ((company_id && company_id !== contact.org_company_id) || !(await isCompanyMember(__auth.user.id, contact.org_company_id))) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     const resolvedCompanyId = company_id || contact.org_company_id;
     if (!resolvedCompanyId) {
       return new Response(

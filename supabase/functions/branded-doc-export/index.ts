@@ -107,6 +107,13 @@ serve(async (req) => {
     }
 
     const pdfBytes = base64ToUint8Array(body.pdf_base64);
+    const MAX_PDF_BYTES = 25 * 1024 * 1024;
+    const isPdf = pdfBytes.length > 4 && pdfBytes[0] === 0x25 && pdfBytes[1] === 0x50 && pdfBytes[2] === 0x44 && pdfBytes[3] === 0x46; // %PDF
+    if (!isPdf || pdfBytes.byteLength > MAX_PDF_BYTES) {
+      return new Response(JSON.stringify({ error: "pdf_base64 must be a PDF up to 25 MB" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const safeName = body.filename.replace(/[^\w.\-]+/g, "_");
     const filePath = `${user.id}/${body.deal_id}/${Date.now()}-${safeName}`;
 

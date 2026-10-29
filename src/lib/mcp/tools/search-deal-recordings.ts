@@ -1,3 +1,4 @@
+import { orIlike } from "../orFilter";
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser, requireAuth, textResult, errorResult, assertDealAccess } from "../supabase";
@@ -47,7 +48,7 @@ export default defineTool({
         .order("recorded_at", { ascending: false, nullsFirst: false })
         .limit(limit);
       if (query) {
-        const like = `%${query}%`;
+        const like = orIlike(query);
         tQ = tQ.or(`transcript_text.ilike.${like},summary.ilike.${like}`);
       }
       const tRes = await tQ;

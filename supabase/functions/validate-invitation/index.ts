@@ -1,4 +1,6 @@
+import { maskEmail } from "../_shared/requestAuth.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,7 +40,7 @@ Deno.serve(async (req) => {
     // Use service role to bypass RLS
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    console.log('Looking up invitation with token:', token)
+    console.log('Looking up invitation')
 
     // Query the invitation by token
     const { data: invitation, error } = await supabase
@@ -74,7 +76,7 @@ Deno.serve(async (req) => {
     }
 
     // Return invitation details (excluding sensitive data like the token itself)
-    console.log('Invitation valid for:', invitation.email)
+    console.log('Invitation valid for:', maskEmail(invitation.email))
     const companyName = (invitation.companies as { name: string } | null)?.name || 'Unknown Company'
     
     return new Response(

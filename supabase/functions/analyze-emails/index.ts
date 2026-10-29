@@ -219,8 +219,14 @@ Do not include markdown formatting or code blocks. Return raw JSON only.`;
       signals: r.signals || [],
     }));
 
+    // Only write analysis for emails the caller owns.
+    const requestedIds = [...new Set(inserts.map((r: any) => r.email_cache_id).filter(Boolean))];
+    const { data: ownedRows } = requestedIds.length
+      ? await serviceClient.from("email_cache").select("id").eq("user_id", user.id).in("id", requestedIds)
+      : { data: [] as Array<{ id: string }> };
+    const ownedIds = new Set((ownedRows || []).map((r: any) => r.id));
     // Upsert to handle re-analysis
-    for (const insert of inserts) {
+    for (const insert of inserts.filter((r: any) => ownedIds.has(r.email_cache_id))) {
       const { error: insertErr } = await serviceClient
         .from("email_analysis")
         .upsert(insert, { onConflict: "email_cache_id" });

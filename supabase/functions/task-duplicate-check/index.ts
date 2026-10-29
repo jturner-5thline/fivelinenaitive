@@ -1,3 +1,4 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -91,10 +92,14 @@ function compactTask(t: any) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const __auth = await requireInternal(req, corsHeaders, { allowUser: true });
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     const triggerSource = req.headers.get("x-trigger-source") || "client";
-    const isDbTrigger = triggerSource === "db_trigger";
+    // The db_trigger path is only honoured for verified internal callers.
+    const isDbTrigger = triggerSource === "db_trigger" && __auth.ok && __auth.internal;
 
     // Auth: client calls require a valid user JWT; db_trigger calls are server-to-server.
     const authHeader = req.headers.get("Authorization") || "";

@@ -1,7 +1,9 @@
+import { maskEmail } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -235,7 +237,7 @@ const handler = async (req: Request): Promise<Response> => {
         });
 
         results.push({ user_id: profile.user_id, success: true });
-        console.log(`Weekly summary sent to ${userData.user.email}`);
+        console.log(`Weekly summary sent to ${maskEmail(userData.user.email)}`);
       } catch (userError: any) {
         console.error(`Error processing user ${profile.user_id}:`, userError);
         results.push({ user_id: profile.user_id, success: false, error: userError.message });
