@@ -1,3 +1,4 @@
+import { orIlike } from "../orFilter";
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser, requireAuth, textResult, errorResult } from "../supabase";
@@ -56,10 +57,10 @@ export default defineTool({
       .select(select, { count: "exact" })
       .range(offset, offset + limit - 1);
     if (query) {
-      const like = `%${query}%`;
+      const like = orIlike(query);
       q = q.or(`name.ilike.${like},domain.ilike.${like},website_url.ilike.${like}`);
     }
-    if (industry) q = q.or(`industry.ilike.%${industry}%,sub_industry.ilike.%${industry}%`);
+    if (industry) q = q.or(`industry.ilike.${orIlike(industry)},sub_industry.ilike.${orIlike(industry)}`);
     if (company_type) q = q.ilike("company_type", company_type);
     if (status) q = q.ilike("status", status);
     if (lifecycle_stage) q = q.ilike("lifecycle_stage", lifecycle_stage);

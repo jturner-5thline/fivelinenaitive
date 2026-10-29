@@ -1,3 +1,4 @@
+import { orIlike } from "../orFilter";
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser, requireAuth, textResult, errorResult, assertDealAccess } from "../supabase";
@@ -32,7 +33,7 @@ export default defineTool({
       .order("updated_at", { ascending: false })
       .limit(limit);
     if (query) {
-      const like = `%${query}%`;
+      const like = orIlike(query);
       q = q.or(`title.ilike.${like},content.ilike.${like}`);
     }
     const { data, error } = await q;

@@ -1,3 +1,4 @@
+import { orIlike } from "../orFilter";
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser, requireAuth, textResult, errorResult, assertDealAccess } from "../supabase";
@@ -37,7 +38,7 @@ export default defineTool({
       .limit(limit);
     if (direction) q = q.eq("direction", direction);
     if (query) {
-      const like = `%${query}%`;
+      const like = orIlike(query);
       q = q.or(`subject.ilike.${like},body.ilike.${like},from_address.ilike.${like}`);
     }
     const { data, error } = await q;
