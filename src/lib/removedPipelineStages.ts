@@ -11,17 +11,13 @@ export const REMOVED_ACTIVE_STAGE_TARGET: Readonly<Record<string, string>> = {
   'client-strategy-review': 'final-credit-items',
 };
 
-const LABEL_TO_SLUG: Record<string, string> = {
-  'initial feedback': 'initial-feedback',
-  'proposal in development': 'proposal-in-development',
-  'client strategy review': 'client-strategy-review',
-};
+const compact = (v: string) => v.toLowerCase().replace(/[^a-z0-9]+/g, '');
+const COMPACT_TO_SLUG: Record<string, string> = Object.fromEntries(
+  Object.keys(REMOVED_ACTIVE_STAGE_TARGET).map(slug => [compact(slug), slug]),
+);
 
 export function removedStageSlug(stage?: string | null): string | null {
-  const s = String(stage ?? '').toLowerCase().trim();
-  if (!s) return null;
-  if (REMOVED_ACTIVE_STAGE_TARGET[s]) return s;
-  return LABEL_TO_SLUG[s] ?? null;
+  return COMPACT_TO_SLUG[compact(String(stage ?? ''))] ?? null;
 }
 
 export interface StageDurationRow {

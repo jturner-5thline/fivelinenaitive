@@ -6,7 +6,7 @@ describe('foldRemovedStageDurations', () => {
     const out = foldRemovedStageDurations([
       { deal_id: 'a', key: 'initial-lender-review', changed_at: '2026-01-01', days: 5 },
       { deal_id: 'a', key: 'initial-feedback', changed_at: '2026-01-06', days: 3 },
-      { deal_id: 'a', key: 'proposal-in-development', changed_at: '2026-01-09', days: 2 },
+      { deal_id: 'a', key: 'proposalindevelopment', changed_at: '2026-01-09', days: 2 },
     ]);
     expect(out).toEqual([{ deal_id: 'a', key: 'initial-lender-review', changed_at: '2026-01-01', days: 10 }]);
   });
