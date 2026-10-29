@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import { MultiSelectFilter } from '@/components/deals/MultiSelectFilter';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Filter } from 'lucide-react';
-import { applyDirectoryColumnFilters, countActiveColumnFilters, distinctColumnValues, EMPTY_DIRECTORY_FILTERS, toValueList, type DirectoryColumnFilters } from '@/lib/lenderDirectoryColumnFilters';
+import { applyDirectoryColumnFilters, countActiveColumnFilters, distinctColumnValues, EMPTY_DIRECTORY_FILTERS, type DirectoryColumnFilters } from '@/lib/lenderDirectoryColumnFilters';
 import { Badge } from '@/components/ui/badge';
 import { DealCriteria, useLenderMatching } from '@/hooks/useLenderMatching';
 import { useAiRecommendedLenders } from '@/hooks/useAiRecommendedLenders';
@@ -607,7 +607,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
             </SelectContent>
           </Select>
           <div className="ml-auto flex items-center gap-2">
-            {(selectedTypes.length > 0 || tierFilter !== 'all' || search) && (
+            {(selectedTypes.length > 0 || tierFilter !== 'all' || search || countActiveColumnFilters(colFilters) > 0) && (
               <span className="text-[11px] text-muted-foreground/70 tabular-nums">
                 {sorted.length.toLocaleString()} {sorted.length === 1 ? 'result' : 'results'}
               </span>
