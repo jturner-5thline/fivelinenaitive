@@ -5006,11 +5006,17 @@ export default function DealDetail() {
                                        // order configured in Settings → Deal Information Fields.
                                        orderedRailFields.length > 0 && (
                                          <div className="grid w-full min-w-0 grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 [&>*]:min-w-0 [&>*]:break-words">
-                                           {[...orderedRailFields].sort((a, b) => Number(b === 'narrative') - Number(a === 'narrative')).map(fId => (
-                                             <div key={fId} className={cn('min-w-0', fId === 'narrative' && 'col-span-full w-full')}>
-                                               {renderDealInfoField(fId)}
-                                             </div>
-                                           ))}
+                                           {[...orderedRailFields].sort((a, b) => Number(b === 'narrative') - Number(a === 'narrative')).map(fId => {
+                                             // Skip fields that render nothing here (e.g. Deal Manager/Owner
+                                             // live in the top row) so they don't leave empty grid slots.
+                                             const node = renderDealInfoField(fId);
+                                             if (!node) return null;
+                                             return (
+                                               <div key={fId} className={cn('min-w-0', fId === 'narrative' && 'col-span-full w-full')}>
+                                                 {node}
+                                               </div>
+                                             );
+                                           })}
                                          </div>
                                        )
                                      ) : (
