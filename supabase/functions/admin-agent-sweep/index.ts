@@ -1,5 +1,5 @@
-import { requireInternal } from "../_shared/requestAuth.ts";
 // deno-lint-ignore-file no-explicit-any
+import { requireInternal } from "../_shared/requestAuth.ts";
 /**
  * Admin Agent · Proactive scheduled sweep.
  *
