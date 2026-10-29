@@ -64,7 +64,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Recipient, role, token and company come from the stored invitation, never the request.
     const { data: inv } = await supabaseAdmin
       .from("company_invitations")
-      .select("id, email, role, token, company_id, invited_by, status")
+      .select("id, email, role, token, company_id, invited_by")
       .eq("id", reqBody.invitationId)
       .maybeSingle();
     if (!inv || !(await isCompanyMember(user.id, inv.company_id))) {
