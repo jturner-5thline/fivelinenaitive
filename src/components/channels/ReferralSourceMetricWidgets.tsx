@@ -635,10 +635,12 @@ export function ReferralSourceMetricWidgets({ sideSlot, belowSourcesSlot }: { si
     newSourceCount,
     newSourceRows,
     sourceLeaderboard,
-    channelLeaderboard,
     atRiskSources,
     hasFeeData,
   } = useReferralSourceMetrics();
+  const [channelTimeframe, setChannelTimeframe] = useState<ChannelMixTimeframe>('current');
+  const { entries: channelEntries, isLoading: channelEntriesLoading } = useChannelTimeframeEntries(channelTimeframe);
+  const channelTimeframeLeaderboard = useChannelTimeframeLeaderboard(channelEntries);
 
   return (
     <div className="flex flex-col gap-3">
