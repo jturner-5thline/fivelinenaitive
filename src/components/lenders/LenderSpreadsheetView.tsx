@@ -263,14 +263,32 @@ export function LenderSpreadsheetView({
   }), [tableWidth]);
   const selectedCount = sortedLenders.filter(lender => selectedIds?.has(lender.id)).length;
 
+  // End the table (incl. footer) exactly where the floating sidebar ends:
+  // the sidebar is fixed with its bottom 19px above the viewport bottom.
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  const [surfaceHeight, setSurfaceHeight] = useState(480);
+  useLayoutEffect(() => {
+    const el = surfaceRef.current;
+    if (!el) return;
+    const update = () => {
+      const scroller = el.closest('.main-scrollable');
+      const top = el.getBoundingClientRect().top + (scroller?.scrollTop ?? 0);
+      setSurfaceHeight(Math.max(280, Math.round(window.innerHeight - SIDEBAR_BOTTOM_GAP - top)));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    if (el.parentElement) ro.observe(el.parentElement);
+    window.addEventListener('resize', update);
+    return () => { ro.disconnect(); window.removeEventListener('resize', update); };
+  }, []);
+
   return (
-    <div className="crm-companies-surface flex min-h-0 min-w-0 flex-col">
-      <div className="crm-companies-table lender-spreadsheet-table overflow-hidden rounded-lg
+    <div ref={surfaceRef} className="crm-companies-surface flex min-h-0 min-w-0 flex-col" style={{ height: surfaceHeight }}>
+      <div className="crm-companies-table lender-spreadsheet-table min-h-0 flex-1 overflow-hidden rounded-lg
         [&_table]:border-separate [&_table]:border-spacing-0
         [&_th]:h-10 [&_th]:px-3 [&_th]:py-0 [&_th]:font-medium [&_th]:text-[11px] [&_th]:uppercase [&_th]:text-muted-foreground [&_th]:whitespace-nowrap
         [&_thead]:z-20 [&_thead_th]:border-b [&_thead_th]:border-border/60
-        [&_td]:h-11 [&_td]:px-3 [&_td]:py-0 [&_td]:align-middle [&_td]:border-b [&_td]:border-border/25 [&_td]:whitespace-nowrap"
-        style={{ height: 'max(240px, calc(100dvh - 280px))' }}>
+        [&_td]:h-11 [&_td]:px-3 [&_td]:py-0 [&_td]:align-middle [&_td]:border-b [&_td]:border-border/25 [&_td]:whitespace-nowrap">
         <TableVirtuoso
           style={{ height: '100%' }}
           data={sortedLenders}
