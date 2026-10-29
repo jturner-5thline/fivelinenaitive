@@ -1,3 +1,4 @@
+import { isTeammateEmail } from "../_shared/requestAuth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { buildFrom } from '../_shared/resendFrom.ts';
 
@@ -144,6 +145,12 @@ Deno.serve(async (req) => {
     const extras = normalizeRecipients(recipientsIn).filter(
       (e) => !DEFAULT_RECIPIENTS.includes(e),
     );
+    // Extra recipients must be the submitter or their teammates.
+    for (const e of extras) {
+      if (!(await isTeammateEmail(user.id, user.email, e))) {
+        return new Response(JSON.stringify({ error: `Recipient ${e} is not a teammate` }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
     const recipients = [...DEFAULT_RECIPIENTS, ...extras];
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);

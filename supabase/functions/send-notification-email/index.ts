@@ -1,4 +1,4 @@
-import { requireInternal, maskEmail } from "../_shared/requestAuth.ts";
+import { canAccessDeal, escapeHtml, isTeammateEmail, maskEmail, requireInternal } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { shouldSkipTaskAssignmentEmail } from '../_shared/taskAssignmentEmailPolicy.ts';
@@ -828,6 +828,30 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     const payload: NotificationPayload = await req.json();
+    if (!__auth.internal) {
+      // Browser callers: must access the deal, may only target teammates, and
+      // every free-text field is HTML-escaped so it cannot alter the email layout.
+      if (payload.deal_id && !(await canAccessDeal(req, payload.deal_id))) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      if (payload.user_id && payload.user_id !== __auth.user.id) {
+        const { data: tgt } = await supabaseAdmin.from("profiles").select("email").eq("user_id", payload.user_id).maybeSingle();
+        if (!tgt?.email || !(await isTeammateEmail(__auth.user.id, __auth.user.email, tgt.email))) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      }
+      if (!payload.deal_id && !payload.user_id) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      if (payload.deal_id) {
+        const { data: d } = await supabaseAdmin.from("deals").select("company").eq("id", payload.deal_id).maybeSingle();
+        if (d?.company) payload.deal_name = d.company;
+      }
+      const esc = (v: unknown): unknown =>
+        typeof v === "string" ? escapeHtml(v.slice(0, 2000))
+        : Array.isArray(v) ? v.map(esc)
+        : v && typeof v === "object" ? Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, esc(x)]))
+        : v;
+      for (const k of Object.keys(payload) as (keyof NotificationPayload)[]) {
+        if (k === "type" || k === "user_id" || k === "deal_id" || k === "deal_name") continue;
+        (payload as any)[k] = esc(payload[k]);
+      }
+      payload.deal_name = payload.deal_name ? escapeHtml(payload.deal_name) : payload.deal_name;
+    }
     console.log("Processing notification:", payload.type, "changed_by:", payload.changed_by);
 
     // --- BATCHING: Queue deal-related events into pending_deal_notifications ---
