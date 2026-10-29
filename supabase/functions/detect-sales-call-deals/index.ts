@@ -1,3 +1,4 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 // detect-sales-call-deals — Deal Admin Agent
 //
 // Scans recently-ended 5th Line sales calls titled
@@ -20,7 +21,6 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
-import { requireInternal } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",

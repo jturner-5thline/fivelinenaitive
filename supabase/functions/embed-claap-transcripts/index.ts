@@ -1,3 +1,4 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 // Embed Claap transcripts for semantic search via Ask nAItive.
 // Modes:
 //   POST { transcript_id }              → (re)embed a single transcript
@@ -6,7 +7,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
-import { requireInternal } from "../_shared/requestAuth.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;

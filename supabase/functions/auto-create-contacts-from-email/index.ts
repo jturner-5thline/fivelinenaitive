@@ -1,3 +1,4 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 // Auto-create CRM contacts from recent Gmail activity for the 5th Line
 // allowlist. Scheduled every 15 min via pg_cron.
 //
@@ -16,7 +17,6 @@
 //      or "(via Something)" tagline are rejected as non-personal.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
-import { requireInternal } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",

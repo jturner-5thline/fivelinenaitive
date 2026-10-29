@@ -1,6 +1,6 @@
+import { maskEmail } from "../_shared/requestAuth.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-import { maskEmail } from "../_shared/requestAuth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

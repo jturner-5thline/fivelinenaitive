@@ -1,10 +1,10 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 // sales-calls-refresh — recomputes the sales-calls cache for the current
 // calendar year(s). Invoked by pg_cron on a daily cadence so the dashboard
 // can serve from cache instantly.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
-import { requireInternal } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":

@@ -1,3 +1,4 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 // deno-lint-ignore-file no-explicit-any
 /**
  * Admin Agent · 4-business-day escalation pass.
@@ -15,7 +16,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { businessDaysBetween, subtractBusinessDays } from "../_shared/businessDays.ts";
 
-import { requireInternal } from "../_shared/requestAuth.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 

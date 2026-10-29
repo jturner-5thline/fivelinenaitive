@@ -1,3 +1,4 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 // smoke-mention-flow: automated end-to-end smoke for the mention notification
 // pipeline. Inserts a task_comment authored by James mentioning Niki, invokes
 // notify-comment-mentions, then returns the resulting message_id +
@@ -10,7 +11,6 @@
 // Auth: requires a valid Supabase JWT. Restricted to internal 5th Line users.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
-import { requireInternal } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':

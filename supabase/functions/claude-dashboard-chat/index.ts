@@ -1,8 +1,8 @@
+import { sanitizeChatMessages } from "../_shared/requestAuth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 import { compactHistory, historyStats } from "../_shared/contextBudget.ts";
 
-import { sanitizeChatMessages } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":

@@ -1,8 +1,8 @@
+import { requireInternal, maskEmail, escapeHtml } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { buildFrom } from '../_shared/resendFrom.ts';
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
-import { requireInternal, maskEmail, escapeHtml } from "../_shared/requestAuth.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {

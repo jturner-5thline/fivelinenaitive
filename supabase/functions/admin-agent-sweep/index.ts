@@ -1,3 +1,4 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 // deno-lint-ignore-file no-explicit-any
 /**
  * Admin Agent · Proactive scheduled sweep.
@@ -30,7 +31,6 @@ import { enqueueAdminAgentSelections } from "../_shared/adminAgentQueue.ts";
 import { runDealAdminAgentAnalysis } from "../_shared/dealAdminAgentIntelligence.ts";
 import { rescheduleFollowupTasksForCompany } from "../_shared/rescheduleFollowupTasks.ts";
 import {
-import { requireInternal } from "../_shared/requestAuth.ts";
   AGENT_KEYS,
   isAgentEnabledForCompany,
 } from "../_shared/agentEntitlement.ts";

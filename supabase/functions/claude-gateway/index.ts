@@ -1,3 +1,4 @@
+import { sanitizeChatMessages } from "../_shared/requestAuth.ts";
 // ─────────────────────────────────────────────────────────────────────────────
 // claude-gateway — canonical server-side proxy for every Claude/Anthropic call
 // originating from the naitive frontend.
@@ -24,7 +25,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildSystemBlocks, getModeTemplate } from "./prompts.ts";
 import { normalizeForSonnet55 } from "../_shared/anthropicUsage.ts";
 
-import { sanitizeChatMessages } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":

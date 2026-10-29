@@ -1,8 +1,8 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { hasClaapToken } from "../_shared/claap-api.ts";
 import {
-import { requireInternal } from "../_shared/requestAuth.ts";
   claapFetchRecording,
   markHydrated,
   markRateLimitedRow,

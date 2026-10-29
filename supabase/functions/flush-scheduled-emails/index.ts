@@ -1,3 +1,4 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 // Flush scheduled emails — invoked by pg_cron every minute.
 // Picks up `pending` rows in `scheduled_emails` whose scheduled_for <= now()
 // and dispatches them via Nylas. Updates row status to `sent` or `failed`.
@@ -9,7 +10,6 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-import { requireInternal } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",

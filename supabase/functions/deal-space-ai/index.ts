@@ -1,10 +1,10 @@
+import { sanitizeChatMessages } from "../_shared/requestAuth.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import JSZip from "https://esm.sh/jszip@3.10.1";
 import { anthropicFetch } from "../_shared/anthropicUsage.ts";
 import { compactHistory, historyStats } from "../_shared/contextBudget.ts";
 
-import { sanitizeChatMessages } from "../_shared/requestAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",

@@ -1,7 +1,7 @@
+import { requireInternal } from "../_shared/requestAuth.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { hasClaapToken } from '../_shared/claap-api.ts';
 import {
-import { requireInternal } from "../_shared/requestAuth.ts";
   claapFetchRecording,
   shouldDefer,
   getQuotaStatus,
