@@ -403,7 +403,7 @@ export function ReferralSourcePipelineWidget({ search = '', searchSlot, onOpenPa
       </div>
 
       {view === 'partners' ? (
-        <ChannelPartnerPipelineBoard search={search} ownerFilter={ownerFilter} onOpenPartner={onOpenPartner} />
+        <ChannelPartnerPipelineBoard search={search} ownerFilter={ownerFilter} onOpenPartner={onOpenPartner} onOpenSource={setOpenSource} />
       ) : (
       <>
       <div className="grid gap-2 items-start" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0,1fr))` }}>

@@ -23694,6 +23694,7 @@ export type Database = {
       referral_sources: {
         Row: {
           channel: string | null
+          channel_partner_stage: string
           company: string | null
           company_id: string | null
           contact_email: string | null
@@ -23702,6 +23703,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          is_channel_partner: boolean
           name: string
           notes: string | null
           number_of_referrals: number
@@ -23716,6 +23718,7 @@ export type Database = {
         }
         Insert: {
           channel?: string | null
+          channel_partner_stage?: string
           company?: string | null
           company_id?: string | null
           contact_email?: string | null
@@ -23724,6 +23727,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          is_channel_partner?: boolean
           name: string
           notes?: string | null
           number_of_referrals?: number
@@ -23738,6 +23742,7 @@ export type Database = {
         }
         Update: {
           channel?: string | null
+          channel_partner_stage?: string
           company?: string | null
           company_id?: string | null
           contact_email?: string | null
@@ -23746,6 +23751,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          is_channel_partner?: boolean
           name?: string
           notes?: string | null
           number_of_referrals?: number
