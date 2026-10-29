@@ -35,6 +35,8 @@ interface StageRow {
   deals: { id: string; company: string; days: number }[];
 }
 
+import { foldRemovedStageDurations, removedStageSlug } from '@/lib/removedPipelineStages';
+
 export function useVelocity() {
   return useQuery({
     queryKey: ['pipeline-velocity'],
@@ -72,7 +74,7 @@ export function useVelocity() {
       // Open deals listed in the widget remain the Active Pipeline.
       const deals = allDeals.filter((d: any) => pipeIds.has(d.pipeline_id) && d.status !== 'archived');
 
-      const buckets = new Map<string, { label: string; durs: number[] }>();
+      const raw: { deal_id: string; key: string; label: string; changed_at: string; days: number }[] = [];
       for (const h of hist) {
         const dur = (new Date(h.exited_at).getTime() - new Date(h.changed_at).getTime()) / DAY;
         if (!(dur > 0)) continue;
@@ -80,10 +82,15 @@ export function useVelocity() {
         const label = h.to_stage_label_raw || h.to_stage || '';
         const key = norm(h.to_stage_id || h.to_stage || label);
         if (!key || key.startsWith('closed')) continue;
-        const b = buckets.get(key) ?? { label, durs: [] };
-        if (h.to_stage_label_raw) b.label = h.to_stage_label_raw;
-        b.durs.push(dur);
-        buckets.set(key, b);
+        raw.push({ deal_id: h.deal_id, key, label, changed_at: h.changed_at, days: dur });
+      }
+      // Retired stages fold into the stage that absorbed them.
+      const buckets = new Map<string, { label: string; durs: number[] }>();
+      for (const r of foldRemovedStageDurations(raw)) {
+        const b = buckets.get(r.key) ?? { label: r.label, durs: [] };
+        if (!removedStageSlug(r.label) && r.label) b.label = r.label;
+        b.durs.push(r.days);
+        buckets.set(r.key, b);
       }
 
       const rows = new Map<string, StageRow>();
