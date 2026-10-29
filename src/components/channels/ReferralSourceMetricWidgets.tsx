@@ -10,7 +10,9 @@ import { CHANNEL_MIX_TIMEFRAMES, channelMixWindow, ndaEnteredWithin, type Channe
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 import { useReferralSources } from '@/hooks/useReferralSources';
 import { isRemovedForInactivity, previousMonthEnd } from './atRiskSources';
-import { CHANNEL_TYPE_OPTIONS } from './channelOptions';
+import { CHANNEL_TYPE_OPTIONS, channelLabel } from './channelOptions';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
 import { formatSlug } from '@/utils/dealTypeLabels';
@@ -71,12 +73,10 @@ function usePipelineChannelSources() {
   return { rows, isLoading };
 }
 
-function ChannelMixDonut() {
+/** Channel sources filtered to the Channels timeframe toggle (NDA entry date). */
+function useChannelTimeframeEntries(timeframe: ChannelMixTimeframe) {
   const { rows: allEntries, isLoading } = usePipelineChannelSources();
   const dateCtx = useOptionalSalesBdDateRange();
-  const [timeframe, setTimeframe] = useState<ChannelMixTimeframe>('current');
-  const [drill, setDrill] = useState<{ value: string; label: string; color: string } | null>(null);
-
   const currentStart = dateCtx?.start?.getTime() ?? null;
   const currentEnd = dateCtx?.end?.getTime() ?? null;
   const entries = useMemo(() => {
@@ -87,6 +87,58 @@ function ChannelMixDonut() {
       .map((e) => ({ ...e, deals: e.deals.filter((d) => ndaEnteredWithin(d.ndaEnteredAt, win)) }))
       .filter((e) => e.deals.length > 0);
   }, [allEntries, timeframe, currentStart, currentEnd]);
+  return { entries, isLoading };
+}
+
+/** Most Active / Most Profitable channel rows built from the toggle-filtered entries. */
+function useChannelTimeframeLeaderboard(entries: ChannelSourceRow[]) {
+  const dealIds = useMemo(() => {
+    const ids = new Set<string>();
+    entries.forEach((e) => e.deals.forEach((d) => ids.add(d.id)));
+    return Array.from(ids).sort();
+  }, [entries]);
+  const { data: feeByDeal = new Map<string, number>(), isLoading: feesLoading } = useQuery({
+    queryKey: ['channel_timeframe_fees', dealIds.length, dealIds[0] ?? null, dealIds[dealIds.length - 1] ?? null],
+    enabled: dealIds.length > 0,
+    queryFn: async () => {
+      const map = new Map<string, number>();
+      for (let i = 0; i < dealIds.length; i += 500) {
+        const { data, error } = await supabase.from('deals').select('id, total_fee').in('id', dealIds.slice(i, i + 500));
+        if (error) throw error;
+        for (const d of (data || []) as { id: string; total_fee: number | null }[]) map.set(d.id, Number(d.total_fee) || 0);
+      }
+      return map;
+    },
+  });
+  const rows = useMemo<LeaderboardRow[]>(() => {
+    const map = new Map<string, LeaderboardRow>();
+    for (const e of entries) {
+      const key = e.channel || 'unassigned';
+      const entry = map.get(key) ?? { key, label: channelLabel(key), deals: 0, dollars: 0, fees: 0, rows: [] };
+      entry.deals += e.deals.length;
+      entry.dollars += e.deals.reduce((s, d) => s + (d.value || 0), 0);
+      entry.fees += e.deals.reduce((s, d) => s + (feeByDeal.get(d.id) || 0), 0);
+      entry.rows.push(...e.deals.map((d) => ({ id: d.id, primary: d.company, secondary: `${e.name} · $${(d.value || 0).toLocaleString()}` })));
+      map.set(key, entry);
+    }
+    return [...map.values()].filter((r) => r.deals > 0);
+  }, [entries, feeByDeal]);
+  return { rows, feesLoading, hasFeeData: rows.some((r) => r.fees > 0) };
+}
+
+function ChannelMixDonut({
+  timeframe,
+  setTimeframe,
+  entries,
+  isLoading,
+}: {
+  timeframe: ChannelMixTimeframe;
+  setTimeframe: (t: ChannelMixTimeframe) => void;
+  entries: ChannelSourceRow[];
+  isLoading: boolean;
+}) {
+  const dateCtx = useOptionalSalesBdDateRange();
+  const [drill, setDrill] = useState<{ value: string; label: string; color: string } | null>(null);
 
   const data = useMemo(() => {
     const counts = new Map<string, number>();
