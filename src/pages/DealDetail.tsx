@@ -5291,7 +5291,7 @@ export default function DealDetail() {
                 </TabsContent>
 
                 <TabsContent value="lenders" className={cn(useContextRailLayout ? "mt-1" : "mt-2", "deal-tab-fade")}>
-              <div className="w-full max-w-full min-w-0 min-h-0 mx-auto overflow-x-hidden grid grid-cols-1 lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] gap-4 items-start">
+              <div className="deal-fs-tab-layout relative w-full max-w-full min-w-0 min-h-0 mx-auto overflow-x-hidden grid grid-cols-1 lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] gap-4 items-start lg:before:content-[''] lg:before:absolute lg:before:inset-y-0 lg:before:left-[calc(65%-2.4px)] lg:before:w-px lg:before:-translate-x-1/2 lg:before:bg-border lg:before:pointer-events-none">
               <div className="flex w-full min-w-0 flex-col gap-4 lg:col-start-2 lg:row-start-1">
               {/* Funding source mix pie (with drilldown) */}
               <FundingSourceMixPie
@@ -5317,13 +5317,13 @@ export default function DealDetail() {
                 return (
                   <div className="fs-tab-widget flex h-[220px] w-full min-w-0 flex-col rounded-lg px-4 pt-3 pb-3">
                     <div className="mb-3 flex items-center justify-between">
-                      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Stage Progress</span>
-                      <span className="text-[11px] tabular-nums text-muted-foreground">{rows.length} active</span>
+                      <span className="text-[11px] font-medium uppercase tracking-wider text-white">Stage Progress</span>
+                      <span className="text-[11px] tabular-nums text-white">{rows.length} active</span>
                     </div>
                     <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1">
                       {rows.map(r => (
                         <div key={r.id} className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto] items-center gap-3">
-                          <span className="truncate text-[13px] text-foreground" title={r.name}>{r.name}</span>
+                          <span className="truncate text-[13px] text-white" title={r.name}>{r.name}</span>
                           <div
                             className="w-full overflow-hidden rounded-full"
                             style={{ height: 6, backgroundColor: 'rgba(148, 163, 184, 0.22)' }}
@@ -5334,7 +5334,7 @@ export default function DealDetail() {
                             />
                           </div>
                           <span
-                            className="max-w-[140px] truncate text-right text-[11px] text-muted-foreground"
+                            className="max-w-[140px] truncate text-right text-[11px] text-white"
                             title={r.stageLabel}
                           >
                             {r.stageLabel}
@@ -5366,7 +5366,7 @@ export default function DealDetail() {
                 const maxReason = topReasons[0]?.[1] || 1;
                 return (
                   <div className="fs-tab-widget w-full min-w-0 rounded-lg px-4 py-3">
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Top pass reasons</p>
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-white">Top pass reasons</p>
                     {topReasons.length === 0 ? (
                       <div className="mt-3 flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border/60 py-8 text-center">
                         <p className="text-sm font-medium text-foreground">No pass reasons logged yet</p>
@@ -5378,12 +5378,12 @@ export default function DealDetail() {
                     <div className="mt-4 grid grid-cols-3 gap-4 items-end" style={{ height: 180 }}>
                       {topReasons.map(([label, count]) => (
                         <div key={label} className="flex h-full flex-col items-center justify-end gap-2">
-                          <span className="text-xs font-mono tabular-nums text-foreground">{count}</span>
+                          <span className="text-xs font-mono tabular-nums text-white">{count}</span>
                           <div
                             className="w-full max-w-[72px] rounded-t-md bg-red-400/70"
                             style={{ height: `${Math.max(6, (count / maxReason) * 100)}%` }}
                           />
-                          <span className="w-full truncate text-center text-[11px] text-muted-foreground" title={label}>{label}</span>
+                          <span className="w-full truncate text-center text-[11px] text-white" title={label}>{label}</span>
                         </div>
                       ))}
                     </div>
