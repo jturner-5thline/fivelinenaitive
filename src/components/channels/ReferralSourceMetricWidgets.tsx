@@ -5,6 +5,8 @@ import { useState, useMemo, type ReactNode } from 'react';
 import { Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from 'recharts';
+import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
+import { CHANNEL_MIX_TIMEFRAMES, channelMixWindow, ndaEnteredWithin, type ChannelMixTimeframe } from '@/lib/channelMixTimeframe';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 import { useReferralSources } from '@/hooks/useReferralSources';
 import { isRemovedForInactivity, previousMonthEnd } from './atRiskSources';
@@ -24,7 +26,7 @@ interface ChannelSourceRow {
   name: string;
   company: string | null;
   channel: string;
-  deals: { id: string; company: string; stage: string; value: number }[];
+  deals: { id: string; company: string; stage: string; value: number; ndaEnteredAt?: string | null }[];
 }
 
 /** Sources currently shown on the Referral Source Pipeline, each with its company's channel. */
@@ -55,7 +57,7 @@ function usePipelineChannelSources() {
         name: r.referredBy,
         company: r.companyName,
         channel: r.channelType || 'Other',
-        deals: r.deals.map(d => ({ id: d.id, company: d.company, stage: d.stage, value: d.value })),
+        deals: r.deals.map(d => ({ id: d.id, company: d.company, stage: d.stage, value: d.value, ndaEnteredAt: d.ndaEnteredAt })),
       });
     }
     for (const m of manualSources) {
@@ -70,8 +72,21 @@ function usePipelineChannelSources() {
 }
 
 function ChannelMixDonut() {
-  const { rows: entries, isLoading } = usePipelineChannelSources();
+  const { rows: allEntries, isLoading } = usePipelineChannelSources();
+  const dateCtx = useOptionalSalesBdDateRange();
+  const [timeframe, setTimeframe] = useState<ChannelMixTimeframe>('current');
   const [drill, setDrill] = useState<{ value: string; label: string; color: string } | null>(null);
+
+  const currentStart = dateCtx?.start?.getTime() ?? null;
+  const currentEnd = dateCtx?.end?.getTime() ?? null;
+  const entries = useMemo(() => {
+    const cur = currentStart != null && currentEnd != null ? { start: new Date(currentStart), end: new Date(currentEnd) } : null;
+    const win = channelMixWindow(timeframe, new Date(), cur);
+    if (!win) return allEntries;
+    return allEntries
+      .map((e) => ({ ...e, deals: e.deals.filter((d) => ndaEnteredWithin(d.ndaEnteredAt, win)) }))
+      .filter((e) => e.deals.length > 0);
+  }, [allEntries, timeframe, currentStart, currentEnd]);
 
   const data = useMemo(() => {
     const counts = new Map<string, number>();
@@ -99,8 +114,27 @@ function ChannelMixDonut() {
     if (d) setDrill({ value: d.channel, label: d.name, color: d.color });
   };
 
+  const currentLabel = dateCtx?.range?.resolved?.label || 'Current period';
+
   return (
     <div>
+      <div className="-mt-7 mb-2 flex justify-end">
+        <div role="group" aria-label="Channels timeframe" className="inline-flex rounded-md border border-border p-0.5">
+          {CHANNEL_MIX_TIMEFRAMES.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              aria-pressed={timeframe === o.value}
+              title={o.value === 'current' ? currentLabel : o.value === 'ytd' ? 'Entered NDA since January 1' : o.value === '6m' ? 'Entered NDA in the last 6 months' : 'Entered NDA in the last 12 months'}
+              onClick={() => setTimeframe(o.value)}
+              className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${timeframe === o.value ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              {o.value === 'current' ? currentLabel : o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      
       
       <div className="h-[260px] w-full">
         {isLoading || total === 0 ? (
