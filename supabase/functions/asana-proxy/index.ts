@@ -121,6 +121,21 @@ serve(async (req) => {
 
     const { action, token, integration_id, ...params } = await req.json();
 
+    // Only allow integrations the caller can see under row-level security.
+    if (integration_id) {
+      const { data: ownIntegration } = await authClient
+        .from("integrations")
+        .select("id")
+        .eq("id", integration_id)
+        .maybeSingle();
+      if (!ownIntegration) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Forbidden" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
+        );
+      }
+    }
+
     let result: Record<string, unknown> = {};
 
     switch (action) {
