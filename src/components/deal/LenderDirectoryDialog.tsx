@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import { MultiSelectFilter } from '@/components/deals/MultiSelectFilter';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Filter } from 'lucide-react';
-import { applyDirectoryColumnFilters, countActiveColumnFilters, distinctColumnValues, EMPTY_DIRECTORY_FILTERS, type DirectoryColumnFilters } from '@/lib/lenderDirectoryColumnFilters';
+import { applyDirectoryColumnFilters, parseCheckSizeInput, countActiveColumnFilters, distinctColumnValues, EMPTY_DIRECTORY_FILTERS, type DirectoryColumnFilters } from '@/lib/lenderDirectoryColumnFilters';
 import { Badge } from '@/components/ui/badge';
 import { DealCriteria, useLenderMatching } from '@/hooks/useLenderMatching';
 import { useAiRecommendedLenders } from '@/hooks/useAiRecommendedLenders';
@@ -210,7 +210,7 @@ function ColumnFilterButton({ columnKey, filters, onChange, options }: { columnK
         )}
         {active && (
           <button type="button" className="mt-2 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => onChange(listKey ? { ...filters, [listKey]: [] } : columnKey === 'name' ? { ...filters, name: '' } : columnKey === 'min_deal' ? { ...filters, checkSize: null } : { ...filters, status: null })}>
+            onClick={() => onChange(listKey ? { ...filters, [listKey]: [] } : columnKey === 'name' ? { ...filters, name: '' } : columnKey === 'min_deal' ? (setQ(''), { ...filters, checkSize: null }) : { ...filters, status: null })}>
             Clear filter
           </button>
         )}
