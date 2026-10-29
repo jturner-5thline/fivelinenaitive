@@ -11,6 +11,7 @@
 - The merged Tasks panel reuses OutstandingItems for management and item details; completion updates Received and Submitted together — why: preserve bulk/checklist editing and persist the actual stored status fields without duplicating editor logic.
 
 - Public homepage uses isolated `homepage-os` semantic tokens and a shared BookDemoDialog for every demo CTA; why: marketing updates must not restyle authenticated screens or diverge in request handling.
+- Public and workspace header wordmarks use the shared Logo component with a CDN asset pointer; why: logo replacements stay consistent across header locations without duplicating images.
 
 - Assignment-email exclusions use the shared taskAssignmentEmailPolicy at both managed and legacy send boundaries; why: every assignment path must enforce the same policy without changing tasks or in-app notifications.
 
