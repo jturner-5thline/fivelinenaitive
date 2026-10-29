@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
       .eq("id", company_id)
       .single();
 
-    const companyName = company?.name || "Unknown Company";
+    const companyName = escapeHtml(company?.name || "Unknown Company");
 
     // Get the join request ID (most recent pending one for this user+company)
     const { data: joinReq } = await supabaseAdmin
@@ -66,6 +66,11 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     const requestId = joinReq?.id;
+    if (!requestId && !__auth.internal) {
+      return new Response(JSON.stringify({ error: "No pending join request" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Get company admins
     const { data: admins } = await supabaseAdmin
