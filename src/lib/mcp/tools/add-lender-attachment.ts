@@ -59,6 +59,10 @@ export default defineTool({
     }
     if (bytes.byteLength === 0) return errorResult("File is empty.");
     if (bytes.byteLength > MAX_ATTACHMENT_BYTES) return errorResult("File is larger than 20 MB.");
+    // Only store document/image types that match the file extension; never active content.
+    const extType = guessContentType(file_name);
+    if (extType === "application/octet-stream") return errorResult("file_name: unsupported file type.");
+    type = extType;
 
     const userId = ctx.getUserId();
     if (!userId) return errorResult("Caller has no user id.");

@@ -2092,6 +2092,9 @@ var add_lender_attachment_default = defineTool21({
     }
     if (bytes.byteLength === 0) return errorResult("File is empty.");
     if (bytes.byteLength > MAX_ATTACHMENT_BYTES) return errorResult("File is larger than 20 MB.");
+    const extType = guessContentType(file_name);
+    if (extType === "application/octet-stream") return errorResult("file_name: unsupported file type.");
+    type = extType;
     const userId = ctx.getUserId();
     if (!userId) return errorResult("Caller has no user id.");
     const ext = (file_name.split(".").pop() || "bin").replace(/[^a-z0-9]/gi, "") || "bin";
