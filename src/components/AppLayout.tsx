@@ -1,5 +1,7 @@
 import * as React from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import { createPortal } from "react-dom";
+import { CollapsibleSearch } from "@/components/deals/CollapsibleSearch";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { TaskAssignmentBanner } from "@/components/TaskAssignmentBanner";
@@ -27,6 +29,16 @@ interface AppLayoutProps {
   mainClassName?: string;
 }
 
+function GlobalHeaderSearch() {
+  const [value, setValue] = React.useState('');
+  return createPortal(
+    <div className="fixed left-[276px] top-[16px] z-[1001]">
+      <CollapsibleSearch value={value} onChange={setValue} />
+    </div>,
+    document.body,
+  );
+}
+
 function MainContent({
   children,
   className,
@@ -39,6 +51,7 @@ function MainContent({
   showWorkspaceLogo: boolean;
 }) {
   const { state, setOpen, isMobile } = useSidebar();
+  const { pathname } = useLocation();
 
   const handleMainClick = () => {
     // Close the sidebar when clicking on main content (only on desktop when expanded)
@@ -70,6 +83,9 @@ function MainContent({
       {/* Noise overlay removed — intermediate shell is fully transparent. */}
       <ScrollHeaderBackdrop />
       <DealsHeader />
+      {/* Same header search on every page. /deals mounts its own copy wired
+          to the deal filters, so skip it there to avoid a duplicate. */}
+      {showWorkspaceLogo && pathname !== '/deals' && <GlobalHeaderSearch />}
       {showWorkspaceLogo && (
         // Logo is 20% larger than the original 32px. The circle mark occupies
         // the left square of the image (width == height), so offsetting by half
