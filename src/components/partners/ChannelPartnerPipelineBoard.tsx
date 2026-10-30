@@ -174,7 +174,7 @@ function AddChannelPartnerDialog({ open, onOpenChange, existing }: { open: boole
   );
 }
 
-export function ChannelPartnerPipelineBoard({ search = '' }: { search?: string }) {
+export function ChannelPartnerPipelineBoard({ search = '', searchSlot, toggleSlot }: { search?: string; searchSlot?: React.ReactNode; toggleSlot?: React.ReactNode }) {
   const { company } = useCompany();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -244,7 +244,11 @@ export function ChannelPartnerPipelineBoard({ search = '' }: { search?: string }
     <div className={`${liquidGlassCard} p-3 space-y-2.5`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-base font-semibold tracking-tight text-foreground">Channel Partner Pipeline</h3>
+          <div className="flex flex-wrap items-center gap-3">
+            {toggleSlot}
+            <h3 className="text-base font-semibold tracking-tight text-foreground">Channel Partner Pipeline</h3>
+            {searchSlot}
+          </div>
           <p className="text-[10px] text-muted-foreground mt-0.5">Drag partners between stages · hover a stage title to see its definition</p>
         </div>
         <Button size="sm" className="h-7 gap-1.5 text-[11px]" onClick={() => setAddOpen(true)}>
