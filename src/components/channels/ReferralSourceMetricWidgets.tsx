@@ -620,7 +620,7 @@ function LeaderboardTile({
   ) : tile;
 }
 
-export function ReferralSourceMetricWidgets({ sideSlot, belowSourcesSlot }: { sideSlot?: ReactNode; belowSourcesSlot?: ReactNode }) {
+export function ReferralSourceMetricWidgets({ sideSlot, belowSourcesSlot, conversionSlot }: { sideSlot?: ReactNode; belowSourcesSlot?: ReactNode; conversionSlot?: ReactNode }) {
   const {
     isLoading,
     meetingCount,
@@ -642,82 +642,8 @@ export function ReferralSourceMetricWidgets({ sideSlot, belowSourcesSlot }: { si
   const { entries: channelEntries, isLoading: channelEntriesLoading } = useChannelTimeframeEntries(channelTimeframe);
   const channelTimeframeLeaderboard = useChannelTimeframeLeaderboard(channelEntries);
 
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
-        {/* Left column: Referral Sources + KPIs, height driven by Channels */}
-        <div className="min-w-0 lg:relative">
-        <div className="flex flex-col gap-3 lg:absolute lg:inset-0">
-        {belowSourcesSlot ? <div className="shrink-0">{belowSourcesSlot}</div> : null}
-        <NewlyAddedSources />
-        <section className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0 lg:flex-1 lg:min-h-0 lg:overflow-hidden">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">Referral Sources</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:divide-x sm:divide-border lg:flex-1 lg:min-h-0">
-            <div className="flex flex-col gap-4 min-w-0 lg:min-h-0 lg:overflow-y-auto">
-              <LeaderboardTile
-                bare
-                label="Most Active"
-                tooltip="Referral sources who refer the most deals. Shows deal count | dollar volume."
-                subtextOnHover
-                subtext="top 3 in selected timeframe"
-                entries={sourceLeaderboard}
-                sourceDrill
-                isLoading={isLoading}
-              />
-              <LeaderboardTile
-                bare
-                label="Most Profitable"
-                tooltip="Referral sources who have referred the most fee revenue."
-                subtextOnHover
-                subtext="by fee revenue"
-                entries={sourceLeaderboard}
-                sourceDrill
-                byFees
-                emptyMessage={hasFeeData ? 'No fee revenue in selected timeframe' : 'No fee data yet'}
-                isLoading={isLoading}
-              />
-            </div>
-            <AtRiskList rows={atRiskSources} isLoading={isLoading} />
-          </div>
-        </section>
-        </div>
-        </div>
-
-        {/* Channels: mix donut + active / profitable lists */}
-        <section className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">Channels</p>
-          <div className="flex flex-col gap-4">
-            <ChannelMixDonut
-              timeframe={channelTimeframe}
-              setTimeframe={setChannelTimeframe}
-              entries={channelEntries}
-              isLoading={channelEntriesLoading}
-            />
-            <div className="flex flex-col gap-4 min-w-0 border-t border-border pt-4">
-              <LeaderboardTile
-                bare
-                label="Most Active"
-                tooltip="Top 3 channels by deals on the board. Shows deals | dollars."
-                subtext="top 3 in selected timeframe"
-                entries={channelTimeframeLeaderboard.rows}
-                isLoading={channelEntriesLoading}
-              />
-              <LeaderboardTile
-                bare
-                label="Most Profitable"
-                tooltip="Top 3 channels by fee revenue generated from their referrals."
-                subtext="by fee revenue"
-                entries={channelTimeframeLeaderboard.rows}
-                byFees
-                emptyMessage={channelTimeframeLeaderboard.hasFeeData ? 'No fee revenue in selected timeframe' : 'No fee data yet'}
-                isLoading={channelEntriesLoading || channelTimeframeLeaderboard.feesLoading}
-              />
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <div className="kpi-row-centered grid grid-cols-3 gap-3 text-center lg:w-[calc(50%-0.375rem)] [&_.flex]:justify-center [&_.flex]:items-center">
+  const kpiRow = (
+      <div className="kpi-row-centered grid grid-cols-3 gap-3 text-center shrink-0 [&_.flex]:justify-center [&_.flex]:items-center">
         <div className="contents">
         <MetricTile
           label="Meetings w/ Existing Referral Sources"
@@ -782,6 +708,91 @@ export function ReferralSourceMetricWidgets({ sideSlot, belowSourcesSlot }: { si
         />
         </div>
         {sideSlot ? <div className="min-w-0">{sideSlot}</div> : null}
+      </div>
+  );
+
+  const referralSourcesSection = (
+        <section className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0 lg:max-h-[520px] lg:overflow-hidden">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">Referral Sources</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:divide-x sm:divide-border lg:flex-1 lg:min-h-0">
+            <div className="flex flex-col gap-4 min-w-0 lg:min-h-0 lg:overflow-y-auto">
+              <LeaderboardTile
+                bare
+                label="Most Active"
+                tooltip="Referral sources who refer the most deals. Shows deal count | dollar volume."
+                subtextOnHover
+                subtext="top 3 in selected timeframe"
+                entries={sourceLeaderboard}
+                sourceDrill
+                isLoading={isLoading}
+              />
+              <LeaderboardTile
+                bare
+                label="Most Profitable"
+                tooltip="Referral sources who have referred the most fee revenue."
+                subtextOnHover
+                subtext="by fee revenue"
+                entries={sourceLeaderboard}
+                sourceDrill
+                byFees
+                emptyMessage={hasFeeData ? 'No fee revenue in selected timeframe' : 'No fee data yet'}
+                isLoading={isLoading}
+              />
+            </div>
+            <AtRiskList rows={atRiskSources} isLoading={isLoading} />
+          </div>
+        </section>
+  );
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
+        {/* Left column: top KPIs, Newly Added (fills gap), 3 KPIs aligned to Channels bottom */}
+        <div className="min-w-0 lg:relative">
+        <div className="flex flex-col gap-3 lg:absolute lg:inset-0">
+        {belowSourcesSlot ? <div className="shrink-0">{belowSourcesSlot}</div> : null}
+        <NewlyAddedSources />
+        {kpiRow}
+        </div>
+        </div>
+
+        {/* Channels: mix donut + active / profitable lists */}
+        <section className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">Channels</p>
+          <div className="flex flex-col gap-4">
+            <ChannelMixDonut
+              timeframe={channelTimeframe}
+              setTimeframe={setChannelTimeframe}
+              entries={channelEntries}
+              isLoading={channelEntriesLoading}
+            />
+            <div className="flex flex-col gap-4 min-w-0 border-t border-border pt-4">
+              <LeaderboardTile
+                bare
+                label="Most Active"
+                tooltip="Top 3 channels by deals on the board. Shows deals | dollars."
+                subtext="top 3 in selected timeframe"
+                entries={channelTimeframeLeaderboard.rows}
+                isLoading={channelEntriesLoading}
+              />
+              <LeaderboardTile
+                bare
+                label="Most Profitable"
+                tooltip="Top 3 channels by fee revenue generated from their referrals."
+                subtext="by fee revenue"
+                entries={channelTimeframeLeaderboard.rows}
+                byFees
+                emptyMessage={channelTimeframeLeaderboard.hasFeeData ? 'No fee revenue in selected timeframe' : 'No fee data yet'}
+                isLoading={channelEntriesLoading || channelTimeframeLeaderboard.feesLoading}
+              />
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
+        {referralSourcesSection}
+        {conversionSlot ? <div className="min-w-0">{conversionSlot}</div> : null}
       </div>
     </div>
   );
