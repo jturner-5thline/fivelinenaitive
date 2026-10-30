@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, ExternalLink, Mail, User } from 'lucide-react';
+import { format } from 'date-fns';
 import { formatUSDFromDollars } from '@/lib/formatters/currency';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -143,7 +144,7 @@ export function ChannelPartnerDetailDialog({ crmCompanyId, name, onOpenChange }:
                         >
                           <span className="min-w-0">
                             <span className="block text-xs text-foreground truncate">{d.company}</span>
-                            <span className="block text-[10px] text-muted-foreground truncate">{d.pipelineName} · {d.stage}</span>
+                            <span className="block text-[10px] text-muted-foreground truncate">{d.pipelineName} · {d.stage}{d.ndaEnteredAt ? ` · ${format(new Date(d.ndaEnteredAt), 'MMM d, yyyy')}` : ''}</span>
                           </span>
                           <span className="font-mono text-[11px] tabular-nums text-muted-foreground shrink-0">{d.value ? formatUSDFromDollars(d.value) : '—'}</span>
                         </button>
