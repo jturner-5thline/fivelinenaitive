@@ -898,9 +898,20 @@ Deno.serve(async (req) => {
       case 'getAllDeals':
         result = await getAllDeals();
         break;
-      case 'syncDeals':
-        result = await syncDealsToDatabase(params.userId, params.companyId, params.configId);
+      case 'syncDeals': {
+        // Signed-in callers may only sync into their own user and a company they belong to.
+        let syncUserId = params.userId;
+        if (!__auth.internal && __auth.user) {
+          syncUserId = __auth.user.id;
+          if (params.companyId && !(await isCompanyMember(__auth.user.id, params.companyId))) {
+            return new Response(JSON.stringify({ error: 'Forbidden' }), {
+              status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        }
+        result = await syncDealsToDatabase(syncUserId, params.companyId, params.configId);
         break;
+      }
       case 'getDeal':
         result = await getDeal(params.dealId);
         break;
