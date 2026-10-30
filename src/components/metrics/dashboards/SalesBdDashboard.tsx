@@ -27,6 +27,7 @@ function SalesBdDashboardInner() {
   const [viewPartnerId, setViewPartnerId] = useState<string | null>(null);
   const [viewChannelEntry, setViewChannelEntry] = useState<ChannelEntry | null>(null);
   const [search, setSearch] = useState<string>('');
+  const [pipelineView, setPipelineView] = useState<'referral' | 'channel'>('referral');
   const [rulesOpen, setRulesOpen] = useState(false);
   const { data: partners = [] } = usePartners();
   const viewPartner = viewPartnerId ? partners.find(p => p.id === viewPartnerId) || null : null;
@@ -81,10 +82,8 @@ function SalesBdDashboardInner() {
         </div>
         {/* Referral Insights (Activity / Needs Attention) hidden — see mem://features/sales-bd/partner-insights-tabs-hidden */}
 
-        <ReferralSourcePipelineWidget
-          search={search}
-          onOpenPartner={setViewPartnerId}
-          searchSlot={
+        {(() => {
+          const searchSlot = (
             <div className="relative">
               <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -105,9 +104,29 @@ function SalesBdDashboardInner() {
                 </button>
               )}
             </div>
-          }
-        />
-        <ChannelPartnerPipelineBoard search={search} />
+          );
+          const toggleSlot = (
+            <div role="tablist" aria-label="Pipeline view" className="inline-flex h-7 items-center rounded-md border border-border bg-muted/30 p-0.5">
+              {([['referral', 'Referral Sources'], ['channel', 'Channel Partners']] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={pipelineView === key}
+                  onClick={() => setPipelineView(key)}
+                  className={`h-6 rounded px-2.5 text-[11px] font-medium transition-colors ${pipelineView === key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          );
+          return pipelineView === 'referral' ? (
+            <ReferralSourcePipelineWidget search={search} onOpenPartner={setViewPartnerId} searchSlot={searchSlot} toggleSlot={toggleSlot} />
+          ) : (
+            <ChannelPartnerPipelineBoard search={search} searchSlot={searchSlot} toggleSlot={toggleSlot} />
+          );
+        })()}
       </div>
 
       <PartnerDetailPanel partner={viewPartner} onClose={() => setViewPartnerId(null)} />

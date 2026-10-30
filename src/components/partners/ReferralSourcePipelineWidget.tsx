@@ -144,7 +144,7 @@ function formatShortDate(iso: string | null): string {
 
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
-export function ReferralSourcePipelineWidget({ search = '', searchSlot, onOpenPartner }: { search?: string; searchSlot?: ReactNode; onOpenPartner?: (id: string) => void } = {}) {
+export function ReferralSourcePipelineWidget({ search = '', searchSlot, toggleSlot, onOpenPartner }: { search?: string; searchSlot?: ReactNode; toggleSlot?: ReactNode; onOpenPartner?: (id: string) => void } = {}) {
   const view = 'sources' as 'sources' | 'partners';
   // Tiers are trailing/all-time metrics — the pipeline must not depend on the
   // viewer's header date range, or the same source lands in different columns
@@ -351,6 +351,7 @@ export function ReferralSourcePipelineWidget({ search = '', searchSlot, onOpenPa
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
+            {toggleSlot}
             <h3 className="text-base font-semibold tracking-tight text-foreground">Referral Source Pipeline</h3>
             {searchSlot}
           </div>
