@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { liquidGlassCard, LIQUID_GLASS_SERIES } from '@/components/metrics/liquidGlass';
 import { CHANNEL_PARTNER_STAGES, type ChannelPartnerStageKey } from '@/lib/channelPartnerStages';
 import { cn } from '@/lib/utils';
+import { ChannelPartnerDetailDialog } from './ChannelPartnerDetailDialog';
 
 const norm = (s: string) => s.trim().toLowerCase();
 const STAGE_KEYS = new Set<string>(CHANNEL_PARTNER_STAGES.map(s => s.key));
@@ -199,6 +200,7 @@ export function ChannelPartnerPipelineBoard({ search = '', searchSlot, toggleSlo
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const [activeId, setActiveId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [detail, setDetail] = useState<Row | null>(null);
   const existing = useMemo(() => new Set(rows.map(r => r.crm_company_id)), [rows]);
 
   const columns = useMemo(() => {
@@ -276,7 +278,7 @@ export function ChannelPartnerPipelineBoard({ search = '', searchSlot, toggleSlo
                   <div className="p-1.5 space-y-1.5 min-h-[23rem]">
                     {stage.items.length === 0 && <p className="text-[10px] text-muted-foreground/70 px-1.5 py-3 text-center">No partners</p>}
                     {stage.items.map(r => (
-                      <DraggableCard key={r.id} r={r} ownerLabel={ownerLabel(r.owner_user_id)} onOpen={() => navigate(`/crm-companies/${r.crm_company_id}`)} onRemove={() => remove(r)} />
+                      <DraggableCard key={r.id} r={r} ownerLabel={ownerLabel(r.owner_user_id)} onOpen={() => setDetail(r)} onRemove={() => remove(r)} />
                     ))}
                   </div>
                 </ScrollArea>
@@ -290,6 +292,7 @@ export function ChannelPartnerPipelineBoard({ search = '', searchSlot, toggleSlo
       </TooltipProvider>
       <p className="text-[10px] text-muted-foreground">{total} channel partner{total === 1 ? '' : 's'}</p>
       <AddChannelPartnerDialog open={addOpen} onOpenChange={setAddOpen} existing={existing} />
+      <ChannelPartnerDetailDialog crmCompanyId={detail?.crm_company_id ?? null} name={detail?.name ?? ''} onOpenChange={o => { if (!o) setDetail(null); }} />
     </div>
   );
 }
