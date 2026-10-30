@@ -18,3 +18,4 @@
 - Team invitations use the transactional `accept_company_invitation` RPC to validate the token, verified recipient, approved same-company inviter, availability, and revocations before committing membership and approval; why: invitations must not leave partial memberships or turn self-signups and revoked users into approved accounts. Approval queries throw on failures, and both access screens show retry without granting access.
 
 - Funding Sources spreadsheet uses TableVirtuoso with shared CRM table primitives and surface classes, with a single scroll owner and stable row components; why: match Companies/Contacts styling without scroll jumps or changing directory data.
+- Channel Partners are a separate pipeline (`channel_partners` table, each row linked to a CRM company) shown in their own Sales & BD widget, not derived from referral sources; why: the user adds partners manually from Companies and wants them kept apart from referral-source tiers.

@@ -309,6 +309,13 @@
       "when": 1793282840476,
       "tag": "0043_invite_role_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1793321088876,
+      "tag": "0044_create_channel_partners",
+      "breakpoints": true
     }
   ]
 }

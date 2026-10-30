@@ -26,7 +26,6 @@ import { Plus, Info, Trash2, Building2 } from 'lucide-react';
 import { liquidGlassCard, LIQUID_GLASS_SERIES } from '@/components/metrics/liquidGlass';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 import { ReferralSourceDealsDialog } from './ReferralSourceDealsDialog';
-import { ChannelPartnerPipelineBoard } from './ChannelPartnerPipelineBoard';
 import { useReferralSources } from '@/hooks/useReferralSources';
 import { usePartnerRules, DEFAULT_PARTNER_RULES } from '@/hooks/usePartnerRules';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -146,7 +145,7 @@ function formatShortDate(iso: string | null): string {
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
 export function ReferralSourcePipelineWidget({ search = '', searchSlot, onOpenPartner }: { search?: string; searchSlot?: ReactNode; onOpenPartner?: (id: string) => void } = {}) {
-  const [view, setView] = useState<'sources' | 'partners'>('sources');
+  const view = 'sources' as 'sources' | 'partners';
   // Tiers are trailing/all-time metrics — the pipeline must not depend on the
   // viewer's header date range, or the same source lands in different columns
   // for different users (e.g. Tier 3 vs Nurturing).
@@ -352,29 +351,11 @@ export function ReferralSourcePipelineWidget({ search = '', searchSlot, onOpenPa
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h3 className="text-base font-semibold tracking-tight text-foreground">
-              {view === 'partners' ? 'Channel Partner Pipeline' : 'Referral Source Pipeline'}
-            </h3>
-            <div role="tablist" aria-label="Pipeline view" className="inline-flex h-7 rounded-md border border-white/[0.08] bg-white/[0.03] p-0.5">
-              {([['sources', 'Referral Sources'], ['partners', 'Channel Partners']] as const).map(([k, label]) => (
-                <button
-                  key={k}
-                  type="button"
-                  role="tab"
-                  aria-selected={view === k}
-                  onClick={() => setView(k)}
-                  className={`px-2.5 text-[11px] rounded-[5px] transition-colors ${view === k ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <h3 className="text-base font-semibold tracking-tight text-foreground">Referral Source Pipeline</h3>
             {searchSlot}
           </div>
           <p className="text-[10px] text-muted-foreground mt-0.5">
-            {view === 'partners'
-              ? 'Hover a stage title to see its definition'
-              : 'Sources advance automatically as their referred deals meet the Tier 3 → Tier 1 rules'}
+            Sources advance automatically as their referred deals meet the Tier 3 → Tier 1 rules
           </p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -402,9 +383,7 @@ export function ReferralSourcePipelineWidget({ search = '', searchSlot, onOpenPa
         </div>
       </div>
 
-      {view === 'partners' ? (
-        <ChannelPartnerPipelineBoard search={search} ownerFilter={ownerFilter} onOpenPartner={onOpenPartner} onOpenSource={setOpenSource} />
-      ) : (
+      {(
       <>
       <div className="grid gap-2 items-start" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0,1fr))` }}>
         {columns.map(stage => (

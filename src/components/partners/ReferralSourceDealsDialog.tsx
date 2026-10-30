@@ -3,9 +3,7 @@ import { Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatUSDFromDollars } from '@/lib/formatters/currency';
 import { ReferralEntityQuickView } from '@/components/channels/ReferralEntityQuickView';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Switch } from '@/components/ui/switch';
-import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -127,48 +125,6 @@ export function ReferralSourceDealsDialog({
   });
 
   const [showContact, setShowContact] = useState(false);
-  const queryClient = useQueryClient();
-
-  // Channel Partner flag lives on the referral_sources row (matched by name).
-  const { data: cpRow } = useQuery({
-    queryKey: ['referral_source_cp_flag', company?.id, name],
-    enabled: open && !!company?.id && !!name,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('referral_sources')
-        .select('id, is_channel_partner')
-        .eq('company_id', company!.id)
-        .ilike('name', name!)
-        .order('is_channel_partner', { ascending: false })
-        .limit(1);
-      if (error) throw error;
-      return data?.[0] ?? null;
-    },
-  });
-  const [cpSaving, setCpSaving] = useState(false);
-  const toggleChannelPartner = async (on: boolean) => {
-    if (!company?.id || !name) return;
-    setCpSaving(true);
-    try {
-      if (cpRow?.id) {
-        const { error } = await supabase.from('referral_sources').update({ is_channel_partner: on }).eq('id', cpRow.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('referral_sources').insert({
-          company_id: company.id, name, user_id: (await supabase.auth.getUser()).data.user?.id ?? null, is_channel_partner: on, contact_id: contactId ?? null,
-        });
-        if (error) throw error;
-      }
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['referral_source_cp_flag'] }),
-        queryClient.invalidateQueries({ queryKey: ['channel_partner_referral_sources'] }),
-      ]);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not update Channel Partner');
-    } finally {
-      setCpSaving(false);
-    }
-  };
   const totalVolume = rows.reduce((s, r) => s + (r.value || 0), 0);
   const lastAt = rows[0]?.referredAt;
 
@@ -180,16 +136,6 @@ export function ReferralSourceDealsDialog({
           <div className="flex items-start justify-between gap-3 pr-6">
             <DialogTitle>{name}</DialogTitle>
             <div className="flex items-center gap-3">
-            <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <Switch
-                checked={!!cpRow?.is_channel_partner}
-                disabled={cpSaving}
-                onCheckedChange={toggleChannelPartner}
-                aria-label="Channel Partner"
-                className="scale-75"
-              />
-              Channel Partner
-            </label>
             <Button
               size="sm"
               variant="outline"

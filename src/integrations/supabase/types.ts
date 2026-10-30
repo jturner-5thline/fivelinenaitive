@@ -3319,6 +3319,54 @@ export type Database = {
           },
         ]
       }
+      channel_partners: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          crm_company_id: string
+          id: string
+          owner_user_id: string | null
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          crm_company_id: string
+          id?: string
+          owner_user_id?: string | null
+          stage?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          crm_company_id?: string
+          id?: string
+          owner_user_id?: string | null
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_partners_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_partners_crm_company_id_fkey"
+            columns: ["crm_company_id"]
+            isOneToOne: false
+            referencedRelation: "crm_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_types: {
         Row: {
           created_at: string

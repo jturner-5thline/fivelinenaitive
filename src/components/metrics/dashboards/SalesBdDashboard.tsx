@@ -8,6 +8,7 @@ import { usePartners } from "@/hooks/usePartnersPipeline";
 import { ReferralSourceMetricWidgets } from "@/components/channels/ReferralSourceMetricWidgets";
 import { ReferralConversionWidget } from "@/components/channels/ReferralConversionWidget";
 import { ReferralSourcePipelineWidget } from "@/components/partners/ReferralSourcePipelineWidget";
+import { ChannelPartnerPipelineBoard } from "@/components/partners/ChannelPartnerPipelineBoard";
 import { ChannelEntityDetailModal } from "@/components/channels/ChannelEntityDetailModal";
 import type { ChannelEntry } from "@/hooks/useChannelEntries";
 import { CrmUpdateQueueButton } from "@/components/crm/CrmUpdateQueueButton";
@@ -106,6 +107,7 @@ function SalesBdDashboardInner() {
             </div>
           }
         />
+        <ChannelPartnerPipelineBoard search={search} />
       </div>
 
       <PartnerDetailPanel partner={viewPartner} onClose={() => setViewPartnerId(null)} />
