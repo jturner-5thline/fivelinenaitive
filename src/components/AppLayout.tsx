@@ -163,24 +163,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
     };
   }, [location.pathname]);
 
-  // Routes that render the persistent naitive logo brand anchor in the
-  // top-left of the main content module. Keep this as a single source of
-  // truth so target pages stay visually consistent without per-page edits.
-  const WORKSPACE_LOGO_ROUTES = [
-    '/deals',
-    '/workspace',
-    '/lenders',
-    '/contacts',
-    '/crm-companies',
-    '/agents',
-    '/insights',
-    '/sales-bd',
-    '/wf',
-    '/naitive-pipeline',
-    '/finserv',
-  ];
-  // The header logo now shows on every workspace page.
-  void WORKSPACE_LOGO_ROUTES;
+  // The header logo shows on every workspace page.
   const showWorkspaceLogo = true;
   const isDealsRoute = location.pathname === '/deals' || location.pathname.startsWith('/deals/');
   const { hasAccess: canAccessCopilot } = useFeatureAccess('copilot_widget', 'deployed');
