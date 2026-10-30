@@ -10,6 +10,8 @@ import {
   sourceConversions, sourceCohortDeals, topAndBottom, MIN_CONVERSION_DEALS, inTrailingYear, closingRateDeals,
   type ConversionDeal, type SourceConversion, type ConversionMetric,
 } from "@/lib/referralConversion";
+import { useInsightsTimeframeOptional } from "@/contexts/InsightsTimeframeContext";
+import { ttmAnchorFromTimeframeEnd } from "@/lib/salesBdActivePipelineConversion";
 import { earliestNdaEntries, type NdaHistoryRow } from "@/lib/referralNdaEntry";
 
 const pct = (r: number) => `${Math.round(r * 100)}%`;
@@ -126,9 +128,11 @@ export function ReferralConversionWidget() {
   });
 
   // Engagement: deal must have ENTERED NDA / Needs List Sent within the last 12 months.
-  const engagementDeals = useMemo(() => inTrailingYear(deals), [deals]);
+  const headerEnd = useInsightsTimeframeOptional()?.timeframe?.end;
+  const asOf = useMemo(() => ttmAnchorFromTimeframeEnd(headerEnd), [headerEnd]);
+  const engagementDeals = useMemo(() => inTrailingYear(deals, asOf), [deals, asOf]);
   // Closing Rate: deals that entered NDA or Closed-Won within the last 12 months.
-  const closingDeals = useMemo(() => closingRateDeals(deals), [deals]);
+  const closingDeals = useMemo(() => closingRateDeals(deals, asOf), [deals, asOf]);
   const engagement = useMemo(() => sourceConversions(engagementDeals, "final-credit-items"), [engagementDeals]);
   const closing = useMemo(() => sourceConversions(closingDeals, "closed-won"), [closingDeals]);
   const drillRows = useMemo(
