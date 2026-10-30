@@ -146,7 +146,7 @@ export function ReferralConversionWidget() {
       <div className="flex items-center justify-between">
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">Conversion</p>
         <div className="flex items-center gap-3">
-          <span className="text-[10px] text-muted-foreground">trailing 12 months · sources with {MIN_CONVERSION_DEALS}+ deals entering NDA</span>
+          <span className="text-[10px] text-muted-foreground">12 months to {asOf.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · sources with {MIN_CONVERSION_DEALS}+ deals entering NDA</span>
           <div role="group" aria-label="Show as" className="flex rounded-md border border-border p-0.5">
             {(["rate", "count"] as const).map((m) => (
               <button
