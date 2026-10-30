@@ -103,14 +103,13 @@ export function useTtmActivePipelineConversion(opts: {
   const { since, until } = useMemo(() => {
     const w = ttmWindow(asOfMs != null ? new Date(asOfMs) : new Date());
     return { since: w.since.toISOString(), until: w.until.toISOString() };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asOfMs]);
 
   const enabled =
     (opts.enabled ?? true) && !!company?.id && activePipelineIds.length > 0;
 
   const { data: deals = [] } = useQuery({
-    queryKey: ['ttm_active_pipeline_deals', company?.id, activePipelineIds, asOfMs != null ? until : 'now', asOfMs != null ? since : since.slice(0, 10)],
+    queryKey: ['ttm_active_pipeline_deals', company?.id, activePipelineIds, since, until],
     enabled,
     queryFn: async () => {
       const { data, error } = await supabase
