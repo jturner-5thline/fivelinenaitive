@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, pointerWithin, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
-import { useNavigate } from 'react-router-dom';
 import { Plus, Building2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -177,7 +176,6 @@ function AddChannelPartnerDialog({ open, onOpenChange, existing }: { open: boole
 
 export function ChannelPartnerPipelineBoard({ search = '', searchSlot, toggleSlot }: { search?: string; searchSlot?: ReactNode; toggleSlot?: ReactNode }) {
   const { company } = useCompany();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const queryKey = ['channel_partners', company?.id];
   const { data: rows = [] } = useQuery({
