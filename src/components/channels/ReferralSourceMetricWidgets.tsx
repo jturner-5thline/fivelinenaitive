@@ -712,7 +712,7 @@ export function ReferralSourceMetricWidgets({ sideSlot, belowSourcesSlot, conver
   );
 
   const referralSourcesSection = (
-        <section className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0 lg:max-h-[520px] lg:overflow-hidden">
+        <section className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">Referral Sources</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:divide-x sm:divide-border lg:flex-1 lg:min-h-0">
             <div className="flex flex-col gap-4 min-w-0 lg:min-h-0 lg:overflow-y-auto">
