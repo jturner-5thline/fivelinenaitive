@@ -341,8 +341,10 @@ serve(async (req) => {
       // Browser callers act only as themselves and only on deals they can access.
       payload.actorUserId = __auth.user.id;
       const dealId = payload.context?.deal_id;
-      if (dealId && !(await canAccessDeal(req, String(dealId)))) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
-      if (!dealId) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      // Not allowed on this deal: send nothing, but don't surface an error to the page.
+      if (dealId && !(await canAccessDeal(req, String(dealId)))) { return new Response(JSON.stringify({ success: true, skipped: true, reason: "no_deal_access" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      // No deal to authorize against (e.g. unlinked email signals): skip quietly rather than erroring.
+      if (!dealId) { return new Response(JSON.stringify({ success: true, skipped: true, reason: "no_deal_context" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
     }
     const { triggerKey, actorUserId, context } = payload;
 
