@@ -77,12 +77,14 @@ function AddChannelPartnerDialog({ open, onOpenChange, existing }: { open: boole
   const [q, setQ] = useState('');
   const [hits, setHits] = useState<CompanyHit[]>([]);
   const [saving, setSaving] = useState(false);
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => { if (!open) { setQ(''); setHits([]); } }, [open]);
   useEffect(() => {
     const term = q.trim();
     if (!open || !company?.id || term.length < 2) { setHits([]); return; }
     let cancelled = false;
+    setSearching(true);
     const t = setTimeout(async () => {
       const { data } = await supabase
         .from('crm_companies')
@@ -91,7 +93,7 @@ function AddChannelPartnerDialog({ open, onOpenChange, existing }: { open: boole
         .ilike('name', `%${term.replace(/[%_,()]/g, ' ')}%`)
         .order('name')
         .limit(10);
-      if (!cancelled) setHits((data as CompanyHit[]) || []);
+      if (!cancelled) { setHits((data as CompanyHit[]) || []); setSearching(false); }
     }, 200);
     return () => { cancelled = true; clearTimeout(t); };
   }, [q, open, company?.id]);
@@ -157,7 +159,8 @@ function AddChannelPartnerDialog({ open, onOpenChange, existing }: { open: boole
               </button>
             );
           })}
-          {q.trim().length >= 2 && hits.length === 0 && <p className="text-xs text-muted-foreground px-2 py-2">No matching companies.</p>}
+          {searching && <p className="text-xs text-muted-foreground px-2 py-2">Searching…</p>}
+          {!searching && q.trim().length >= 2 && hits.length === 0 && <p className="text-xs text-muted-foreground px-2 py-2">No matching companies.</p>}
         </div>
         <DialogFooter>
           {q.trim().length >= 2 && !exact && (
