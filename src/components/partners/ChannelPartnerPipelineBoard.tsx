@@ -269,7 +269,7 @@ export function ChannelPartnerPipelineBoard({ search = '' }: { search?: string }
                   <div className="p-1.5 space-y-1.5 min-h-[23rem]">
                     {stage.items.length === 0 && <p className="text-[10px] text-muted-foreground/70 px-1.5 py-3 text-center">No partners</p>}
                     {stage.items.map(r => (
-                      <DraggableCard key={r.id} r={r} ownerLabel={ownerLabel(r.owner_user_id)} onOpen={() => navigate(`/companies/${r.crm_company_id}`)} onRemove={() => remove(r)} />
+                      <DraggableCard key={r.id} r={r} ownerLabel={ownerLabel(r.owner_user_id)} onOpen={() => navigate(`/crm-companies/${r.crm_company_id}`)} onRemove={() => remove(r)} />
                     ))}
                   </div>
                 </ScrollArea>
