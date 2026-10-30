@@ -71,11 +71,15 @@ function MainContent({
       <ScrollHeaderBackdrop />
       <DealsHeader />
       {showWorkspaceLogo && (
+        // Logo is 20% larger than the original 32px. The circle mark occupies
+        // the left square of the image (width == height), so offsetting by half
+        // the logo height centers the circle over the floating sidebar rail
+        // (rail: left 6px, width icon + 1rem + 2px). On mobile the rail is hidden.
         <div
-          className="workspace-logo fixed left-[12px] top-[14px] z-40 pointer-events-none"
+          className="workspace-logo fixed left-[12px] top-[11px] z-40 pointer-events-none md:left-[calc(6px+(var(--sidebar-width-icon,3rem)+1rem+2px)/2-19px)]"
           aria-hidden="true"
         >
-          <Logo className="h-8" />
+          <Logo className="h-[38px]" />
         </div>
       )}
       <div className="relative z-10 flex-1 flex flex-col min-h-full pt-[68px]">
@@ -175,9 +179,9 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
     '/naitive-pipeline',
     '/finserv',
   ];
-  const showWorkspaceLogo = WORKSPACE_LOGO_ROUTES.some(
-    (r) => location.pathname === r || location.pathname.startsWith(`${r}/`),
-  );
+  // The header logo now shows on every workspace page.
+  void WORKSPACE_LOGO_ROUTES;
+  const showWorkspaceLogo = true;
   const isDealsRoute = location.pathname === '/deals' || location.pathname.startsWith('/deals/');
   const { hasAccess: canAccessCopilot } = useFeatureAccess('copilot_widget', 'deployed');
 
