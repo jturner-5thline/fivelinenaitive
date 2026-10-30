@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { ExternalLink, Mail, User } from 'lucide-react';
+import { ChevronRight, ExternalLink, Mail, User } from 'lucide-react';
+import { formatUSDFromDollars } from '@/lib/formatters/currency';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
@@ -73,6 +74,18 @@ export function ChannelPartnerDetailDialog({ crmCompanyId, name, onOpenChange }:
     };
   }, [referralSources, manual]);
 
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const dealsFor = (c: Contact) => {
+    const full = norm(c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' '));
+    const seen = new Map<string, (typeof referralSources)[number]['deals'][number]>();
+    for (const r of referralSources) {
+      if (r.contactId === c.id || (!!full && norm(r.referredBy) === full)) {
+        for (const d of r.deals) seen.set(d.id, d);
+      }
+    }
+    return [...seen.values()].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -96,16 +109,47 @@ export function ChannelPartnerDetailDialog({ crmCompanyId, name, onOpenChange }:
             {contacts.map(c => {
               const full = c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email || 'Unnamed contact';
               const referral = inPipeline(c);
+              const deals = referral ? dealsFor(c) : [];
+              const isOpen = expanded === c.id;
               return (
-                <div key={c.id} className="flex items-start gap-2 py-2">
-                  <User className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm text-foreground truncate">{full}</p>
-                    {c.job_title && <p className="text-[11px] text-muted-foreground truncate">{c.job_title}</p>}
-                    {c.email && <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1"><Mail className="h-3 w-3" />{c.email}</p>}
-                    {referral && <p className="text-[11px] text-primary mt-0.5">Also in the Referral Source Pipeline</p>}
-                  </div>
-                  {referral && <Badge variant="outline" className="text-[10px] border-primary/50 text-primary shrink-0">Referral source</Badge>}
+                <div key={c.id} className="py-2">
+                  <button
+                    type="button"
+                    disabled={!referral}
+                    onClick={() => setExpanded(isOpen ? null : c.id)}
+                    className="flex w-full items-start gap-2 text-left disabled:cursor-default"
+                    aria-expanded={referral ? isOpen : undefined}
+                  >
+                    {referral
+                      ? <ChevronRight className={`h-3.5 w-3.5 mt-0.5 text-primary shrink-0 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                      : <User className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-foreground truncate">{full}</p>
+                      {c.job_title && <p className="text-[11px] text-muted-foreground truncate">{c.job_title}</p>}
+                      {c.email && <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1"><Mail className="h-3 w-3" />{c.email}</p>}
+                      {referral && <p className="text-[11px] text-primary mt-0.5">Also in the Referral Source Pipeline · {deals.length} deal{deals.length === 1 ? '' : 's'} referred</p>}
+                    </div>
+                    {referral && <Badge variant="outline" className="text-[10px] border-primary/50 text-primary shrink-0">Referral source</Badge>}
+                  </button>
+                  {referral && isOpen && (
+                    <div className="mt-2 ml-5 space-y-1">
+                      {deals.length === 0 && <p className="text-[11px] text-muted-foreground">No referred deals on record.</p>}
+                      {deals.map(d => (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => navigate(`/deals/${d.id}`)}
+                          className="flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left hover:bg-muted/40"
+                        >
+                          <span className="min-w-0">
+                            <span className="block text-xs text-foreground truncate">{d.company}</span>
+                            <span className="block text-[10px] text-muted-foreground truncate">{d.pipelineName} · {d.stage}</span>
+                          </span>
+                          <span className="font-mono text-[11px] tabular-nums text-muted-foreground shrink-0">{d.value ? formatUSDFromDollars(d.value) : '—'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
