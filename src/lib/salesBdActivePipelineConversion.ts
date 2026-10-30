@@ -69,27 +69,47 @@ export function useActivePipelineIds() {
  *
  * Independent of the shared header date range by design.
  */
+/**
+ * Anchor for rolling TTM: end of the selected header timeframe (YYYY-MM-DD,
+ * end of day), capped at `now` so an in-progress period never looks ahead.
+ */
+export function ttmAnchorFromTimeframeEnd(end?: string | null, now = new Date()): Date {
+  if (!end) return now;
+  const d = new Date(`${end}T23:59:59.999`);
+  if (Number.isNaN(d.getTime())) return now;
+  return d.getTime() > now.getTime() ? now : d;
+}
+
+/** 12-month window ending at `anchor`. */
+export function ttmWindow(anchor: Date): { since: Date; until: Date } {
+  const since = new Date(anchor);
+  since.setMonth(since.getMonth() - 12);
+  return { since, until: anchor };
+}
+
 export function useTtmActivePipelineConversion(opts: {
   /** 'referral' → sourced_via ILIKE 'referral%';
    *  'partner'  → referred_by matches one of `partnerNames` (case-insensitive). */
   kind: 'referral' | 'partner';
   partnerNames?: string[];
   enabled?: boolean;
+  /** Rolling TTM ends here (defaults to now). */
+  asOf?: Date;
 }) {
   const { company } = useCompany();
   const { data: activePipelineIds = [] } = useActivePipelineIds();
 
-  const since = useMemo(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 12);
-    return d.toISOString();
-  }, []);
+  const asOfMs = opts.asOf?.getTime();
+  const { since, until } = useMemo(() => {
+    const w = ttmWindow(asOfMs != null ? new Date(asOfMs) : new Date());
+    return { since: w.since.toISOString(), until: w.until.toISOString() };
+  }, [asOfMs]);
 
   const enabled =
     (opts.enabled ?? true) && !!company?.id && activePipelineIds.length > 0;
 
   const { data: deals = [] } = useQuery({
-    queryKey: ['ttm_active_pipeline_deals', company?.id, activePipelineIds, since],
+    queryKey: ['ttm_active_pipeline_deals', company?.id, activePipelineIds, since, until],
     enabled,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -97,7 +117,8 @@ export function useTtmActivePipelineConversion(opts: {
         .select('id, stage, sourced_via, referred_by, created_at')
         .eq('company_id', company!.id)
         .in('pipeline_id', activePipelineIds)
-        .gte('created_at', since);
+        .gte('created_at', since)
+        .lte('created_at', until);
       if (error) throw error;
       return (data || []) as ActiveTtmDeal[];
     },

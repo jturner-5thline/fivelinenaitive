@@ -13,7 +13,8 @@ import { format } from 'date-fns';
 import { liquidGlassCard, liquidGlassKPI, liquidGlassSectionTitle } from '@/components/metrics/liquidGlass';
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useTtmActivePipelineConversion } from '@/lib/salesBdActivePipelineConversion';
+import { useTtmActivePipelineConversion, ttmAnchorFromTimeframeEnd } from '@/lib/salesBdActivePipelineConversion';
+import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 import { useDealFirstActivityDates, filterByEffectiveDate } from '@/hooks/useDealFirstActivityDates';
 
@@ -220,9 +221,11 @@ export function ReferralSourceDeals({
   const totalValue = onBoardDeals.reduce((sum, d) => sum + (d.value || 0), 0);
 
 
-  // Conversion Rate is TTM (trailing 12 months) and INDEPENDENT of the header
-  // date filter — see useTtmActivePipelineConversion for the exact formula.
-  const ttm = useTtmActivePipelineConversion({ kind: 'referral' });
+  // Conversion Rate is rolling TTM anchored to the END of the header timeframe
+  // (capped at today) — see useTtmActivePipelineConversion for the formula.
+  const headerTf = useInsightsTimeframeOptional()?.timeframe;
+  const ttmAsOf = useMemo(() => ttmAnchorFromTimeframeEnd(headerTf?.end), [headerTf?.end]);
+  const ttm = useTtmActivePipelineConversion({ kind: 'referral', asOf: ttmAsOf });
   const conversionRateLabel = ttm.label;
 
   // Aggregate referral sources totals (unfiltered) to display alongside the
@@ -410,7 +413,7 @@ export function ReferralSourceDeals({
               </div>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
-              Trailing-12-month conversion rate: deals added to active pipeline sourced via Referral that reached the Final Credit Items stage, divided by all deals added to active pipeline sourced via Referral in the trailing 12 months. Independent of the header date filter.
+              Trailing-12-month conversion rate: deals added to active pipeline sourced via Referral that reached the Final Credit Items stage, divided by all deals added to active pipeline sourced via Referral in the 12 months ending at the close of the selected header timeframe.
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>}
