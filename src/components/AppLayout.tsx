@@ -76,7 +76,7 @@ function MainContent({
         // the logo height centers the circle over the floating sidebar rail
         // (rail: left 6px, width icon + 1rem + 2px). On mobile the rail is hidden.
         <div
-          className="workspace-logo fixed left-[12px] top-[11px] z-40 pointer-events-none md:left-[calc(6px+(var(--sidebar-width-icon,3rem)+1rem+2px)/2-19px)]"
+          className="workspace-logo fixed left-[12px] top-[11px] z-40 pointer-events-none md:left-[calc(6px+(var(--sidebar-width-icon,3rem)+1rem+2px)/2-20px)]"
           aria-hidden="true"
         >
           <Logo className="h-[38px]" />
