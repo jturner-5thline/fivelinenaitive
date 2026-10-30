@@ -342,7 +342,8 @@ serve(async (req) => {
       payload.actorUserId = __auth.user.id;
       const dealId = payload.context?.deal_id;
       if (dealId && !(await canAccessDeal(req, String(dealId)))) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
-      if (!dealId) { return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      // No deal to authorize against (e.g. unlinked email signals): skip quietly rather than erroring.
+      if (!dealId) { return new Response(JSON.stringify({ success: true, skipped: true, reason: "no_deal_context" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
     }
     const { triggerKey, actorUserId, context } = payload;
 
