@@ -76,10 +76,8 @@ function SalesBdDashboardInner() {
               kpiGridClassName="grid grid-cols-1 gap-3 h-full"
             />
           }
+          conversionSlot={<ReferralConversionWidget />}
         />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <ReferralConversionWidget />
-        </div>
         {/* Referral Insights (Activity / Needs Attention) hidden — see mem://features/sales-bd/partner-insights-tabs-hidden */}
 
         {(() => {

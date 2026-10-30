@@ -138,7 +138,7 @@ export function ReferralConversionWidget() {
   const convertedCount = drillRows.filter((r) => r.converted).length;
 
   return (
-    <section className="rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0">
+    <section className="h-full rounded-lg border border-border bg-card/60 p-4 flex flex-col gap-3 min-w-0">
       <div className="flex items-center justify-between">
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">Conversion</p>
         <div className="flex items-center gap-3">
