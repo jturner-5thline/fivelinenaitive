@@ -14,11 +14,11 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import { findCompanyDuplicates, type DupMatchMode, type CompanyDupGroup } from '@/lib/crmCompanyDuplicates';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
-const FIELDS = 'id,name,domain,additional_domains,industry,company_type,owner_user_id,phone,linkedin_url,description,hq_city,hq_state,hq_country,lifecycle_stage,status,created_at';
-// Fields filled on the kept record from merged records when the kept record is blank.
 const FILL_FIELDS = ['domain', 'industry', 'owner_user_id', 'phone', 'linkedin_url', 'description', 'hq_city', 'hq_state', 'hq_country'] as const;
+type DupMatchMode = 'any' | 'name' | 'domain';
+interface CompanyDupGroup { id: string; memberIds: string[]; reasons: string[] }
 
 type Row = Record<string, any> & { id: string; name: string };
 
@@ -39,36 +39,49 @@ export function CompanyDuplicatesDialog({ open, onOpenChange, selectedIds }: Pro
   const [confirm, setConfirm] = useState<CompanyDupGroup | null>(null);
   const [merging, setMerging] = useState(false);
 
-  const { data: rows = [], isLoading } = useQuery({
-    queryKey: ['crm-companies-dup-scan', company?.id],
-    enabled: open && !!company?.id,
+  const debouncedFilter = useDebouncedValue(filter, 350);
+
+  const { data: scan = [], isLoading } = useQuery({
+    queryKey: ['crm-companies-dup-scan', company?.id, mode, debouncedFilter],
+    enabled: open && !!company?.id && !selectedIds?.length,
     staleTime: 0,
     queryFn: async () => {
-      const all: Row[] = [];
-      for (let from = 0; ; from += 1000) {
-        const { data, error } = await supabase.from('crm_companies').select(FIELDS)
-          .eq('org_company_id', company!.id).order('created_at').range(from, from + 999);
-        if (error) throw error;
-        all.push(...((data ?? []) as unknown as Row[]));
-        if (!data || data.length < 1000) break;
-      }
-      return all;
+      const { data, error } = await supabase.rpc('find_crm_company_duplicates' as any, {
+        p_org: company!.id, p_mode: mode, p_search: debouncedFilter.trim() || null, p_limit: 300,
+      });
+      if (error) throw error;
+      return (data ?? []) as Row[];
     },
   });
 
+  const { data: selectedRows = [], isLoading: selLoading } = useQuery({
+    queryKey: ['crm-companies-dup-selected', selectedIds],
+    enabled: open && !!selectedIds?.length,
+    staleTime: 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('crm_companies')
+        .select('id,name,domain,industry,hq_city,hq_state,created_at').in('id', selectedIds!);
+      if (error) throw error;
+      return (data ?? []) as Row[];
+    },
+  });
+
+  const rows = selectedIds?.length ? selectedRows : scan;
   const byId = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
-  const groups = useMemo(() => {
+  const groups = useMemo<CompanyDupGroup[]>(() => {
     if (selectedIds?.length) {
       const ids = selectedIds.filter((id) => byId.has(id));
-      return ids.length > 1 ? [{ id: 'selected', memberIds: ids, reasons: [] } as CompanyDupGroup] : [];
+      return ids.length > 1 ? [{ id: 'selected', memberIds: ids, reasons: [] }] : [];
     }
-    const q = filter.trim().toLowerCase();
-    return findCompanyDuplicates(rows, mode).filter((g) =>
-      !q || g.memberIds.some((id) => {
-        const r = byId.get(id);
-        return r?.name?.toLowerCase().includes(q) || r?.domain?.toLowerCase().includes(q);
-      }));
-  }, [rows, mode, filter, selectedIds, byId]);
+    const m = new Map<string, CompanyDupGroup>();
+    for (const r of scan) {
+      const g = m.get(r.group_key) ?? { id: r.group_key, memberIds: [], reasons: [r.reason] };
+      if (!g.memberIds.includes(r.id)) g.memberIds.push(r.id);
+      m.set(r.group_key, g);
+    }
+    return [...m.values()];
+  }, [scan, selectedIds, byId]);
+  const loading = selectedIds?.length ? selLoading : isLoading;
 
   const primaryOf = (g: CompanyDupGroup) => primary[g.id] ?? g.memberIds[0];
   const mergeIdsOf = (g: CompanyDupGroup) =>
@@ -86,11 +99,15 @@ export function CompanyDuplicatesDialog({ open, onOpenChange, selectedIds }: Pro
     if (!mergeIds.length) return;
     setMerging(true);
     try {
-      const keep = byId.get(keepId)!;
+      const { data: full, error: fErr } = await supabase.from('crm_companies')
+        .select(['id', 'name', ...FILL_FIELDS].join(',')).in('id', [keepId, ...mergeIds]);
+      if (fErr) throw fErr;
+      const fullById = new Map(((full ?? []) as unknown as Row[]).map((r) => [r.id, r]));
+      const keep = fullById.get(keepId) ?? byId.get(keepId)!;
       const fill: Record<string, any> = {};
       for (const f of FILL_FIELDS) {
         if (keep[f] == null || keep[f] === '') {
-          const src = mergeIds.map((id) => byId.get(id)?.[f]).find((v) => v != null && v !== '');
+          const src = mergeIds.map((id) => fullById.get(id)?.[f]).find((v) => v != null && v !== '');
           if (src != null) fill[f] = src;
         }
       }
@@ -101,7 +118,7 @@ export function CompanyDuplicatesDialog({ open, onOpenChange, selectedIds }: Pro
       const { error } = await supabase.rpc('merge_crm_companies' as any, { p_primary_id: keepId, p_duplicate_ids: mergeIds });
       if (error) throw error;
       toast.success(`Merged ${mergeIds.length} compan${mergeIds.length === 1 ? 'y' : 'ies'} into ${keep.name}`);
-      ['crm-companies', 'crm-companies-infinite', 'crm-companies-dup-scan', 'contacts', 'crm-company'].forEach((k) =>
+      ['crm-companies', 'crm-companies-infinite', 'crm-companies-dup-scan', 'crm-companies-dup-selected', 'contacts', 'crm-company'].forEach((k) =>
         qc.invalidateQueries({ queryKey: [k] }));
       if (selectedIds?.length) onOpenChange(false);
     } catch (e: any) {
@@ -136,12 +153,12 @@ export function CompanyDuplicatesDialog({ open, onOpenChange, selectedIds }: Pro
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter groups…" className="pl-8 h-9" />
               </div>
-              <span className="text-xs text-muted-foreground">{groups.length} group{groups.length === 1 ? '' : 's'}</span>
+              <span className="text-xs text-muted-foreground">{groups.length}{groups.length >= 300 ? '+' : ''} group{groups.length === 1 ? '' : 's'}</span>
             </div>
           )}
 
           <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
-            {isLoading ? (
+            {loading ? (
               <div className="flex items-center justify-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mr-2" />Scanning companies…</div>
             ) : groups.length === 0 ? (
               <p className="py-12 text-center text-sm text-muted-foreground">No duplicates found.</p>
@@ -149,7 +166,7 @@ export function CompanyDuplicatesDialog({ open, onOpenChange, selectedIds }: Pro
               <div key={g.id} className="rounded-lg border border-border p-3">
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex gap-1">
-                    {g.reasons.map((r) => <Badge key={r} variant="secondary" className="text-[10px]">Same {r}</Badge>)}
+                    {g.reasons.map((r) => <Badge key={r} variant="secondary" className="text-[10px]">Same {r}: {g.id.split(':').slice(1).join(':')}</Badge>)}
                   </div>
                   <Button size="sm" disabled={merging || mergeIdsOf(g).length === 0} onClick={() => setConfirm(g)} className="gap-1.5">
                     <Merge className="h-3.5 w-3.5" /> Merge {mergeIdsOf(g).length + 1}
