@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { createPortal } from 'react-dom';
-import { Plus, Upload, Building2, Loader2, RefreshCw, Download, Search, X, ChevronDown, FileDown } from 'lucide-react';
+import { Plus, Upload, Building2, Loader2, RefreshCw, Download, Search, X, ChevronDown, FileDown, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCrmCompaniesInfinite } from '@/hooks/useCrmCompanies';
 import { CrmCompaniesTable } from '@/components/crm-companies/CrmCompaniesTable';
 import { CreateCrmCompanyModal } from '@/components/crm-companies/CreateCrmCompanyModal';
+import { CompanyDuplicatesDialog } from '@/components/crm-companies/CompanyDuplicatesDialog';
 import { EntityCsvImportDialog, downloadEntityTemplate } from '@/components/shared/EntityCsvImportDialog';
 import { companyImportConfig } from '@/lib/entityImportConfigs';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +29,8 @@ export default function CrmCompanies() {
   const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [dupOpen, setDupOpen] = useState(false);
+  const [mergeIds, setMergeIds] = useState<string[] | undefined>();
   const [quickFilter, setQuickFilter] = useState('all');
   const [isSyncing, setIsSyncing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -183,6 +186,7 @@ export default function CrmCompanies() {
             <>
               <div className="flex-1 min-h-0">
                 <CrmCompaniesTable
+                  onBulkAction={(action, ids) => { if (action === 'merge') { setMergeIds(ids); setDupOpen(true); } }}
                   title="Companies"
                   companies={companies}
                   onEndReached={handleEndReached}
@@ -216,6 +220,9 @@ export default function CrmCompanies() {
                           </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => handleExport('xlsx')} disabled={isExporting}>
                             <Download className="h-4 w-4 mr-2" /> Export Excel
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => { setMergeIds(undefined); setDupOpen(true); }}>
+                            <Copy className="h-4 w-4 mr-2" /> Find & merge duplicates
                           </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => setShowImport(true)}>
                             <Upload className="h-4 w-4 mr-2" /> Import
@@ -280,6 +287,7 @@ export default function CrmCompanies() {
         config={importConfig}
         onDone={() => queryClient.invalidateQueries({ predicate: q => String(q.queryKey[0]).startsWith('crm-compan') })}
       />
+      <CompanyDuplicatesDialog open={dupOpen} onOpenChange={setDupOpen} selectedIds={mergeIds} />
     </>
   );
 }
