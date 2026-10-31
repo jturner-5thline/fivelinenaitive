@@ -41,7 +41,7 @@ export function CompanyDuplicatesDialog({ open, onOpenChange, selectedIds }: Pro
 
   const debouncedFilter = useDebouncedValue(filter, 350);
 
-  const { data: scan = [], isLoading } = useQuery({
+  const { data: scan = [], isLoading, error: scanError } = useQuery({
     queryKey: ['crm-companies-dup-scan', company?.id, mode, debouncedFilter],
     enabled: open && !!company?.id && !selectedIds?.length,
     staleTime: 0,
@@ -160,6 +160,8 @@ export function CompanyDuplicatesDialog({ open, onOpenChange, selectedIds }: Pro
           <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
             {loading ? (
               <div className="flex items-center justify-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mr-2" />Scanning companies…</div>
+            ) : scanError && !selectedIds?.length ? (
+              <p className="py-12 text-center text-sm text-destructive">Couldn't scan for duplicates: {(scanError as Error).message}</p>
             ) : groups.length === 0 ? (
               <p className="py-12 text-center text-sm text-muted-foreground">No duplicates found.</p>
             ) : groups.map((g) => (
