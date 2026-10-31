@@ -1,8 +1,9 @@
 # Roadmap
 
 ## Channel partner activity history
-- [ ] Record pipeline additions and stage moves with tenant-isolated, read-only history; preserve existing partner data.
-- [ ] Show dated history in partner details and verify tests plus read-only preview interactions.
+- [x] Record pipeline additions and stage moves with tenant-isolated, read-only history; backfilled eight known addition dates without changing partners or inventing prior moves.
+- [x] Show dated history in partner details. Six Vitest tests, nine isolated PostgreSQL assertions, targeted lint and automatic build passed; signed-in preview opening/reopening checked at 1280px/1194px and pop-up layout at 390px, with no page errors.
+- [ ] Verify a live drag/drop produces persisted history — requires approved test-record writes or an isolated hosted environment; production partner stages were not changed during testing.
 
 ## Funding Sources spreadsheet design
 - [x] Match Companies/Contacts table primitives, headers, rows, selection, links and shared surface styles without changing records.
