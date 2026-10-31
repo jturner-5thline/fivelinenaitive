@@ -10,12 +10,13 @@ import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ChannelPartnerActivityHistory } from './ChannelPartnerActivityHistory';
 
 type Contact = { id: string; full_name: string | null; first_name: string | null; last_name: string | null; email: string | null; job_title: string | null };
 
 const norm = (s: string | null | undefined) => (s || '').trim().toLowerCase();
 
-export function ChannelPartnerDetailDialog({ crmCompanyId, name, onOpenChange }: { crmCompanyId: string | null; name: string; onOpenChange: (o: boolean) => void }) {
+export function ChannelPartnerDetailDialog({ partnerId, crmCompanyId, name, onOpenChange }: { partnerId: string | null; crmCompanyId: string | null; name: string; onOpenChange: (o: boolean) => void }) {
   const { company } = useCompany();
   const navigate = useNavigate();
   const open = !!crmCompanyId;
@@ -89,7 +90,7 @@ export function ChannelPartnerDetailDialog({ crmCompanyId, name, onOpenChange }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{info?.name || name}</DialogTitle>
           <DialogDescription>{info?.domain || 'Channel partner'}</DialogDescription>
@@ -156,6 +157,8 @@ export function ChannelPartnerDetailDialog({ crmCompanyId, name, onOpenChange }:
             })}
           </div>
         </section>
+
+        <ChannelPartnerActivityHistory partnerId={partnerId} />
 
         <Button variant="outline" size="sm" className="gap-1.5 self-start" onClick={() => navigate(`/crm-companies/${crmCompanyId}`)}>
           <ExternalLink className="h-3.5 w-3.5" /> Open company

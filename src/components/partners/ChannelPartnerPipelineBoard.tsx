@@ -230,6 +230,8 @@ export function ChannelPartnerPipelineBoard({ search = '', searchSlot, toggleSlo
     if (error) {
       queryClient.setQueryData(queryKey, prev);
       toast.error('Could not move channel partner');
+    } else {
+      queryClient.invalidateQueries({ queryKey: ['channel_partner_history', company?.id, id] });
     }
   };
 
@@ -290,7 +292,7 @@ export function ChannelPartnerPipelineBoard({ search = '', searchSlot, toggleSlo
       </TooltipProvider>
       <p className="text-[10px] text-muted-foreground">{total} channel partner{total === 1 ? '' : 's'}</p>
       <AddChannelPartnerDialog open={addOpen} onOpenChange={setAddOpen} existing={existing} />
-      <ChannelPartnerDetailDialog crmCompanyId={detail?.crm_company_id ?? null} name={detail?.name ?? ''} onOpenChange={o => { if (!o) setDetail(null); }} />
+      <ChannelPartnerDetailDialog partnerId={detail?.id ?? null} crmCompanyId={detail?.crm_company_id ?? null} name={detail?.name ?? ''} onOpenChange={o => { if (!o) setDetail(null); }} />
     </div>
   );
 }

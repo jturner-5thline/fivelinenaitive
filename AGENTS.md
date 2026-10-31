@@ -19,3 +19,4 @@
 
 - Funding Sources spreadsheet uses TableVirtuoso with shared CRM table primitives and surface classes, with a single scroll owner and stable row components; why: match Companies/Contacts styling without scroll jumps or changing directory data.
 - Channel Partners are a separate pipeline (`channel_partners` table, each row linked to a CRM company) shown in their own Sales & BD widget, not derived from referral sources; why: the user adds partners manually from Companies and wants them kept apart from referral-source tiers.
+- Channel partner additions and stage changes are recorded transactionally by a database trigger in tenant-scoped, browser-read-only history; why: every write path must produce accurate history without allowing clients to forge events or invent past transitions.
