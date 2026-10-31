@@ -52,6 +52,7 @@ import { useContactFieldConfig } from '@/hooks/useContactFieldConfig';
 import { useRealtimeInvalidate } from '@/hooks/useRealtimeInvalidate';
 import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
 import { CompanyDomainMatchPrompt } from '@/components/contacts/CompanyDomainMatchPrompt';
+import { CompanyComboBox } from '@/components/contacts/CompanyComboBox';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { extractEmailDomain, normalizeDomain } from '@/lib/extractEmailDomain';
 import { cn } from '@/lib/utils';
@@ -342,21 +343,29 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   <EditableField label="Job Title" type="text" value={contact.job_title} onSave={(v) => handleQuickUpdate('job_title', v)} />
                 )}
 
-                {/* Company link (read-only display; managed via Related Records) */}
-                <div>
-                  <p className="text-[10px] text-foreground/80 uppercase font-semibold tracking-wide mb-1">Company</p>
-                  {crmCompany ? (
-                    <button
-                      onClick={() => navigate(`/crm-companies/${crmCompany.id}`)}
-                      className="text-sm text-primary hover:underline truncate text-left w-full"
-                    >
-                      {crmCompany.name}
-                    </button>
-                  ) : (
-                    <button onClick={() => { setNeedCompanies(true); setShowLinkCompany(true); }} className="text-xs text-muted-foreground hover:text-primary">
-                      Link a company
-                    </button>
-                  )}
+                {/* Company — inline searchable picker (server-side search, create, clear) */}
+                <div className="min-w-0">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <p className="text-[10px] text-foreground/80 uppercase font-semibold tracking-wide">Company</p>
+                    {crmCompany && (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/crm-companies/${crmCompany.id}`)}
+                        className="text-[10px] text-primary hover:underline"
+                      >
+                        Open
+                      </button>
+                    )}
+                  </div>
+                  <CompanyComboBox
+                    value={crmCompanyId || ''}
+                    email={contact.email || undefined}
+                    onChange={(id) => {
+                      if (id === (crmCompanyId || '')) return;
+                      if (id) linkToCompany.mutate({ contactId: contact.id, companyId: id });
+                      else if (crmCompanyId) unlinkFromCompany.mutate({ contactId: contact.id, companyId: crmCompanyId });
+                    }}
+                  />
                 </div>
 
                 <div>
