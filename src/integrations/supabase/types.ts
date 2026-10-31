@@ -3319,6 +3319,54 @@ export type Database = {
           },
         ]
       }
+      channel_partner_history: {
+        Row: {
+          actor_user_id: string | null
+          channel_partner_id: string
+          company_id: string
+          event_type: string
+          from_stage: string | null
+          id: string
+          occurred_at: string
+          to_stage: string | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          channel_partner_id: string
+          company_id: string
+          event_type: string
+          from_stage?: string | null
+          id?: string
+          occurred_at?: string
+          to_stage?: string | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          channel_partner_id?: string
+          company_id?: string
+          event_type?: string
+          from_stage?: string | null
+          id?: string
+          occurred_at?: string
+          to_stage?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_partner_history_channel_partner_id_fkey"
+            columns: ["channel_partner_id"]
+            isOneToOne: false
+            referencedRelation: "channel_partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_partner_history_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_partners: {
         Row: {
           company_id: string
