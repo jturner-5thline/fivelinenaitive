@@ -3367,6 +3367,41 @@ export type Database = {
           },
         ]
       }
+      channel_partner_status_notes: {
+        Row: {
+          channel_partner_id: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string
+        }
+        Insert: {
+          channel_partner_id: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note: string
+        }
+        Update: {
+          channel_partner_id?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_partner_status_notes_channel_partner_id_fkey"
+            columns: ["channel_partner_id"]
+            isOneToOne: false
+            referencedRelation: "channel_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_partners: {
         Row: {
           company_id: string
