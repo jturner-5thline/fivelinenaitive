@@ -337,6 +337,13 @@
       "when": 1793454123267,
       "tag": "0047_merge_crm_companies",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1793454461423,
+      "tag": "0048_find_crm_company_duplicates",
+      "breakpoints": true
     }
   ]
 }

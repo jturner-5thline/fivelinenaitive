@@ -30330,6 +30330,8 @@ export type Database = {
         }
         Returns: string
       }
+      crm_norm_company_name: { Args: { p: string }; Returns: string }
+      crm_norm_domain: { Args: { p: string }; Returns: string }
       deal_fiscal_bucket: {
         Args: { ts: string }
         Returns: {
@@ -30359,6 +30361,20 @@ export type Database = {
           member_count: number
           name: string
           primary_domain: string
+        }[]
+      }
+      find_crm_company_duplicates: {
+        Args: { p_limit?: number; p_mode?: string; p_search?: string }
+        Returns: {
+          created_at: string
+          domain: string
+          group_key: string
+          hq_city: string
+          hq_state: string
+          id: string
+          industry: string
+          name: string
+          reason: string
         }[]
       }
       find_entity: {
