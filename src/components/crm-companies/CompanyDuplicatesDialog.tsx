@@ -201,6 +201,15 @@ export function CompanyDuplicatesDialog({ open, onOpenChange, selectedIds }: Pro
             </div>
           )}
 
+          {mergeableGroups.length > 1 && (
+            <div className="flex items-center justify-end">
+              <Button size="sm" variant="secondary" disabled={merging} onClick={() => setConfirmAll(true)} className="gap-1.5">
+                {progress ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Merge className="h-3.5 w-3.5" />}
+                {progress ? `Merging ${progress.done + 1} of ${progress.total}…` : `Merge all (${mergeableGroups.length} groups)`}
+              </Button>
+            </div>
+          )}
+
           <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
             {loading ? (
               <div className="flex items-center justify-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mr-2" />Scanning companies…</div>
@@ -262,6 +271,24 @@ export function CompanyDuplicatesDialog({ open, onOpenChange, selectedIds }: Pro
             <AlertDialogCancel disabled={merging}>Cancel</AlertDialogCancel>
             <AlertDialogAction disabled={merging} onClick={(e) => { e.preventDefault(); if (confirm) void runMerge(confirm); }}>
               {merging && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}Merge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmAll} onOpenChange={(o) => !o && !merging && setConfirmAll(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Merge all duplicate groups?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`${mergeAllCount} record(s) across ${mergeableGroups.length} groups will be merged into the record marked "Keep" in each group, then removed. Records marked "Not a duplicate" are skipped. This can't be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={merging}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={merging} onClick={(e) => { e.preventDefault(); void runMergeAll(); }}>
+              {merging && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+              {progress ? `Merging ${progress.done + 1} of ${progress.total}…` : 'Merge all'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
