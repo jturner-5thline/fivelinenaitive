@@ -30819,10 +30819,12 @@ export type Database = {
           udt_name: string
         }[]
       }
-      merge_crm_companies: {
-        Args: { p_source: string; p_target: string }
-        Returns: undefined
-      }
+      merge_crm_companies:
+        | {
+            Args: { p_duplicate_ids: string[]; p_primary_id: string }
+            Returns: Json
+          }
+        | { Args: { p_source: string; p_target: string }; Returns: undefined }
       merge_master_lenders: {
         Args: { _keep_id: string; _merge_ids: string[] }
         Returns: undefined

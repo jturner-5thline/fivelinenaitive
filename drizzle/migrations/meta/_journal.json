@@ -330,6 +330,13 @@
       "when": 1793452743636,
       "tag": "0046_channel_partner_status_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1793454123267,
+      "tag": "0047_merge_crm_companies",
+      "breakpoints": true
     }
   ]
 }
