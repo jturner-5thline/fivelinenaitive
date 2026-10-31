@@ -351,6 +351,13 @@
       "when": 1793454495653,
       "tag": "0049_find_crm_company_duplicates_org",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1793454617076,
+      "tag": "0050_crm_companies_dedupe_keys",
+      "breakpoints": true
     }
   ]
 }

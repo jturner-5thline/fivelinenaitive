@@ -8100,6 +8100,8 @@ export type Database = {
           created_by: string | null
           custom_fields: Json | null
           customer_tier: string | null
+          dedupe_domain: string | null
+          dedupe_name: string | null
           description: string | null
           domain: string | null
           domain_normalized: string | null
@@ -8160,6 +8162,8 @@ export type Database = {
           created_by?: string | null
           custom_fields?: Json | null
           customer_tier?: string | null
+          dedupe_domain?: string | null
+          dedupe_name?: string | null
           description?: string | null
           domain?: string | null
           domain_normalized?: string | null
@@ -8220,6 +8224,8 @@ export type Database = {
           created_by?: string | null
           custom_fields?: Json | null
           customer_tier?: string | null
+          dedupe_domain?: string | null
+          dedupe_name?: string | null
           description?: string | null
           domain?: string | null
           domain_normalized?: string | null
