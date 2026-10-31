@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChannelPartnerActivityHistory } from './ChannelPartnerActivityHistory';
+import { ChannelPartnerStatusNotes } from './ChannelPartnerStatusNotes';
 
 type Contact = { id: string; full_name: string | null; first_name: string | null; last_name: string | null; email: string | null; job_title: string | null };
 
@@ -95,6 +96,8 @@ export function ChannelPartnerDetailDialog({ partnerId, crmCompanyId, name, onOp
           <DialogTitle>{info?.name || name}</DialogTitle>
           <DialogDescription>{info?.domain || 'Channel partner'}</DialogDescription>
         </DialogHeader>
+
+        <ChannelPartnerStatusNotes partnerId={partnerId} />
 
         <section className="space-y-1">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</h4>
