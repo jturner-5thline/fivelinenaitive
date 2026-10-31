@@ -451,6 +451,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot, 
               <Button variant="outline" size="sm" className="h-9 shrink-0">Bulk ({selectedIds.size}) <ChevronDown className="ml-1 h-3 w-3" /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
+              {selectedIds.size > 1 && <DropdownMenuItem onClick={() => onBulkAction?.('merge', Array.from(selectedIds))}>Merge Selected</DropdownMenuItem>}
               <DropdownMenuItem onClick={() => setBulkAssignOpen(true)}>Assign Owner</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onBulkAction?.('update_status', Array.from(selectedIds))}>Update Status</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onBulkAction?.('update_lifecycle', Array.from(selectedIds))}>Update Lifecycle</DropdownMenuItem>

@@ -8100,6 +8100,8 @@ export type Database = {
           created_by: string | null
           custom_fields: Json | null
           customer_tier: string | null
+          dedupe_domain: string | null
+          dedupe_name: string | null
           description: string | null
           domain: string | null
           domain_normalized: string | null
@@ -8160,6 +8162,8 @@ export type Database = {
           created_by?: string | null
           custom_fields?: Json | null
           customer_tier?: string | null
+          dedupe_domain?: string | null
+          dedupe_name?: string | null
           description?: string | null
           domain?: string | null
           domain_normalized?: string | null
@@ -8220,6 +8224,8 @@ export type Database = {
           created_by?: string | null
           custom_fields?: Json | null
           customer_tier?: string | null
+          dedupe_domain?: string | null
+          dedupe_name?: string | null
           description?: string | null
           domain?: string | null
           domain_normalized?: string | null
@@ -30330,6 +30336,8 @@ export type Database = {
         }
         Returns: string
       }
+      crm_norm_company_name: { Args: { p: string }; Returns: string }
+      crm_norm_domain: { Args: { p: string }; Returns: string }
       deal_fiscal_bucket: {
         Args: { ts: string }
         Returns: {
@@ -30359,6 +30367,25 @@ export type Database = {
           member_count: number
           name: string
           primary_domain: string
+        }[]
+      }
+      find_crm_company_duplicates: {
+        Args: {
+          p_limit?: number
+          p_mode?: string
+          p_org: string
+          p_search?: string
+        }
+        Returns: {
+          created_at: string
+          domain: string
+          group_key: string
+          hq_city: string
+          hq_state: string
+          id: string
+          industry: string
+          name: string
+          reason: string
         }[]
       }
       find_entity: {
@@ -30819,10 +30846,12 @@ export type Database = {
           udt_name: string
         }[]
       }
-      merge_crm_companies: {
-        Args: { p_source: string; p_target: string }
-        Returns: undefined
-      }
+      merge_crm_companies:
+        | {
+            Args: { p_duplicate_ids: string[]; p_primary_id: string }
+            Returns: Json
+          }
+        | { Args: { p_source: string; p_target: string }; Returns: undefined }
       merge_master_lenders: {
         Args: { _keep_id: string; _merge_ids: string[] }
         Returns: undefined
