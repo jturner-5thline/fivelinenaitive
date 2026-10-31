@@ -30364,7 +30364,12 @@ export type Database = {
         }[]
       }
       find_crm_company_duplicates: {
-        Args: { p_limit?: number; p_mode?: string; p_search?: string }
+        Args: {
+          p_limit?: number
+          p_mode?: string
+          p_org: string
+          p_search?: string
+        }
         Returns: {
           created_at: string
           domain: string
