@@ -359,7 +359,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   </div>
                   <CompanyComboBox
                     value={crmCompanyId || ''}
-                    email={contact.email || undefined}
+                    selectedName={crmCompany?.name}
                     onChange={(id) => {
                       if (id === (crmCompanyId || '')) return;
                       if (id) linkToCompany.mutate({ contactId: contact.id, companyId: id });

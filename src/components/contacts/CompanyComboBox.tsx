@@ -12,9 +12,11 @@ interface CompanyComboBoxProps {
   value: string; // crm_company_id
   onChange: (companyId: string) => void;
   email?: string;
+  /** Known name for the current value, used when it isn't in the loaded list. */
+  selectedName?: string | null;
 }
 
-export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps) {
+export function CompanyComboBox({ value, onChange, email, selectedName }: CompanyComboBoxProps) {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -37,7 +39,8 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
   const selectedCompany =
     companies.find(c => c.id === value) ||
     domainPool.find(c => c.id === value) ||
-    (justCreated && justCreated.id === value ? justCreated : undefined);
+    (justCreated && justCreated.id === value ? justCreated : undefined) ||
+    (value && selectedName ? { id: value, name: selectedName } : undefined);
 
 
   // Domain auto-matching from email
