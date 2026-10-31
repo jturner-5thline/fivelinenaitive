@@ -38,6 +38,8 @@ export function CompanyDuplicatesDialog({ open, onOpenChange, selectedIds }: Pro
   const [excluded, setExcluded] = useState<Record<string, Set<string>>>({});
   const [confirm, setConfirm] = useState<CompanyDupGroup | null>(null);
   const [merging, setMerging] = useState(false);
+  const [confirmAll, setConfirmAll] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   const debouncedFilter = useDebouncedValue(filter, 350);
 
@@ -93,33 +95,43 @@ export function CompanyDuplicatesDialog({ open, onOpenChange, selectedIds }: Pro
     return { ...p, [gid]: s };
   });
 
+  /** Fills blank primary fields from duplicates, then merges via RPC. Returns merged count. */
+  const mergeOne = async (keepId: string, mergeIds: string[]) => {
+    const { data: full, error: fErr } = await supabase.from('crm_companies')
+      .select(['id', 'name', ...FILL_FIELDS].join(',')).in('id', [keepId, ...mergeIds]);
+    if (fErr) throw fErr;
+    const fullById = new Map(((full ?? []) as unknown as Row[]).map((r) => [r.id, r]));
+    const keep = fullById.get(keepId) ?? byId.get(keepId)!;
+    const liveIds = mergeIds.filter((id) => fullById.has(id));
+    if (!fullById.has(keepId) || !liveIds.length) return { name: keep?.name, merged: 0 };
+    const fill: Record<string, any> = {};
+    for (const f of FILL_FIELDS) {
+      if (keep[f] == null || keep[f] === '') {
+        const src = liveIds.map((id) => fullById.get(id)?.[f]).find((v) => v != null && v !== '');
+        if (src != null) fill[f] = src;
+      }
+    }
+    if (Object.keys(fill).length) {
+      const { error } = await supabase.from('crm_companies').update(fill as any).eq('id', keepId);
+      if (error) throw error;
+    }
+    const { error } = await supabase.rpc('merge_crm_companies' as any, { p_primary_id: keepId, p_duplicate_ids: liveIds });
+    if (error) throw error;
+    return { name: keep.name, merged: liveIds.length };
+  };
+
+  const refresh = () =>
+    ['crm-companies', 'crm-companies-infinite', 'crm-companies-dup-scan', 'crm-companies-dup-selected', 'contacts', 'crm-company'].forEach((k) =>
+      qc.invalidateQueries({ queryKey: [k] }));
+
   const runMerge = async (g: CompanyDupGroup) => {
-    const keepId = primaryOf(g);
     const mergeIds = mergeIdsOf(g);
     if (!mergeIds.length) return;
     setMerging(true);
     try {
-      const { data: full, error: fErr } = await supabase.from('crm_companies')
-        .select(['id', 'name', ...FILL_FIELDS].join(',')).in('id', [keepId, ...mergeIds]);
-      if (fErr) throw fErr;
-      const fullById = new Map(((full ?? []) as unknown as Row[]).map((r) => [r.id, r]));
-      const keep = fullById.get(keepId) ?? byId.get(keepId)!;
-      const fill: Record<string, any> = {};
-      for (const f of FILL_FIELDS) {
-        if (keep[f] == null || keep[f] === '') {
-          const src = mergeIds.map((id) => fullById.get(id)?.[f]).find((v) => v != null && v !== '');
-          if (src != null) fill[f] = src;
-        }
-      }
-      if (Object.keys(fill).length) {
-        const { error } = await supabase.from('crm_companies').update(fill as any).eq('id', keepId);
-        if (error) throw error;
-      }
-      const { error } = await supabase.rpc('merge_crm_companies' as any, { p_primary_id: keepId, p_duplicate_ids: mergeIds });
-      if (error) throw error;
-      toast.success(`Merged ${mergeIds.length} compan${mergeIds.length === 1 ? 'y' : 'ies'} into ${keep.name}`);
-      ['crm-companies', 'crm-companies-infinite', 'crm-companies-dup-scan', 'crm-companies-dup-selected', 'contacts', 'crm-company'].forEach((k) =>
-        qc.invalidateQueries({ queryKey: [k] }));
+      const { name, merged } = await mergeOne(primaryOf(g), mergeIds);
+      toast.success(`Merged ${merged} compan${merged === 1 ? 'y' : 'ies'} into ${name}`);
+      refresh();
       if (selectedIds?.length) onOpenChange(false);
     } catch (e: any) {
       toast.error('Merge failed', { description: e.message });
@@ -127,6 +139,38 @@ export function CompanyDuplicatesDialog({ open, onOpenChange, selectedIds }: Pro
       setMerging(false);
       setConfirm(null);
     }
+  };
+
+  const mergeableGroups = groups.filter((g) => mergeIdsOf(g).length > 0);
+  const mergeAllCount = mergeableGroups.reduce((n, g) => n + mergeIdsOf(g).length, 0);
+
+  const runMergeAll = async () => {
+    setMerging(true);
+    // Groups can overlap (same name in one, same domain in another): follow removed IDs to their survivor.
+    const redirect = new Map<string, string>();
+    const resolve = (id: string) => { let x = id; while (redirect.has(x)) x = redirect.get(x)!; return x; };
+    let groupsDone = 0, total = 0, failed = 0;
+    for (const g of mergeableGroups) {
+      setProgress({ done: groupsDone, total: mergeableGroups.length });
+      const keepId = resolve(primaryOf(g));
+      const ids = [...new Set(mergeIdsOf(g).map(resolve))].filter((id) => id !== keepId);
+      try {
+        if (ids.length) {
+          const { merged } = await mergeOne(keepId, ids);
+          total += merged;
+          ids.forEach((id) => redirect.set(id, keepId));
+        }
+      } catch {
+        failed++;
+      }
+      groupsDone++;
+    }
+    setProgress(null);
+    setMerging(false);
+    setConfirmAll(false);
+    refresh();
+    if (failed) toast.error(`Merged ${total} companies; ${failed} group(s) failed`, { description: 'Review the remaining groups and try again.' });
+    else toast.success(`Merged ${total} duplicate compan${total === 1 ? 'y' : 'ies'} across ${groupsDone} group(s)`);
   };
 
   return (
@@ -154,6 +198,15 @@ export function CompanyDuplicatesDialog({ open, onOpenChange, selectedIds }: Pro
                 <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter groups…" className="pl-8 h-9" />
               </div>
               <span className="text-xs text-muted-foreground">{groups.length}{groups.length >= 300 ? '+' : ''} group{groups.length === 1 ? '' : 's'}</span>
+            </div>
+          )}
+
+          {mergeableGroups.length > 1 && (
+            <div className="flex items-center justify-end">
+              <Button size="sm" variant="secondary" disabled={merging} onClick={() => setConfirmAll(true)} className="gap-1.5">
+                {progress ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Merge className="h-3.5 w-3.5" />}
+                {progress ? `Merging ${progress.done + 1} of ${progress.total}…` : `Merge all (${mergeableGroups.length} groups)`}
+              </Button>
             </div>
           )}
 
@@ -218,6 +271,24 @@ export function CompanyDuplicatesDialog({ open, onOpenChange, selectedIds }: Pro
             <AlertDialogCancel disabled={merging}>Cancel</AlertDialogCancel>
             <AlertDialogAction disabled={merging} onClick={(e) => { e.preventDefault(); if (confirm) void runMerge(confirm); }}>
               {merging && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}Merge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmAll} onOpenChange={(o) => !o && !merging && setConfirmAll(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Merge all duplicate groups?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`${mergeAllCount} record(s) across ${mergeableGroups.length} groups will be merged into the record marked "Keep" in each group, then removed. Records marked "Not a duplicate" are skipped. This can't be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={merging}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={merging} onClick={(e) => { e.preventDefault(); void runMergeAll(); }}>
+              {merging && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+              {progress ? `Merging ${progress.done + 1} of ${progress.total}…` : 'Merge all'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
