@@ -218,10 +218,10 @@ import { z as z2 } from "npm:zod@^3.23.0";
 // src/lib/mcp/insights.ts
 var EXCLUDED_EXACT = /* @__PURE__ */ new Set(["test-niki's store", "example deal"]);
 function isExcludedDealName(name) {
-  const n = (name ?? "").trim().toLowerCase();
-  if (!n) return false;
-  if (EXCLUDED_EXACT.has(n)) return true;
-  return n.startsWith("test ");
+  const n2 = (name ?? "").trim().toLowerCase();
+  if (!n2) return false;
+  if (EXCLUDED_EXACT.has(n2)) return true;
+  return n2.startsWith("test ");
 }
 function monthKey(iso2) {
   if (!iso2) return null;
@@ -3753,13 +3753,141 @@ var get_sales_calls_weekly_default = defineTool46({
   }
 });
 
+// src/lib/mcp/tools/get-deal-hours-fees.ts
+import { defineTool as defineTool47 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z48 } from "npm:zod@^3.23.0";
+
+// src/lib/mcp/dealHoursFees.ts
+var n = (v) => Number(v) || 0;
+function computeDealHoursFees(d) {
+  const total_fee = n(d.total_fee);
+  const retainer_fee = n(d.retainer_fee);
+  const milestone_fee = n(d.milestone_fee);
+  const closing_fee = Math.max(0, total_fee - retainer_fee - milestone_fee);
+  const pre = n(d.pre_signing_hours);
+  const post = n(d.post_signing_hours);
+  const total_hours = pre + post;
+  return {
+    retainer_fee,
+    milestone_fee,
+    success_fee_percent: n(d.success_fee_percent),
+    closing_fee,
+    total_fee,
+    pre_signing_hours: pre,
+    post_signing_hours: post,
+    total_hours,
+    revenue_per_hour: total_hours > 0 && total_fee > 0 ? total_fee / total_hours : null,
+    missing_fee_information: total_fee <= 0 && retainer_fee <= 0 && milestone_fee <= 0 && n(d.success_fee_percent) <= 0
+  };
+}
+function rollupHoursFees(rows) {
+  const s = (k) => rows.reduce((a, r) => a + (Number(r[k]) || 0), 0);
+  const total_fee = s("total_fee");
+  const total_hours = s("total_hours");
+  const pcts = rows.map((r) => r.success_fee_percent).filter((p) => p > 0);
+  return {
+    deal_count: rows.length,
+    retainer_fee: s("retainer_fee"),
+    milestone_fee: s("milestone_fee"),
+    closing_fee: s("closing_fee"),
+    total_fee,
+    avg_success_fee_percent: pcts.length ? pcts.reduce((a, b) => a + b, 0) / pcts.length : null,
+    pre_signing_hours: s("pre_signing_hours"),
+    post_signing_hours: s("post_signing_hours"),
+    total_hours,
+    revenue_per_hour: total_hours > 0 && total_fee > 0 ? total_fee / total_hours : null,
+    missing_fee_information_count: rows.filter((r) => r.missing_fee_information).length
+  };
+}
+
+// src/lib/mcp/tools/get-deal-hours-fees.ts
+var get_deal_hours_fees_default = defineTool47({
+  name: "get_deal_hours_fees",
+  title: "Get deal hours & fees",
+  description: "Hours & Fees for each deal (matches the deal page widget): retainer_fee, milestone_fee, success_fee_percent, closing_fee (total minus retainer and milestone, floored at 0), total_fee, pre/post-signing and total hours, revenue_per_hour, and missing_fee_information. Also returns rollups per pipeline and overall. Filter by deal_id, pipeline_id, stage or company query. Set include_weekly_hours=true for the weekly logged-hours entries (week, phase, hours) behind each deal's totals. Test deals are excluded.",
+  inputSchema: {
+    deal_id: z48.string().uuid().optional(),
+    pipeline_id: z48.string().uuid().optional(),
+    stage: z48.string().trim().max(100).optional().describe("Raw stage id."),
+    query: z48.string().trim().min(1).max(200).optional().describe("Substring match on deal/company name."),
+    only_missing_fees: z48.boolean().default(false),
+    include_weekly_hours: z48.boolean().default(false),
+    limit: z48.number().int().min(1).max(2e3).default(500).describe("Max deals listed (rollups always cover all matches).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ deal_id, pipeline_id, stage, query, only_missing_fees, include_weekly_hours, limit }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const select = "id, company, stage, status, pipeline_id, manager, value, total_fee, retainer_fee, milestone_fee, success_fee_percent, pre_signing_hours, post_signing_hours";
+    const rows = [];
+    for (let offset = 0; ; offset += 1e3) {
+      let q = sb.from("deals").select(select).order("created_at", { ascending: false }).range(offset, offset + 999);
+      if (deal_id) q = q.eq("id", deal_id);
+      if (pipeline_id) q = q.eq("pipeline_id", pipeline_id);
+      if (stage) q = q.eq("stage", stage);
+      if (query) q = q.ilike("company", `%${query}%`);
+      const { data, error } = await q;
+      if (error) return errorResult(error.message);
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < 1e3) break;
+    }
+    const labelled = await withStageLabels(sb, rows.filter((r) => deal_id || !isExcludedDealName(r.company)));
+    let deals = labelled.map((r) => ({
+      deal_id: r.id,
+      company: r.company,
+      stage_label: r.stage_label ?? r.stage,
+      status: r.status,
+      pipeline_id: r.pipeline_id,
+      pipeline_name: r.pipeline_name ?? null,
+      manager: r.manager,
+      deal_value: Number(r.value) || 0,
+      ...computeDealHoursFees(r)
+    }));
+    if (only_missing_fees) deals = deals.filter((d) => d.missing_fee_information);
+    const groups = /* @__PURE__ */ new Map();
+    for (const d of deals) {
+      const key = d.pipeline_id ?? "none";
+      const g = groups.get(key) ?? { name: d.pipeline_name, rows: [] };
+      g.rows.push(d);
+      groups.set(key, g);
+    }
+    let weekly;
+    if (include_weekly_hours && deals.length) {
+      weekly = {};
+      const ids = deals.slice(0, limit).map((d) => d.deal_id);
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data, error } = await sb.from("weekly_time_entries").select("deal_id, week_start_date, phase, hours").in("deal_id", ids.slice(i, i + 200)).order("week_start_date", { ascending: true });
+        if (error) return errorResult(error.message);
+        for (const e of data ?? []) {
+          (weekly[e.deal_id] ??= []).push({ week_start_date: e.week_start_date, phase: e.phase, hours: Number(e.hours) || 0 });
+        }
+      }
+    }
+    const payload = {
+      overall: rollupHoursFees(deals),
+      by_pipeline: [...groups.entries()].map(([key, g]) => ({
+        pipeline_id: key === "none" ? null : key,
+        pipeline_name: key === "none" ? "Unassigned" : g.name,
+        ...rollupHoursFees(g.rows)
+      })),
+      deal_count: deals.length,
+      returned: Math.min(deals.length, limit),
+      deals: deals.slice(0, limit).map((d) => ({ ...d, ...weekly ? { weekly_hours: weekly[d.deal_id] ?? [] } : {} })),
+      notes: "closing_fee = max(0, total_fee - retainer_fee - milestone_fee). revenue_per_hour = total_fee / (pre + post signing hours). Hours totals come from the deal's logged hours."
+    };
+    return textResult(payload, payload);
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "tgkksvazruzbghssnxde";
 var mcp_default = defineMcp({
   name: "naitive-api",
   title: "naitive API",
   version: "0.1.0",
-  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals \u2014 `list_deals` applies NO implicit pipeline/owner/stage filter and returns deals from every pipeline the caller can see, with `total_count`/`next_offset`/`has_more` for full pagination and a `pipeline_breakdown`; pair it with `list_pipelines` (all pipelines, their stages and deal counts) to confirm coverage across pipelines \u2014 `update_deal` to move stage or edit fields, `add_deal_status_note` to add or replace the status note on a deal (the Status Note box on the deal page), `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups (both searches are paginated and accept fields=* for every column), `get_contact` for one contact's complete record plus linked company, deals, logged activities, field-level change history, AI field suggestions, attachments and funding-source/partner links, `get_company` for one CRM company's complete record plus its contacts, deals, full activity history, attachments, team, contact-match history, parent/child companies, linked funding sources and tasks, `search_lenders` (paginated directory search, fields=* returns every master_lenders column), `get_lender` (one funding source's complete record plus contacts, notes, attachments, change history and linked deals), `update_lender` (partial write to master_lenders columns \u2014 criteria, deal size, industries, geographies, referral terms and the LEGACY single contact_name/contact_title/contact_phone columns \u2014 audited per field), `upsert_lender_contact` (add or update one entry in the SEPARATE multi-contact `lender_contacts` list, with automatic single-primary enforcement; not interchangeable with `update_lender`), `create_lender` (add a NEW funding source; rejects duplicate names \u2014 use `update_lender` for existing ones), `delete_lender_contact` (remove a duplicate/wrong lender_contacts row, confirm required), `add_lender_attachment`/`list_lender_attachments`/`delete_lender_attachment` (funding-source documents such as NDAs, one-pagers and referral agreements) and `add_lender_to_deal` for the funding-source directory, `list_deal_funding_sources` to read the lenders attached to a specific deal (matches the deal's Funding Sources tab), and \u2014 for deep deal context \u2014 `search_deal_notes`, `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal. Daily rundown tools (`get_daily_rundown`, `add_daily_rundown_item`, `update_daily_rundown_item`, `complete_daily_rundown_item`, `reorder_daily_rundown_items`) manage the personal dashboard rundown \u2014 access is restricted to jturner@5thline.co and enforced at the database (RLS) and edge-function layers. Insights analytics tools give full read access to everything on the Insights page: `list_insights_dashboards` enumerates dashboards, saved widget layouts, and custom formula metrics; `get_pipeline_metrics` returns deal-pipeline aggregates (value, fees, counts) broken down by stage, status, type, manager, owner, pipeline, and month for any timeframe; `get_funnel_velocity` returns stage conversion and time-in-stage analytics; `get_revenue_metrics` returns QuickBooks invoiced revenue by month/customer/entity plus P&L snapshots; `get_lender_metrics` returns funding-source funnel analytics; `get_metric_targets` returns Master Plan targets and manual inputs for plan-vs-actual comparisons; and `query_insights_dataset` is a read-only, fully paginated escape hatch over every underlying dataset (including deal write-ups, memos, checklists, attachments, financials and ownership). Use `describe_schema` first to discover exact column names and allowed enum values, then `list_deals` with fields=* to extract complete deal records in bulk across all pipelines. `list_referral_partners` (read-only) returns the contacts in the Referral Source pipeline (Nurturing, Tier 3, Tier 2, Tier 1) with name, email, title, company, stage, stage-entered date, last updated and owner, plus per-stage counts and a missing-email count \u2014 use it to build email lists. `get_sales_calls_weekly` returns the weekly Sales Calls count (Debt or FinServ) shown on the Sales Dashboard. All of them apply the same global test-deal exclusions and RLS scoping as the UI.",
+  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals \u2014 `list_deals` applies NO implicit pipeline/owner/stage filter and returns deals from every pipeline the caller can see, with `total_count`/`next_offset`/`has_more` for full pagination and a `pipeline_breakdown`; pair it with `list_pipelines` (all pipelines, their stages and deal counts) to confirm coverage across pipelines \u2014 `update_deal` to move stage or edit fields, `add_deal_status_note` to add or replace the status note on a deal (the Status Note box on the deal page), `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups (both searches are paginated and accept fields=* for every column), `get_contact` for one contact's complete record plus linked company, deals, logged activities, field-level change history, AI field suggestions, attachments and funding-source/partner links, `get_company` for one CRM company's complete record plus its contacts, deals, full activity history, attachments, team, contact-match history, parent/child companies, linked funding sources and tasks, `search_lenders` (paginated directory search, fields=* returns every master_lenders column), `get_lender` (one funding source's complete record plus contacts, notes, attachments, change history and linked deals), `update_lender` (partial write to master_lenders columns \u2014 criteria, deal size, industries, geographies, referral terms and the LEGACY single contact_name/contact_title/contact_phone columns \u2014 audited per field), `upsert_lender_contact` (add or update one entry in the SEPARATE multi-contact `lender_contacts` list, with automatic single-primary enforcement; not interchangeable with `update_lender`), `create_lender` (add a NEW funding source; rejects duplicate names \u2014 use `update_lender` for existing ones), `delete_lender_contact` (remove a duplicate/wrong lender_contacts row, confirm required), `add_lender_attachment`/`list_lender_attachments`/`delete_lender_attachment` (funding-source documents such as NDAs, one-pagers and referral agreements) and `add_lender_to_deal` for the funding-source directory, `list_deal_funding_sources` to read the lenders attached to a specific deal (matches the deal's Funding Sources tab), and \u2014 for deep deal context \u2014 `search_deal_notes`, `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal. Daily rundown tools (`get_daily_rundown`, `add_daily_rundown_item`, `update_daily_rundown_item`, `complete_daily_rundown_item`, `reorder_daily_rundown_items`) manage the personal dashboard rundown \u2014 access is restricted to jturner@5thline.co and enforced at the database (RLS) and edge-function layers. Insights analytics tools give full read access to everything on the Insights page: `list_insights_dashboards` enumerates dashboards, saved widget layouts, and custom formula metrics; `get_pipeline_metrics` returns deal-pipeline aggregates (value, fees, counts) broken down by stage, status, type, manager, owner, pipeline, and month for any timeframe; `get_funnel_velocity` returns stage conversion and time-in-stage analytics; `get_revenue_metrics` returns QuickBooks invoiced revenue by month/customer/entity plus P&L snapshots; `get_lender_metrics` returns funding-source funnel analytics; `get_metric_targets` returns Master Plan targets and manual inputs for plan-vs-actual comparisons; and `query_insights_dataset` is a read-only, fully paginated escape hatch over every underlying dataset (including deal write-ups, memos, checklists, attachments, financials and ownership). Use `describe_schema` first to discover exact column names and allowed enum values, then `list_deals` with fields=* to extract complete deal records in bulk across all pipelines. `list_referral_partners` (read-only) returns the contacts in the Referral Source pipeline (Nurturing, Tier 3, Tier 2, Tier 1) with name, email, title, company, stage, stage-entered date, last updated and owner, plus per-stage counts and a missing-email count \u2014 use it to build email lists. `get_sales_calls_weekly` returns the weekly Sales Calls count (Debt or FinServ) shown on the Sales Dashboard. `get_deal_hours_fees` returns Hours & Fees per deal (retainer, milestone, success fee %, closing fee, total fee, pre/post-signing hours, revenue per hour, optional weekly logged hours) with per-pipeline and overall rollups. All of them apply the same global test-deal exclusions and RLS scoping as the UI.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
@@ -3810,7 +3938,8 @@ var mcp_default = defineMcp({
     query_insights_dataset_default,
     describe_schema_default,
     list_referral_partners_default,
-    get_sales_calls_weekly_default
+    get_sales_calls_weekly_default,
+    get_deal_hours_fees_default
   ]
 });
 
