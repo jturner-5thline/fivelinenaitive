@@ -64,6 +64,8 @@ export interface DealFilters {
   updatedWithinDays?: number | null;
   /** Show only deals with at least one late milestone. */
   hasLateMilestonesOnly?: boolean;
+  /** 5th Line only: show deals with no fee information entered. */
+  missingFeeInfoOnly?: boolean;
 }
 
 export const DEFAULT_DEAL_FILTERS: DealFilters = {
@@ -191,6 +193,10 @@ export function useDeals(options?: UseDealsOptions) {
 
     if (filters.flaggedOnly) {
       result = result.filter((deal) => deal.isFlagged === true);
+    }
+
+    if (filters.missingFeeInfoOnly) {
+      result = result.filter((deal) => isMissingFeeInfo(deal));
     }
 
     // ── Per-column header filters ─────────────────────────────
