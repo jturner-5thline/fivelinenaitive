@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { differenceInDays } from 'date-fns';
+import { isMissingFeeInfo } from '@/lib/dealMissingFeeInfo';
 import { Deal, DealStage, DealStatus, EngagementType } from '@/types/deal';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
@@ -64,6 +65,8 @@ export interface DealFilters {
   updatedWithinDays?: number | null;
   /** Show only deals with at least one late milestone. */
   hasLateMilestonesOnly?: boolean;
+  /** 5th Line only: show deals with no fee information entered. */
+  missingFeeInfoOnly?: boolean;
 }
 
 export const DEFAULT_DEAL_FILTERS: DealFilters = {
@@ -191,6 +194,10 @@ export function useDeals(options?: UseDealsOptions) {
 
     if (filters.flaggedOnly) {
       result = result.filter((deal) => deal.isFlagged === true);
+    }
+
+    if (filters.missingFeeInfoOnly) {
+      result = result.filter((deal) => isMissingFeeInfo(deal));
     }
 
     // ── Per-column header filters ─────────────────────────────

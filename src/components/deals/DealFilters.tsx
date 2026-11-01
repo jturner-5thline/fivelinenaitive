@@ -94,6 +94,7 @@ export function DealFilters({
     filters.staleOnly,
     filters.flaggedOnly,
     filters.hasNotificationsOnly,
+    !!filters.missingFeeInfoOnly,
     (filters.tasksFilter ?? 'all') !== 'all',
   ].filter(Boolean).length;
 
@@ -111,6 +112,7 @@ export function DealFilters({
       staleOnly: false,
       flaggedOnly: false,
       hasNotificationsOnly: false,
+      missingFeeInfoOnly: false,
       tasksFilter: 'all',
     });
   };

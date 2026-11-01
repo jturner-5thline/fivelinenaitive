@@ -28,6 +28,8 @@ import {
 import { mockReferrers } from '@/data/mockDeals';
 import { MultiSelectFilter } from './MultiSelectFilter';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { Switch } from '@/components/ui/switch';
+import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { useDealSourcedViaOptions } from '@/hooks/useDealSourcedViaOptions';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useHubSpotOwners, type HubSpotOwner } from '@/hooks/useHubSpot';
@@ -133,6 +135,7 @@ export function FiltersPopover({
 }: FiltersPopoverProps) {
   const [open, setOpen] = useState(false);
   const { deals } = useDealsContext();
+  const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
   const { options: sourcedViaSource } = useDealSourcedViaOptions();
   const dealOwnerOptions = useDealOwnerOptions(deals);
 
@@ -197,6 +200,7 @@ export function FiltersPopover({
       staleOnly: false,
       flaggedOnly: false,
       hasNotificationsOnly: false,
+      missingFeeInfoOnly: false,
       tasksFilter: 'all',
     });
   };
@@ -364,6 +368,21 @@ export function FiltersPopover({
               </SelectContent>
             </Select>
           </div>
+          {isFifthLine && (
+            <>
+              <Separator className="my-3" />
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="missing-fee-info" className="text-xs font-medium text-muted-foreground">
+                  Missing Fee Information
+                </label>
+                <Switch
+                  id="missing-fee-info"
+                  checked={!!filters.missingFeeInfoOnly}
+                  onCheckedChange={(v) => onFilterChange({ missingFeeInfoOnly: v })}
+                />
+              </div>
+            </>
+          )}
         </div>
       </PopoverContent>
     </Popover>
