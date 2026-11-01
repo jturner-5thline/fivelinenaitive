@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { differenceInDays } from 'date-fns';
+import { isMissingFeeInfo } from '@/lib/dealMissingFeeInfo';
 import { Deal, DealStage, DealStatus, EngagementType } from '@/types/deal';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
