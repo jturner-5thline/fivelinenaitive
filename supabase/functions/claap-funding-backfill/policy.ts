@@ -8,7 +8,9 @@ export function retryAt(attempt: number, now = new Date()): string {
   return new Date(now.getTime() + Math.min(24, 2 ** Math.min(attempt, 5)) * 3_600_000).toISOString();
 }
 
-export function parsePage(payload: Record<string, any>) {
+type RecordingMetadata = { id?: string; title?: string; name?: string; started_at?: string; created_at?: string; createdAt?: string; meeting?: { startingAt?: string; endingAt?: string; participants?: unknown[] }; recorder?: { email?: string }; participants?: unknown[]; url?: string; durationSeconds?: number };
+type PageNode = { recordings?: RecordingMetadata[]; data?: RecordingMetadata[]; pagination?: { nextCursor?: string; next_cursor?: string }; nextCursor?: string; next_cursor?: string };
+export function parsePage(payload: PageNode & { result?: PageNode }) {
   const node = payload.result ?? payload;
   const rows = node.recordings ?? payload.recordings ?? payload.data;
   if (!Array.isArray(rows)) throw new Error('Unexpected Claap recording list response');
