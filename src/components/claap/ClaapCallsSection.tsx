@@ -364,7 +364,7 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
         if (recordingIds.length) {
           const { data: recordings } = await supabase
             .from('claap_recordings')
-            .select('id, external_id')
+            .select('id, external_id, title, started_at, created_at, ended_at, recording_url, summary, transcript_text, organizer_email')
             .in('id', recordingIds);
           const recRows = (recordings || []) as any[];
           const byRecordingId = new Map(linkRows.map((l) => [l.recording_id, l]));
@@ -394,6 +394,37 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
               };
             });
             addCalls(decorated);
+          }
+          // New history imports live in recordings, not the legacy meeting mirror.
+          for (const recording of recRows) {
+            const legacy = allCalls.find(call => call.recordingRowId === recording.id);
+            if (legacy) {
+              legacy.ai_summary = recording.summary ?? legacy.ai_summary;
+              legacy.transcript = recording.transcript_text ?? legacy.transcript;
+              continue;
+            }
+            const link = byRecordingId.get(recording.id);
+            addCalls([{ id: recording.id, title: recording.title, started_at: recording.started_at, created_at: recording.created_at,
+              duration_seconds: recording.ended_at && recording.started_at ? Math.max(0, (Date.parse(recording.ended_at) - Date.parse(recording.started_at)) / 1000) : null,
+              recording_url: recording.recording_url, call_type: 'lender', match_source: 'recording_link', transcript: recording.transcript_text,
+              ai_summary: recording.summary, organizer_email: recording.organizer_email, deal_id: null, recordingRowId: recording.id,
+              linkId: link?.id ?? null, linkStatus: link?.review_status ?? null }]);
+          }
+        }
+      }
+
+      if (entityType === 'contact') {
+        const { data: contactLinks, error } = await supabase.from('claap_recording_links').select('recording_id,review_status').eq('entity_type', 'contact').eq('entity_id', entityId).eq('link_role', 'attendee_contact').neq('review_status', 'rejected').limit(200);
+        if (error) throw error;
+        const ids = (contactLinks ?? []).map(link => link.recording_id);
+        if (ids.length) {
+          const { data: recordings, error } = await supabase.from('claap_recordings').select('id,title,started_at,created_at,recording_url,summary,transcript_text,organizer_email').in('id', ids);
+          if (error) throw error;
+          for (const recording of recordings ?? []) {
+            if (allCalls.some(call => call.recordingRowId === recording.id || (call.title === recording.title && call.started_at === recording.started_at))) continue;
+            addCalls([{ id: recording.id, title: recording.title, started_at: recording.started_at, created_at: recording.created_at, duration_seconds: null,
+              recording_url: recording.recording_url, call_type: null, match_source: 'attendee_email', transcript: recording.transcript_text,
+              ai_summary: recording.summary, organizer_email: recording.organizer_email, deal_id: null, recordingRowId: recording.id }]);
           }
         }
       }

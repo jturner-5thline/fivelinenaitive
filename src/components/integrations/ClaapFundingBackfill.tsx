@@ -33,7 +33,7 @@ export function ClaapFundingBackfill({ companyId }: { companyId?: string }) {
     {error && <p className="text-xs text-destructive">History status unavailable</p>}
     {job && <><div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground"><span>Scanned: {job.scanned}</span><span>Imported: {job.imported}</span><span>Content synced: {job.hydrated}</span><span>New links: {job.linked}</span><span>Retries: {job.failures}</span><span className="capitalize">{job.phase}</span></div>{job.last_error && <p className="text-xs text-muted-foreground">{job.last_error}</p>}</>}
     <div className="flex flex-wrap gap-2">
-      {!job && <Button size="sm" variant="outline" disabled={isLoading || action.isPending || !companyId} onClick={() => action.mutate('start')}><Download className="mr-2 h-4 w-4" />Start 4-year backfill</Button>}
+      {(!job || job.scanned === 0) && <Button size="sm" variant="outline" disabled={isLoading || action.isPending || !companyId} onClick={() => action.mutate('start')}><Download className="mr-2 h-4 w-4" />Start 4-year backfill</Button>}
       {job && job.status !== 'complete' && <><Button size="sm" variant="outline" disabled={action.isPending} onClick={() => action.mutate(job.status === 'paused' ? 'resume' : 'pause')}>{job.status === 'paused' ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}{job.status === 'paused' ? 'Resume' : 'Pause'}</Button><Button size="sm" variant="outline" disabled={action.isPending || job.status === 'paused'} onClick={() => action.mutate('process')}><RefreshCw className="mr-2 h-4 w-4" />Run next batch</Button></>}
     </div>
   </section>;

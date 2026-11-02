@@ -34,6 +34,10 @@ Deno.serve(async req => {
       if (!config) return reply({ error: 'Active Claap integration required' }, 400);
       const { error } = await db.from('claap_funding_backfill_jobs').upsert({ company_id: body.company_id, created_by: auth.user?.id ?? null, window_start: fourYearStart(), window_end: new Date().toISOString() }, { onConflict: 'company_id', ignoreDuplicates: true });
       if (error) throw error;
+      if (body.action === 'start') {
+        const { error: resetError } = await db.from('claap_funding_backfill_jobs').update({ phase: 'discovery', cursor: null, window_start: fourYearStart(), window_end: new Date().toISOString(), attempts: 0 }).eq('company_id', body.company_id).or(`lease_until.is.null,lease_until.lt.${new Date().toISOString()}`);
+        if (resetError) throw resetError;
+      }
       const { error: updateError } = await db.from('claap_funding_backfill_jobs').update({ status: body.action === 'pause' ? 'paused' : 'running', next_run_at: null, updated_at: new Date().toISOString() }).eq('company_id', body.company_id).neq('phase', 'complete');
       if (updateError) throw updateError;
       if (body.action === 'pause') return reply({ ok: true });
@@ -75,7 +79,7 @@ Deno.serve(async req => {
           const started = raw.meeting?.startingAt ?? raw.started_at ?? raw.created_at ?? raw.createdAt;
           if (!raw.id || !inWindow(started, job.window_start, job.window_end)) continue;
           // Never route deals, generate drafts/tasks, or overwrite existing recordings during history discovery.
-          const { data: inserted, error } = await db.from('claap_recordings').upsert({ org_company_id: job.company_id, external_id: String(raw.id), title: raw.title ?? raw.name ?? null, started_at: started, ended_at: raw.meeting?.endingAt ?? null, organizer_email: raw.recorder?.email ?? null, participants: raw.meeting?.participants ?? raw.participants ?? [], recording_url: raw.url ?? null, source_payload: { durationSeconds: raw.durationSeconds ?? null }, status: 'new' }, { onConflict: 'org_company_id,external_id', ignoreDuplicates: true }).select('id');
+          const { data: inserted, error } = await db.from('claap_recordings').upsert({ org_company_id: job.company_id, external_id: String(raw.id), title: raw.title ?? raw.name ?? null, started_at: started, ended_at: raw.meeting?.endingAt ?? null, organizer_email: raw.recorder?.email ?? null, participants: raw.meeting?.participants ?? raw.participants ?? [], recording_url: raw.url ?? null, source_payload: { durationSeconds: raw.durationSeconds ?? null, funding_history_import: true }, last_scored_at: now, status: 'new' }, { onConflict: 'org_company_id,external_id', ignoreDuplicates: true }).select('id');
           if (error) throw error;
           imported += inserted?.length ?? 0;
         }
@@ -94,6 +98,7 @@ Deno.serve(async req => {
             if (content.recording) Object.assign(patch, { summary: content.recording.summary_md ?? row.summary, transcript_url: content.recording.transcript_url ?? row.transcript_url, action_items: content.recording.action_items, key_takeaways: content.recording.key_takeaways, chapters: content.recording.chapters, claap_summary_synced_at: now });
           }
           if (!row.transcript_text) {
+            if ((await shouldDefer('low')).defer) break;
             const tx = await fetch(`${CLAAP_API_BASE}/recordings/${encodeURIComponent(row.external_id)}/transcript?format=text`, { headers: { 'X-Claap-Key': token }, signal: AbortSignal.timeout(15_000) });
             await db.rpc('claap_record_api_call', { _count: 1 });
             if (tx.status === 429) { await db.rpc('claap_mark_rate_limited'); throw new Error('Transcript quota reached'); }
@@ -107,6 +112,7 @@ Deno.serve(async req => {
             if (typeof text !== 'string' || !text.trim()) throw new Error('Transcript not ready');
             patch.transcript_text = text; patch.transcript_available = true;
           }
+          Object.assign(patch, { hydration_complete: true, hydrated_at: now, last_sync_status: 'success', last_sync_error: null });
           const { error: updateError } = await db.from('claap_recordings').update(patch).eq('id', row.id).eq('org_company_id', job.company_id);
           if (updateError) throw updateError;
           const contacts = await db.rpc('claap_link_recording_contacts', { p_recording_id: row.id });
