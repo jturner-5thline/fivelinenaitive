@@ -53,7 +53,7 @@ function buildHtml(name: string | null): string {
             <td>
               <h1 style="margin:0 0 8px;font-size:26px;font-weight:600;color:#0f172a;line-height:1.3;">${greeting}</h1>
               <p style="margin:0 0 24px;font-size:14px;color:#94a3b8;font-weight:500;">${dateString}</p>
-              <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.6;">Your Weekly Rundown has been prepared and is ready to review.</p>
+              <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.6;">Your Weekly Rundown is ready to review in Claude.</p>
             </td>
           </tr>
           <tr>
@@ -68,7 +68,7 @@ function buildHtml(name: string | null): string {
           </tr>
           <tr>
             <td align="center">
-              <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.5;">Naitive · Weekly Rundown · Sent every Tuesday</p>
+              <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.5;">Naitive · Weekly Rundown · Sent every Monday at 10:00 AM ET</p>
             </td>
           </tr>
         </table>
@@ -118,7 +118,7 @@ const handler = async (req: Request): Promise<Response> => {
         timeZone: 'America/New_York',
         weekday: 'short',
       }).format(new Date());
-      if (etHour !== 15 || etWeekday !== 'Mon') {
+      if (etHour !== 10 || etWeekday !== 'Mon') {
         console.log(`Skipping weekly rundown send (ET ${etWeekday} ${etHour}:00)`);
         return new Response(JSON.stringify({ skipped: true, etWeekday, etHour }), {
           status: 200,
