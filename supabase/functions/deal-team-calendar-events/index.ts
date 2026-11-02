@@ -280,6 +280,11 @@ serve(async (req: Request): Promise<Response> => {
             // Token-based fallback: any distinctive ≥4-char token in the title.
             const tokenHit = !fullNameHit && tokens.some((t) => titleLower.includes(t));
             const titleHit = fullNameHit || tokenHit;
+            // Invite body: full company name, or a contact's email written in it.
+            const descLower = String(e.description || "").replace(/<[^>]+>/g, " ").toLowerCase();
+            const descriptionHit = !!descLower && (
+              (nameLower ? descLower.includes(nameLower) : false) ||
+              [...contactEmails].some((em) => descLower.includes(em)));
             const domainHit = matchDomains.size > 0
               ? participantEmails.some((em: string) => {
                   const d = domainOf(em);
@@ -291,7 +296,7 @@ serve(async (req: Request): Promise<Response> => {
               : false;
             const lenderHit = titleHit && participantEmails.some((email: string) =>
               lenderEmails.has(email) || lenderDomains.has(domainOf(email) || ""));
-            if (!titleHit && !domainHit && !contactHit && !lenderHit) return null;
+            if (!titleHit && !domainHit && !contactHit && !lenderHit && !descriptionHit) return null;
             const w = e.when || {};
             const isAllDay = !w.start_time && !!w.start_date;
             const start = w.start_time ? new Date(w.start_time * 1000).toISOString() : (w.start_date || "");
@@ -306,7 +311,7 @@ serve(async (req: Request): Promise<Response> => {
               html_link: e.html_link || null,
               hangout_link: e.conferencing?.details?.url || null,
               participants: participantEmails,
-              match: { title: titleHit, domain: domainHit, contact: contactHit, lender: lenderHit },
+              match: { title: titleHit, domain: domainHit, contact: contactHit, lender: lenderHit, description: descriptionHit },
               teammate: {
                 user_id: userId,
                 email: prof?.email || null,
