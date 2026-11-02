@@ -808,7 +808,9 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const matchResult = await runSmartMatching(supabaseAdmin, title, classifiedParticipants, companyId);
+        const matchResult = await runSmartMatching(supabaseAdmin, title, classifiedParticipants, companyId,
+          [recording.description, recording.meeting?.description, recording.summary, recording.ai_summary]
+            .filter((v: unknown) => typeof v === "string").join(" ") || null);
 
         if (!matchResult.matched && !syncAllCalls) {
           await supabaseAdmin.from("claap_skipped_calls").upsert({
