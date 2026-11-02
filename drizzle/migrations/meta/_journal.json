@@ -386,6 +386,13 @@
       "when": 1793583657651,
       "tag": "0054_claap_enqueue_recording_window",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1793630905933,
+      "tag": "0055_merge_companies_keep_partner_history",
+      "breakpoints": true
     }
   ]
 }
