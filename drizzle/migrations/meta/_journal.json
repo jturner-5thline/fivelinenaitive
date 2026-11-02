@@ -365,6 +365,13 @@
       "when": 1793583172377,
       "tag": "0051_claap_funding_tagging_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1793583374204,
+      "tag": "0052_claap_history_automation_safety",
+      "breakpoints": true
     }
   ]
 }
