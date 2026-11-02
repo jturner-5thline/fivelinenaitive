@@ -568,6 +568,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal, listOnly = false }
                       it.team.match.title && 'deal name in title',
                       it.team.match.contact && 'client contact attended',
                       it.team.match.domain && 'attendee email domain match',
+                      it.team.match.description && 'deal named in invite description',
                     ].filter(Boolean) as string[];
                     const matchLabel = matchReasons.length
                       ? matchReasons.join(' · ')
