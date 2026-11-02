@@ -372,6 +372,13 @@
       "when": 1793583374204,
       "tag": "0052_claap_history_automation_safety",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1793583624535,
+      "tag": "0053_claap_match_authorization_guard",
+      "breakpoints": true
     }
   ]
 }
