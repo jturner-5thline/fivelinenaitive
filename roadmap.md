@@ -1,5 +1,10 @@
 # Roadmap
 
+## Claap funding-source tagging and four-year backfill
+- [ ] Automatically link recordings and calendar attendees to tenant-scoped funding sources and contacts, preserving manual decisions and existing deal links.
+- [ ] Add controlled resumable four-year discovery and quota-aware summary/transcript hydration using existing ingestion paths.
+- [ ] Verify matching, authorization, retries and read-only preview; report historical coverage and any provider limitations without triggering unrelated automation.
+
 ## Channel partner activity history
 - [x] Record pipeline additions and stage moves with tenant-isolated, read-only history; backfilled eight known addition dates without changing partners or inventing prior moves.
 - [x] Show dated history in partner details. Six Vitest tests, nine isolated PostgreSQL assertions, targeted lint and automatic build passed; signed-in preview opening/reopening checked at 1280px/1194px and pop-up layout at 390px, with no page errors.
