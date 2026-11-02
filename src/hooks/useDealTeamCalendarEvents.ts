@@ -19,7 +19,7 @@ export interface DealTeamCalendarEvent {
   html_link: string | null;
   hangout_link: string | null;
   participants: string[];
-  match: { title: boolean; domain: boolean; contact?: boolean };
+  match: { title: boolean; domain: boolean; contact?: boolean; lender?: boolean; description?: boolean };
   teammate: {
     user_id: string;
     email: string | null;
