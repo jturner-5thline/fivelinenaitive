@@ -2,7 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { requireInternal, isCompanyMember } from '../_shared/requestAuth.ts';
-import { getClaapToken, CLAAP_API_BASE } from '../_shared/claap-api.ts';
+import { getClaapToken, CLAAP_API_BASE, extractClaapWorkspace } from '../_shared/claap-api.ts';
 import { claapFetchRecording, shouldDefer } from '../_shared/claap-quota.ts';
 import { fourYearStart, inWindow, parsePage, retryAt } from './policy.ts';
 
@@ -59,6 +59,12 @@ Deno.serve(async req => {
     try {
       const token = getClaapToken();
       if (!token) throw new Error('Claap token unavailable');
+      const workspace = Deno.env.get('CLAAP_WORKSPACE_ID');
+      if (!workspace) throw new Error('Verified Claap workspace required');
+      const { data: workspaceOwners, error: scopeError } = await db.from('claap_recordings').select('org_company_id').eq('workspace_id', workspace);
+      if (scopeError) throw scopeError;
+      const owners = new Set((workspaceOwners ?? []).map(row => row.org_company_id));
+      if (owners.size !== 1 || !owners.has(job.company_id)) throw new Error('Claap workspace does not uniquely belong to this company');
       const gate = await shouldDefer('low');
       if (gate.defer) {
         await save({ status: 'deferred', next_run_at: gate.quota.resetAt ?? retryAt(3), last_error: 'Claap quota protected' });
@@ -76,10 +82,12 @@ Deno.serve(async req => {
         if (page.cursor && page.cursor === job.cursor) throw new Error('Claap pagination did not advance');
         let imported = 0;
         for (const raw of page.rows) {
+          const metadataWorkspace = extractClaapWorkspace(raw);
+          if (metadataWorkspace.id && metadataWorkspace.id !== workspace) continue;
           const started = raw.meeting?.startingAt ?? raw.started_at ?? raw.created_at ?? raw.createdAt;
           if (!raw.id || !inWindow(started, job.window_start, job.window_end)) continue;
           // Never route deals, generate drafts/tasks, or overwrite existing recordings during history discovery.
-          const { data: inserted, error } = await db.from('claap_recordings').upsert({ org_company_id: job.company_id, external_id: String(raw.id), title: raw.title ?? raw.name ?? null, started_at: started, ended_at: raw.meeting?.endingAt ?? null, organizer_email: raw.recorder?.email ?? null, participants: raw.meeting?.participants ?? raw.participants ?? [], recording_url: raw.url ?? null, source_payload: { durationSeconds: raw.durationSeconds ?? null, funding_history_import: true }, last_scored_at: now, status: 'new' }, { onConflict: 'org_company_id,external_id', ignoreDuplicates: true }).select('id');
+          const { data: inserted, error } = await db.from('claap_recordings').upsert({ org_company_id: job.company_id, workspace_id: workspace, external_id: String(raw.id), title: raw.title ?? raw.name ?? null, started_at: started, ended_at: raw.meeting?.endingAt ?? null, organizer_email: raw.recorder?.email ?? null, participants: raw.meeting?.participants ?? raw.participants ?? [], recording_url: raw.url ?? null, source_payload: { durationSeconds: raw.durationSeconds ?? null, funding_history_import: true }, last_scored_at: now, status: 'new' }, { onConflict: 'org_company_id,external_id', ignoreDuplicates: true }).select('id');
           if (error) throw error;
           imported += inserted?.length ?? 0;
         }
