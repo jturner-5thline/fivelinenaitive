@@ -10,11 +10,9 @@ const corsHeaders = {
 };
 
 const APP_URL = "https://naitive.co";
-// Deep-link to the Weekly Rundown view on the Insights workspace.
-// If the user is not authenticated (or lacks Insights access) the
-// ProtectedRoute / InsightsAccessGuard bounces them to /login while
-// preserving this path via ?redirect=, so they land back here after sign-in.
-const INSIGHTS_URL = `${APP_URL}/insights?view=weekly-rundown`;
+// The Weekly Rundown now lives in a Claude artifact (user decision).
+const INSIGHTS_URL = "https://claude.ai/artifact/49LXuG6oEFpmHv8jCcyHK4";
+void APP_URL;
 
 function buildHtml(name: string | null): string {
   // Light-theme layout mirroring the existing "Daily Briefing" email
