@@ -93,7 +93,7 @@ Deno.serve(async req => {
         }
         await save({ cursor: page.cursor, phase: page.cursor ? 'discovery' : 'content', scanned: job.scanned + page.rows.length, imported: job.imported + imported, status: 'running', attempts: 0, last_error: null });
       } else {
-        const { data: rows, error } = await db.from('claap_recordings').select('id,external_id,summary,transcript_text,transcript_url,hydration_complete,source_payload').eq('org_company_id', job.company_id).gte('started_at', job.window_start).lte('started_at', job.window_end).or('transcript_text.is.null,hydration_complete.eq.false').or(`next_sync_at.is.null,next_sync_at.lte.${now}`).lt('sync_attempts', 6).order('started_at', { ascending: false }).limit(3);
+        const { data: rows, error } = await db.from('claap_recordings').select('id,external_id,summary,transcript_text,transcript_url,hydration_complete,source_payload,sync_attempts').eq('org_company_id', job.company_id).gte('started_at', job.window_start).lte('started_at', job.window_end).or('transcript_text.is.null,hydration_complete.eq.false').or(`next_sync_at.is.null,next_sync_at.lte.${now}`).lt('sync_attempts', 6).order('started_at', { ascending: false }).limit(3);
         if (error) throw error;
         let hydrated = 0, linked = 0;
         for (const row of rows ?? []) {
@@ -111,7 +111,8 @@ Deno.serve(async req => {
             await db.rpc('claap_record_api_call', { _count: 1 });
             if (tx.status === 429) { await db.rpc('claap_mark_rate_limited'); throw new Error('Transcript quota reached'); }
             if (!tx.ok) {
-              const { error } = await db.from('claap_recordings').update({ sync_attempts: 6, last_sync_error: `Transcript unavailable (${tx.status})`, next_sync_at: retryAt(6) }).eq('id', row.id).eq('org_company_id', job.company_id);
+              const attempt = (row.sync_attempts ?? 0) + 1;
+              const { error } = await db.from('claap_recordings').update({ sync_attempts: attempt, last_sync_error: `Transcript unavailable (${tx.status})`, next_sync_at: retryAt(attempt) }).eq('id', row.id).eq('org_company_id', job.company_id);
               if (error) throw error;
               continue;
             }
@@ -128,8 +129,10 @@ Deno.serve(async req => {
           if (contacts.error || lenders.error) throw contacts.error ?? lenders.error;
           linked += Number(contacts.data ?? 0) + Number(lenders.data ?? 0); hydrated++;
         }
-        const { count } = await db.from('claap_recordings').select('id', { count: 'exact', head: true }).eq('org_company_id', job.company_id).gte('started_at', job.window_start).lte('started_at', job.window_end).or('transcript_text.is.null,hydration_complete.eq.false').lt('sync_attempts', 6);
-        await save({ hydrated: job.hydrated + hydrated, linked: job.linked + linked, phase: count === 0 ? 'complete' : 'content', status: count === 0 ? 'complete' : 'running', attempts: 0, last_error: null });
+        const { count, error: countError } = await db.from('claap_recordings').select('id', { count: 'exact', head: true }).eq('org_company_id', job.company_id).gte('started_at', job.window_start).lte('started_at', job.window_end).or('transcript_text.is.null,hydration_complete.eq.false').lt('sync_attempts', 6);
+        if (countError) throw countError;
+        const { count: unavailable } = await db.from('claap_recordings').select('id', { count: 'exact', head: true }).eq('org_company_id', job.company_id).gte('started_at', job.window_start).lte('started_at', job.window_end).or('transcript_text.is.null,hydration_complete.eq.false').gte('sync_attempts', 6);
+        await save({ hydrated: job.hydrated + hydrated, linked: job.linked + linked, phase: count === 0 ? 'complete' : 'content', status: count === 0 ? 'complete' : 'running', attempts: 0, last_error: unavailable ? `${unavailable} recordings need manual retry: content unavailable after six attempts` : null });
       }
       const { data } = await db.from('claap_funding_backfill_jobs').select('*').eq('id', job.id).single();
       return reply({ ok: true, job: data });
