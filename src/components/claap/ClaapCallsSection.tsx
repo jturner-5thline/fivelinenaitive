@@ -291,6 +291,15 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
           if (!seenIds.has(c.id)) {
             seenIds.add(c.id);
             allCalls.push(c);
+          } else {
+            // Same meeting reached via another path: keep one card but carry over
+            // recording-link details so linked recordings aren't added a second time.
+            const existing = allCalls.find(call => call.id === c.id) as any;
+            if (existing) {
+              for (const key of ['recordingRowId', 'linkId', 'linkStatus'] as const) {
+                if (existing[key] == null && c[key] != null) existing[key] = c[key];
+              }
+            }
           }
         }
       };
