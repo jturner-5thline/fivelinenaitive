@@ -76,6 +76,7 @@ interface StoredClaapMeeting {
   started_at: string | null;
   company_id: string | null;
   deal_id?: string | null;
+  ai_summary?: string | null;
 }
 
 // ─── Confidence-scored Smart Matching ────────────────────
@@ -85,6 +86,7 @@ async function runSmartMatching(
   title: string | null,
   participants: ClassifiedParticipant[],
   configCompanyId: string | null,
+  contextText: string | null = null,
 ): Promise<MatchResult> {
   const result: MatchResult = {
     matched: false, matchType: null, matchSource: null,
@@ -97,6 +99,9 @@ async function runSmartMatching(
   const externalDomains = [...new Set(externalParticipants.map(p => p.domain).filter(Boolean))];
   const titleNorm = normalizeName(title || "");
   const titleLower = (title || "").toLowerCase();
+  // Calendar description / AI summary text. A deal name found only here is a
+  // weaker signal than the title, so it scores below the title thresholds.
+  const contextNorm = normalizeName(contextText || "");
 
   // 1. DEAL MATCH (highest priority)
   if (titleNorm || externalEmails.length > 0 || externalDomains.length > 0) {
@@ -117,7 +122,7 @@ async function runSmartMatching(
     interface DealCandidate { id: string; name: string; score: number; source: string; }
     const candidates: DealCandidate[] = [];
 
-    if (deals && titleNorm) {
+    if (deals && (titleNorm || contextNorm)) {
       for (const deal of deals) {
         if (!deal.company) continue;
         const dealName = normalizeName(deal.company);
@@ -149,6 +154,15 @@ async function runSmartMatching(
               if (s > bestScore) { bestScore = s; bestSource = `Fuzzy deal alias match: "${alias}" → "${deal.company}" (${Math.round(dice * 100)}%)`; }
             }
           }
+        }
+
+        if (bestScore < 65 && contextNorm && dealName.length >= 4 && ` ${contextNorm} `.includes(` ${dealName} `)) {
+          bestScore = 65;
+          bestSource = `Deal name in call description/summary: "${deal.company}"`;
+        }
+        if (bestScore < 65 && contextNorm) {
+          const hit = dealAliases.find((a) => a.length >= 4 && ` ${contextNorm} `.includes(` ${a} `));
+          if (hit) { bestScore = 65; bestSource = `Deal alias in call description/summary: "${hit}" → "${deal.company}"`; }
         }
 
         if (bestScore >= 50) candidates.push({ id: deal.id, name: deal.company, score: bestScore, source: bestSource });
@@ -401,7 +415,7 @@ async function rematchStoredMeeting(
   participantsOverride?: ClassifiedParticipant[],
 ) {
   const participants = participantsOverride || await fetchStoredMeetingParticipants(supabaseAdmin, meeting.id);
-  const matchResult = await runSmartMatching(supabaseAdmin, meeting.title, participants, configCompanyId || meeting.company_id || null);
+  const matchResult = await runSmartMatching(supabaseAdmin, meeting.title, participants, configCompanyId || meeting.company_id || null, meeting.ai_summary || null);
 
   console.log(`Re-match result for "${meeting.title || "(no title)"}": matched=${matchResult.matched}, type=${matchResult.matchType}, confidence=${matchResult.confidence}, ambiguous=${matchResult.ambiguous}`);
 
@@ -432,7 +446,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const parsedDaysBack = Number(body.days_back);
-    const daysBack = Number.isFinite(parsedDaysBack) && parsedDaysBack > 0 ? parsedDaysBack : 365;
+    const daysBack = Number.isFinite(parsedDaysBack) && parsedDaysBack > 0 ? Math.min(parsedDaysBack, 1461) : 1460; // 48 months
     const parsedBatchSize = Number(body.batch_size);
     const batchSize = Number.isFinite(parsedBatchSize) && parsedBatchSize > 0
       ? Math.min(Math.floor(parsedBatchSize), 100)
@@ -440,6 +454,7 @@ Deno.serve(async (req) => {
     const cursor = typeof body.cursor === "string" && body.cursor.trim().length > 0 ? body.cursor : null;
     const timeBudgetMs = body.time_budget_ms || 50000;
     const rematchExistingOnly = body.rematch_existing_only === true;
+    const rematchOffset = Number.isInteger(body.offset) && body.offset >= 0 ? body.offset : 0;
     const startTime = Date.now();
 
     const claapApiKey = Deno.env.get("CLAAP_API_KEY");
@@ -501,8 +516,11 @@ Deno.serve(async (req) => {
     // ─── Rematch existing only ───
     if (rematchExistingOnly) {
       let existingQuery = supabaseAdmin.from("claap_meetings")
-        .select("id, claap_id, title, recording_url, transcript, organizer_email, duration_seconds, started_at, company_id, deal_id, manually_locked")
-        .is("deal_id", null).eq("manually_locked", false).order("created_at", { ascending: false }).limit(Math.max(batchSize, 200));
+        .select("id, claap_id, title, recording_url, transcript, organizer_email, duration_seconds, started_at, company_id, deal_id, manually_locked, ai_summary")
+        .is("deal_id", null).eq("manually_locked", false)
+        .gte("started_at", new Date(Date.now() - daysBack * 86400000).toISOString())
+        .order("created_at", { ascending: false })
+        .range(rematchOffset, rematchOffset + Math.max(batchSize, 200) - 1);
       if (companyId) existingQuery = existingQuery.eq("company_id", companyId);
 
       const { data: existingMeetings, error: existingError } = await existingQuery;
