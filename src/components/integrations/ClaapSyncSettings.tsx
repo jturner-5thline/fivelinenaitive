@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { ClaapCallMatchCard, type ClaapCallData } from '@/components/claap/ClaapCallMatchCard';
 import { ClaapSuggestionCard } from '@/components/claap/ClaapSuggestionCard';
 import { useClaapSuggestions } from '@/hooks/useClaapSuggestions';
+import { ClaapFundingBackfill } from './ClaapFundingBackfill';
 
 export function ClaapSyncSettings() {
   const { user } = useAuth();
@@ -395,6 +396,7 @@ export function ClaapSyncSettings() {
                 Re-match All Calls
               </Button>
             </div>
+            <ClaapFundingBackfill companyId={config?.company_id} />
           </CardContent>
         </Card>
 

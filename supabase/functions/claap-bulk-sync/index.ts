@@ -15,6 +15,17 @@ Deno.serve(async (req) => {
   const __auth = await requireInternal(req, corsHeaders, { allowUser: true });
   if (!__auth.ok) return __auth.response;
 
+  // Reuse the existing hourly wake-up; no additional permanent polling job.
+  if (__auth.internal) {
+    const endpoint = Deno.env.get('SUPABASE_URL');
+    const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (endpoint && key) {
+      try {
+        await fetch(`${endpoint}/functions/v1/claap-funding-backfill`, { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'process' }), signal: AbortSignal.timeout(90_000) });
+      } catch (error) { console.error('Funding history batch deferred', error instanceof Error ? error.message : 'Unavailable'); }
+    }
+  }
+
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

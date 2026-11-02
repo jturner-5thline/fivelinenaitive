@@ -3680,6 +3680,72 @@ export type Database = {
         }
         Relationships: []
       }
+      claap_funding_backfill_jobs: {
+        Row: {
+          attempts: number
+          company_id: string
+          created_at: string
+          created_by: string | null
+          cursor: string | null
+          failures: number
+          hydrated: number
+          id: string
+          imported: number
+          last_error: string | null
+          lease_until: string | null
+          linked: number
+          next_run_at: string | null
+          phase: string
+          scanned: number
+          status: string
+          updated_at: string
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          attempts?: number
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          cursor?: string | null
+          failures?: number
+          hydrated?: number
+          id?: string
+          imported?: number
+          last_error?: string | null
+          lease_until?: string | null
+          linked?: number
+          next_run_at?: string | null
+          phase?: string
+          scanned?: number
+          status?: string
+          updated_at?: string
+          window_end?: string
+          window_start?: string
+        }
+        Update: {
+          attempts?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          cursor?: string | null
+          failures?: number
+          hydrated?: number
+          id?: string
+          imported?: number
+          last_error?: string | null
+          lease_until?: string | null
+          linked?: number
+          next_run_at?: string | null
+          phase?: string
+          scanned?: number
+          status?: string
+          updated_at?: string
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       claap_integration_config: {
         Row: {
           company_id: string
@@ -4396,6 +4462,7 @@ export type Database = {
           synthesized_note_generated_at: string | null
           title: string | null
           transcript_available: boolean
+          transcript_text: string | null
           transcript_url: string | null
           updated_at: string
           workspace_id: string | null
@@ -4431,6 +4498,7 @@ export type Database = {
           synthesized_note_generated_at?: string | null
           title?: string | null
           transcript_available?: boolean
+          transcript_text?: string | null
           transcript_url?: string | null
           updated_at?: string
           workspace_id?: string | null
@@ -4466,6 +4534,7 @@ export type Database = {
           synthesized_note_generated_at?: string | null
           title?: string | null
           transcript_available?: boolean
+          transcript_text?: string | null
           transcript_url?: string | null
           updated_at?: string
           workspace_id?: string | null
@@ -30157,6 +30226,12 @@ export type Database = {
         Args: { p_lookback_days?: number }
         Returns: {
           new_links: number
+        }[]
+      }
+      claap_funding_attendee_emails: {
+        Args: { p_id: string }
+        Returns: {
+          email: string
         }[]
       }
       claap_link_orphan_recordings: { Args: never; Returns: Json }

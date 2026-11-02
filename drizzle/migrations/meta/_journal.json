@@ -358,6 +358,34 @@
       "when": 1793454617076,
       "tag": "0050_crm_companies_dedupe_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1793583172377,
+      "tag": "0051_claap_funding_tagging_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1793583374204,
+      "tag": "0052_claap_history_automation_safety",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1793583624535,
+      "tag": "0053_claap_match_authorization_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1793583657651,
+      "tag": "0054_claap_enqueue_recording_window",
+      "breakpoints": true
     }
   ]
 }
