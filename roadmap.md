@@ -3,7 +3,7 @@
 ## Claap funding-source tagging and four-year backfill
 - [x] Automatically link recordings and calendar attendees to tenant-scoped funding sources and contacts, preserving manual decisions and existing deal links.
 - [x] Add controlled resumable four-year discovery and quota-aware summary/transcript hydration, with start/pause/resume controls and the existing hourly wake-up.
-- [x] Four Deno tests, seven isolated SQL assertions and three UI interaction tests passed; signed-in status read checked. Full typecheck has unrelated existing errors.
+- [x] Four Deno tests, seven isolated SQL assertions and three UI interaction tests passed; focused lint, worker check and full TypeScript check passed; signed-in status and desktop/390px controls checked without starting imports.
 - [ ] Execute and verify historical import/content persistence — awaiting approval to run the production backfill; provider coverage before May 2025 remains unverified.
 
 ## Channel partner activity history
