@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { formatUSDFromDollars } from '@/lib/formatters/currency';
+import { formatUSDFromDollars, formatFinServUSD } from '@/lib/formatters/currency';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
@@ -443,9 +443,9 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
               data-numeric
               className="flex items-baseline gap-1 text-[26px] font-semibold leading-none tracking-tight tabular-nums whitespace-nowrap shrink-0"
               style={{ color: '#f8fbff' }}
-              title={formatUSDFromDollars(deal.dealClass === 'finserv' ? (deal.mrr ?? 0) : deal.value)}
+              title={deal.dealClass === 'finserv' ? formatFinServUSD(deal.mrr ?? 0) : formatUSDFromDollars(deal.value)}
             >
-              {formatUSDFromDollars(deal.dealClass === 'finserv' ? (deal.mrr ?? 0) : deal.value)}
+              {deal.dealClass === 'finserv' ? formatFinServUSD(deal.mrr ?? 0) : formatUSDFromDollars(deal.value)}
               {deal.dealClass === 'finserv' && (
                 <span className="text-[13px] font-medium" style={{ color: 'rgba(180, 198, 224, 0.75)' }}>
                   /mo
