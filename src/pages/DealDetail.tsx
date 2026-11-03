@@ -5208,13 +5208,22 @@ export default function DealDetail() {
                               </section>
                             ) : null;
                             return (
-                              <div key={id} className="relative lg:col-span-2 grid grid-cols-1 lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] gap-3 lg:gap-x-6 lg:before:content-[''] lg:before:absolute lg:before:inset-y-0 lg:before:left-[calc(65%+3.6px)] lg:before:w-px lg:before:-translate-x-1/2 lg:before:bg-border lg:before:pointer-events-none">
-                                <div className="min-w-0 flex flex-col gap-3 lg:order-1">
-                                  {dealInfoWidgetNode && (
+                              <div key={id} className={cn(
+                                "relative lg:col-span-2 grid grid-cols-1 gap-3 lg:gap-x-6 lg:before:content-[''] lg:before:absolute lg:before:inset-y-0 lg:before:w-px lg:before:-translate-x-1/2 lg:before:bg-border lg:before:pointer-events-none",
+                                // FinServ: Deal Info column is ~33% wider (35% -> 46.5%).
+                                isFinServDeal
+                                  ? "lg:grid-cols-[minmax(0,53.5fr)_minmax(0,46.5fr)] lg:before:left-[calc(53.5%+3.6px)]"
+                                  : "lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] lg:before:left-[calc(65%+3.6px)]",
+                              )}>
+                                <div className={cn("min-w-0 flex flex-col gap-3 lg:order-1", isFinServDeal && "lg:row-span-3")}>
+                                  {dealInfoWidgetNode && (isFinServDeal ? (
+                                    // FinServ: grow to fit all fields — no inner scrolling.
+                                    <div className="min-w-0 [&_.deal-info-widget]:!h-auto [&_.deal-info-widget]:!overflow-visible [&_.deal-info-widget>div]:!flex-none [&_.deal-info-widget>div]:!overflow-visible [&_.deal-info-widget>div>div]:!h-auto [&_.deal-info-widget>div>div]:!overflow-visible">{dealInfoWidgetNode}</div>
+                                  ) : (
                                     <div className="relative flex-1 min-h-[240px]">
                                       <div className="absolute inset-0 [&>*]:!h-full">{dealInfoWidgetNode}</div>
                                     </div>
-                                  )}
+                                  ))}
                                 </div>
                                 <div className="min-w-0 flex flex-col gap-3 lg:order-2">
                                   <div className="shrink-0 flex flex-col sm:flex-row gap-3">
@@ -5224,10 +5233,12 @@ export default function DealDetail() {
                                   </div>
                                   <div className="min-w-0 [&_.deal-tasks-openitems-widget>div]:!h-[clamp(260px,calc(100vh-464px),640px)]">{tasksNode}</div>
                                 </div>
+                                {!isFinServDeal && (
                                 <div className="min-w-0 lg:order-3 grid grid-cols-1 sm:grid-cols-2 gap-0">
                                   {fundingMixWidget && <div className="deal-fsmix-borderless min-w-0 lg:h-[300px] [&>div]:h-full [&_.fs-tab-widget]:h-full [&_.fs-tab-widget]:flex [&_.fs-tab-widget]:flex-col [&_.fs-tab-widget>div:nth-child(2)]:my-auto [&_*]:!border-0 [&_*]:!shadow-none [&_.fs-tab-widget]:!p-2">{fundingMixWidget}</div>}
                                   <div className={cn("min-w-0 lg:h-[300px] [&>section]:!mb-0 [&>section]:h-full [&>section]:overflow-hidden [&>section]:!border-0 [&>section>div:first-child]:!px-2 [&>section>div:first-child]:!pt-2 [&>section>div:first-child]:!pb-1 [&>section>div:last-child]:!px-2 [&>section>div:last-child]:!pb-2", !fundingMixWidget && "sm:col-span-2")}><DealActivityTimelineChart dealId={deal.id} /></div>
                                 </div>
+                                )}
                                 {milestonesCalendarWidget && (
                                   <div className="relative min-w-0 min-h-[240px] lg:min-h-0 lg:order-4">
                                     <div className="lg:absolute lg:inset-0 [&>*]:!h-full [&>*]:!min-h-0 overflow-hidden">{milestonesCalendarWidget}</div>
