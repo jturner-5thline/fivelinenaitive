@@ -5210,9 +5210,9 @@ export default function DealDetail() {
                             return (
                               <div key={id} className={cn(
                                 "relative lg:col-span-2 grid grid-cols-1 gap-3 lg:gap-x-6 lg:before:content-[''] lg:before:absolute lg:before:inset-y-0 lg:before:w-px lg:before:-translate-x-1/2 lg:before:bg-border lg:before:pointer-events-none",
-                                // FinServ: Deal Info column is ~33% wider (35% -> 46.5%).
+                                // FinServ: Deal Info column widened (35% -> 46.5% -> 60.5%).
                                 isFinServDeal
-                                  ? "lg:grid-cols-[minmax(0,53.5fr)_minmax(0,46.5fr)] lg:before:left-[calc(53.5%+3.6px)]"
+                                  ? "lg:grid-cols-[minmax(0,39.5fr)_minmax(0,60.5fr)] lg:before:left-[calc(39.5%+3.6px)]"
                                   : "lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] lg:before:left-[calc(65%+3.6px)]",
                               )}>
                                 <div className={cn("min-w-0 flex flex-col gap-3 lg:order-1", isFinServDeal && "lg:row-span-3")}>
