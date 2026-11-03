@@ -25,6 +25,20 @@ export function formatUSD(value: number | null | undefined): string {
   return formatted;
 }
 
+/**
+ * FinServ deal amounts (raw dollars) always render in thousands with two
+ * decimals, e.g. 3000 -> $3.00K, 5000 -> $5.00K, 1250000 -> $1,250.00K.
+ */
+export function formatFinServUSD(value: number | null | undefined): string {
+  if (value === null || value === undefined || isNaN(Number(value))) return '—';
+  const num = Number(value);
+  const formatted = `$${(Math.abs(num) / 1_000).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}K`;
+  return num < 0 ? `(${formatted})` : formatted;
+}
+
 type TotalLike = number | { amount: number } | null | undefined;
 
 /**

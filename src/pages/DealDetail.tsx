@@ -94,7 +94,7 @@ import { ActivityTimeline, ActivityItem, activityLogToItem } from '@/components/
 import { useActivityLog } from '@/hooks/useActivityLog';
 import { useFlexActivityNotifications } from '@/hooks/useFlexActivityNotifications';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
-import { formatUSD } from '@/lib/formatters/currency';
+import { formatUSD, formatFinServUSD } from '@/lib/formatters/currency';
 import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
 import { MentionTextarea } from '@/components/ui/mention-textarea';
 import { ReferralSourceInput } from '@/components/ui/referral-source-input';
@@ -3107,7 +3107,7 @@ export default function DealDetail() {
   const stageConfig = STAGE_CONFIG[deal.stage] ?? { label: String(deal.stage ?? 'Unknown'), color: 'bg-muted' };
   const statusConfig = STATUS_CONFIG[deal.status as DealStatus] ?? { label: String(deal.status ?? 'Unknown'), dotColor: 'bg-muted', badgeColor: 'bg-muted' };
 
-  const formatValue = (value: number) => formatCurrencyValue(value);
+  const formatValue = (value: number) => isFinServDeal ? formatFinServUSD(value) : formatCurrencyValue(value);
 
   const formatFee = (value: number) => formatCurrencyValue(value);
 
@@ -3931,7 +3931,7 @@ export default function DealDetail() {
                 -
               </span>
               <InlineEditField
-                value={formatUSD(deal.value)}
+                value={isFinServDeal ? formatFinServUSD(deal.value) : formatUSD(deal.value)}
                 editValue={formatAmountWithCommas(String(deal.value ?? 0))}
                 sanitizeInput={(next) => next.replace(/[^0-9.,]/g, '')}
                 manualCommit
