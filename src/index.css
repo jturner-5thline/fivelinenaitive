@@ -5471,3 +5471,4 @@ html body.ceo-theme .deal-detail-surface .deal-fs-tab-layout .fs-tab-widget:hove
 .deal-info-widget aside[aria-label="Deal info"] > div:first-child > div > :is(.deal-rail-control, button[role="combobox"]),
 .deal-info-widget aside[aria-label="Deal info"] > div:first-child > div > div > button[role="combobox"] { height: 2.25rem; }
 .deal-info-widget aside[aria-label="Deal info"] > div:first-child > div:first-child > div:last-child { min-height: 2.25rem; }
+.deal-info-widget aside[aria-label="Deal info"] > div:first-child button.deal-rail-control { height: 2.25rem !important; }
