@@ -4982,6 +4982,27 @@ export default function DealDetail() {
                                           </span>
                                           <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">from projects</span>
                                         </div>
+                                        <Dialog>
+                                          <DialogTrigger asChild>
+                                            <Button type="button" variant="outline" size="sm" className="h-8 w-full px-2.5 text-xs">
+                                              <Plus className="h-3 w-3 mr-1" />
+                                              Add / Manage Projects
+                                            </Button>
+                                          </DialogTrigger>
+                                          <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+                                            <DialogHeader>
+                                              <DialogTitle>One-Time Revenue Projects</DialogTitle>
+                                            </DialogHeader>
+                                            <FinServProjectsCard
+                                              projects={finservProjects}
+                                              total={finservProjectsTotal}
+                                              loading={finservProjectsLoading}
+                                              onAdd={addFinservProject}
+                                              onUpdate={updateFinservProject}
+                                              onDelete={deleteFinservProject}
+                                            />
+                                          </DialogContent>
+                                        </Dialog>
                                       </div>
                                     </section>
 
