@@ -5236,6 +5236,21 @@ html body.ceo-theme [data-radix-popper-content-wrapper] ~ .fixed.inset-0.bg-back
 .deal-info-widget-body .deal-info-widget-fields > .deal-finserv-info { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.875rem 1.25rem; }
 @media (max-width: 900px) { .deal-info-widget-body .deal-info-widget-fields > .deal-finserv-info { grid-template-columns: minmax(0, 1fr); } }
 .deal-info-widget-body .deal-finserv-info > section:last-child { grid-column: 1 / -1; }
+/* FinServ row alignment: uniform label rows, control heights and spacing so
+   fields in each column line up horizontally across Company/Commercial/Dates. */
+.deal-finserv-info > section { gap: 0.625rem !important; align-content: start; }
+.deal-finserv-info > section > h4 { height: 1.5rem; display: flex; align-items: flex-end; margin: 0; }
+.deal-finserv-info > section > div { gap: 0.25rem !important; }
+.deal-finserv-info > section > div > span:first-child,
+.deal-finserv-info > section > div > div:first-child:has(> span:first-child + button[role="combobox"]) {
+  min-height: 1.5rem; display: flex; align-items: center; line-height: 1;
+}
+.deal-finserv-info > section > div > div:first-child:has(> span:first-child + button[role="combobox"]) > button { height: 1.5rem; }
+.deal-finserv-info > section:not(:last-child) :is(input, button[role="combobox"], .h-8, .min-h-8) { height: 2.25rem; min-height: 2.25rem; }
+.deal-finserv-info > section:not(:last-child) > div > div:first-child:has(> span:first-child + button[role="combobox"]) > button[role="combobox"] { height: 1.5rem; min-height: 1.5rem; }
+.deal-finserv-info > section:not(:last-child) .flex-col.gap-1\.5 { gap: 0.625rem; }
+/* Switch rows (On Hold) match a label row + control height. */
+.deal-finserv-info > section > div.items-center.justify-between:has(> div > button[role="switch"]) { min-height: 1.5rem; }
 
 /* Deal Info widget: the nested Deal Information card has no interior border. */
 aside[aria-label="Deal info"] .deal-info-widget-body .deal-info-railed-card,
@@ -5451,3 +5466,9 @@ html body.ceo-theme .deal-detail-surface .deal-fs-tab-layout .fs-tab-widget:hove
   background: transparent !important;
   background-color: transparent !important;
 }
+
+/* Deal Info top row: Last activity / Close date / Manager / Owner share one control height. */
+.deal-info-widget aside[aria-label="Deal info"] > div:first-child > div > :is(.deal-rail-control, button[role="combobox"]),
+.deal-info-widget aside[aria-label="Deal info"] > div:first-child > div > div > button[role="combobox"] { height: 2.25rem; }
+.deal-info-widget aside[aria-label="Deal info"] > div:first-child > div:first-child > div:last-child { min-height: 2.25rem; }
+.deal-info-widget aside[aria-label="Deal info"] > div:first-child button.deal-rail-control { height: 2.25rem !important; }
