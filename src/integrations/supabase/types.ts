@@ -12201,6 +12201,38 @@ export type Database = {
           },
         ]
       }
+      deal_space_note_entry_keys: {
+        Row: {
+          created_at: string
+          idempotency_key: string
+          note_id: string
+          user_id: string
+          version_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          idempotency_key: string
+          note_id: string
+          user_id: string
+          version_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          idempotency_key?: string
+          note_id?: string
+          user_id?: string
+          version_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_space_note_entry_keys_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "deal_space_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_space_note_templates: {
         Row: {
           company_id: string | null
@@ -29783,6 +29815,18 @@ export type Database = {
       activate_lender_match_calibration: {
         Args: { p_id: string }
         Returns: undefined
+      }
+      add_deal_note_entry: {
+        Args: {
+          _create_if_missing?: boolean
+          _deal_id: string
+          _entry_html: string
+          _idempotency_key?: string
+          _mode?: string
+          _source?: string
+          _title: string
+        }
+        Returns: Json
       }
       admin_add_company_member: {
         Args: {

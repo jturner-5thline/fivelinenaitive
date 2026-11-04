@@ -2438,6 +2438,109 @@
         "outputSchema": null
       },
       {
+        "name": "add_deal_note_entry",
+        "title": "Add deal note entry",
+        "description": "Prepend or append an entry to a deal's Deal Space note (the notes pop-up), matched by title (default 'Q&A Notes'), creating the note if missing. Never replaces existing content; saves a version and logs deal activity. Use idempotency_key (e.g. a Claap recording ID) to avoid duplicate entries.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "default": "Q&A Notes",
+              "description": "Note title, matched case-insensitively and trimmed."
+            },
+            "entry": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50000
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "text",
+                "html"
+              ],
+              "default": "text",
+              "description": "text (default): plain text; '- ' lines become bullets, '# ' lines headings, **bold** supported. html: TipTap-compatible HTML stored as-is."
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "prepend",
+                "append"
+              ],
+              "default": "prepend"
+            },
+            "create_if_missing": {
+              "type": "boolean",
+              "default": true
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "default": "Claude agent",
+              "description": "Attribution recorded in the activity log."
+            }
+          },
+          "required": [
+            "deal_id",
+            "entry"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_deal_note",
+        "title": "Get deal note",
+        "description": "Read one Deal Space note's full HTML content, by note_id or by deal_id plus title (case-insensitive). Returns candidates if several notes share the title.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "note_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
         "name": "list_deal_activity",
         "title": "List deal activity",
         "description": "List recent activity/timeline events — stage changes, field updates, emails, calls, notes, and other logged actions. Pass deal_id to scope to one deal, or omit it to return activity across ALL deals and pipelines the caller can see (RLS scoped). Combines activity_logs (rich events including emails) with deal_activity (structured field changes). Ordered most recent first.",
