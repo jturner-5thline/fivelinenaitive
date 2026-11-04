@@ -30434,6 +30434,7 @@ export type Database = {
       }
       exec_sql: { Args: { sql: string }; Returns: undefined }
       exec_sql_readonly: { Args: { sql: string }; Returns: Json[] }
+      fifth_line_qa_note_template: { Args: never; Returns: string }
       find_companies_by_domain: {
         Args: { _domain: string }
         Returns: {
