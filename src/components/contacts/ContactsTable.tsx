@@ -15,7 +15,7 @@ import { Contact, LIFECYCLE_STAGES, CONTACT_STATUSES, normalizeContactStatus, us
 import { useUpdateContact } from '@/hooks/useContacts';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useContactTypes } from '@/hooks/useContactTypes';
-import { useCrmCompanies } from '@/hooks/useCrmCompanies';
+import { CompanySearchModal } from '@/components/crm/CompanySearchModal';
 import { useLinkContactToCompany, useLinkContactToDeal, useAllDeals } from '@/hooks/useCrmLinks';
 import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchModal';
 import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
@@ -103,8 +103,6 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
 
-  const { data: companiesResult } = useCrmCompanies({ pageSize: 1000 });
-  const companies = companiesResult?.data ?? [];
   const { data: deals = [] } = useAllDeals();
   const linkToCompany = useLinkContactToCompany();
   const linkToDeal = useLinkContactToDeal();
@@ -209,12 +207,6 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
       {children}
     </SortableHeader>
   );
-
-  const companyOptions: EntityOption[] = companies.map(c => ({
-    id: c.id,
-    label: c.name,
-    sublabel: c.domain || c.industry || undefined,
-  }));
 
   const dealOptions: EntityOption[] = deals.map(d => ({
     id: d.id,
@@ -490,12 +482,10 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
 
 
       {/* Link to Company Modal */}
-      <EntitySearchModal
+      <CompanySearchModal
         open={!!linkCompanyContactId}
         onClose={() => setLinkCompanyContactId(null)}
         title="Link Contact to Company"
-        placeholder="Search companies..."
-        options={companyOptions}
         onConfirm={(ids) => {
           if (linkCompanyContactId && ids[0]) {
             linkToCompany.mutate({ contactId: linkCompanyContactId, companyId: ids[0] }, {

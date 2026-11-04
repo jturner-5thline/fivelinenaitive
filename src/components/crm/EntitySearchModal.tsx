@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Check, X } from 'lucide-react';
+import { Search, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +23,12 @@ interface EntitySearchModalProps {
   multiSelect?: boolean;
   onConfirm: (selectedIds: string[]) => void;
   confirming?: boolean;
+  onSearchChange?: (search: string) => void;
+  error?: string;
+  onRetry?: () => void;
+  page?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
 }
 
 export function EntitySearchModal({
@@ -35,6 +41,12 @@ export function EntitySearchModal({
   multiSelect = false,
   onConfirm,
   confirming,
+  onSearchChange,
+  error,
+  onRetry,
+  page = 0,
+  totalPages = 0,
+  onPageChange,
 }: EntitySearchModalProps) {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -43,21 +55,23 @@ export function EntitySearchModal({
     if (open) {
       setSearch('');
       setSelected(new Set());
+      onSearchChange?.('');
     }
-  }, [open]);
+  }, [open, onSearchChange]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return options;
+    if (onSearchChange || !search.trim()) return options;
     const q = search.toLowerCase();
     return options.filter(
       o => o.label.toLowerCase().includes(q) || (o.sublabel || '').toLowerCase().includes(q)
     );
-  }, [options, search]);
+  }, [options, search, onSearchChange]);
 
   const toggle = (id: string) => {
     if (multiSelect) {
       const next = new Set(selected);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       setSelected(next);
     } else {
       setSelected(new Set([id]));
@@ -66,7 +80,7 @@ export function EntitySearchModal({
 
   return (
     <Dialog open={open} onOpenChange={o => !o && onClose()}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[480px]" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
@@ -76,15 +90,24 @@ export function EntitySearchModal({
           <Input
             placeholder={placeholder}
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => {
+              setSearch(e.target.value);
+              setSelected(new Set());
+              onSearchChange?.(e.target.value);
+            }}
             className="pl-8"
             autoFocus
           />
         </div>
 
-        <ScrollArea className="max-h-[300px] -mx-1">
+        <ScrollArea className="h-[300px] -mx-1">
           {isLoading ? (
             <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
+          ) : error ? (
+            <div className="text-center py-8 space-y-2">
+              <p className="text-sm text-destructive" role="alert">{error}</p>
+              {onRetry && <Button variant="outline" onClick={onRetry}>Retry</Button>}
+            </div>
           ) : filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">No results found</p>
           ) : (
@@ -92,11 +115,13 @@ export function EntitySearchModal({
               {filtered.map(option => {
                 const isSelected = selected.has(option.id);
                 return (
-                  <button
+                  <Button
+                    variant="ghost"
                     key={option.id}
+                    aria-pressed={isSelected}
                     onClick={() => toggle(option.id)}
                     className={cn(
-                      'w-full flex items-center gap-3 p-2.5 rounded-md text-left transition-colors',
+                      'w-full h-auto justify-start flex items-center gap-3 p-2.5 rounded-md text-left transition-colors',
                       isSelected
                         ? 'bg-primary/10 border border-primary/30'
                         : 'hover:bg-muted/50 border border-transparent'
@@ -110,18 +135,26 @@ export function EntitySearchModal({
                       )}
                     </div>
                     {isSelected && <Check className="h-4 w-4 text-primary flex-shrink-0" />}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
           )}
         </ScrollArea>
 
+        {onPageChange && totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <Button variant="outline" size="icon" aria-label="Previous results" disabled={page === 0 || isLoading} onClick={() => { setSelected(new Set()); onPageChange(page - 1); }}><ChevronLeft className="h-4 w-4" /></Button>
+            <span className="text-sm text-muted-foreground">{page + 1} / {totalPages}</span>
+            <Button variant="outline" size="icon" aria-label="Next results" disabled={page + 1 >= totalPages || isLoading} onClick={() => { setSelected(new Set()); onPageChange(page + 1); }}><ChevronRight className="h-4 w-4" /></Button>
+          </div>
+        )}
+
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
             onClick={() => onConfirm(Array.from(selected))}
-            disabled={selected.size === 0 || confirming}
+            disabled={selected.size === 0 || confirming || isLoading || !!error}
           >
             {confirming ? 'Linking...' : `Link${selected.size > 0 ? ` (${selected.size})` : ''}`}
           </Button>

@@ -38,7 +38,7 @@ import {
   useContactCrmCompany, useLinkContactToCompany, useUnlinkContactFromCompany,
   useLinkContactToDeal, useUnlinkContactFromDeal, useAllDeals,
 } from '@/hooks/useCrmLinks';
-import { useCrmCompanies } from '@/hooks/useCrmCompanies';
+import { CompanySearchModal } from '@/components/crm/CompanySearchModal';
 import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchModal';
 import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
 import { ContactFieldSuggestions } from '@/components/contacts/ContactFieldSuggestions';
@@ -109,10 +109,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
   const { data: crmCompany } = useContactCrmCompany(crmCompanyId);
   // Defer loading of large lists until the user actually needs them
   // (opens a link modal, or edits the domain field which triggers a match).
-  const [needCompanies, setNeedCompanies] = useState(false);
   const [needDeals, setNeedDeals] = useState(false);
-  const { data: companiesResult } = useCrmCompanies({ pageSize: 1000, enabled: needCompanies });
-  const companies = companiesResult?.data ?? [];
   const { data: deals = [] } = useAllDeals(needDeals);
   const linkToCompany = useLinkContactToCompany();
   const unlinkFromCompany = useUnlinkContactFromCompany();
@@ -159,10 +156,6 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
     return { today, thisWeek, earlier };
   }, [filteredActivities]);
 
-  const companyOptions: EntityOption[] = useMemo(
-    () => companies.map(c => ({ id: c.id, label: c.name, sublabel: c.domain || c.industry || undefined })),
-    [companies],
-  );
   const dealOptions: EntityOption[] = useMemo(
     () => deals.map(d => ({ id: d.id, label: d.company, sublabel: `${d.stage} · $${Number(d.value || 0).toLocaleString()}` })),
     [deals],
@@ -276,7 +269,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" sideOffset={8} className="w-44">
-                  <DropdownMenuItem onClick={() => { setNeedCompanies(true); setShowLinkCompany(true); }}>
+                  <DropdownMenuItem onClick={() => setShowLinkCompany(true)}>
                     <Building2 className="h-3.5 w-3.5 mr-2" /> Link company
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setNeedDeals(true); setShowLinkDeal(true); }}>
@@ -550,7 +543,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
               <div className="space-y-1.5 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[10px] uppercase tracking-wider text-foreground/80 font-semibold">Company</p>
-                  <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => { setNeedCompanies(true); setShowLinkCompany(true); }}>
+                  <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => setShowLinkCompany(true)}>
                     <Plus className="h-3 w-3 mr-0.5" /> {crmCompany ? 'Change' : 'Link'}
                   </Button>
                 </div>
@@ -762,12 +755,10 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
       </div>
 
       {/* Modals */}
-      <EntitySearchModal
+      <CompanySearchModal
         open={showLinkCompany}
         onClose={() => setShowLinkCompany(false)}
         title="Link to Company"
-        placeholder="Search companies..."
-        options={companyOptions}
         onConfirm={(ids) => {
           if (ids[0]) {
             linkToCompany.mutate({ contactId: contact.id, companyId: ids[0] }, {
@@ -813,7 +804,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
         contactName={contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'this contact'}
         email={contact.email}
         currentCrmCompanyId={crmCompanyId}
-        onLinkRequested={() => { setNeedCompanies(true); setShowLinkCompany(true); }}
+        onLinkRequested={() => setShowLinkCompany(true)}
       />
 
       <LogActivityDialog

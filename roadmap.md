@@ -1,5 +1,10 @@
 # Roadmap
 
+## Contact company linking
+- [x] Search the full tenant company directory by name and domain from both contact link entry points with pagination, loading and retry.
+- [x] Add Bank of America Corporation's alternate domains and link Jason Stone only; preserve all other contacts.
+- [x] Nine new regression tests and targeted lint passed; automatic type/build checks passed. Signed-in preview verified name/domain search, selection, empty results and cancel at 1280px/390px; Jason's company association persisted after refresh. No extra test writes or communications. Full suite: 496 passed, 18 unrelated failures; full lint has existing errors. Published frontend not verified.
+
 ## Claap funding-source tagging and four-year backfill
 - [x] Automatically link recordings and calendar attendees to tenant-scoped funding sources and contacts, preserving manual decisions and existing deal links.
 - [x] Add controlled resumable four-year discovery and quota-aware summary/transcript hydration, with start/pause/resume controls and the existing hourly wake-up.
