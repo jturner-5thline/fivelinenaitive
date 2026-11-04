@@ -66,7 +66,8 @@ export function useDealSpaceNotes(dealId: string | undefined) {
       if (error) throw error;
       let rows = (data as DealSpaceNote[]) || [];
       // 5th Line: every deal starts with the Pre-Kick Off Q&A note.
-      if (rows.length === 0 && !seededRef.current.has(dealId)) {
+      // (A database trigger seeds new 5th Line deals; this is a fallback.)
+      if (!rows.some(r => r.template_name === 'pre_kickoff_qa_email') && !seededRef.current.has(dealId)) {
         seededRef.current.add(dealId);
         const { data: deal } = await supabase
           .from('deals').select('company_id').eq('id', dealId).maybeSingle();
@@ -75,9 +76,9 @@ export function useDealSpaceNotes(dealId: string | undefined) {
           if (tpl) {
             const { data: created } = await supabase
               .from('deal_space_notes')
-              .insert({ deal_id: dealId, user_id: user.id, title: 'Pre-Kick Off Q&A Notes', content: tpl.content, template_name: tpl.name, is_shared: true } as any)
+              .insert({ deal_id: dealId, user_id: user.id, title: 'Q&A Notes', content: tpl.content, template_name: tpl.name, is_shared: true } as any)
               .select().single();
-            if (created) rows = [created as DealSpaceNote];
+            if (created) rows = [created as DealSpaceNote, ...rows];
           }
         }
       }
