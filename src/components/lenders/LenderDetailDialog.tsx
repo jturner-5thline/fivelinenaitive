@@ -2853,15 +2853,22 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           )) : <span className="text-xs italic text-muted-foreground">None assigned</span>}
                         </div>
                       </section>
-                      {dealIds.length > 0 && (
-                        <div className="space-y-4">
-                          {dealIds.map((id) => renderSection(id, false))}
+                      <div className="grid gap-4 lg:grid-cols-[minmax(0,40fr)_minmax(0,60fr)] lg:items-stretch">
+                        <div className="min-w-0 rounded-lg border border-border/60 p-4 lg:relative lg:min-h-[200px]">
+                          <div className="lg:absolute lg:inset-0 lg:overflow-y-auto lg:p-4">
+                            {renderSection('lending-criteria', false)}
+                          </div>
                         </div>
-                      )}
+                        {dealIds.length > 0 && (
+                          <div className="min-w-0 rounded-lg border border-border/60 p-4 space-y-4">
+                            {dealIds.map((id) => renderSection(id, false))}
+                          </div>
+                        )}
+                      </div>
                       <Separator />
                       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                         <div className="min-w-0 space-y-6">
-                          {mainIds.map((id) => renderSection(id, false))}
+                          {mainIds.filter((id) => id !== 'lending-criteria').map((id) => renderSection(id, false))}
                         </div>
                         <aside className="min-w-0 space-y-4">
                           {railIds.map((id) => {
