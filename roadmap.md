@@ -71,3 +71,9 @@
 - [x] Include Claap-matched client companies and all affiliated CRM contacts across every deal pipeline.
 
 - [x] Exclude calendar events with no attendees and titles "Block"/"Blocked" from referral meeting counts
+
+## Complete funding-source MCP editing
+- [ ] Expand master lender edits with atomic text modes, batches, concurrency, dry-run and provenance.
+- [ ] Add audited notes and related-record write tools, CRM contact linking and attachment metadata edits.
+- [ ] Add confirmed lender archive/merge with safe relationship handling.
+- [ ] Verify tests, permissions, schema discovery and manifest; document hosted publication and live-write limitations.

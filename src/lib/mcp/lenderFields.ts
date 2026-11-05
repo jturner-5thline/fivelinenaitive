@@ -5,7 +5,14 @@ type Sb = ReturnType<typeof supabaseForUser>;
 
 const str = (max = 2000) => z.string().max(max).nullable().optional();
 const arr = () => z.array(z.string().trim().min(1).max(200)).nullable().optional();
-const num = () => z.number().nullable().optional();
+const num = () => z.number().finite().nullable().optional();
+const timestamp = () => z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Must be an ISO date or timestamp").nullable().optional();
+
+export const LENDER_LONG_TEXT_LIMITS = {
+  funding_source_notes: 20000, about_notes: 20000, company_requirements: 5000,
+  deal_structure_notes: 10000, upfront_checklist: 10000, post_term_sheet_checklist: 10000,
+} as const;
+export const CRITERIA_CONFIDENCE_MEANINGS = { imported: "Imported criteria; not independently verified." } as const;
 
 /**
  * Every user-editable master_lenders column exposed to the MCP write tools.
@@ -67,12 +74,28 @@ export const LENDER_FIELD_SCHEMA = {
     .nullable()
     .optional()
     .describe("When the lending criteria were last reviewed. ISO date (2026-09-14) or timestamp."),
-  criteria_confidence: str(100).describe("Confidence in the criteria. Validated against the values already used in the directory (e.g. 'imported'); an invalid value returns the allowed list."),
+  criteria_confidence: z.enum(["imported"]).nullable().optional().describe("Allowed: imported = imported criteria, not independently verified. null clears."),
   upfront_checklist: str(10000).describe("Comma-separated list of upfront diligence items, same format as existing rows."),
   post_term_sheet_checklist: str(10000).describe("Comma-separated list of post-term-sheet items, same format as existing rows."),
   crm_company_id: z.string().uuid().nullable().optional().describe("crm_companies.id to link this funding source to. Must exist and be visible to you."),
   onboarded_to_flex: str(500),
   gift_address: str(1000),
+  sync_source: str(200).describe("Inert historical metadata; does not reconnect FLEx."),
+  flex_lender_id: str(500),
+  last_synced_from_flex: timestamp(),
+  external_created_by: str(500),
+  external_last_modified: timestamp(),
+  resp_emails_sent: z.number().int().nonnegative().nullable().optional(),
+  resp_replies_received: z.number().int().nonnegative().nullable().optional(),
+  resp_reply_rate: num(),
+  resp_median_hours_to_reply: num(),
+  resp_reply_rate_excl_mass: num(),
+  resp_last_reply_date: timestamp(),
+  resp_rating: str(200),
+  resp_emails_sent_l12m: z.number().int().nonnegative().nullable().optional(),
+  resp_reply_rate_l12m: num(),
+  resp_window_label: str(500),
+  resp_updated_at: timestamp(),
 } as const;
 
 export const LENDER_FIELD_NAMES = Object.keys(LENDER_FIELD_SCHEMA);
@@ -85,9 +108,7 @@ export async function validateLenderPatch(sb: Sb, patch: Record<string, unknown>
 
   if (typeof patch.criteria_confidence === "string") {
     const value = patch.criteria_confidence.trim();
-    const allowed = new Set<string>(["imported"]);
-    const { data, error } = await sb.from("master_lenders").select("criteria_confidence").not("criteria_confidence", "is", null).limit(1000);
-    if (!error) for (const r of (data ?? []) as Array<{ criteria_confidence: string | null }>) if (r.criteria_confidence) allowed.add(r.criteria_confidence);
+    const allowed = new Set<string>(Object.keys(CRITERIA_CONFIDENCE_MEANINGS));
     if (!allowed.has(value)) {
       return `Invalid criteria_confidence "${value}". Allowed values: ${[...allowed].sort().join(", ")}.`;
     }

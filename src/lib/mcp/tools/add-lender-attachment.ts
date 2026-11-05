@@ -1,7 +1,7 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser, requireAuth, textResult, errorResult } from "../supabase";
-import { logLenderAudit } from "../lenderWrites";
+import { writeLenderRelated, writeProvenance } from "../lenderRelatedWrites";
 import {
   LENDER_ATTACHMENT_BUCKET,
   LENDER_ATTACHMENT_CATEGORIES,
@@ -22,9 +22,10 @@ export default defineTool({
     content_base64: z.string().min(1).optional().describe("File bytes, base64-encoded (a data: URL prefix is accepted)."),
     url: z.string().url().optional().describe("Public https URL to download the file from."),
     content_type: z.string().max(200).optional().describe("MIME type; inferred from the file extension when omitted."),
+    ...writeProvenance,
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
-  handler: async ({ lender_id, file_name, category, content_base64, url, content_type }, ctx) => {
+  handler: async ({ lender_id, file_name, category, content_base64, url, content_type, source, change_reason }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     if (!!content_base64 === !!url) return errorResult("Provide exactly one of `content_base64` or `url`.");
@@ -44,10 +45,10 @@ export default defineTool({
         return errorResult("content_base64: not valid base64.");
       }
     } else {
-      if (!url!.startsWith("https://")) return errorResult("url: only https URLs are allowed.");
+      if (!url || !url.startsWith("https://")) return errorResult("url: only https URLs are allowed.");
       let res: Response;
       try {
-        res = await fetch(url!, { redirect: "follow" });
+        res = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(15000) });
       } catch (e) {
         return errorResult(`url: download failed (${(e as Error).message}).`);
       }
@@ -73,31 +74,18 @@ export default defineTool({
     const { error: upErr } = await sb.storage.from(LENDER_ATTACHMENT_BUCKET).upload(filePath, bytes, { contentType: type });
     if (upErr) return errorResult(`Storage upload failed: ${upErr.message}`);
 
-    const { data: row, error: dbErr } = await sb
-      .from("lender_attachments")
-      .insert({
-        user_id: userId,
-        company_id: lender.company_id,
-        lender_name: lender.name,
+    const result = await writeLenderRelated(sb, "lender_attachments", "create", lender_id, undefined, {
         name: file_name,
         file_path: filePath,
         content_type: type,
         size_bytes: bytes.byteLength,
         category,
-      })
-      .select("*")
-      .maybeSingle();
-    if (dbErr || !row) {
+      }, false, source, change_reason);
+    if ("isError" in result) {
       await sb.storage.from(LENDER_ATTACHMENT_BUCKET).remove([filePath]);
-      return errorResult(`Attachment record failed: ${dbErr?.message ?? "permission denied"}`);
+      return result;
     }
-
-    await logLenderAudit(sb, ctx, lender_id, "attachment_added", null, { attachment: file_name }, ["attachment"], {
-      via: "mcp:add_lender_attachment",
-      attachment_id: row.id,
-      category,
-    });
-
+    const row = JSON.parse(result.content[0].text).record;
     return textResult({ attachment: row }, { attachment_id: row.id as string, lender_id });
   },
 });

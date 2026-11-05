@@ -2,6 +2,8 @@ import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser, requireAuth, textResult, errorResult } from "../supabase";
 import { INSIGHTS_DATASETS } from "../insights";
+import { LENDER_FIELD_SCHEMA, CRITERIA_CONFIDENCE_MEANINGS } from "../lenderFields";
+import { LENDER_RELATED_FIELDS } from "../lenderRelatedFields";
 
 /** Extra tables worth describing even though they are not Insights datasets. */
 const EXTRA_TABLES = [
@@ -18,6 +20,8 @@ const EXTRA_TABLES = [
   "deal_activity",
   "contact_deals",
   "deal_pipeline_configs",
+  "funding_source_acquisition_plans",
+  "lender_master_note_history",
 ] as const;
 
 const DESCRIBABLE = Array.from(new Set<string>([...INSIGHTS_DATASETS, ...EXTRA_TABLES])).sort();
@@ -123,6 +127,15 @@ export default defineTool({
         table,
         column_count: columns.length,
         columns,
+        write_contract: table === "master_lenders" ? {
+          editable_columns: ["name", ...Object.keys(LENDER_FIELD_SCHEMA)],
+          immutable_columns: ["id", "user_id", "company_id", "created_at", "updated_at"],
+          criteria_confidence_values: CRITERIA_CONFIDENCE_MEANINGS,
+          text_modes: ["replace", "append", "prepend"], max_batch: 25,
+        } : table in LENDER_RELATED_FIELDS ? {
+          editable_columns: Object.keys(LENDER_RELATED_FIELDS[table as keyof typeof LENDER_RELATED_FIELDS]),
+          permissions: "Existing RLS applies; actor and tenancy are derived server-side. Availability is not a permission grant.",
+        } : undefined,
       })),
       ...(fieldLayout ? { field_layout: fieldLayout } : {}),
     };

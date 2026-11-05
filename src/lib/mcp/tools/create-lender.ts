@@ -1,8 +1,8 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser, requireAuth, textResult, errorResult } from "../supabase";
-import { logLenderAudit } from "../lenderWrites";
-import { LENDER_FIELD_SCHEMA, LENDER_FIELD_NAMES, validateLenderPatch } from "../lenderFields";
+import { LENDER_FIELD_SCHEMA, validateLenderPatch } from "../lenderFields";
+import { writeProvenance } from "../lenderRelatedWrites";
 
 export default defineTool({
   name: "create_lender",
@@ -12,12 +12,13 @@ export default defineTool({
   inputSchema: {
     name: z.string().trim().min(1).max(200).describe("Name of the new funding source."),
     ...LENDER_FIELD_SCHEMA,
+    ...writeProvenance,
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
-    const { name, ...rest } = input as Record<string, unknown> & { name: string };
+    const { name, source, change_reason, ...rest } = input;
     const cleanName = name.trim();
 
     const fields: Record<string, unknown> = {};
@@ -48,26 +49,9 @@ export default defineTool({
       };
     }
 
-    const userId = ctx.getUserId();
-    // company_id is filled by the set_master_lender_company_id trigger, exactly as for UI-created rows.
-    const row = {
-      active: true,
-      appetite_status: "active",
-      sync_source: "naitive",
-      tier: null,
-      ...fields,
-      name: cleanName,
-      user_id: userId,
-    };
-    const { data, error } = await sb.from("master_lenders").insert(row).select("*").maybeSingle();
+    const { data, error } = await sb.rpc("mcp_create_lender", { p_patch: { ...fields, name: cleanName }, p_source: source ?? null, p_change_reason: change_reason ?? null });
     if (error) return errorResult(error.message);
     if (!data) return errorResult("Funding source was not created (permission denied).");
-    const created = data as Record<string, unknown>;
-
-    await logLenderAudit(sb, ctx, created.id as string, "created", null, created, ["name", ...LENDER_FIELD_NAMES.filter((k) => k in fields)], {
-      via: "mcp:create_lender",
-    });
-
-    return textResult({ lender: created, created: true }, { lender_id: created.id as string });
+    return textResult(data);
   },
 });

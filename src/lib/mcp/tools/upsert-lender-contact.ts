@@ -1,15 +1,13 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser, requireAuth, textResult, errorResult } from "../supabase";
-import { logLenderAudit } from "../lenderWrites";
-
-const CONTACT_FIELDS = ["name", "title", "email", "phone", "city", "state", "country", "geography", "notes", "is_primary"] as const;
+import { writeLenderRelated, writeProvenance } from "../lenderRelatedWrites";
 
 export default defineTool({
   name: "upsert_lender_contact",
   title: "Add or update a funding source contact",
   description:
-    "Create or update ONE contact on a funding source. Contacts live in the separate `lender_contacts` table (the multi-contact list shown on the funding source), NOT as columns on master_lenders — use `update_lender` for the legacy single contact_name/contact_title/contact_phone columns; these two tools are not interchangeable. Pass `contact_id` to update an existing contact, or omit it to create a new one. Only the fields you pass are written. Setting `is_primary: true` promotes this contact and automatically demotes any other primary contact on the same lender (one primary per lender). Returns the full created/updated contact row and logs the change to `lender_audit_logs`, the same change history `get_lender` returns as `audit_history`.",
+    "Create/update lender_contacts name,title,email,phone,city,state,country,geography,notes,is_primary and CRM contact link. Legacy contact_id targets lender_contacts.id; crm_contact_id writes lender_contacts.contact_id (null unlinks), preserving backward compatibility. CRM link must be in the same company. Primary demotion and per-field audits are atomic. Does not edit master_lenders or CRM contact fields; identity, tenancy and timestamps are server controlled.",
   inputSchema: {
     lender_id: z.string().uuid().describe("master_lenders.id of the funding source that owns this contact."),
     contact_id: z.string().uuid().optional().describe("Omit to create a new contact; provide to update an existing one."),
@@ -23,18 +21,24 @@ export default defineTool({
     geography: z.string().trim().max(200).nullable().optional(),
     notes: z.string().max(10000).nullable().optional(),
     is_primary: z.boolean().optional(),
+    crm_contact_id: z.string().uuid().nullable().optional().describe("CRM contacts.id; writes lender_contacts.contact_id. null explicitly unlinks. Legacy contact_id above identifies the lender contact row."),
+    ...writeProvenance,
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
-    const { lender_id, contact_id, ...rest } = input as Record<string, unknown> & {
+    const { lender_id, contact_id, crm_contact_id, source, change_reason, ...rest } = input as Record<string, unknown> & {
       lender_id: string;
       contact_id?: string;
+      crm_contact_id?: string | null;
+      source?: string;
+      change_reason?: string;
     };
 
     const patch: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(rest)) if (v !== undefined) patch[k] = v;
+    if (crm_contact_id !== undefined) patch.contact_id = crm_contact_id;
 
     const sb = supabaseForUser(ctx);
 
@@ -53,48 +57,11 @@ export default defineTool({
       return errorResult("A `name` is required when creating a new contact.");
     }
 
-    let row: Record<string, unknown> | null = null;
-    if (contact_id) {
-      if (Object.keys(patch).length === 0) return errorResult("No fields to update.");
-      patch.updated_at = new Date().toISOString();
-      const { data, error } = await sb.from("lender_contacts").update(patch).eq("id", contact_id).select("*").maybeSingle();
-      if (error) return errorResult(error.message);
-      row = (data as Record<string, unknown>) ?? null;
-    } else {
-      const { data, error } = await sb.from("lender_contacts").insert({ lender_id, ...patch }).select("*").maybeSingle();
-      if (error) return errorResult(error.message);
-      row = (data as Record<string, unknown>) ?? null;
-    }
-    if (!row) return errorResult("Contact write failed or you do not have permission to write it.");
-
-    // Exactly one primary contact per lender.
-    let demoted: string[] = [];
-    if (patch.is_primary === true) {
-      const { data: others, error: demoteErr } = await sb
-        .from("lender_contacts")
-        .update({ is_primary: false })
-        .eq("lender_id", lender_id)
-        .eq("is_primary", true)
-        .neq("id", row.id as string)
-        .select("id");
-      if (demoteErr) console.warn("[upsert_lender_contact] failed to demote other primaries", demoteErr.message);
-      demoted = ((others ?? []) as Array<{ id: string }>).map((o) => o.id);
-    }
-
-    const changed = await logLenderAudit(
-      sb,
-      ctx,
-      lender_id,
-      contact_id ? "contact_updated" : "contact_added",
-      before,
-      row,
-      [...CONTACT_FIELDS],
-      { via: "mcp:upsert_lender_contact", contact_id: row.id, contact_name: row.name ?? null, demoted_primary_contact_ids: demoted },
-    );
-
-    return textResult(
-      { contact: row, changed_fields: changed, demoted_primary_contact_ids: demoted },
-      { lender_id, contact_id: row.id as string, created: !contact_id },
-    );
+    const result = await writeLenderRelated(sb, "lender_contacts", contact_id ? "update" : "create", lender_id, contact_id, patch, false, source, change_reason);
+    if ("isError" in result) return result;
+    const payload = JSON.parse(result.content[0].text);
+    const row = payload.record;
+    const fields = Object.keys(patch).filter((k) => JSON.stringify(before?.[k]) !== JSON.stringify(row?.[k]));
+    return textResult({ contact: row, changed_fields: fields, created: !contact_id, demoted_primary_contact_ids: payload.demoted_primary_contact_ids }, { lender_id, contact_id: row.id, created: !contact_id });
   },
 });
