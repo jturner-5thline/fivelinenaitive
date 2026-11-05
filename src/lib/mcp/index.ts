@@ -23,6 +23,7 @@ import addLenderAttachment from "./tools/add-lender-attachment";
 import listLenderAttachments from "./tools/list-lender-attachments";
 import deleteLenderAttachment from "./tools/delete-lender-attachment";
 import addLenderToDeal from "./tools/add-lender-to-deal";
+import updateDealLender from "./tools/update-deal-lender";
 import searchDealNotes from "./tools/search-deal-notes";
 import addDealNoteEntry from "./tools/add-deal-note-entry";
 import getDealNote from "./tools/get-deal-note";
@@ -90,6 +91,7 @@ export default defineMcp({
     listLenderAttachments,
     deleteLenderAttachment,
     addLenderToDeal,
+    updateDealLender,
     searchDealNotes,
     addDealNoteEntry,
     getDealNote,
