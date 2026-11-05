@@ -424,8 +424,10 @@ export function generateOccurrences(
     return finalize();
   }
 
-  const start = entry.start_date ? parseDate(entry.start_date) : rangeStart;
-  const end = entry.end_date ? parseDate(entry.end_date) : rangeEnd;
+  // Default bounds to the widened scan window (not the requested range) so
+  // occurrences remapped INTO the range from outside it are still generated.
+  const start = entry.start_date ? parseDate(entry.start_date) : scanStart;
+  const end = entry.end_date ? parseDate(entry.end_date) : scanEnd;
   const effectiveStart = start > scanStart ? start : scanStart;
   const effectiveEnd = end < scanEnd ? end : scanEnd;
   if (effectiveStart > effectiveEnd) return finalize();
