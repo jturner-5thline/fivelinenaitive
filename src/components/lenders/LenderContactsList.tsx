@@ -187,7 +187,7 @@ export function LenderContactsList({ contacts, onDelete, onUpdate, isEditMode }:
         {contacts.map((contact) => (
           <div 
             key={contact.id} 
-            className="p-3 rounded-lg border bg-muted/30 space-y-2"
+            className="px-3 py-1.5 rounded-lg border bg-muted/30 space-y-1"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
@@ -217,7 +217,7 @@ export function LenderContactsList({ contacts, onDelete, onUpdate, isEditMode }:
               )}
             </div>
             
-            <div className="grid gap-1.5 pl-6">
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5 pl-6">
               <EditableField
                 contactId={contact.id}
                 field="title"

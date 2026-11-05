@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, DragEvent, useEffect, useCallback, FormEvent
 import { useNavigate } from 'react-router-dom';
 import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote, X, Save, Settings2, ChevronDown, History, Clock, Ban, MessageSquare as MessageSquareIcon, Video } from 'lucide-react';
 import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
+import { parseOnePagerLinks } from '@/lib/onePagerLinks';
 import { CopyableText } from '@/components/ui/CopyableText';
 import { LenderNotesPopover, LenderFlagIndicator } from '@/components/lenders/LenderNotesPopover';
 import {
@@ -2383,14 +2384,20 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 <div className="min-w-0 flex-1">
                                   <div className="text-xs text-muted-foreground mb-0.5">One Pager</div>
                                   {lender.lenderOnePagerUrl ? (
-                                    <a
-                                      href={/^https?:\/\//i.test(lender.lenderOnePagerUrl) ? lender.lenderOnePagerUrl : `https://${lender.lenderOnePagerUrl}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-sm text-primary hover:underline break-all"
-                                    >
-                                      {lender.lenderOnePagerUrl}
-                                    </a>
+                                    <div className="flex flex-col gap-0.5 min-w-0">
+                                      {parseOnePagerLinks(lender.lenderOnePagerUrl).map((link, i) => (
+                                        <a
+                                          key={i}
+                                          href={link.href}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          title={link.label}
+                                          className="text-sm text-primary hover:underline truncate"
+                                        >
+                                          {link.label}
+                                        </a>
+                                      ))}
+                                    </div>
                                   ) : onSave ? (
                                     <button
                                       type="button"
@@ -2816,7 +2823,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                   const hasPrimary = lender.contact.name || lender.contact.email || lender.contact.phone;
                   return (
                     <>
-                      <section className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2" aria-label="Primary contact">
+                      <section className="rounded-lg border border-border/60 bg-muted/30 px-3 py-1.5 flex flex-wrap items-center gap-x-5 gap-y-1" aria-label="Primary contact">
                         <div className="flex items-center gap-2 min-w-0">
                           <User className="h-4 w-4 text-muted-foreground shrink-0" />
                           {hasPrimary ? (
@@ -2885,7 +2892,9 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
 
             {/* Call Recordings */}
             {lender?.id && (
-              <ClaapCallsSection entityType="lender" entityId={lender.id} entityName={lender.name} />
+              <div className="w-full lg:w-1/2">
+                <ClaapCallsSection entityType="lender" entityId={lender.id} entityName={lender.name} />
+              </div>
             )}
           </div>
         </div>
