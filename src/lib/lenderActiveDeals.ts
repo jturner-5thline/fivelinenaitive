@@ -73,3 +73,20 @@ export const isActiveLenderDeal = (
   !isInactiveDealLender(dealLender) &&
   !isInactiveDealForLenders(deal, pipelineNameById, resolveStageLabel) &&
   normalizeLenderStatus(dealLender.trackingStatus) === 'active';
+
+export type InactiveLenderBucket = 'on-deck' | 'excluded' | 'sent';
+
+/**
+ * Bucket a non-active funding source for the lender detail view.
+ * Excluded wins over On Deck; everything else stays under "Deals Sent".
+ * `stageLabel` is the resolved label for configurable stage IDs.
+ */
+export const bucketInactiveDealLender = (
+  dl: LenderDealLenderLike,
+  stageLabel?: string | null,
+): InactiveLenderBucket => {
+  const values = [dl.trackingStatus, dl.stage, stageLabel].map(normalizeLenderStatus);
+  if (dl.excludedAt || values.includes('excluded')) return 'excluded';
+  if (values.includes('on deck')) return 'on-deck';
+  return 'sent';
+};

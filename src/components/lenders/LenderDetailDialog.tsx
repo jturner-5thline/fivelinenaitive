@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, DragEvent, useEffect, useCallback, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote, X, Save, Settings2, ChevronDown, History, Clock, MessageSquare as MessageSquareIcon, Video } from 'lucide-react';
+import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote, X, Save, Settings2, ChevronDown, History, Clock, Ban, MessageSquare as MessageSquareIcon, Video } from 'lucide-react';
 import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
 import { CopyableText } from '@/components/ui/CopyableText';
 import { LenderNotesPopover, LenderFlagIndicator } from '@/components/lenders/LenderNotesPopover';
@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
-import { isActiveLenderDeal, normalizeLenderStatus } from '@/lib/lenderActiveDeals';
+import { isActiveLenderDeal, normalizeLenderStatus, bucketInactiveDealLender } from '@/lib/lenderActiveDeals';
 import { useLenderAttachments, LenderAttachment, LENDER_ATTACHMENT_CATEGORIES, LenderAttachmentCategory } from '@/hooks/useLenderAttachments';
 import { useLenderContacts } from '@/hooks/useLenderContacts';
 import { useAuth } from '@/contexts/AuthContext';
@@ -489,7 +489,7 @@ function EditableDealTile({
 export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelete, onSave, initialEditMode = false, nested = false }: LenderDetailDialogProps) {
   const { deals, updateLender: updateDealLender } = useDealsContext();
   const { pipelines } = usePipelineContext();
-  const { stageOptions: lenderStageOptions } = useLenderLabelResolver();
+  const { stageOptions: lenderStageOptions, resolveStage } = useLenderLabelResolver();
   const stages = lenderStageOptions;
   const criteriaOptions = useLenderCriteriaOptions();
   const { user } = useAuth();
@@ -750,7 +750,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
 
   // Find all deals where this funding source is involved
   const lenderDeals = useMemo(() => {
-    if (!lender) return { active: [], sent: [], passReasons: [] };
+    if (!lender) return { active: [], sent: [], onDeck: [], excluded: [], passReasons: [] };
 
     const active: { dealId: string; dealName: string; company: string; stage: string; status: string; value: number; manager: string; lenderId: string; notes: string }[] = [];
     const sent: { dealId: string; dealName: string; company: string; stage: string; dateSent: string; value: number; manager: string; passed?: boolean; passReason?: string; lenderId: string; notes: string }[] = [];
@@ -831,8 +831,23 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     });
 
 
-    return { active, sent, passReasons };
-  }, [lender, deals, pipelines]);
+    // On Deck / Excluded funding sources get their own sections and are not
+    // counted as "Deals Sent".
+    type SentItem = typeof sent[number];
+    const onDeck: SentItem[] = [];
+    const excluded: SentItem[] = [];
+    const dealsSent: SentItem[] = [];
+    sent.forEach(item => {
+      const deal = deals.find(d => d.id === item.dealId);
+      const dl = deal?.lenders?.find(l => l.id === item.lenderId);
+      const bucket = bucketInactiveDealLender((dl ?? { stage: item.stage }) as any, resolveStage(item.stage));
+      if (bucket === 'on-deck') onDeck.push(item);
+      else if (bucket === 'excluded') excluded.push(item);
+      else dealsSent.push(item);
+    });
+
+    return { active, sent: dealsSent, onDeck, excluded, passReasons };
+  }, [lender, deals, pipelines, resolveStage]);
 
   const { formatCurrencyValue } = usePreferences();
 
@@ -2677,6 +2692,66 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                               </HorizontalScrollContainer>
                             ) : (
                               <p className="text-muted-foreground text-sm">No deals have been sent to this funding source</p>
+                            )}
+                          </section>
+                          {showSeparator && <Separator className="my-6" />}
+                        </div>
+                      );
+
+                    case 'on-deck-deals':
+                      return (
+                        <div key={sectionId}>
+                          <section>
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                              <Clock className="h-4 w-4 text-muted-foreground" />
+                              On Deck ({lenderDeals.onDeck.length})
+                            </h3>
+                            {lenderDeals.onDeck.length > 0 ? (
+                              <HorizontalScrollContainer>
+                                {lenderDeals.onDeck.map((deal) => (
+                                  <EditableDealTile
+                                    key={deal.dealId}
+                                    deal={deal}
+                                    stages={stages}
+                                    onUpdateLender={updateDealLender}
+                                    onNavigate={handleNavigateToDeal}
+                                    formatCurrency={formatCurrencyValue}
+                                    variant="sent"
+                                  />
+                                ))}
+                              </HorizontalScrollContainer>
+                            ) : (
+                              <p className="text-muted-foreground text-sm">No deals have this funding source On Deck</p>
+                            )}
+                          </section>
+                          {showSeparator && <Separator className="my-6" />}
+                        </div>
+                      );
+
+                    case 'excluded-deals':
+                      return (
+                        <div key={sectionId}>
+                          <section>
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                              <Ban className="h-4 w-4 text-muted-foreground" />
+                              Excluded ({lenderDeals.excluded.length})
+                            </h3>
+                            {lenderDeals.excluded.length > 0 ? (
+                              <HorizontalScrollContainer>
+                                {lenderDeals.excluded.map((deal) => (
+                                  <EditableDealTile
+                                    key={deal.dealId}
+                                    deal={deal}
+                                    stages={stages}
+                                    onUpdateLender={updateDealLender}
+                                    onNavigate={handleNavigateToDeal}
+                                    formatCurrency={formatCurrencyValue}
+                                    variant="sent"
+                                  />
+                                ))}
+                              </HorizontalScrollContainer>
+                            ) : (
+                              <p className="text-muted-foreground text-sm">No deals have excluded this funding source</p>
                             )}
                           </section>
                           {showSeparator && <Separator className="my-6" />}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GripVertical, RotateCcw, DollarSign, FileText, CheckSquare, User, Briefcase, Paperclip, ArrowRightCircle, XCircle, ListChecks, ClipboardList, History } from 'lucide-react';
+import { GripVertical, RotateCcw, DollarSign, FileText, CheckSquare, User, Briefcase, Paperclip, ArrowRightCircle, XCircle, ListChecks, ClipboardList, History, Clock, Ban } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -49,6 +49,8 @@ const SECTION_CONFIG: Record<LenderSectionId, { label: string; icon: React.Compo
   'active-deals': { label: 'Active Deals', icon: Briefcase },
   'attachments': { label: 'Attachments', icon: Paperclip },
   'deals-sent': { label: 'Deals Sent', icon: ArrowRightCircle },
+  'on-deck-deals': { label: 'On Deck', icon: Clock },
+  'excluded-deals': { label: 'Excluded', icon: Ban },
   'pass-reasons': { label: 'Pass Reasons', icon: XCircle },
   'change-log': { label: 'Change Log', icon: History },
 };

@@ -11,6 +11,8 @@ export type LenderSectionId =
   | 'active-deals'
   | 'attachments'
   | 'deals-sent'
+  | 'on-deck-deals'
+  | 'excluded-deals'
   | 'pass-reasons'
   | 'change-log';
 
@@ -30,6 +32,8 @@ const DEFAULT_SECTION_ORDER: LenderSectionId[] = [
   'active-deals',
   'attachments',
   'deals-sent',
+  'on-deck-deals',
+  'excluded-deals',
   'pass-reasons',
   'change-log',
 ];
@@ -43,9 +47,17 @@ export function useLenderSectionOrder() {
       if (saved) {
         const parsed = JSON.parse(saved);
         // Validate that all sections are present
-        if (Array.isArray(parsed) && parsed.length === DEFAULT_SECTION_ORDER.length) {
-          const hasAll = DEFAULT_SECTION_ORDER.every(id => parsed.includes(id));
-          if (hasAll) return parsed;
+        if (Array.isArray(parsed)) {
+          // Keep the user's saved order; slot in any newly added sections
+          // right after the section that precedes them by default.
+          const known = parsed.filter((id): id is LenderSectionId => DEFAULT_SECTION_ORDER.includes(id));
+          DEFAULT_SECTION_ORDER.forEach((id, i) => {
+            if (known.includes(id)) return;
+            const prev = DEFAULT_SECTION_ORDER[i - 1];
+            const at = prev ? known.indexOf(prev) + 1 : 0;
+            known.splice(at, 0, id);
+          });
+          if (known.length === DEFAULT_SECTION_ORDER.length) return known;
         }
       }
     } catch {
