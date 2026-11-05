@@ -461,12 +461,12 @@ function EditableDealTile({
   return (
     <div 
       className={cn(
-        "flex-shrink-0 w-[180px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative",
+        "flex-shrink-0 w-[220px] px-2.5 py-1.5 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative",
         deal.passed && "border-l-2 border-l-destructive"
       )}
       onClick={() => onNavigate(deal.dealId)}
     >
-      <div className="absolute top-2 right-2 flex items-center gap-0.5">
+      <div className="absolute top-1 right-1 flex items-center gap-0.5">
         <button
           className="p-1 rounded hover:bg-background/80 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity z-10"
           onClick={(e) => { e.stopPropagation(); e.preventDefault(); setIsEditing(true); }}
@@ -475,13 +475,14 @@ function EditableDealTile({
           <Pencil className="h-3.5 w-3.5" />
         </button>
       </div>
-      <p className="font-medium text-sm truncate mb-1 pr-6">{deal.company}</p>
-      <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
-      <Badge variant="outline" className="text-[10px] mt-1 font-normal">{stageLabel}</Badge>
-      {deal.notes && (
-        <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{deal.notes}</p>
-      )}
-      <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
+      <div className="flex items-baseline justify-between gap-2 pr-5">
+        <p className="font-medium text-sm truncate">{deal.company}</p>
+        <p className="text-sm font-semibold text-primary shrink-0">{formatCurrency(deal.value)}</p>
+      </div>
+      <div className="flex items-center justify-between gap-2 mt-0.5" title={deal.notes || undefined}>
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal truncate max-w-[60%]">{stageLabel}</Badge>
+        <p className="text-[11px] text-muted-foreground truncate">{deal.notes || deal.manager}</p>
+      </div>
     </div>
   );
 }
@@ -1884,9 +1885,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
               </div>
             ) : (
               <>
-                {sectionOrder.map((sectionId, index) => {
-                  const showSeparator = index < sectionOrder.length - 1;
-                  
+                {(() => {
+                  const renderSection = (sectionId: LenderSectionId, showSeparator: boolean) => {
                   switch (sectionId) {
                     case 'lending-criteria':
                       return (
@@ -2155,16 +2155,14 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                               </Badge>
                             </CollapsibleTrigger>
                             <CollapsibleContent>
-                              <div className="flex flex-wrap gap-1.5 pt-2">
+                              <ul className="max-h-44 overflow-y-auto overscroll-contain pr-1 pt-2 space-y-1">
                                 {lender.upfrontChecklist.split(/[,;\n]+/).map((item, idx) => {
                                   const trimmed = item.trim();
                                   return trimmed ? (
-                                    <Badge key={idx} variant="green" className="text-xs">
-                                      {trimmed}
-                                    </Badge>
+                                    <li key={idx} className="flex items-start gap-2 text-xs leading-snug"><CheckCircle className="h-3.5 w-3.5 mt-px shrink-0 text-primary" /><span>{trimmed}</span></li>
                                   ) : null;
                                 })}
-                              </div>
+                              </ul>
                             </CollapsibleContent>
                           </Collapsible>
                           {showSeparator && <Separator className="my-6" />}
@@ -2186,16 +2184,14 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                               </Badge>
                             </CollapsibleTrigger>
                             <CollapsibleContent>
-                              <div className="flex flex-wrap gap-1.5 pt-2">
+                              <ul className="max-h-44 overflow-y-auto overscroll-contain pr-1 pt-2 space-y-1">
                                 {lender.postTermSheetChecklist.split(/[,;\n]+/).map((item, idx) => {
                                   const trimmed = item.trim();
                                   return trimmed ? (
-                                    <Badge key={idx} variant="amber" className="text-xs">
-                                      {trimmed}
-                                    </Badge>
+                                    <li key={idx} className="flex items-start gap-2 text-xs leading-snug"><CheckCircle className="h-3.5 w-3.5 mt-px shrink-0 text-muted-foreground" /><span>{trimmed}</span></li>
                                   ) : null;
                                 })}
-                              </div>
+                              </ul>
                             </CollapsibleContent>
                           </Collapsible>
                           {showSeparator && <Separator className="my-6" />}
@@ -2214,8 +2210,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 <AddLenderContactDialog onAdd={addContact} />
                               )}
                             </div>
-                            <div className="grid grid-cols-2 gap-6">
-                              {/* Left column - Contact details */}
+                            <div className="grid gap-6">
                               <div className="grid gap-3">
                                 {additionalContacts.length > 0 && lender.id && onSave && (
                                   <div className="space-y-1">
@@ -2266,49 +2261,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                     </Select>
                                   </div>
                                 )}
-                                {lender.contact.name && (
-                                  <div className="flex items-center gap-3">
-                                    <User className="h-4 w-4 text-muted-foreground" />
-                                    <span>
-                                      {lender.contact.name}{lender.contact.title && `, ${lender.contact.title}`}
-                                    </span>
-                                  </div>
-                                )}
-                                {lender.contact.email && (
-                                  <div className="flex items-center gap-3">
-                                    <Mail className="h-4 w-4 text-muted-foreground" />
-                                    <CopyableText text={lender.contact.email} href={`mailto:${lender.contact.email}`} className="text-primary hover:underline" iconSize="h-3.5 w-3.5" />
-                                  </div>
-                                )}
-                                {lender.contact.phone && (
-                                  <div className="flex items-center gap-3">
-                                    <Phone className="h-4 w-4 text-muted-foreground" />
-                                    <CopyableText text={lender.contact.phone} href={`tel:${lender.contact.phone}`} className="hover:underline" iconSize="h-3.5 w-3.5" />
-                                  </div>
-                                )}
-                                {lender.contact.geography && (
-                                  <div className="flex items-center gap-3">
-                                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                                    <span className="text-sm">{lender.contact.geography}</span>
-                                  </div>
-                                )}
                                 {!lender.contact.name && !lender.contact.email && !lender.contact.phone && additionalContacts.length === 0 && (
                                   <p className="text-muted-foreground text-sm italic">No contact info</p>
-                                )}
-                              </div>
-                              {/* Right column - Relationship Owners */}
-                              <div>
-                                <Label className="text-xs text-muted-foreground mb-2 block">Relationship Owner(s)</Label>
-                                {lender.relationshipOwners ? (
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {lender.relationshipOwners.split(',').map((owner, idx) => (
-                                      <Badge key={idx} variant="secondary" className="text-xs">
-                                        {owner.trim()}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <p className="text-muted-foreground text-sm italic">None assigned</p>
                                 )}
                               </div>
                             </div>
@@ -2574,7 +2528,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                               onDrop={isUploading ? undefined : handleDrop}
                               onClick={() => !isUploading && fileInputRef.current?.click()}
                               className={cn(
-                                "border-2 border-dashed rounded-lg p-4 mb-3 text-center transition-colors",
+                                "border-2 border-dashed rounded-lg p-2 mb-3 text-center transition-colors",
                                 isUploading
                                   ? "border-muted-foreground/25 bg-muted/40 cursor-wait"
                                   : "cursor-pointer " + (isDragging
@@ -2590,7 +2544,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 className="hidden"
                                 disabled={isUploading}
                               />
-                              <div className="flex flex-col items-center gap-2 py-2">
+                              <div className="flex flex-col items-center gap-1 py-1">
                                 {isUploading ? (
                                   <>
                                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -2603,7 +2557,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                       isDragging ? "text-primary" : "text-muted-foreground"
                                     )} />
                                     <p className="text-sm text-muted-foreground">
-                                      {isDragging ? "Drop files here" : "Drag & drop or click to upload (multiple files supported)"}
+                                      {isDragging ? "Drop files here" : "Drop or click to upload"}
                                     </p>
                                   </>
                                 )}
@@ -2630,7 +2584,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                       {catAttachments.map((attachment) => (
                                         <div
                                           key={attachment.id}
-                                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg group"
+                                          className="flex items-center justify-between px-2 py-1.5 bg-muted/50 rounded-md group"
                                         >
                                           <a
                                             href={attachment.url}
@@ -2640,7 +2594,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                           >
                                             <FileText className="h-4 w-4 shrink-0" />
                                             <div className="min-w-0">
-                                              <p className="font-medium truncate">{attachment.name}</p>
+                                              <p className="text-sm font-medium truncate">{attachment.name}</p>
                                               <p className="text-xs text-muted-foreground">
                                                 {formatFileSize(attachment.size_bytes)}
                                               </p>
@@ -2772,12 +2726,12 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                   <Tooltip key={item.dealId}>
                                     <TooltipTrigger asChild>
                                       <div 
-                                        className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative"
+                                        className="flex-shrink-0 w-[180px] px-2.5 py-1.5 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative"
                                         onClick={() => handleNavigateToDeal(item.dealId)}
                                       >
                                         <ArrowRight className="h-3 w-3 absolute top-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        <p className="font-medium text-sm truncate mb-1 pr-4">{item.company}</p>
-                                        <p className="text-xs text-destructive/80 line-clamp-2">{item.reason}</p>
+                                        <p className="font-medium text-sm truncate pr-4">{item.company}</p>
+                                        <p className="text-[11px] text-destructive/80 truncate">{item.reason}</p>
                                       </div>
                                     </TooltipTrigger>
                                     <TooltipContent side="bottom" className="max-w-[200px]">
@@ -2853,7 +2807,72 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                     default:
                       return null;
                   }
-                })}
+                  };
+                  const DEAL_IDS: LenderSectionId[] = ['active-deals', 'deals-sent', 'on-deck-deals', 'excluded-deals', 'pass-reasons'];
+                  const RAIL_IDS: LenderSectionId[] = ['upfront-checklist', 'post-term-sheet-checklist', 'attachments'];
+                  const dealIds = sectionOrder.filter((id) => DEAL_IDS.includes(id));
+                  const railIds = sectionOrder.filter((id) => RAIL_IDS.includes(id));
+                  const mainIds = sectionOrder.filter((id) => !DEAL_IDS.includes(id) && !RAIL_IDS.includes(id));
+                  const hasPrimary = lender.contact.name || lender.contact.email || lender.contact.phone;
+                  return (
+                    <>
+                      <section className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2" aria-label="Primary contact">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                          {hasPrimary ? (
+                            <span className="text-sm font-medium truncate">
+                              {lender.contact.name || 'Unnamed'}
+                              {lender.contact.title && <span className="font-normal text-muted-foreground">, {lender.contact.title}</span>}
+                            </span>
+                          ) : (
+                            <span className="text-sm italic text-muted-foreground">No primary contact</span>
+                          )}
+                        </div>
+                        {lender.contact.email && (
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <CopyableText text={lender.contact.email} href={`mailto:${lender.contact.email}`} className="text-sm text-primary hover:underline" iconSize="h-3.5 w-3.5" />
+                          </div>
+                        )}
+                        {lender.contact.phone && (
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <CopyableText text={lender.contact.phone} href={`tel:${lender.contact.phone}`} className="text-sm hover:underline" iconSize="h-3.5 w-3.5" />
+                          </div>
+                        )}
+                        {lender.contact.geography && (
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="text-sm">{lender.contact.geography}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5 flex-wrap ml-auto">
+                          <span className="text-xs text-muted-foreground">Owner(s):</span>
+                          {lender.relationshipOwners ? lender.relationshipOwners.split(',').map((owner, idx) => (
+                            <Badge key={idx} variant="secondary" className="text-xs">{owner.trim()}</Badge>
+                          )) : <span className="text-xs italic text-muted-foreground">None assigned</span>}
+                        </div>
+                      </section>
+                      {dealIds.length > 0 && (
+                        <div className="space-y-4">
+                          {dealIds.map((id) => renderSection(id, false))}
+                        </div>
+                      )}
+                      <Separator />
+                      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                        <div className="min-w-0 space-y-6">
+                          {mainIds.map((id) => renderSection(id, false))}
+                        </div>
+                        <aside className="min-w-0 space-y-4">
+                          {railIds.map((id) => {
+                            const node = renderSection(id, false);
+                            return node ? <div key={id} className="rounded-lg border border-border/60 p-3">{node}</div> : null;
+                          })}
+                        </aside>
+                      </div>
+                    </>
+                  );
+                })()}
               </>
             )}
 
