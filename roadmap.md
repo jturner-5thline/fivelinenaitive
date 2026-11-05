@@ -1,5 +1,11 @@
 # Roadmap
 
+## MCP lender additions
+- [x] Fixed nonexistent created_by/lender_id/status writes; use canonical tenant lender name/master_lender_id, on-deck/active defaults, timestamps, UI and deal activity feeds, explicit overrides and unique-race no-op handling.
+- [x] Eleven new regression tests passed (21 targeted total); targeted lint and automatic preview build passed; extracted 49-tool catalog. Full suite: 510 passed, 18 unrelated failures; full lint retains existing widespread failures. No dependencies removed or new services enabled.
+- [x] Real caller-scoped LAGO handler returned already_on_deal; signed-in 1280px Funding Sources tab inspected; database confirmed seven rows, one LAGO and zero shortlist test rows.
+- [ ] Verify live SaaS Capital/Revtek adds and cleanup — blocked by email, agent and webhook insert/delete side effects in the shared production database. Mocked requested three-lender acceptance passed; no live writes performed. Hosted revised MCP requires republishing and has not been verified through an OAuth client.
+
 ## Contact company linking
 - [x] Search the full tenant company directory by name and domain from both contact link entry points with pagination, loading and retry.
 - [x] Add Bank of America Corporation's alternate domains and link Jason Stone only; preserve all other contacts.

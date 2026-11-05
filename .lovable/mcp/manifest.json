@@ -2356,11 +2356,11 @@
       {
         "name": "add_lender_to_deal",
         "title": "Add lender to deal",
-        "description": "Attach a funding source / lender to a deal. Per project rule, new lenders default to the 'On Deck' stage.",
+        "description": "Attach one funding source or a shortlist of up to 25 to a deal. Defaults to on-deck/active; existing links are returned unchanged. Each lender has an independent added/already_on_deal/error result. status sets tracking_status.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
-          "idempotentHint": false,
+          "idempotentHint": true,
           "openWorldHint": false
         },
         "inputSchema": {
@@ -2374,19 +2374,35 @@
               "type": "string",
               "format": "uuid"
             },
+            "lender_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 1,
+              "maxItems": 25
+            },
             "stage": {
               "type": "string",
+              "minLength": 1,
               "maxLength": 100,
               "default": "on-deck"
             },
             "status": {
               "type": "string",
-              "maxLength": 100
+              "enum": [
+                "active",
+                "on-hold",
+                "on-deck",
+                "passed",
+                "excluded"
+              ],
+              "default": "active"
             }
           },
           "required": [
-            "deal_id",
-            "lender_id"
+            "deal_id"
           ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
