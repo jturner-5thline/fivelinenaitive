@@ -407,6 +407,13 @@
       "when": 1793820057412,
       "tag": "0057_deal_note_entry_rpc_fix_activity",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1793889239903,
+      "tag": "0058_guarded_paro_lender_correction",
+      "breakpoints": true
     }
   ]
 }

@@ -30196,6 +30196,10 @@ export type Database = {
           provider: string
         }[]
       }
+      apply_approved_paro_lender_correction_20261105: {
+        Args: { _updates: Json }
+        Returns: Json
+      }
       approve_join_request: {
         Args: {
           _request_id: string
