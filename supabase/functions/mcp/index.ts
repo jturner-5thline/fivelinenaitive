@@ -12,9 +12,24 @@ import { z } from "npm:zod@^3.23.0";
 // src/lib/mcp/supabase.ts
 import { createClient } from "npm:@supabase/supabase-js@^2.87.1";
 function supabaseForUser(ctx) {
-  const url = process.env.SUPABASE_URL;
-  const anon = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+  const runtime = globalThis;
+  const env = (key) => runtime.Deno?.env?.get?.(key) ?? runtime.process?.env?.[key];
+  const url = env("SUPABASE_URL") ?? env("VITE_SUPABASE_URL");
+  let anon = env("SUPABASE_PUBLISHABLE_KEY") ?? env("VITE_SUPABASE_PUBLISHABLE_KEY");
+  const keys = env("SUPABASE_PUBLISHABLE_KEYS");
+  if (!anon && keys) {
+    try {
+      const parsed = JSON.parse(keys);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        anon = Object.values(parsed).find((value) => typeof value === "string" && value.startsWith("sb_publishable_"));
+      }
+    } catch {
+    }
+  }
+  anon ??= env("SUPABASE_ANON_KEY") ?? env("VITE_SUPABASE_ANON_KEY");
   const token = ctx.getToken();
+  if (!ctx.isAuthenticated() || !token) throw new Error("A verified OAuth caller is required.");
+  if (!url || !anon) throw new Error("Funding-source service configuration is missing.");
   return createClient(url, anon, {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false, autoRefreshToken: false }
@@ -1931,7 +1946,7 @@ function defineLenderRelatedTool(table, action, name) {
   const fields = LENDER_RELATED_FIELDS[table];
   return defineTool18({
     name,
-    title: `${action} ${table.replaceAll("_", " ")}`,
+    title: `${action} ${table.replace(/_/g, " ")}`,
     description: `${action} a ${table} record, acting as the caller under existing RLS. Writable fields: ${Object.keys(fields).join(", ")}. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.`,
     inputSchema: {
       lender_id: z20.string().uuid(),

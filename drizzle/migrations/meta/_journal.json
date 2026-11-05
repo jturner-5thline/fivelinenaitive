@@ -414,6 +414,34 @@
       "when": 1793889239903,
       "tag": "0058_guarded_paro_lender_correction",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1793906413813,
+      "tag": "0059_mcp_lender_atomic_edits",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1793906476337,
+      "tag": "0060_mcp_lender_related_writes",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1793906518727,
+      "tag": "0061_mcp_lender_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1793906723045,
+      "tag": "0062_mcp_lender_merge_reference_guard",
+      "breakpoints": true
     }
   ]
 }

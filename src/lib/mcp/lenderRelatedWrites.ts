@@ -24,7 +24,7 @@ export async function writeLenderRelated(
 export function defineLenderRelatedTool(table: LenderRelatedTable, action: "create" | "update" | "delete", name: string) {
   const fields = LENDER_RELATED_FIELDS[table];
   return defineTool({
-    name, title: `${action} ${table.replaceAll("_", " ")}`,
+    name, title: `${action} ${table.replace(/_/g, " ")}`,
     description: `${action} a ${table} record, acting as the caller under existing RLS. Writable fields: ${Object.keys(fields).join(", ")}. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.`,
     inputSchema: {
       lender_id: z.string().uuid(),

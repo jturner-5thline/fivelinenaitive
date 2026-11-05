@@ -73,7 +73,8 @@
 - [x] Exclude calendar events with no attendees and titles "Block"/"Blocked" from referral meeting counts
 
 ## Complete funding-source MCP editing
-- [ ] Expand master lender edits with atomic text modes, batches, concurrency, dry-run and provenance.
-- [ ] Add audited notes and related-record write tools, CRM contact linking and attachment metadata edits.
-- [ ] Add confirmed lender archive/merge with safe relationship handling.
-- [ ] Verify tests, permissions, schema discovery and manifest; document hosted publication and live-write limitations.
+- [x] Expand master lender edits with atomic text modes, batches, concurrency, dry-run and provenance.
+- [x] Add audited notes and related-record write tools, CRM contact linking and attachment metadata edits; preserve existing RLS limitations.
+- [x] Add confirmed soft archive and atomic merge; refuse conflicts and unsupported references.
+- [x] 39 MCP tests, isolated SQL permissions/rollback assertions, focused lint and automatic build passed; signed-in dry-run + 17-table schema discovery checked, 89-tool manifest extracted. Full suite 534 passed/18 existing failures; details and limitations in docs/lender-mcp-editing.md.
+- [ ] Hosted OAuth write/merge acceptance — requires republish plus an isolated hosted test environment or explicit approval for consequential live test writes; no production records changed.

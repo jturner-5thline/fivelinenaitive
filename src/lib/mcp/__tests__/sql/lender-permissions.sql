@@ -1,0 +1,31 @@
+SELECT set_config('request.user_id','11111111-1111-4111-8111-111111111111',false);
+RESET ROLE;
+ALTER TABLE master_lenders ENABLE ROW LEVEL SECURITY;
+CREATE POLICY ml_read ON master_lenders FOR SELECT TO authenticated USING(is_company_member(auth.uid(),company_id));
+CREATE POLICY ml_update ON master_lenders FOR UPDATE TO authenticated USING(is_company_member(auth.uid(),company_id));
+CREATE POLICY ml_insert ON master_lenders FOR INSERT TO authenticated WITH CHECK(user_id=auth.uid() AND is_company_member(auth.uid(),company_id));
+CREATE POLICY ml_delete ON master_lenders FOR DELETE TO authenticated USING(can_delete_lenders(auth.uid()));
+ALTER TABLE lender_notes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY notes_read ON lender_notes FOR SELECT TO authenticated USING(is_company_member(auth.uid(),company_id));
+CREATE POLICY notes_add ON lender_notes FOR INSERT TO authenticated WITH CHECK(author_user_id=auth.uid() AND is_company_member(auth.uid(),company_id));
+CREATE POLICY notes_edit ON lender_notes FOR UPDATE TO authenticated USING(author_user_id=auth.uid());
+CREATE POLICY notes_delete ON lender_notes FOR DELETE TO authenticated USING(author_user_id=auth.uid());
+INSERT INTO lender_notes(id,master_lender_id,lender_name,company_id,author_user_id,body) VALUES('55555555-5555-4555-8555-555555555555','22222222-2222-4222-8222-222222222222','Local Lender','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','88888888-8888-4888-8888-888888888888','another author');
+SET ROLE authenticated;
+DO $$ DECLARE r jsonb; BEGIN
+ BEGIN PERFORM mcp_write_lender_related('lender_notes','update','22222222-2222-4222-8222-222222222222','55555555-5555-4555-8555-555555555555','{"body":"stolen"}'); RAISE EXCEPTION 'author policy bypass'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN PERFORM mcp_write_lender_related('lender_notes','delete','22222222-2222-4222-8222-222222222222','55555555-5555-4555-8555-555555555555','{}',false); RAISE EXCEPTION 'unconfirmed delete'; EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE '%missing confirm%' THEN RAISE; END IF; END;
+ r:=mcp_create_lender('{"name":"Merge Target"}');
+ PERFORM mcp_merge_lenders((r->'lender'->>'id')::uuid,'22222222-2222-4222-8222-222222222222',true);
+ RAISE EXCEPTION 'merge should have been blocked by note author permissions';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE '%related rows remain in lender_notes%' THEN RAISE; END IF;
+END $$;
+RESET ROLE;
+DO $$BEGIN IF NOT EXISTS(SELECT 1 FROM master_lenders WHERE id='22222222-2222-4222-8222-222222222222') OR EXISTS(SELECT 1 FROM master_lenders WHERE name='Merge Target') THEN RAISE EXCEPTION 'merge rollback failed'; END IF; END$$;
+REVOKE INSERT ON lender_audit_logs FROM authenticated;
+SET ROLE authenticated;
+DO $$BEGIN
+ BEGIN PERFORM mcp_update_lender('22222222-2222-4222-8222-222222222222','{"name":"unaudited"}'); RAISE EXCEPTION 'unaudited write accepted'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ IF (SELECT name FROM master_lenders WHERE id='22222222-2222-4222-8222-222222222222')<>'Local Lender' THEN RAISE EXCEPTION 'audit failure did not rollback'; END IF;
+END$$;
+SELECT 'Isolated RLS, merge rollback and audit failure assertions passed';

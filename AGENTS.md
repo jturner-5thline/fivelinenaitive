@@ -27,3 +27,5 @@
 - MCP lender additions resolve tenant-scoped master_lenders, use the UI's deal_lenders fields, and recover unique-pair races without updating existing links; activity logging reports partial failures because separate user-scoped writes are not atomic.
 - The one-time Paro lender correction is postgres-only, preview-hash guarded, and transactionally suspends/restores side-effect triggers under a table lock; why: approved historical updates must preserve unrelated fields and never send communications or initiate agents.
 - MCP `update_deal_lender` edits only the per-deal `deal_lenders` row (never master_lenders), never creates rows, and leaves status timestamps to the deal_lenders status trigger — why: deal notes must not leak into the shared directory and timestamps must match UI edits.
+
+- Master funding-source MCP edits use invoker transactional RPCs for mutation plus field-level audit; directory note history is separate from deal-note history, and merge refuses unsupported/conflicting references — why: preserve caller permissions, atomic append/concurrency and all related data without rewriting analytics or operational queues.

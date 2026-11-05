@@ -17876,6 +17876,7 @@ export type Database = {
       lender_audit_logs: {
         Row: {
           action: string
+          change_reason: string | null
           created_at: string
           field_changed: string | null
           id: string
@@ -17883,11 +17884,13 @@ export type Database = {
           metadata: Json | null
           new_value: string | null
           old_value: string | null
+          source: string | null
           user_display_name: string | null
           user_id: string | null
         }
         Insert: {
           action: string
+          change_reason?: string | null
           created_at?: string
           field_changed?: string | null
           id?: string
@@ -17895,11 +17898,13 @@ export type Database = {
           metadata?: Json | null
           new_value?: string | null
           old_value?: string | null
+          source?: string | null
           user_display_name?: string | null
           user_id?: string | null
         }
         Update: {
           action?: string
+          change_reason?: string | null
           created_at?: string
           field_changed?: string | null
           id?: string
@@ -17907,6 +17912,7 @@ export type Database = {
           metadata?: Json | null
           new_value?: string | null
           old_value?: string | null
+          source?: string | null
           user_display_name?: string | null
           user_id?: string | null
         }
@@ -18249,6 +18255,42 @@ export type Database = {
           created_at?: string
           id?: number
           payload?: Json
+        }
+        Relationships: []
+      }
+      lender_master_note_history: {
+        Row: {
+          change_reason: string | null
+          created_at: string
+          id: string
+          lender_id: string
+          new_record: Json | null
+          note_id: string
+          old_record: Json
+          source: string | null
+          user_id: string
+        }
+        Insert: {
+          change_reason?: string | null
+          created_at?: string
+          id?: string
+          lender_id: string
+          new_record?: Json | null
+          note_id: string
+          old_record: Json
+          source?: string | null
+          user_id: string
+        }
+        Update: {
+          change_reason?: string | null
+          created_at?: string
+          id?: string
+          lender_id?: string
+          new_record?: Json | null
+          note_id?: string
+          old_record?: Json
+          source?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -30957,6 +30999,20 @@ export type Database = {
           similarity: number
         }[]
       }
+      mcp_archive_lender: {
+        Args: {
+          p_change_reason?: string
+          p_confirm: boolean
+          p_force?: boolean
+          p_lender_id: string
+          p_source?: string
+        }
+        Returns: Json
+      }
+      mcp_create_lender: {
+        Args: { p_change_reason?: string; p_patch: Json; p_source?: string }
+        Returns: Json
+      }
       mcp_describe_tables: {
         Args: { p_tables: string[] }
         Returns: {
@@ -30969,6 +31025,58 @@ export type Database = {
           table_name: string
           udt_name: string
         }[]
+      }
+      mcp_lender_audit: {
+        Args: {
+          p_after: Json
+          p_before: Json
+          p_id: string
+          p_lender_id: string
+          p_reason?: string
+          p_source?: string
+          p_table: string
+        }
+        Returns: undefined
+      }
+      mcp_lender_has_deals: { Args: { p_id: string }; Returns: boolean }
+      mcp_merge_lenders: {
+        Args: {
+          p_change_reason?: string
+          p_confirm: boolean
+          p_keep: string
+          p_merge: string
+          p_source?: string
+        }
+        Returns: Json
+      }
+      mcp_transfer_lender_audit: {
+        Args: { p_keep: string; p_merge: string }
+        Returns: undefined
+      }
+      mcp_update_lender: {
+        Args: {
+          p_change_reason?: string
+          p_dry_run?: boolean
+          p_expected_updated_at?: string
+          p_lender_id: string
+          p_mode?: string
+          p_patch: Json
+          p_source?: string
+        }
+        Returns: Json
+      }
+      mcp_write_lender_related: {
+        Args: {
+          p_action: string
+          p_change_reason?: string
+          p_confirm?: boolean
+          p_lender_id: string
+          p_patch?: Json
+          p_record_id?: string
+          p_source?: string
+          p_table: string
+        }
+        Returns: Json
       }
       merge_crm_companies:
         | {

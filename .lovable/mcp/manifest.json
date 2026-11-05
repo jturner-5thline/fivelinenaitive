@@ -11,9 +11,9 @@
   },
   "mcp": {
     "server": {
-      "name": "naitive-api",
+      "name": "naitive",
       "version": "0.1.0",
-      "title": "naitive API"
+      "title": "naitive"
     },
     "tools": [
       {
@@ -859,7 +859,7 @@
       {
         "name": "update_lender",
         "title": "Update funding source / lender",
-        "description": "Update columns on an existing funding source (lender) row in the master directory (`master_lenders`). Partial update: ONLY the fields you pass are changed, everything else is left untouched; pass null to clear a field. Bumps updated_at, returns the full updated lender record, and writes one `lender_audit_logs` entry per changed field (old value -> new value), the same change history `get_lender` returns as `audit_history`. Use this for EXISTING funding sources only — to add a new one use `create_lender`. Also covers criteria_reviewed_at, criteria_confidence, upfront_checklist, post_term_sheet_checklist, crm_company_id, onboarded_to_flex and gift_address. Identify the lender by `lender_id`, or by `name_lookup` (case-insensitive, partial) when the id is unknown. Do NOT use `name` to identify the lender — `name` RENAMES it — ambiguous names are rejected with the candidate ids. NOTE: this tool edits the LEGACY single-contact columns on master_lenders (contact_name, contact_title, contact_phone, contact_geography, email, phone). It does NOT touch the separate multi-contact list in `lender_contacts` — use `upsert_lender_contact` for that. The two are not interchangeable.",
+        "description": "Edit every master_lenders column except id, user_id, company_id, created_at and server-maintained updated_at. Does NOT edit deal_lenders or lender_contacts. Only supplied fields change; null clears. Long-text mode replace/append/prepend is atomic with blank-line separation and final length validation. Supports updates[1..25] with independent results, expected_updated_at (conflict returns current lender), dry_run (field diffs, no writes), source and change_reason in each audit row. name renames; name_lookup identifies, rejecting ambiguity. criteria_confidence: imported means unverified imported criteria; null clears. FLEx columns are inert metadata; FLEx stays disconnected.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -876,14 +876,12 @@
             "name_lookup": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 200,
-              "description": "Find the lender by name when lender_id is unknown (case-insensitive, partial). Use `name` to RENAME the lender."
+              "maxLength": 200
             },
             "name": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 200,
-              "description": "New name for the lender (rename)."
+              "maxLength": 200
             },
             "lender_type": {
               "anyOf": [
@@ -945,51 +943,83 @@
               ]
             },
             "min_revenue": {
-              "type": [
-                "number",
-                "null"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "ebitda_min": {
-              "type": [
-                "number",
-                "null"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "min_deal": {
-              "type": [
-                "number",
-                "null"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "max_deal": {
-              "type": [
-                "number",
-                "null"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "sweet_spot_min": {
-              "type": [
-                "number",
-                "null"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "sweet_spot_max": {
-              "type": [
-                "number",
-                "null"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "min_gross_margin_pct": {
-              "type": [
-                "number",
-                "null"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "max_leverage": {
-              "type": [
-                "number",
-                "null"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "industries": {
@@ -1396,13 +1426,15 @@
               "anyOf": [
                 {
                   "type": "string",
-                  "maxLength": 100
+                  "enum": [
+                    "imported"
+                  ]
                 },
                 {
                   "type": "null"
                 }
               ],
-              "description": "Confidence in the criteria. Validated against the values already used in the directory (e.g. 'imported'); an invalid value returns the allowed list."
+              "description": "Allowed: imported = imported criteria, not independently verified. null clears."
             },
             "upfront_checklist": {
               "anyOf": [
@@ -1461,6 +1493,443 @@
                   "type": "null"
                 }
               ]
+            },
+            "sync_source": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Inert historical metadata; does not reconnect FLEx."
+            },
+            "flex_lender_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "last_synced_from_flex": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "external_created_by": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "external_last_modified": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_emails_sent": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_replies_received": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_reply_rate": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_median_hours_to_reply": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_reply_rate_excl_mass": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_last_reply_date": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_rating": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_emails_sent_l12m": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_reply_rate_l12m": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_window_label": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_updated_at": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "replace",
+                "append",
+                "prepend"
+              ]
+            },
+            "expected_updated_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "dry_run": {
+              "type": "boolean"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "updates": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "lender_id": {
+                    "$ref": "#/properties/lender_id"
+                  },
+                  "name_lookup": {
+                    "$ref": "#/properties/name_lookup"
+                  },
+                  "name": {
+                    "$ref": "#/properties/name"
+                  },
+                  "lender_type": {
+                    "$ref": "#/properties/lender_type"
+                  },
+                  "loan_types": {
+                    "$ref": "#/properties/loan_types"
+                  },
+                  "sub_debt": {
+                    "$ref": "#/properties/sub_debt"
+                  },
+                  "cash_burn": {
+                    "$ref": "#/properties/cash_burn"
+                  },
+                  "sponsorship": {
+                    "$ref": "#/properties/sponsorship"
+                  },
+                  "min_revenue": {
+                    "$ref": "#/properties/min_revenue"
+                  },
+                  "ebitda_min": {
+                    "$ref": "#/properties/ebitda_min"
+                  },
+                  "min_deal": {
+                    "$ref": "#/properties/min_deal"
+                  },
+                  "max_deal": {
+                    "$ref": "#/properties/max_deal"
+                  },
+                  "sweet_spot_min": {
+                    "$ref": "#/properties/sweet_spot_min"
+                  },
+                  "sweet_spot_max": {
+                    "$ref": "#/properties/sweet_spot_max"
+                  },
+                  "min_gross_margin_pct": {
+                    "$ref": "#/properties/min_gross_margin_pct"
+                  },
+                  "max_leverage": {
+                    "$ref": "#/properties/max_leverage"
+                  },
+                  "industries": {
+                    "$ref": "#/properties/industries"
+                  },
+                  "industries_to_avoid": {
+                    "$ref": "#/properties/industries_to_avoid"
+                  },
+                  "b2b_b2c": {
+                    "$ref": "#/properties/b2b_b2c"
+                  },
+                  "refinancing": {
+                    "$ref": "#/properties/refinancing"
+                  },
+                  "company_requirements": {
+                    "$ref": "#/properties/company_requirements"
+                  },
+                  "deal_structure_notes": {
+                    "$ref": "#/properties/deal_structure_notes"
+                  },
+                  "geo": {
+                    "$ref": "#/properties/geo"
+                  },
+                  "geographies": {
+                    "$ref": "#/properties/geographies"
+                  },
+                  "geographies_excluded": {
+                    "$ref": "#/properties/geographies_excluded"
+                  },
+                  "sponsor_requirement": {
+                    "$ref": "#/properties/sponsor_requirement"
+                  },
+                  "tier": {
+                    "$ref": "#/properties/tier"
+                  },
+                  "active": {
+                    "$ref": "#/properties/active"
+                  },
+                  "appetite_status": {
+                    "$ref": "#/properties/appetite_status"
+                  },
+                  "tags": {
+                    "$ref": "#/properties/tags"
+                  },
+                  "website": {
+                    "$ref": "#/properties/website"
+                  },
+                  "linkedin_url": {
+                    "$ref": "#/properties/linkedin_url"
+                  },
+                  "address": {
+                    "$ref": "#/properties/address"
+                  },
+                  "city": {
+                    "$ref": "#/properties/city"
+                  },
+                  "state": {
+                    "$ref": "#/properties/state"
+                  },
+                  "country": {
+                    "$ref": "#/properties/country"
+                  },
+                  "phone": {
+                    "$ref": "#/properties/phone"
+                  },
+                  "email": {
+                    "$ref": "#/properties/email"
+                  },
+                  "contact_name": {
+                    "$ref": "#/properties/contact_name"
+                  },
+                  "contact_title": {
+                    "$ref": "#/properties/contact_title"
+                  },
+                  "contact_phone": {
+                    "$ref": "#/properties/contact_phone"
+                  },
+                  "contact_geography": {
+                    "$ref": "#/properties/contact_geography"
+                  },
+                  "relationship_owners": {
+                    "$ref": "#/properties/relationship_owners"
+                  },
+                  "referral_lender": {
+                    "$ref": "#/properties/referral_lender"
+                  },
+                  "referral_fee_offered": {
+                    "$ref": "#/properties/referral_fee_offered"
+                  },
+                  "referral_agreement": {
+                    "$ref": "#/properties/referral_agreement"
+                  },
+                  "nda": {
+                    "$ref": "#/properties/nda"
+                  },
+                  "funding_source_notes": {
+                    "$ref": "#/properties/funding_source_notes"
+                  },
+                  "about_notes": {
+                    "$ref": "#/properties/about_notes"
+                  },
+                  "lender_one_pager_url": {
+                    "$ref": "#/properties/lender_one_pager_url"
+                  },
+                  "criteria_reviewed_at": {
+                    "$ref": "#/properties/criteria_reviewed_at"
+                  },
+                  "criteria_confidence": {
+                    "$ref": "#/properties/criteria_confidence"
+                  },
+                  "upfront_checklist": {
+                    "$ref": "#/properties/upfront_checklist"
+                  },
+                  "post_term_sheet_checklist": {
+                    "$ref": "#/properties/post_term_sheet_checklist"
+                  },
+                  "crm_company_id": {
+                    "$ref": "#/properties/crm_company_id"
+                  },
+                  "onboarded_to_flex": {
+                    "$ref": "#/properties/onboarded_to_flex"
+                  },
+                  "gift_address": {
+                    "$ref": "#/properties/gift_address"
+                  },
+                  "sync_source": {
+                    "$ref": "#/properties/sync_source"
+                  },
+                  "flex_lender_id": {
+                    "$ref": "#/properties/flex_lender_id"
+                  },
+                  "last_synced_from_flex": {
+                    "$ref": "#/properties/last_synced_from_flex"
+                  },
+                  "external_created_by": {
+                    "$ref": "#/properties/external_created_by"
+                  },
+                  "external_last_modified": {
+                    "$ref": "#/properties/external_last_modified"
+                  },
+                  "resp_emails_sent": {
+                    "$ref": "#/properties/resp_emails_sent"
+                  },
+                  "resp_replies_received": {
+                    "$ref": "#/properties/resp_replies_received"
+                  },
+                  "resp_reply_rate": {
+                    "$ref": "#/properties/resp_reply_rate"
+                  },
+                  "resp_median_hours_to_reply": {
+                    "$ref": "#/properties/resp_median_hours_to_reply"
+                  },
+                  "resp_reply_rate_excl_mass": {
+                    "$ref": "#/properties/resp_reply_rate_excl_mass"
+                  },
+                  "resp_last_reply_date": {
+                    "$ref": "#/properties/resp_last_reply_date"
+                  },
+                  "resp_rating": {
+                    "$ref": "#/properties/resp_rating"
+                  },
+                  "resp_emails_sent_l12m": {
+                    "$ref": "#/properties/resp_emails_sent_l12m"
+                  },
+                  "resp_reply_rate_l12m": {
+                    "$ref": "#/properties/resp_reply_rate_l12m"
+                  },
+                  "resp_window_label": {
+                    "$ref": "#/properties/resp_window_label"
+                  },
+                  "resp_updated_at": {
+                    "$ref": "#/properties/resp_updated_at"
+                  },
+                  "mode": {
+                    "$ref": "#/properties/mode"
+                  },
+                  "expected_updated_at": {
+                    "$ref": "#/properties/expected_updated_at"
+                  },
+                  "dry_run": {
+                    "$ref": "#/properties/dry_run"
+                  },
+                  "source": {
+                    "$ref": "#/properties/source"
+                  },
+                  "change_reason": {
+                    "$ref": "#/properties/change_reason"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 25
             }
           },
           "additionalProperties": false,
@@ -1471,7 +1940,7 @@
       {
         "name": "upsert_lender_contact",
         "title": "Add or update a funding source contact",
-        "description": "Create or update ONE contact on a funding source. Contacts live in the separate `lender_contacts` table (the multi-contact list shown on the funding source), NOT as columns on master_lenders — use `update_lender` for the legacy single contact_name/contact_title/contact_phone columns; these two tools are not interchangeable. Pass `contact_id` to update an existing contact, or omit it to create a new one. Only the fields you pass are written. Setting `is_primary: true` promotes this contact and automatically demotes any other primary contact on the same lender (one primary per lender). Returns the full created/updated contact row and logs the change to `lender_audit_logs`, the same change history `get_lender` returns as `audit_history`.",
+        "description": "Create/update lender_contacts name,title,email,phone,city,state,country,geography,notes,is_primary and CRM contact link. Legacy contact_id targets lender_contacts.id; crm_contact_id writes lender_contacts.contact_id (null unlinks), preserving backward compatibility. CRM link must be in the same company. Primary demotion and per-field audits are atomic. Does not edit master_lenders or CRM contact fields; identity, tenancy and timestamps are server controlled.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -1585,6 +2054,26 @@
             },
             "is_primary": {
               "type": "boolean"
+            },
+            "crm_contact_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "CRM contacts.id; writes lender_contacts.contact_id. null explicitly unlinks. Legacy contact_id above identifies the lender contact row."
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
             }
           },
           "required": [
@@ -1674,51 +2163,83 @@
               ]
             },
             "min_revenue": {
-              "type": [
-                "number",
-                "null"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "ebitda_min": {
-              "type": [
-                "number",
-                "null"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "min_deal": {
-              "type": [
-                "number",
-                "null"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "max_deal": {
-              "type": [
-                "number",
-                "null"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "sweet_spot_min": {
-              "type": [
-                "number",
-                "null"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "sweet_spot_max": {
-              "type": [
-                "number",
-                "null"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "min_gross_margin_pct": {
-              "type": [
-                "number",
-                "null"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "max_leverage": {
-              "type": [
-                "number",
-                "null"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "industries": {
@@ -2125,13 +2646,15 @@
               "anyOf": [
                 {
                   "type": "string",
-                  "maxLength": 100
+                  "enum": [
+                    "imported"
+                  ]
                 },
                 {
                   "type": "null"
                 }
               ],
-              "description": "Confidence in the criteria. Validated against the values already used in the directory (e.g. 'imported'); an invalid value returns the allowed list."
+              "description": "Allowed: imported = imported criteria, not independently verified. null clears."
             },
             "upfront_checklist": {
               "anyOf": [
@@ -2190,6 +2713,183 @@
                   "type": "null"
                 }
               ]
+            },
+            "sync_source": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Inert historical metadata; does not reconnect FLEx."
+            },
+            "flex_lender_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "last_synced_from_flex": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "external_created_by": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "external_last_modified": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_emails_sent": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_replies_received": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_reply_rate": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_median_hours_to_reply": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_reply_rate_excl_mass": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_last_reply_date": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_rating": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_emails_sent_l12m": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_reply_rate_l12m": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_window_label": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resp_updated_at": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
             }
           },
           "required": [
@@ -2221,6 +2921,14 @@
               "type": "boolean",
               "const": true,
               "description": "Must be true to confirm the permanent deletion."
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
             }
           },
           "required": [
@@ -2285,6 +2993,14 @@
               "type": "string",
               "maxLength": 200,
               "description": "MIME type; inferred from the file extension when omitted."
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
             }
           },
           "required": [
@@ -2342,6 +3058,14 @@
               "type": "boolean",
               "const": true,
               "description": "Must be true to confirm the permanent deletion."
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
             }
           },
           "required": [
@@ -3794,7 +4518,7 @@
       {
         "name": "describe_schema",
         "title": "Describe table schema",
-        "description": "Field discovery: return the column list for one or more platform tables — column name, data type, nullability, default, and (for enum columns) the complete set of allowed values. Use this before pulling data so you know exactly which fields exist rather than guessing names; pair it with `list_deals` (`fields: \"*\"`) or `query_insights_dataset` to extract complete records. Omit `tables` to get the describable table list. Describable tables: activity_logs, agenda_comment_threads, agenda_comments, ai_action_log, cash_flow_imports, cash_flow_override_history, cashflow_cash_in_items, cashflow_deal_overrides, cashflow_sidebar_data, cell_comments, channel_entries, channel_types, claap_call_email_drafts, claap_meeting_participants, claap_meetings, client_request_drafts, client_requests, companies, company_agent_access, company_email_style_guide, company_feature_overrides, company_features, company_invitations, company_join_requests, company_members, company_settings, company_write_up_fields, contact_activities, contact_audit_log, contact_company_associations, contact_company_match_audit, contact_deals, contact_field_suggestion_audit, contact_field_suggestions, contact_tagging_rules, contact_types, contacts, copilot_conversations, copilot_deal_messages, copilot_user_preferences, crm_companies, crm_company_activities, crm_company_attachments, crm_company_team, crm_contact_attachments, crm_industry_options, custom_metrics, dashboard_grid_layouts, dashboard_layouts, deal_access_requests, deal_activity, deal_advance_reasons, deal_ai_settings, deal_ai_status_snapshots, deal_aliases, deal_attachments, deal_audit_log, deal_calendar_items, deal_call_transcripts, deal_checklist_items, deal_checklist_status, deal_claap_recordings, deal_computed_metrics, deal_data_room_custom_folders, deal_document_exclusions, deal_drive_folders, deal_email_prompts, deal_emails, deal_financial_data, deal_financial_files, deal_financial_insights, deal_fit_profiles, deal_flag_notes, deal_info_requests, deal_kpi_links, deal_lender_recommendation_exclusions, deal_lenders, deal_meeting_history, deal_memo_approvals, deal_memo_audit_logs, deal_memo_comments, deal_memo_views, deal_memos, deal_milestones, deal_ownership, deal_pipeline_configs, deal_pipelines, deal_research_cache, deal_saas_lenders, deal_saas_mappings, deal_saas_model, deal_saas_sensitivity, deal_saved_views, deal_sla_rules, deal_space_conversations, deal_space_document_summaries, deal_space_documents, deal_space_financials, deal_space_messages, deal_space_note_comments, deal_space_note_templates, deal_space_note_versions, deal_space_notes, deal_stage_durations, deal_stage_history, deal_stage_history_notes, deal_stage_transitions, deal_status_notes, deal_status_report_drafts, deal_writeups, deals, default_milestones, duplicate_deal_suppressions, email_analysis, email_block_library, email_cadence_jobs, email_cadence_profiles, email_distribution_stats, email_drafts, email_intelligence_settings, email_label_assignments, email_label_rules, email_labels, email_priority_signal_log, email_send_log, email_send_state, email_snippets, email_suppression_log, email_templates, email_templates_v2, email_thread_labels, email_threads, email_workflow_events, email_workflows, emails, event_claap_recordings, external_deal_lenders, external_deals, finserv_deal_projects, flex_auto_removal_audit, flex_info_notifications, flex_notifications, flex_sync_history, flex_sync_settings, funding_source_acquisition_plans, gmail_messages, gmail_sent_messages, insights_metric_targets, lender_attachments, lender_audit_logs, lender_contacts, lender_disqualifications, lender_doc_flags, lender_duplicate_dismissals, lender_fit_attributes, lender_history_warning_dismissals, lender_match_rules, lender_match_weight_calibrations, lender_notes, lender_notes_history, lender_outcome_stats, lender_pass_detections, lender_pass_patterns, lender_qa_regression_tests, lender_recommendation_outcomes, lender_recommendation_run_items, lender_recommendation_runs, lender_stage_configs, lender_sync_request_decisions, lender_sync_requests, lender_sync_settings, master_lenders, meeting_claap_resolution, meeting_deal_links, meeting_holds, meeting_synthesized_notes, meeting_task_suggestions, meeting_title_templates, metric_manual_inputs, ms_synced_emails, naitive_stage_milestones, outbound_email_templates, outstanding_items, partner_channel_types, partner_companies, partner_contacts, pending_deal_notifications, pending_deal_suggestions, pending_lender_notifications, pending_mention_emails, proposed_meeting_slots, qb_cashflow_mapping_rules, qbo_cashflow_snapshots, qbo_pnl_snapshots, quickbooks_accounts, quickbooks_bills, quickbooks_credit_memos, quickbooks_customers, quickbooks_estimates, quickbooks_expenses, quickbooks_invoices, quickbooks_payments, quickbooks_reports, quickbooks_vendors, referral_meeting_exclusions, referral_sources, scheduled_cash_flows, scheduled_emails, staged_email_drafts, subtask_checklist_items, suppressed_emails, task_activity, task_attachments, task_collaborators, task_comments, task_dependencies, task_duplicate_candidates, task_followers, task_label_assignments, task_labels, task_mentions, task_projects, task_saved_views, task_tag_assignments, task_tags, task_templates, task_time_entries, task_view_tabs, task_watchers, tasks, team_interaction_metrics, user_deal_summary_preferences, user_email_ai_preferences, user_email_preferences, user_meeting_notes, v_deal_owner_resolution, v_deal_stage_transitions, vdr_task_document_links, vdr_task_request_links, vdr_tasks, weekly_hours_tasks, wf_contacts, wf_deals, wf_lenders, wf_meeting_notes, wf_tasks.",
+        "description": "Field discovery: return the column list for one or more platform tables — column name, data type, nullability, default, and (for enum columns) the complete set of allowed values. Use this before pulling data so you know exactly which fields exist rather than guessing names; pair it with `list_deals` (`fields: \"*\"`) or `query_insights_dataset` to extract complete records. Omit `tables` to get the describable table list. Describable tables: activity_logs, agenda_comment_threads, agenda_comments, ai_action_log, cash_flow_imports, cash_flow_override_history, cashflow_cash_in_items, cashflow_deal_overrides, cashflow_sidebar_data, cell_comments, channel_entries, channel_types, claap_call_email_drafts, claap_meeting_participants, claap_meetings, client_request_drafts, client_requests, companies, company_agent_access, company_email_style_guide, company_feature_overrides, company_features, company_invitations, company_join_requests, company_members, company_settings, company_write_up_fields, contact_activities, contact_audit_log, contact_company_associations, contact_company_match_audit, contact_deals, contact_field_suggestion_audit, contact_field_suggestions, contact_tagging_rules, contact_types, contacts, copilot_conversations, copilot_deal_messages, copilot_user_preferences, crm_companies, crm_company_activities, crm_company_attachments, crm_company_team, crm_contact_attachments, crm_industry_options, custom_metrics, dashboard_grid_layouts, dashboard_layouts, deal_access_requests, deal_activity, deal_advance_reasons, deal_ai_settings, deal_ai_status_snapshots, deal_aliases, deal_attachments, deal_audit_log, deal_calendar_items, deal_call_transcripts, deal_checklist_items, deal_checklist_status, deal_claap_recordings, deal_computed_metrics, deal_data_room_custom_folders, deal_document_exclusions, deal_drive_folders, deal_email_prompts, deal_emails, deal_financial_data, deal_financial_files, deal_financial_insights, deal_fit_profiles, deal_flag_notes, deal_info_requests, deal_kpi_links, deal_lender_recommendation_exclusions, deal_lenders, deal_meeting_history, deal_memo_approvals, deal_memo_audit_logs, deal_memo_comments, deal_memo_views, deal_memos, deal_milestones, deal_ownership, deal_pipeline_configs, deal_pipelines, deal_research_cache, deal_saas_lenders, deal_saas_mappings, deal_saas_model, deal_saas_sensitivity, deal_saved_views, deal_sla_rules, deal_space_conversations, deal_space_document_summaries, deal_space_documents, deal_space_financials, deal_space_messages, deal_space_note_comments, deal_space_note_templates, deal_space_note_versions, deal_space_notes, deal_stage_durations, deal_stage_history, deal_stage_history_notes, deal_stage_transitions, deal_status_notes, deal_status_report_drafts, deal_writeups, deals, default_milestones, duplicate_deal_suppressions, email_analysis, email_block_library, email_cadence_jobs, email_cadence_profiles, email_distribution_stats, email_drafts, email_intelligence_settings, email_label_assignments, email_label_rules, email_labels, email_priority_signal_log, email_send_log, email_send_state, email_snippets, email_suppression_log, email_templates, email_templates_v2, email_thread_labels, email_threads, email_workflow_events, email_workflows, emails, event_claap_recordings, external_deal_lenders, external_deals, finserv_deal_projects, flex_auto_removal_audit, flex_info_notifications, flex_notifications, flex_sync_history, flex_sync_settings, funding_source_acquisition_plans, gmail_messages, gmail_sent_messages, insights_metric_targets, lender_attachments, lender_audit_logs, lender_contacts, lender_disqualifications, lender_doc_flags, lender_duplicate_dismissals, lender_fit_attributes, lender_history_warning_dismissals, lender_master_note_history, lender_match_rules, lender_match_weight_calibrations, lender_notes, lender_notes_history, lender_outcome_stats, lender_pass_detections, lender_pass_patterns, lender_qa_regression_tests, lender_recommendation_outcomes, lender_recommendation_run_items, lender_recommendation_runs, lender_stage_configs, lender_sync_request_decisions, lender_sync_requests, lender_sync_settings, master_lenders, meeting_claap_resolution, meeting_deal_links, meeting_holds, meeting_synthesized_notes, meeting_task_suggestions, meeting_title_templates, metric_manual_inputs, ms_synced_emails, naitive_stage_milestones, outbound_email_templates, outstanding_items, partner_channel_types, partner_companies, partner_contacts, pending_deal_notifications, pending_deal_suggestions, pending_lender_notifications, pending_mention_emails, proposed_meeting_slots, qb_cashflow_mapping_rules, qbo_cashflow_snapshots, qbo_pnl_snapshots, quickbooks_accounts, quickbooks_bills, quickbooks_credit_memos, quickbooks_customers, quickbooks_estimates, quickbooks_expenses, quickbooks_invoices, quickbooks_payments, quickbooks_reports, quickbooks_vendors, referral_meeting_exclusions, referral_sources, scheduled_cash_flows, scheduled_emails, staged_email_drafts, subtask_checklist_items, suppressed_emails, task_activity, task_attachments, task_collaborators, task_comments, task_dependencies, task_duplicate_candidates, task_followers, task_label_assignments, task_labels, task_mentions, task_projects, task_saved_views, task_tag_assignments, task_tags, task_templates, task_time_entries, task_view_tabs, task_watchers, tasks, team_interaction_metrics, user_deal_summary_preferences, user_email_ai_preferences, user_email_preferences, user_meeting_notes, v_deal_owner_resolution, v_deal_stage_transitions, vdr_task_document_links, vdr_task_request_links, vdr_tasks, weekly_hours_tasks, wf_contacts, wf_deals, wf_lenders, wf_meeting_notes, wf_tasks.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -3958,6 +4682,2709 @@
               "description": "Max deals listed (rollups always cover all matches)."
             }
           },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_lender_fit_attribute",
+        "title": "create lender fit attributes",
+        "description": "create a lender_fit_attributes record, acting as the caller under existing RLS. Writable fields: summary, positive_signals, negative_signals, exclusions, nuanced_preferences. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Not used on creation; IDs are generated."
+            },
+            "summary": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "positive_signals": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "negative_signals": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "exclusions": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "nuanced_preferences": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_lender_fit_attribute",
+        "title": "update lender fit attributes",
+        "description": "update a lender_fit_attributes record, acting as the caller under existing RLS. Writable fields: summary, positive_signals, negative_signals, exclusions, nuanced_preferences. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "summary": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "positive_signals": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "negative_signals": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "exclusions": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "nuanced_preferences": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_lender_fit_attribute",
+        "title": "delete lender fit attributes",
+        "description": "delete a lender_fit_attributes record, acting as the caller under existing RLS. Writable fields: summary, positive_signals, negative_signals, exclusions, nuanced_preferences. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_lender_disqualification",
+        "title": "create lender disqualifications",
+        "description": "create a lender_disqualifications record, acting as the caller under existing RLS. Writable fields: deal_id, deal_lender_id, reason_category, reason_details, deal_size, deal_industry, deal_geography. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Not used on creation; IDs are generated."
+            },
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "deal_lender_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reason_category": {
+              "type": "string",
+              "enum": [
+                "deal_size_mismatch",
+                "industry_exclusion",
+                "geographic_restriction",
+                "risk_profile_concerns",
+                "timing_issues",
+                "relationship_issues",
+                "terms_mismatch",
+                "other"
+              ]
+            },
+            "reason_details": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "deal_size": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "deal_industry": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "deal_geography": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_lender_disqualification",
+        "title": "update lender disqualifications",
+        "description": "update a lender_disqualifications record, acting as the caller under existing RLS. Writable fields: deal_id, deal_lender_id, reason_category, reason_details, deal_size, deal_industry, deal_geography. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "deal_lender_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reason_category": {
+              "type": "string",
+              "enum": [
+                "deal_size_mismatch",
+                "industry_exclusion",
+                "geographic_restriction",
+                "risk_profile_concerns",
+                "timing_issues",
+                "relationship_issues",
+                "terms_mismatch",
+                "other"
+              ]
+            },
+            "reason_details": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "deal_size": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "deal_industry": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "deal_geography": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_lender_disqualification",
+        "title": "delete lender disqualifications",
+        "description": "delete a lender_disqualifications record, acting as the caller under existing RLS. Writable fields: deal_id, deal_lender_id, reason_category, reason_details, deal_size, deal_industry, deal_geography. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_lender_doc_flag",
+        "title": "create lender doc flags",
+        "description": "create a lender_doc_flags record, acting as the caller under existing RLS. Writable fields: has_nda, has_marketing. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Not used on creation; IDs are generated."
+            },
+            "has_nda": {
+              "type": "boolean"
+            },
+            "has_marketing": {
+              "type": "boolean"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_lender_doc_flag",
+        "title": "update lender doc flags",
+        "description": "update a lender_doc_flags record, acting as the caller under existing RLS. Writable fields: has_nda, has_marketing. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "has_nda": {
+              "type": "boolean"
+            },
+            "has_marketing": {
+              "type": "boolean"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_lender_doc_flag",
+        "title": "delete lender doc flags",
+        "description": "delete a lender_doc_flags record, acting as the caller under existing RLS. Writable fields: has_nda, has_marketing. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_funding_source_acquisition_plan",
+        "title": "create funding source acquisition plans",
+        "description": "create a funding_source_acquisition_plans record, acting as the caller under existing RLS. Writable fields: year, cadence, period, target_count. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Not used on creation; IDs are generated."
+            },
+            "year": {
+              "type": "integer"
+            },
+            "cadence": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "period": {
+              "type": "integer"
+            },
+            "target_count": {
+              "type": "integer"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_funding_source_acquisition_plan",
+        "title": "update funding source acquisition plans",
+        "description": "update a funding_source_acquisition_plans record, acting as the caller under existing RLS. Writable fields: year, cadence, period, target_count. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "year": {
+              "type": "integer"
+            },
+            "cadence": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "period": {
+              "type": "integer"
+            },
+            "target_count": {
+              "type": "integer"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_funding_source_acquisition_plan",
+        "title": "delete funding source acquisition plans",
+        "description": "delete a funding_source_acquisition_plans record, acting as the caller under existing RLS. Writable fields: year, cadence, period, target_count. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_lender_match_rule",
+        "title": "create lender match rules",
+        "description": "create a lender_match_rules record, acting as the caller under existing RLS. Writable fields: rule_type, applies_when, reason, delta, active. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Not used on creation; IDs are generated."
+            },
+            "rule_type": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "applies_when": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "delta": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "active": {
+              "type": "boolean"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_lender_match_rule",
+        "title": "update lender match rules",
+        "description": "update a lender_match_rules record, acting as the caller under existing RLS. Writable fields: rule_type, applies_when, reason, delta, active. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "rule_type": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "applies_when": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "delta": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "active": {
+              "type": "boolean"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_lender_match_rule",
+        "title": "delete lender match rules",
+        "description": "delete a lender_match_rules record, acting as the caller under existing RLS. Writable fields: rule_type, applies_when, reason, delta, active. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_lender_pass_detection",
+        "title": "create lender pass detections",
+        "description": "create a lender_pass_detections record, acting as the caller under existing RLS. Writable fields: deal_id, deal_lender_id, gmail_message_id, thread_id, sender_email, sender_name, confidence, is_pass, reason_summary, source_quote, status, edited_reason, raw_classification. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Not used on creation; IDs are generated."
+            },
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "deal_lender_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "gmail_message_id": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "thread_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sender_email": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sender_name": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "confidence": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "is_pass": {
+              "type": "boolean"
+            },
+            "reason_summary": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source_quote": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "status": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "edited_reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "raw_classification": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_lender_pass_detection",
+        "title": "update lender pass detections",
+        "description": "update a lender_pass_detections record, acting as the caller under existing RLS. Writable fields: deal_id, deal_lender_id, gmail_message_id, thread_id, sender_email, sender_name, confidence, is_pass, reason_summary, source_quote, status, edited_reason, raw_classification. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "deal_lender_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "gmail_message_id": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "thread_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sender_email": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sender_name": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "confidence": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "is_pass": {
+              "type": "boolean"
+            },
+            "reason_summary": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source_quote": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "status": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "edited_reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "raw_classification": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_lender_pass_detection",
+        "title": "delete lender pass detections",
+        "description": "delete a lender_pass_detections record, acting as the caller under existing RLS. Writable fields: deal_id, deal_lender_id, gmail_message_id, thread_id, sender_email, sender_name, confidence, is_pass, reason_summary, source_quote, status, edited_reason, raw_classification. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_lender_pass_pattern",
+        "title": "create lender pass patterns",
+        "description": "create a lender_pass_patterns record, acting as the caller under existing RLS. Writable fields: reason_category, pattern_type, pattern_value, confidence_score. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Not used on creation; IDs are generated."
+            },
+            "reason_category": {
+              "type": "string",
+              "enum": [
+                "deal_size_mismatch",
+                "industry_exclusion",
+                "geographic_restriction",
+                "risk_profile_concerns",
+                "timing_issues",
+                "relationship_issues",
+                "terms_mismatch",
+                "other"
+              ]
+            },
+            "pattern_type": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "pattern_value": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "confidence_score": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_lender_pass_pattern",
+        "title": "update lender pass patterns",
+        "description": "update a lender_pass_patterns record, acting as the caller under existing RLS. Writable fields: reason_category, pattern_type, pattern_value, confidence_score. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "reason_category": {
+              "type": "string",
+              "enum": [
+                "deal_size_mismatch",
+                "industry_exclusion",
+                "geographic_restriction",
+                "risk_profile_concerns",
+                "timing_issues",
+                "relationship_issues",
+                "terms_mismatch",
+                "other"
+              ]
+            },
+            "pattern_type": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "pattern_value": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "confidence_score": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_lender_pass_pattern",
+        "title": "delete lender pass patterns",
+        "description": "delete a lender_pass_patterns record, acting as the caller under existing RLS. Writable fields: reason_category, pattern_type, pattern_value, confidence_score. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_lender_sync_request",
+        "title": "create lender sync requests",
+        "description": "create a lender_sync_requests record, acting as the caller under existing RLS. Writable fields: source_system, source_lender_id, request_type, incoming_data, changes_diff, status, processing_notes, confidence, suggested_action, match_candidates, match_reason, conflict_count, contact_change_count, assigned_reviewer_id. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Not used on creation; IDs are generated."
+            },
+            "source_system": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "source_lender_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "request_type": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "incoming_data": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "changes_diff": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "status": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "processing_notes": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "confidence": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "suggested_action": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "match_candidates": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "match_reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "conflict_count": {
+              "type": "integer"
+            },
+            "contact_change_count": {
+              "type": "integer"
+            },
+            "assigned_reviewer_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_lender_sync_request",
+        "title": "update lender sync requests",
+        "description": "update a lender_sync_requests record, acting as the caller under existing RLS. Writable fields: source_system, source_lender_id, request_type, incoming_data, changes_diff, status, processing_notes, confidence, suggested_action, match_candidates, match_reason, conflict_count, contact_change_count, assigned_reviewer_id. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "source_system": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "source_lender_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "request_type": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "incoming_data": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "changes_diff": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "status": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "processing_notes": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "confidence": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "suggested_action": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "match_candidates": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "match_reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "conflict_count": {
+              "type": "integer"
+            },
+            "contact_change_count": {
+              "type": "integer"
+            },
+            "assigned_reviewer_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_lender_sync_request",
+        "title": "delete lender sync requests",
+        "description": "delete a lender_sync_requests record, acting as the caller under existing RLS. Writable fields: source_system, source_lender_id, request_type, incoming_data, changes_diff, status, processing_notes, confidence, suggested_action, match_candidates, match_reason, conflict_count, contact_change_count, assigned_reviewer_id. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_lender_sync_request_decision",
+        "title": "create lender sync request decisions",
+        "description": "create a lender_sync_request_decisions record, acting as the caller under existing RLS. Writable fields: request_id, field_name, scope, existing_value, incoming_value, action, notes. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Not used on creation; IDs are generated."
+            },
+            "request_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "field_name": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "scope": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "existing_value": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "incoming_value": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "action": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "notes": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_lender_sync_request_decision",
+        "title": "update lender sync request decisions",
+        "description": "update a lender_sync_request_decisions record, acting as the caller under existing RLS. Writable fields: request_id, field_name, scope, existing_value, incoming_value, action, notes. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "request_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "field_name": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "scope": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "existing_value": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "incoming_value": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "action": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "notes": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_lender_sync_request_decision",
+        "title": "delete lender sync request decisions",
+        "description": "delete a lender_sync_request_decisions record, acting as the caller under existing RLS. Writable fields: request_id, field_name, scope, existing_value, incoming_value, action, notes. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_lender_duplicate_dismissal",
+        "title": "create lender duplicate dismissals",
+        "description": "create a lender_duplicate_dismissals record, acting as the caller under existing RLS. Writable fields: dismissal_key, lender_ids. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Not used on creation; IDs are generated."
+            },
+            "dismissal_key": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "lender_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "maxItems": 100
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_lender_duplicate_dismissal",
+        "title": "update lender duplicate dismissals",
+        "description": "update a lender_duplicate_dismissals record, acting as the caller under existing RLS. Writable fields: dismissal_key, lender_ids. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "dismissal_key": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "lender_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "maxItems": 100
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_lender_duplicate_dismissal",
+        "title": "delete lender duplicate dismissals",
+        "description": "delete a lender_duplicate_dismissals record, acting as the caller under existing RLS. Writable fields: dismissal_key, lender_ids. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_lender_history_warning_dismissal",
+        "title": "create lender history warning dismissals",
+        "description": "create a lender_history_warning_dismissals record, acting as the caller under existing RLS. Writable fields: deal_id. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Not used on creation; IDs are generated."
+            },
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_lender_history_warning_dismissal",
+        "title": "update lender history warning dismissals",
+        "description": "update a lender_history_warning_dismissals record, acting as the caller under existing RLS. Writable fields: deal_id. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_lender_history_warning_dismissal",
+        "title": "delete lender history warning dismissals",
+        "description": "delete a lender_history_warning_dismissals record, acting as the caller under existing RLS. Writable fields: deal_id. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "record_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "record_id",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_lender_note",
+        "title": "Add funding source note",
+        "description": "Create lender_notes body, tags and is_flag. Server derives author, lender name and company. Writes field-level audit atomically; does not write deal_lenders or deal-note history.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "body": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20000
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "maxItems": 100
+            },
+            "is_flag": {
+              "type": "boolean"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "body"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_lender_note",
+        "title": "Edit funding source note",
+        "description": "Update only supplied lender_notes body, tags, is_flag. Author-only RLS remains. Atomically preserves prior record in lender_master_note_history and audits every field. lender_notes_history is deal-specific and is NOT used for directory notes.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "note_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "body": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20000
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "maxItems": 100
+            },
+            "is_flag": {
+              "type": "boolean"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "note_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_lender_note",
+        "title": "Delete funding source note",
+        "description": "Delete one lender_notes row with confirm:true, preserving its previous record in lender_master_note_history and field-level lender_audit_logs atomically. Existing author/admin delete permissions apply; no deal-specific notes are touched.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "note_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "note_id",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_lender_attachment",
+        "title": "Edit funding source attachment",
+        "description": "Rename (file_name -> lender_attachments.name) or recategorize an attachment; only supplied fields change. Does not move or replace stored bytes, file_path, size, MIME type or uploader. Existing uploader/company permissions apply; field diffs audited transactionally.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "attachment_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "file_name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "category": {
+              "type": "string",
+              "enum": [
+                "general",
+                "nda",
+                "marketing_materials",
+                "contracts",
+                "presentations",
+                "due_diligence",
+                "term_sheets",
+                "correspondence",
+                "referral_agreement",
+                "other"
+              ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "attachment_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_lender",
+        "title": "Archive funding source",
+        "description": "SOFT DELETE: set master_lenders.active=false, preserving contacts, notes, attachments, deal links and audit history. Requires confirm:true and existing lender deletion permission. Refuses deal-linked lenders unless force:true (still preserves links). Never hard deletes or removes stored files. Field diff audited atomically.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            },
+            "force": {
+              "type": "boolean",
+              "default": false
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "lender_id",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "merge_lenders",
+        "title": "Merge funding sources",
+        "description": "Atomic same-company merge: fill empty master fields, reparent contacts, notes, attachments and deal links, transfer audit/history with provenance, then hard-delete the merged master row. Requires confirm:true and existing lender deletion permission. Preserves stored attachment paths. Refuses duplicate deal links, two primary contacts, unique-key conflicts, inaccessible children or remaining references rather than deleting related data. All operations roll back on any failure. Does not use the legacy broad merge RPC or reconnect FLEx.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "keep_lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "merge_lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "keep_lender_id",
+            "merge_lender_id",
+            "confirm"
+          ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },

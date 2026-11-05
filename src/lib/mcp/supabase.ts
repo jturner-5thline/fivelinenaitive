@@ -6,9 +6,23 @@ import type { ToolContext } from "@lovable.dev/mcp-js";
  * RLS runs as the signed-in naitive user; never use SERVICE_ROLE here.
  */
 export function supabaseForUser(ctx: ToolContext): SupabaseClient {
-  const url = process.env.SUPABASE_URL!;
-  const anon = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY!;
+  const runtime = globalThis as typeof globalThis & { Deno?: { env?: { get?: (key: string) => string | undefined } }; process?: { env?: Record<string, string | undefined> } };
+  const env = (key: string) => runtime.Deno?.env?.get?.(key) ?? runtime.process?.env?.[key];
+  const url = env("SUPABASE_URL") ?? env("VITE_SUPABASE_URL");
+  let anon = env("SUPABASE_PUBLISHABLE_KEY") ?? env("VITE_SUPABASE_PUBLISHABLE_KEY");
+  const keys = env("SUPABASE_PUBLISHABLE_KEYS");
+  if (!anon && keys) {
+    try {
+      const parsed: unknown = JSON.parse(keys);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        anon = Object.values(parsed).find((value): value is string => typeof value === "string" && value.startsWith("sb_publishable_"));
+      }
+    } catch { /* Fall through to legacy public key. */ }
+  }
+  anon ??= env("SUPABASE_ANON_KEY") ?? env("VITE_SUPABASE_ANON_KEY");
   const token = ctx.getToken();
+  if (!ctx.isAuthenticated() || !token) throw new Error("A verified OAuth caller is required.");
+  if (!url || !anon) throw new Error("Funding-source service configuration is missing.");
   return createClient(url, anon, {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false, autoRefreshToken: false },
