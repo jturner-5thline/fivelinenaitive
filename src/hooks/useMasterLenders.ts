@@ -50,6 +50,8 @@ export interface UseMasterLendersOptions {
 let cachedLenders: MasterLender[] | null = null;
 let cacheUserId: string | null = null;
 let cacheTimestamp = 0;
+/** True only once the cache holds the COMPLETE directory (not a first page). */
+let cacheComplete = false;
 /** Inflight full-load promise — every concurrent caller shares one fetch. */
 let cachePromise: Promise<MasterLender[]> | null = null;
 /** Cache TTL: a fresh full-list fetch is reused for 5 minutes across all
@@ -59,6 +61,7 @@ const CACHE_TTL_MS = 5 * 60_000;
 function isCacheFresh(userId: string | undefined): boolean {
   return (
     !!cachedLenders &&
+    cacheComplete &&
     cacheUserId === (userId ?? null) &&
     Date.now() - cacheTimestamp < CACHE_TTL_MS
   );
@@ -68,6 +71,7 @@ function invalidateMasterLendersCache() {
   cachedLenders = null;
   cacheUserId = null;
   cacheTimestamp = 0;
+  cacheComplete = false;
   cachePromise = null;
   // Best-effort: drop the persisted snapshot too so the next cold load
   // doesn't repaint stale rows after a destructive mutation.
@@ -292,22 +296,6 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
         })) as ReturnType<typeof fetchPage>;
       } else {
         initialPromise = fetchPage(0, true, searchQuery);
-        if (canCoalesce) {
-          // Publish a placeholder promise immediately so peers mounting in
-          // this same tick await it instead of starting their own fetch.
-          const placeholder = initialPromise.then(
-            (res) => {
-              if (res.error) throw res.error;
-              return (res.data ?? []) as MasterLender[];
-            },
-          );
-          cachePromise = placeholder;
-          // Clear on rejection so a failed first-page fetch doesn't poison
-          // future mounts. Success case is overwritten below by loadRemaining.
-          placeholder.catch(() => {
-            if (cachePromise === placeholder) cachePromise = null;
-          });
-        }
       }
       const { data: initialData, error: initialError, count } = await initialPromise;
       if (initialError) throw initialError;
@@ -324,6 +312,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
         cachedLenders = firstPage;
         cacheUserId = user.id;
         cacheTimestamp = Date.now();
+        cacheComplete = count != null ? firstPage.length >= count : firstPage.length < pageSize;
       }
       setTotalCount(count);
       setHasMore(count != null ? firstPage.length < count : firstPage.length === pageSize);
@@ -433,6 +422,11 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
           // Final check before updating state
           if (loadId !== backgroundLoadIdRef.current) return accumulated;
 
+          cachedLenders = accumulated;
+          cacheUserId = user.id;
+          cacheTimestamp = Date.now();
+          cacheComplete = true;
+          setLenders(accumulated);
           setLoadingMore(false);
           setHasMore(false);
           // Persist the complete snapshot so the next cold load is instant.
