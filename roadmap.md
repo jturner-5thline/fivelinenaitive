@@ -1,5 +1,10 @@
 # Roadmap
 
+## Open Items MCP writes
+- [x] Confirmed and reported JSON status, completion semantics, supported priorities, unused assignment text, active-list ordering and activity_logs behavior; lender_id references deal_lenders.
+- [ ] Add caller-scoped list/create/update tools with idempotency, preserved metadata and archive-only retirement; keep the table schema unchanged.
+- [ ] Resolve status-input and open_only meaning with user before implementation; verify tests, permissions, manifest and approved real-deal widget states without unapproved communications.
+
 ## Funding-source refresh MCP additions
 - [x] Expand criteria confidence values without changing existing criteria.
 - [x] Add caller-scoped, audited manual Claap meeting matching and paginated meeting discovery; database support applied and verified.
