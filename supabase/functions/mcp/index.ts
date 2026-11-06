@@ -4278,6 +4278,3040 @@ var get_deal_hours_fees_default = defineTool51({
   }
 });
 
+// src/lib/mcp/tools/get-cashflow-metrics.ts
+import { defineTool as defineTool52 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z54 } from "npm:zod@^3.23.0";
+
+// src/components/cashflow/weeklyHistoricalSeed.ts
+var LAST_HISTORICAL_WEEK_ENDING = "2026-04-17";
+var WEEKLY_HISTORICAL_SEED = {
+  "2025-01-03": {
+    week_num: 1,
+    week_ending: "2025-01-03",
+    "BEGINNING CASH": 298915.33,
+    "ENDING CASH": 298915.33,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 14742.75,
+    "Advisors Revenue": 14500,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 0,
+    "Tech Revenue": 242.75,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 20397.49,
+    "Total Payroll Incl Benefits Tax": 191.6,
+    "Payroll Expense": 191.6,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 4990.89,
+    "Distribution": 0,
+    "Credit Card Payments": 15e3,
+    "Professional Services": 215,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 0
+  },
+  "2025-01-10": {
+    week_num: 2,
+    week_ending: "2025-01-10",
+    "BEGINNING CASH": 298915.33,
+    "ENDING CASH": 309136.52,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 47777.5,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 3477.5,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 44300,
+    "Other Cash In": 0,
+    "CASH OUT": 37556.31,
+    "Total Payroll Incl Benefits Tax": 36844.31,
+    "Payroll Expense": 26561.89,
+    "Contractor Expense": 10282.42,
+    "Advertising Bank Fees": 15,
+    "Loan Payments": 0,
+    "Distribution": 288,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 409,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 10221.19
+  },
+  "2025-01-17": {
+    week_num: 3,
+    week_ending: "2025-01-17",
+    "BEGINNING CASH": 309136.52,
+    "ENDING CASH": 304638.51,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 15097,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 15097,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 19595.01,
+    "Total Payroll Incl Benefits Tax": 0,
+    "Payroll Expense": 0,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 16200,
+    "Loan Payments": 2226.57,
+    "Distribution": 1063.25,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 105.19,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -4498.01
+  },
+  "2025-01-24": {
+    week_num: 4,
+    week_ending: "2025-01-24",
+    "BEGINNING CASH": 304638.51,
+    "ENDING CASH": 289449.69,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 27817.45,
+    "Advisors Revenue": 18e3,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 2300,
+    "Tech Revenue": 213.63,
+    "Loan Proceeds": 0,
+    "Other Cash In": 7303.82,
+    "CASH OUT": 43006.27,
+    "Total Payroll Incl Benefits Tax": 39906.27,
+    "Payroll Expense": 29138.4,
+    "Contractor Expense": 10767.87,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 0,
+    "Distribution": 1100,
+    "Credit Card Payments": 2e3,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -15188.82
+  },
+  "2025-01-31": {
+    week_num: 5,
+    week_ending: "2025-01-31",
+    "BEGINNING CASH": 289449.69,
+    "ENDING CASH": 313511.96,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 34920,
+    "Advisors Revenue": 25e3,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 9920,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 10857.73,
+    "Total Payroll Incl Benefits Tax": 0,
+    "Payroll Expense": 0,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 45,
+    "Loan Payments": 4612.73,
+    "Distribution": 6200,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 24062.27
+  },
+  "2025-02-07": {
+    week_num: 6,
+    week_ending: "2025-02-07",
+    "BEGINNING CASH": 313511.96,
+    "ENDING CASH": 255545.62,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 3200,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 3200,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 61166.34,
+    "Total Payroll Incl Benefits Tax": 14342.98,
+    "Payroll Expense": 13555.98,
+    "Contractor Expense": 787,
+    "Advertising Bank Fees": 15,
+    "Loan Payments": 4884.02,
+    "Distribution": 1351.25,
+    "Credit Card Payments": 40573.09,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -57966.34
+  },
+  "2025-02-14": {
+    week_num: 7,
+    week_ending: "2025-02-14",
+    "BEGINNING CASH": 255545.62,
+    "ENDING CASH": 225935.51,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 21422.75,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 21180,
+    "Tech Revenue": 242.75,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 51032.86,
+    "Total Payroll Incl Benefits Tax": 48918.6,
+    "Payroll Expense": 25008.55,
+    "Contractor Expense": 23910.05,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 1226.57,
+    "Distribution": 0,
+    "Credit Card Payments": 0,
+    "Professional Services": 782.5,
+    "Software": 105.19,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -29610.11
+  },
+  "2025-02-21": {
+    week_num: 8,
+    week_ending: "2025-02-21",
+    "BEGINNING CASH": 225935.51,
+    "ENDING CASH": 203117.44,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 10081.25,
+    "Advisors Revenue": 8e3,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 2081.25,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 32899.32,
+    "Total Payroll Incl Benefits Tax": 13099.32,
+    "Payroll Expense": 30.57,
+    "Contractor Expense": 13068.75,
+    "Advertising Bank Fees": 16200,
+    "Loan Payments": 2e3,
+    "Distribution": 1600,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -22818.07
+  },
+  "2025-02-28": {
+    week_num: 9,
+    week_ending: "2025-02-28",
+    "BEGINNING CASH": 203117.44,
+    "ENDING CASH": 812815.2,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 758337.9,
+    "Advisors Revenue": 75e4,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 8200.01,
+    "Tech Revenue": 137.89,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 148640.14,
+    "Total Payroll Incl Benefits Tax": 42489.41,
+    "Payroll Expense": 25239.75,
+    "Contractor Expense": 17249.66,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 19612.73,
+    "Distribution": 62288,
+    "Credit Card Payments": 24250,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 609697.76
+  },
+  "2025-03-07": {
+    week_num: 10,
+    week_ending: "2025-03-07",
+    "BEGINNING CASH": 812815.2,
+    "ENDING CASH": 735030.72,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 0,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 0,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 77784.48,
+    "Total Payroll Incl Benefits Tax": 28259.2,
+    "Payroll Expense": 290.95,
+    "Contractor Expense": 27968.25,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 4884.02,
+    "Distribution": 1351.25,
+    "Credit Card Payments": 43290.01,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -77784.48
+  },
+  "2025-03-14": {
+    week_num: 11,
+    week_ending: "2025-03-14",
+    "BEGINNING CASH": 735030.72,
+    "ENDING CASH": 689639.11,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 23204.88,
+    "Advisors Revenue": 15e3,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 8e3,
+    "Tech Revenue": 204.88,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 68596.49,
+    "Total Payroll Incl Benefits Tax": 47609.73,
+    "Payroll Expense": 30452.57,
+    "Contractor Expense": 17157.16,
+    "Advertising Bank Fees": 19135,
+    "Loan Payments": 1476.57,
+    "Distribution": 0,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 375.19,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -45391.61
+  },
+  "2025-03-21": {
+    week_num: 12,
+    week_ending: "2025-03-21",
+    "BEGINNING CASH": 689639.11,
+    "ENDING CASH": 696523.87,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 17453,
+    "Advisors Revenue": 1e4,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 7453,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 10568.24,
+    "Total Payroll Incl Benefits Tax": 8968.24,
+    "Payroll Expense": 36.99,
+    "Contractor Expense": 8931.25,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 0,
+    "Distribution": 1600,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 6884.76
+  },
+  "2025-03-28": {
+    week_num: 13,
+    week_ending: "2025-03-28",
+    "BEGINNING CASH": 696523.87,
+    "ENDING CASH": 742095.3,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 114129.54,
+    "Advisors Revenue": 104980,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 9e3,
+    "Tech Revenue": 149.54,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 68558.11,
+    "Total Payroll Incl Benefits Tax": 48578.43,
+    "Payroll Expense": 38377.34,
+    "Contractor Expense": 10201.09,
+    "Advertising Bank Fees": 15,
+    "Loan Payments": 10975.84,
+    "Distribution": 6700,
+    "Credit Card Payments": 2288.84,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 45571.43
+  },
+  "2025-04-04": {
+    week_num: 14,
+    week_ending: "2025-04-04",
+    "BEGINNING CASH": 742095.3,
+    "ENDING CASH": 666791.73,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 10500,
+    "Advisors Revenue": 10500,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 0,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 85803.57,
+    "Total Payroll Incl Benefits Tax": 2168.69,
+    "Payroll Expense": 440.19,
+    "Contractor Expense": 1728.5,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 8270.18,
+    "Distribution": 13e3,
+    "Credit Card Payments": 62364.7,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -75303.57
+  },
+  "2025-04-11": {
+    week_num: 15,
+    week_ending: "2025-04-11",
+    "BEGINNING CASH": 666791.73,
+    "ENDING CASH": 500347.76,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 53545.3,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 13321,
+    "Tech Revenue": 224.3,
+    "Loan Proceeds": 4e4,
+    "Other Cash In": 0,
+    "CASH OUT": 219989.27,
+    "Total Payroll Incl Benefits Tax": 101944.63,
+    "Payroll Expense": 53730.26,
+    "Contractor Expense": 48214.37,
+    "Advertising Bank Fees": 19120,
+    "Loan Payments": 20994.48,
+    "Distribution": 3e3,
+    "Credit Card Payments": 74810.16,
+    "Professional Services": 0,
+    "Software": 120,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -166443.97
+  },
+  "2025-04-18": {
+    week_num: 16,
+    week_ending: "2025-04-18",
+    "BEGINNING CASH": 500347.76,
+    "ENDING CASH": 491688.95,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 7175.09,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 0,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 7175.09,
+    "CASH OUT": 15833.9,
+    "Total Payroll Incl Benefits Tax": 9820,
+    "Payroll Expense": 0,
+    "Contractor Expense": 9820,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 2706.44,
+    "Distribution": 3202.27,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 105.19,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -8658.81
+  },
+  "2025-04-25": {
+    week_num: 17,
+    week_ending: "2025-04-25",
+    "BEGINNING CASH": 491688.95,
+    "ENDING CASH": 418219.14,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 10637.89,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 10500,
+    "Tech Revenue": 137.89,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 84107.7,
+    "Total Payroll Incl Benefits Tax": 76292.7,
+    "Payroll Expense": 49065.68,
+    "Contractor Expense": 27227.02,
+    "Advertising Bank Fees": 15,
+    "Loan Payments": 0,
+    "Distribution": 7800,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -73469.81
+  },
+  "2025-05-02": {
+    week_num: 18,
+    week_ending: "2025-05-02",
+    "BEGINNING CASH": 418219.14,
+    "ENDING CASH": 434961.5,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 28100,
+    "Advisors Revenue": 25e3,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 3100,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 11357.64,
+    "Total Payroll Incl Benefits Tax": 679.68,
+    "Payroll Expense": 679.68,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 7677.96,
+    "Distribution": 3e3,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 16742.36
+  },
+  "2025-05-09": {
+    week_num: 19,
+    week_ending: "2025-05-09",
+    "BEGINNING CASH": 434961.5,
+    "ENDING CASH": 348093,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 5861.72,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 5048,
+    "Tech Revenue": 261.2,
+    "Loan Proceeds": 0,
+    "Other Cash In": 552.52,
+    "CASH OUT": 92730.22,
+    "Total Payroll Incl Benefits Tax": 35918.19,
+    "Payroll Expense": 117.83,
+    "Contractor Expense": 35800.36,
+    "Advertising Bank Fees": 19120,
+    "Loan Payments": 0,
+    "Distribution": 377,
+    "Credit Card Payments": 29667.03,
+    "Professional Services": 6820,
+    "Software": 828,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -86868.5
+  },
+  "2025-05-16": {
+    week_num: 20,
+    week_ending: "2025-05-16",
+    "BEGINNING CASH": 348093,
+    "ENDING CASH": 318588.06,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 49776.33,
+    "Advisors Revenue": 22500,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 4500,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 2e4,
+    "Other Cash In": 2776.33,
+    "CASH OUT": 79281.27,
+    "Total Payroll Incl Benefits Tax": 68873.13,
+    "Payroll Expense": 68873.13,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 4682.95,
+    "Distribution": 0,
+    "Credit Card Payments": 0,
+    "Professional Services": 5500,
+    "Software": 225.19,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -29504.94
+  },
+  "2025-05-23": {
+    week_num: 21,
+    week_ending: "2025-05-23",
+    "BEGINNING CASH": 318588.06,
+    "ENDING CASH": 255255,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 30200,
+    "Advisors Revenue": 25e3,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 5200,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 93533.06,
+    "Total Payroll Incl Benefits Tax": 87269.81,
+    "Payroll Expense": 56595.63,
+    "Contractor Expense": 30674.18,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 0,
+    "Distribution": 6263.25,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -63333.06
+  },
+  "2025-05-30": {
+    week_num: 22,
+    week_ending: "2025-05-30",
+    "BEGINNING CASH": 255255,
+    "ENDING CASH": 246976.63,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 2129.15,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 2e3,
+    "Tech Revenue": 129.15,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 10407.52,
+    "Total Payroll Incl Benefits Tax": 0,
+    "Payroll Expense": 0,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 4307.52,
+    "Distribution": 6100,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -8278.37
+  },
+  "2025-06-06": {
+    week_num: 23,
+    week_ending: "2025-06-06",
+    "BEGINNING CASH": 246976.63,
+    "ENDING CASH": 248320.03,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 38914.5,
+    "Advisors Revenue": 25e3,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 13914.5,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 37571.1,
+    "Total Payroll Incl Benefits Tax": 692.41,
+    "Payroll Expense": 692.41,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 4884.02,
+    "Distribution": 377,
+    "Credit Card Payments": 31053.17,
+    "Professional Services": 0,
+    "Software": 564.5,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 1343.4
+  },
+  "2025-06-13": {
+    week_num: 24,
+    week_ending: "2025-06-13",
+    "BEGINNING CASH": 248320.03,
+    "ENDING CASH": 554814.23,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 400205.15,
+    "Advisors Revenue": 35e4,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 7571,
+    "Tech Revenue": 242.75,
+    "Loan Proceeds": 42391.4,
+    "Other Cash In": 0,
+    "CASH OUT": 93710.95,
+    "Total Payroll Incl Benefits Tax": 93605.76,
+    "Payroll Expense": 61591.99,
+    "Contractor Expense": 32013.77,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 0,
+    "Distribution": 0,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 105.19,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 306494.2
+  },
+  "2025-06-20": {
+    week_num: 25,
+    week_ending: "2025-06-20",
+    "BEGINNING CASH": 554814.23,
+    "ENDING CASH": 400734.66,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 11532.27,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 1500,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 1e4,
+    "Other Cash In": 32.27,
+    "CASH OUT": 165611.84,
+    "Total Payroll Incl Benefits Tax": 119020,
+    "Payroll Expense": 0,
+    "Contractor Expense": 119020,
+    "Advertising Bank Fees": 19120,
+    "Loan Payments": 23188.59,
+    "Distribution": 3163.25,
+    "Credit Card Payments": 0,
+    "Professional Services": 1e3,
+    "Software": 120,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -154079.57
+  },
+  "2025-06-27": {
+    week_num: 26,
+    week_ending: "2025-06-27",
+    "BEGINNING CASH": 400734.66,
+    "ENDING CASH": 343543.72,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 40250.39,
+    "Advisors Revenue": 3e4,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 10112.5,
+    "Tech Revenue": 137.89,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 97441.33,
+    "Total Payroll Incl Benefits Tax": 77097.33,
+    "Payroll Expense": 55098.08,
+    "Contractor Expense": 21999.25,
+    "Advertising Bank Fees": 456,
+    "Loan Payments": 188,
+    "Distribution": 9200,
+    "Credit Card Payments": 0,
+    "Professional Services": 10500,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -57190.94
+  },
+  "2025-07-04": {
+    week_num: 27,
+    week_ending: "2025-07-04",
+    "BEGINNING CASH": 343543.72,
+    "ENDING CASH": 314841.9,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 0,
+    "TOTAL CASH ON HAND": 0,
+    "CASH IN": 37312.5,
+    "Advisors Revenue": 31500,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 5812.5,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 66014.32,
+    "Total Payroll Incl Benefits Tax": 510.93,
+    "Payroll Expense": 510.93,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 15,
+    "Loan Payments": 55725.48,
+    "Distribution": 0,
+    "Credit Card Payments": 911.28,
+    "Professional Services": 8473.38,
+    "Software": 378.25,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -28701.82
+  },
+  "2025-07-11": {
+    week_num: 28,
+    week_ending: "2025-07-11",
+    "BEGINNING CASH": 314841.9,
+    "ENDING CASH": 266006.63,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 20866,
+    "TOTAL CASH ON HAND": 286872.63,
+    "CASH IN": 38125.72,
+    "Advisors Revenue": 6e3,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 21648.05,
+    "Tech Revenue": 242.75,
+    "Loan Proceeds": 1e4,
+    "Other Cash In": 234.92,
+    "CASH OUT": 86960.99,
+    "Total Payroll Incl Benefits Tax": 73958.23,
+    "Payroll Expense": 49353.35,
+    "Contractor Expense": 24604.88,
+    "Advertising Bank Fees": 15,
+    "Loan Payments": 9e3,
+    "Distribution": 377,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 3610.76,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -48835.27
+  },
+  "2025-07-18": {
+    week_num: 29,
+    week_ending: "2025-07-18",
+    "BEGINNING CASH": 266006.63,
+    "ENDING CASH": 267472.52,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 67030.3,
+    "TOTAL CASH ON HAND": 334502.82,
+    "CASH IN": 16500.01,
+    "Advisors Revenue": 12500,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 4000.01,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 15034.12,
+    "Total Payroll Incl Benefits Tax": 0,
+    "Payroll Expense": 0,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 25.2,
+    "Loan Payments": 13364.37,
+    "Distribution": 1063.25,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 581.3,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 1465.89
+  },
+  "2025-07-25": {
+    week_num: 30,
+    week_ending: "2025-07-25",
+    "BEGINNING CASH": 267472.52,
+    "ENDING CASH": 229818.07,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 67030.3,
+    "TOTAL CASH ON HAND": 296848.37,
+    "CASH IN": 33141.09,
+    "Advisors Revenue": 27e3,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 5125,
+    "Tech Revenue": 129.15,
+    "Loan Proceeds": 0,
+    "Other Cash In": 886.94,
+    "CASH OUT": 70795.54,
+    "Total Payroll Incl Benefits Tax": 65580.54,
+    "Payroll Expense": 42667.13,
+    "Contractor Expense": 22913.41,
+    "Advertising Bank Fees": 15,
+    "Loan Payments": 0,
+    "Distribution": 5200,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -37654.45
+  },
+  "2025-08-01": {
+    week_num: 31,
+    week_ending: "2025-08-01",
+    "BEGINNING CASH": 229818.07,
+    "ENDING CASH": 272574.42,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 67030.3,
+    "TOTAL CASH ON HAND": 339604.72,
+    "CASH IN": 52210.4,
+    "Advisors Revenue": 5e4,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 2210.4,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 9454.05,
+    "Total Payroll Incl Benefits Tax": 510.93,
+    "Payroll Expense": 510.93,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 122.19,
+    "Loan Payments": 5720.93,
+    "Distribution": 3100,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 42756.35
+  },
+  "2025-08-08": {
+    week_num: 32,
+    week_ending: "2025-08-08",
+    "BEGINNING CASH": 272574.42,
+    "ENDING CASH": 239750.7,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 65868.62,
+    "TOTAL CASH ON HAND": 305619.32,
+    "CASH IN": 5766.9,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 5766.9,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 38590.62,
+    "Total Payroll Incl Benefits Tax": 31541.6,
+    "Payroll Expense": 277.81,
+    "Contractor Expense": 31263.79,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 4696.02,
+    "Distribution": 377,
+    "Credit Card Payments": 1528.75,
+    "Professional Services": 120,
+    "Software": 327.25,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -32823.72
+  },
+  "2025-08-15": {
+    week_num: 33,
+    week_ending: "2025-08-15",
+    "BEGINNING CASH": 239750.7,
+    "ENDING CASH": 171646.79,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 65868.62,
+    "TOTAL CASH ON HAND": 237515.41,
+    "CASH IN": 15712,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 15487.7,
+    "Tech Revenue": 224.3,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 83815.91,
+    "Total Payroll Incl Benefits Tax": 54551.73,
+    "Payroll Expense": 54551.73,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 244.38,
+    "Loan Payments": 12956.8,
+    "Distribution": 4063,
+    "Credit Card Payments": 12e3,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -68103.91
+  },
+  "2025-08-22": {
+    week_num: 34,
+    week_ending: "2025-08-22",
+    "BEGINNING CASH": 171646.79,
+    "ENDING CASH": 167706.91,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 83768.62,
+    "TOTAL CASH ON HAND": 251475.53,
+    "CASH IN": 17600,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 7e3,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 10600,
+    "Other Cash In": 0,
+    "CASH OUT": 21539.88,
+    "Total Payroll Incl Benefits Tax": 209.5,
+    "Payroll Expense": 209.5,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 0,
+    "Distribution": 1600,
+    "Credit Card Payments": 18200,
+    "Professional Services": 0,
+    "Software": 1530.38,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -3939.88
+  },
+  "2025-08-29": {
+    week_num: 35,
+    week_ending: "2025-08-29",
+    "BEGINNING CASH": 167706.91,
+    "ENDING CASH": 123352.34,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 66528.62,
+    "TOTAL CASH ON HAND": 189880.96,
+    "CASH IN": 48152.12,
+    "Advisors Revenue": 25e3,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 4325,
+    "Tech Revenue": 196.15,
+    "Loan Proceeds": 0,
+    "Other Cash In": 18630.97,
+    "CASH OUT": 92506.69,
+    "Total Payroll Incl Benefits Tax": 66620.47,
+    "Payroll Expense": 42414.88,
+    "Contractor Expense": 24205.59,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 4237.2,
+    "Distribution": 3100,
+    "Credit Card Payments": 18549.02,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -44354.57
+  },
+  "2025-09-05": {
+    week_num: 36,
+    week_ending: "2025-09-05",
+    "BEGINNING CASH": 123352.34,
+    "ENDING CASH": 129339.35,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46528.62,
+    "TOTAL CASH ON HAND": 175867.97,
+    "CASH IN": 34141.9,
+    "Advisors Revenue": 1e4,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 4141.9,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 2e4,
+    "CASH OUT": 28154.89,
+    "Total Payroll Incl Benefits Tax": 1666.81,
+    "Payroll Expense": 1666.81,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 122.19,
+    "Loan Payments": 5974.58,
+    "Distribution": 0,
+    "Credit Card Payments": 20046,
+    "Professional Services": 0,
+    "Software": 345.31,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 5987.01
+  },
+  "2025-09-12": {
+    week_num: 37,
+    week_ending: "2025-09-12",
+    "BEGINNING CASH": 129339.35,
+    "ENDING CASH": 127800.08,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 174293.02,
+    "CASH IN": 64351.2,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 7900,
+    "Tech Revenue": 261.2,
+    "Loan Proceeds": 56190,
+    "Other Cash In": 0,
+    "CASH OUT": 65890.47,
+    "Total Payroll Incl Benefits Tax": 65528.28,
+    "Payroll Expense": 42888.46,
+    "Contractor Expense": 22639.82,
+    "Advertising Bank Fees": 122.19,
+    "Loan Payments": 0,
+    "Distribution": 0,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 240,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -1539.27
+  },
+  "2025-09-19": {
+    week_num: 38,
+    week_ending: "2025-09-19",
+    "BEGINNING CASH": 0,
+    "ENDING CASH": 141980,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 188472.94,
+    "CASH IN": 53877.95,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 17354,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 35992.04,
+    "Other Cash In": 531.91,
+    "CASH OUT": 34043.04,
+    "Total Payroll Incl Benefits Tax": 22.42,
+    "Payroll Expense": 22.42,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 122.19,
+    "Loan Payments": 3898.43,
+    "Distribution": 0,
+    "Credit Card Payments": 3e4,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 19834.91
+  },
+  "2025-09-26": {
+    week_num: 39,
+    week_ending: "2025-09-26",
+    "BEGINNING CASH": 141980,
+    "ENDING CASH": 91002.95,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 137495.89,
+    "CASH IN": 3954.15,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 3825,
+    "Tech Revenue": 129.15,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 54931.2,
+    "Total Payroll Incl Benefits Tax": 50290.82,
+    "Payroll Expense": 37413.16,
+    "Contractor Expense": 12877.66,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 3110,
+    "Distribution": 0,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 1530.38,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -50977.05
+  },
+  "2025-10-03": {
+    week_num: 40,
+    week_ending: "2025-10-03",
+    "BEGINNING CASH": 91002.95,
+    "ENDING CASH": 95996.29,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 142489.23,
+    "CASH IN": 38000.17,
+    "Advisors Revenue": 38e3,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 0.17,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 33006.83,
+    "Total Payroll Incl Benefits Tax": 383.2,
+    "Payroll Expense": 383.2,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 137.19,
+    "Loan Payments": 10036.78,
+    "Distribution": 0,
+    "Credit Card Payments": 22142.6,
+    "Professional Services": 0,
+    "Software": 307.06,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 4993.34
+  },
+  "2025-10-10": {
+    week_num: 41,
+    week_ending: "2025-10-10",
+    "BEGINNING CASH": 95996.29,
+    "ENDING CASH": 70277.36,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 116770.3,
+    "CASH IN": 34136.89,
+    "Advisors Revenue": 25e3,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 8853.8,
+    "Tech Revenue": 224.3,
+    "Loan Proceeds": 0,
+    "Other Cash In": 58.79,
+    "CASH OUT": 59855.82,
+    "Total Payroll Incl Benefits Tax": 58487.69,
+    "Payroll Expense": 41251.1,
+    "Contractor Expense": 17236.59,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 1368.13,
+    "Distribution": 0,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -25718.93
+  },
+  "2025-10-17": {
+    week_num: 42,
+    week_ending: "2025-10-17",
+    "BEGINNING CASH": 70277.36,
+    "ENDING CASH": 74282.62,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 120775.56,
+    "CASH IN": 23317.9,
+    "Advisors Revenue": 15e3,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 8317.9,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 19312.64,
+    "Total Payroll Incl Benefits Tax": 0,
+    "Payroll Expense": 0,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 244.38,
+    "Loan Payments": 5169.83,
+    "Distribution": 0,
+    "Credit Card Payments": 1e4,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 3898.43,
+    "Ramp": 3898.43,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 4005.26
+  },
+  "2025-10-24": {
+    week_num: 43,
+    week_ending: "2025-10-24",
+    "BEGINNING CASH": 74282.62,
+    "ENDING CASH": 78863.78,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 125356.72,
+    "CASH IN": 57679.77,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 7945.07,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 49734.7,
+    "Other Cash In": 0,
+    "CASH OUT": 53098.61,
+    "Total Payroll Incl Benefits Tax": 35695.73,
+    "Payroll Expense": 35695.73,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 2.5,
+    "Loan Payments": 0,
+    "Distribution": 0,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 1530.38,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 15870,
+    "TOTAL NET CASH CHANGE": 4581.16
+  },
+  "2025-10-31": {
+    week_num: 44,
+    week_ending: "2025-10-31",
+    "BEGINNING CASH": 78863.78,
+    "ENDING CASH": 123763.05,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 170255.99,
+    "CASH IN": 72447.6,
+    "Advisors Revenue": 17500,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 4800,
+    "Tech Revenue": 147.6,
+    "Loan Proceeds": 5e4,
+    "Other Cash In": 0,
+    "CASH OUT": 27548.33,
+    "Total Payroll Incl Benefits Tax": 12163.34,
+    "Payroll Expense": 0,
+    "Contractor Expense": 12163.34,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 7001.96,
+    "Distribution": 0,
+    "Credit Card Payments": 3860,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 4523.03,
+    "Ramp": 4523.03,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 44899.27
+  },
+  "2025-11-07": {
+    week_num: 45,
+    week_ending: "2025-11-07",
+    "BEGINNING CASH": 123763.05,
+    "ENDING CASH": 85748.82,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 132241.76,
+    "CASH IN": 131089.6,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 5089.6,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 126e3,
+    "Other Cash In": 0,
+    "CASH OUT": 169103.83,
+    "Total Payroll Incl Benefits Tax": 19215.95,
+    "Payroll Expense": 708.87,
+    "Contractor Expense": 18507.08,
+    "Advertising Bank Fees": 124.69,
+    "Loan Payments": 58270.28,
+    "Distribution": 0,
+    "Credit Card Payments": 91078.6,
+    "Professional Services": 0,
+    "Software": 414.31,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -38014.23
+  },
+  "2025-11-14": {
+    week_num: 46,
+    week_ending: "2025-11-14",
+    "BEGINNING CASH": 85748.82,
+    "ENDING CASH": 48668.06,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 95161,
+    "CASH IN": 13442.75,
+    "Advisors Revenue": 1e4,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 3200,
+    "Tech Revenue": 242.75,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 50523.51,
+    "Total Payroll Incl Benefits Tax": 44398.83,
+    "Payroll Expense": 44398.83,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 364.38,
+    "Loan Payments": 4464.67,
+    "Distribution": 1295.63,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -37080.76
+  },
+  "2025-11-21": {
+    week_num: 47,
+    week_ending: "2025-11-21",
+    "BEGINNING CASH": 48668.06,
+    "ENDING CASH": 123348.84,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 169841.78,
+    "CASH IN": 81610.03,
+    "Advisors Revenue": 68500,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 13036.72,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 73.31,
+    "Other Cash In": 0,
+    "CASH OUT": 6929.25,
+    "Total Payroll Incl Benefits Tax": 93.87,
+    "Payroll Expense": 93.87,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 15,
+    "Loan Payments": 0,
+    "Distribution": 0,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 1530.38,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 5290,
+    "TOTAL NET CASH CHANGE": 74680.78
+  },
+  "2025-11-28": {
+    week_num: 48,
+    week_ending: "2025-11-28",
+    "BEGINNING CASH": 123348.84,
+    "ENDING CASH": 89149.1,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 135642.04,
+    "CASH IN": 32498.59,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 17255.4,
+    "Tech Revenue": 243.19,
+    "Loan Proceeds": 15e3,
+    "Other Cash In": 0,
+    "CASH OUT": 66698.33,
+    "Total Payroll Incl Benefits Tax": 62397.18,
+    "Payroll Expense": 45455.47,
+    "Contractor Expense": 16941.71,
+    "Advertising Bank Fees": -122.19,
+    "Loan Payments": 188,
+    "Distribution": 0,
+    "Credit Card Payments": 3110.34,
+    "Professional Services": 1125,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -34199.74
+  },
+  "2025-12-05": {
+    week_num: 49,
+    week_ending: "2025-12-05",
+    "BEGINNING CASH": 89149.1,
+    "ENDING CASH": 87535.01,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 134027.95,
+    "CASH IN": 7297.7,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 7297.4,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0.3,
+    "Other Cash In": 0,
+    "CASH OUT": 8911.79,
+    "Total Payroll Incl Benefits Tax": 113.42,
+    "Payroll Expense": 113.42,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 11.25,
+    "Loan Payments": 4929.16,
+    "Distribution": 0,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 406.56,
+    "Healthcare": 0,
+    "401k": 3451.4,
+    "Ramp": 3451.4,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -1614.09
+  },
+  "2025-12-12": {
+    week_num: 50,
+    week_ending: "2025-12-12",
+    "BEGINNING CASH": 87535.01,
+    "ENDING CASH": 64685.03,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 111177.97,
+    "CASH IN": 42641.98,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 8418.65,
+    "Tech Revenue": 223.33,
+    "Loan Proceeds": 34e3,
+    "Other Cash In": 0,
+    "CASH OUT": 65491.96,
+    "Total Payroll Incl Benefits Tax": 51215.17,
+    "Payroll Expense": 33113.59,
+    "Contractor Expense": 18101.58,
+    "Advertising Bank Fees": 3750,
+    "Loan Payments": 7047.16,
+    "Distribution": 1295.63,
+    "Credit Card Payments": 2064,
+    "Professional Services": 0,
+    "Software": 120,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -22849.98
+  },
+  "2025-12-19": {
+    week_num: 51,
+    week_ending: "2025-12-19",
+    "BEGINNING CASH": 64685.03,
+    "ENDING CASH": 173262.97,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 219755.91,
+    "CASH IN": 114392.3,
+    "Advisors Revenue": 102500,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 11892.3,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 5814.36,
+    "Total Payroll Incl Benefits Tax": 0,
+    "Payroll Expense": 0,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 15,
+    "Loan Payments": 1900.93,
+    "Distribution": 0,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 3898.43,
+    "Ramp": 3898.43,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 108577.94
+  },
+  "2025-12-26": {
+    week_num: 52,
+    week_ending: "2025-12-26",
+    "BEGINNING CASH": 173262.97,
+    "ENDING CASH": 217644.28,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 264137.22,
+    "CASH IN": 78748.57,
+    "Advisors Revenue": 75e3,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 3600,
+    "Tech Revenue": 148.57,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 34367.26,
+    "Total Payroll Incl Benefits Tax": 28626.54,
+    "Payroll Expense": 101.49,
+    "Contractor Expense": 28525.05,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 3110.34,
+    "Distribution": 1100,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 1530.38,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 44381.31
+  },
+  "2026-01-02": {
+    week_num: 53,
+    week_ending: "2026-01-02",
+    "BEGINNING CASH": 217644.28,
+    "ENDING CASH": 190960.84,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 237453.78,
+    "CASH IN": 5e3,
+    "Advisors Revenue": 5e3,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 0,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 41381.18,
+    "Total Payroll Incl Benefits Tax": 5285,
+    "Payroll Expense": 0,
+    "Contractor Expense": 5285,
+    "Advertising Bank Fees": 2305.81,
+    "Loan Payments": 4837.56,
+    "Distribution": 4400,
+    "Credit Card Payments": 22e3,
+    "Professional Services": 0,
+    "Software": 791.81,
+    "Healthcare": 0,
+    "401k": 1761,
+    "Ramp": 1761,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -36381.18
+  },
+  "2026-01-09": {
+    week_num: 54,
+    week_ending: "2026-01-09",
+    "BEGINNING CASH": 190960.84,
+    "ENDING CASH": 164734.23,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 211227.17,
+    "CASH IN": 20003.3,
+    "Advisors Revenue": 15500,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 4503.3,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 46229.91,
+    "Total Payroll Incl Benefits Tax": 22989.75,
+    "Payroll Expense": 80.58,
+    "Contractor Expense": 22909.17,
+    "Advertising Bank Fees": 15,
+    "Loan Payments": 1368.13,
+    "Distribution": 388,
+    "Credit Card Payments": 20425.2,
+    "Professional Services": 200.75,
+    "Software": 843.08,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -26226.61
+  },
+  "2026-01-16": {
+    week_num: 55,
+    week_ending: "2026-01-16",
+    "BEGINNING CASH": 164734.23,
+    "ENDING CASH": 136494,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 182986.94,
+    "CASH IN": 12500.15,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 12257.4,
+    "Tech Revenue": 242.75,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 40740.38,
+    "Total Payroll Incl Benefits Tax": 32687.73,
+    "Payroll Expense": 31687.73,
+    "Contractor Expense": 1e3,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 0,
+    "Distribution": 6295.63,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 1757.02,
+    "Ramp": 1757.02,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -28240.23
+  },
+  "2026-01-23": {
+    week_num: 56,
+    week_ending: "2026-01-23",
+    "BEGINNING CASH": 136494,
+    "ENDING CASH": 132543.92,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 179036.86,
+    "CASH IN": 8263.1,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 8263.1,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 3950.08,
+    "Total Payroll Incl Benefits Tax": 1319.7,
+    "Payroll Expense": 319.7,
+    "Contractor Expense": 1e3,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 0,
+    "Distribution": 1100,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 1530.38,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -3950.08
+  },
+  "2026-01-30": {
+    week_num: 57,
+    week_ending: "2026-01-30",
+    "BEGINNING CASH": 132543.92,
+    "ENDING CASH": 90393.23,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 136886.17,
+    "CASH IN": 5043.15,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 0,
+    "Tech Revenue": 129.15,
+    "Loan Proceeds": 0,
+    "Other Cash In": 4914,
+    "CASH OUT": 47193.84,
+    "Total Payroll Incl Benefits Tax": 32705.1,
+    "Payroll Expense": 21505.1,
+    "Contractor Expense": 11200,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 5579.15,
+    "Distribution": 7900,
+    "Credit Card Payments": 0,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 1009.59,
+    "Ramp": 1009.59,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -42150.69
+  },
+  "2026-02-06": {
+    week_num: 58,
+    week_ending: "2026-02-06",
+    "BEGINNING CASH": 90393.23,
+    "ENDING CASH": 89806.28,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 136299.22,
+    "CASH IN": 7531.9,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 7531.9,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 8118.85,
+    "Total Payroll Incl Benefits Tax": 788.2,
+    "Payroll Expense": 788.2,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 4563.86,
+    "Distribution": 1295.63,
+    "Credit Card Payments": 815.88,
+    "Professional Services": 0,
+    "Software": 655.28,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -586.95
+  },
+  "2026-02-13": {
+    week_num: 59,
+    week_ending: "2026-02-13",
+    "BEGINNING CASH": 89806.28,
+    "ENDING CASH": 49716.09,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 96209.03,
+    "CASH IN": 14148.5,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 13905.75,
+    "Tech Revenue": 242.75,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 54238.69,
+    "Total Payroll Incl Benefits Tax": 44228.28,
+    "Payroll Expense": 28983.88,
+    "Contractor Expense": 15244.4,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 7140.91,
+    "Distribution": 388,
+    "Credit Card Payments": 1351.91,
+    "Professional Services": 0,
+    "Software": 120,
+    "Healthcare": 0,
+    "401k": 1009.59,
+    "Ramp": 1009.59,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -40090.19
+  },
+  "2026-02-20": {
+    week_num: 60,
+    week_ending: "2026-02-20",
+    "BEGINNING CASH": 49716.09,
+    "ENDING CASH": 42261.96,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 88754.9,
+    "CASH IN": 3500,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 3500,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 10954.13,
+    "Total Payroll Incl Benefits Tax": 2625,
+    "Payroll Expense": 0,
+    "Contractor Expense": 2625,
+    "Advertising Bank Fees": 3750,
+    "Loan Payments": 1238.4,
+    "Distribution": 3119.73,
+    "Credit Card Payments": 0,
+    "Professional Services": 221,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -7454.13
+  },
+  "2026-02-27": {
+    week_num: 61,
+    week_ending: "2026-02-27",
+    "BEGINNING CASH": 42261.96,
+    "ENDING CASH": 69696.92,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 116189.86,
+    "CASH IN": 84507.65,
+    "Advisors Revenue": 32500,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 7578.5,
+    "Tech Revenue": 129.15,
+    "Loan Proceeds": 44300,
+    "Other Cash In": 0,
+    "CASH OUT": 57072.69,
+    "Total Payroll Incl Benefits Tax": 36925.95,
+    "Payroll Expense": 25494.95,
+    "Contractor Expense": 11431,
+    "Advertising Bank Fees": 30,
+    "Loan Payments": 3190.32,
+    "Distribution": 2200,
+    "Credit Card Payments": 12101,
+    "Professional Services": 85.45,
+    "Software": 1530.38,
+    "Healthcare": 0,
+    "401k": 1009.59,
+    "Ramp": 1009.59,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 27434.96
+  },
+  "2026-03-06": {
+    week_num: 62,
+    week_ending: "2026-03-06",
+    "BEGINNING CASH": 69696.92,
+    "ENDING CASH": 50203.31,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 96696.25,
+    "CASH IN": 5792.9,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 5792.9,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 25286.51,
+    "Total Payroll Incl Benefits Tax": 613.2,
+    "Payroll Expense": 513.2,
+    "Contractor Expense": 100,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 8865.62,
+    "Distribution": 1295.63,
+    "Credit Card Payments": 10817,
+    "Professional Services": 796.48,
+    "Software": 883.57,
+    "Healthcare": 0,
+    "401k": 2015.01,
+    "Ramp": 2015.01,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -19493.61
+  },
+  "2026-03-13": {
+    week_num: 63,
+    week_ending: "2026-03-13",
+    "BEGINNING CASH": 50203.31,
+    "ENDING CASH": 123476.87,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 169969.81,
+    "CASH IN": 119717.75,
+    "Advisors Revenue": 92500,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 8e3,
+    "Tech Revenue": 242.75,
+    "Loan Proceeds": 18975,
+    "Other Cash In": 0,
+    "CASH OUT": 46444.19,
+    "Total Payroll Incl Benefits Tax": 41473.06,
+    "Payroll Expense": 35188.06,
+    "Contractor Expense": 6285,
+    "Advertising Bank Fees": 19,
+    "Loan Payments": 1368.13,
+    "Distribution": 388,
+    "Credit Card Payments": 2500,
+    "Professional Services": 696,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 73273.56
+  },
+  "2026-03-20": {
+    week_num: 64,
+    week_ending: "2026-03-20",
+    "BEGINNING CASH": 123476.87,
+    "ENDING CASH": 122983.94,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 169476.88,
+    "CASH IN": 12645.15,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 12645.15,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 13138.08,
+    "Total Payroll Incl Benefits Tax": 2217.08,
+    "Payroll Expense": 2217.08,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 0,
+    "Distribution": 2200,
+    "Credit Card Payments": 5e3,
+    "Professional Services": 221,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 3500,
+    "TOTAL NET CASH CHANGE": -492.93
+  },
+  "2026-03-27": {
+    week_num: 65,
+    week_ending: "2026-03-27",
+    "BEGINNING CASH": 122983.94,
+    "ENDING CASH": 55358.59,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 101851.53,
+    "CASH IN": 6613.9,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 6484.75,
+    "Tech Revenue": 129.15,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 74239.25,
+    "Total Payroll Incl Benefits Tax": 49380.67,
+    "Payroll Expense": 33567.52,
+    "Contractor Expense": 15813.15,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 9750.54,
+    "Distribution": 2200,
+    "Credit Card Payments": 6e3,
+    "Professional Services": 5377.66,
+    "Software": 1530.38,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -67625.35
+  },
+  "2026-04-03": {
+    week_num: 66,
+    week_ending: "2026-04-03",
+    "BEGINNING CASH": 55358.59,
+    "ENDING CASH": 42591.7,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 44492.94,
+    "TOTAL CASH ON HAND": 87084.64,
+    "CASH IN": 1300,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 1300,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 14066.89,
+    "Total Payroll Incl Benefits Tax": 481.76,
+    "Payroll Expense": 0,
+    "Contractor Expense": 481.76,
+    "Advertising Bank Fees": 15,
+    "Loan Payments": 10032.49,
+    "Distribution": 50,
+    "Credit Card Payments": 3191,
+    "Professional Services": 0,
+    "Software": 296.64,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -12766.89
+  },
+  "2026-04-10": {
+    week_num: 67,
+    week_ending: "2026-04-10",
+    "BEGINNING CASH": 42591.7,
+    "ENDING CASH": 7517.92,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 54010.86,
+    "CASH IN": 3900,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 3900,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 38973.78,
+    "Total Payroll Incl Benefits Tax": 36149.75,
+    "Payroll Expense": 36149.75,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 1368.13,
+    "Distribution": 388,
+    "Credit Card Payments": 1e3,
+    "Professional Services": 67.9,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 0,
+    "Ramp": 0,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": -35073.78
+  },
+  "2026-04-17": {
+    week_num: 68,
+    week_ending: "2026-04-17",
+    "BEGINNING CASH": 18971,
+    "ENDING CASH": 23219.71,
+    "Addl Liquidity Chase Tax Reserve MT Chk": 46492.94,
+    "TOTAL CASH ON HAND": 69712.65,
+    "CASH IN": 12934,
+    "Advisors Revenue": 0,
+    "Retainer": 0,
+    "Milestone": 0,
+    "Closing Fees": 0,
+    "FinServ Revenue": 12934,
+    "Tech Revenue": 0,
+    "Loan Proceeds": 0,
+    "Other Cash In": 0,
+    "CASH OUT": 8685.29,
+    "Total Payroll Incl Benefits Tax": 0,
+    "Payroll Expense": 0,
+    "Contractor Expense": 0,
+    "Advertising Bank Fees": 0,
+    "Loan Payments": 1238.4,
+    "Distribution": 0,
+    "Credit Card Payments": 5e3,
+    "Professional Services": 0,
+    "Software": 0,
+    "Healthcare": 0,
+    "401k": 2446.89,
+    "Ramp": 2446.89,
+    "Other Cash Out": 0,
+    "TOTAL NET CASH CHANGE": 4248.71
+  }
+};
+
+// src/components/cashflow/scheduledCashFlows.ts
+var DEBT_ADVISORY_SUBCATEGORIES = [
+  "Retainers",
+  "Milestones",
+  "Closing Fees",
+  "Referral Fees"
+];
+var CASH_IN_CATEGORIES = [
+  ...DEBT_ADVISORY_SUBCATEGORIES,
+  "FinServ Revenue",
+  "Tech Revenue",
+  "Loan Proceeds",
+  "Other Cash In"
+];
+var CASH_OUT_CATEGORIES = [
+  "Payroll Expense",
+  "Contractor Expense",
+  "Advertising Bank Fees",
+  "Loan Payments",
+  "Distribution",
+  "Credit Card Payments",
+  "Professional Services",
+  "Software",
+  "Healthcare",
+  "Insurance",
+  "Office & Admin",
+  "401k",
+  "Ramp",
+  "Other Cash Out"
+];
+var CATEGORY_ALIASES = {
+  // Cash-In aliases — fold legacy singular labels into the canonical plural
+  // labels that match the Weekly Report row keys directly.
+  Retainer: "Retainers",
+  Milestone: "Milestones",
+  "Technology Revenue": "Tech Revenue",
+  "Other Receipts": "Other Cash In",
+  "Debt Advisory Revenue": "Retainers",
+  // Cash-Out aliases
+  "Advertising & Marketing": "Advertising Bank Fees",
+  "Payroll - Salaries": "Payroll Expense",
+  "Payroll - Taxes & Benefits": "Payroll Expense",
+  "Contractors & Consultants": "Contractor Expense",
+  "Software & Technology": "Software",
+  "Legal & Professional": "Professional Services",
+  "Travel & Entertainment": "Other Cash Out",
+  "Rent & Occupancy": "Other Cash Out",
+  "Other Disbursements": "Other Cash Out",
+  Other: "Other Cash Out",
+  // Normalized variants of "Office & Admin" — handled additionally by
+  // resolveCategoryAlias's normalized lookup, but listed here for clarity
+  // and so exact-string matches stay O(1).
+  "Office and Admin": "Office & Admin",
+  "Office/Admin": "Office & Admin",
+  "Office & Administration": "Office & Admin",
+  "Office Admin": "Office & Admin"
+};
+function normalizeCategoryKey(s) {
+  return String(s || "").toLowerCase().replace(/[\s_/\-&]+/g, " ").trim();
+}
+var NORMALIZED_ALIAS_MAP = (() => {
+  const out = {};
+  for (const [k, v] of Object.entries(CATEGORY_ALIASES)) {
+    out[normalizeCategoryKey(k)] = v;
+  }
+  return out;
+})();
+function resolveCategoryAlias(category) {
+  if (CATEGORY_ALIASES[category]) return CATEGORY_ALIASES[category];
+  const norm = normalizeCategoryKey(category);
+  if (NORMALIZED_ALIAS_MAP[norm]) return NORMALIZED_ALIAS_MAP[norm];
+  for (const c of CASH_OUT_CATEGORIES) {
+    if (normalizeCategoryKey(c) === norm) return c;
+  }
+  for (const c of CASH_IN_CATEGORIES) {
+    if (normalizeCategoryKey(c) === norm) return c;
+  }
+  return category;
+}
+var CANONICAL_TO_GRID_ROW = {
+  // Cash-In — Retainers / Milestones / Closing Fees / Referral Fees all use
+  // the same key on both sides (fall-through in resolveCategoryToGridRow),
+  // mirroring how "FinServ Revenue" maps directly to its grid row.
+  "Tech Revenue": "Technology Revenue",
+  "Other Cash In": "Other Receipts",
+  // Cash-Out
+  "Payroll Expense": "Payroll - Salaries",
+  "Contractor Expense": "Contractors & Consultants",
+  "Advertising Bank Fees": "Advertising & Marketing",
+  Software: "Software & Technology",
+  "Professional Services": "Legal & Professional",
+  "Other Cash Out": "Other Disbursements",
+  Insurance: "Insurance",
+  "Office & Admin": "Office & Admin"
+};
+function resolveCategoryToGridRow(category) {
+  const canonical = resolveCategoryAlias(category);
+  return CANONICAL_TO_GRID_ROW[canonical] || canonical;
+}
+var GRID_ROW_TO_CANONICAL = (() => {
+  const out = {};
+  for (const [canonical, gridRow] of Object.entries(CANONICAL_TO_GRID_ROW)) {
+    if (!out[gridRow]) out[gridRow] = canonical;
+  }
+  out["Payroll - Taxes & Benefits"] = "Payroll Expense";
+  out["Travel & Entertainment"] = "Other Cash Out";
+  out["Rent & Occupancy"] = "Other Cash Out";
+  return out;
+})();
+function seededUnit(seed) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return (h % 20001 - 1e4) / 1e4;
+}
+function applyVariance(baseAmount, variancePct, seedKey) {
+  const v = Number(variancePct);
+  if (!Number.isFinite(v) || v <= 0) return baseAmount;
+  const factor = 1 + v / 100 * seededUnit(seedKey);
+  return Math.max(0, baseAmount * factor);
+}
+function getOccurrenceAmount(entry, occDate) {
+  const overrides = entry.frequency_config?.amount_overrides;
+  if (overrides) {
+    const orig = getOriginalOccurrenceDate(entry, occDate);
+    for (const key of [occDate, orig]) {
+      if (Object.prototype.hasOwnProperty.call(overrides, key)) {
+        const v = Number(overrides[key]);
+        if (Number.isFinite(v)) return Math.max(0, v);
+      }
+    }
+  }
+  const base = Number(entry.amount) || 0;
+  return applyVariance(
+    base,
+    entry.frequency_config?.variance_pct,
+    `${entry.id || entry.category}:${occDate}`
+  );
+}
+function getOriginalOccurrenceDate(entry, effectiveDate) {
+  const map = entry.frequency_config?.date_overrides;
+  if (!map) return effectiveDate;
+  for (const [orig, mapped] of Object.entries(map)) {
+    if (mapped === effectiveDate) return orig;
+  }
+  return effectiveDate;
+}
+function parseDate(s) {
+  return /* @__PURE__ */ new Date(s + "T00:00:00");
+}
+function fmtDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function lastDayOfMonth(year, monthIdx) {
+  return new Date(year, monthIdx + 1, 0).getDate();
+}
+function generateOccurrences(entry, rangeStart, rangeEnd) {
+  const cfg = entry.frequency_config || {};
+  const excluded = new Set(cfg.excluded_dates || []);
+  const dateOverrides = cfg.date_overrides || {};
+  const remap = (d) => dateOverrides[d] ? dateOverrides[d] : d;
+  const isExcluded = (d) => excluded.has(d) || excluded.has(remap(d));
+  const candidates = [];
+  let scanStart = new Date(rangeStart);
+  let scanEnd = new Date(rangeEnd);
+  for (const [orig, eff] of Object.entries(dateOverrides)) {
+    if (!eff) continue;
+    const effD = parseDate(eff);
+    if (effD >= rangeStart && effD <= rangeEnd) {
+      const origD = parseDate(orig);
+      if (origD < scanStart) scanStart = origD;
+      if (origD > scanEnd) scanEnd = origD;
+    }
+  }
+  const push = (d) => {
+    candidates.push(d);
+  };
+  const finalize = () => {
+    const out = [];
+    for (const d of candidates) {
+      if (isExcluded(d)) continue;
+      const eff = remap(d);
+      const effD = parseDate(eff);
+      if (effD < rangeStart || effD > rangeEnd) continue;
+      out.push(eff);
+    }
+    return out;
+  };
+  if (entry.frequency_type === "one_time") {
+    const target = cfg.one_time_date || entry.start_date;
+    if (target) {
+      push(target);
+    }
+    return finalize();
+  }
+  const start = entry.start_date ? parseDate(entry.start_date) : scanStart;
+  const end = entry.end_date ? parseDate(entry.end_date) : scanEnd;
+  const effectiveStart = start > scanStart ? start : scanStart;
+  const effectiveEnd = end < scanEnd ? end : scanEnd;
+  if (effectiveStart > effectiveEnd) return finalize();
+  if (entry.frequency_type === "weekly") {
+    const dow = cfg.day_of_week ?? 1;
+    const cur = new Date(effectiveStart);
+    while (cur.getDay() !== dow && cur <= effectiveEnd) {
+      cur.setDate(cur.getDate() + 1);
+    }
+    while (cur <= effectiveEnd) {
+      push(fmtDate(cur));
+      cur.setDate(cur.getDate() + 7);
+    }
+    return finalize();
+  }
+  if (entry.frequency_type === "bi_weekly") {
+    const dow = cfg.day_of_week ?? 1;
+    const cur = new Date(effectiveStart);
+    while (cur.getDay() !== dow && cur <= effectiveEnd) {
+      cur.setDate(cur.getDate() + 1);
+    }
+    while (cur <= effectiveEnd) {
+      push(fmtDate(cur));
+      cur.setDate(cur.getDate() + 14);
+    }
+    return finalize();
+  }
+  if (entry.frequency_type === "monthly_first" || entry.frequency_type === "monthly_last") {
+    const dow = cfg.ordinal_day_of_week ?? 1;
+    const cur = new Date(effectiveStart.getFullYear(), effectiveStart.getMonth(), 1);
+    while (cur <= effectiveEnd) {
+      const year = cur.getFullYear();
+      const month = cur.getMonth();
+      let target;
+      if (entry.frequency_type === "monthly_first") {
+        target = new Date(year, month, 1);
+        while (target.getDay() !== dow) target.setDate(target.getDate() + 1);
+      } else {
+        target = new Date(year, month, lastDayOfMonth(year, month));
+        while (target.getDay() !== dow) target.setDate(target.getDate() - 1);
+      }
+      if (target >= effectiveStart && target <= effectiveEnd) {
+        push(fmtDate(target));
+      }
+      cur.setMonth(cur.getMonth() + 1);
+    }
+    return finalize();
+  }
+  if (entry.frequency_type === "monthly_day") {
+    const dom = Math.min(Math.max(cfg.day_of_month ?? 1, 1), 31);
+    const cur = new Date(effectiveStart.getFullYear(), effectiveStart.getMonth(), 1);
+    while (cur <= effectiveEnd) {
+      const year = cur.getFullYear();
+      const month = cur.getMonth();
+      const lastDay = lastDayOfMonth(year, month);
+      const day = Math.min(dom, lastDay);
+      const target = new Date(year, month, day);
+      if (target >= effectiveStart && target <= effectiveEnd) {
+        push(fmtDate(target));
+      }
+      cur.setMonth(cur.getMonth() + 1);
+    }
+    return finalize();
+  }
+  return finalize();
+}
+function mergeScheduledIntoWeekly(weekly, entries, options) {
+  const lockThrough = options?.lockHistoricalThrough ?? null;
+  const overrides = options?.weeklyOverrides || {};
+  if ((!entries || entries.length === 0) && !lockThrough) return weekly;
+  const sortedKeys = Object.keys(weekly).sort();
+  if (sortedKeys.length === 0) return weekly;
+  const traceRows = [];
+  const isDev = typeof import.meta !== "undefined" && false;
+  const weekRanges = sortedKeys.map((k) => {
+    const entry = weekly[k];
+    const startDate = parseDate(k);
+    const endDate = parseDate(typeof entry.week_ending === "string" ? entry.week_ending : k);
+    return { key: k, startDate, endDate };
+  });
+  const rangeStart = weekRanges[0].startDate;
+  const rangeEnd = weekRanges[weekRanges.length - 1].endDate;
+  const out = {};
+  for (const k of sortedKeys) out[k] = { ...weekly[k] };
+  const findWeekKey = (dateStr) => {
+    const d = parseDate(dateStr);
+    for (const r of weekRanges) {
+      if (d >= r.startDate && d <= r.endDate) return r.key;
+    }
+    return null;
+  };
+  for (const entry of entries || []) {
+    const occurrences = generateOccurrences(entry, rangeStart, rangeEnd);
+    for (const occ of occurrences) {
+      if (lockThrough && occ <= lockThrough) continue;
+      const wk = findWeekKey(occ);
+      if (!wk) continue;
+      const target = out[wk];
+      const cat = resolveCategoryToGridRow(entry.category);
+      const amt = getOccurrenceAmount(entry, occ);
+      target[cat] = (Number(target[cat]) || 0) + amt;
+      if (isDev) {
+        traceRows.push({
+          id: entry.id || "(unsaved)",
+          category: entry.category,
+          resolvedRow: cat,
+          flow: entry.flow_type,
+          occ,
+          week: wk,
+          amount: amt
+        });
+      }
+      if (entry.flow_type === "cash_in") {
+        target["TOTAL RECEIPTS"] = (Number(target["TOTAL RECEIPTS"]) || 0) + amt;
+        target["CASH IN"] = (Number(target["CASH IN"]) || 0) + amt;
+        target["NET CHANGE"] = (Number(target["NET CHANGE"]) || 0) + amt;
+        target["TOTAL NET CASH CHANGE"] = (Number(target["TOTAL NET CASH CHANGE"]) || 0) + amt;
+      } else {
+        target["TOTAL DISBURSEMENTS"] = (Number(target["TOTAL DISBURSEMENTS"]) || 0) + amt;
+        target["CASH OUT"] = (Number(target["CASH OUT"]) || 0) + amt;
+        target["NET CHANGE"] = (Number(target["NET CHANGE"]) || 0) - amt;
+        target["TOTAL NET CASH CHANGE"] = (Number(target["TOTAL NET CASH CHANGE"]) || 0) - amt;
+      }
+    }
+  }
+  if (isDev && traceRows.length > 0) {
+    const byRow = {};
+    for (const r of traceRows) byRow[r.resolvedRow] = (byRow[r.resolvedRow] || 0) + r.amount;
+    console.log("[cashflow] mergeScheduledIntoWeekly routed entries", {
+      totalEntries: (entries || []).length,
+      totalOccurrences: traceRows.length,
+      perRowTotals: byRow,
+      sample: traceRows.slice(0, 20)
+    });
+  }
+  let prevEnd = null;
+  for (const k of sortedKeys) {
+    const target = out[k];
+    const weekEnding = typeof target.week_ending === "string" ? target.week_ending : k;
+    if (lockThrough && weekEnding <= lockThrough) {
+      const ec = Number(target["ENDING CASH"]);
+      prevEnd = Number.isFinite(ec) ? ec : prevEnd;
+      continue;
+    }
+    const ov = overrides[k];
+    const overrideBegin = ov?.beginningCash;
+    const overrideEnd = ov?.endingCash;
+    const begin = overrideBegin !== void 0 && overrideBegin !== null ? Number(overrideBegin) : prevEnd !== null ? prevEnd : Number(target["BEGINNING CASH"]) || 0;
+    target["BEGINNING CASH"] = begin;
+    const computedEnd = begin + (Number(target["NET CHANGE"]) || 0);
+    const newEnd = overrideEnd !== void 0 && overrideEnd !== null ? Number(overrideEnd) : computedEnd;
+    target["ENDING CASH"] = Math.round(newEnd);
+    const addlLegacy = Number(target["Add'l Liquidity (Delayed Draw)"]) || 0;
+    const addlNew = Number(target["Addl Liquidity Chase Tax Reserve MT Chk"]) || 0;
+    target["TOTAL CASH ON HAND"] = Math.round(newEnd + addlLegacy + addlNew);
+    prevEnd = target["ENDING CASH"];
+  }
+  return out;
+}
+
+// src/components/cashflow/financeWeeklyBalanceCore.ts
+function parseISO(s) {
+  return /* @__PURE__ */ new Date(s + "T00:00:00");
+}
+function fmtISO(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+var DEFAULT_HORIZON_END = "2026-12-25";
+function buildFinanceWeeklyBalance(inputs) {
+  const { combinedScheduledItems, weeklyOverrides } = inputs;
+  const rawWeekly = {};
+  let lastHistoricalEnd = 0;
+  let lastHistoricalAddl = 0;
+  let lastHistoricalWeekNum = 0;
+  let prevTotalCashOnHand = 0;
+  const historicalKeys = Object.keys(WEEKLY_HISTORICAL_SEED).sort();
+  for (let i = 0; i < historicalKeys.length; i++) {
+    const k = historicalKeys[i];
+    const entry = WEEKLY_HISTORICAL_SEED[k];
+    const ov = weeklyOverrides?.[k];
+    const seededBegin = Number(entry["BEGINNING CASH"]);
+    const seededEnd = Number(entry["ENDING CASH"]);
+    const seededNet = Number(entry["NET CHANGE"] ?? entry["TOTAL NET CASH CHANGE"]);
+    const seededAddl = Number(
+      entry["Addl Liquidity Chase Tax Reserve MT Chk"] ?? entry["Add'l Liquidity (Delayed Draw)"]
+    ) || 0;
+    const hasBeginningOverride = ov?.beginningCash !== void 0 && ov.beginningCash !== null;
+    const hasEndingOverride = ov?.endingCash !== void 0 && ov.endingCash !== null;
+    const beginningCash = hasBeginningOverride ? Math.round(Number(ov.beginningCash)) : Number.isFinite(seededBegin) ? Math.round(seededBegin) : 0;
+    const endingCash = hasEndingOverride ? Math.round(Number(ov.endingCash)) : hasBeginningOverride && Number.isFinite(seededNet) ? Math.round(beginningCash + seededNet) : Number.isFinite(seededEnd) ? Math.round(seededEnd) : beginningCash;
+    const hasAddlOverride = ov?.addlLiquidity !== void 0 && ov.addlLiquidity !== null;
+    const addlLiquidity = hasAddlOverride ? Math.round(Number(ov.addlLiquidity)) : i === 0 ? Math.round(seededAddl) : Math.round(prevTotalCashOnHand);
+    const totalCashOnHand = Math.round(endingCash + addlLiquidity);
+    rawWeekly[k] = {
+      ...entry,
+      "BEGINNING CASH": beginningCash,
+      "ENDING CASH": endingCash,
+      "Add'l Liquidity (Delayed Draw)": addlLiquidity,
+      "TOTAL CASH ON HAND": totalCashOnHand
+    };
+    lastHistoricalEnd = endingCash;
+    lastHistoricalAddl = addlLiquidity;
+    lastHistoricalWeekNum = Number(entry.week_num) || lastHistoricalWeekNum;
+    prevTotalCashOnHand = totalCashOnHand;
+  }
+  void lastHistoricalAddl;
+  let horizonEnd = parseISO(DEFAULT_HORIZON_END);
+  for (const e of combinedScheduledItems || []) {
+    const candidates = [
+      e.frequency_config?.one_time_date,
+      e.end_date,
+      e.start_date
+    ].filter(Boolean);
+    for (const c of candidates) {
+      const d = parseISO(c);
+      if (d > horizonEnd) horizonEnd = d;
+    }
+  }
+  const lastHistEnd = parseISO(LAST_HISTORICAL_WEEK_ENDING);
+  let weekEnd = new Date(lastHistEnd);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  let prevEnd = lastHistoricalEnd;
+  let weekNum = lastHistoricalWeekNum;
+  while (weekEnd <= horizonEnd) {
+    weekNum += 1;
+    const weekStart = new Date(weekEnd);
+    weekStart.setDate(weekStart.getDate() - 6);
+    const startKey = fmtISO(weekStart);
+    const endKey = fmtISO(weekEnd);
+    const ov = weeklyOverrides?.[startKey];
+    const begin = ov?.beginningCash !== void 0 ? ov.beginningCash : prevEnd;
+    const end = ov?.endingCash !== void 0 ? ov.endingCash : begin;
+    const hasAddlOverride = ov?.addlLiquidity !== void 0 && ov.addlLiquidity !== null;
+    const addlLiquidity = hasAddlOverride ? Math.round(Number(ov.addlLiquidity)) : Math.round(prevTotalCashOnHand);
+    const totalCashOnHand = Math.round((Number(end) || 0) + addlLiquidity);
+    rawWeekly[startKey] = {
+      week_num: weekNum,
+      week_ending: endKey,
+      "BEGINNING CASH": begin,
+      "ENDING CASH": end,
+      "Addl Liquidity Chase Tax Reserve MT Chk": addlLiquidity,
+      "Add'l Liquidity (Delayed Draw)": addlLiquidity,
+      "TOTAL CASH ON HAND": totalCashOnHand,
+      "TOTAL RECEIPTS": 0,
+      "TOTAL DISBURSEMENTS": 0,
+      "NET CHANGE": 0
+    };
+    prevEnd = end;
+    prevTotalCashOnHand = totalCashOnHand;
+    weekEnd = new Date(weekEnd);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+  }
+  const weeklyWithScheduled = mergeScheduledIntoWeekly(rawWeekly, combinedScheduledItems || [], {
+    lockHistoricalThrough: LAST_HISTORICAL_WEEK_ENDING,
+    weeklyOverrides
+  });
+  return {
+    rawWeekly,
+    weeklyWithScheduled,
+    sortedKeys: Object.keys(weeklyWithScheduled).sort()
+  };
+}
+function composeCombinedScheduledItems({
+  qbDerivedItems,
+  dealProjectedItems,
+  scheduledItems,
+  cashInDbItems,
+  companyId
+}) {
+  const FEE_TO_CATEGORY = {
+    retainer: "Retainers",
+    milestone: "Milestones",
+    closing: "Closing Fees"
+  };
+  const FEE_LABEL = {
+    retainer: "Retainer",
+    milestone: "Milestone",
+    closing: "Closing"
+  };
+  const cashInDbAsScheduled = (cashInDbItems || []).map((it) => {
+    const date2 = (it.target_date || "").slice(0, 10);
+    const category = FEE_TO_CATEGORY[it.fee_type] || "Other Receipts";
+    const label = FEE_LABEL[it.fee_type] || it.fee_type;
+    const dealName = stripCashInFeeSuffix(it.deal_name || "");
+    return {
+      id: `cashin:${it.id}`,
+      company_id: companyId || "",
+      account: dealName,
+      category,
+      amount: Number(it.amount) || 0,
+      frequency_type: "one_time",
+      frequency_config: { one_time_date: date2 },
+      flow_type: "cash_in",
+      start_date: date2,
+      end_date: date2,
+      notes: `${dealName} \u2014 ${label}`
+    };
+  });
+  const suppressedProjectedIds = /* @__PURE__ */ new Set();
+  for (const it of cashInDbItems || []) {
+    if (!it.deal_id) continue;
+    suppressedProjectedIds.add(`deal:${it.deal_id}:${it.fee_type}`);
+  }
+  const filteredProjected = (dealProjectedItems || []).filter(
+    (e) => !suppressedProjectedIds.has(e.id)
+  );
+  return [
+    ...qbDerivedItems || [],
+    ...filteredProjected,
+    ...scheduledItems || [],
+    ...cashInDbAsScheduled
+  ];
+}
+function stripCashInFeeSuffix(value) {
+  let out = (value || "").trim();
+  const re = /\s*[—–-]\s*(Closing|Milestone|Retainer)\s*$/i;
+  while (re.test(out)) out = out.replace(re, "").trim();
+  return out;
+}
+
+// src/lib/fees.ts
+function normalizeSuccessFeePercent(pct) {
+  const n2 = Number(pct);
+  if (!Number.isFinite(n2) || n2 <= 0) return 0;
+  return n2 > 1 ? n2 / 100 : n2;
+}
+function computeTotalFee(dealValue, successFeePercent) {
+  const v = Number(dealValue);
+  if (!Number.isFinite(v) || v <= 0) return 0;
+  return v * normalizeSuccessFeePercent(successFeePercent);
+}
+function computeClosingFee(dealValue, successFeePercent, milestoneFee) {
+  const total = computeTotalFee(dealValue, successFeePercent);
+  const m = Number(milestoneFee);
+  const milestone = Number.isFinite(m) && m > 0 ? m : 0;
+  return Math.max(0, total - milestone);
+}
+
+// src/components/cashflow/dealProjections.ts
+function applyDealDateAmountOverride(entry, ov) {
+  if (!ov) return entry;
+  let next = entry;
+  if (ov.override_amount != null && Number.isFinite(Number(ov.override_amount))) {
+    next = { ...next, amount: Number(ov.override_amount) };
+  }
+  if (ov.override_date && /^\d{4}-\d{2}-\d{2}$/.test(ov.override_date)) {
+    next = {
+      ...next,
+      start_date: ov.override_date,
+      end_date: ov.override_date,
+      frequency_config: { ...next.frequency_config || {}, one_time_date: ov.override_date }
+    };
+  }
+  return next;
+}
+var ACTIVE_STAGE_TOKENS = /* @__PURE__ */ new Set([
+  "agreement pending",
+  "final credit items",
+  "funded",
+  "funded invoiced",
+  "closed",
+  "closed won"
+]);
+function normalizeStage(s) {
+  return String(s || "").toLowerCase().replace(/[-_/]+/g, " ").replace(/\s+/g, " ").trim();
+}
+function isActiveStage(s) {
+  return ACTIVE_STAGE_TOKENS.has(normalizeStage(s));
+}
+function fmtDate2(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+var DEAL_PROJECTION_SELECT = "id, company, value, stage, stage_entered_at, retainer_fee, milestone_fee, success_fee_percent, projected_close_date, contract_start_date";
+function retainerDealIds(deals) {
+  return deals.filter((d) => Number(d.retainer_fee) > 0).map((d) => d.id);
+}
+function buildDealProjectedCashFlows(data, hist, overrides) {
+  const fciEntryByDeal = /* @__PURE__ */ new Map();
+  for (const h of hist || []) {
+    const isFci = normalizeStage(h.to_stage_id) === "final credit items" || normalizeStage(h.to_stage) === "final credit items";
+    if (isFci && h.changed_at && !fciEntryByDeal.has(h.deal_id)) fciEntryByDeal.set(h.deal_id, h.changed_at);
+  }
+  const out = [];
+  for (const d of data) {
+    if (!isActiveStage(d.stage)) continue;
+    const name = String(d.company || "").trim();
+    if (!name) continue;
+    const lower = name.toLowerCase();
+    if (lower === "test-niki's store" || lower === "example deal" || lower.startsWith("test ")) continue;
+    const dealValue = Number(d.value) || 0;
+    const sfPct = Number(d.success_fee_percent);
+    const milestoneFee = Number(d.milestone_fee) || 0;
+    const closingAmount = computeClosingFee(dealValue, sfPct, milestoneFee);
+    const closeDate = (d.projected_close_date || "").toString().slice(0, 10);
+    if (closeDate && closingAmount > 0) {
+      const normalizedPctDisplay = normalizeSuccessFeePercent(sfPct) * 100;
+      out.push({
+        id: `deal:${d.id}:closing`,
+        company_id: "",
+        account: name,
+        category: "Closing Fees",
+        amount: closingAmount,
+        frequency_type: "one_time",
+        frequency_config: { one_time_date: closeDate },
+        flow_type: "cash_in",
+        start_date: closeDate,
+        end_date: closeDate,
+        notes: milestoneFee > 0 ? `naitive Deal \u2014 ${name} \xB7 Closing Fee (P) \xB7 ${normalizedPctDisplay}% of $${dealValue.toLocaleString()} \u2212 $${milestoneFee.toLocaleString()} milestone` : `naitive Deal \u2014 ${name} \xB7 Closing Fee (P) \xB7 ${normalizedPctDisplay}% of $${dealValue.toLocaleString()}`
+      });
+    }
+    const retainer = Number(d.retainer_fee) || 0;
+    if (retainer > 0) {
+      let fciEntered = fciEntryByDeal.get(d.id) || null;
+      if (!fciEntered && normalizeStage(d.stage) === "final credit items" && d.stage_entered_at) {
+        fciEntered = String(d.stage_entered_at);
+      }
+      if (fciEntered) {
+        const due = new Date(fciEntered);
+        due.setDate(due.getDate() + 14);
+        const dueStr = fmtDate2(due);
+        out.push({
+          id: `deal:${d.id}:retainer`,
+          company_id: "",
+          account: name,
+          category: "Retainers",
+          amount: retainer,
+          frequency_type: "one_time",
+          frequency_config: { one_time_date: dueStr },
+          flow_type: "cash_in",
+          start_date: dueStr,
+          end_date: dueStr,
+          notes: `naitive Deal \u2014 ${name} \xB7 Retainer (P) \xB7 2 weeks after Final Credit Items`
+        });
+      }
+    }
+    const milestone = Number(d.milestone_fee) || 0;
+    if (milestone > 0 && closeDate) {
+      const closeD = /* @__PURE__ */ new Date(closeDate + "T00:00:00");
+      const now = /* @__PURE__ */ new Date();
+      const mid = closeD > now ? new Date((now.getTime() + closeD.getTime()) / 2) : closeD;
+      const midStr = fmtDate2(mid);
+      out.push({
+        id: `deal:${d.id}:milestone`,
+        company_id: "",
+        account: name,
+        category: "Milestones",
+        amount: milestone,
+        frequency_type: "one_time",
+        frequency_config: { one_time_date: midStr },
+        flow_type: "cash_in",
+        start_date: midStr,
+        end_date: midStr,
+        notes: `naitive Deal \u2014 ${name} \xB7 Milestone (P)`
+      });
+    }
+  }
+  const applied = overrides ? out.map((entry) => {
+    const ov = overrides[entry.id];
+    if (!ov) return entry;
+    entry = applyDealDateAmountOverride(entry, ov);
+    const cfg = entry.frequency_config || {};
+    const existing = cfg.excluded_dates || [];
+    const mergedExcluded = Array.from(/* @__PURE__ */ new Set([...existing, ...ov.excluded_dates || []]));
+    const nextEnd = ov.end_date ? entry.end_date && entry.end_date < ov.end_date ? entry.end_date : ov.end_date : entry.end_date;
+    return {
+      ...entry,
+      end_date: nextEnd,
+      frequency_config: { ...cfg, excluded_dates: mergedExcluded }
+    };
+  }) : out;
+  return applied;
+}
+
+// src/components/cashflow/cashflowKpis.ts
+function fmtShortDate(iso2) {
+  const d = /* @__PURE__ */ new Date(iso2 + "T00:00:00");
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+var weekEndingOf = (key, entry) => typeof entry?.week_ending === "string" ? entry.week_ending : key;
+function computeCashflowKpis(weekly, weeksFuture, weeksPast, todayISO = (/* @__PURE__ */ new Date()).toISOString().split("T")[0]) {
+  const sorted = Object.entries(weekly || {}).sort(([a], [b]) => a.localeCompare(b));
+  let currentIdx = sorted.findIndex(([k, e]) => weekEndingOf(k, e) >= todayISO);
+  if (currentIdx < 0) currentIdx = sorted.length - 1;
+  const fStart = Math.max(0, currentIdx);
+  const fEnd = Math.min(sorted.length, fStart + 1 + Math.max(0, weeksFuture));
+  const fwd = sorted.slice(fStart, fEnd);
+  const cashIn = fwd.reduce((s, [, e]) => s + (Number(e?.["TOTAL RECEIPTS"]) || 0), 0) || 0;
+  const cashOut = fwd.reduce((s, [, e]) => s + (Number(e?.["TOTAL DISBURSEMENTS"]) || 0), 0) || 0;
+  let kpiRangeLabel = "\u2014";
+  let kpiRangeStart = null;
+  let kpiRangeEnd = null;
+  if (fwd.length > 0) {
+    kpiRangeStart = weekEndingOf(fwd[0][0], fwd[0][1]);
+    kpiRangeEnd = weekEndingOf(fwd[fwd.length - 1][0], fwd[fwd.length - 1][1]);
+    kpiRangeLabel = `${fmtShortDate(kpiRangeStart)} \u2013 ${fmtShortDate(kpiRangeEnd)} (${fwd.length} ${fwd.length === 1 ? "week" : "weeks"})`;
+  }
+  let peakCash = null;
+  let lowCash = null;
+  let visibleRangeStart = null;
+  let visibleRangeEnd = null;
+  if (sorted.length > 0) {
+    const vStart = Math.max(0, currentIdx - Math.max(0, weeksPast));
+    const vEnd = Math.min(sorted.length, currentIdx + 1 + Math.max(0, weeksFuture));
+    const win = sorted.slice(vStart, vEnd);
+    if (win.length > 0) {
+      visibleRangeStart = weekEndingOf(win[0][0], win[0][1]);
+      visibleRangeEnd = weekEndingOf(win[win.length - 1][0], win[win.length - 1][1]);
+    }
+    for (const [key, entry] of win) {
+      const v = Number(entry?.["ENDING CASH"]);
+      if (!Number.isFinite(v)) continue;
+      const we = entry?.week_ending || key;
+      if (peakCash === null || v > peakCash.value) peakCash = { value: v, weekEnding: we, weekKey: key };
+      if (lowCash === null || v < lowCash.value) lowCash = { value: v, weekEnding: we, weekKey: key };
+    }
+  }
+  return {
+    cashIn,
+    cashOut,
+    netChange: cashIn - cashOut,
+    kpiRangeLabel,
+    kpiWeekCount: fwd.length,
+    kpiRangeStart,
+    kpiRangeEnd,
+    peakCash,
+    lowCash,
+    visibleRangeStart,
+    visibleRangeEnd
+  };
+}
+
+// src/lib/mcp/tools/get-cashflow-metrics.ts
+var DEFAULT_WEEKS_FUTURE = 8;
+var DEFAULT_WEEKS_PAST = 1;
+var num2 = (v) => Math.round(Number(v) || 0);
+var get_cashflow_metrics_default = defineTool52({
+  name: "get_cashflow_metrics",
+  title: "Get cash flow metrics (Finance headline widgets)",
+  description: "Returns the exact Finance > Cash Flow headline figures: Cash In, Cash Out, Net Change (current week through weeks_future), and Peak Cash / Low Cash with their week-ending dates (weeks_past through weeks_future). Uses the same calculation as the Finance page, including scheduled entries, deal fee projections, manual date/amount moves and weekly overrides. Defaults to the workspace's saved Finance window. Figures match the page with no Year/Quarter/Entity/Category filters applied.",
+  inputSchema: {
+    weeks_future: z54.number().int().min(0).max(104).optional().describe("Weeks after the current week. Defaults to the Finance page default."),
+    weeks_past: z54.number().int().min(0).max(104).optional().describe("Weeks before the current week used for Peak/Low Cash. Defaults to the Finance page default."),
+    as_of: z54.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Anchor date (YYYY-MM-DD). Defaults to today (UTC), like the page."),
+    include_weekly_breakdown: z54.boolean().default(false).describe("Also return each visible week's beginning cash, receipts, disbursements, net change and ending cash.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ weeks_future, weeks_past, as_of, include_weekly_breakdown }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const userId = ctx.getUserId();
+    const { data: member, error: mErr } = await sb.from("company_members").select("company_id").eq("user_id", userId).limit(1).maybeSingle();
+    if (mErr) return errorResult(mErr.message);
+    if (!member?.company_id) return errorResult("forbidden: the signed-in user is not a member of a company.");
+    const companyId = member.company_id;
+    let weeksFuture = weeks_future;
+    let weeksPast = weeks_past;
+    if (weeksFuture === void 0 || weeksPast === void 0) {
+      const { data: settings } = await sb.from("system_settings").select("key,value").in("key", ["cashflow.default_weeks_past", "cashflow.default_weeks_future"]);
+      for (const row of settings ?? []) {
+        const raw = row.value;
+        const n2 = typeof raw === "number" ? raw : Number(raw);
+        if (!Number.isFinite(n2)) continue;
+        const key = row.key;
+        if (key === "cashflow.default_weeks_future" && weeksFuture === void 0) weeksFuture = n2;
+        if (key === "cashflow.default_weeks_past" && weeksPast === void 0) weeksPast = n2;
+      }
+    }
+    weeksFuture ??= DEFAULT_WEEKS_FUTURE;
+    weeksPast ??= DEFAULT_WEEKS_PAST;
+    const [schedRes, cashInRes, overridesRes, importRes, dealsRes] = await Promise.all([
+      sb.from("scheduled_cash_flows").select("*").eq("company_id", companyId).order("created_at", { ascending: true }),
+      sb.from("cashflow_cash_in_items").select("id, deal_name, fee_type, amount, target_date, deal_id").eq("company_id", companyId).order("target_date", { ascending: true }),
+      sb.from("cashflow_deal_overrides").select("deal_entry_id, excluded_dates, end_date, override_date, override_amount").eq("company_id", companyId),
+      sb.from("cash_flow_imports").select("weekly_overrides").eq("company_id", companyId).maybeSingle(),
+      sb.from("deals").select(DEAL_PROJECTION_SELECT).eq("company_id", companyId).limit(500)
+    ]);
+    for (const r of [schedRes, cashInRes, overridesRes, importRes, dealsRes]) {
+      if (r.error) return errorResult(r.error.message);
+    }
+    const overrides = {};
+    for (const row of overridesRes.data ?? []) {
+      const id = String(row.deal_entry_id);
+      overrides[id] = {
+        deal_entry_id: id,
+        excluded_dates: Array.isArray(row.excluded_dates) ? row.excluded_dates : [],
+        end_date: row.end_date ?? null,
+        override_date: row.override_date ?? null,
+        override_amount: row.override_amount == null ? null : Number(row.override_amount)
+      };
+    }
+    const deals = dealsRes.data ?? [];
+    let hist = [];
+    const ids = retainerDealIds(deals);
+    if (ids.length) {
+      const { data: h, error: hErr } = await sb.from("deal_stage_history").select("deal_id, to_stage, to_stage_id, changed_at").in("deal_id", ids).order("changed_at", { ascending: true });
+      if (hErr) return errorResult(hErr.message);
+      hist = h ?? [];
+    }
+    const wo = importRes.data?.weekly_overrides;
+    const weeklyOverrides = wo && typeof wo === "object" && !Array.isArray(wo) ? wo : {};
+    const combinedScheduledItems = composeCombinedScheduledItems({
+      qbDerivedItems: [],
+      // QuickBooks auto-derivation is disabled on the Finance page too.
+      dealProjectedItems: buildDealProjectedCashFlows(deals, hist, overrides),
+      scheduledItems: schedRes.data ?? [],
+      cashInDbItems: cashInRes.data ?? [],
+      companyId
+    });
+    const { weeklyWithScheduled } = buildFinanceWeeklyBalance({ combinedScheduledItems, weeklyOverrides });
+    const today = as_of ?? (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+    const k = computeCashflowKpis(weeklyWithScheduled, weeksFuture, weeksPast, today);
+    const metrics = {
+      as_of: today,
+      weeks_future: weeksFuture,
+      weeks_past: weeksPast,
+      cash_in: num2(k.cashIn),
+      cash_out: num2(k.cashOut),
+      net_change: num2(k.netChange),
+      kpi_range: { label: k.kpiRangeLabel, first_week_ending: k.kpiRangeStart, last_week_ending: k.kpiRangeEnd, weeks: k.kpiWeekCount },
+      peak_cash: k.peakCash ? { amount: num2(k.peakCash.value), week_ending: k.peakCash.weekEnding } : null,
+      low_cash: k.lowCash ? { amount: num2(k.lowCash.value), week_ending: k.lowCash.weekEnding } : null,
+      peak_low_range: { first_week_ending: k.visibleRangeStart, last_week_ending: k.visibleRangeEnd },
+      filters_applied: "none (matches the page with no Year/Quarter/Entity/Category filters)"
+    };
+    let weekly;
+    if (include_weekly_breakdown && k.visibleRangeStart && k.visibleRangeEnd) {
+      weekly = Object.entries(weeklyWithScheduled).sort(([a], [b]) => a.localeCompare(b)).map(([key, e]) => {
+        const entry = e;
+        return {
+          week_ending: typeof entry.week_ending === "string" ? entry.week_ending : key,
+          beginning_cash: num2(entry["BEGINNING CASH"]),
+          total_receipts: num2(entry["TOTAL RECEIPTS"]),
+          total_disbursements: num2(entry["TOTAL DISBURSEMENTS"]),
+          net_change: num2(entry["NET CHANGE"] ?? entry["TOTAL NET CASH CHANGE"]),
+          ending_cash: num2(entry["ENDING CASH"])
+        };
+      }).filter((w) => String(w.week_ending) >= k.visibleRangeStart && String(w.week_ending) <= k.visibleRangeEnd);
+    }
+    const payload = weekly ? { ...metrics, weekly } : metrics;
+    return textResult(payload, payload);
+  }
+});
+
 // src/lib/mcp/tools/create-lender-fit-attribute.ts
 var create_lender_fit_attribute_default = defineLenderRelatedTool("lender_fit_attributes", "create", "create_lender_fit_attribute");
 
@@ -4378,13 +7412,13 @@ var update_lender_history_warning_dismissal_default = defineLenderRelatedTool("l
 var delete_lender_history_warning_dismissal_default = defineLenderRelatedTool("lender_history_warning_dismissals", "delete", "delete_lender_history_warning_dismissal");
 
 // src/lib/mcp/tools/add-lender-note.ts
-import { defineTool as defineTool52 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z54 } from "npm:zod@^3.23.0";
-var add_lender_note_default = defineTool52({
+import { defineTool as defineTool53 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z55 } from "npm:zod@^3.23.0";
+var add_lender_note_default = defineTool53({
   name: "add_lender_note",
   title: "Add funding source note",
   description: "Create lender_notes body, tags and is_flag. Server derives author, lender name and company. Writes field-level audit atomically; does not write deal_lenders or deal-note history.",
-  inputSchema: { lender_id: z54.string().uuid(), body: z54.string().min(1).max(2e4), tags: z54.array(z54.string().max(200)).max(100).optional(), is_flag: z54.boolean().optional(), ...writeProvenance },
+  inputSchema: { lender_id: z55.string().uuid(), body: z55.string().min(1).max(2e4), tags: z55.array(z55.string().max(200)).max(100).optional(), is_flag: z55.boolean().optional(), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   handler: async ({ lender_id, source, change_reason, ...patch }, ctx) => {
     const err = requireAuth(ctx);
@@ -4394,13 +7428,13 @@ var add_lender_note_default = defineTool52({
 });
 
 // src/lib/mcp/tools/update-lender-note.ts
-import { defineTool as defineTool53 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z55 } from "npm:zod@^3.23.0";
-var update_lender_note_default = defineTool53({
+import { defineTool as defineTool54 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z56 } from "npm:zod@^3.23.0";
+var update_lender_note_default = defineTool54({
   name: "update_lender_note",
   title: "Edit funding source note",
   description: "Update only supplied lender_notes body, tags, is_flag. Author-only RLS remains. Atomically preserves prior record in lender_master_note_history and audits every field. lender_notes_history is deal-specific and is NOT used for directory notes.",
-  inputSchema: { note_id: z55.string().uuid(), body: z55.string().min(1).max(2e4).optional(), tags: z55.array(z55.string().max(200)).max(100).optional(), is_flag: z55.boolean().optional(), ...writeProvenance },
+  inputSchema: { note_id: z56.string().uuid(), body: z56.string().min(1).max(2e4).optional(), tags: z56.array(z56.string().max(200)).max(100).optional(), is_flag: z56.boolean().optional(), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   handler: async ({ note_id, source, change_reason, ...patch }, ctx) => {
     const err = requireAuth(ctx);
@@ -4413,13 +7447,13 @@ var update_lender_note_default = defineTool53({
 });
 
 // src/lib/mcp/tools/delete-lender-note.ts
-import { defineTool as defineTool54 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z56 } from "npm:zod@^3.23.0";
-var delete_lender_note_default = defineTool54({
+import { defineTool as defineTool55 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z57 } from "npm:zod@^3.23.0";
+var delete_lender_note_default = defineTool55({
   name: "delete_lender_note",
   title: "Delete funding source note",
   description: "Delete one lender_notes row with confirm:true, preserving its previous record in lender_master_note_history and field-level lender_audit_logs atomically. Existing author/admin delete permissions apply; no deal-specific notes are touched.",
-  inputSchema: { note_id: z56.string().uuid(), confirm: z56.literal(true), ...writeProvenance },
+  inputSchema: { note_id: z57.string().uuid(), confirm: z57.literal(true), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
   handler: async ({ note_id, confirm, source, change_reason }, ctx) => {
     const err = requireAuth(ctx);
@@ -4432,13 +7466,13 @@ var delete_lender_note_default = defineTool54({
 });
 
 // src/lib/mcp/tools/update-lender-attachment.ts
-import { defineTool as defineTool55 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z57 } from "npm:zod@^3.23.0";
-var update_lender_attachment_default = defineTool55({
+import { defineTool as defineTool56 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z58 } from "npm:zod@^3.23.0";
+var update_lender_attachment_default = defineTool56({
   name: "update_lender_attachment",
   title: "Edit funding source attachment",
   description: "Rename (file_name -> lender_attachments.name) or recategorize an attachment; only supplied fields change. Does not move or replace stored bytes, file_path, size, MIME type or uploader. Existing uploader/company permissions apply; field diffs audited transactionally.",
-  inputSchema: { attachment_id: z57.string().uuid(), file_name: z57.string().trim().min(1).max(255).optional(), category: z57.enum(LENDER_ATTACHMENT_CATEGORIES).optional(), ...writeProvenance },
+  inputSchema: { attachment_id: z58.string().uuid(), file_name: z58.string().trim().min(1).max(255).optional(), category: z58.enum(LENDER_ATTACHMENT_CATEGORIES).optional(), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   handler: async ({ attachment_id, file_name, category, source, change_reason }, ctx) => {
     const err = requireAuth(ctx);
@@ -4454,13 +7488,13 @@ var update_lender_attachment_default = defineTool55({
 });
 
 // src/lib/mcp/tools/delete-lender.ts
-import { defineTool as defineTool56 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z58 } from "npm:zod@^3.23.0";
-var delete_lender_default = defineTool56({
+import { defineTool as defineTool57 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z59 } from "npm:zod@^3.23.0";
+var delete_lender_default = defineTool57({
   name: "delete_lender",
   title: "Archive funding source",
   description: "SOFT DELETE: set master_lenders.active=false, preserving contacts, notes, attachments, deal links and audit history. Requires confirm:true and existing lender deletion permission. Refuses deal-linked lenders unless force:true (still preserves links). Never hard deletes or removes stored files. Field diff audited atomically.",
-  inputSchema: { lender_id: z58.string().uuid(), confirm: z58.literal(true), force: z58.boolean().default(false), ...writeProvenance },
+  inputSchema: { lender_id: z59.string().uuid(), confirm: z59.literal(true), force: z59.boolean().default(false), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
   handler: async ({ lender_id, confirm, force, source, change_reason }, ctx) => {
     const err = requireAuth(ctx);
@@ -4471,13 +7505,13 @@ var delete_lender_default = defineTool56({
 });
 
 // src/lib/mcp/tools/merge-lenders.ts
-import { defineTool as defineTool57 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z59 } from "npm:zod@^3.23.0";
-var merge_lenders_default = defineTool57({
+import { defineTool as defineTool58 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z60 } from "npm:zod@^3.23.0";
+var merge_lenders_default = defineTool58({
   name: "merge_lenders",
   title: "Merge funding sources",
   description: "Atomic same-company merge: fill empty master fields, reparent contacts, notes, attachments and deal links, transfer audit/history with provenance, then hard-delete the merged master row. Requires confirm:true and existing lender deletion permission. Preserves stored attachment paths. Refuses duplicate deal links, two primary contacts, unique-key conflicts, inaccessible children or remaining references rather than deleting related data. All operations roll back on any failure. Does not use the legacy broad merge RPC or reconnect FLEx.",
-  inputSchema: { keep_lender_id: z59.string().uuid(), merge_lender_id: z59.string().uuid(), confirm: z59.literal(true), ...writeProvenance },
+  inputSchema: { keep_lender_id: z60.string().uuid(), merge_lender_id: z60.string().uuid(), confirm: z60.literal(true), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
   handler: async ({ keep_lender_id, merge_lender_id, confirm, source, change_reason }, ctx) => {
     const err = requireAuth(ctx);
@@ -4488,18 +7522,18 @@ var merge_lenders_default = defineTool57({
 });
 
 // src/lib/mcp/tools/update-claap-meeting-match.ts
-import { defineTool as defineTool58 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z60 } from "npm:zod@^3.23.0";
-var update_claap_meeting_match_default = defineTool58({
+import { defineTool as defineTool59 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z61 } from "npm:zod@^3.23.0";
+var update_claap_meeting_match_default = defineTool59({
   name: "update_claap_meeting_match",
   title: "Update Claap funding-source match",
   description: "Confirm, reassign, or clear one Claap meeting's funding-source match after user approval. Locks the manual decision and records an atomic audit entry; preserves transcript, summary, deal and other meeting fields. Existing organizer/admin update permissions and company membership apply. Optionally change review-queue status; this does not run deal routing.",
   inputSchema: {
-    meeting_id: z60.string().uuid(),
-    matched_lender_id: z60.string().uuid().nullable().describe("Visible master_lenders.id in the meeting's company, or null to clear."),
-    match_status: z60.enum(["matched", "needs_review", "unmatched"]),
-    reason: z60.string().max(1e4).optional(),
-    status: z60.enum(["pending_review", "routed", "excluded", "awaiting_confirmation"]).optional()
+    meeting_id: z61.string().uuid(),
+    matched_lender_id: z61.string().uuid().nullable().describe("Visible master_lenders.id in the meeting's company, or null to clear."),
+    match_status: z61.enum(["matched", "needs_review", "unmatched"]),
+    reason: z61.string().max(1e4).optional(),
+    status: z61.enum(["pending_review", "routed", "excluded", "awaiting_confirmation"]).optional()
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -4517,19 +7551,19 @@ var update_claap_meeting_match_default = defineTool58({
 });
 
 // src/lib/mcp/tools/list-lender-claap-meetings.ts
-import { defineTool as defineTool59 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z61 } from "npm:zod@^3.23.0";
-var list_lender_claap_meetings_default = defineTool59({
+import { defineTool as defineTool60 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z62 } from "npm:zod@^3.23.0";
+var list_lender_claap_meetings_default = defineTool60({
   name: "list_lender_claap_meetings",
   title: "List funding-source Claap meetings",
   description: "Read paginated Claap meetings and participants under the caller's existing RLS. Filter lender IDs, match statuses, or changes after a timestamp using GREATEST(matched_at, updated_at). Includes summaries and call details; transcript is omitted unless explicitly requested. Omitted filters include unmatched meetings for refresh detection.",
   inputSchema: {
-    lender_ids: z61.array(z61.string().uuid()).max(200).optional(),
-    updated_after: z61.string().datetime({ offset: true }).optional(),
-    match_statuses: z61.array(z61.enum(["matched", "needs_review", "unmatched"])).max(3).optional(),
-    include_transcript: z61.boolean().default(false),
-    limit: z61.number().int().min(1).max(200).default(50),
-    offset: z61.number().int().min(0).max(1e6).default(0)
+    lender_ids: z62.array(z62.string().uuid()).max(200).optional(),
+    updated_after: z62.string().datetime({ offset: true }).optional(),
+    match_statuses: z62.array(z62.enum(["matched", "needs_review", "unmatched"])).max(3).optional(),
+    include_transcript: z62.boolean().default(false),
+    limit: z62.number().int().min(1).max(200).default(50),
+    offset: z62.number().int().min(0).max(1e6).default(0)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -4548,26 +7582,26 @@ var list_lender_claap_meetings_default = defineTool59({
 });
 
 // src/lib/mcp/tools/list-outstanding-items.ts
-import { defineTool as defineTool60 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z63 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool61 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z64 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/outstandingItemFields.ts
-import { z as z62 } from "npm:zod@^3.23.0";
-var outstandingStatus = z62.enum(["requested", "received", "submitted"]);
-var outstandingPriority = z62.enum(["normal", "high", "urgent"]);
-var date = z62.string().date();
-var metadata = z62.record(z62.string(), z62.unknown()).refine((value) => JSON.stringify(value).length <= 2e4, "Metadata must not exceed 20,000 characters.");
+import { z as z63 } from "npm:zod@^3.23.0";
+var outstandingStatus = z63.enum(["requested", "received", "submitted"]);
+var outstandingPriority = z63.enum(["normal", "high", "urgent"]);
+var date = z63.string().date();
+var metadata = z63.record(z63.string(), z63.unknown()).refine((value) => JSON.stringify(value).length <= 2e4, "Metadata must not exceed 20,000 characters.");
 var outstandingCreateFields = {
-  description: z62.string().trim().min(1).max(2e3),
-  lender_id: z62.string().uuid().optional().describe("deal_lenders.id attached to this deal, NOT master_lenders.id."),
+  description: z63.string().trim().min(1).max(2e3),
+  lender_id: z63.string().uuid().optional().describe("deal_lenders.id attached to this deal, NOT master_lenders.id."),
   status: outstandingStatus.default("requested"),
   priority: outstandingPriority.default("normal"),
   due_date: date.optional(),
   eta: date.optional(),
-  assigned_to: z62.string().max(500).optional().describe("Opaque assignment text; the current widget has no assignee selector."),
-  notes: z62.string().max(1e4).optional(),
+  assigned_to: z63.string().max(500).optional().describe("Opaque assignment text; the current widget has no assignee selector."),
+  notes: z63.string().max(1e4).optional(),
   source_metadata: metadata.optional(),
-  idempotency_key: z62.string().trim().min(1).max(200).optional()
+  idempotency_key: z63.string().trim().min(1).max(200).optional()
 };
 var outstandingUpdateFields = {
   description: outstandingCreateFields.description.optional(),
@@ -4575,28 +7609,28 @@ var outstandingUpdateFields = {
   priority: outstandingPriority.optional(),
   due_date: date.nullable().optional(),
   eta: date.nullable().optional(),
-  assigned_to: z62.string().max(500).nullable().optional(),
-  lender_id: z62.string().uuid().nullable().optional().describe("deal_lenders.id attached to the item's deal; null clears."),
-  notes: z62.string().max(1e4).nullable().optional(),
-  is_archived: z62.boolean().optional(),
+  assigned_to: z63.string().max(500).nullable().optional(),
+  lender_id: z63.string().uuid().nullable().optional().describe("deal_lenders.id attached to the item's deal; null clears."),
+  notes: z63.string().max(1e4).nullable().optional(),
+  is_archived: z63.boolean().optional(),
   source_metadata_merge: metadata.optional(),
-  append_note: z62.string().trim().min(1).max(1e4).optional().describe("Append a UTC-dated YYYY-MM-DD: text line. Cannot be combined with notes.")
+  append_note: z63.string().trim().min(1).max(1e4).optional().describe("Append a UTC-dated YYYY-MM-DD: text line. Cannot be combined with notes.")
 };
 
 // src/lib/mcp/tools/list-outstanding-items.ts
-var list_outstanding_items_default = defineTool60({
+var list_outstanding_items_default = defineTool61({
   name: "list_outstanding_items",
   title: "List Open Items",
   description: "Read full deal Open Items rows ordered by position. open_only excludes items both Received and Submitted (the current Open Items tab itself includes completed items). Archived rows are excluded by default. lender_id is deal_lenders.id. Use offset/next_offset to page through all results.",
   inputSchema: {
-    deal_id: z63.string().uuid(),
-    lender_id: z63.string().uuid().optional(),
+    deal_id: z64.string().uuid(),
+    lender_id: z64.string().uuid().optional(),
     status: outstandingStatus.optional(),
-    open_only: z63.boolean().default(false),
-    include_archived: z63.boolean().default(false),
-    updated_since: z63.string().datetime({ offset: true }).optional(),
-    limit: z63.number().int().min(1).max(500).default(100),
-    offset: z63.number().int().min(0).max(1e6).default(0)
+    open_only: z64.boolean().default(false),
+    include_archived: z64.boolean().default(false),
+    updated_since: z64.string().datetime({ offset: true }).optional(),
+    limit: z64.number().int().min(1).max(500).default(100),
+    offset: z64.number().int().min(0).max(1e6).default(0)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -4608,13 +7642,13 @@ var list_outstanding_items_default = defineTool60({
 });
 
 // src/lib/mcp/tools/create-outstanding-item.ts
-import { defineTool as defineTool61 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z64 } from "npm:zod@^3.23.0";
-var create_outstanding_item_default = defineTool61({
+import { defineTool as defineTool62 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z65 } from "npm:zod@^3.23.0";
+var create_outstanding_item_default = defineTool62({
   name: "create_outstanding_item",
   title: "Create Open Item",
   description: "After user approval, create an Open Item on an accessible deal. Defaults to Requested/normal, appends to the active list, validates deal_lenders.id, stores provenance and deduplicates idempotency keys even for archived items. Returns the full item and created flag; logs an MCP-attributed activity atomically. No email is sent.",
-  inputSchema: { deal_id: z64.string().uuid(), ...outstandingCreateFields },
+  inputSchema: { deal_id: z65.string().uuid(), ...outstandingCreateFields },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
     const denied = requireAuth(ctx);
@@ -4626,13 +7660,13 @@ var create_outstanding_item_default = defineTool61({
 });
 
 // src/lib/mcp/tools/update-outstanding-item.ts
-import { defineTool as defineTool62 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z65 } from "npm:zod@^3.23.0";
-var update_outstanding_item_default = defineTool62({
+import { defineTool as defineTool63 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z66 } from "npm:zod@^3.23.0";
+var update_outstanding_item_default = defineTool63({
   name: "update_outstanding_item",
   title: "Update Open Item",
   description: "After user approval, partially update an existing Open Item under caller RLS. Requested/Received/Submitted translate into the UI JSON state without losing requester/delivery lists. Shallow-merge provenance; append_note preserves notes with a UTC date. notes and append_note are mutually exclusive. Retire with is_archived, never delete. Returns the full row and logs MCP-attributed activity atomically; no email is sent.",
-  inputSchema: { id: z65.string().uuid(), ...outstandingUpdateFields },
+  inputSchema: { id: z66.string().uuid(), ...outstandingUpdateFields },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
     const denied = requireAuth(ctx);
@@ -4646,13 +7680,13 @@ var update_outstanding_item_default = defineTool62({
 });
 
 // src/lib/mcp/tools/batch-create-outstanding-items.ts
-import { defineTool as defineTool63 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z66 } from "npm:zod@^3.23.0";
-var batch_create_outstanding_items_default = defineTool63({
+import { defineTool as defineTool64 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z67 } from "npm:zod@^3.23.0";
+var batch_create_outstanding_items_default = defineTool64({
   name: "batch_create_outstanding_items",
   title: "Create Open Items batch",
   description: "After user approval, create up to 25 Open Items on one deal, with per-item idempotency and independent created/existing/error results. Same defaults and permissions as create_outstanding_item. No delete or email actions.",
-  inputSchema: { deal_id: z66.string().uuid(), items: z66.array(z66.object(outstandingCreateFields).strict()).min(1).max(25) },
+  inputSchema: { deal_id: z67.string().uuid(), items: z67.array(z67.object(outstandingCreateFields).strict()).min(1).max(25) },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
     const denied = requireAuth(ctx);
@@ -4733,6 +7767,7 @@ var mcp_default = defineMcp({
     list_referral_partners_default,
     get_sales_calls_weekly_default,
     get_deal_hours_fees_default,
+    get_cashflow_metrics_default,
     create_lender_fit_attribute_default,
     update_lender_fit_attribute_default,
     delete_lender_fit_attribute_default,

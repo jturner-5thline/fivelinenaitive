@@ -49,6 +49,7 @@ import describeSchema from "./tools/describe-schema";
 import listReferralPartners from "./tools/list-referral-partners";
 import getSalesCallsWeekly from "./tools/get-sales-calls-weekly";
 import getDealHoursFees from "./tools/get-deal-hours-fees";
+import getCashflowMetrics from "./tools/get-cashflow-metrics";
 import createLenderFitAttribute from "./tools/create-lender-fit-attribute";
 import updateLenderFitAttribute from "./tools/update-lender-fit-attribute";
 import deleteLenderFitAttribute from "./tools/delete-lender-fit-attribute";
@@ -162,6 +163,7 @@ export default defineMcp({
     listReferralPartners,
     getSalesCallsWeekly,
     getDealHoursFees,
+    getCashflowMetrics,
     createLenderFitAttribute,
     updateLenderFitAttribute,
     deleteLenderFitAttribute,

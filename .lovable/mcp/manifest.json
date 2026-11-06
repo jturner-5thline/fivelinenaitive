@@ -4694,6 +4694,46 @@
         "outputSchema": null
       },
       {
+        "name": "get_cashflow_metrics",
+        "title": "Get cash flow metrics (Finance headline widgets)",
+        "description": "Returns the exact Finance > Cash Flow headline figures: Cash In, Cash Out, Net Change (current week through weeks_future), and Peak Cash / Low Cash with their week-ending dates (weeks_past through weeks_future). Uses the same calculation as the Finance page, including scheduled entries, deal fee projections, manual date/amount moves and weekly overrides. Defaults to the workspace's saved Finance window. Figures match the page with no Year/Quarter/Entity/Category filters applied.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "weeks_future": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 104,
+              "description": "Weeks after the current week. Defaults to the Finance page default."
+            },
+            "weeks_past": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 104,
+              "description": "Weeks before the current week used for Peak/Low Cash. Defaults to the Finance page default."
+            },
+            "as_of": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "description": "Anchor date (YYYY-MM-DD). Defaults to today (UTC), like the page."
+            },
+            "include_weekly_breakdown": {
+              "type": "boolean",
+              "default": false,
+              "description": "Also return each visible week's beginning cash, receipts, disbursements, net change and ending cash."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
         "name": "create_lender_fit_attribute",
         "title": "create lender fit attributes",
         "description": "create a lender_fit_attributes record, acting as the caller under existing RLS. Writable fields: summary, positive_signals, negative_signals, exclusions, nuanced_preferences. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.",

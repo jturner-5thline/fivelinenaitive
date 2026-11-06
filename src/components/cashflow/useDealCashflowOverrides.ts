@@ -1,36 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { DealCashflowOverride } from './dealProjections';
 
-export interface DealCashflowOverride {
-  deal_entry_id: string;
-  excluded_dates: string[];
-  end_date: string | null;
-  /** Manually chosen date for a one-time deal projection (YYYY-MM-DD). */
-  override_date?: string | null;
-  /** Manually chosen amount for a deal projection. */
-  override_amount?: number | null;
-}
-
-/** Apply a manual date/amount override to a one-time deal projection. */
-export function applyDealDateAmountOverride<T extends { amount: number; start_date: string; end_date?: string | null; frequency_config?: any }>(
-  entry: T,
-  ov: Pick<DealCashflowOverride, 'override_date' | 'override_amount'> | undefined,
-): T {
-  if (!ov) return entry;
-  let next = entry;
-  if (ov.override_amount != null && Number.isFinite(Number(ov.override_amount))) {
-    next = { ...next, amount: Number(ov.override_amount) };
-  }
-  if (ov.override_date && /^\d{4}-\d{2}-\d{2}$/.test(ov.override_date)) {
-    next = {
-      ...next,
-      start_date: ov.override_date,
-      end_date: ov.override_date,
-      frequency_config: { ...(next.frequency_config || {}), one_time_date: ov.override_date },
-    };
-  }
-  return next;
-}
+export { applyDealDateAmountOverride, type DealCashflowOverride } from './dealProjections';
 
 /**
  * Per-occurrence and series-truncation overrides for deal-projected cashflow

@@ -28,6 +28,7 @@ import { useDealCashflowOverrides } from './useDealCashflowOverrides';
 import { useCustomCashFlowRows } from './useCustomCashFlowRows';
 import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, resolveCategoryToGridRow, DEBT_ADVISORY_DEFAULT_SUBCATEGORY, generateOccurrences, applyVariance, gridRowToCanonicalCategory, type ScheduledCashFlow } from './scheduledCashFlows';
 import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from './weeklyHistoricalSeed';
+import { computeCashflowKpis } from './cashflowKpis';
 import { buildFinanceWeeklyBalance, composeCombinedScheduledItems, stripCashInFeeSuffix } from './financeWeeklyBalance';
 import { computeFacilityWeekStates, totalAvailableLocForWeek } from './creditFacilities';
 import { useCompany } from '@/hooks/useCompany';
@@ -1094,37 +1095,11 @@ export function CashFlowManager() {
   // KPIs scoped to the forward-looking window: current week → current week + weeksFuture.
   // Driven from `filteredWeekly` so Year / Quarter / Entity / Category filters and Configure
   // entries all flow through to the headline Cash In / Cash Out / Net Change tiles.
-  const { cashIn, cashOut, netChange, kpiRangeLabel, kpiWeekCount } = useMemo(() => {
-    const sortedEntries = Object.entries(filteredWeekly || {}).sort(([a], [b]) => a.localeCompare(b));
-    const todayISO = new Date().toISOString().split('T')[0];
-    let currentIdx = sortedEntries.findIndex(([dateKey, entry]: any) => {
-      const we = typeof entry?.week_ending === 'string' ? entry.week_ending : dateKey;
-      return we >= todayISO;
-    });
-    if (currentIdx < 0) currentIdx = sortedEntries.length - 1;
-    const startIdx = Math.max(0, currentIdx);
-    const endIdx = Math.min(sortedEntries.length, startIdx + 1 + Math.max(0, weeksFuture));
-    const window = sortedEntries.slice(startIdx, endIdx);
-    const ci = window.reduce((s, [, e]: any) => s + (Number(e?.["TOTAL RECEIPTS"]) || 0), 0);
-    const co = window.reduce((s, [, e]: any) => s + (Number(e?.["TOTAL DISBURSEMENTS"]) || 0), 0);
-    let label = '—';
-    if (window.length > 0) {
-      const fmt = (iso: string) => {
-        const d = new Date(iso + 'T00:00:00');
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      };
-      const firstWE = (window[0][1] as any)?.week_ending || window[0][0];
-      const lastWE = (window[window.length - 1][1] as any)?.week_ending || window[window.length - 1][0];
-      label = `${fmt(firstWE)} – ${fmt(lastWE)} (${window.length} ${window.length === 1 ? 'week' : 'weeks'})`;
-    }
-    return {
-      cashIn: ci || 0,
-      cashOut: co || 0,
-      netChange: (ci || 0) - (co || 0),
-      kpiRangeLabel: label,
-      kpiWeekCount: window.length,
-    };
-  }, [filteredWeekly, weeksFuture]);
+  const headlineKpis = useMemo(
+    () => computeCashflowKpis(filteredWeekly, weeksFuture, weeksPast),
+    [filteredWeekly, weeksFuture, weeksPast],
+  );
+  const { cashIn, cashOut, netChange, kpiRangeLabel, kpiWeekCount } = headlineKpis;
 
   // Peak / Low Ending Cash over the *visible* window (weeksPast → weeksFuture).
   // Mirrors the column window used by WeeklyReportTab so the chips, chart
@@ -1132,38 +1107,8 @@ export function CashFlowManager() {
   const cashThresholds = useCashThresholds();
   const CAUTION_THRESHOLD = cashThresholds.caution;
   const APPROACHING_THRESHOLD = cashThresholds.caution * 1.5;
-  const { peakCash, lowCash, lowCashBelowCaution } = useMemo(() => {
-    const sortedEntries = Object.entries(filteredWeekly || {}).sort(([a], [b]) => a.localeCompare(b));
-    if (sortedEntries.length === 0) {
-      return { peakCash: null as null | { value: number; weekEnding: string; weekKey: string }, lowCash: null as null | { value: number; weekEnding: string; weekKey: string }, lowCashBelowCaution: false };
-    }
-    const todayISO = new Date().toISOString().split('T')[0];
-    let currentIdx = sortedEntries.findIndex(([dateKey, entry]: any) => {
-      const we = typeof entry?.week_ending === 'string' ? entry.week_ending : dateKey;
-      return we >= todayISO;
-    });
-    if (currentIdx < 0) currentIdx = sortedEntries.length - 1;
-    const startIdx = Math.max(0, currentIdx - Math.max(0, weeksPast));
-    const endIdx = Math.min(sortedEntries.length, currentIdx + 1 + Math.max(0, weeksFuture));
-    const win = sortedEntries.slice(startIdx, endIdx);
-    if (win.length === 0) {
-      return { peakCash: null, lowCash: null, lowCashBelowCaution: false };
-    }
-    let peak: { value: number; weekEnding: string; weekKey: string } | null = null;
-    let low: { value: number; weekEnding: string; weekKey: string } | null = null;
-    for (const [key, entry] of win) {
-      const v = Number((entry as any)?.["ENDING CASH"]);
-      if (!Number.isFinite(v)) continue;
-      const we = (entry as any)?.week_ending || key;
-      if (peak === null || v > peak.value) peak = { value: v, weekEnding: we, weekKey: key };
-      if (low === null || v < low.value) low = { value: v, weekEnding: we, weekKey: key };
-    }
-    return {
-      peakCash: peak,
-      lowCash: low,
-      lowCashBelowCaution: !!low && low.value < CAUTION_THRESHOLD,
-    };
-  }, [filteredWeekly, weeksPast, weeksFuture, CAUTION_THRESHOLD]);
+  const { peakCash, lowCash } = headlineKpis;
+  const lowCashBelowCaution = !!lowCash && lowCash.value < CAUTION_THRESHOLD;
 
   // Publish the visible grid so the Copilot chat can read the on-screen figures.
   useEffect(() => {
