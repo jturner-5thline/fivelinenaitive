@@ -3133,6 +3133,8 @@ export type Database = {
           end_date: string | null
           excluded_dates: string[]
           id: string
+          override_amount: number | null
+          override_date: string | null
           updated_at: string
         }
         Insert: {
@@ -3143,6 +3145,8 @@ export type Database = {
           end_date?: string | null
           excluded_dates?: string[]
           id?: string
+          override_amount?: number | null
+          override_date?: string | null
           updated_at?: string
         }
         Update: {
@@ -3153,6 +3157,8 @@ export type Database = {
           end_date?: string | null
           excluded_dates?: string[]
           id?: string
+          override_amount?: number | null
+          override_date?: string | null
           updated_at?: string
         }
         Relationships: []

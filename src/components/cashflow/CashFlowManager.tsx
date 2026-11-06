@@ -190,6 +190,7 @@ export function CashFlowManager() {
     overrides: dealOverrides,
     excludeOccurrence: excludeDealOccurrence,
     truncateSeries: truncateDealSeries,
+    setDateAmount: setDealDateAmount,
   } = useDealCashflowOverrides(company?.id);
   const { items: dealProjectedItems } = useDealProjectedCashFlows(
     company?.id,
@@ -1687,6 +1688,18 @@ export function CashFlowManager() {
                   ok = (await excludeDealOccurrence(id, d)) && ok;
                 }
                 if (ok) logAction(`Excluded deal projection occurrence: ${id}`);
+                return ok;
+              }
+              // Manual date / amount move from the drilldown edit row.
+              const movePatch: { date?: string; amount?: number } = {};
+              if (typeof patch.start_date === 'string') movePatch.date = patch.start_date;
+              if (typeof patch.amount === 'number') movePatch.amount = patch.amount;
+              if (movePatch.date !== undefined || movePatch.amount !== undefined) {
+                const ok = await setDealDateAmount(id, movePatch);
+                if (ok) {
+                  logAction(`Moved deal projection ${id}${movePatch.amount !== undefined ? ` ${formatAmountUsd(movePatch.amount)}` : ''}${formatWeekOf(movePatch.date)}`);
+                  broadcastRef.current('scheduled');
+                }
                 return ok;
               }
               return false;

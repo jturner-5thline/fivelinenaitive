@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ScheduledCashFlow } from './scheduledCashFlows';
-import type { DealCashflowOverride } from './useDealCashflowOverrides';
+import { applyDealDateAmountOverride, type DealCashflowOverride } from './useDealCashflowOverrides';
 import { computeTotalFee, computeClosingFee, normalizeSuccessFeePercent } from '@/lib/fees';
 
 /**
@@ -182,6 +182,7 @@ export function useDealProjectedCashFlows(
         ? out.map((entry) => {
             const ov = overrides[entry.id];
             if (!ov) return entry;
+            entry = applyDealDateAmountOverride(entry, ov);
             const cfg = entry.frequency_config || {};
             const existing = cfg.excluded_dates || [];
             const mergedExcluded = Array.from(new Set([...existing, ...(ov.excluded_dates || [])]));

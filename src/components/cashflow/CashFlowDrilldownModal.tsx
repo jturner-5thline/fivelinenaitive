@@ -399,6 +399,23 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
       }
     }
     const amountChanged = Math.abs(amt - editDraft.originalAmount) > 0.0049;
+    // Deal-projected rows: only the date and amount can be overridden here;
+    // the deal record itself is never changed.
+    if (entryId.startsWith('deal:')) {
+      if (!dateChanged && !amountChanged) { cancelEdit(); return; }
+      setBusyId(entryId);
+      try {
+        const ok = await onUpdateEntry(entryId, {
+          ...(dateChanged ? { start_date: editDraft.date } : {}),
+          ...(amountChanged ? { amount: amt } : {}),
+        });
+        if (ok) { toast.success(dateChanged ? 'Entry moved to new week' : 'Entry updated'); cancelEdit(); }
+        else toast.error('Could not save changes');
+      } finally {
+        setBusyId(null);
+      }
+      return;
+    }
     const isRecurring = editDraft.frequency_type !== 'one_time';
     // Only recurring + amount-changed edits need the scope prompt.
     if (amountChanged && isRecurring) {
@@ -892,7 +909,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                       {canMutate && (
                         <td className="px-3 py-2 text-right">
                           <div className="flex justify-end gap-1">
-                            {onUpdateEntry && r.source === 'manual' && (
+                            {onUpdateEntry && (r.source === 'manual' || r.source === 'deal') && (
                               <Button
                                 size="sm"
                                 variant="ghost"

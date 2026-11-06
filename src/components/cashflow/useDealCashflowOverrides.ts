@@ -5,6 +5,31 @@ export interface DealCashflowOverride {
   deal_entry_id: string;
   excluded_dates: string[];
   end_date: string | null;
+  /** Manually chosen date for a one-time deal projection (YYYY-MM-DD). */
+  override_date?: string | null;
+  /** Manually chosen amount for a deal projection. */
+  override_amount?: number | null;
+}
+
+/** Apply a manual date/amount override to a one-time deal projection. */
+export function applyDealDateAmountOverride<T extends { amount: number; start_date: string; end_date?: string | null; frequency_config?: any }>(
+  entry: T,
+  ov: Pick<DealCashflowOverride, 'override_date' | 'override_amount'> | undefined,
+): T {
+  if (!ov) return entry;
+  let next = entry;
+  if (ov.override_amount != null && Number.isFinite(Number(ov.override_amount))) {
+    next = { ...next, amount: Number(ov.override_amount) };
+  }
+  if (ov.override_date && /^\d{4}-\d{2}-\d{2}$/.test(ov.override_date)) {
+    next = {
+      ...next,
+      start_date: ov.override_date,
+      end_date: ov.override_date,
+      frequency_config: { ...(next.frequency_config || {}), one_time_date: ov.override_date },
+    };
+  }
+  return next;
 }
 
 /**
@@ -25,7 +50,7 @@ export function useDealCashflowOverrides(companyId: string | undefined) {
     try {
       const { data, error } = await supabase
         .from('cashflow_deal_overrides' as any)
-        .select('deal_entry_id, excluded_dates, end_date')
+        .select('deal_entry_id, excluded_dates, end_date, override_date, override_amount')
         .eq('company_id', companyId);
       if (error) {
         console.error('Error loading deal cashflow overrides:', error);
@@ -40,6 +65,8 @@ export function useDealCashflowOverrides(companyId: string | undefined) {
             ? row.excluded_dates.map((d: any) => String(d).slice(0, 10))
             : [],
           end_date: row.end_date ? String(row.end_date).slice(0, 10) : null,
+          override_date: row.override_date ? String(row.override_date).slice(0, 10) : null,
+          override_amount: row.override_amount != null ? Number(row.override_amount) : null,
         };
       }
       setOverrides(map);
@@ -137,5 +164,49 @@ export function useDealCashflowOverrides(companyId: string | undefined) {
     [companyId, overrides],
   );
 
-  return { overrides, isLoading, fetchOverrides, excludeOccurrence, truncateSeries };
+  /**
+   * Manually move a deal-projected row to a new date and/or set a new
+   * amount. Only the cash-flow view changes; the deal record is untouched.
+   */
+  const setDateAmount = useCallback(
+    async (dealEntryId: string, patch: { date?: string | null; amount?: number | null }): Promise<boolean> => {
+      if (!companyId) return false;
+      const existing = overrides[dealEntryId];
+      const next = {
+        override_date: patch.date !== undefined ? patch.date : existing?.override_date ?? null,
+        override_amount: patch.amount !== undefined ? patch.amount : existing?.override_amount ?? null,
+      };
+      const { data: userResp } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from('cashflow_deal_overrides' as any)
+        .upsert(
+          {
+            company_id: companyId,
+            deal_entry_id: dealEntryId,
+            excluded_dates: existing?.excluded_dates ?? [],
+            end_date: existing?.end_date ?? null,
+            ...next,
+            created_by: userResp?.user?.id ?? null,
+          },
+          { onConflict: 'company_id,deal_entry_id' },
+        );
+      if (error) {
+        console.error('Error saving deal cashflow date/amount override:', error);
+        return false;
+      }
+      setOverrides((prev) => ({
+        ...prev,
+        [dealEntryId]: {
+          deal_entry_id: dealEntryId,
+          excluded_dates: existing?.excluded_dates ?? [],
+          end_date: existing?.end_date ?? null,
+          ...next,
+        },
+      }));
+      return true;
+    },
+    [companyId, overrides],
+  );
+
+  return { overrides, isLoading, fetchOverrides, excludeOccurrence, truncateSeries, setDateAmount };
 }

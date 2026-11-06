@@ -1,0 +1,1 @@
+ALTER TABLE public.cashflow_deal_overrides ADD COLUMN IF NOT EXISTS override_date date NULL, ADD COLUMN IF NOT EXISTS override_amount numeric NULL;
