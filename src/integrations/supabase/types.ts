@@ -3854,9 +3854,13 @@ export type Database = {
           match_reason: string | null
           meeting_id: string
           new_deal_id: string | null
+          new_lender_id: string | null
+          new_match_status: string | null
           new_status: string | null
           performed_by: string | null
           previous_deal_id: string | null
+          previous_lender_id: string | null
+          previous_match_status: string | null
           previous_status: string | null
         }
         Insert: {
@@ -3868,9 +3872,13 @@ export type Database = {
           match_reason?: string | null
           meeting_id: string
           new_deal_id?: string | null
+          new_lender_id?: string | null
+          new_match_status?: string | null
           new_status?: string | null
           performed_by?: string | null
           previous_deal_id?: string | null
+          previous_lender_id?: string | null
+          previous_match_status?: string | null
           previous_status?: string | null
         }
         Update: {
@@ -3882,9 +3890,13 @@ export type Database = {
           match_reason?: string | null
           meeting_id?: string
           new_deal_id?: string | null
+          new_lender_id?: string | null
+          new_match_status?: string | null
           new_status?: string | null
           performed_by?: string | null
           previous_deal_id?: string | null
+          previous_lender_id?: string | null
+          previous_match_status?: string | null
           previous_status?: string | null
         }
         Relationships: [
@@ -31039,6 +31051,17 @@ export type Database = {
         Returns: undefined
       }
       mcp_lender_has_deals: { Args: { p_id: string }; Returns: boolean }
+      mcp_list_lender_claap_meetings: {
+        Args: {
+          p_include_transcript?: boolean
+          p_lender_ids?: string[]
+          p_limit?: number
+          p_match_statuses?: string[]
+          p_offset?: number
+          p_updated_after?: string
+        }
+        Returns: Json
+      }
       mcp_merge_lenders: {
         Args: {
           p_change_reason?: string
@@ -31052,6 +31075,16 @@ export type Database = {
       mcp_transfer_lender_audit: {
         Args: { p_keep: string; p_merge: string }
         Returns: undefined
+      }
+      mcp_update_claap_meeting_match: {
+        Args: {
+          p_match_status: string
+          p_matched_lender_id: string
+          p_meeting_id: string
+          p_reason?: string
+          p_status?: Database["public"]["Enums"]["claap_meeting_status"]
+        }
+        Returns: Json
       }
       mcp_update_lender: {
         Args: {

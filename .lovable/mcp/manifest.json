@@ -859,7 +859,7 @@
       {
         "name": "update_lender",
         "title": "Update funding source / lender",
-        "description": "Edit every master_lenders column except id, user_id, company_id, created_at and server-maintained updated_at. Does NOT edit deal_lenders or lender_contacts. Only supplied fields change; null clears. Long-text mode replace/append/prepend is atomic with blank-line separation and final length validation. Supports updates[1..25] with independent results, expected_updated_at (conflict returns current lender), dry_run (field diffs, no writes), source and change_reason in each audit row. name renames; name_lookup identifies, rejecting ambiguity. criteria_confidence: imported means unverified imported criteria; null clears. FLEx columns are inert metadata; FLEx stays disconnected.",
+        "description": "Edit every master_lenders column except id, user_id, company_id, created_at and server-maintained updated_at. Does NOT edit deal_lenders or lender_contacts. Only supplied fields change; null clears. Long-text mode replace/append/prepend is atomic with blank-line separation and final length validation. Supports updates[1..25] with independent results, expected_updated_at (conflict returns current lender), dry_run (field diffs, no writes), source and change_reason in each audit row. name renames; name_lookup identifies, rejecting ambiguity. criteria_confidence: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document); null clears. FLEx columns are inert metadata; FLEx stays disconnected.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -1427,14 +1427,17 @@
                 {
                   "type": "string",
                   "enum": [
-                    "imported"
+                    "imported",
+                    "verified_call",
+                    "verified_email",
+                    "verified_attachment"
                   ]
                 },
                 {
                   "type": "null"
                 }
               ],
-              "description": "Allowed: imported = imported criteria, not independently verified. null clears."
+              "description": "Allowed: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document). null clears."
             },
             "upfront_checklist": {
               "anyOf": [
@@ -2647,14 +2650,17 @@
                 {
                   "type": "string",
                   "enum": [
-                    "imported"
+                    "imported",
+                    "verified_call",
+                    "verified_email",
+                    "verified_attachment"
                   ]
                 },
                 {
                   "type": "null"
                 }
               ],
-              "description": "Allowed: imported = imported criteria, not independently verified. null clears."
+              "description": "Allowed: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document). null clears."
             },
             "upfront_checklist": {
               "anyOf": [
@@ -7385,6 +7391,125 @@
             "merge_lender_id",
             "confirm"
           ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_claap_meeting_match",
+        "title": "Update Claap funding-source match",
+        "description": "Confirm, reassign, or clear one Claap meeting's funding-source match after user approval. Locks the manual decision and records an atomic audit entry; preserves transcript, summary, deal and other meeting fields. Existing organizer/admin update permissions and company membership apply. Optionally change review-queue status; this does not run deal routing.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "meeting_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "matched_lender_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Visible master_lenders.id in the meeting's company, or null to clear."
+            },
+            "match_status": {
+              "type": "string",
+              "enum": [
+                "matched",
+                "needs_review",
+                "unmatched"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 10000
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending_review",
+                "routed",
+                "excluded",
+                "awaiting_confirmation"
+              ]
+            }
+          },
+          "required": [
+            "meeting_id",
+            "matched_lender_id",
+            "match_status"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_lender_claap_meetings",
+        "title": "List funding-source Claap meetings",
+        "description": "Read paginated Claap meetings and participants under the caller's existing RLS. Filter lender IDs, match statuses, or changes after a timestamp using GREATEST(matched_at, updated_at). Includes summaries and call details; transcript is omitted unless explicitly requested. Omitted filters include unmatched meetings for refresh detection.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "maxItems": 200
+            },
+            "updated_after": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "match_statuses": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "matched",
+                  "needs_review",
+                  "unmatched"
+                ]
+              },
+              "maxItems": 3
+            },
+            "include_transcript": {
+              "type": "boolean",
+              "default": false
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000,
+              "default": 0
+            }
+          },
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },

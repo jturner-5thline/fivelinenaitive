@@ -88,6 +88,8 @@ import deleteLenderNote from "./tools/delete-lender-note";
 import updateLenderAttachment from "./tools/update-lender-attachment";
 import deleteLender from "./tools/delete-lender";
 import mergeLenders from "./tools/merge-lenders";
+import updateClaapMeetingMatch from "./tools/update-claap-meeting-match";
+import listLenderClaapMeetings from "./tools/list-lender-claap-meetings";
 
 // The OAuth issuer MUST be the direct Supabase host (see cloud-auth-oauth-server).
 // SUPABASE_URL on Lovable Cloud is a `.lovable.cloud` proxy; the token issuer is
@@ -195,5 +197,7 @@ export default defineMcp({
     updateLenderAttachment,
     deleteLender,
     mergeLenders,
+    updateClaapMeetingMatch,
+    listLenderClaapMeetings,
   ],
 });

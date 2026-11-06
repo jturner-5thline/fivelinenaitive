@@ -12,7 +12,12 @@ export const LENDER_LONG_TEXT_LIMITS = {
   funding_source_notes: 20000, about_notes: 20000, company_requirements: 5000,
   deal_structure_notes: 10000, upfront_checklist: 10000, post_term_sheet_checklist: 10000,
 } as const;
-export const CRITERIA_CONFIDENCE_MEANINGS = { imported: "Imported criteria; not independently verified." } as const;
+export const CRITERIA_CONFIDENCE_MEANINGS = {
+  imported: "Imported criteria; not independently verified.",
+  verified_call: "Confirmed by the lender on a recorded call.",
+  verified_email: "Confirmed by the lender in writing.",
+  verified_attachment: "Confirmed by a lender-produced document (one-pager, term sheet, or deck).",
+} as const;
 
 /**
  * Every user-editable master_lenders column exposed to the MCP write tools.
@@ -74,7 +79,7 @@ export const LENDER_FIELD_SCHEMA = {
     .nullable()
     .optional()
     .describe("When the lending criteria were last reviewed. ISO date (2026-09-14) or timestamp."),
-  criteria_confidence: z.enum(["imported"]).nullable().optional().describe("Allowed: imported = imported criteria, not independently verified. null clears."),
+  criteria_confidence: z.enum(["imported", "verified_call", "verified_email", "verified_attachment"]).nullable().optional().describe("Allowed: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document). null clears."),
   upfront_checklist: str(10000).describe("Comma-separated list of upfront diligence items, same format as existing rows."),
   post_term_sheet_checklist: str(10000).describe("Comma-separated list of post-term-sheet items, same format as existing rows."),
   crm_company_id: z.string().uuid().nullable().optional().describe("crm_companies.id to link this funding source to. Must exist and be visible to you."),

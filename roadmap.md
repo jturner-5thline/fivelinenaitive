@@ -1,5 +1,11 @@
 # Roadmap
 
+## Funding-source refresh MCP additions
+- [x] Expand criteria confidence values without changing existing criteria.
+- [x] Add caller-scoped, audited manual Claap meeting matching and paginated meeting discovery; database support applied and verified.
+- [x] 14 new tests / 60 targeted MCP tests, isolated permissions/audit rollback checks, focused lint and automatic build passed; signed-in discovery and confidence dry runs verified at 1280px. Manifest contains 91 tools. Full suite: 548 passed, 18 existing failures.
+- [ ] Hosted OAuth match-write acceptance — requires republish and approved test records; no live match writes or communications performed. Existing Cloud/auth reused; no services enabled or dependencies removed.
+
 ## MCP lender additions
 - [x] Fixed nonexistent created_by/lender_id/status writes; use canonical tenant lender name/master_lender_id, on-deck/active defaults, timestamps, UI and deal activity feeds, explicit overrides and unique-race no-op handling.
 - [x] Eleven new regression tests passed (21 targeted total); targeted lint and automatic preview build passed; extracted 49-tool catalog. Full suite: 510 passed, 18 unrelated failures; full lint retains existing widespread failures. No dependencies removed or new services enabled.

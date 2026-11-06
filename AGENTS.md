@@ -29,3 +29,4 @@
 - MCP `update_deal_lender` edits only the per-deal `deal_lenders` row (never master_lenders), never creates rows, and leaves status timestamps to the deal_lenders status trigger — why: deal notes must not leak into the shared directory and timestamps must match UI edits.
 
 - Master funding-source MCP edits use invoker transactional RPCs for mutation plus field-level audit; directory note history is separate from deal-note history, and merge refuses unsupported/conflicting references — why: preserve caller permissions, atomic append/concurrency and all related data without rewriting analytics or operational queues.
+- Claap MCP manual meeting matches use invoker transactional RPCs with tenant-validated lender targets and atomic before/after audits; meeting discovery uses invoker bounded pagination with optional transcripts — why: preserve organizer/admin RLS and unrelated content while making refresh detection reliable.

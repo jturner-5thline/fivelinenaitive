@@ -1664,7 +1664,12 @@ var str = (max = 2e3) => z17.string().max(max).nullable().optional();
 var arr = () => z17.array(z17.string().trim().min(1).max(200)).nullable().optional();
 var num = () => z17.number().finite().nullable().optional();
 var timestamp = () => z17.string().refine((v) => !Number.isNaN(Date.parse(v)), "Must be an ISO date or timestamp").nullable().optional();
-var CRITERIA_CONFIDENCE_MEANINGS = { imported: "Imported criteria; not independently verified." };
+var CRITERIA_CONFIDENCE_MEANINGS = {
+  imported: "Imported criteria; not independently verified.",
+  verified_call: "Confirmed by the lender on a recorded call.",
+  verified_email: "Confirmed by the lender in writing.",
+  verified_attachment: "Confirmed by a lender-produced document (one-pager, term sheet, or deck)."
+};
 var LENDER_FIELD_SCHEMA = {
   lender_type: str(200),
   loan_types: arr(),
@@ -1714,7 +1719,7 @@ var LENDER_FIELD_SCHEMA = {
   about_notes: str(2e4),
   lender_one_pager_url: str(1e3),
   criteria_reviewed_at: z17.string().trim().refine((v) => !Number.isNaN(Date.parse(v)), { message: "criteria_reviewed_at must be an ISO date or timestamp, e.g. 2026-09-14" }).nullable().optional().describe("When the lending criteria were last reviewed. ISO date (2026-09-14) or timestamp."),
-  criteria_confidence: z17.enum(["imported"]).nullable().optional().describe("Allowed: imported = imported criteria, not independently verified. null clears."),
+  criteria_confidence: z17.enum(["imported", "verified_call", "verified_email", "verified_attachment"]).nullable().optional().describe("Allowed: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document). null clears."),
   upfront_checklist: str(1e4).describe("Comma-separated list of upfront diligence items, same format as existing rows."),
   post_term_sheet_checklist: str(1e4).describe("Comma-separated list of post-term-sheet items, same format as existing rows."),
   crm_company_id: z17.string().uuid().nullable().optional().describe("crm_companies.id to link this funding source to. Must exist and be visible to you."),
@@ -1776,7 +1781,7 @@ var lenderUpdateItem = z18.object({
 var update_lender_default = defineTool17({
   name: "update_lender",
   title: "Update funding source / lender",
-  description: "Edit every master_lenders column except id, user_id, company_id, created_at and server-maintained updated_at. Does NOT edit deal_lenders or lender_contacts. Only supplied fields change; null clears. Long-text mode replace/append/prepend is atomic with blank-line separation and final length validation. Supports updates[1..25] with independent results, expected_updated_at (conflict returns current lender), dry_run (field diffs, no writes), source and change_reason in each audit row. name renames; name_lookup identifies, rejecting ambiguity. criteria_confidence: imported means unverified imported criteria; null clears. FLEx columns are inert metadata; FLEx stays disconnected.",
+  description: "Edit every master_lenders column except id, user_id, company_id, created_at and server-maintained updated_at. Does NOT edit deal_lenders or lender_contacts. Only supplied fields change; null clears. Long-text mode replace/append/prepend is atomic with blank-line separation and final length validation. Supports updates[1..25] with independent results, expected_updated_at (conflict returns current lender), dry_run (field diffs, no writes), source and change_reason in each audit row. name renames; name_lookup identifies, rejecting ambiguity. criteria_confidence: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document); null clears. FLEx columns are inert metadata; FLEx stays disconnected.",
   inputSchema: { ...lenderUpdateItem.shape, updates: z18.array(lenderUpdateItem).min(1).max(25).optional() },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -4469,6 +4474,66 @@ var merge_lenders_default = defineTool57({
   }
 });
 
+// src/lib/mcp/tools/update-claap-meeting-match.ts
+import { defineTool as defineTool58 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z60 } from "npm:zod@^3.23.0";
+var update_claap_meeting_match_default = defineTool58({
+  name: "update_claap_meeting_match",
+  title: "Update Claap funding-source match",
+  description: "Confirm, reassign, or clear one Claap meeting's funding-source match after user approval. Locks the manual decision and records an atomic audit entry; preserves transcript, summary, deal and other meeting fields. Existing organizer/admin update permissions and company membership apply. Optionally change review-queue status; this does not run deal routing.",
+  inputSchema: {
+    meeting_id: z60.string().uuid(),
+    matched_lender_id: z60.string().uuid().nullable().describe("Visible master_lenders.id in the meeting's company, or null to clear."),
+    match_status: z60.enum(["matched", "needs_review", "unmatched"]),
+    reason: z60.string().max(1e4).optional(),
+    status: z60.enum(["pending_review", "routed", "excluded", "awaiting_confirmation"]).optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (input, ctx) => {
+    const denied = requireAuth(ctx);
+    if (denied) return denied;
+    const { data, error } = await supabaseForUser(ctx).rpc("mcp_update_claap_meeting_match", {
+      p_meeting_id: input.meeting_id,
+      p_matched_lender_id: input.matched_lender_id,
+      p_match_status: input.match_status,
+      p_reason: input.reason ?? null,
+      p_status: input.status ?? null
+    });
+    return error ? errorResult(error.message) : textResult(data);
+  }
+});
+
+// src/lib/mcp/tools/list-lender-claap-meetings.ts
+import { defineTool as defineTool59 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z61 } from "npm:zod@^3.23.0";
+var list_lender_claap_meetings_default = defineTool59({
+  name: "list_lender_claap_meetings",
+  title: "List funding-source Claap meetings",
+  description: "Read paginated Claap meetings and participants under the caller's existing RLS. Filter lender IDs, match statuses, or changes after a timestamp using GREATEST(matched_at, updated_at). Includes summaries and call details; transcript is omitted unless explicitly requested. Omitted filters include unmatched meetings for refresh detection.",
+  inputSchema: {
+    lender_ids: z61.array(z61.string().uuid()).max(200).optional(),
+    updated_after: z61.string().datetime({ offset: true }).optional(),
+    match_statuses: z61.array(z61.enum(["matched", "needs_review", "unmatched"])).max(3).optional(),
+    include_transcript: z61.boolean().default(false),
+    limit: z61.number().int().min(1).max(200).default(50),
+    offset: z61.number().int().min(0).max(1e6).default(0)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (input, ctx) => {
+    const denied = requireAuth(ctx);
+    if (denied) return denied;
+    const { data, error } = await supabaseForUser(ctx).rpc("mcp_list_lender_claap_meetings", {
+      p_lender_ids: input.lender_ids ?? null,
+      p_updated_after: input.updated_after ?? null,
+      p_match_statuses: input.match_statuses ?? null,
+      p_include_transcript: input.include_transcript ?? false,
+      p_limit: input.limit ?? 50,
+      p_offset: input.offset ?? 0
+    });
+    return error ? errorResult(error.message) : textResult(data);
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "tgkksvazruzbghssnxde";
 var mcp_default = defineMcp({
@@ -4569,7 +4634,9 @@ var mcp_default = defineMcp({
     delete_lender_note_default,
     update_lender_attachment_default,
     delete_lender_default,
-    merge_lenders_default
+    merge_lenders_default,
+    update_claap_meeting_match_default,
+    list_lender_claap_meetings_default
   ]
 });
 
