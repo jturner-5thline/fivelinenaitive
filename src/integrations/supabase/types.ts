@@ -31062,6 +31062,10 @@ export type Database = {
         }
         Returns: Json
       }
+      mcp_list_outstanding_items: {
+        Args: { p_deal_id: string; p_filters?: Json }
+        Returns: Json
+      }
       mcp_merge_lenders: {
         Args: {
           p_change_reason?: string
@@ -31072,6 +31076,7 @@ export type Database = {
         }
         Returns: Json
       }
+      mcp_outstanding_state: { Args: { p_status: string }; Returns: Json }
       mcp_transfer_lender_audit: {
         Args: { p_keep: string; p_merge: string }
         Returns: undefined
@@ -31108,6 +31113,15 @@ export type Database = {
           p_record_id?: string
           p_source?: string
           p_table: string
+        }
+        Returns: Json
+      }
+      mcp_write_outstanding_item: {
+        Args: {
+          p_action: string
+          p_deal_id: string
+          p_id: string
+          p_payload: Json
         }
         Returns: Json
       }

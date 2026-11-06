@@ -2,8 +2,9 @@
 
 ## Open Items MCP writes
 - [x] Confirmed and reported JSON status, completion semantics, supported priorities, unused assignment text, active-list ordering and activity_logs behavior; lender_id references deal_lenders.
-- [ ] Add caller-scoped list/create/update tools with idempotency, preserved metadata and archive-only retirement; keep the table schema unchanged.
-- [ ] Resolve status-input and open_only meaning with user before implementation; verify tests, permissions, manifest and approved real-deal widget states without unapproved communications.
+- [x] Added caller-scoped list/create/update/batch tools, transactional metadata/idempotency/note handling and activity attribution without changing the table; Requested/Received/Submitted inputs and incomplete-only filter confirmed by user.
+- [x] 23 new / 76 MCP tests, isolated SQL isolation/audit assertions, focused lint and automatic type/build passed. Odie linked/unlinked creation, retry, completion, notes and archive persisted in signed-in 1280x1800 preview; all four test items archived, no communications. Full suite 571 passed/18 existing failures; full lint retains existing errors. Details in docs/open-items-mcp.md.
+- [ ] Hosted MCP OAuth acceptance requires republish and Claude connection refresh; 95-tool manifest generated with strict schemas. Existing Cloud/OAuth reused, SDK upgraded for required strict validation; no dependencies removed.
 
 ## Funding-source refresh MCP additions
 - [x] Expand criteria confidence values without changing existing criteria.

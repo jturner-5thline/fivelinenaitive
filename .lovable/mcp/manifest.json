@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "sdk_version": "0.23.0",
+  "sdk_version": "3.0.0",
   "path": "/functions/v1/mcp",
   "auth": {
     "type": "oauth",
@@ -7510,6 +7510,356 @@
               "default": 0
             }
           },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_outstanding_items",
+        "title": "List Open Items",
+        "description": "Read full deal Open Items rows ordered by position. open_only excludes items both Received and Submitted (the current Open Items tab itself includes completed items). Archived rows are excluded by default. lender_id is deal_lenders.id. Use offset/next_offset to page through all results.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "requested",
+                "received",
+                "submitted"
+              ]
+            },
+            "open_only": {
+              "type": "boolean",
+              "default": false
+            },
+            "include_archived": {
+              "type": "boolean",
+              "default": false
+            },
+            "updated_since": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000,
+              "default": 0
+            }
+          },
+          "required": [
+            "deal_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_outstanding_item",
+        "title": "Create Open Item",
+        "description": "After user approval, create an Open Item on an accessible deal. Defaults to Requested/normal, appends to the active list, validates deal_lenders.id, stores provenance and deduplicates idempotency keys even for archived items. Returns the full item and created flag; logs an MCP-attributed activity atomically. No email is sent.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "lender_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "deal_lenders.id attached to this deal, NOT master_lenders.id."
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "requested",
+                "received",
+                "submitted"
+              ],
+              "default": "requested"
+            },
+            "priority": {
+              "type": "string",
+              "enum": [
+                "normal",
+                "high",
+                "urgent"
+              ],
+              "default": "normal"
+            },
+            "due_date": {
+              "type": "string",
+              "format": "date"
+            },
+            "eta": {
+              "$ref": "#/properties/due_date"
+            },
+            "assigned_to": {
+              "type": "string",
+              "maxLength": 500,
+              "description": "Opaque assignment text; the current widget has no assignee selector."
+            },
+            "notes": {
+              "type": "string",
+              "maxLength": 10000
+            },
+            "source_metadata": {
+              "type": "object",
+              "additionalProperties": {}
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "required": [
+            "deal_id",
+            "description"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_outstanding_item",
+        "title": "Update Open Item",
+        "description": "After user approval, partially update an existing Open Item under caller RLS. Requested/Received/Submitted translate into the UI JSON state without losing requester/delivery lists. Shallow-merge provenance; append_note preserves notes with a UTC date. notes and append_note are mutually exclusive. Retire with is_archived, never delete. Returns the full row and logs MCP-attributed activity atomically; no email is sent.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "requested",
+                "received",
+                "submitted"
+              ]
+            },
+            "priority": {
+              "type": "string",
+              "enum": [
+                "normal",
+                "high",
+                "urgent"
+              ]
+            },
+            "due_date": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "eta": {
+              "anyOf": [
+                {
+                  "$ref": "#/properties/due_date/anyOf/0"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "assigned_to": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "lender_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "deal_lenders.id attached to the item's deal; null clears."
+            },
+            "notes": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 10000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "is_archived": {
+              "type": "boolean"
+            },
+            "source_metadata_merge": {
+              "type": "object",
+              "additionalProperties": {}
+            },
+            "append_note": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 10000,
+              "description": "Append a UTC-dated YYYY-MM-DD: text line. Cannot be combined with notes."
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "batch_create_outstanding_items",
+        "title": "Create Open Items batch",
+        "description": "After user approval, create up to 25 Open Items on one deal, with per-item idempotency and independent created/existing/error results. Same defaults and permissions as create_outstanding_item. No delete or email actions.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "lender_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "deal_lenders.id attached to this deal, NOT master_lenders.id."
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "requested",
+                      "received",
+                      "submitted"
+                    ],
+                    "default": "requested"
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "normal",
+                      "high",
+                      "urgent"
+                    ],
+                    "default": "normal"
+                  },
+                  "due_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "eta": {
+                    "$ref": "#/properties/items/items/properties/due_date"
+                  },
+                  "assigned_to": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "description": "Opaque assignment text; the current widget has no assignee selector."
+                  },
+                  "notes": {
+                    "type": "string",
+                    "maxLength": 10000
+                  },
+                  "source_metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "idempotency_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "description"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 25
+            }
+          },
+          "required": [
+            "deal_id",
+            "items"
+          ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },

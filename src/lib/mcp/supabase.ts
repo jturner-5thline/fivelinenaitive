@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { ToolContext } from "@lovable.dev/mcp-js";
+import type { JsonValue, ToolContext } from "@lovable.dev/mcp-js";
 
 /**
  * Build a user-scoped Supabase client from the verified OAuth bearer token.
@@ -39,8 +39,23 @@ export function requireAuth(ctx: ToolContext) {
 export function textResult(payload: unknown, structured?: Record<string, unknown>) {
   return {
     content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }],
-    ...(structured ? { structuredContent: structured } : {}),
+    ...(structured ? { structuredContent: toJsonValue(structured) } : {}),
   };
+}
+
+/** Map unknown query records into the SDK's JSON contract without unsafe casts. */
+export function toJsonValue(value: unknown): JsonValue {
+  if (value === null) return null;
+  if (typeof value === "string" || typeof value === "boolean") return value;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(toJsonValue);
+  if (typeof value === "object") {
+    const result: Record<string, JsonValue> = {};
+    for (const [key, entry] of Object.entries(value)) if (entry !== undefined) result[key] = toJsonValue(entry);
+    return result;
+  }
+  return null;
 }
 
 export function errorResult(message: string) {
