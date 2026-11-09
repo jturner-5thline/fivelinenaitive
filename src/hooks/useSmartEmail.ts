@@ -45,6 +45,17 @@ export function useSmartEmail({ dealId }: UseSmartEmailOptions) {
       setResults(prev => ({ ...prev, [action]: data.result }));
       return data.result;
     } catch (err: any) {
+      const status = err?.context?.status;
+      if (status === 402 || status === 429) {
+        // Expected, recoverable states (out of AI credits / rate limited) — not app crashes.
+        console.warn(`Smart email ${action} unavailable (${status})`);
+        toast.error(
+          status === 402
+            ? 'AI credits are used up. Add credits to keep using AI email features.'
+            : 'AI is busy right now. Please try again in a moment.',
+        );
+        return null;
+      }
       console.error(`Smart email ${action} error:`, err);
       toast.error(`Failed to ${action.replace(/_/g, ' ')}`);
       return null;
