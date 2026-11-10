@@ -30772,6 +30772,7 @@ export type Database = {
       get_stage_transit_monthly: {
         Args: {
           p_anchor?: string
+          p_exclude_deal_ids?: string[]
           p_from_variants: string[]
           p_to_variants: string[]
           p_window_months?: number
@@ -30786,6 +30787,7 @@ export type Database = {
       get_stage_transit_open: {
         Args: {
           p_anchor?: string
+          p_exclude_deal_ids?: string[]
           p_from_variants: string[]
           p_to_variants: string[]
           p_window_months?: number

@@ -42,6 +42,8 @@ export interface UseStageTransitMetricsArgs {
   anchorDate?: Date;
   /** Log inverted (DQ) pairs as a side-effect. Defaults to true. */
   logInverted?: boolean;
+  /** Deal IDs left out of this transition's timing (e.g. extreme anomalies). */
+  excludeDealIds?: string[];
 }
 
 export interface StageTransitMetricsResult {
@@ -95,6 +97,7 @@ export function useStageTransitMetrics({
   windowMonths = 12,
   anchorDate,
   logInverted = true,
+  excludeDealIds,
 }: UseStageTransitMetricsArgs): StageTransitMetricsResult {
   // CRITICAL: anchor must be stable across renders. `new Date()` on every
   // render mutates the React Query key, which triggers an infinite
@@ -113,9 +116,11 @@ export function useStageTransitMetrics({
   // tripping the same key-drift loop.
   const fromKey = useMemo(() => fromVariants.join('|'), [fromVariants]);
   const toKey = useMemo(() => toVariants.join('|'), [toVariants]);
+  const excludeKey = (excludeDealIds ?? []).join('|');
+  const excludeParam = excludeDealIds && excludeDealIds.length > 0 ? excludeDealIds : undefined;
 
   const query = useQuery({
-    queryKey: ['stage-transit-monthly', fromKey, toKey, windowMonths, anchorIso],
+    queryKey: ['stage-transit-monthly', fromKey, toKey, windowMonths, anchorIso, excludeKey],
     queryFn: async () => {
       const [monthlyRes, openRes] = await Promise.all([
         supabase.rpc('get_stage_transit_monthly', {
@@ -123,12 +128,14 @@ export function useStageTransitMetrics({
           p_to_variants: toVariants,
           p_window_months: windowMonths,
           p_anchor: anchorIso,
+          p_exclude_deal_ids: excludeParam,
         }),
         supabase.rpc('get_stage_transit_open', {
           p_from_variants: fromVariants,
           p_to_variants: toVariants,
           p_window_months: windowMonths,
           p_anchor: anchorIso,
+          p_exclude_deal_ids: excludeParam,
         }),
       ]);
       if (monthlyRes.error) throw monthlyRes.error;

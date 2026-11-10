@@ -23,7 +23,12 @@ export interface VelocityTileDef {
   color: string;
   fromVariants: string[];
   toVariants: string[];
+  /** Deals left out of this tile's timing only (conversion metrics unaffected). */
+  excludeDealIds?: string[];
 }
+
+/** Censys Technologies — extreme anomaly; excluded from Signed → Funded timing only (user decision). */
+export const CENSYS_DEAL_ID = '285820ca-eebe-405d-8b84-e776e84ff47b';
 
 // Stage-label variants match the resolver in usePipelineStageMetrics
 // (case-insensitive slug + Title Case).
@@ -36,7 +41,7 @@ const V = {
   fundedInvoiced: ['funded-invoiced', 'Funded/Invoiced', 'Funded / Invoiced', 'Closed & Funded'],
 };
 
-const TILES: VelocityTileDef[] = [
+export const TILES: VelocityTileDef[] = [
   {
     id: 'proposal-to-engagement',
     title: 'Proposal to Engagement',
@@ -71,6 +76,7 @@ const TILES: VelocityTileDef[] = [
     color: 'hsl(var(--chart-5))',
     fromVariants: V.finalCreditItems,
     toVariants: V.fundedInvoiced,
+    excludeDealIds: [CENSYS_DEAL_ID],
   },
 ];
 
@@ -108,6 +114,7 @@ function useVelocityAvgMonths(tile: VelocityTileDef) {
     toVariants: tile.toVariants,
     windowMonths: 12,
     logInverted: false,
+    excludeDealIds: tile.excludeDealIds,
   });
   const closed = buckets.filter((b) => !b.isOpen);
   const totalDeals = closed.reduce((s, b) => s + b.dealCount, 0);
@@ -260,6 +267,7 @@ function VelocitySummaryChart({ unit }: { unit: VelocityUnit }) {
     windowMonths: 12,
     anchorDate: anchor,
     logInverted: false,
+    excludeDealIds: activeTile.excludeDealIds,
   });
 
   const data = useMemo(() => {
@@ -469,6 +477,7 @@ export function VelocityDrilldownDialog({
     toVariants: tile.toVariants,
     windowMonths: 24,
     logInverted: false,
+    excludeDealIds: tile.excludeDealIds,
   });
 
   const monthly = useMemo(
