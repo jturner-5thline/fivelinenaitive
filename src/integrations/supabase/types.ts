@@ -30769,6 +30769,22 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_stage_transit_deals: {
+        Args: {
+          p_anchor?: string
+          p_exclude_deal_ids?: string[]
+          p_from_variants: string[]
+          p_to_variants: string[]
+          p_window_months?: number
+        }
+        Returns: {
+          deal_id: string
+          deal_name: string
+          from_at: string
+          months: number
+          to_at: string
+        }[]
+      }
       get_stage_transit_monthly: {
         Args: {
           p_anchor?: string

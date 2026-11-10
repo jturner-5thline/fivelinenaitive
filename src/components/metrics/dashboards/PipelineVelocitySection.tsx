@@ -9,6 +9,9 @@ import {
   CartesianGrid, XAxis, YAxis, Tooltip, LabelList,
 } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Pipeline Velocity — trailing-12-month average number of days between
@@ -504,7 +507,7 @@ export function VelocityDrilldownDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span
@@ -633,8 +636,78 @@ export function VelocityDrilldownDialog({
         <p className="text-[10px] text-muted-foreground mt-2">
           Monthly trend · past 24 months · line = average time in {unit}, bars = closed deal count. Buckets are anchored on the destination stage entry.
         </p>
+
+        <TtmDealsList tile={tile} unit={unit} enabled={open} />
       </DialogContent>
     </Dialog>
+  );
+}
+
+const DATE_FMT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+
+/** Deals behind the tile's trailing-12-month (TTM) average. Same pairing rules as the tile. */
+function TtmDealsList({ tile, unit, enabled }: { tile: VelocityTileDef; unit: VelocityUnit; enabled: boolean }) {
+  const excludeKey = (tile.excludeDealIds ?? []).join('|');
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['stage-transit-deals', tile.id, excludeKey],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_stage_transit_deals', {
+        p_from_variants: tile.fromVariants,
+        p_to_variants: tile.toVariants,
+        p_window_months: 12,
+        p_exclude_deal_ids: tile.excludeDealIds && tile.excludeDealIds.length > 0 ? tile.excludeDealIds : undefined,
+      });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const rows = data ?? [];
+  const avg = rows.length ? rows.reduce((s, r) => s + Number(r.months), 0) / rows.length : 0;
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-baseline justify-between mb-2">
+        <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Deals in TTM calculation</p>
+        <p className="text-[11px] text-muted-foreground font-mono">
+          {isLoading ? '…' : `${rows.length} deals · avg ${formatVelocity(avg, unit)}`}
+        </p>
+      </div>
+      <div className="max-h-56 overflow-y-auto rounded-md border border-border/50">
+        {isLoading ? (
+          <Skeleton className="h-24 w-full" />
+        ) : error ? (
+          <p className="p-3 text-xs text-destructive">Couldn't load deals.</p>
+        ) : rows.length === 0 ? (
+          <p className="p-3 text-xs text-muted-foreground">No completed deals in the trailing 12 months.</p>
+        ) : (
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-card text-muted-foreground">
+              <tr>
+                <th className="text-left font-medium px-3 py-1.5">Deal</th>
+                <th className="text-left font-medium px-3 py-1.5">Entered</th>
+                <th className="text-left font-medium px-3 py-1.5">Reached</th>
+                <th className="text-right font-medium px-3 py-1.5">Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.deal_id} className="border-t border-border/40">
+                  <td className="px-3 py-1.5">
+                    <Link to={`/deals/${r.deal_id}`} className="text-foreground hover:text-primary">
+                      {r.deal_name || 'Untitled deal'}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-1.5 text-muted-foreground">{DATE_FMT.format(new Date(r.from_at))}</td>
+                  <td className="px-3 py-1.5 text-muted-foreground">{DATE_FMT.format(new Date(r.to_at))}</td>
+                  <td className="px-3 py-1.5 text-right font-mono tabular-nums">{formatVelocity(Number(r.months), unit)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
   );
 }
 
