@@ -12,6 +12,7 @@ import {
 } from '@/lib/qboClientName';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { MonthToDateRevenueCard } from './MonthToDateRevenueCard';
 import { DashboardPlansGear } from './plans/DashboardPlansGear';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -259,7 +260,8 @@ export function QuickBooksFinancialDashboard({
           )}
         </div>
       )}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <MonthToDateRevenueCard onDrill={setDrill} />
         {statCards.map((card) => (
           <Card key={card.title} onClick={card.onClick} className="cursor-pointer hover:border-primary/40 transition-colors">
             <CardContent className="pt-6">
