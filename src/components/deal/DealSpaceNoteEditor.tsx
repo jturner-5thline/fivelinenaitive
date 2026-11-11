@@ -6,7 +6,7 @@ import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
-import Image from '@tiptap/extension-image';
+import { NoteImage, NOTE_IMAGE_BUCKET, NOTE_IMAGE_URL_TTL, noteImageStoragePath } from '@/lib/noteImageStorage';
 import Link from '@tiptap/extension-link';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
@@ -247,7 +247,7 @@ export function DealSpaceNoteEditor({
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Table.configure({ resizable: true }),
       TableRow, TableCell, TableHeader,
-      Image.configure({ inline: true, allowBase64: true }),
+      NoteImage.configure({ inline: true, allowBase64: true }),
       Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-primary underline cursor-pointer' } }),
       TaskList,
       TaskItem.configure({ nested: true }),
@@ -434,10 +434,37 @@ export function DealSpaceNoteEditor({
       const path = `${note.deal_id}/notes/${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage.from('deal-space').upload(path, file);
       if (error) throw error;
-      const { data } = await supabase.storage.from('deal-space').createSignedUrl(path, 31536000);
-      if (data?.signedUrl) editor.chain().focus().setImage({ src: data.signedUrl }).run();
+      const { data } = await supabase.storage.from(NOTE_IMAGE_BUCKET).createSignedUrl(path, NOTE_IMAGE_URL_TTL);
+      if (data?.signedUrl) editor.chain().focus().insertContent({ type: 'image', attrs: { src: data.signedUrl, storagePath: path } }).run();
     } catch (err) { console.error('Image upload error:', err); }
   };
+
+  // Re-sign note images with short-lived URLs on load so access follows current storage permissions.
+  useEffect(() => {
+    if (!editor) return;
+    let cancelled = false;
+    (async () => {
+      const targets: { pos: number; path: string }[] = [];
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name !== 'image') return;
+        const path = noteImageStoragePath(node.attrs.src, node.attrs.storagePath);
+        if (path) targets.push({ pos, path });
+      });
+      if (!targets.length) return;
+      const { data } = await supabase.storage.from(NOTE_IMAGE_BUCKET)
+        .createSignedUrls([...new Set(targets.map(t => t.path))], NOTE_IMAGE_URL_TTL);
+      if (cancelled || !data || editor.isDestroyed) return;
+      const urls = new Map(data.filter(d => d.signedUrl && d.path).map(d => [d.path as string, d.signedUrl]));
+      const tr = editor.state.tr;
+      for (const t of targets) {
+        const url = urls.get(t.path);
+        const node = tr.doc.nodeAt(t.pos);
+        if (url && node?.type.name === 'image') tr.setNodeMarkup(t.pos, undefined, { ...node.attrs, src: url, storagePath: t.path });
+      }
+      if (tr.docChanged) editor.view.dispatch(tr.setMeta('addToHistory', false));
+    })();
+    return () => { cancelled = true; };
+  }, [editor, note.id]);
 
   // Serialize the document only once the user pauses, not on every change.
   useEffect(() => {
