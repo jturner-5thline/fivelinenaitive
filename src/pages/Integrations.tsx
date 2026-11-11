@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 
 // Hooks
 import { useHubSpot, useHubSpotContacts, useHubSpotDeals, useHubSpotCompanies } from "@/hooks/useHubSpot";
-import { useQuickBooksStatus, useQuickBooksConnect, useQuickBooksDisconnect, useQuickBooksCustomers, useQuickBooksInvoices, useQuickBooksPayments } from "@/hooks/useQuickBooks";
+import { useQuickBooksStatus, useQuickBooksConnect, useQuickBooksDisconnect, useQuickBooksCustomers, useQuickBooksInvoices, useQuickBooksPayments, useQuickBooksSync } from "@/hooks/useQuickBooks";
 import { useGmail } from "@/hooks/useGmail";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import { useIntegrations } from "@/hooks/useIntegrations";
@@ -82,6 +82,7 @@ export default function Integrations() {
   const { data: qbStatus, isLoading: qbLoading } = useQuickBooksStatus();
   const qbConnect = useQuickBooksConnect();
   const qbDisconnect = useQuickBooksDisconnect();
+  const qbSync = useQuickBooksSync();
   const qbConnections = qbStatus?.connections || [];
   const firstRealm = qbConnections[0]?.realmId;
   const { data: qbCustomers = [] } = useQuickBooksCustomers(firstRealm);
@@ -112,7 +113,9 @@ export default function Integrations() {
     const legacyStatus = searchParams.get("quickbooks");
 
     if (qbParam === "success" || legacyStatus === "connected") {
-      toast.success("QuickBooks connected successfully!");
+      toast.success("QuickBooks connected successfully! Syncing latest data…");
+      // Pull fresh invoices/payments for all entities right after (re)connecting.
+      qbSync.mutate(undefined);
       searchParams.delete("qb");
       searchParams.delete("quickbooks");
       setSearchParams(searchParams, { replace: true });
@@ -300,6 +303,7 @@ export default function Integrations() {
           externalUrl="https://app.qbo.intuit.com"
           externalLabel="Open QuickBooks"
           onSyncSettings={() => setQuickbooksModalOpen(true)}
+          onReconnect={() => qbConnect.mutate()}
           onDisconnect={async () => {
             await qbDisconnect.mutateAsync(firstRealm);
           }}
