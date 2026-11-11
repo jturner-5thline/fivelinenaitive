@@ -50,7 +50,7 @@ export default defineTool({
     let q = sb
       .from("deal_lenders")
       .select(
-        "id, deal_id, name, stage, substage, tracking_status, tags, score, notes, pass_reason, quote_amount, quote_rate, quote_term, submitted_at, approved_at, declined_at, passed_at, on_deck_at, on_hold_at, excluded_at, last_status_change_at, last_contact_at, master_lender_id, selected_contact_id, created_at, updated_at, master_lenders:master_lender_id(id, name, lender_type, tier, loan_types), deals:deal_id(id, company, pipeline_id, stage, status)",
+        "id, deal_id, name, stage, substage, tracking_status, tags, score, notes, pass_reason, quote_amount, quote_rate, quote_term, submitted_at, approved_at, declined_at, passed_at, on_deck_at, on_hold_at, excluded_at, last_status_change_at, last_contact_at, master_lender_id, selected_contact_id, created_at, updated_at, master_lenders:master_lender_id(id, name, lender_type, tier, loan_types), deals:deal_id(id, company, company_id, pipeline_id, stage, status)",
         { count: "exact" },
       )
       .order("last_status_change_at", { ascending: false, nullsFirst: false })
@@ -71,8 +71,35 @@ export default defineTool({
       });
       return errorResult(error.message);
     }
+    // Resolve stage/substage labels (incl. custom stages) from the caller-visible stage configs.
+    const { data: cfgs } = await sb.from("lender_stage_configs").select("company_id, stages, substages");
+    const labelMaps = new Map<string, Map<string, string>>();
+    const anyMap = new Map<string, string>();
+    const collect = (v: unknown, m: Map<string, string>) => {
+      if (Array.isArray(v)) v.forEach((x) => collect(x, m));
+      else if (v && typeof v === "object") {
+        const o = v as Record<string, unknown>;
+        if (typeof o.id === "string" && typeof o.label === "string") m.set(o.id, o.label);
+        Object.values(o).forEach((x) => { if (x && typeof x === "object") collect(x, m); });
+      }
+    };
+    for (const c of (cfgs ?? []) as Array<{ company_id: string | null; stages: unknown; substages: unknown }>) {
+      const m = labelMaps.get(c.company_id ?? "") ?? new Map<string, string>();
+      collect(c.stages, m); collect(c.substages, m);
+      labelMaps.set(c.company_id ?? "", m);
+      m.forEach((l, k) => { if (!anyMap.has(k)) anyMap.set(k, l); });
+    }
+    const labelFor = (companyId: string | null | undefined, id: string | null | undefined) =>
+      id ? labelMaps.get(companyId ?? "")?.get(id) ?? anyMap.get(id) ?? id : null;
     const rows = (data ?? []).map((r: Record<string, any>) => ({
       ...r,
+      deal_lender_id: r.id,
+      lender_id: r.master_lender_id ?? null,
+      lender_name: r.master_lenders?.name ?? r.name ?? null,
+      stage_label: labelFor(r.deals?.company_id, r.stage),
+      substage_label: labelFor(r.deals?.company_id, r.substage),
+      pass_reason: r.pass_reason ?? null,
+      notes: r.notes ?? null,
       funding_source_type: r.master_lenders?.lender_type ?? null,
       loan_types: r.master_lenders?.loan_types ?? null,
       lender_tier: r.master_lenders?.tier ?? null,

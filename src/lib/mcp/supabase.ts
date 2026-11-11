@@ -39,8 +39,21 @@ export function requireAuth(ctx: ToolContext) {
 export function textResult(payload: unknown, structured?: Record<string, unknown>) {
   return {
     content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }],
-    ...(structured ? { structuredContent: toJsonValue(structured) } : {}),
+    ...(structured ? { structuredContent: buildStructured(payload, structured) } : {}),
   };
+}
+
+/**
+ * Clients (e.g. Claude) prefer structuredContent over the text block, so the
+ * structured result must carry the full payload, not just metadata. Payload keys
+ * win over metadata keys on conflict; non-object payloads go under `data`.
+ */
+export function buildStructured(payload: unknown, structured: Record<string, unknown>): JsonValue {
+  const body =
+    payload && typeof payload === "object" && !Array.isArray(payload)
+      ? (payload as Record<string, unknown>)
+      : { data: payload };
+  return toJsonValue({ ...structured, ...body });
 }
 
 /** Map unknown query records into the SDK's JSON contract without unsafe casts. */

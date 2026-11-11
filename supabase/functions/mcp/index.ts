@@ -44,8 +44,12 @@ function requireAuth(ctx) {
 function textResult(payload, structured) {
   return {
     content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
-    ...structured ? { structuredContent: toJsonValue(structured) } : {}
+    ...structured ? { structuredContent: buildStructured(payload, structured) } : {}
   };
+}
+function buildStructured(payload, structured) {
+  const body = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : { data: payload };
+  return toJsonValue({ ...structured, ...body });
 }
 function toJsonValue(value) {
   if (value === null) return null;
@@ -2889,7 +2893,7 @@ var list_deal_funding_sources_default = defineTool35({
       if (dealIds.length === 0) return textResult([], { count: 0, total_count: 0, has_more: false, next_offset: null });
     }
     let q = sb.from("deal_lenders").select(
-      "id, deal_id, name, stage, substage, tracking_status, tags, score, notes, pass_reason, quote_amount, quote_rate, quote_term, submitted_at, approved_at, declined_at, passed_at, on_deck_at, on_hold_at, excluded_at, last_status_change_at, last_contact_at, master_lender_id, selected_contact_id, created_at, updated_at, master_lenders:master_lender_id(id, name, lender_type, tier, loan_types), deals:deal_id(id, company, pipeline_id, stage, status)",
+      "id, deal_id, name, stage, substage, tracking_status, tags, score, notes, pass_reason, quote_amount, quote_rate, quote_term, submitted_at, approved_at, declined_at, passed_at, on_deck_at, on_hold_at, excluded_at, last_status_change_at, last_contact_at, master_lender_id, selected_contact_id, created_at, updated_at, master_lenders:master_lender_id(id, name, lender_type, tier, loan_types), deals:deal_id(id, company, company_id, pipeline_id, stage, status)",
       { count: "exact" }
     ).order("last_status_change_at", { ascending: false, nullsFirst: false }).order("id", { ascending: true }).range(offset, offset + limit - 1);
     if (deal_id) q = q.eq("deal_id", deal_id);
@@ -2906,8 +2910,38 @@ var list_deal_funding_sources_default = defineTool35({
       });
       return errorResult(error.message);
     }
+    const { data: cfgs } = await sb.from("lender_stage_configs").select("company_id, stages, substages");
+    const labelMaps = /* @__PURE__ */ new Map();
+    const anyMap = /* @__PURE__ */ new Map();
+    const collect = (v, m) => {
+      if (Array.isArray(v)) v.forEach((x) => collect(x, m));
+      else if (v && typeof v === "object") {
+        const o = v;
+        if (typeof o.id === "string" && typeof o.label === "string") m.set(o.id, o.label);
+        Object.values(o).forEach((x) => {
+          if (x && typeof x === "object") collect(x, m);
+        });
+      }
+    };
+    for (const c of cfgs ?? []) {
+      const m = labelMaps.get(c.company_id ?? "") ?? /* @__PURE__ */ new Map();
+      collect(c.stages, m);
+      collect(c.substages, m);
+      labelMaps.set(c.company_id ?? "", m);
+      m.forEach((l, k) => {
+        if (!anyMap.has(k)) anyMap.set(k, l);
+      });
+    }
+    const labelFor = (companyId, id) => id ? labelMaps.get(companyId ?? "")?.get(id) ?? anyMap.get(id) ?? id : null;
     const rows = (data ?? []).map((r) => ({
       ...r,
+      deal_lender_id: r.id,
+      lender_id: r.master_lender_id ?? null,
+      lender_name: r.master_lenders?.name ?? r.name ?? null,
+      stage_label: labelFor(r.deals?.company_id, r.stage),
+      substage_label: labelFor(r.deals?.company_id, r.substage),
+      pass_reason: r.pass_reason ?? null,
+      notes: r.notes ?? null,
       funding_source_type: r.master_lenders?.lender_type ?? null,
       loan_types: r.master_lenders?.loan_types ?? null,
       lender_tier: r.master_lenders?.tier ?? null,
