@@ -1,5 +1,9 @@
 # Roadmap
 
+## MCP deal pipeline moves
+- [x] Extend update_deal with target-pipeline stage validation and transactional pipeline/stage/history/activity changes, preserving the omitted-pipeline path.
+- [x] Eight new tests/all 87 MCP tests, isolated permission/atomicity checks, targeted lint and automatic build passed; regenerated 96-tool manifest without live deal writes. Verification details in docs/mcp-deal-pipeline-moves.md.
+
 ## Open Items MCP writes
 - [x] Confirmed and reported JSON status, completion semantics, supported priorities, unused assignment text, active-list ordering and activity_logs behavior; lender_id references deal_lenders.
 - [x] Added caller-scoped list/create/update/batch tools, transactional metadata/idempotency/note handling and activity attribution without changing the table; Requested/Received/Submitted inputs and incomplete-only filter confirmed by user.

@@ -7,9 +7,10 @@ export default defineTool({
   name: "update_deal",
   title: "Update deal",
   description:
-    "Update a deal's stage and/or high-level fields (value, closing_date, deal_owner, manager, narrative, is_flagged, flag_notes, notes = the Status Note box, replaced). Only fields you pass are changed. Returns the updated deal row.",
+    "Update a deal's stage and/or high-level fields (value, closing_date, deal_owner, manager, narrative, is_flagged, flag_notes, notes = the Status Note box, replaced). Optional pipeline_id requires stage (id or display label) from the accessible target pipeline in the same workspace; pipeline and stage update atomically with history and activity. Only fields you pass are changed. Returns the updated deal with pipeline_id, pipeline_name, stage and stage_label.",
   inputSchema: {
     deal_id: z.string().uuid(),
+    pipeline_id: z.string().uuid().optional().describe("Target pipeline UUID. Requires stage in the same call, resolved only against this pipeline's stages."),
     stage: z.string().trim().min(1).max(100).optional().describe("Stage id or the stage display label from the deal's pipeline; labels are resolved to the correct id."),
     value: z.number().nonnegative().optional(),
     closing_date: z.string().nullable().optional().describe("ISO date, or null to clear."),
@@ -24,11 +25,27 @@ export default defineTool({
   handler: async (input, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
-    const { deal_id, notes, ...rest } = input;
+    const { deal_id, pipeline_id, notes, ...rest } = input;
+    if (pipeline_id !== undefined && input.stage === undefined) return errorResult("stage is required when pipeline_id is passed.");
     const patch: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(rest)) if (v !== undefined) patch[k] = v;
     if (Object.keys(patch).length === 0 && notes === undefined) return errorResult("No fields to update.");
     const sb = supabaseForUser(ctx);
+    if (pipeline_id !== undefined) {
+      const { data, error } = await sb.rpc("mcp_update_deal_pipeline", {
+        p_deal_id: deal_id,
+        p_pipeline_id: pipeline_id,
+        p_patch: patch,
+      });
+      if (error) return errorResult(error.message);
+      if (!data) return errorResult("Deal not found or you do not have permission to update it.");
+      if (notes !== undefined) {
+        const res = await writeDealStatusNote(sb, ctx, deal_id, notes, "replace", "mcp update_deal");
+        if ("error" in res) return errorResult(`Pipeline/stage updated, but Status Note update failed: ${res.error}`);
+        return textResult({ ...data, notes: res.notes, notes_updated_at: res.notes_updated_at }, { deal_id });
+      }
+      return textResult(data, { deal_id });
+    }
     if (notes !== undefined) {
       const res = await writeDealStatusNote(sb, ctx, deal_id, notes, "replace", "mcp update_deal");
       if ("error" in res) return errorResult(res.error);

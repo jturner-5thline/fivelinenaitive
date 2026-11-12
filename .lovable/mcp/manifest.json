@@ -165,7 +165,7 @@
       {
         "name": "update_deal",
         "title": "Update deal",
-        "description": "Update a deal's stage and/or high-level fields (value, closing_date, deal_owner, manager, narrative, is_flagged, flag_notes, notes = the Status Note box, replaced). Only fields you pass are changed. Returns the updated deal row.",
+        "description": "Update a deal's stage and/or high-level fields (value, closing_date, deal_owner, manager, narrative, is_flagged, flag_notes, notes = the Status Note box, replaced). Optional pipeline_id requires stage (id or display label) from the accessible target pipeline in the same workspace; pipeline and stage update atomically with history and activity. Only fields you pass are changed. Returns the updated deal with pipeline_id, pipeline_name, stage and stage_label.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -178,6 +178,11 @@
             "deal_id": {
               "type": "string",
               "format": "uuid"
+            },
+            "pipeline_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Target pipeline UUID. Requires stage in the same call, resolved only against this pipeline's stages."
             },
             "stage": {
               "type": "string",

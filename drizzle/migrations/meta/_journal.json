@@ -491,6 +491,13 @@
       "when": 1794274131264,
       "tag": "0069_stage_transit_latest_entry",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1794450375202,
+      "tag": "0070_mcp_update_deal_pipeline",
+      "breakpoints": true
     }
   ]
 }

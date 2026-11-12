@@ -31115,6 +31115,10 @@ export type Database = {
         }
         Returns: Json
       }
+      mcp_update_deal_pipeline: {
+        Args: { p_deal_id: string; p_patch: Json; p_pipeline_id: string }
+        Returns: Json
+      }
       mcp_update_lender: {
         Args: {
           p_change_reason?: string
