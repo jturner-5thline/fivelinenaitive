@@ -77,7 +77,7 @@ export default defineTool({
   name: "get_deal",
   title: "Get deal",
   description:
-    "Fetch a single deal by id with its full record, linked client contacts, recent status notes, tasks, and attached lenders. Set include_related=true to also return everything attached to the deal: milestones, stage history and stage notes, status notes and report drafts, flag notes, ownership, checklist status, attachments, write-ups, memos (with approvals, comments, views, audit), deal-space notes/documents/conversations/messages, financial data, files, insights and computed metrics, drive and data-room folders, emails and email prompts, client requests, meeting history, links, holds, call transcripts and Claap recordings, calendar items, activity, AI settings and snapshots, research cache, fit profiles, KPI links, SaaS/FinServ models, and task detail (comments, attachments, collaborators, followers, time entries, activity). Always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
+    "Fetch a single deal by id with its full record, client_contacts including deal-specific role, crm_company (id, name, domain) when linked, aliases as strings, tasks, and attached lenders. Set include_related=true to also return everything attached to the deal: milestones, stage history and stage notes, status notes and report drafts, flag notes, ownership, checklist status, attachments, write-ups, memos (with approvals, comments, views, audit), deal-space notes/documents/conversations/messages, financial data, files, insights and computed metrics, drive and data-room folders, emails and email prompts, client requests, meeting history, links, holds, call transcripts and Claap recordings, calendar items, activity, AI settings and snapshots, research cache, fit profiles, KPI links, SaaS/FinServ models, and task detail (comments, attachments, collaborators, followers, time entries, activity). Always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
   inputSchema: {
     deal_id: z.string().uuid(),
     include_tasks: z.boolean().default(true),
@@ -96,7 +96,7 @@ export default defineTool({
     if (error) return errorResult(error.message);
     if (!deal) return errorResult("Deal not found or you do not have access.");
 
-    const [tasksRes, lendersRes, contactLinksRes] = await Promise.all([
+    const [tasksRes, lendersRes, contactLinksRes, companyRes, aliasesRes] = await Promise.all([
       include_tasks
         ? sb
             .from("tasks")
@@ -118,8 +118,14 @@ export default defineTool({
         .select("contact_id, role, created_at")
         .eq("deal_id", deal_id)
         .order("created_at", { ascending: true }),
+      deal.crm_company_id
+        ? sb.from("crm_companies").select("id, name, domain").eq("id", deal.crm_company_id).eq("org_company_id", deal.company_id).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      sb.from("deal_aliases").select("alias").eq("deal_id", deal_id).order("created_at", { ascending: true }),
     ]);
     if (contactLinksRes.error) return errorResult(contactLinksRes.error.message);
+    if (companyRes.error) return errorResult(companyRes.error.message);
+    if (aliasesRes.error) return errorResult(aliasesRes.error.message);
 
     const contactLinks = contactLinksRes.data ?? [];
     const contactIds = contactLinks.map((link) => link.contact_id).filter(Boolean);
@@ -128,6 +134,7 @@ export default defineTool({
       name: string;
       email: string | null;
       job_title: string | null;
+      role: string | null;
       is_primary: boolean;
     }> = [];
 
@@ -148,6 +155,7 @@ export default defineTool({
             name: contactName(contact),
             email: contact.email ?? null,
             job_title: contact.job_title ?? null,
+            role: link.role ?? null,
             is_primary: (link.role ?? "").toLowerCase() === "primary",
           };
         })
@@ -234,11 +242,12 @@ export default defineTool({
               .select("*")
               .in("task_id", taskIds)
               .limit(500);
+            if (!taskDetail) return;
             if (taskError) {
-              taskDetail![key] = { error: taskError.message };
+              taskDetail[key] = { error: taskError.message };
               return;
             }
-            if ((data ?? []).length > 0) taskDetail![key] = data;
+            if ((data ?? []).length > 0) taskDetail[key] = data;
           }),
         );
       }
@@ -247,10 +256,12 @@ export default defineTool({
     return textResult({
       deal: dealWithLabels,
       client_contacts: clientContacts,
+      crm_company: companyRes.data ?? null,
+      aliases: (aliasesRes.data ?? []).map(({ alias }) => alias),
       tasks: tasksRes.data ?? [],
       lenders: lendersRes.data ?? [],
       ...(include_related ? { related } : {}),
       ...(taskDetail ? { task_detail: taskDetail } : {}),
-    });
+    }, { deal_id });
   },
 });

@@ -3,6 +3,10 @@ import listDeals from "./tools/list-deals";
 import listPipelines from "./tools/list-pipelines";
 import getDeal from "./tools/get-deal";
 import updateDeal from "./tools/update-deal";
+import linkDealContact from "./tools/link-deal-contact";
+import unlinkDealContact from "./tools/unlink-deal-contact";
+import addDealAlias from "./tools/add-deal-alias";
+import removeDealAlias from "./tools/remove-deal-alias";
 import addDealStatusNote from "./tools/add-deal-status-note";
 import listTasks from "./tools/list-tasks";
 import createTask from "./tools/create-task";
@@ -117,6 +121,10 @@ export default defineMcp({
     listPipelines,
     getDeal,
     updateDeal,
+    linkDealContact,
+    unlinkDealContact,
+    addDealAlias,
+    removeDealAlias,
     addDealStatusNote,
     listTasks,
     createTask,

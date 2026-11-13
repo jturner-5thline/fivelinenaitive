@@ -1,5 +1,10 @@
 # Roadmap
 
+## MCP deal contacts, companies and aliases
+- [x] Add caller-scoped, transactional and idempotent contact/alias tools with deal activity attribution; extend company updates and deal reads without changing omitted-field behavior.
+- [x] 22 new / 116 MCP tests and isolated SQL assertions passed; focused lint and automatic preview type/build passed, with three existing unrelated get_deal lint errors. Extracted 100-tool catalog with all fields; no live records changed or services newly enabled. Details in docs/mcp-deal-relationships.md.
+- [ ] Hosted new-tool verification requires app republishing and Claude connector refresh; managed MCP cannot deploy individually.
+
 ## TTM revenue per deal hour
 - [x] Added period-aligned monthly/quarterly rolling TTM bars using Capital Advisors invoice totals and Active/In Development deal hours, with matching deal drilldowns.
 - [x] 17 new calculation, pagination, isolation and interaction tests passed; new-file lint passed, dashboard lint has only two existing warnings, automatic preview build passed. Signed-in 1280x1800 and 390x844 preview verified bars, period controls, detail closing/reopening and refresh without writes; Q3 2026 reconciled to $697,750 / 347.3 hours = $2,009/hr. No runtime errors or failed metric reads; published site not checked.

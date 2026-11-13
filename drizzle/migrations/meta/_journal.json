@@ -498,6 +498,13 @@
       "when": 1794450375202,
       "tag": "0070_mcp_update_deal_pipeline",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1794608916163,
+      "tag": "0071_mcp_deal_relationships",
+      "breakpoints": true
     }
   ]
 }

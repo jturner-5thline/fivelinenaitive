@@ -31100,6 +31100,10 @@ export type Database = {
         }
         Returns: Json
       }
+      mcp_mutate_deal_relationship: {
+        Args: { p_action: string; p_deal_id: string; p_input: Json }
+        Returns: Json
+      }
       mcp_outstanding_state: { Args: { p_status: string }; Returns: Json }
       mcp_transfer_lender_audit: {
         Args: { p_keep: string; p_merge: string }
@@ -31112,6 +31116,15 @@ export type Database = {
           p_meeting_id: string
           p_reason?: string
           p_status?: Database["public"]["Enums"]["claap_meeting_status"]
+        }
+        Returns: Json
+      }
+      mcp_update_deal_company: {
+        Args: {
+          p_crm_company_id: string
+          p_deal_id: string
+          p_patch: Json
+          p_pipeline_id: string
         }
         Returns: Json
       }
