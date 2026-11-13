@@ -35,7 +35,7 @@ export function TtmRevenuePerDealHourChart() {
     { key: 'name', label: 'Deal', sortable: true },
     { key: 'pipeline', label: 'Pipeline', sortable: true },
     { key: 'hours', label: 'TTM hours', align: 'right', sortable: true, render: row => hoursLabel(row.hours) },
-    { key: 'share', label: '% of hours', align: 'right', render: row => selected && selected.hours > 0 ? `${(row.hours / selected.hours * 100).toFixed(1)}%` : '—' },
+    { key: 'share', label: '% of hours', align: 'right', sortable: true, sortAccessor: row => row.hours, render: row => selected && selected.hours > 0 ? `${(row.hours / selected.hours * 100).toFixed(1)}%` : '—' },
   ];
   return <>
     <Card className="glass-module min-w-0" data-testid="ttm-revenue-per-deal-hour">
