@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { RotateCw } from 'lucide-react';
+import { Maximize2, RotateCw } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,9 +26,37 @@ function Delta({ row }: { row: ChartRow }) {
   </span>;
 }
 
+function TtmBars({ rows, onSelect, height }: { rows: ChartRow[]; onSelect: (row: ChartRow) => void; height: number }) {
+  return rows.every(row => row.rate == null) ? <p className="flex h-[240px] items-center justify-center text-sm text-muted-foreground">No qualifying deal hours in these periods.</p> :
+              <div className="w-full" style={{ height }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 8 }} accessibilityLayer>
+                    <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="3 3" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} minTickGap={14} />
+                    <YAxis width={70} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} tickFormatter={value => `$${Number(value).toLocaleString()}`} />
+                    <Tooltip cursor={{ fill: 'hsl(var(--primary) / 0.08)' }} content={({ active, payload }) => {
+                      const row = payload?.[0]?.payload as ChartRow | undefined;
+                      if (!active || !row) return null;
+                      return <div className="rounded-md border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
+                        <p className="font-semibold">TTM ending {row.label}</p>
+                        <p className="mt-1 text-lg font-semibold">{rateLabel(row.rate)}</p>
+                        <p>{fullDollars(row.revenue)} revenue</p><p>{hoursLabel(row.hours)} deal hours</p>
+                        <p className="mt-1"><Delta row={row} /></p>
+                        <p className="mt-1 text-muted-foreground">{row.start} – {row.end}</p>
+                      </div>;
+                    }} />
+                    <Bar dataKey="rate" name="Revenue per deal hour" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} cursor="pointer" isAnimationActive={false} onClick={(_, index) => { const row = rows[index]; if (row) onSelect(row); }} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>;
+}
+
 export function TtmRevenuePerDealHourChart() {
   const query = useTtmRevenuePerDealHour();
   const [selected, setSelected] = useState<ChartRow | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const wide = useTtmRevenuePerDealHour(3, expanded);
+  const wideRows = wide.data ?? [];
   const rows = query.data ?? [];
   const latest = rows.at(-1);
   if (!query.hasAccess) return null;
@@ -42,7 +71,10 @@ export function TtmRevenuePerDealHourChart() {
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="text-sm font-medium">TTM Revenue per Deal Hour</CardTitle>
-          {latest && <Badge variant="outline">TTM ending {latest.label}</Badge>}
+          <div className="flex items-center gap-1">
+            {latest && <Badge variant="outline">TTM ending {latest.label}</Badge>}
+            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Expand chart" onClick={() => setExpanded(true)}><Maximize2 className="h-4 w-4" /></Button>
+          </div>
         </div>
         <p className="text-xs text-muted-foreground">5th Line Capital Advisors</p>
       </CardHeader>
@@ -61,34 +93,26 @@ export function TtmRevenuePerDealHourChart() {
                 {formatUSDFromDollars(latest.revenue)} revenue · {hoursLabel(latest.hours)} deal hours
               </div>}
             </div>
-            {rows.every(row => row.rate == null) ? <p className="flex h-[240px] items-center justify-center text-sm text-muted-foreground">No qualifying deal hours in these periods.</p> :
-              <div className="h-[240px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 8 }} accessibilityLayer>
-                    <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="3 3" />
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} minTickGap={14} />
-                    <YAxis width={70} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} tickFormatter={value => `$${Number(value).toLocaleString()}`} />
-                    <Tooltip cursor={{ fill: 'hsl(var(--primary) / 0.08)' }} content={({ active, payload }) => {
-                      const row = payload?.[0]?.payload as ChartRow | undefined;
-                      if (!active || !row) return null;
-                      return <div className="rounded-md border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
-                        <p className="font-semibold">TTM ending {row.label}</p>
-                        <p className="mt-1 text-lg font-semibold">{rateLabel(row.rate)}</p>
-                        <p>{fullDollars(row.revenue)} revenue</p><p>{hoursLabel(row.hours)} deal hours</p>
-                        <p className="mt-1"><Delta row={row} /></p>
-                        <p className="mt-1 text-muted-foreground">{row.start} – {row.end}</p>
-                      </div>;
-                    }} />
-                    <Bar dataKey="rate" name="Revenue per deal hour" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} cursor="pointer" isAnimationActive={false} onClick={(_, index) => { const row = rows[index]; if (row) setSelected(row); }} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>}
+            <TtmBars rows={rows} onSelect={setSelected} height={240} />
             <div className="mt-2 flex flex-wrap gap-1" aria-label="TTM period details">
               {rows.map(row => <Button key={row.end} variant="ghost" size="sm" className="text-xs" aria-label={`View TTM deal hours for ${row.label}`} onClick={() => setSelected(row)}>{row.label}</Button>)}
             </div>
           </>}
       </CardContent>
     </Card>
+    <Dialog open={expanded} onOpenChange={setExpanded}>
+      <DialogContent className="max-w-6xl">
+        <DialogHeader>
+          <DialogTitle>TTM Revenue per Deal Hour</DialogTitle>
+          <DialogDescription>5th Line Capital Advisors · {wideRows.length} rolling periods{wideRows.length ? ` (${wideRows[0].label} – ${wideRows.at(-1)!.label})` : ''}</DialogDescription>
+        </DialogHeader>
+        {wide.isLoading ? <Skeleton className="h-[480px] w-full" /> : wide.isError ?
+          <div role="alert" className="flex h-[480px] flex-col items-center justify-center gap-3">
+            <p className="text-sm text-destructive">Revenue and deal hours could not be loaded.</p>
+            <Button variant="outline" size="sm" onClick={() => void wide.refetch()}><RotateCw />Retry</Button>
+          </div> : <TtmBars rows={wideRows} onSelect={row => { setExpanded(false); setSelected(row); }} height={480} />}
+      </DialogContent>
+    </Dialog>
     <InsightsDrilldownDrawer<TtmDealContribution>
       open={selected != null} onClose={() => setSelected(null)}
       context={selected ? { sourceId: 'ttm-revenue-per-deal-hour', sourceLabel: 'TTM Revenue per Deal Hour', selection: selected.label, periodLabel: `${selected.start} – ${selected.end}`, filters: [{ label: 'Revenue', value: '5th Line Capital Advisors' }, { label: 'Hours', value: 'Active Pipeline + In Development' }] } : null}

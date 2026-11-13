@@ -9,19 +9,19 @@ import {
   TTM_REVENUE_REALM_ID, TTM_HOUR_PIPELINE_IDS, type TtmHours,
 } from '@/lib/metrics/ttmRevenuePerDealHour';
 
-export function useTtmRevenuePerDealHour() {
+export function useTtmRevenuePerDealHour(multiplier = 1, active = true) {
   const { user } = useAuth();
   const { company } = useCompany();
   const { timeframe, reportingPeriod } = useInsightsTimeframe();
   const view = reportingPeriod?.view ?? 'month';
-  const periods = buildTtmPeriods(timeframe.end, view);
+  const periods = buildTtmPeriods(timeframe.end, view, multiplier);
   const start = periods[0]?.start ?? timeframe.start;
   const end = periods.at(-1)?.end ?? timeframe.end;
   const companyId = company?.id;
   const hasAccess = companyId === FIFTH_LINE_COMPANY_ID;
   const query = useQuery({
-    queryKey: ['ttm-revenue-per-deal-hour', user?.id, companyId, start, end, view],
-    enabled: !!user && hasAccess,
+    queryKey: ['ttm-revenue-per-deal-hour', user?.id, companyId, start, end, view, multiplier],
+    enabled: active && !!user && hasAccess,
     staleTime: 60_000,
     queryFn: async () => {
       if (!companyId || !hasAccess) throw new Error('This metric is available only in the 5th Line workspace.');

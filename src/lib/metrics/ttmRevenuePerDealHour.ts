@@ -19,10 +19,10 @@ export interface TtmHours {
 export interface TtmDealContribution { id: string; name: string; pipeline: string; hours: number }
 
 /** Includes one hidden prior period so the first visible bar also has a delta. */
-export function buildTtmPeriods(anchorEnd: string, view: 'month' | 'quarter'): TtmPeriod[] {
+export function buildTtmPeriods(anchorEnd: string, view: 'month' | 'quarter', multiplier = 1): TtmPeriod[] {
   const anchor = new Date(`${anchorEnd}T12:00:00`);
   const step = view === 'quarter' ? 3 : 1;
-  const count = view === 'quarter' ? 4 : 12;
+  const count = (view === 'quarter' ? 4 : 12) * multiplier;
   return Array.from({ length: count + 1 }, (_, i) => {
     const end = endOfMonth(subMonths(anchor, (count - i) * step));
     const start = startOfMonth(subMonths(end, 11));

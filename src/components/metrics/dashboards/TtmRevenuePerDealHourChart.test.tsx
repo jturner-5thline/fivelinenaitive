@@ -32,6 +32,13 @@ describe('TTM chart interactions', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent('Latest deal');
     expect(screen.getByRole('dialog')).toHaveTextContent('$3,000.00');
   });
+  it('expands into a larger chart requesting 3x the periods', () => {
+    render(<TtmRevenuePerDealHourChart />);
+    expect(useMetric).toHaveBeenCalledWith(3, false);
+    fireEvent.click(screen.getByRole('button', { name: 'Expand chart' }));
+    expect(useMetric).toHaveBeenLastCalledWith(3, true);
+    expect(screen.getByRole('dialog')).toHaveTextContent('2 rolling periods');
+  });
   it('offers retry rather than displaying a zero when data loading fails', () => {
     const refetch = vi.fn();
     useMetric.mockReturnValue({ hasAccess: true, isError: true, refetch });

@@ -66,3 +66,9 @@ describe('TTM revenue per deal hour', () => {
     await expect(loadAllTtmRows(async from => from === 0 ? { data: Array.from({ length: 500 }, () => 1), error: null } : { data: null, error: new Error('Denied') })).rejects.toThrow('Denied');
   });
 });
+describe('expanded TTM periods', () => {
+  it('builds 3x the visible periods plus one hidden prior period', () => {
+    expect(buildTtmPeriods('2026-06-30', 'quarter', 3)).toHaveLength(13);
+    expect(buildTtmPeriods('2026-10-31', 'month', 3)).toHaveLength(37);
+  });
+});
