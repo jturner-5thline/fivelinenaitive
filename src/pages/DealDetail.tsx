@@ -695,6 +695,15 @@ export default function DealDetail() {
     (node as any).__railRo?.disconnect?.();
     (node as any).__railRo = ro;
   }, []);
+  const [fsRailHeight, setFsRailHeight] = useState<number | null>(null);
+  const fsRailRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node || typeof ResizeObserver === 'undefined') { setFsRailHeight(null); return; }
+    const ro = new ResizeObserver(() => setFsRailHeight(node.offsetHeight));
+    ro.observe(node);
+    setFsRailHeight(node.offsetHeight);
+    (node as any).__fsRo?.disconnect?.();
+    (node as any).__fsRo = ro;
+  }, []);
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones, pendingClosingDateSync, dismissClosingDateSync } = useDealMilestones(id);
   const { user } = useAuth();
   // 5th Line-only surfaces (Analysis tab).
@@ -5335,7 +5344,7 @@ export default function DealDetail() {
 
                 <TabsContent value="lenders" className={cn(useContextRailLayout ? "mt-1" : "mt-2", "deal-tab-fade")}>
               <div className="deal-fs-tab-layout relative w-full max-w-full min-w-0 min-h-0 mx-auto overflow-x-hidden grid grid-cols-1 lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] gap-4 items-start lg:before:content-[''] lg:before:absolute lg:before:inset-y-0 lg:before:left-[calc(65%-2.4px)] lg:before:w-px lg:before:-translate-x-1/2 lg:before:bg-border lg:before:pointer-events-none">
-              <div className="flex w-full min-w-0 flex-col gap-4 lg:col-start-2 lg:row-start-1">
+              <div ref={fsRailRef} className="flex w-full min-w-0 flex-col gap-4 lg:col-start-2 lg:row-start-1">
               {/* Funding source mix pie (with drilldown) */}
               <FundingSourceMixPie
                 lenders={deal.lenders || []}
@@ -5436,7 +5445,10 @@ export default function DealDetail() {
               })()}
               </div>
               {/* Lenders Card */}
-                 <Card className="fs-tab-widget flex w-full min-w-0 flex-col min-h-0 lg:col-start-1 lg:row-start-1">
+                 <Card
+                   className="fs-tab-widget flex w-full min-w-0 flex-col min-h-0 overflow-hidden max-h-[80vh] lg:max-h-none lg:h-[var(--fs-rail-h)] lg:col-start-1 lg:row-start-1"
+                   style={fsRailHeight ? ({ '--fs-rail-h': `${fsRailHeight}px` } as import("react").CSSProperties) : undefined}
+                 >
                    <CardHeader className="pb-3 pt-3">
                        <div className="flex items-center gap-2 flex-wrap">
                           <div className="flex-1 shrink basis-[180px] min-w-[120px] max-w-[260px]">
@@ -5658,7 +5670,7 @@ export default function DealDetail() {
                     </div>
                   </CardHeader>
                   
-                    <CardContent className="flex-1 min-h-0">
+                    <CardContent className="flex-1 min-h-0 overflow-y-auto">
                   <div className="space-y-4">
                     {(!deal.lenders || deal.lenders.length === 0) && (
                       <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 py-10 px-6 text-center">
