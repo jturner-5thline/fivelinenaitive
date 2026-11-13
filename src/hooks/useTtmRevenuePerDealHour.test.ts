@@ -47,3 +47,12 @@ describe('TTM read boundaries', () => {
     expect(fromMock).not.toHaveBeenCalled();
   });
 });
+describe('TTM gross margin month windows', async () => {
+  const { monthPeriods } = await import('./useTtmRevenuePerDealHour');
+  it('covers each full calendar month in the window', () => {
+    const months = monthPeriods('2025-10-01', '2026-09-30');
+    expect(months).toHaveLength(12);
+    expect(months[0]).toEqual({ start_date: '2025-10-01', end_date: '2025-10-31' });
+    expect(months.at(-1)).toEqual({ start_date: '2026-09-01', end_date: '2026-09-30' });
+  });
+});

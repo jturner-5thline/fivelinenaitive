@@ -34,9 +34,9 @@ describe('TTM chart interactions', () => {
   });
   it('expands into a larger chart requesting 3x the periods', () => {
     render(<TtmRevenuePerDealHourChart />);
-    expect(useMetric).toHaveBeenCalledWith(3, false);
+    expect(useMetric).toHaveBeenCalledWith(3, false, 'revenue');
     fireEvent.click(screen.getByRole('button', { name: 'Expand chart' }));
-    expect(useMetric).toHaveBeenLastCalledWith(3, true);
+    expect(useMetric).toHaveBeenLastCalledWith(3, true, 'revenue');
     expect(screen.getByRole('dialog')).toHaveTextContent('2 rolling periods');
   });
   it('offers retry rather than displaying a zero when data loading fails', () => {
