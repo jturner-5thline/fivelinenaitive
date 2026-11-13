@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { syncImportedLenderContacts } from '@/lib/lenders/syncImportedLenderContacts';
 import { FundingSourceTypeSelect } from '@/components/lenders/FundingSourceTypeSelect';
+import { FundingSourceTypeQuickFilters } from '@/components/lenders/FundingSourceTypeQuickFilters';
 import { parseMoney, toList } from '@/lib/lenders/parseLenderForm';
 import { useState, useMemo, useCallback, useRef, useEffect, useDeferredValue } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -1781,6 +1782,11 @@ export default function Lenders() {
                 )}
               </div>
             </div>
+
+            <FundingSourceTypeQuickFilters
+              selectedTypes={advancedFilters.lenderTypes ?? []}
+              onChange={(lenderTypes) => setAdvancedFilters((current) => ({ ...current, lenderTypes }))}
+            />
 
             <div className="px-3 pt-3 pb-0 flex-1 min-h-0 flex flex-col gap-3 bg-transparent border-0 shadow-none backdrop-blur-none">
 

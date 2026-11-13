@@ -609,6 +609,12 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
 
   const filterMode = safeFilters.filterMode || 'simple';
 
+  // Quick type filters apply alongside either simple or advanced conditions.
+  if (safeFilters.lenderTypes && safeFilters.lenderTypes.length > 0) {
+    const selected = new Set(safeFilters.lenderTypes.map(t => t.toLowerCase()));
+    result = result.filter(l => parseTypeTags(l.lender_type).some(t => selected.has(t.toLowerCase())));
+  }
+
   // Apply search query filter first
   if (safeFilters.searchQuery) {
     const query = safeFilters.searchQuery.toLowerCase();
@@ -692,11 +698,6 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
     }
 
     // Geographies (match any selected tag against lender's geo string)
-    if (safeFilters.lenderTypes && safeFilters.lenderTypes.length > 0) {
-      const sel = new Set(safeFilters.lenderTypes.map(t => t.toLowerCase()));
-      result = result.filter((l) => parseTypeTags(l.lender_type).some(t => sel.has(t.toLowerCase())));
-    }
-
     if (safeFilters.geographies && safeFilters.geographies.length > 0) {
       const selected = safeFilters.geographies.map(g => g.toLowerCase());
       result = result.filter((lender) => {

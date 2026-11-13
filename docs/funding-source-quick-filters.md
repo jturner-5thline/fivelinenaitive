@@ -1,0 +1,10 @@
+# Funding source quick type filters
+
+- Added single-select type buttons between the toolbar and directory, using the existing standard type list, without counts. All or clicking the selected type clears only the type selection.
+- Shared `advancedFilters.lenderTypes` keeps the sheet and buttons synchronized; type filtering now applies alongside both simple and advanced conditions. Search, other filters, sorting and directory views are preserved. No records, services or dependencies changed.
+- Added six interaction tests for single selection, case-insensitive/multi-tag matches, both reset methods, preservation of other filters and advanced mode, external selection changes and empty results. All six plus five existing spreadsheet tests passed after the final selector correction.
+- ESLint passed for both new files. The two existing modified files retain the same baseline 30 errors and seven warnings; these were confirmed by linting their HEAD versions and not expanded into unrelated cleanup.
+- Automatic preview build/type validation passed (`build OK` at 2026-11-13T13:45:03Z); no manual build/typecheck run. Diff whitespace check passed.
+- Signed-in preview at 1280x1800 showed Bank reducing 5,175 sources to 2,331, Equity to four, and reset restoring 5,175. The filter sheet showed Bank selected and its Reset all action restored the All button. No page errors were captured.
+- At 390x844 the type strip scrolled horizontally within its 350px container (1,073px content), SBA showed 14 results, and the document stayed 390px wide. Screenshots were inspected; existing mobile header overlap and cramped list cards are outside this change. The added strip itself has no overlapping controls.
+- No production writes or communications were performed. Published application and hosted MCP were not tested; publication is separate.

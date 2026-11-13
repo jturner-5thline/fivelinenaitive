@@ -1,5 +1,9 @@
 # Roadmap
 
+## Funding source quick type filters
+- [x] Add clean single-select type buttons above the directory using shared options and filter state; All or re-click clears only types.
+- [x] Six new interaction tests and five spreadsheet tests passed; new-file lint and automatic preview build passed. Signed-in 1280x1800 and 390x844 preview verified type switching, reset and sheet synchronization without record writes. Existing affected-file lint errors and mobile header/list clipping remain unrelated; published site not checked.
+
 ## MCP deal pipeline moves
 - [x] Extend update_deal with target-pipeline stage validation and transactional pipeline/stage/history/activity changes, preserving the omitted-pipeline path.
 - [x] Eight new tests/all 87 MCP tests, isolated permission/atomicity checks, targeted lint and automatic build passed; regenerated 96-tool manifest without live deal writes. Verification details in docs/mcp-deal-pipeline-moves.md.
