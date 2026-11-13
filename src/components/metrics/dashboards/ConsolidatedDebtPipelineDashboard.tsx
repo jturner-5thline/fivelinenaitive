@@ -87,6 +87,7 @@ import { DEBT_ADVISORY_REALM_ID } from '@/hooks/useFinServFinancialMetrics';
 import { InsightsDrilldownDrawer, type DrilldownContext } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import { PipelineVelocitySection } from './PipelineVelocitySection';
 import { RevenuePerHourDrilldownDialog } from './RevenuePerHourDrilldownDialog';
+import { TtmRevenuePerDealHourChart } from './TtmRevenuePerDealHourChart';
 
 /**
  * Debt Advisory Metrics Board currency display.
@@ -3104,6 +3105,9 @@ export function ConsolidatedDebtPipelineDashboard({
           cashflowTitle="Debt Advisory Cashflow"
           halfWidthCashflow
         />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <TtmRevenuePerDealHourChart />
+        </div>
       </div>
 
       {(otherMetricsSection.cards.length > 0 || AVG_TIME_TILES.length > 0) && (

@@ -1,5 +1,9 @@
 # Roadmap
 
+## TTM revenue per deal hour
+- [x] Added period-aligned monthly/quarterly rolling TTM bars using Capital Advisors invoice totals and Active/In Development deal hours, with matching deal drilldowns.
+- [x] 17 new calculation, pagination, isolation and interaction tests passed; new-file lint passed, dashboard lint has only two existing warnings, automatic preview build passed. Signed-in 1280x1800 and 390x844 preview verified bars, period controls, detail closing/reopening and refresh without writes; Q3 2026 reconciled to $697,750 / 347.3 hours = $2,009/hr. No runtime errors or failed metric reads; published site not checked.
+
 ## Funding source quick type filters
 - [x] Add clean single-select type buttons above the directory using shared options and filter state; All or re-click clears only types.
 - [x] Six new interaction tests and five spreadsheet tests passed; new-file lint and automatic preview build passed. Signed-in 1280x1800 and 390x844 preview verified type switching, reset and sheet synchronization without record writes. Existing affected-file lint errors and mobile header/list clipping remain unrelated; published site not checked.
