@@ -14,6 +14,7 @@ import {
 } from 'date-fns';
 import { RefreshCw, Loader2, Save, X } from 'lucide-react';
 import WhatWorkingSections from './WhatWorkingSections';
+import { TtmPerHeadChart } from './TtmPerHeadChart';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
 import { computeClosingFee } from '@/lib/fees';
@@ -4224,6 +4225,11 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading shared layout…
         </div>
       )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <TtmPerHeadChart scope="firm" />
+        <TtmPerHeadChart metric="gross_profit" scope="firm" />
+      </div>
 
       <InsightsDrilldownDrawer
         open={!!drilldown}
