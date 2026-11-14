@@ -526,6 +526,13 @@
       "when": 1794673972441,
       "tag": "0074_backfill_deal_milestone_projections",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1794674677086,
+      "tag": "0075_censys_pre_credit_backfill",
+      "breakpoints": true
     }
   ]
 }
