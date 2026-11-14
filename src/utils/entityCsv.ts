@@ -77,13 +77,17 @@ function toNumber(v: string): number | null {
   return Number(m[1]) * mult;
 }
 
+/** Exported Record IDs are kept under this key for matching only; never written. */
+export const RECORD_ID_KEY = '__record_id';
+
 export function rowToRecord(schema: CsvSchema, row: string[], mapping: Record<number, string | null>): Record<string, any> {
   const out: Record<string, any> = {};
   Object.entries(mapping).forEach(([i, key]) => {
     if (!key) return;
     const f = schema.fields.find(x => x.key === key);
     const raw = (row[Number(i)] ?? '').trim();
-    if (!f || f.readOnly || !raw) return;
+    if (!f || !raw) return;
+    if (f.readOnly) { if (key === 'id') out[RECORD_ID_KEY] = raw; return; }
     switch (f.kind) {
       case 'number': { const n = toNumber(raw); if (n !== null) out[key] = n; break; }
       case 'integer': { const n = toNumber(raw); if (n !== null) out[key] = Math.round(n); break; }

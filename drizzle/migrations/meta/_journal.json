@@ -540,6 +540,13 @@
       "when": 1794674909068,
       "tag": "0076_remove_stray_censys_milestone",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1794676804914,
+      "tag": "0077_sync_contact_type_from_legacy",
+      "breakpoints": true
     }
   ]
 }

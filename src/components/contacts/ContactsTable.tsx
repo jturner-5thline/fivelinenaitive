@@ -122,7 +122,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
         (c.email || '').toLowerCase().includes(q) ||
         (c.job_title || '').toLowerCase().includes(q) ||
         (c.linkedin_url || '').toLowerCase().includes(q) ||
-        ((c as any).contact_type || '').toLowerCase().includes(q)
+        ((c as any).contact_type || c.hs_contact_type || '').toLowerCase().includes(q)
       );
     }
 
@@ -133,7 +133,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
       result = result.filter(c => normalizeContactStatus(c.status) === statusFilter);
     }
     if (contactTypeFilter !== 'all') {
-      result = result.filter(c => ((c as any).contact_type || '') === contactTypeFilter);
+      result = result.filter(c => ((c as any).contact_type || c.hs_contact_type || '') === contactTypeFilter);
     }
     if (ownerFilter !== 'all') {
       result = ownerFilter === 'unassigned'
@@ -368,7 +368,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
                 contact_type: (
                   <TableCell key="contact_type" className="text-sm">
                     {(() => {
-                      const tags = splitContactTypes((c.hs_contact_type || c.contact_type) as string | null);
+                      const tags = splitContactTypes((c.contact_type || c.hs_contact_type) as string | null);
                       if (!tags.length) return <span className="text-muted-foreground">—</span>;
                       return (
                         <div className="flex flex-nowrap gap-1 overflow-hidden max-w-[220px]">

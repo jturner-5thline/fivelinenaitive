@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
-  type CsvSchema, autoMapHeaders, buildTemplateCsv, downloadCsv, isStandardTemplate, readTableFile, rowToRecord,
+  type CsvSchema, autoMapHeaders, buildTemplateCsv, downloadCsv, isStandardTemplate, readTableFile, rowToRecord, RECORD_ID_KEY,
 } from '@/utils/entityCsv';
 
 export interface EntityImportConfig {
@@ -98,15 +98,17 @@ export function EntityCsvImportDialog({
   const dupCount = parsed.filter(p => p.existingId).length;
   const newCount = parsed.length - dupCount;
 
+  const strip = (rec: Record<string, any>) => { const { [RECORD_ID_KEY]: _id, ...rest } = rec; return rest; };
+
   const runImport = async () => {
     setBusy(true);
     let added = 0, updated = 0, skipped = 0, failed = 0;
     try {
-      const toInsert = parsed.filter(p => !p.existingId).map(p => p.rec);
+      const toInsert = parsed.filter(p => !p.existingId).map(p => strip(p.rec));
       const toUpdate = parsed.filter(p => p.existingId);
       if (dupMode === 'skip') skipped = toUpdate.length;
       else if (toUpdate.length) {
-        const prepared = await config.prepare(toUpdate.map(p => p.rec), 'update');
+        const prepared = await config.prepare(toUpdate.map(p => strip(p.rec)), 'update');
         for (let i = 0; i < prepared.length; i++) {
           const fields = prepared[i];
           if (!Object.keys(fields).length) { skipped++; continue; }

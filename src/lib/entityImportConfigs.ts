@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { EntityImportConfig } from '@/components/shared/EntityCsvImportDialog';
 import { COMPANY_CSV, CONTACT_COMPANY_NAME, CONTACT_CSV, DEAL_CSV } from '@/utils/csvSchemas';
-import { normDomain, normKey } from '@/utils/entityCsv';
+import { normDomain, normKey, RECORD_ID_KEY } from '@/utils/entityCsv';
 
 async function fetchAll<T>(build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>): Promise<T[]> {
   const out: T[] = [];
@@ -62,13 +62,14 @@ export function contactImportConfig(opts: { userId?: string; orgCompanyId?: stri
     requiredHint: 'Pick a column for Email or a name (Full Name, or First/Last Name).',
     mappingReady: k => k.has('email') || k.has('full_name') || k.has('first_name') || k.has('last_name'),
     isImportable: r => !!(r.email || contactName(r)),
-    identityKeys: r => [r.email && `e:${normKey(r.email)}`, !r.email && contactName(r) && `n:${normKey(contactName(r))}`].filter(Boolean) as string[],
+    identityKeys: r => [r[RECORD_ID_KEY] && `id:${String(r[RECORD_ID_KEY]).trim().toLowerCase()}`, r.email && `e:${normKey(r.email)}`, !r.email && contactName(r) && `n:${normKey(contactName(r))}`].filter(Boolean) as string[],
     loadExisting: async () => {
       if (!opts.orgCompanyId) return new Map();
       const rows = await fetchAll<{ id: string; email: string | null; full_name: string | null; first_name: string | null; last_name: string | null }>((a, b) =>
         supabase.from('contacts').select('id, email, full_name, first_name, last_name').eq('org_company_id', opts.orgCompanyId!).range(a, b));
       const m = new Map<string, string>();
       for (const r of rows) {
+        m.set(`id:${r.id.toLowerCase()}`, r.id);
         if (r.email) m.set(`e:${normKey(r.email)}`, r.id);
         const n = contactName(r);
         if (n && !m.has(`n:${normKey(n)}`)) m.set(`n:${normKey(n)}`, r.id);

@@ -15,7 +15,7 @@ interface ExportParams {
 }
 
 const EXPORT_COLUMNS =
-  'id, first_name, last_name, email, hs_city, hs_contact_status, hs_contact_type, created_at, hs_notes_last_contacted, hs_industry, job_title, hs_hs_email_optout, email_domain_normalized, hs_state, hs_company_name, linkedin_url, phone_work, phone_mobile, crm_company:crm_companies!crm_company_id(name)';
+  'id, first_name, last_name, email, hs_city, hs_contact_status, hs_contact_type, contact_type, created_at, hs_notes_last_contacted, hs_industry, job_title, hs_hs_email_optout, email_domain_normalized, hs_state, hs_company_name, linkedin_url, phone_work, phone_mobile, crm_company:crm_companies!crm_company_id(name)';
 
 function fmtDate(v: any): string {
   if (!v) return '';
@@ -56,7 +56,7 @@ export async function exportContactsToXlsx(params: ExportParams): Promise<number
   while (true) {
     let query = supabase
       .from('contacts')
-      .select(format === 'csv' ? `${selectColumns(CONTACT_CSV)}, hs_company_name, crm_company:crm_companies!crm_company_id(name)` : EXPORT_COLUMNS)
+      .select(format === 'csv' ? `${selectColumns(CONTACT_CSV)}, hs_contact_type, hs_company_name, crm_company:crm_companies!crm_company_id(name)` : EXPORT_COLUMNS)
       .eq('org_company_id', orgCompanyId);
 
     const s = search?.trim();
@@ -121,7 +121,7 @@ export async function exportContactsToXlsx(params: ExportParams): Promise<number
 
   if (format === 'csv') {
     // Full-field export using the canonical import template headers (round-trips with no mapping).
-    const mapped = (rows as any[]).map(c => ({ ...c, [CONTACT_COMPANY_NAME]: c.crm_company?.name || c.hs_company_name || '' }));
+    const mapped = (rows as any[]).map(c => ({ ...c, contact_type: c.contact_type || c.hs_contact_type || '', [CONTACT_COMPANY_NAME]: c.crm_company?.name || c.hs_company_name || '' }));
     downloadBlob(new Blob([exportToCsv(CONTACT_CSV, mapped)], { type: 'text/csv;charset=utf-8;' }), `contacts-${stamp}.csv`);
     return rows.length;
   }
@@ -157,7 +157,7 @@ export async function exportContactsToXlsx(params: ExportParams): Promise<number
       email: c.email || '',
       city: c.hs_city || '',
       lead_status: c.hs_contact_status || '',
-      contact_type: c.hs_contact_type || '',
+      contact_type: c.contact_type || c.hs_contact_type || '',
       create_date: fmtDate(c.created_at),
       last_contacted: fmtDate(c.hs_notes_last_contacted),
       industry: c.hs_industry || '',
