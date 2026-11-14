@@ -66,7 +66,7 @@ export function useTtmRevenuePerDealHour(multiplier = 1, active = true, metric: 
   return { ...query, hasAccess, view };
 }
 /** Monthly QBO P&L "Gross Profit" for Capital Advisors, shaped like dated amounts. */
-async function loadGrossProfitMonths(companyId: string, start: string, end: string) {
+export async function loadGrossProfitMonths(companyId: string, start: string, end: string) {
   const months = monthPeriods(start, end);
   try {
     await ensureFinServPnlSnapshots(companyId, months, TTM_REVENUE_REALM_ID);
