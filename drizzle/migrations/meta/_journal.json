@@ -519,6 +519,13 @@
       "when": 1794673694169,
       "tag": "0073_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1794673972441,
+      "tag": "0074_backfill_deal_milestone_projections",
+      "breakpoints": true
     }
   ]
 }
