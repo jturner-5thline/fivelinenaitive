@@ -1,0 +1,1 @@
+DELETE FROM public.deal_milestones WHERE id = '8a7e96af-d2b8-4e40-8cfa-fb7cf279ff07' AND deal_id = '285820ca-eebe-405d-8b84-e776e84ff47b';

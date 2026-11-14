@@ -533,6 +533,13 @@
       "when": 1794674677086,
       "tag": "0075_censys_pre_credit_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1794674909068,
+      "tag": "0076_remove_stray_censys_milestone",
+      "breakpoints": true
     }
   ]
 }
