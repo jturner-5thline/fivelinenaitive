@@ -30653,7 +30653,15 @@ export type Database = {
         }
         Returns: string
       }
+      fn_milestone_projection_days: {
+        Args: { p_company_id: string; p_target_stage: string }
+        Returns: number
+      }
       fn_next_friday_after: { Args: { _d: string }; Returns: string }
+      fn_trimmed_mean: {
+        Args: { p_trim?: number; p_values: number[] }
+        Returns: number
+      }
       get_avg_time_between_stages: {
         Args: {
           p_consecutive_only?: boolean

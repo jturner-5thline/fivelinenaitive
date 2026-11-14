@@ -512,6 +512,13 @@
       "when": 1794668139101,
       "tag": "0072_monthly_entity_headcount",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1794673694169,
+      "tag": "0073_migration",
+      "breakpoints": true
     }
   ]
 }
