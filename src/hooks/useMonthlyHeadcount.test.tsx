@@ -23,7 +23,7 @@ describe('headcount storage', () => {
     const baseline = result.current.data ?? {};
     await act(() => result.current.save({ ...baseline, '193514877331929:0': '3' }, baseline));
     expect(mocks.upsert).toHaveBeenCalledWith([{ company_id: HEADCOUNT_COMPANY_ID, realm_id: '193514877331929', month: '2026-01-01', headcount: 3 }], { onConflict: 'company_id,realm_id,month' });
-    expect(result.current.data?.['193514877331929:0']).toBe('3');
+    await waitFor(() => expect(result.current.data?.['193514877331929:0']).toBe('3'));
   });
   it('does not overwrite the cached baseline on rejected writes', async () => {
     const { result } = mount(); await waitFor(() => expect(result.current.isSuccess).toBe(true));
