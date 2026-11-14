@@ -19937,6 +19937,47 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_entity_headcount: {
+        Row: {
+          company_id: string
+          headcount: number | null
+          id: string
+          month: string
+          notes: string | null
+          realm_id: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          company_id: string
+          headcount?: number | null
+          id?: string
+          month: string
+          notes?: string | null
+          realm_id: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Update: {
+          company_id?: string
+          headcount?: number | null
+          id?: string
+          month?: string
+          notes?: string | null
+          realm_id?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_entity_headcount_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ms_synced_calendar_events: {
         Row: {
           attendees: Json

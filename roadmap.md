@@ -1,5 +1,10 @@
 # Roadmap
 
+## Monthly entity headcount
+- [x] Add tenant-scoped monthly unit headcount storage and Insights editor with year navigation, totals, save/discard and fractional values.
+- [x] Verified calculations, editor access boundaries and save/failure interactions with automated tests; signed-in 1280x1800 and 390x844 preview checked save, refresh/reopen and year navigation using intercepted writes only. Database schema/policies verified read-only; no live records changed.
+- [ ] Live persistence verification requires approved test records; published UI and unauthorized database writes remain untested.
+
 ## MCP deal contacts, companies and aliases
 - [x] Add caller-scoped, transactional and idempotent contact/alias tools with deal activity attribution; extend company updates and deal reads without changing omitted-field behavior.
 - [x] 22 new / 116 MCP tests and isolated SQL assertions passed; focused lint and automatic preview type/build passed, with three existing unrelated get_deal lint errors. Extracted 100-tool catalog with all fields; no live records changed or services newly enabled. Details in docs/mcp-deal-relationships.md.
