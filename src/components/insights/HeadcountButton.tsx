@@ -7,7 +7,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { useCompany } from '@/hooks/useCompany';
 import { useCanEditMasterPlan } from '@/hooks/useCanEditMasterPlan';
 import { useMonthlyHeadcount } from '@/hooks/useMonthlyHeadcount';
-import { HEADCOUNT_COMPANY_ID, HEADCOUNT_UNITS, HEADCOUNT_MONTHS, headcountKey, headcountSummary, parseHeadcount, type HeadcountDraft } from '@/lib/monthlyHeadcount';
+import { HEADCOUNT_COMPANY_ID, HEADCOUNT_UNITS, HEADCOUNT_MONTHS, headcountKey, headcountSummary, headcountMonthlyTotal, HEADCOUNT_DUPLICATE_NOTE, parseHeadcount, type HeadcountDraft } from '@/lib/monthlyHeadcount';
 import { toast } from 'sonner';
 
 export function HeadcountButton() {
@@ -64,7 +64,7 @@ function HeadcountDialog({ companyId, canEdit, onClose }: { companyId: string; c
                   return <td key={month} className="px-1.5 py-3"><Input aria-label={`${unit.label} ${month} ${year}`} aria-invalid={!valid} inputMode="decimal" value={value} placeholder="—" disabled={!canEdit || saving} className="h-9 w-[68px] text-center tabular-nums font-mono" onChange={e => setDraft({ ...values, [key]: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const nextUnit = HEADCOUNT_UNITS[row + 1]; if (nextUnit) document.getElementById(`headcount-${nextUnit.realmId}-${index}`)?.focus(); } }} id={`headcount-${unit.realmId}-${index}`} /></td>;
                 })}<td className="px-3 py-4 text-right font-mono tabular-nums">{fmt(summary(HEADCOUNT_MONTHS.map((_, i) => values[headcountKey(unit.realmId, i)] ?? '')).average)}</td>
               </tr>)}</tbody>
-              <tfoot><tr className="bg-muted/40 font-medium"><th className="sticky left-0 z-10 bg-background px-4 py-4 text-left">Total</th>{HEADCOUNT_MONTHS.map((month, i) => { const entries = HEADCOUNT_UNITS.map(unit => values[headcountKey(unit.realmId, i)] ?? ''); return <td key={month} className="text-center font-mono tabular-nums">{fmt(entries.some(v => v.trim()) ? summary(entries).total : null)}</td>; })}<td className="px-3 text-right font-mono tabular-nums">{fmt(summary(HEADCOUNT_MONTHS.map((_, i) => { const entries = HEADCOUNT_UNITS.map(unit => values[headcountKey(unit.realmId, i)] ?? ''); return entries.some(v => v.trim()) ? String(summary(entries).total) : ''; })).average)}</td></tr></tfoot>
+              <tfoot><tr className="bg-muted/40 font-medium"><th className="sticky left-0 z-10 bg-background px-4 py-4 text-left"><span title={HEADCOUNT_DUPLICATE_NOTE} className="cursor-help underline decoration-dotted underline-offset-4">Total</span></th>{HEADCOUNT_MONTHS.map((month, i) => { const entries = HEADCOUNT_UNITS.map(unit => values[headcountKey(unit.realmId, i)] ?? ''); let total: number | null = null; try { total = headcountMonthlyTotal(entries); } catch { total = null; } return <td key={month} title={HEADCOUNT_DUPLICATE_NOTE} className="text-center font-mono tabular-nums">{fmt(total)}</td>; })}<td title={HEADCOUNT_DUPLICATE_NOTE} className="px-3 text-right font-mono tabular-nums">{fmt(summary(HEADCOUNT_MONTHS.map((_, i) => { const entries = HEADCOUNT_UNITS.map(unit => values[headcountKey(unit.realmId, i)] ?? ''); try { const t = headcountMonthlyTotal(entries); return t === null ? '' : String(Math.round(t * 100) / 100); } catch { return ''; } })).average)}</td></tr></tfoot>
             </table>
           </div>}
         {invalid && <p role="alert" className="text-sm text-destructive">Enter a headcount from 0 to 9,999.99 with up to two decimal places.</p>}

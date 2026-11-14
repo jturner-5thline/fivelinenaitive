@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HEADCOUNT_COMPANY_ID, HEADCOUNT_UNITS, buildHeadcountChanges, headcountKey, headcountSummary, parseHeadcount } from './monthlyHeadcount';
+import { HEADCOUNT_COMPANY_ID, HEADCOUNT_UNITS, buildHeadcountChanges, headcountKey, headcountSummary, headcountMonthlyTotal, parseHeadcount } from './monthlyHeadcount';
 describe('monthly headcount', () => {
   it('supports fractional FTE and distinguishes blank from zero', () => {
     expect(parseHeadcount('2.5')).toBe(2.5);
@@ -18,4 +18,8 @@ describe('monthly headcount', () => {
     expect(buildHeadcountChanges(HEADCOUNT_COMPANY_ID, 2026, { [key]: '' }, { [key]: '2.5' })[0].headcount).toBeNull();
   });
   it('rejects another workspace', () => expect(() => buildHeadcountChanges('other-company', 2026, {}, {})).toThrow());
+});
+describe('headcountMonthlyTotal', () => {
+  it('subtracts 1 for the duplicate', () => expect(headcountMonthlyTotal(['4', '3', '', '4.5'])).toBe(10.5));
+  it('is blank when no values', () => expect(headcountMonthlyTotal(['', ''])).toBeNull());
 });

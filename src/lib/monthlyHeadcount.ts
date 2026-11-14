@@ -26,3 +26,9 @@ export function buildHeadcountChanges(companyId: string, year: number, draft: He
     return value === previous ? [] : [{ company_id: companyId, realm_id: unit.realmId, month: `${year}-${String(index + 1).padStart(2, '0')}-01`, headcount: value }];
   }));
 }
+export const HEADCOUNT_DUPLICATE_NOTE = "James is counted in both Debt & Parent so we're excluding the duplicate";
+/** Monthly total across units minus 1 for James's duplicate; null when no unit has a value. */
+export function headcountMonthlyTotal(values: string[]): number | null {
+  if (!values.some(v => v.trim())) return null;
+  return Math.max(0, headcountSummary(values).total - 1);
+}
