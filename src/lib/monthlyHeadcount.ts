@@ -3,7 +3,7 @@ export const HEADCOUNT_UNITS = [
   { realmId: '193514877331929', label: 'Debt', name: '5th Line Capital Advisors LLC' },
   { realmId: '9341451968897660', label: 'FinServ', name: '5th Line Financial Services, LLC' },
   { realmId: '9130350272677286', label: 'Tech', name: '5th Line Technologies LLC' },
-  { realmId: '123146077561874', label: 'Capital', name: '5th Line Capital, LLC' },
+  { realmId: '123146077561874', label: 'Parent', name: '5th Line Capital, LLC' },
 ] as const;
 export const HEADCOUNT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export type HeadcountDraft = Record<string, string>;
