@@ -37,6 +37,7 @@ import { DrilldownProvider, useDrilldown, type DrilldownRequest } from '@/compon
 import { buildBuckets } from '@/lib/insightsTimeRange';
 import { UtilizationWidget } from '@/components/metrics/finserv-charts/UtilizationWidget';
 import { DashboardPlansGear } from './plans/DashboardPlansGear';
+import { TtmPerHeadChart } from './TtmPerHeadChart';
 
 // ────────────────────────────────────────────────────────────
 // Formatters
@@ -1983,6 +1984,11 @@ function FinServFinancialMetricsDashboardInner() {
       </Card>
       </div>
 
+      {/* ── Row 7b: FinServ TTM per head ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TtmPerHeadChart scope="finserv" />
+        <TtmPerHeadChart metric="gross_profit" scope="finserv" />
+      </div>
 
       {/* ── Row 8: Placeholder widgets ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

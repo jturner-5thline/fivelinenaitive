@@ -9,7 +9,8 @@ import { calculateTtmPerHead, firmWideHeadcount, type HeadcountRow } from '@/lib
 import { HEADCOUNT_COMPANY_ID, HEADCOUNT_UNITS } from '@/lib/monthlyHeadcount';
 import { loadGrossProfitMonths, type TtmNumeratorMetric } from './useTtmRevenuePerDealHour';
 
-export type TtmHeadScope = 'debt' | 'firm';
+export type TtmHeadScope = 'debt' | 'firm' | 'finserv';
+const FINSERV_HEADCOUNT_REALM = HEADCOUNT_UNITS.find(u => u.label === 'FinServ')!.realmId;
 const ALL_REALMS = HEADCOUNT_UNITS.map(u => u.realmId);
 
 export function useTtmPerHead(multiplier = 1, active = true, metric: TtmNumeratorMetric = 'revenue', scope: TtmHeadScope = 'debt') {
@@ -28,7 +29,7 @@ export function useTtmPerHead(multiplier = 1, active = true, metric: TtmNumerato
     staleTime: 60_000,
     queryFn: async () => {
       if (!companyId || !hasAccess) throw new Error('This metric is available only in the 5th Line workspace.');
-      const realms = scope === 'firm' ? ALL_REALMS : [TTM_REVENUE_REALM_ID];
+      const realms = scope === 'firm' ? ALL_REALMS : scope === 'finserv' ? [FINSERV_HEADCOUNT_REALM] : [TTM_REVENUE_REALM_ID];
       const [amounts, rawHeadcount] = await Promise.all([
         metric === 'gross_profit'
           ? Promise.all(realms.map(r => loadGrossProfitMonths(companyId, start, end, r))).then(a => a.flat())

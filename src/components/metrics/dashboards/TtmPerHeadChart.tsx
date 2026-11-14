@@ -61,10 +61,12 @@ const COPY: Record<TtmNumeratorMetric, { title: string; noun: string; id: string
 export function TtmPerHeadChart({ metric = 'revenue', scope = 'debt' }: { metric?: TtmNumeratorMetric; scope?: TtmHeadScope }) {
   const firm = scope === 'firm';
   const base = COPY[metric];
-  const title = firm ? `${base.title} (Firm-wide)` : base.title;
+  const fin = scope === 'finserv';
+  const title = firm ? `${base.title} (Firm-wide)` : fin ? `${base.title} (FinServ)` : base.title;
   const noun = base.noun;
-  const id = firm ? `${base.id}-firm` : base.id;
-  const entity = firm ? 'All entities' : '5th Line Capital Advisors';
+  const id = firm ? `${base.id}-firm` : fin ? `${base.id}-finserv` : base.id;
+  const entity = firm ? 'All entities' : fin ? '5th Line Financial Services' : '5th Line Capital Advisors';
+  const unitLabel = fin ? 'FinServ' : 'Debt';
   const query = useTtmPerHead(1, true, metric, scope);
   const [selected, setSelected] = useState<Row | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -93,7 +95,7 @@ export function TtmPerHeadChart({ metric = 'revenue', scope = 'debt' }: { metric
             <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Expand chart" onClick={() => setExpanded(true)}><Maximize2 className="h-4 w-4" /></Button>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">{firm ? <>All entities · ÷ avg <span title={HEADCOUNT_DUPLICATE_NOTE} className="cursor-help underline decoration-dotted underline-offset-4">firm-wide headcount</span></> : '5th Line Capital Advisors · ÷ avg Debt headcount'}</p>
+        <p className="text-xs text-muted-foreground">{firm ? <>All entities · ÷ avg <span title={HEADCOUNT_DUPLICATE_NOTE} className="cursor-help underline decoration-dotted underline-offset-4">firm-wide headcount</span></> : `${entity} · ÷ avg ${unitLabel} headcount`}</p>
       </CardHeader>
       <CardContent>
         {query.isLoading ? <Skeleton className="h-[300px] w-full" /> : query.isError ? errorBox('min-h-[300px]', () => void query.refetch()) : <>
@@ -120,7 +122,7 @@ export function TtmPerHeadChart({ metric = 'revenue', scope = 'debt' }: { metric
     </Dialog>
     <InsightsDrilldownDrawer<TtmHeadMonth>
       open={selected != null} onClose={() => setSelected(null)}
-      context={selected ? { sourceId: id, sourceLabel: title, selection: selected.label, periodLabel: `${selected.start} – ${selected.end}`, filters: [{ label: noun, value: entity }, { label: 'Headcount', value: firm ? 'Firm-wide (less 1 duplicate)' : 'Debt' }] } : null}
+      context={selected ? { sourceId: id, sourceLabel: title, selection: selected.label, periodLabel: `${selected.start} – ${selected.end}`, filters: [{ label: noun, value: entity }, { label: 'Headcount', value: firm ? 'Firm-wide (less 1 duplicate)' : unitLabel }] } : null}
       columns={columns} rows={selected?.months ?? []}
       emptyHint="No months in this trailing 12-month period."
       summary={selected && <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
